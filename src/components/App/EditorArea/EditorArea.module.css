@@ -1,0 +1,110 @@
+.editorArea {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-base);
+  color: var(--text-main);
+  font-size: 14px;
+  line-height: 1.6;
+  overflow: hidden;
+}
+
+.editorHeader {
+  padding: 16px 24px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.scrollContainer {
+  flex: 1;
+  overflow: auto;
+  display: flex;
+  align-items: flex-start;
+  position: relative;
+}
+
+.gutter {
+  position: sticky;
+  left: 0;
+  z-index: 10;
+  background: var(--bg-base);
+  padding: 20px 16px;
+  border-right: 1px solid var(--border);
+  color: var(--border-light);
+  text-align: right;
+  font-family: "JetBrains Mono", "Fira Code", monospace;
+  font-size: 14px;
+  line-height: 1.6;
+  user-select: none;
+  min-height: 100%;
+}
+
+.gutterContent {
+  margin: 0;
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+}
+
+.editorWrapper {
+  min-width: calc(100% - 50px);
+  width: max-content;
+  min-height: 100%;
+  position: relative;
+}
+
+.textarea {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 20px 30px;
+  border: none;
+  outline: none;
+  resize: none;
+  background: transparent;
+  color: transparent;
+  caret-color: #fff;
+  font-family: "JetBrains Mono", "Fira Code", monospace;
+  font-size: 14px;
+  line-height: 1.6;
+  white-space: pre;
+  overflow: hidden;
+}
+
+.pre {
+  margin: 0;
+  padding: 20px 30px;
+  font-family: "JetBrains Mono", "Fira Code", monospace;
+  font-size: 14px;
+  line-height: 1.6;
+  color: #e5e7eb;
+  white-space: pre;
+  pointer-events: none;
+  min-height: 100%;
+}
+
+/* Syntax Highlighting Tokens */
+.hl-str {
+  color: #98c379;
+}
+.hl-kw {
+  color: #c678dd;
+}
+.hl-tag {
+  color: #e06c75;
+}
+.hl-func {
+  color: #61afef;
+}
+.hl-attr {
+  color: #d19a66;
+}

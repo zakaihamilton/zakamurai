@@ -1,0 +1,101 @@
+.root {
+  --bg-base: #0b0f19;
+  --bg-panel: #111827;
+  --bg-surface: #1f2937;
+  --bg-input: #181e2e;
+  --bg-tab-active: #1f2937;
+  --bg-tab-inactive: #111827;
+  --text-main: #f9fafb;
+  --text-muted: #9ca3af;
+  --accent: #818cf8;
+  --accent-glow: rgba(129, 140, 248, 0.15);
+  --border: #1f2937;
+  --border-light: #2d3748;
+  --shadow: 0 4px 20px -5px rgba(0, 0, 0, 0.7);
+}
+
+:global(*) {
+  box-sizing: border-box;
+}
+
+:global(body),
+:global(html) {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  background: var(--bg-base);
+  color: var(--text-main);
+  font-family: "Inter", system-ui, sans-serif;
+  overflow: hidden;
+}
+
+:global(#root) {
+  height: 100%;
+}
+
+.scroll-hide::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.scroll-hide::-webkit-scrollbar-thumb {
+  background: var(--bg-surface);
+  border-radius: 10px;
+}
+
+.scroll-hide::-webkit-scrollbar-thumb:hover {
+  background: var(--border-light);
+}
+
+.scroll-hide::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.fadeIn {
+  animation: fadeIn 0.3s ease;
+}
+
+.appWrapper {
+  display: flex;
+  height: 100vh;
+  width: 100vw;
+}
+
+.mainContent {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.editorContainer {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+  background: var(--bg-base);
+}
+
+.emptyState {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: var(--border-light);
+}
+
+.emptyStateText {
+  margin-top: 16px;
+  color: var(--text-muted);
+}

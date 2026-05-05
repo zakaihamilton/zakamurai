@@ -1,0 +1,57 @@
+.item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: all 0.1s;
+  user-select: none;
+  background: none;
+  border: none;
+  color: inherit;
+  font-family: inherit;
+  width: 100%;
+  text-align: left;
+}
+
+.item:hover:not(.active) {
+  background-color: rgba(255, 255, 255, 0.03);
+}
+
+.active {
+  background-color: var(--bg-surface);
+  color: var(--accent);
+}
+
+.iconContainer {
+  width: 14px;
+  display: flex;
+  color: var(--text-muted);
+}
+
+.typeIcon {
+  display: flex;
+}
+
+.name {
+  white-space: nowrap;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding: 2px 0;
+}
+
+.editInput {
+  flex: 1;
+  min-width: 100px;
+  box-sizing: border-box;
+  background: var(--bg-input);
+  border: 1px solid var(--accent);
+  color: var(--text-main);
+  outline: none;
+  font-size: 13px;
+  padding: 1px 5px;
+  margin: 0 -6px;
+  border-radius: 4px;
+  font-family: inherit;
+}

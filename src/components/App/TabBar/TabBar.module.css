@@ -1,0 +1,59 @@
+.tabBar {
+  display: flex;
+  background: var(--bg-tab-inactive);
+  overflow-x: auto;
+  border-bottom: 1px solid var(--border);
+  min-height: 40px;
+}
+
+.tab {
+  padding: 0 16px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: none;
+  border: none;
+  border-right: 1px solid var(--border);
+  border-top: 2px solid transparent;
+  cursor: pointer;
+  font-size: 13px;
+  min-width: max-content;
+  user-select: none;
+  color: inherit;
+  font-family: inherit;
+}
+
+.activeTab {
+  background: var(--bg-tab-active);
+  color: var(--text-main);
+  border-top-color: var(--accent);
+}
+
+.inactiveTab {
+  color: var(--text-muted);
+}
+
+.tabIcon {
+  display: flex;
+}
+
+.tabIconActive {
+  color: var(--accent);
+}
+
+.closeButton {
+  background: none;
+  border: none;
+  color: inherit;
+  display: flex;
+  margin-left: 8px;
+  padding: 4px;
+  border-radius: 4px;
+  transition: background 0.2s;
+  cursor: pointer;
+}
+
+.closeButton:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
