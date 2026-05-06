@@ -46,8 +46,19 @@ export default function TreeItem({
   });
   const [isLoading, setIsLoading] = useState(false);
 
-  const loadLocalChildren = async () => {
-    if (!fsHandle || item.type !== 'folder' || children.length > 0) return;
+  // Sync children state from props for mock mode
+  useEffect(() => {
+    if (item.children && fs.mode !== 'local') {
+      setChildren(item.children.map((child) => ({
+        ...child,
+        path: [...item.path, child.name],
+      })));
+    }
+  }, [item.children, item.path, fs.mode]);
+
+  const loadLocalChildren = async (force = false) => {
+    if (!fsHandle || item.type !== 'folder') return;
+    if (!force && children.length > 0) return;
     setIsLoading(true);
     try {
       const entries = [];
@@ -73,10 +84,11 @@ export default function TreeItem({
   };
 
   useEffect(() => {
-    if (isExpanded && fs.mode === 'local' && fsHandle && children.length === 0) {
-      loadLocalChildren();
+    if (isExpanded && fs.mode === 'local' && fsHandle) {
+      loadLocalChildren(true);
     }
-  }, [isExpanded, fs.mode, fsHandle, children.length, loadLocalChildren]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isExpanded, fs.mode, fsHandle, fs.version]);
 
   const handleToggle = () => {
     if (isEditing) return; // Prevent toggle when clicking to edit

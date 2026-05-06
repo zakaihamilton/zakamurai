@@ -67,6 +67,11 @@ export default function App() {
 
   const initialActiveTabId = useMemo(() => Settings.getActiveTabId() || 'ai-logs', []);
   const initialExpandedFolders = useMemo(() => ({ src: true, 'src/components': true }), []);
+  const initialAILogs = useMemo(() => {
+    const stored = Settings.getAILogs();
+    if (stored && stored.length > 0) return stored;
+    return [{ id: 1, role: 'ai', text: 'Core Engine initialized. Project context synced.' }];
+  }, []);
 
   return (
     <div className={styles.root}>
@@ -79,12 +84,7 @@ export default function App() {
           expandedFolders={initialExpandedFolders}
         >
           <TabState openTabs={initialTabs} activeTabId={initialActiveTabId}>
-            <LogState
-              isProcessing={false}
-              logs={[
-                { id: 1, role: 'ai', text: 'Core Engine initialized. Project context synced.' },
-              ]}
-            >
+            <LogState isProcessing={false} logs={initialAILogs}>
               <EditorState fileContents={initialContents}>
                 <TabRestorer />
                 <PassiveWrapper />
@@ -143,17 +143,20 @@ function TabRestorer() {
   const { fs } = AppState.useState();
   const tabState = TabState.useState();
   const editorState = EditorState.useState();
-  const hasRestored = React.useRef(false);
+  const lastRootHandleRef = React.useRef(null);
 
   useEffect(() => {
-    if (!fs?.rootHandle || !fs?.getFileHandleAtPath || hasRestored.current) return;
+    if (!fs?.rootHandle || !fs?.getFileHandleAtPath) return;
+    if (fs.rootHandle === lastRootHandleRef.current) return;
 
     const restore = async () => {
-      const parsedTabs = Settings.getOpenTabs();
-      const savedActiveTabId = Settings.getActiveTabId();
+      lastRootHandleRef.current = fs.rootHandle;
+      const parsedTabs = tabState.openTabs.length > 0 ? tabState.openTabs : Settings.getOpenTabs();
+      const savedActiveTabId = tabState.activeTabId || Settings.getActiveTabId();
 
       if (parsedTabs && parsedTabs.length > 0) {
         const restoredTabs = [];
+        const newContents = {};
 
         for (const tab of parsedTabs) {
           if (tab.type === 'file') {
@@ -167,10 +170,7 @@ function TabRestorer() {
                   fsHandle: handle,
                 });
                 if (content !== undefined) {
-                  editorState((draft) => {
-                    if (!draft.fileContents) draft.fileContents = {};
-                    draft.fileContents[tab.id] = content;
-                  });
+                  newContents[tab.id] = content;
                 }
               }
             } catch (e) {
@@ -182,6 +182,9 @@ function TabRestorer() {
         }
 
         if (restoredTabs.length > 0) {
+          editorState((draft) => {
+            draft.fileContents = { ...draft.fileContents, ...newContents };
+          });
           tabState((draft) => {
             draft.openTabs = restoredTabs;
             if (savedActiveTabId && restoredTabs.some((t) => t.id === savedActiveTabId)) {
@@ -189,7 +192,6 @@ function TabRestorer() {
             }
           });
         }
-        hasRestored.current = true;
       }
     };
 

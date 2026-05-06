@@ -4,7 +4,7 @@ import { SidebarState } from '../Sidebar';
 import { TabState } from '../TabBar';
 import { EditorState } from '../EditorArea';
 import styles from './PromptFooter.module.css';
-import { askWebLLM, interruptWebLLM } from '../../AI';
+import { askWebLLM, interruptWebLLM, processAIResponse } from '../../AI';
 import Settings from '../../Storage/Settings';
 import { AppState } from '../App';
 import { Icons } from '../Icons';
@@ -87,19 +87,8 @@ export default function PromptFooter() {
           draft.isProcessing = false;
         });
 
-        // Apply file changes if any are found in the AI response
-        if (webLLMResult) {
-          const fileRegex = /\/\/ --- File: (.*?) ---\n([\s\S]*?)(?=\n\/\/ --- End File ---|\n```|$)/g;
-          let match = fileRegex.exec(webLLMResult);
-          while (match !== null) {
-            const filePath = match[1].trim();
-            const content = match[2];
-            if (fs?.writeFileAtPath) {
-              await fs.writeFileAtPath(filePath, content);
-            }
-            match = fileRegex.exec(webLLMResult);
-          }
-        }
+        // Use the centralized processor to apply file changes
+        await processAIResponse(webLLMResult, fs, logState, sidebarState, editorState);
       } catch (err) {
         logState((draft) => {
           if (!draft.isProcessing) return; // Discard if stopped

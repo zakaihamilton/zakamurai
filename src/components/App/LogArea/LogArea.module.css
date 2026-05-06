@@ -60,25 +60,30 @@
   position: relative;
 }
 
-.copyBtn {
+.copyBtnWrapper {
   position: absolute;
   bottom: 8px;
   right: 8px;
+  opacity: 0;
+  transition: all 0.2s ease;
+  display: flex;
+}
+
+.bubble:hover .copyBtnWrapper {
+  opacity: 1;
+}
+
+.copyBtn {
   padding: 4px;
   background: var(--bg-panel);
   border: 1px solid var(--border-light);
   border-radius: 6px;
   color: var(--text-muted);
   cursor: pointer;
-  opacity: 0;
   transition: all 0.2s ease;
   display: flex;
   align-items: center;
   justify-content: center;
-}
-
-.bubble:hover .copyBtn {
-  opacity: 1;
 }
 
 .copyBtn:hover {

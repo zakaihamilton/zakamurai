@@ -83,6 +83,23 @@ const Settings = {
     const newHistory = [prompt.trim(), ...history.filter((p) => p !== prompt.trim())].slice(0, 50);
     this.set(KEYS.PROMPT_HISTORY, JSON.stringify(newHistory));
   },
+
+  getAILogs() {
+    const val = this.get(KEYS.AI_LOGS);
+    if (!val) return [];
+    try {
+      return JSON.parse(val);
+    } catch (e) {
+      console.error('Failed to parse AI logs from localStorage', e);
+      return [];
+    }
+  },
+
+  setAILogs(logs) {
+    // Keep only the last 50 logs
+    const logsToSave = logs.slice(-50);
+    this.set(KEYS.AI_LOGS, JSON.stringify(logsToSave));
+  },
 };
 
 export default Settings;

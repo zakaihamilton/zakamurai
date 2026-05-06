@@ -2,13 +2,23 @@ import React, { useEffect, useRef } from 'react';
 import { createState } from '../../Core/Base/State';
 import { Icons } from '../Icons';
 import Tooltip from '../../Widgets/Tooltip/Tooltip';
+import Settings from '../../Storage/Settings';
 import styles from './LogArea.module.css';
 
 export const LogState = createState('LogState');
+LogState.useState.initial = {
+  logs: Settings.getAILogs(),
+  isProcessing: false,
+};
 
 export default function LogArea() {
-  const { logs = [], isProcessing } = LogState.useState();
+  const logState = LogState.useState();
+  const { logs = [], isProcessing } = logState;
   const bottomRef = useRef();
+
+  useEffect(() => {
+    Settings.setAILogs(logs);
+  }, [logs]);
 
   useEffect(() => {
     if (logs.length || isProcessing) {
@@ -33,7 +43,7 @@ export default function LogArea() {
               className={`${styles.bubble} ${log.role === 'ai' ? styles.aiBubble : styles.userBubble}`}
             >
               {log.text}
-              <Tooltip content="Copy to clipboard">
+              <Tooltip content="Copy to clipboard" className={styles.copyBtnWrapper}>
                 <button
                   type="button"
                   className={styles.copyBtn}

@@ -55,7 +55,7 @@ export const askWebLLM = async (prompt) => {
       {
         role: 'system',
         content:
-          'You are an expert React and JavaScript developer assistant. If you need to modify or create files, use EXACTLY this format (NO markdown codeblocks like ```): \n// --- File: path/to/file.js ---\n[code content]\n// --- End File ---\nProvide concise, accurate code and explanations.',
+          'You are an expert React and JavaScript developer assistant. If you need to modify or create files, use EXACTLY this format (NO markdown codeblocks like ```): \n// --- File: path/to/file.js ---\n[code content]\n// --- End File ---\nIf modifying an existing file, you MUST use the EXACT file path and extension provided in the context. Provide concise, accurate code and explanations.',
       },
       {
         role: 'user',

@@ -41,6 +41,7 @@ export function useFileSystem() {
   const [files, setFiles] = useState([]);
   const [mode, setMode] = useState(null);
   const [error, setError] = useState(null);
+  const [version, setVersion] = useState(0);
 
   // 1. Wrapped in useCallback so it can be safely used as a dependency
   const refreshDirectory = useCallback(async (dirHandle) => {
@@ -57,6 +58,7 @@ export function useFileSystem() {
 
       setFiles(entries);
       setCurrentDirHandle(dirHandle);
+      setVersion((v) => v + 1);
       setError(null);
     } catch (err) {
       setError(`Failed to read directory: ${err.message}`);
@@ -201,6 +203,7 @@ export function useFileSystem() {
     mode,
     files,
     error,
+    version,
     currentDirHandle,
     rootHandle,
     mountOPFS,

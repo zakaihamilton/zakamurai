@@ -45,7 +45,11 @@ describe('PromptFooter', () => {
     LogState.useState.mockReturnValue({
       isProcessing: false,
     });
-    TabState.useState.mockReturnValue(vi.fn());
+    const tabUpdate = vi.fn();
+    TabState.useState.mockReturnValue(Object.assign(tabUpdate, {
+      openTabs: [],
+      activeTabId: null
+    }));
     AppState.useState.mockReturnValue({ fs: {} });
     EditorState.useState.mockReturnValue(vi.fn());
 
@@ -59,7 +63,11 @@ describe('PromptFooter', () => {
       showAIInput: false,
     });
     LogState.useState.mockReturnValue(vi.fn());
-    TabState.useState.mockReturnValue(vi.fn());
+    const tabUpdate = vi.fn();
+    TabState.useState.mockReturnValue(Object.assign(tabUpdate, {
+      openTabs: [],
+      activeTabId: null
+    }));
     AppState.useState.mockReturnValue({ fs: {} });
     EditorState.useState.mockReturnValue(vi.fn());
 
@@ -79,7 +87,10 @@ describe('PromptFooter', () => {
       showAIInput: true,
     });
     const tabUpdate = vi.fn();
-    TabState.useState.mockReturnValue(tabUpdate);
+    TabState.useState.mockReturnValue(Object.assign(tabUpdate, {
+      openTabs: [],
+      activeTabId: null
+    }));
     AppState.useState.mockReturnValue({ fs: {} });
     EditorState.useState.mockReturnValue(vi.fn());
 
