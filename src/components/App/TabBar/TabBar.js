@@ -1,6 +1,7 @@
 import React from 'react';
 import { Icons } from '../Icons';
 import { ZakamuraiState } from '../State';
+import Tooltip from '../../Widgets/Tooltip/Tooltip';
 import styles from './TabBar.module.css';
 
 export default function TabBar() {
@@ -70,17 +71,21 @@ export default function TabBar() {
               <span className={`${styles.tabIcon} ${isActive ? styles.tabIconActive : ''}`}>
                 {tab.type === 'logs' ? <Icons.BotSmall /> : <Icons.File />}
               </span>
-              {tab.label}
+              <Tooltip content={tab.label} className={styles.tabLabelTooltip}>
+                <span className={styles.tabLabelText}>{tab.label}</span>
+              </Tooltip>
               {!isLogs && (
-                <button
-                  type="button"
-                  onClick={(e) => closeTab(e, tab.id)}
-                  onKeyDown={(e) => e.key === 'Enter' && closeTab(e, tab.id)}
-                  className={styles.closeButton}
-                  style={{ opacity: isActive ? 1 : 0.5 }}
-                >
-                  <Icons.Close />
-                </button>
+                <Tooltip content="Close Tab">
+                  <button
+                    type="button"
+                    onClick={(e) => closeTab(e, tab.id)}
+                    onKeyDown={(e) => e.key === 'Enter' && closeTab(e, tab.id)}
+                    className={styles.closeButton}
+                    style={{ opacity: isActive ? 1 : 0.5 }}
+                  >
+                    <Icons.Close />
+                  </button>
+                </Tooltip>
               )}
             </div>
           </React.Fragment>

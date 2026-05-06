@@ -1,6 +1,7 @@
 import React from 'react';
 import { Icons } from '../Icons';
 import { ZakamuraiState } from '../State';
+import Tooltip from '../../Widgets/Tooltip/Tooltip';
 import styles from './TopBar.module.css';
 
 export default function TopBar() {
@@ -55,14 +56,15 @@ export default function TopBar() {
         ))}
       </div>
       <div className={styles.actions}>
-        <button
-          type="button"
-          onClick={toggleTheme}
-          className={styles.themeToggle}
-          title={`Switch to ${theme === 'light' ? 'dark' : 'light'} theme`}
-        >
-          {theme === 'light' ? <Icons.Moon /> : <Icons.Sun />}
-        </button>
+        <Tooltip content={`Switch to ${theme === 'light' ? 'dark' : 'light'} theme`}>
+          <button
+            type="button"
+            onClick={toggleTheme}
+            className={styles.themeToggle}
+          >
+            {theme === 'light' ? <Icons.Moon /> : <Icons.Sun />}
+          </button>
+        </Tooltip>
       </div>
     </header>
   );

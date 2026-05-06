@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Icons } from '../Icons';
 import { ZakamuraiState } from '../State';
+import Tooltip from '../../Widgets/Tooltip/Tooltip';
 import styles from './TreeItem.module.css';
 
 export default function TreeItem({ item, level = 0, filterText = '' }) {
@@ -175,9 +176,11 @@ export default function TreeItem({ item, level = 0, filterText = '' }) {
             className={styles.editInput}
           />
         ) : (
-          <span className={styles.name} onDoubleClick={handleDoubleClick}>
-            {item.name}
-          </span>
+          <Tooltip content={item.name} className={styles.nameTooltip}>
+            <span className={styles.name} onDoubleClick={handleDoubleClick}>
+              {item.name}
+            </span>
+          </Tooltip>
         )}
       </button>
       {item.type === 'folder' &&

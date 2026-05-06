@@ -57,3 +57,15 @@
 .closeButton:hover {
   background: var(--bg-surface);
 }
+
+.tabLabelTooltip {
+  max-width: 150px;
+  display: inline-flex;
+}
+
+.tabLabelText {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 150px;
+}
