@@ -6,9 +6,16 @@ import { EditorState } from '../EditorArea';
 import { AppState } from '../App';
 import Tooltip from '../../Widgets/Tooltip/Tooltip';
 import ContextMenu from '../../Widgets/ContextMenu/ContextMenu';
+import Dialog from '../../Widgets/Dialog/Dialog';
 import styles from './TreeItem.module.css';
 
-export default function TreeItem({ item, level = 0, filterText = '', fsHandle = null, parentHandle = null }) {
+export default function TreeItem({
+  item,
+  level = 0,
+  filterText = '',
+  fsHandle = null,
+  parentHandle = null,
+}) {
   const appState = AppState.useState();
   const { fs } = appState;
   const sidebarState = SidebarState.useState();
@@ -21,6 +28,7 @@ export default function TreeItem({ item, level = 0, filterText = '', fsHandle = 
   const [isCreating, setIsCreating] = useState(null); // 'file' or 'folder'
   const [createValue, setCreateValue] = useState('');
   const [contextMenu, setContextMenu] = useState(null);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   const currentPathStr = item.path.join('/');
   // Force expansion if we are actively filtering, otherwise use standard state
@@ -29,9 +37,9 @@ export default function TreeItem({ item, level = 0, filterText = '', fsHandle = 
 
   const [children, setChildren] = useState(() => {
     if (item.children) {
-      return item.children.map(child => ({
+      return item.children.map((child) => ({
         ...child,
-        path: [...item.path, child.name]
+        path: [...item.path, child.name],
       }));
     }
     return [];
@@ -249,13 +257,15 @@ export default function TreeItem({ item, level = 0, filterText = '', fsHandle = 
     setCreateValue('');
   };
 
-  const handleDelete = async () => {
-    if (!window.confirm(`Are you sure you want to delete ${item.name}?`)) return;
+  const handleDelete = () => {
+    setShowDeleteDialog(true);
+    setContextMenu(null);
+  };
 
+  const confirmDelete = async () => {
     if (fs.mode === 'local' && parentHandle) {
       try {
         await parentHandle.removeEntry(item.name, { recursive: true });
-        // Refresh the parent directory to update the UI
         await fs.refreshDirectory(parentHandle);
       } catch (err) {
         console.error('Failed to delete:', err);
@@ -272,7 +282,7 @@ export default function TreeItem({ item, level = 0, filterText = '', fsHandle = 
         if (index !== -1) currentLevel.splice(index, 1);
       });
     }
-    setContextMenu(null);
+    setShowDeleteDialog(false);
   };
 
   const onContextMenu = (e) => {
@@ -289,11 +299,10 @@ export default function TreeItem({ item, level = 0, filterText = '', fsHandle = 
 
   return (
     <div>
-      <button
-        type="button"
+      <div
         onClick={handleToggle}
         onContextMenu={onContextMenu}
-        onKeyDown={(e) => e.key === 'Enter' && handleToggle()}
+        onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && handleToggle()}
         className={`${styles.item} ${isActive ? styles.active : ''}`}
         style={{
           paddingLeft: `${16 + level * 16}px`,
@@ -311,7 +320,10 @@ export default function TreeItem({ item, level = 0, filterText = '', fsHandle = 
             )
           ) : null}
         </span>
-        <span className={styles.typeIcon} style={{ color: item.type === 'folder' ? 'var(--accent)' : 'var(--text-muted)' }}>
+        <span
+          className={styles.typeIcon}
+          style={{ color: item.type === 'folder' ? 'var(--accent)' : 'var(--text-muted)' }}
+        >
           {isLoading ? (
             <div className={styles.spinner} />
           ) : item.type === 'folder' ? (
@@ -369,10 +381,13 @@ export default function TreeItem({ item, level = 0, filterText = '', fsHandle = 
             </button>
           </div>
         )}
-      </button>
+      </div>
 
       {isCreating && (
-        <div style={{ paddingLeft: `${32 + level * 16}px`, paddingRight: '16px' }} className={styles.createInputContainer}>
+        <div
+          style={{ paddingLeft: `${32 + level * 16}px`, paddingRight: '16px' }}
+          className={styles.createInputContainer}
+        >
           <span className={styles.typeIcon}>
             {isCreating === 'folder' ? <Icons.Folder /> : <Icons.File />}
           </span>
@@ -391,9 +406,30 @@ export default function TreeItem({ item, level = 0, filterText = '', fsHandle = 
       )}
 
       <ContextMenu position={contextMenu} onClose={() => setContextMenu(null)}>
-        <button type="button" onClick={() => { setIsEditing(true); setContextMenu(null); }}>Rename</button>
-        <button type="button" onClick={handleDelete} className={styles.deleteOption}>Delete</button>
+        <button
+          type="button"
+          onClick={() => {
+            setIsEditing(true);
+            setContextMenu(null);
+          }}
+        >
+          Rename
+        </button>
+        <button type="button" onClick={handleDelete} className={styles.deleteOption}>
+          Delete
+        </button>
       </ContextMenu>
+
+      <Dialog
+        isOpen={showDeleteDialog}
+        title="Delete Item"
+        message={`Are you sure you want to delete "${item.name}"? This action cannot be undone.`}
+        confirmText="Delete"
+        cancelText="Cancel"
+        type="danger"
+        onConfirm={confirmDelete}
+        onCancel={() => setShowDeleteDialog(false)}
+      />
 
       {item.type === 'folder' &&
         isExpanded &&
