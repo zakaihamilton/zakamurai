@@ -38,9 +38,17 @@
   opacity: 1;
 }
 
-.dotRed    { background: #ff5f57; }
-.dotYellow { background: #febc2e; }
-.dotGreen  { background: #28c840; }
+.dotRed {
+  background: #ff5f57;
+}
+
+.dotYellow {
+  background: #febc2e;
+}
+
+.dotGreen {
+  background: #28c840;
+}
 
 .addressBar {
   flex: 1;
@@ -69,6 +77,7 @@
   font-family: 'JetBrains Mono', 'Fira Code', monospace;
   font-size: 11px;
   letter-spacing: 0.02em;
+  user-select: text;
 }
 
 .loadingDot {
@@ -81,8 +90,15 @@
 }
 
 @keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50%       { opacity: 0.3; }
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.3;
+  }
 }
 
 .toolbarActions {
@@ -195,7 +211,9 @@
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* ---- Error banner ---- */
@@ -229,8 +247,15 @@
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(10px); }
-  to   { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .emptyIcon {
