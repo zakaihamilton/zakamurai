@@ -45,7 +45,6 @@ export default function TabBar() {
   const closeTab = (e, tabId) => {
     e.stopPropagation();
     tabState((draft) => {
-      if (tabId === 'ai-logs') return;
       const filtered = draft.openTabs.filter((t) => t.id !== tabId);
       draft.openTabs = filtered;
       if (draft.activeTabId === tabId) {
@@ -70,8 +69,8 @@ export default function TabBar() {
 
   const handleClearAll = () => {
     tabState((draft) => {
-      draft.openTabs = draft.openTabs.filter((t) => t.id === 'ai-logs');
-      draft.activeTabId = 'ai-logs';
+      draft.openTabs = [];
+      draft.activeTabId = null;
     });
   };
 
@@ -107,8 +106,7 @@ export default function TabBar() {
               >
                 <span className={styles.tabLabelText}>{tab.label}</span>
               </Tooltip>
-              {!isLogs && (
-                <Tooltip content="Close Tab">
+              <Tooltip content="Close Tab">
                   <button
                     type="button"
                     onClick={(e) => closeTab(e, tab.id)}
@@ -119,7 +117,6 @@ export default function TabBar() {
                     <Icons.Close />
                   </button>
                 </Tooltip>
-              )}
             </div>
           </React.Fragment>
         );

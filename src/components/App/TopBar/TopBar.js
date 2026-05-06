@@ -32,11 +32,9 @@ export default function TopBar() {
     logState((draft) => {
       draft.isProcessing = true;
     });
-    // Switch to logs tab if not already there
+    // Switch to (and open) logs tab if not already there
     if (activeTabId !== 'ai-logs') {
-      tabState((td) => {
-        td.activeTabId = 'ai-logs';
-      });
+      handleOpenLog();
     }
 
     const onLog = (text) => {
@@ -94,6 +92,16 @@ export default function TopBar() {
     });
   };
 
+  const handleOpenLog = () => {
+    tabState((draft) => {
+      const exists = draft.openTabs.some((t) => t.id === 'ai-logs');
+      if (!exists) {
+        draft.openTabs = [{ id: 'ai-logs', type: 'logs', label: 'Log' }, ...draft.openTabs];
+      }
+      draft.activeTabId = 'ai-logs';
+    });
+  };
+
   const handleClearFS = () => {
     Compiler.reset();
     logState((draft) => {
@@ -103,10 +111,8 @@ export default function TopBar() {
         text: 'Virtual filesystem cleared. Next compile will start fresh.',
       });
     });
-    // Switch to logs tab so the user can see the confirmation
-    tabState((td) => {
-      td.activeTabId = 'ai-logs';
-    });
+    // Switch to (and open) logs tab so the user can see the confirmation
+    handleOpenLog();
   };
 
   const handleStartOver = () => {
@@ -244,11 +250,7 @@ export default function TopBar() {
             <button
               type="button"
               className={`${styles.actionBtn} ${styles.terminalToggleBtn} ${activeTabId === 'ai-logs' ? styles.activeTab : ''}`}
-              onClick={() =>
-                tabState((td) => {
-                  td.activeTabId = 'ai-logs';
-                })
-              }
+              onClick={handleOpenLog}
             >
               <Icons.Terminal />
             </button>
