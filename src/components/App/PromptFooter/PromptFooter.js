@@ -52,7 +52,7 @@ export default function PromptFooter() {
           value={val}
           onChange={(e) => setVal(e.target.value)}
           disabled={isProcessing}
-          placeholder="Command the Scaffolder..."
+          placeholder="Enter the AI prompt here..."
           className={styles.input}
         />
         <button
