@@ -58,9 +58,6 @@ export default function PromptFooter() {
       draft.logs = [...draft.logs, { id: Date.now(), role: 'user', text: userMsg }];
       draft.isProcessing = true;
     });
-    tabState((draft) => {
-      draft.activeTabId = 'ai-logs';
-    });
 
     const runAI = async () => {
       try {

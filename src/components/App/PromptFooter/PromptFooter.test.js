@@ -102,6 +102,5 @@ describe('PromptFooter', () => {
     fireEvent.click(button);
 
     expect(stateUpdate).toHaveBeenCalled();
-    expect(tabUpdate).toHaveBeenCalled();
   });
 });
