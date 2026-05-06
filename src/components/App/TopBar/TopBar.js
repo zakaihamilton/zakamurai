@@ -28,18 +28,15 @@ export default function TopBar() {
 
     logState((draft) => {
       draft.isProcessing = true;
-      // Switch to logs tab if not already there
-      if (activeTabId !== 'ai-logs') {
-        tabState((td) => { td.activeTabId = 'ai-logs'; });
-      }
     });
+    // Switch to logs tab if not already there
+    if (activeTabId !== 'ai-logs') {
+      tabState((td) => { td.activeTabId = 'ai-logs'; });
+    }
 
     const onLog = (text) => {
       logState((draft) => {
-        draft.logs = [
-          ...draft.logs,
-          { id: Date.now() + Math.random(), role: 'system', text },
-        ];
+        draft.logs.push({ id: `${Date.now()}-${Math.random()}`, role: 'system', text });
       });
     };
 
@@ -93,6 +90,15 @@ export default function TopBar() {
       }
       draft.activeTabId = 'preview';
     });
+  };
+
+  const handleClearFS = () => {
+    Compiler.reset();
+    logState((draft) => {
+      draft.logs.push({ id: `${Date.now()}-${Math.random()}`, role: 'system', text: 'Virtual filesystem cleared. Next compile will start fresh.' });
+    });
+    // Switch to logs tab so the user can see the confirmation
+    tabState((td) => { td.activeTabId = 'ai-logs'; });
   };
 
   const handleExportZip = async () => {
@@ -234,6 +240,12 @@ export default function TopBar() {
           <button type="button" className={styles.actionBtn} onClick={handleExportZip}>
             <Icons.Plus />
             <span>Export ZIP</span>
+          </button>
+        </Tooltip>
+        <Tooltip content="Clear virtual filesystem (forces fresh compile)">
+          <button type="button" className={`${styles.actionBtn} ${styles.clearFsBtn}`} onClick={handleClearFS} disabled={isProcessing}>
+            <Icons.Trash />
+            <span>Clear FS</span>
           </button>
         </Tooltip>
         <Tooltip content={`Switch to ${theme === 'light' ? 'dark' : 'light'} theme`}>

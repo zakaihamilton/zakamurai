@@ -1,36 +1,112 @@
 /**
  * Compiler utility that uses almostnode to run build scripts in the browser.
  */
+
+// Module-level singleton — persists across Compiler instances so the container
+// (and its VFS) can be reused between compilations and cleared on demand.
+let _sharedContainer = null;
+
 export class Compiler {
   constructor(onLog) {
     this.onLog = onLog;
-    this.container = null;
+  }
+
+  /** Returns the current shared container, or null if not yet initialised. */
+  static getContainer() {
+    return _sharedContainer;
+  }
+
+  /**
+   * Destroys the shared container and wipes the module-level reference.
+   * The next compile() call will re-create a fresh container.
+   */
+  static async reset() {
+    if (_sharedContainer) {
+      try {
+        if (typeof _sharedContainer.teardown === 'function') {
+          _sharedContainer.teardown();
+        } else if (typeof _sharedContainer.destroy === 'function') {
+          _sharedContainer.destroy();
+        } else {
+          _sharedContainer.vfs?.reset?.();
+        }
+      } catch (_) {
+        /* ignore */
+      }
+      _sharedContainer = null;
+    }
+
+    if ('serviceWorker' in navigator) {
+      try {
+        const registrations = await navigator.serviceWorker.getRegistrations();
+        for (const registration of registrations) {
+          // Only unregister our specific almostnode worker
+          if (registration.active?.scriptURL.includes('__sw__.js')) {
+            await registration.unregister();
+            console.log('Service Worker unregistered.');
+          }
+        }
+      } catch (err) {
+        console.warn('Failed to unregister Service Worker:', err);
+      }
+    }
+
+    console.log('Compiler state and Service Worker completely cleared.');
+  }
+
+  get container() {
+    return _sharedContainer;
   }
 
   async init() {
-    if (!this.container) {
+    if (!_sharedContainer) {
       this.onLog('Starting almostnode container...');
       try {
         // Load almostnode directly from the public directory to bypass Turbopack/Webpack
         // this avoids build-time analysis issues and __turbopack_context__ errors
-        // biome-ignore lint/security/noGlobalEval: deliberate workaround for dynamic import
-        const { createContainer } = await eval('import("/lib/almostnode/index.mjs")');
-        this.container = await createContainer({
+        const nativeImport = new Function('specifier', 'return import(specifier)');
+        const { createContainer, ViteDevServer } = await nativeImport('/lib/almostnode/index.mjs');
+
+        // Create a subclass that handles missing extensions (like Vite does)
+        class SmartViteDevServer extends ViteDevServer {
+          async handleRequest(method, url, headers, body) {
+            const urlObj = new URL(url, 'http://localhost');
+            const pathname = urlObj.pathname;
+            const filePath = this.resolvePath(pathname);
+
+            if (!this.exists(filePath)) {
+              for (const ext of ['.jsx', '.tsx', '.js', '.ts']) {
+                if (this.exists(filePath + ext)) {
+                  return super.handleRequest(method, url.replace(pathname, pathname + ext), headers, body);
+                }
+              }
+            }
+            return super.handleRequest(method, url, headers, body);
+          }
+        }
+
+        _sharedContainer = await createContainer({
           onConsole: (level, ...args) => {
             this.onLog(`[${level.toUpperCase()}] ${args.join(' ')}`);
           },
         });
 
         // Initialize service worker for networking support
-        if (this.container.serverBridge) {
-          await this.container.serverBridge.initServiceWorker({ swUrl: '/__sw__.js' });
+        if (_sharedContainer.serverBridge) {
+          await _sharedContainer.serverBridge.initServiceWorker({ swUrl: '/__sw__.js' });
+
+          // Register our smart virtual server on port 3000.
+          const devServer = new SmartViteDevServer(_sharedContainer.vfs, { port: 3000, root: '/' });
+          _sharedContainer.serverBridge.registerServer(devServer, 3000);
+
+          this.onLog('Service Worker registered. Smart virtual server started on port 3000.');
         }
       } catch (err) {
         this.onLog(`Failed to start container: ${err.message}`);
         throw err;
       }
     }
-    return this.container;
+    return _sharedContainer;
   }
 
   async syncFiles(fs, folderTree, fileContents) {
@@ -153,7 +229,31 @@ export class Compiler {
           // Ensure index.html exists for Vite builds
           if (buildCommand.includes('vite') && !vfs.existsSync('/index.html')) {
             this.onLog('No index.html found. Creating a default one for Vite...');
-            const defaultHtml = `<!DOCTYPE html>\n<html lang="en">\n  <head>\n    <meta charset="UTF-8" />\n    <meta name="viewport" content="width=device-width, initial-scale=1.0" />\n    <title>${packageJson.name || 'Vite App'}</title>\n  </head>\n  <body>\n    <div id="root"></div>\n    <script type="module" src="/src/App.jsx"></script>\n  </body>\n</html>`;
+
+            // Smart entry-point detection
+            let entryFile = '/src/main.jsx'; // Standard Vite React default
+            if (vfs.existsSync('/src/index.jsx')) entryFile = '/src/index.jsx';
+            else if (vfs.existsSync('/src/main.tsx')) entryFile = '/src/main.tsx';
+            else if (vfs.existsSync('/src/index.tsx')) entryFile = '/src/index.tsx';
+            else if (!vfs.existsSync('/src/main.jsx')) {
+              // Re-added the generation logic to prevent blank screens!
+              if (vfs.existsSync('/src/App.jsx') || vfs.existsSync('/src/App.tsx')) {
+                const isTs = vfs.existsSync('/src/App.tsx');
+                const ext = isTs ? 'tsx' : 'jsx';
+
+                // Note the explicit extension './App.jsx' to satisfy strict browser ESM rules
+                const mountCode = `import React from 'react';\nimport ReactDOM from 'react-dom/client';\nimport App from './App.${ext}';\n\nReactDOM.createRoot(document.getElementById('root')).render(\n  <React.StrictMode>\n    <App />\n  </React.StrictMode>\n);`;
+
+                if (!vfs.existsSync('/src')) vfs.mkdirSync('/src');
+                vfs.writeFileSync(`/src/main.${ext}`, mountCode);
+                entryFile = `/src/main.${ext}`;
+                this.onLog(`No mount point found. Auto-generated /src/main.${ext}`);
+              }
+            }
+
+            const entryFileRel = entryFile.startsWith('/') ? entryFile.slice(1) : entryFile;
+
+            const defaultHtml = `<!DOCTYPE html>\n<html lang="en">\n  <head>\n    <base href="/__virtual__/3000/">\n    <meta charset="UTF-8" />\n    <meta name="viewport" content="width=device-width, initial-scale=1.0" />\n    <title>${packageJson.name || 'Vite App'}</title>\n  </head>\n  <body>\n    <div id="root"></div>\n    <script type="module" src="${entryFileRel}"></script>\n  </body>\n</html>`;
             vfs.writeFileSync('/index.html', defaultHtml);
           }
 

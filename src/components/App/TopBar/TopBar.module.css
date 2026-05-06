@@ -150,3 +150,13 @@
   color: #fff !important;
 }
 
+.clearFsBtn {
+  border-color: rgba(239, 68, 68, 0.4);
+  color: #f87171;
+}
+
+.clearFsBtn:hover {
+  background: rgba(239, 68, 68, 0.85) !important;
+  border-color: #ef4444 !important;
+  color: #fff !important;
+}
