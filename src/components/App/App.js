@@ -1,15 +1,17 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import { createState } from '../Core/Base/State';
 import styles from './App.module.css';
-import EditorArea from './EditorArea/EditorArea';
+import EditorArea, { EditorState } from './EditorArea';
 import { Icons } from './Icons';
-import LogArea from './LogArea/LogArea';
-import PromptFooter from './PromptFooter/PromptFooter';
-import Sidebar from './Sidebar/Sidebar';
-import { ZakamuraiState } from './State';
-import TabBar from './TabBar/TabBar';
-import TopBar from './TopBar/TopBar';
+import LogArea, { LogState } from './LogArea';
+import PromptFooter from './PromptFooter';
+import Sidebar, { SidebarState } from './Sidebar';
+import TabBar, { TabState } from './TabBar';
+import TopBar from './TopBar';
+
+export const AppState = createState('AppState');
 
 export default function App() {
   const initialFiles = [
@@ -48,30 +50,37 @@ export default function App() {
 
   return (
     <div className={styles.root}>
-      <ZakamuraiState
-        theme={initialTheme}
-        projectName="My NextJS App"
-        isSidebarOpen={true}
-        showAIInput={true}
-        folderTree={initialFiles}
-        expandedFolders={{ src: true, 'src/components': true }}
-        openTabs={[{ id: 'ai-logs', type: 'logs', label: 'AI Output' }]}
-        activeTabId={'ai-logs'}
-        isProcessing={false}
-        logs={[
-          { id: 1, role: 'ai', text: 'Zakamurai Core Engine initialized. Project context synced.' },
-        ]}
-        fileContents={initialContents}
-      >
-        <PassiveWrapper />
-      </ZakamuraiState>
+      <AppState theme={initialTheme} projectName="My NextJS App">
+        <SidebarState
+          isSidebarOpen={true}
+          showAIInput={true}
+          folderTree={initialFiles}
+          expandedFolders={{ src: true, 'src/components': true }}
+        >
+          <TabState
+            openTabs={[{ id: 'ai-logs', type: 'logs', label: 'AI Output' }]}
+            activeTabId={'ai-logs'}
+          >
+            <LogState
+              isProcessing={false}
+              logs={[
+                { id: 1, role: 'ai', text: 'Zakamurai Core Engine initialized. Project context synced.' },
+              ]}
+            >
+              <EditorState fileContents={initialContents}>
+                <PassiveWrapper />
+              </EditorState>
+            </LogState>
+          </TabState>
+        </SidebarState>
+      </AppState>
     </div>
   );
 }
 
 function PassiveWrapper() {
-  const state = ZakamuraiState.useState();
-  const { openTabs = [], activeTabId, theme } = state;
+  const { theme } = AppState.useState();
+  const { openTabs = [], activeTabId } = TabState.useState();
   const activeTab = openTabs.find((t) => t.id === activeTabId);
 
   // Save theme to localStorage on change

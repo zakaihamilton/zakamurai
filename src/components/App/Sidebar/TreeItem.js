@@ -1,12 +1,17 @@
 import React, { useState } from 'react';
 import { Icons } from '../Icons';
-import { ZakamuraiState } from '../State';
+import { SidebarState } from '../Sidebar';
+import { TabState } from '../TabBar';
+import { EditorState } from '../EditorArea';
 import Tooltip from '../../Widgets/Tooltip/Tooltip';
 import styles from './TreeItem.module.css';
 
 export default function TreeItem({ item, level = 0, filterText = '' }) {
-  const state = ZakamuraiState.useState();
-  const { expandedFolders = {}, activeTabId } = state;
+  const sidebarState = SidebarState.useState();
+  const { expandedFolders = {} } = sidebarState;
+  const tabState = TabState.useState();
+  const { activeTabId } = tabState;
+  const editorState = EditorState.useState();
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState(item.name);
 
@@ -18,14 +23,14 @@ export default function TreeItem({ item, level = 0, filterText = '' }) {
   const handleToggle = () => {
     if (isEditing) return; // Prevent toggle when clicking to edit
     if (item.type === 'folder') {
-      state((draft) => {
+      sidebarState((draft) => {
         draft.expandedFolders = {
           ...draft.expandedFolders,
           [currentPathStr]: !draft.expandedFolders[currentPathStr],
         };
       });
     } else {
-      state((draft) => {
+      tabState((draft) => {
         const existingTab = draft.openTabs.find((t) => t.id === currentPathStr);
         if (!existingTab) {
           draft.openTabs = [
@@ -34,8 +39,10 @@ export default function TreeItem({ item, level = 0, filterText = '' }) {
           ];
         }
         draft.activeTabId = currentPathStr;
+      });
 
-        // Auto-expand parent folders
+      // Auto-expand parent folders
+      sidebarState((draft) => {
         const newExpanded = { ...draft.expandedFolders };
         let runningPath = '';
         for (const seg of item.path.slice(0, -1)) {
@@ -55,7 +62,12 @@ export default function TreeItem({ item, level = 0, filterText = '' }) {
 
   const handleRenameSubmit = () => {
     if (editValue.trim() && editValue !== item.name) {
-      state((draft) => {
+      const oldPathStr = item.path.join('/');
+      const newPathArr = [...item.path];
+      newPathArr[newPathArr.length - 1] = editValue;
+      const newPathStr = newPathArr.join('/');
+
+      sidebarState((draft) => {
         let currentLevel = draft.folderTree;
         let targetNode = null;
 
@@ -72,11 +84,6 @@ export default function TreeItem({ item, level = 0, filterText = '' }) {
         }
 
         if (targetNode) {
-          const oldPathStr = item.path.join('/');
-          const newPathArr = [...item.path];
-          newPathArr[newPathArr.length - 1] = editValue;
-          const newPathStr = newPathArr.join('/');
-
           targetNode.name = editValue;
 
           // Replace old path prefix in expandedFolders
@@ -90,42 +97,46 @@ export default function TreeItem({ item, level = 0, filterText = '' }) {
             }
           }
           draft.expandedFolders = newExpanded;
+        }
+      });
 
-          // Replace old path prefix in fileContents
-          if (draft.fileContents) {
-            const newContents = {};
-            for (const key in draft.fileContents) {
-              if (key === oldPathStr || key.startsWith(`${oldPathStr}/`)) {
-                const newKey = newPathStr + key.substring(oldPathStr.length);
-                newContents[newKey] = draft.fileContents[key];
-              } else {
-                newContents[key] = draft.fileContents[key];
-              }
-            }
-            draft.fileContents = newContents;
-          }
-
-          // Replace old path prefix in openTabs
-          for (const t of draft.openTabs) {
-            if (t.id === oldPathStr || t.id.startsWith(`${oldPathStr}/`)) {
-              const newId = newPathStr + t.id.substring(oldPathStr.length);
-              t.id = newId;
-              if (t.id === newPathStr) t.label = editValue; // Active file got directly renamed
-              if (t.file?.path) {
-                const newFilePath = [...t.file.path];
-                for (let i = 0; i < item.path.length; i++) {
-                  newFilePath[i] = newPathArr[i];
-                }
-                t.file.path = newFilePath;
-                t.file.name = newFilePath[newFilePath.length - 1];
-              }
+      // Update file contents
+      editorState((draft) => {
+        if (draft.fileContents) {
+          const newContents = {};
+          for (const key in draft.fileContents) {
+            if (key === oldPathStr || key.startsWith(`${oldPathStr}/`)) {
+              const newKey = newPathStr + key.substring(oldPathStr.length);
+              newContents[newKey] = draft.fileContents[key];
+            } else {
+              newContents[key] = draft.fileContents[key];
             }
           }
+          draft.fileContents = newContents;
+        }
+      });
 
-          // Redirect active tab if it's the one that moved
-          if (draft.activeTabId === oldPathStr || draft.activeTabId?.startsWith(`${oldPathStr}/`)) {
-            draft.activeTabId = newPathStr + draft.activeTabId.substring(oldPathStr.length);
+      // Update tabs
+      tabState((draft) => {
+        for (const t of draft.openTabs) {
+          if (t.id === oldPathStr || t.id.startsWith(`${oldPathStr}/`)) {
+            const newId = newPathStr + t.id.substring(oldPathStr.length);
+            t.id = newId;
+            if (t.id === newPathStr) t.label = editValue; // Active file got directly renamed
+            if (t.file?.path) {
+              const newFilePath = [...t.file.path];
+              for (let i = 0; i < item.path.length; i++) {
+                newFilePath[i] = newPathArr[i];
+              }
+              t.file.path = newFilePath;
+              t.file.name = newFilePath[newFilePath.length - 1];
+            }
           }
+        }
+
+        // Redirect active tab if it's the one that moved
+        if (draft.activeTabId === oldPathStr || draft.activeTabId?.startsWith(`${oldPathStr}/`)) {
+          draft.activeTabId = newPathStr + draft.activeTabId.substring(oldPathStr.length);
         }
       });
     }

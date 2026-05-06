@@ -1,16 +1,21 @@
 import React from 'react';
 import { Icons } from '../Icons';
-import { ZakamuraiState } from '../State';
+import { AppState } from '../App';
+import { TabState } from '../TabBar';
+import { SidebarState } from '../Sidebar';
 import Tooltip from '../../Widgets/Tooltip/Tooltip';
 import styles from './TopBar.module.css';
 
 export default function TopBar() {
-  const state = ZakamuraiState.useState();
-  const { openTabs = [], activeTabId, theme } = state;
+  const appState = AppState.useState();
+  const { theme } = appState;
+  const tabState = TabState.useState();
+  const { openTabs = [], activeTabId } = tabState;
+  const sidebarState = SidebarState.useState();
   const activeTab = openTabs.find((t) => t.id === activeTabId);
 
   const toggleTheme = () => {
-    state((draft) => {
+    appState((draft) => {
       draft.theme = draft.theme === 'light' ? 'dark' : 'light';
     });
   };
@@ -30,7 +35,7 @@ export default function TopBar() {
     const pathSegments = breadcrumb.slice(0, index + 1);
     const fullPath = pathSegments.join('/');
 
-    state((draft) => {
+    sidebarState((draft) => {
       draft.expandedFolders = {
         ...draft.expandedFolders,
         [fullPath]: !draft.expandedFolders[fullPath],

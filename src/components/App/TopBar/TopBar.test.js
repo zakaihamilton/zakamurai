@@ -1,17 +1,31 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import { ZakamuraiState } from '../State';
+import { AppState } from '../App';
+import { TabState } from '../TabBar';
+import { SidebarState } from '../Sidebar';
 import TopBar from './TopBar';
 
-vi.mock('../State', () => ({
-  ZakamuraiState: {
+vi.mock('../App', () => ({
+  AppState: {
+    useState: vi.fn(),
+  },
+}));
+
+vi.mock('../TabBar', () => ({
+  TabState: {
+    useState: vi.fn(),
+  },
+}));
+
+vi.mock('../Sidebar', () => ({
+  SidebarState: {
     useState: vi.fn(),
   },
 }));
 
 describe('TopBar', () => {
   it('renders breadcrumbs for an active file', () => {
-    ZakamuraiState.useState.mockReturnValue({
+    TabState.useState.mockReturnValue({
       openTabs: [
         {
           id: 'test.js',
@@ -22,6 +36,8 @@ describe('TopBar', () => {
       ],
       activeTabId: 'test.js',
     });
+    AppState.useState.mockReturnValue({ theme: 'dark' });
+    SidebarState.useState.mockReturnValue({});
 
     render(<TopBar />);
     expect(screen.getByText('src')).toBeDefined();
@@ -29,10 +45,12 @@ describe('TopBar', () => {
   });
 
   it('renders default breadcrumb when no active tab', () => {
-    ZakamuraiState.useState.mockReturnValue({
+    TabState.useState.mockReturnValue({
       openTabs: [],
       activeTabId: null,
     });
+    AppState.useState.mockReturnValue({ theme: 'dark' });
+    SidebarState.useState.mockReturnValue({});
 
     render(<TopBar />);
     expect(screen.getByText('Zakamurai')).toBeDefined();

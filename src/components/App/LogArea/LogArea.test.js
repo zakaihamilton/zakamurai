@@ -1,20 +1,15 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import { ZakamuraiState } from '../State';
+import { LogState } from './LogArea';
 import LogArea from './LogArea';
 
 // Mock scrollIntoView since it's not implemented in jsdom
 window.HTMLElement.prototype.scrollIntoView = vi.fn();
 
-vi.mock('../State', () => ({
-  ZakamuraiState: {
-    useState: vi.fn(),
-  },
-}));
-
+// No need to mock LogArea itself
 describe('LogArea', () => {
   it('renders logs', () => {
-    ZakamuraiState.useState.mockReturnValue({
+    vi.spyOn(LogState, 'useState').mockReturnValue({
       logs: [
         { id: 1, role: 'ai', text: 'Hello human' },
         { id: 2, role: 'user', text: 'Hello bot' },
@@ -28,7 +23,7 @@ describe('LogArea', () => {
   });
 
   it('renders processing message when isProcessing is true', () => {
-    ZakamuraiState.useState.mockReturnValue({
+    vi.spyOn(LogState, 'useState').mockReturnValue({
       logs: [],
       isProcessing: true,
     });

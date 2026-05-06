@@ -1,23 +1,26 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import { ZakamuraiState } from '../State';
+import { TabState } from './TabBar';
+import { SidebarState } from '../Sidebar';
 import TabBar from './TabBar';
 
-vi.mock('../State', () => ({
-  ZakamuraiState: {
+// No need to mock TabBar itself
+vi.mock('../Sidebar', () => ({
+  SidebarState: {
     useState: vi.fn(),
   },
 }));
 
 describe('TabBar', () => {
   it('renders open tabs', () => {
-    ZakamuraiState.useState.mockReturnValue({
+    vi.spyOn(TabState, 'useState').mockReturnValue({
       openTabs: [
-        { id: 'tab1', label: 'Tab 1', type: 'file' },
-        { id: 'tab2', label: 'Tab 2', type: 'file' },
+        { id: 'tab1', label: 'Tab 1', type: 'file', file: { path: [] } },
+        { id: 'tab2', label: 'Tab 2', type: 'file', file: { path: [] } },
       ],
       activeTabId: 'tab1',
     });
+    vi.mocked(SidebarState.useState).mockReturnValue(vi.fn());
 
     render(<TabBar />);
     expect(screen.getByText('Tab 1')).toBeDefined();
@@ -26,12 +29,13 @@ describe('TabBar', () => {
 
   it('calls state update when a tab is clicked', () => {
     const stateUpdate = vi.fn();
-    ZakamuraiState.useState.mockReturnValue(
+    vi.spyOn(TabState, 'useState').mockReturnValue(
       Object.assign(stateUpdate, {
-        openTabs: [{ id: 'tab1', label: 'Tab 1', type: 'file' }],
+        openTabs: [{ id: 'tab1', label: 'Tab 1', type: 'file', file: { path: [] } }],
         activeTabId: 'tab1',
       }),
     );
+    vi.mocked(SidebarState.useState).mockReturnValue(vi.fn());
 
     render(<TabBar />);
     fireEvent.click(screen.getByText('Tab 1'));

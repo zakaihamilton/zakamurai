@@ -1,8 +1,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { createState } from '../../Core/Base/State';
 import { Icons } from '../Icons';
-import { ZakamuraiState } from '../State';
+import { AppState } from '../App';
 import styles from './Sidebar.module.css';
 import TreeItem from './TreeItem';
+
+export const SidebarState = createState('SidebarState');
 
 // Filter the folder tree recursively based on the search input
 const filterTree = (nodes, query) => {
@@ -23,8 +26,10 @@ const filterTree = (nodes, query) => {
 };
 
 export default function Sidebar() {
-  const state = ZakamuraiState.useState();
-  const { isSidebarOpen, folderTree, showAIInput, projectName } = state;
+  const sidebarState = SidebarState.useState();
+  const { isSidebarOpen, folderTree, showAIInput } = sidebarState;
+  const appState = AppState.useState();
+  const { projectName } = appState;
   const [filterText, setFilterText] = useState('');
 
   const [isEditingProj, setIsEditingProj] = useState(false);
@@ -36,14 +41,14 @@ export default function Sidebar() {
   }, [projectName]);
 
   const toggleSidebar = () => {
-    state((d) => {
+    sidebarState((d) => {
       d.isSidebarOpen = !d.isSidebarOpen;
     });
   };
 
   const submitProjName = () => {
     if (editProjVal.trim() && editProjVal !== projectName) {
-      state((draft) => {
+      appState((draft) => {
         draft.projectName = editProjVal.trim();
       });
     }
@@ -116,7 +121,7 @@ export default function Sidebar() {
       <button
         type="button"
         onClick={() =>
-          state((d) => {
+          sidebarState((d) => {
             d.showAIInput = !d.showAIInput;
           })
         }

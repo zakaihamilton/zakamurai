@@ -1,26 +1,35 @@
 import React, { useState } from 'react';
-import { ZakamuraiState } from '../State';
+import { LogState } from '../LogArea';
+import { SidebarState } from '../Sidebar';
+import { TabState } from '../TabBar';
 import styles from './PromptFooter.module.css';
 
 export default function PromptFooter() {
   const [val, setVal] = useState('');
-  const state = ZakamuraiState.useState();
-  if (!state.showAIInput) return null;
+  const logState = LogState.useState();
+  const { isProcessing } = logState;
+  const sidebarState = SidebarState.useState();
+  const { showAIInput } = sidebarState;
+  const tabState = TabState.useState();
+
+  if (!showAIInput) return null;
 
   const send = (e) => {
     e.preventDefault();
-    if (!val.trim() || state.isProcessing) return;
+    if (!val.trim() || isProcessing) return;
     const userMsg = val;
     setVal('');
 
-    state((draft) => {
+    logState((draft) => {
       draft.logs = [...draft.logs, { id: Date.now(), role: 'user', text: userMsg }];
       draft.isProcessing = true;
+    });
+    tabState((draft) => {
       draft.activeTabId = 'ai-logs';
     });
 
     setTimeout(() => {
-      state((draft) => {
+      logState((draft) => {
         draft.logs = [
           ...draft.logs,
           {
@@ -34,7 +43,7 @@ export default function PromptFooter() {
     }, 1500);
   };
 
-  const isBtnActive = val.trim() && !state.isProcessing;
+  const isBtnActive = val.trim() && !isProcessing;
 
   return (
     <div className={styles.promptFooter}>
@@ -42,7 +51,7 @@ export default function PromptFooter() {
         <input
           value={val}
           onChange={(e) => setVal(e.target.value)}
-          disabled={state.isProcessing}
+          disabled={isProcessing}
           placeholder="Command the Scaffolder..."
           className={styles.input}
         />

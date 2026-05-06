@@ -1,17 +1,12 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import { ZakamuraiState } from '../State';
+import { EditorState } from './EditorArea';
 import EditorArea from './EditorArea';
 
-vi.mock('../State', () => ({
-  ZakamuraiState: {
-    useState: vi.fn(),
-  },
-}));
-
+// No need to mock the whole file, just spy on the state hook
 describe('EditorArea', () => {
   it('renders the file path and content', () => {
-    ZakamuraiState.useState.mockReturnValue({
+    vi.spyOn(EditorState, 'useState').mockReturnValue({
       fileContents: {
         'src/test.js': 'console.log("hello");',
       },

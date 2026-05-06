@@ -1,10 +1,12 @@
 import React, { useEffect, useRef } from 'react';
+import { createState } from '../../Core/Base/State';
 import { Icons } from '../Icons';
-import { ZakamuraiState } from '../State';
 import styles from './LogArea.module.css';
 
+export const LogState = createState('LogState');
+
 export default function LogArea() {
-  const { logs = [], isProcessing } = ZakamuraiState.useState();
+  const { logs = [], isProcessing } = LogState.useState();
   const bottomRef = useRef();
 
   useEffect(() => {

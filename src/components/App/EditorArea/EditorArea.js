@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
+import { createState } from '../../Core/Base/State';
 import { Icons } from '../Icons';
-import { ZakamuraiState } from '../State';
 import styles from './EditorArea.module.css';
 
+export const EditorState = createState('EditorState');
+
 export default function EditorArea({ file }) {
-  const state = ZakamuraiState.useState();
+  const state = EditorState.useState();
   const filePath = file.path ? file.path.join('/') : file.name;
 
   // Use local state for immediate synchronous updates to prevent cursor jumping,

@@ -1,20 +1,26 @@
 import React from 'react';
+import { createState } from '../../Core/Base/State';
 import { Icons } from '../Icons';
-import { ZakamuraiState } from '../State';
+import { SidebarState } from '../Sidebar';
 import Tooltip from '../../Widgets/Tooltip/Tooltip';
 import styles from './TabBar.module.css';
 
+export const TabState = createState('TabState');
+
 export default function TabBar() {
-  const state = ZakamuraiState.useState();
-  const { openTabs = [], activeTabId } = state;
+  const tabState = TabState.useState();
+  const { openTabs = [], activeTabId } = tabState;
+  const sidebarState = SidebarState.useState();
 
   const handleTabClick = (tabId) => {
-    state((draft) => {
+    tabState((draft) => {
       draft.activeTabId = tabId;
+    });
 
-      // Auto-expand sidebar logic
-      const tab = draft.openTabs.find((t) => t.id === tabId);
-      if (tab && tab.type === 'file' && tab.file.path) {
+    // Auto-expand sidebar logic
+    const tab = openTabs.find((t) => t.id === tabId);
+    if (tab && tab.type === 'file' && tab.file.path) {
+      sidebarState((draft) => {
         // Expand all ancestor folders
         const newExpanded = { ...draft.expandedFolders };
         let runningPath = '';
@@ -23,13 +29,13 @@ export default function TabBar() {
           newExpanded[runningPath] = true;
         }
         draft.expandedFolders = newExpanded;
-      }
-    });
+      });
+    }
   };
 
   const closeTab = (e, tabId) => {
     e.stopPropagation();
-    state((draft) => {
+    tabState((draft) => {
       if (tabId === 'ai-logs') return;
       const filtered = draft.openTabs.filter((t) => t.id !== tabId);
       draft.openTabs = filtered;
@@ -39,13 +45,15 @@ export default function TabBar() {
 
         const tab = filtered.find((t) => t.id === newActiveTabId);
         if (tab && tab.type === 'file' && tab.file.path) {
-          const newExpanded = { ...draft.expandedFolders };
-          let runningPath = '';
-          for (const seg of tab.file.path.slice(0, -1)) {
-            runningPath = runningPath ? `${runningPath}/${seg}` : seg;
-            newExpanded[runningPath] = true;
-          }
-          draft.expandedFolders = newExpanded;
+          sidebarState((draft) => {
+            const newExpanded = { ...draft.expandedFolders };
+            let runningPath = '';
+            for (const seg of tab.file.path.slice(0, -1)) {
+              runningPath = runningPath ? `${runningPath}/${seg}` : seg;
+              newExpanded[runningPath] = true;
+            }
+            draft.expandedFolders = newExpanded;
+          });
         }
       }
     });
