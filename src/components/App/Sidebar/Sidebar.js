@@ -136,10 +136,11 @@ export default function Sidebar() {
                 item={{ ...item, path: [item.name], type: item.kind === 'directory' ? 'folder' : 'file' }}
                 filterText={filterText}
                 fsHandle={item.handle}
+                parentHandle={appState.fs.rootHandle}
               />
             ))
           : filteredTree.map((item) => (
-              <TreeItem key={item.name} item={{ ...item, path: [item.name] }} filterText={filterText} />
+              <TreeItem key={item.name} item={{ ...item, path: [item.name] }} filterText={filterText} parentHandle={appState.fs.rootHandle} />
             ))}
         {filteredTree.length === 0 && !appState.fs.mode && isSidebarOpen && (
           <div className={styles.noFiles}>No files found matching "{filterText}"</div>

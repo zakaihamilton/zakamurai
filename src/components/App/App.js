@@ -16,6 +16,13 @@ export const AppState = createState('AppState');
 
 export default function App() {
   const fs = useFileSystem();
+  const [initialProjectName] = useState(() => {
+    if (typeof localStorage !== 'undefined') {
+      return localStorage.getItem('zakamurai_project_name') || 'My NextJS App';
+    }
+    return 'My NextJS App';
+  });
+
   const initialFiles = [
     {
       name: 'src',
@@ -52,7 +59,8 @@ export default function App() {
 
   return (
     <div className={styles.root}>
-      <AppState theme={initialTheme} projectName="My NextJS App" fs={fs}>
+      <AppState theme={initialTheme} projectName={initialProjectName} fs={fs}>
+        <ProjectNameSaver />
         <SidebarState
           isSidebarOpen={true}
           showAIInput={true}
@@ -112,4 +120,14 @@ function PassiveWrapper() {
       </div>
     </div>
   );
+}
+
+function ProjectNameSaver() {
+  const { projectName } = AppState.useState();
+  useEffect(() => {
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem('zakamurai_project_name', projectName);
+    }
+  }, [projectName]);
+  return null;
 }

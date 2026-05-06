@@ -5,9 +5,10 @@ import { TabState } from '../TabBar';
 import { EditorState } from '../EditorArea';
 import { AppState } from '../App';
 import Tooltip from '../../Widgets/Tooltip/Tooltip';
+import ContextMenu from '../../Widgets/ContextMenu/ContextMenu';
 import styles from './TreeItem.module.css';
 
-export default function TreeItem({ item, level = 0, filterText = '', fsHandle = null }) {
+export default function TreeItem({ item, level = 0, filterText = '', fsHandle = null, parentHandle = null }) {
   const appState = AppState.useState();
   const { fs } = appState;
   const sidebarState = SidebarState.useState();
@@ -17,6 +18,9 @@ export default function TreeItem({ item, level = 0, filterText = '', fsHandle = 
   const editorState = EditorState.useState();
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState(item.name);
+  const [isCreating, setIsCreating] = useState(null); // 'file' or 'folder'
+  const [createValue, setCreateValue] = useState('');
+  const [contextMenu, setContextMenu] = useState(null);
 
   const currentPathStr = item.path.join('/');
   // Force expansion if we are actively filtering, otherwise use standard state
@@ -207,11 +211,88 @@ export default function TreeItem({ item, level = 0, filterText = '', fsHandle = 
     setIsEditing(false);
   };
 
+  const handleCreateSubmit = async () => {
+    if (!createValue.trim()) {
+      setIsCreating(null);
+      return;
+    }
+
+    if (fs.mode === 'local' && fsHandle) {
+      try {
+        if (isCreating === 'file') {
+          await fsHandle.getFileHandle(createValue, { create: true });
+        } else {
+          await fsHandle.getDirectoryHandle(createValue, { create: true });
+        }
+        await loadLocalChildren();
+        if (!isExpanded) handleToggle();
+      } catch (err) {
+        console.error('Failed to create:', err);
+      }
+    } else {
+      // Mock mode creation
+      sidebarState((draft) => {
+        let currentLevel = draft.folderTree;
+        for (const seg of item.path) {
+          const node = currentLevel.find((n) => n.name === seg);
+          if (node) currentLevel = node.children || (node.children = []);
+        }
+        currentLevel.push({
+          name: createValue,
+          type: isCreating === 'folder' ? 'folder' : 'file',
+          children: isCreating === 'folder' ? [] : undefined,
+        });
+      });
+      if (!isExpanded) handleToggle();
+    }
+    setIsCreating(null);
+    setCreateValue('');
+  };
+
+  const handleDelete = async () => {
+    if (!window.confirm(`Are you sure you want to delete ${item.name}?`)) return;
+
+    if (fs.mode === 'local' && parentHandle) {
+      try {
+        await parentHandle.removeEntry(item.name, { recursive: true });
+        // Refresh the parent directory to update the UI
+        await fs.refreshDirectory(parentHandle);
+      } catch (err) {
+        console.error('Failed to delete:', err);
+      }
+    } else {
+      sidebarState((draft) => {
+        const parentPath = item.path.slice(0, -1);
+        let currentLevel = draft.folderTree;
+        for (const seg of parentPath) {
+          const node = currentLevel.find((n) => n.name === seg);
+          if (node) currentLevel = node.children;
+        }
+        const index = currentLevel.findIndex((n) => n.name === item.name);
+        if (index !== -1) currentLevel.splice(index, 1);
+      });
+    }
+    setContextMenu(null);
+  };
+
+  const onContextMenu = (e) => {
+    if (isEditing) return;
+    e.preventDefault();
+    setContextMenu({ x: e.pageX, y: e.pageY });
+  };
+
+  useEffect(() => {
+    const handleClick = () => setContextMenu(null);
+    window.addEventListener('click', handleClick);
+    return () => window.removeEventListener('click', handleClick);
+  }, []);
+
   return (
     <div>
       <button
         type="button"
         onClick={handleToggle}
+        onContextMenu={onContextMenu}
         onKeyDown={(e) => e.key === 'Enter' && handleToggle()}
         className={`${styles.item} ${isActive ? styles.active : ''}`}
         style={{
@@ -260,7 +341,60 @@ export default function TreeItem({ item, level = 0, filterText = '', fsHandle = 
             </span>
           </Tooltip>
         )}
+
+        {/* Action Buttons on Hover */}
+        {!isEditing && item.type === 'folder' && (
+          <div className={styles.itemActions}>
+            <button
+              type="button"
+              className={styles.miniActionBtn}
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsCreating('file');
+              }}
+              title="New File"
+            >
+              <Icons.FilePlus />
+            </button>
+            <button
+              type="button"
+              className={styles.miniActionBtn}
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsCreating('folder');
+              }}
+              title="New Folder"
+            >
+              <Icons.FolderPlus />
+            </button>
+          </div>
+        )}
       </button>
+
+      {isCreating && (
+        <div style={{ paddingLeft: `${32 + level * 16}px`, paddingRight: '16px' }} className={styles.createInputContainer}>
+          <span className={styles.typeIcon}>
+            {isCreating === 'folder' ? <Icons.Folder /> : <Icons.File />}
+          </span>
+          <input
+            autoFocus
+            value={createValue}
+            onChange={(e) => setCreateValue(e.target.value)}
+            onBlur={handleCreateSubmit}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') handleCreateSubmit();
+              if (e.key === 'Escape') setIsCreating(null);
+            }}
+            className={styles.editInput}
+          />
+        </div>
+      )}
+
+      <ContextMenu position={contextMenu} onClose={() => setContextMenu(null)}>
+        <button type="button" onClick={() => { setIsEditing(true); setContextMenu(null); }}>Rename</button>
+        <button type="button" onClick={handleDelete} className={styles.deleteOption}>Delete</button>
+      </ContextMenu>
+
       {item.type === 'folder' &&
         isExpanded &&
         children.map((child) => {
@@ -272,6 +406,7 @@ export default function TreeItem({ item, level = 0, filterText = '', fsHandle = 
               level={level + 1}
               filterText={filterText}
               fsHandle={child.handle}
+              parentHandle={fsHandle}
             />
           );
         })}
