@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
-import { AppState } from '../App';
+import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { AppState, PreviewState } from '../App';
+import { LogState } from '../LogArea';
 import { TabState } from '../TabBar';
 import { SidebarState } from '../Sidebar';
 import { EditorState } from '../EditorArea';
@@ -12,6 +13,15 @@ global.URL.revokeObjectURL = vi.fn();
 
 vi.mock('../App', () => ({
   AppState: {
+    useState: vi.fn(),
+  },
+  PreviewState: {
+    useState: vi.fn(),
+  },
+}));
+
+vi.mock('../LogArea', () => ({
+  LogState: {
     useState: vi.fn(),
   },
 }));
@@ -35,6 +45,12 @@ vi.mock('../EditorArea', () => ({
 }));
 
 describe('TopBar', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    LogState.useState.mockReturnValue({ isProcessing: false, logs: [] });
+    PreviewState.useState.mockReturnValue({});
+  });
+
   it('renders breadcrumbs for an active file', () => {
     TabState.useState.mockReturnValue({
       openTabs: [
@@ -54,6 +70,7 @@ describe('TopBar', () => {
     });
     SidebarState.useState.mockReturnValue({ folderTree: [] });
     EditorState.useState.mockReturnValue({ fileContents: {} });
+
 
     render(<TopBar />);
     expect(screen.getByText('src')).toBeDefined();

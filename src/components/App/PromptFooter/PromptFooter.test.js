@@ -37,6 +37,20 @@ vi.mock('../EditorArea', () => ({
   },
 }));
 
+vi.mock('../../AI', () => ({
+  askWebLLM: vi.fn().mockResolvedValue('Mock response'),
+  interruptWebLLM: vi.fn(),
+  processAIResponse: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock('../../Storage/Settings', () => ({
+  __esModule: true,
+  default: {
+    addPromptHistory: vi.fn(),
+    getPromptHistory: vi.fn().mockReturnValue([]),
+  },
+}));
+
 describe('PromptFooter', () => {
   it('renders input and button when showAIInput is true', () => {
     SidebarState.useState.mockReturnValue({

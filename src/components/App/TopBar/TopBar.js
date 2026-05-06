@@ -1,13 +1,15 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Icons } from '../Icons';
 import { LogState } from '../LogArea';
 import { AppState, PreviewState } from '../App';
 import { TabState } from '../TabBar';
 import { SidebarState } from '../Sidebar';
 import { EditorState } from '../EditorArea';
+import Settings from '../../Storage/Settings';
 import { ZipWriter } from '../../../utils/zip';
 import { Compiler } from '../../../utils/compiler';
 import Tooltip from '../../Widgets/Tooltip/Tooltip';
+import Dialog from '../../Widgets/Dialog/Dialog';
 import styles from './TopBar.module.css';
 
 export default function TopBar() {
@@ -21,6 +23,7 @@ export default function TopBar() {
   const logState = LogState.useState();
   const previewState = PreviewState.useState();
   const { isProcessing } = logState;
+  const [isStartOverDialogOpen, setIsStartOverDialogOpen] = useState(false);
   const activeTab = openTabs.find((t) => t.id === activeTabId);
 
   const handleCompile = async () => {
@@ -99,6 +102,21 @@ export default function TopBar() {
     });
     // Switch to logs tab so the user can see the confirmation
     tabState((td) => { td.activeTabId = 'ai-logs'; });
+  };
+
+  const handleStartOver = () => {
+    setIsStartOverDialogOpen(true);
+  };
+
+  const confirmStartOver = async () => {
+    setIsStartOverDialogOpen(false);
+    await fs.unlinkProject();
+    Settings.reset();
+    window.location.reload();
+  };
+
+  const cancelStartOver = () => {
+    setIsStartOverDialogOpen(false);
   };
 
   const handleExportZip = async () => {
@@ -242,6 +260,12 @@ export default function TopBar() {
             <span>Export ZIP</span>
           </button>
         </Tooltip>
+        <Tooltip content="Start over (unlink project and reset files)">
+          <button type="button" className={styles.actionBtn} onClick={handleStartOver} disabled={isProcessing}>
+            <Icons.Refresh />
+            <span>Start over</span>
+          </button>
+        </Tooltip>
         <Tooltip content="Clear virtual filesystem (forces fresh compile)">
           <button type="button" className={`${styles.actionBtn} ${styles.clearFsBtn}`} onClick={handleClearFS} disabled={isProcessing}>
             <Icons.Trash />
@@ -258,6 +282,16 @@ export default function TopBar() {
           </button>
         </Tooltip>
       </div>
+      <Dialog
+        isOpen={isStartOverDialogOpen}
+        title="Start Over?"
+        message="Are you sure you want to start over? This will unlink the project and reset all files to defaults."
+        onConfirm={confirmStartOver}
+        onCancel={cancelStartOver}
+        confirmText="Start Over"
+        cancelText="Cancel"
+        type="danger"
+      />
     </header>
   );
 }

@@ -9,7 +9,7 @@ export default function PreviewArea({ htmlContent }) {
   const iframeRef = useRef(null);
   const [isLoading, setIsLoading] = useState(false);
   const [scale, setScale] = useState(1);
-  const [error, setError] = useState(null);
+  const [, setError] = useState(null);
 
   // We use a timestamp to force the iframe to reload when the build completes
   const [refreshKey, setRefreshKey] = useState(Date.now());
@@ -137,7 +137,7 @@ export default function PreviewArea({ htmlContent }) {
           <iframe
             key={refreshKey}
             ref={iframeRef}
-            src={`/__virtual__/3000/index.html`}
+            src="/__virtual__/3000/index.html"
             title="Preview"
             className={styles.iframe}
             onLoad={handleLoad}

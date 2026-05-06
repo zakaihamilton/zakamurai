@@ -18,7 +18,10 @@
   font-size: 12px;
   font-weight: 500;
   border-radius: 8px;
-  white-space: nowrap;
+  white-space: normal;
+  word-wrap: break-word;
+  max-width: 280px;
+  width: max-content;
   box-shadow: var(--tooltip-shadow);
   border: 1px solid var(--tooltip-border);
   transition: opacity 0.2s;

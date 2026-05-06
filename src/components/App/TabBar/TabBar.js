@@ -68,6 +68,13 @@ export default function TabBar() {
     });
   };
 
+  const handleClearAll = () => {
+    tabState((draft) => {
+      draft.openTabs = draft.openTabs.filter((t) => t.id === 'ai-logs');
+      draft.activeTabId = 'ai-logs';
+    });
+  };
+
   if (openTabs.length === 0) return null;
 
   return (
@@ -111,6 +118,20 @@ export default function TabBar() {
           </React.Fragment>
         );
       })}
+      {openTabs.length > 1 && (
+        <div className={styles.tabActions}>
+          <Tooltip content="Close all tabs">
+            <button
+              type="button"
+              onClick={handleClearAll}
+              className={styles.clearAllButton}
+              aria-label="Close all tabs"
+            >
+              <Icons.ListX />
+            </button>
+          </Tooltip>
+        </div>
+      )}
     </div>
   );
 }

@@ -35,6 +35,17 @@ async function loadHandle() {
   });
 }
 
+async function clearHandle() {
+  const db = await getDB();
+  if (!db) return;
+  const tx = db.transaction(STORE_NAME, 'readwrite');
+  tx.objectStore(STORE_NAME).delete('root');
+  return new Promise((resolve, reject) => {
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
 export function useFileSystem() {
   const [rootHandle, setRootHandle] = useState(null);
   const [currentDirHandle, setCurrentDirHandle] = useState(null);
@@ -216,6 +227,18 @@ export function useFileSystem() {
     [currentDirHandle, refreshDirectory],
   );
 
+  const unlinkProject = useCallback(async () => {
+    try {
+      await clearHandle();
+      setRootHandle(null);
+      setMode(null);
+      setFiles([]);
+      setError(null);
+    } catch (err) {
+      setError(`Failed to unlink project: ${err.message}`);
+    }
+  }, []);
+
   return {
     mode,
     files,
@@ -233,5 +256,6 @@ export function useFileSystem() {
     getFileHandleAtPath,
     createFolder,
     deleteEntry,
+    unlinkProject,
   };
 }

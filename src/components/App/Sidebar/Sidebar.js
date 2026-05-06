@@ -36,8 +36,6 @@ export default function Sidebar() {
   const { isSidebarOpen, folderTree, showAIInput } = sidebarState;
   const appState = AppState.useState();
   const { projectName } = appState;
-  const tabState = TabState.useState();
-  const editorState = EditorState.useState();
   const [filterText, setFilterText] = useState('');
 
   const toggleSidebar = () => {

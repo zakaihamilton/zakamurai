@@ -4,6 +4,7 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { createState } from '../Core/Base/State';
 import { useFileSystem } from '../Storage';
 import Settings from '../Storage/Settings';
+import { DEFAULT_FILES, DEFAULT_CONTENTS } from '../Storage/InitialData';
 import styles from './App.module.css';
 import EditorArea, { EditorState } from './EditorArea';
 import { Icons } from './Icons';
@@ -21,43 +22,12 @@ export default function App() {
   const fs = useFileSystem();
   const [initialProjectName] = useState(() => Settings.getProjectName());
 
-  const initialFiles = useMemo(
-    () => [
-      {
-        name: 'src',
-        type: 'folder',
-        children: [
-          {
-            name: 'components',
-            type: 'folder',
-            children: [
-              { name: 'Sidebar.jsx', type: 'file' },
-              { name: 'Editor.jsx', type: 'file' },
-            ],
-          },
-          { name: 'App.jsx', type: 'file' },
-        ],
-      },
-      { name: 'lib', type: 'folder', children: [{ name: 'state.js', type: 'file' }] },
-      { name: 'package.json', type: 'file' },
-    ],
-    [],
-  );
+  const initialFiles = useMemo(() => DEFAULT_FILES, []);
 
   const initialContents = useMemo(() => {
     const stored = Settings.getFileContents();
     if (stored && Object.keys(stored).length > 0) return stored;
-    return {
-      'src/components/Sidebar.jsx':
-        'export default function Sidebar() {\n  return (\n    <aside>\n      <h2>Sidebar</h2>\n    </aside>\n  );\n}',
-      'src/components/Editor.jsx':
-        'export default function Editor() {\n  return (\n    <div>\n      <h1>Code Editor</h1>\n    </div>\n  );\n}',
-      'src/App.jsx':
-        'import Sidebar from "./components/Sidebar";\nimport Editor from "./components/Editor";\n\nexport default function App() {\n  return (\n    <main>\n      <Sidebar />\n      <Editor />\n    </main>\n  );\n}',
-      'lib/state.js': 'export const ZakamuraiState = {};',
-      'package.json':
-        '{\n  "name": "zakamurai",\n  "version": "0.1.0",\n  "dependencies": {\n    "react": "^18.2.0"\n  }\n}',
-    };
+    return DEFAULT_CONTENTS;
   }, []);
 
   const initialTheme = Settings.getTheme();

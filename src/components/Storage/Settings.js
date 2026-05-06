@@ -5,6 +5,7 @@ const KEYS = {
   ACTIVE_TAB_ID: 'zakamurai_active_tab_id',
   PROMPT_HISTORY: 'zakamurai_prompt_history',
   FILE_CONTENTS: 'zakamurai_file_contents',
+  AI_LOGS: 'zakamurai_ai_logs',
 };
 
 const Settings = {
@@ -120,6 +121,14 @@ const Settings = {
       this.set(KEYS.FILE_CONTENTS, JSON.stringify(contents));
     } catch (e) {
       console.warn('Failed to save file contents to localStorage (likely size limit)', e);
+    }
+  },
+
+  reset() {
+    if (typeof localStorage !== 'undefined') {
+      for (const key of Object.values(KEYS)) {
+        localStorage.removeItem(key);
+      }
     }
   },
 };

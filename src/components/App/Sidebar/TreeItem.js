@@ -374,7 +374,7 @@ export default function TreeItem({
     
     // Close tab(s) associated with deleted item (handles both files and folders)
     tabState((draft) => {
-      const tabsToDelete = draft.openTabs.filter(t => t.id === deletedPathStr || t.id.startsWith(deletedPathStr + '/'));
+      const tabsToDelete = draft.openTabs.filter(t => t.id === deletedPathStr || t.id.startsWith(`${deletedPathStr}/`));
       if (tabsToDelete.length > 0) {
         draft.openTabs = draft.openTabs.filter(t => !tabsToDelete.includes(t));
         // If active tab was deleted, switch to another tab or null
@@ -388,7 +388,7 @@ export default function TreeItem({
     editorState((draft) => {
       if (draft.fileContents) {
         for (const key in draft.fileContents) {
-          if (key === deletedPathStr || key.startsWith(deletedPathStr + '/')) {
+          if (key === deletedPathStr || key.startsWith(`${deletedPathStr}/`)) {
             delete draft.fileContents[key];
           }
         }

@@ -67,12 +67,39 @@ export class Compiler {
         const nativeImport = new Function('specifier', 'return import(specifier)');
         const { createContainer, ViteDevServer } = await nativeImport('/lib/almostnode/index.mjs');
 
+        // Helper for CSS module hashing
+        const simpleHash = (str) => {
+          let hash = 0;
+          for (let i = 0; i < str.length; i++) {
+            hash = (hash << 5) - hash + str.charCodeAt(i);
+            hash |= 0;
+          }
+          return Math.abs(hash).toString(36).substring(0, 6);
+        };
+
         // Create a subclass that handles missing extensions (like Vite does)
         class SmartViteDevServer extends ViteDevServer {
           async handleRequest(method, url, headers, body) {
             const urlObj = new URL(url, 'http://localhost');
             const pathname = urlObj.pathname;
             const filePath = this.resolvePath(pathname);
+
+            // Handle CSS Modules (*.module.css)
+            if (pathname.endsWith('.module.css')) {
+              const secFetchDest =
+                headers['sec-fetch-dest'] ||
+                headers['Sec-Fetch-Dest'] ||
+                headers['SEC-FETCH-DEST'] ||
+                '';
+
+              // In browser context, serve CSS as module when requested as script/empty (fetch)
+              const isModuleImport =
+                secFetchDest === 'script' || secFetchDest === 'empty' || secFetchDest === '';
+
+              if (isModuleImport && this.exists(filePath)) {
+                return this.serveCssModule(filePath);
+              }
+            }
 
             if (!this.exists(filePath)) {
               for (const ext of ['.jsx', '.tsx', '.js', '.ts']) {
@@ -83,7 +110,74 @@ export class Compiler {
             }
             return super.handleRequest(method, url, headers, body);
           }
+
+          /**
+           * Serve a CSS Module file as a JavaScript module.
+           * Scopes class names and injects CSS into the DOM.
+           */
+          serveCssModule(filePath) {
+            try {
+              const css = this.vfs.readFileSync(filePath, 'utf8');
+              const fileHash = simpleHash(filePath + css);
+
+              const classMap = {};
+              // Simple regex to find class selectors (.className followed by valid CSS separator or end)
+              const classRegex = /\.([a-zA-Z][a-zA-Z0-9_-]*)(?=[\s,{.[:#]|$)/g;
+
+              let match = classRegex.exec(css);
+              while (match !== null) {
+                const className = match[1];
+                if (!classMap[className]) {
+                  classMap[className] = `${className}_${fileHash}`;
+                }
+                match = classRegex.exec(css);
+              }
+
+              let scopedCss = css;
+              for (const [name, hashed] of Object.entries(classMap)) {
+                // Replace .name with .hashed, ensuring we only match the full class name
+                const replaceRegex = new RegExp(`\\.(${name})(?=[\\s,{.\\[:#]|$)`, 'g');
+                scopedCss = scopedCss.replace(replaceRegex, `.${hashed}`);
+              }
+
+              const js = `
+// CSS Module: ${filePath}
+const classMap = ${JSON.stringify(classMap)};
+const css = ${JSON.stringify(scopedCss)};
+
+if (typeof document !== 'undefined') {
+  const id = 'cssmod-' + ${JSON.stringify(fileHash)};
+  if (!document.getElementById(id)) {
+    const style = document.createElement('style');
+    style.id = id;
+    style.setAttribute('data-vite-dev-id', ${JSON.stringify(filePath)});
+    style.textContent = css;
+    document.head.appendChild(style);
+  }
+}
+
+export default classMap;
+`;
+
+              const buffer = new TextEncoder().encode(js);
+              return {
+                statusCode: 200,
+                statusMessage: 'OK',
+                headers: {
+                  'Content-Type': 'application/javascript; charset=utf-8',
+                  'Content-Length': String(buffer.length),
+                  'Cache-Control': 'no-cache',
+                  'X-CSS-Module': 'true',
+                },
+                body: buffer,
+              };
+            } catch (err) {
+              console.error('[SmartViteDevServer] CSS Module error:', err);
+              return this.serverError(err);
+            }
+          }
         }
+
 
         _sharedContainer = await createContainer({
           onConsole: (level, ...args) => {

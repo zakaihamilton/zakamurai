@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useLayoutEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { AppState } from '../../App';
 import styles from './Tooltip.module.css';
@@ -14,6 +14,7 @@ export default function Tooltip({ content, children, className = '' }) {
   const [placement, setPlacement] = useState('top'); // 'top' or 'bottom'
   const [arrowOffset, setArrowOffset] = useState(0);
   const triggerRef = useRef(null);
+  const tooltipRef = useRef(null);
   const timeoutRef = useRef(null);
 
   const showTooltip = () => {
@@ -28,19 +29,14 @@ export default function Tooltip({ content, children, className = '' }) {
         const newPlacement = topSpace < 40 && bottomSpace > topSpace ? 'bottom' : 'top';
         setPlacement(newPlacement);
 
-        // Horizontal clamping
+        // Initial rough position
         const triggerCenter = rect.left + rect.width / 2 + window.scrollX;
-        const halfWidth = 80; // Estimated half width of tooltip
-        let left = triggerCenter;
-        const minLeft = halfWidth + 10;
-        const maxLeft = window.innerWidth - halfWidth - 10;
-        left = Math.max(minLeft, Math.min(maxLeft, left));
-
+        
         setCoords({
           top: newPlacement === 'top' ? rect.top + window.scrollY : rect.bottom + window.scrollY,
-          left,
+          left: triggerCenter,
         });
-        setArrowOffset(triggerCenter - left);
+        setArrowOffset(0);
         setIsVisible(true);
       }
     }, 400);
@@ -50,6 +46,27 @@ export default function Tooltip({ content, children, className = '' }) {
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
     setIsVisible(false);
   };
+
+  useLayoutEffect(() => {
+    if (isVisible && tooltipRef.current && triggerRef.current) {
+      const tooltipRect = tooltipRef.current.getBoundingClientRect();
+      const triggerRect = triggerRef.current.getBoundingClientRect();
+      const triggerCenter = triggerRect.left + triggerRect.width / 2 + window.scrollX;
+      
+      const halfWidth = tooltipRect.width / 2;
+      const margin = 10;
+      
+      let left = triggerCenter;
+      const minLeft = window.scrollX + halfWidth + margin;
+      const maxLeft = window.scrollX + window.innerWidth - halfWidth - margin;
+      
+      // Clamp left position to keep tooltip on screen
+      left = Math.max(minLeft, Math.min(maxLeft, left));
+      
+      setCoords(prev => ({ ...prev, left }));
+      setArrowOffset(triggerCenter - left);
+    }
+  }, [isVisible]);
 
   useEffect(() => {
     return () => {
@@ -74,6 +91,7 @@ export default function Tooltip({ content, children, className = '' }) {
       {isVisible &&
         createPortal(
           <div
+            ref={tooltipRef}
             className={`${styles.tooltip} ${styles[placement]} ${theme === 'light' ? styles.light : ''}`}
             role="tooltip"
             style={{
