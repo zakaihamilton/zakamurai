@@ -15,7 +15,7 @@ describe('ZipWriter', () => {
   it('adds files and generates a blob', async () => {
     const zip = new ZipWriter();
     zip.addFile('test.txt', 'hello world');
-    
+
     const blob = await zip.generateBlob();
     expect(blob).toBeInstanceOf(Blob);
     expect(blob.type).toBe('application/zip');
@@ -35,7 +35,7 @@ describe('ZipWriter', () => {
     const date = new Date('2026-05-06T12:00:00');
     const dosTime = zip.dosTime(date);
     const dosDate = zip.dosDate(date);
-    
+
     expect(typeof dosTime).toBe('number');
     expect(typeof dosDate).toBe('number');
   });

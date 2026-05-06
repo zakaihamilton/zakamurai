@@ -1,9 +1,9 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { AppState } from '../App';
-import { SidebarState } from './Sidebar';
-import { TabState } from '../TabBar';
 import { EditorState } from '../EditorArea';
+import { TabState } from '../TabBar';
+import { SidebarState } from './Sidebar';
 import Sidebar from './Sidebar';
 
 // Mock the state

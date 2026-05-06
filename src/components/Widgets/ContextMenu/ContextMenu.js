@@ -6,17 +6,17 @@ export default function ContextMenu({ position, onClose, children }) {
 
   return (
     <>
-      <div 
+      <div
         role="presentation"
-        className={styles.overlay} 
-        onClick={onClose} 
+        className={styles.overlay}
+        onClick={onClose}
         onKeyDown={(e) => {
           if (e.key === 'Escape' || e.key === 'Enter') onClose();
         }}
         onContextMenu={(e) => {
           e.preventDefault();
           onClose();
-        }} 
+        }}
       />
       <div
         role="menu"

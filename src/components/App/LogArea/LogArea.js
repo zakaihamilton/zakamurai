@@ -1,8 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createState } from '../../Core/Base/State';
-import { Icons } from '../Icons';
-import Tooltip from '../../Widgets/Tooltip/Tooltip';
 import Settings from '../../Storage/Settings';
+import Tooltip from '../../Widgets/Tooltip/Tooltip';
+import { Icons } from '../Icons';
 import styles from './LogArea.module.css';
 
 export const LogState = createState('LogState');
@@ -37,7 +37,7 @@ export default function LogArea() {
 
     const { scrollTop, scrollHeight, clientHeight } = container;
     const isAtBottom = Math.abs(scrollHeight - clientHeight - scrollTop) < 10;
-    
+
     if (isAtBottom) {
       setAutoScroll(true);
     } else {
@@ -68,11 +68,7 @@ export default function LogArea() {
 
   return (
     <div className={styles.logAreaWrapper}>
-      <div 
-        ref={containerRef}
-        className={`${styles.logArea} scroll-hide`}
-        onScroll={handleScroll}
-      >
+      <div ref={containerRef} className={`${styles.logArea} scroll-hide`} onScroll={handleScroll}>
         {logs.length > 0 && (
           <div className={styles.header}>
             <div className={styles.headerActions}>
@@ -104,19 +100,21 @@ export default function LogArea() {
             <div
               key={log.id}
               className={`${styles.logItem} ${
-                log.role === 'ai' ? styles.aiRow : 
-                log.role === 'system' ? styles.systemRow : 
-                styles.userRow
+                log.role === 'ai'
+                  ? styles.aiRow
+                  : log.role === 'system'
+                    ? styles.systemRow
+                    : styles.userRow
               } ${
-                (log.text?.startsWith('ERR:') || 
-                 log.text?.startsWith('Stack:') || 
-                 (/\berror\b/i.test(log.text))) ? styles.errorRow : ''
+                log.text?.startsWith('ERR:') ||
+                log.text?.startsWith('Stack:') ||
+                /\berror\b/i.test(log.text)
+                  ? styles.errorRow
+                  : ''
               }`}
             >
               <span className={styles.prompt}>{log.role === 'user' ? '$' : '>'}</span>
-              <div className={styles.logContent}>
-                {log.text}
-              </div>
+              <div className={styles.logContent}>{log.text}</div>
             </div>
           ))}
           {isProcessing && (

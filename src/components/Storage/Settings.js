@@ -102,7 +102,7 @@ const Settings = {
     const logsToSave = logs.slice(-50);
     this.set(KEYS.AI_LOGS, JSON.stringify(logsToSave));
   },
-  
+
   getFileContents() {
     const val = this.get(KEYS.FILE_CONTENTS);
     if (!val) return null;

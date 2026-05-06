@@ -1,10 +1,10 @@
 import { render, screen } from '@testing-library/react';
-import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AppState, PreviewState } from '../App';
-import { LogState } from '../LogArea';
-import { TabState } from '../TabBar';
-import { SidebarState } from '../Sidebar';
 import { EditorState } from '../EditorArea';
+import { LogState } from '../LogArea';
+import { SidebarState } from '../Sidebar';
+import { TabState } from '../TabBar';
 import TopBar from './TopBar';
 
 // Mock URL methods
@@ -70,7 +70,6 @@ describe('TopBar', () => {
     });
     SidebarState.useState.mockReturnValue({ folderTree: [] });
     EditorState.useState.mockReturnValue({ fileContents: {} });
-
 
     render(<TopBar />);
     expect(screen.getByText('src')).toBeDefined();

@@ -31,7 +31,7 @@ export default function Tooltip({ content, children, className = '' }) {
 
         // Initial rough position
         const triggerCenter = rect.left + rect.width / 2 + window.scrollX;
-        
+
         setCoords({
           top: newPlacement === 'top' ? rect.top + window.scrollY : rect.bottom + window.scrollY,
           left: triggerCenter,
@@ -52,18 +52,18 @@ export default function Tooltip({ content, children, className = '' }) {
       const tooltipRect = tooltipRef.current.getBoundingClientRect();
       const triggerRect = triggerRef.current.getBoundingClientRect();
       const triggerCenter = triggerRect.left + triggerRect.width / 2 + window.scrollX;
-      
+
       const halfWidth = tooltipRect.width / 2;
       const margin = 10;
-      
+
       let left = triggerCenter;
       const minLeft = window.scrollX + halfWidth + margin;
       const maxLeft = window.scrollX + window.innerWidth - halfWidth - margin;
-      
+
       // Clamp left position to keep tooltip on screen
       left = Math.max(minLeft, Math.min(maxLeft, left));
-      
-      setCoords(prev => ({ ...prev, left }));
+
+      setCoords((prev) => ({ ...prev, left }));
       setArrowOffset(triggerCenter - left);
     }
   }, [isVisible]);
@@ -103,7 +103,7 @@ export default function Tooltip({ content, children, className = '' }) {
           >
             {content}
           </div>,
-          document.body
+          document.body,
         )}
     </>
   );

@@ -8,7 +8,9 @@ window.HTMLElement.prototype.scrollIntoView = vi.fn();
 // Mock dependencies that might be tricky
 vi.mock('./Sidebar', () => {
   const State = ({ children }) => <div data-testid="sidebar-state">{children}</div>;
-  State.useState = vi.fn(() => Object.assign(vi.fn(), { isSidebarOpen: true, folderTree: [], showAIInput: true }));
+  State.useState = vi.fn(() =>
+    Object.assign(vi.fn(), { isSidebarOpen: true, folderTree: [], showAIInput: true }),
+  );
   return {
     default: () => <div data-testid="sidebar">Sidebar</div>,
     SidebarState: State,

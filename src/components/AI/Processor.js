@@ -5,7 +5,8 @@ export const processAIResponse = async (webLLMResult, fs, logState, sidebarState
   if (!webLLMResult) return 0;
 
   // Brute-force permissive regex to find file blocks
-  const fileRegex = /\/\/ --- File: (.*?) ---\s*([\s\S]*?)(?=\s*\/\/ --- (?:End )?File ---|\s*```|$)/g;
+  const fileRegex =
+    /\/\/ --- File: (.*?) ---\s*([\s\S]*?)(?=\s*\/\/ --- (?:End )?File ---|\s*```|$)/g;
   let match = fileRegex.exec(webLLMResult);
   let filesUpdated = 0;
 

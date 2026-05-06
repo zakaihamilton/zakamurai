@@ -1,15 +1,15 @@
 import React, { useState } from 'react';
+import { Compiler } from '../../../utils/compiler';
+import { ZipWriter } from '../../../utils/zip';
+import Settings from '../../Storage/Settings';
+import Dialog from '../../Widgets/Dialog/Dialog';
+import Tooltip from '../../Widgets/Tooltip/Tooltip';
+import { AppState, PreviewState } from '../App';
+import { EditorState } from '../EditorArea';
 import { Icons } from '../Icons';
 import { LogState } from '../LogArea';
-import { AppState, PreviewState } from '../App';
-import { TabState } from '../TabBar';
 import { SidebarState } from '../Sidebar';
-import { EditorState } from '../EditorArea';
-import Settings from '../../Storage/Settings';
-import { ZipWriter } from '../../../utils/zip';
-import { Compiler } from '../../../utils/compiler';
-import Tooltip from '../../Widgets/Tooltip/Tooltip';
-import Dialog from '../../Widgets/Dialog/Dialog';
+import { TabState } from '../TabBar';
 import styles from './TopBar.module.css';
 
 export default function TopBar() {
@@ -34,7 +34,9 @@ export default function TopBar() {
     });
     // Switch to logs tab if not already there
     if (activeTabId !== 'ai-logs') {
-      tabState((td) => { td.activeTabId = 'ai-logs'; });
+      tabState((td) => {
+        td.activeTabId = 'ai-logs';
+      });
     }
 
     const onLog = (text) => {
@@ -86,10 +88,7 @@ export default function TopBar() {
     tabState((draft) => {
       const exists = draft.openTabs.some((t) => t.id === 'preview');
       if (!exists) {
-        draft.openTabs = [
-          ...draft.openTabs,
-          { id: 'preview', type: 'preview', label: 'Preview' },
-        ];
+        draft.openTabs = [...draft.openTabs, { id: 'preview', type: 'preview', label: 'Preview' }];
       }
       draft.activeTabId = 'preview';
     });
@@ -98,10 +97,16 @@ export default function TopBar() {
   const handleClearFS = () => {
     Compiler.reset();
     logState((draft) => {
-      draft.logs.push({ id: `${Date.now()}-${Math.random()}`, role: 'system', text: 'Virtual filesystem cleared. Next compile will start fresh.' });
+      draft.logs.push({
+        id: `${Date.now()}-${Math.random()}`,
+        role: 'system',
+        text: 'Virtual filesystem cleared. Next compile will start fresh.',
+      });
     });
     // Switch to logs tab so the user can see the confirmation
-    tabState((td) => { td.activeTabId = 'ai-logs'; });
+    tabState((td) => {
+      td.activeTabId = 'ai-logs';
+    });
   };
 
   const handleStartOver = () => {
@@ -239,7 +244,11 @@ export default function TopBar() {
             <button
               type="button"
               className={`${styles.actionBtn} ${styles.terminalToggleBtn} ${activeTabId === 'ai-logs' ? styles.activeTab : ''}`}
-              onClick={() => tabState((td) => { td.activeTabId = 'ai-logs'; })}
+              onClick={() =>
+                tabState((td) => {
+                  td.activeTabId = 'ai-logs';
+                })
+              }
             >
               <Icons.Terminal />
             </button>
@@ -261,23 +270,29 @@ export default function TopBar() {
           </button>
         </Tooltip>
         <Tooltip content="Start over (unlink project and reset files)">
-          <button type="button" className={styles.actionBtn} onClick={handleStartOver} disabled={isProcessing}>
+          <button
+            type="button"
+            className={styles.actionBtn}
+            onClick={handleStartOver}
+            disabled={isProcessing}
+          >
             <Icons.Refresh />
             <span>Start over</span>
           </button>
         </Tooltip>
         <Tooltip content="Clear virtual filesystem (forces fresh compile)">
-          <button type="button" className={`${styles.actionBtn} ${styles.clearFsBtn}`} onClick={handleClearFS} disabled={isProcessing}>
+          <button
+            type="button"
+            className={`${styles.actionBtn} ${styles.clearFsBtn}`}
+            onClick={handleClearFS}
+            disabled={isProcessing}
+          >
             <Icons.Trash />
             <span>Clear FS</span>
           </button>
         </Tooltip>
         <Tooltip content={`Switch to ${theme === 'light' ? 'dark' : 'light'} theme`}>
-          <button
-            type="button"
-            onClick={toggleTheme}
-            className={styles.themeToggle}
-          >
+          <button type="button" onClick={toggleTheme} className={styles.themeToggle}>
             {theme === 'light' ? <Icons.Moon /> : <Icons.Sun />}
           </button>
         </Tooltip>

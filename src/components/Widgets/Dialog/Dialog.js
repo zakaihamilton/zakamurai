@@ -1,15 +1,15 @@
 import React from 'react';
 import styles from './Dialog.module.css';
 
-export default function Dialog({ 
-  isOpen, 
-  title, 
-  message, 
-  onConfirm, 
-  onCancel, 
-  confirmText = 'Confirm', 
+export default function Dialog({
+  isOpen,
+  title,
+  message,
+  onConfirm,
+  onCancel,
+  confirmText = 'Confirm',
   cancelText = 'Cancel',
-  type = 'default' 
+  type = 'default',
 }) {
   if (!isOpen) return null;
 
@@ -27,9 +27,9 @@ export default function Dialog({
           <button type="button" className={styles.cancelBtn} onClick={onCancel}>
             {cancelText}
           </button>
-          <button 
-            type="button" 
-            className={`${styles.confirmBtn} ${type === 'danger' ? styles.danger : ''}`} 
+          <button
+            type="button"
+            className={`${styles.confirmBtn} ${type === 'danger' ? styles.danger : ''}`}
             onClick={onConfirm}
           >
             {confirmText}

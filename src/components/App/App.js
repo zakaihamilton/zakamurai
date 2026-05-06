@@ -3,8 +3,8 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { createState } from '../Core/Base/State';
 import { useFileSystem } from '../Storage';
+import { DEFAULT_CONTENTS, DEFAULT_FILES } from '../Storage/InitialData';
 import Settings from '../Storage/Settings';
-import { DEFAULT_FILES, DEFAULT_CONTENTS } from '../Storage/InitialData';
 import styles from './App.module.css';
 import EditorArea, { EditorState } from './EditorArea';
 import { Icons } from './Icons';

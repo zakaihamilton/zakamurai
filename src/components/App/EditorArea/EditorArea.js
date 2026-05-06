@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createState } from '../../Core/Base/State';
 import { AppState } from '../App';
-import { TabState } from '../TabBar';
 import { Icons } from '../Icons';
+import { TabState } from '../TabBar';
 import styles from './EditorArea.module.css';
 
 export const EditorState = createState('EditorState');

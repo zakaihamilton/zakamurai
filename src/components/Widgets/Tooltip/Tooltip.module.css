@@ -68,7 +68,7 @@
 
 .tooltip::after,
 .tooltip::before {
-  content: '';
+  content: "";
   position: absolute;
   left: calc(50% + var(--arrow-offset, 0px));
   transform: translateX(-50%);

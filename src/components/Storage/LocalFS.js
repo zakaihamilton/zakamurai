@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 const DB_NAME = 'ZakamuraiFS';
 const STORE_NAME = 'handles';

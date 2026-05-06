@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Icons } from '../Icons';
 import Tooltip from '../../Widgets/Tooltip/Tooltip';
+import { Icons } from '../Icons';
 import styles from './PreviewArea.module.css';
 
 export default function PreviewArea({ htmlContent }) {
@@ -86,9 +86,7 @@ export default function PreviewArea({ htmlContent }) {
 
         <div className={styles.addressBar}>
           <Icons.Globe />
-          <span className={styles.addressText}>
-            localhost:3000/__virtual__/3000/index.html
-          </span>
+          <span className={styles.addressText}>localhost:3000/__virtual__/3000/index.html</span>
           {isLoading && <span className={styles.loadingDot} />}
         </div>
 
@@ -117,7 +115,7 @@ export default function PreviewArea({ htmlContent }) {
               <Icons.ExternalLink />
             </button>
           </Tooltip>
-          <Tooltip content={isMaximized ? "Exit maximize" : "Maximize preview"}>
+          <Tooltip content={isMaximized ? 'Exit maximize' : 'Maximize preview'}>
             <button type="button" className={styles.toolBtn} onClick={toggleMaximize}>
               {isMaximized ? <Icons.Minimize /> : <Icons.Maximize />}
             </button>

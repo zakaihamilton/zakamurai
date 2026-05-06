@@ -1,9 +1,9 @@
 import React from 'react';
 import { createState } from '../../Core/Base/State';
+import Settings from '../../Storage/Settings';
+import Tooltip from '../../Widgets/Tooltip/Tooltip';
 import { Icons } from '../Icons';
 import { SidebarState } from '../Sidebar';
-import Tooltip from '../../Widgets/Tooltip/Tooltip';
-import Settings from '../../Storage/Settings';
 import styles from './TabBar.module.css';
 
 export const TabState = createState('TabState');
@@ -93,7 +93,13 @@ export default function TabBar() {
               className={`${styles.tab} ${isActive ? styles.activeTab : styles.inactiveTab}`}
             >
               <span className={`${styles.tabIcon} ${isActive ? styles.tabIconActive : ''}`}>
-                {tab.type === 'logs' ? <Icons.BotSmall /> : tab.type === 'preview' ? <Icons.Globe /> : <Icons.File />}
+                {tab.type === 'logs' ? (
+                  <Icons.BotSmall />
+                ) : tab.type === 'preview' ? (
+                  <Icons.Globe />
+                ) : (
+                  <Icons.File />
+                )}
               </span>
               <Tooltip
                 content={tab.type === 'file' ? tab.id : tab.label}

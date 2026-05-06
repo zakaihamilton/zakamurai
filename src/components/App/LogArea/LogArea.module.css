@@ -11,7 +11,7 @@
   background: var(--terminal-bg);
   overflow-y: auto;
   padding: 16px;
-  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-family: "JetBrains Mono", "Fira Code", monospace;
 }
 
 .logContainer {

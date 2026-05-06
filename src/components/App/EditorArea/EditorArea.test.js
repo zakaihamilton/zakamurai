@@ -1,8 +1,8 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import { EditorState } from './EditorArea';
 import { AppState } from '../App';
 import { TabState } from '../TabBar';
+import { EditorState } from './EditorArea';
 import EditorArea from './EditorArea';
 
 vi.mock('../App', () => ({

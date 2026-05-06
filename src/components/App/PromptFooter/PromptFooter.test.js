@@ -1,10 +1,10 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
+import { AppState } from '../App';
+import { EditorState } from '../EditorArea';
 import { LogState } from '../LogArea';
 import { SidebarState } from '../Sidebar';
 import { TabState } from '../TabBar';
-import { AppState } from '../App';
-import { EditorState } from '../EditorArea';
 import PromptFooter from './PromptFooter';
 
 vi.mock('../LogArea', () => ({
@@ -60,10 +60,12 @@ describe('PromptFooter', () => {
       isProcessing: false,
     });
     const tabUpdate = vi.fn();
-    TabState.useState.mockReturnValue(Object.assign(tabUpdate, {
-      openTabs: [],
-      activeTabId: null
-    }));
+    TabState.useState.mockReturnValue(
+      Object.assign(tabUpdate, {
+        openTabs: [],
+        activeTabId: null,
+      }),
+    );
     AppState.useState.mockReturnValue({ fs: {} });
     EditorState.useState.mockReturnValue(vi.fn());
 
@@ -78,10 +80,12 @@ describe('PromptFooter', () => {
     });
     LogState.useState.mockReturnValue(vi.fn());
     const tabUpdate = vi.fn();
-    TabState.useState.mockReturnValue(Object.assign(tabUpdate, {
-      openTabs: [],
-      activeTabId: null
-    }));
+    TabState.useState.mockReturnValue(
+      Object.assign(tabUpdate, {
+        openTabs: [],
+        activeTabId: null,
+      }),
+    );
     AppState.useState.mockReturnValue({ fs: {} });
     EditorState.useState.mockReturnValue(vi.fn());
 
@@ -101,10 +105,12 @@ describe('PromptFooter', () => {
       showAIInput: true,
     });
     const tabUpdate = vi.fn();
-    TabState.useState.mockReturnValue(Object.assign(tabUpdate, {
-      openTabs: [],
-      activeTabId: null
-    }));
+    TabState.useState.mockReturnValue(
+      Object.assign(tabUpdate, {
+        openTabs: [],
+        activeTabId: null,
+      }),
+    );
     AppState.useState.mockReturnValue({ fs: {} });
     EditorState.useState.mockReturnValue(vi.fn());
 

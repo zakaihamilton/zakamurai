@@ -104,7 +104,12 @@ export class Compiler {
             if (!this.exists(filePath)) {
               for (const ext of ['.jsx', '.tsx', '.js', '.ts']) {
                 if (this.exists(filePath + ext)) {
-                  return super.handleRequest(method, url.replace(pathname, pathname + ext), headers, body);
+                  return super.handleRequest(
+                    method,
+                    url.replace(pathname, pathname + ext),
+                    headers,
+                    body,
+                  );
                 }
               }
             }
@@ -120,25 +125,74 @@ export class Compiler {
               const css = this.vfs.readFileSync(filePath, 'utf8');
               const fileHash = simpleHash(filePath + css);
 
+              const globalMatches = [];
+              const globalBlockMatches = [];
+
+              // 1. Hide :global(...) selectors to prevent hashing classes inside them
+              let processedCss = css.replace(/:global\s*\(([^)]+)\)/g, (_match, selector) => {
+                const placeholder = `__CSS_GLOBAL_${globalMatches.length}__`;
+                globalMatches.push(selector);
+                return placeholder;
+              });
+
+              // 2. Hide :global { ... } blocks
+              const globalBlockRegex = /:global\s*\{/g;
+              while (true) {
+                const blockMatch = globalBlockRegex.exec(processedCss);
+                if (blockMatch === null) break;
+
+                let braceCount = 1;
+                let i = blockMatch.index + blockMatch[0].length;
+                while (i < processedCss.length && braceCount > 0) {
+                  if (processedCss[i] === '{') braceCount++;
+                  else if (processedCss[i] === '}') braceCount--;
+                  i++;
+                }
+                if (braceCount === 0) {
+                  const blockContent = processedCss.substring(
+                    blockMatch.index + blockMatch[0].length,
+                    i - 1,
+                  );
+                  const placeholder = `__CSS_GLOBAL_BLOCK_${globalBlockMatches.length}__`;
+                  globalBlockMatches.push(blockContent);
+                  processedCss =
+                    processedCss.substring(0, blockMatch.index) +
+                    placeholder +
+                    processedCss.substring(i);
+                  globalBlockRegex.lastIndex = 0; // Restart search after modification
+                } else {
+                  break; // Malformed CSS
+                }
+              }
+
               const classMap = {};
               // Simple regex to find class selectors (.className followed by valid CSS separator or end)
               const classRegex = /\.([a-zA-Z][a-zA-Z0-9_-]*)(?=[\s,{.[:#]|$)/g;
 
-              let match = classRegex.exec(css);
-              while (match !== null) {
+              let match;
+              while (true) {
+                match = classRegex.exec(processedCss);
+                if (match === null) break;
                 const className = match[1];
                 if (!classMap[className]) {
                   classMap[className] = `${className}_${fileHash}`;
                 }
-                match = classRegex.exec(css);
               }
 
-              let scopedCss = css;
+              let scopedCss = processedCss;
               for (const [name, hashed] of Object.entries(classMap)) {
                 // Replace .name with .hashed, ensuring we only match the full class name
                 const replaceRegex = new RegExp(`\\.(${name})(?=[\\s,{.\\[:#]|$)`, 'g');
                 scopedCss = scopedCss.replace(replaceRegex, `.${hashed}`);
               }
+
+              // 3. Restore global content, stripping the :global wrapper
+              globalMatches.forEach((selector, i) => {
+                scopedCss = scopedCss.replace(`__CSS_GLOBAL_${i}__`, selector);
+              });
+              globalBlockMatches.forEach((content, i) => {
+                scopedCss = scopedCss.replace(`__CSS_GLOBAL_BLOCK_${i}__`, content);
+              });
 
               const js = `
 // CSS Module: ${filePath}
@@ -177,7 +231,6 @@ export default classMap;
             }
           }
         }
-
 
         _sharedContainer = await createContainer({
           onConsole: (level, ...args) => {

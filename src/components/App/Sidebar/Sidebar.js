@@ -1,15 +1,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { createState } from '../../Core/Base/State';
-import { Icons } from '../Icons';
 import { AppState } from '../App';
-import { TabState } from '../TabBar';
 import { EditorState } from '../EditorArea';
+import { Icons } from '../Icons';
+import { TabState } from '../TabBar';
 import styles from './Sidebar.module.css';
 import TreeItem from './TreeItem';
-
-
-
-
 
 export const SidebarState = createState('SidebarState');
 
@@ -105,7 +101,7 @@ export default function Sidebar() {
             type: 'folder',
             path: [],
             isRoot: true,
-            children: appState.fs.mode ? undefined : filteredTree
+            children: appState.fs.mode ? undefined : filteredTree,
           }}
           fsHandle={appState.fs.mode ? appState.fs.rootHandle : null}
           filterText={filterText}

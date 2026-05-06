@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
-import { LogState } from '../LogArea';
-import { SidebarState } from '../Sidebar';
-import { TabState } from '../TabBar';
-import { EditorState } from '../EditorArea';
-import styles from './PromptFooter.module.css';
 import { askWebLLM, interruptWebLLM, processAIResponse } from '../../AI';
 import Settings from '../../Storage/Settings';
 import { AppState } from '../App';
+import { EditorState } from '../EditorArea';
 import { Icons } from '../Icons';
+import { LogState } from '../LogArea';
+import { SidebarState } from '../Sidebar';
+import { TabState } from '../TabBar';
+import styles from './PromptFooter.module.css';
 
 export default function PromptFooter() {
   const { fs } = AppState.useState();
@@ -64,7 +64,11 @@ export default function PromptFooter() {
         let finalPrompt = userMsg;
 
         // Inject the active file context if available
-        if (currentActiveTab && currentActiveTab.type === 'file' && activeFileContent !== undefined) {
+        if (
+          currentActiveTab &&
+          currentActiveTab.type === 'file' &&
+          activeFileContent !== undefined
+        ) {
           finalPrompt = `You are an expert developer. Here is the current file I am working on (${currentActiveTabId}):\n\n${activeFileContent}\n\nUser Request:\n${userMsg}`;
         }
 
@@ -73,7 +77,9 @@ export default function PromptFooter() {
         // Check if we're still processing (user might have clicked stop)
         // If isProcessing is false now, we discard the result
         let stillProcessing = false;
-        logState((draft) => { stillProcessing = draft.isProcessing; });
+        logState((draft) => {
+          stillProcessing = draft.isProcessing;
+        });
         if (!stillProcessing) return;
 
         logState((draft) => {
@@ -91,7 +97,11 @@ export default function PromptFooter() {
           if (!draft.isProcessing) return; // Discard if stopped
           draft.logs = [
             ...draft.logs,
-            { id: Date.now(), role: 'ai', text: `Error processing AI prompt: ${err.message || err}` },
+            {
+              id: Date.now(),
+              role: 'ai',
+              text: `Error processing AI prompt: ${err.message || err}`,
+            },
           ];
           draft.isProcessing = false;
         });
@@ -137,7 +147,9 @@ export default function PromptFooter() {
           }}
           onKeyDown={handleKeyDown}
           disabled={isProcessing}
-          placeholder={isProcessing ? 'AI is working... Please wait.' : 'Enter the AI prompt here...'}
+          placeholder={
+            isProcessing ? 'AI is working... Please wait.' : 'Enter the AI prompt here...'
+          }
           className={styles.input}
         />
         {isProcessing && (
