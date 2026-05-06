@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
+import { ZakamuraiState } from '../../App/State';
 import styles from './Tooltip.module.css';
 
 /**
@@ -7,6 +8,7 @@ import styles from './Tooltip.module.css';
  * Uses a portal to avoid clipping and adds a smooth delay for premium feel.
  */
 export default function Tooltip({ content, children, className = '' }) {
+  const { theme } = ZakamuraiState.useState();
   const [isVisible, setIsVisible] = useState(false);
   const [coords, setCoords] = useState({ top: 0, left: 0 });
   const [placement, setPlacement] = useState('top'); // 'top' or 'bottom'
@@ -72,7 +74,7 @@ export default function Tooltip({ content, children, className = '' }) {
       {isVisible &&
         createPortal(
           <div
-            className={`${styles.tooltip} ${styles[placement]}`}
+            className={`${styles.tooltip} ${styles[placement]} ${theme === 'light' ? styles.light : ''}`}
             role="tooltip"
             style={{
               top: `${coords.top}px`,

@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import styles from './App.module.css';
 import EditorArea from './EditorArea/EditorArea';
 import { Icons } from './Icons';
@@ -44,10 +44,12 @@ export default function App() {
       '{\n  "name": "zakamurai",\n  "version": "0.1.0",\n  "dependencies": {\n    "react": "^18.2.0"\n  }\n}',
   };
 
+  const initialTheme = (typeof window !== 'undefined' && localStorage.getItem('zakamurai-theme')) || 'dark';
+
   return (
     <div className={styles.root}>
       <ZakamuraiState
-        theme="dark"
+        theme={initialTheme}
         projectName="My NextJS App"
         isSidebarOpen={true}
         showAIInput={true}
@@ -68,8 +70,14 @@ export default function App() {
 }
 
 function PassiveWrapper() {
-  const { openTabs = [], activeTabId, theme } = ZakamuraiState.useState();
+  const state = ZakamuraiState.useState();
+  const { openTabs = [], activeTabId, theme } = state;
   const activeTab = openTabs.find((t) => t.id === activeTabId);
+
+  // Save theme to localStorage on change
+  useEffect(() => {
+    localStorage.setItem('zakamurai-theme', theme);
+  }, [theme]);
 
   return (
     <div className={`${styles.appWrapper} ${theme === 'light' ? styles.light : ''}`}>
