@@ -8,12 +8,14 @@ import styles from './App.module.css';
 import EditorArea, { EditorState } from './EditorArea';
 import { Icons } from './Icons';
 import LogArea, { LogState } from './LogArea';
+import PreviewArea from './PreviewArea';
 import PromptFooter from './PromptFooter';
 import Sidebar, { SidebarState } from './Sidebar';
 import TabBar, { TabState } from './TabBar';
 import TopBar from './TopBar';
 
 export const AppState = createState('AppState');
+export const PreviewState = createState('PreviewState');
 
 export default function App() {
   const fs = useFileSystem();
@@ -87,9 +89,11 @@ export default function App() {
           <TabState openTabs={initialTabs} activeTabId={initialActiveTabId}>
             <LogState isProcessing={false} logs={initialAILogs}>
               <EditorState fileContents={initialContents}>
-                <TabRestorer />
-                <ContentSaver />
-                <PassiveWrapper />
+                <PreviewState htmlContent={null}>
+                  <TabRestorer />
+                  <ContentSaver />
+                  <PassiveWrapper />
+                </PreviewState>
               </EditorState>
             </LogState>
           </TabState>
@@ -102,6 +106,7 @@ export default function App() {
 function PassiveWrapper() {
   const { theme } = AppState.useState();
   const { openTabs = [], activeTabId } = TabState.useState();
+  const { htmlContent } = PreviewState.useState();
   const activeTab = openTabs.find((t) => t.id === activeTabId);
 
   // Save theme to localStorage on change
@@ -118,6 +123,7 @@ function PassiveWrapper() {
         <div className={styles.editorContainer}>
           {activeTab?.type === 'file' && <EditorArea file={activeTab.file} />}
           {activeTab?.type === 'logs' && <LogArea />}
+          {activeTab?.type === 'preview' && <PreviewArea htmlContent={htmlContent} />}
           {!activeTab && (
             <div className={styles.emptyState}>
               <Icons.Bot />

@@ -1,7 +1,7 @@
 import React from 'react';
 import { Icons } from '../Icons';
 import { LogState } from '../LogArea';
-import { AppState } from '../App';
+import { AppState, PreviewState } from '../App';
 import { TabState } from '../TabBar';
 import { SidebarState } from '../Sidebar';
 import { EditorState } from '../EditorArea';
@@ -19,6 +19,7 @@ export default function TopBar() {
   const { folderTree } = sidebarState;
   const editorState = EditorState.useState();
   const logState = LogState.useState();
+  const previewState = PreviewState.useState();
   const { isProcessing } = logState;
   const activeTab = openTabs.find((t) => t.id === activeTabId);
 
@@ -45,6 +46,33 @@ export default function TopBar() {
     try {
       const compiler = new Compiler(onLog);
       await compiler.compile(fs, folderTree, editorState.fileContents);
+
+      // After compilation, try to read dist/index.html from the VFS and store it in PreviewState
+      try {
+        const container = compiler.container;
+        if (container?.vfs?.existsSync('/dist/index.html')) {
+          const html = container.vfs.readFileSync('/dist/index.html', 'utf8');
+          if (html) {
+            previewState((draft) => {
+              draft.htmlContent = html;
+            });
+            // Open (or switch to) the preview tab
+            tabState((draft) => {
+              const exists = draft.openTabs.some((t) => t.id === 'preview');
+              if (!exists) {
+                draft.openTabs = [
+                  ...draft.openTabs,
+                  { id: 'preview', type: 'preview', label: 'Preview' },
+                ];
+              }
+              draft.activeTabId = 'preview';
+            });
+            onLog('Preview ready. Opened preview tab.');
+          }
+        }
+      } catch (previewErr) {
+        onLog(`[WARN] Could not load preview: ${previewErr.message}`);
+      }
     } catch (err) {
       onLog(`Unexpected error: ${err.message}`);
     } finally {
@@ -52,6 +80,19 @@ export default function TopBar() {
         draft.isProcessing = false;
       });
     }
+  };
+
+  const handleOpenPreview = () => {
+    tabState((draft) => {
+      const exists = draft.openTabs.some((t) => t.id === 'preview');
+      if (!exists) {
+        draft.openTabs = [
+          ...draft.openTabs,
+          { id: 'preview', type: 'preview', label: 'Preview' },
+        ];
+      }
+      draft.activeTabId = 'preview';
+    });
   };
 
   const handleExportZip = async () => {
@@ -116,6 +157,8 @@ export default function TopBar() {
       breadcrumb = activeTab.file?.path || [activeTab.label];
     } else if (activeTab.type === 'logs') {
       breadcrumb = ['System', 'Log'];
+    } else if (activeTab.type === 'preview') {
+      breadcrumb = ['dist', 'index.html'];
     }
   }
 
@@ -160,7 +203,7 @@ export default function TopBar() {
           <Tooltip content="Compile Project">
             <button
               type="button"
-              className={`${styles.actionBtn} ${styles.compileBtn} ${styles.groupFirst}`}
+              className={`${styles.actionBtn} ${styles.compileBtn}`}
               onClick={handleCompile}
               disabled={isProcessing}
             >
@@ -171,10 +214,19 @@ export default function TopBar() {
           <Tooltip content="Show Log">
             <button
               type="button"
-              className={`${styles.actionBtn} ${styles.terminalToggleBtn} ${styles.groupLast} ${activeTabId === 'ai-logs' ? styles.activeTab : ''}`}
+              className={`${styles.actionBtn} ${styles.terminalToggleBtn} ${activeTabId === 'ai-logs' ? styles.activeTab : ''}`}
               onClick={() => tabState((td) => { td.activeTabId = 'ai-logs'; })}
             >
               <Icons.Terminal />
+            </button>
+          </Tooltip>
+          <Tooltip content="Show Preview">
+            <button
+              type="button"
+              className={`${styles.actionBtn} ${styles.terminalToggleBtn} ${activeTabId === 'preview' ? styles.activeTab : ''}`}
+              onClick={handleOpenPreview}
+            >
+              <Icons.Globe />
             </button>
           </Tooltip>
         </div>

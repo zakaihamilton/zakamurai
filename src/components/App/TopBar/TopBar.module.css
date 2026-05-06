@@ -122,6 +122,7 @@
 .compileGroup {
   display: flex;
   align-items: center;
+  gap: 4px;
 }
 
 .groupFirst {
@@ -132,7 +133,6 @@
 .groupLast {
   border-top-left-radius: 0;
   border-bottom-left-radius: 0;
-  border-left: none;
 }
 
 .terminalToggleBtn {

@@ -86,7 +86,7 @@ export default function TabBar() {
               className={`${styles.tab} ${isActive ? styles.activeTab : styles.inactiveTab}`}
             >
               <span className={`${styles.tabIcon} ${isActive ? styles.tabIconActive : ''}`}>
-                {tab.type === 'logs' ? <Icons.BotSmall /> : <Icons.File />}
+                {tab.type === 'logs' ? <Icons.BotSmall /> : tab.type === 'preview' ? <Icons.Globe /> : <Icons.File />}
               </span>
               <Tooltip
                 content={tab.type === 'file' ? tab.id : tab.label}
