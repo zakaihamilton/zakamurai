@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { createState } from '../Core/Base/State';
 import { useFileSystem } from '../Storage';
+import Settings from '../Storage/Settings';
 import styles from './App.module.css';
 import EditorArea, { EditorState } from './EditorArea';
 import { Icons } from './Icons';
@@ -16,46 +17,56 @@ export const AppState = createState('AppState');
 
 export default function App() {
   const fs = useFileSystem();
-  const [initialProjectName] = useState(() => {
-    if (typeof localStorage !== 'undefined') {
-      return localStorage.getItem('zakamurai_project_name') || 'My NextJS App';
-    }
-    return 'My NextJS App';
-  });
+  const [initialProjectName] = useState(() => Settings.getProjectName());
 
-  const initialFiles = [
-    {
-      name: 'src',
-      type: 'folder',
-      children: [
-        {
-          name: 'components',
-          type: 'folder',
-          children: [
-            { name: 'Sidebar.jsx', type: 'file' },
-            { name: 'Editor.jsx', type: 'file' },
-          ],
-        },
-        { name: 'App.jsx', type: 'file' },
-      ],
-    },
-    { name: 'lib', type: 'folder', children: [{ name: 'state.js', type: 'file' }] },
-    { name: 'package.json', type: 'file' },
-  ];
+  const initialFiles = useMemo(
+    () => [
+      {
+        name: 'src',
+        type: 'folder',
+        children: [
+          {
+            name: 'components',
+            type: 'folder',
+            children: [
+              { name: 'Sidebar.jsx', type: 'file' },
+              { name: 'Editor.jsx', type: 'file' },
+            ],
+          },
+          { name: 'App.jsx', type: 'file' },
+        ],
+      },
+      { name: 'lib', type: 'folder', children: [{ name: 'state.js', type: 'file' }] },
+      { name: 'package.json', type: 'file' },
+    ],
+    [],
+  );
 
-  const initialContents = {
-    'src/components/Sidebar.jsx':
-      'export default function Sidebar() {\n  return (\n    <aside>\n      <h2>Sidebar</h2>\n    </aside>\n  );\n}',
-    'src/components/Editor.jsx':
-      'export default function Editor() {\n  return (\n    <div>\n      <h1>Code Editor</h1>\n    </div>\n  );\n}',
-    'src/App.jsx':
-      'import Sidebar from "./components/Sidebar";\nimport Editor from "./components/Editor";\n\nexport default function App() {\n  return (\n    <main>\n      <Sidebar />\n      <Editor />\n    </main>\n  );\n}',
-    'lib/state.js': 'export const ZakamuraiState = {};',
-    'package.json':
-      '{\n  "name": "zakamurai",\n  "version": "0.1.0",\n  "dependencies": {\n    "react": "^18.2.0"\n  }\n}',
-  };
+  const initialContents = useMemo(
+    () => ({
+      'src/components/Sidebar.jsx':
+        'export default function Sidebar() {\n  return (\n    <aside>\n      <h2>Sidebar</h2>\n    </aside>\n  );\n}',
+      'src/components/Editor.jsx':
+        'export default function Editor() {\n  return (\n    <div>\n      <h1>Code Editor</h1>\n    </div>\n  );\n}',
+      'src/App.jsx':
+        'import Sidebar from "./components/Sidebar";\nimport Editor from "./components/Editor";\n\nexport default function App() {\n  return (\n    <main>\n      <Sidebar />\n      <Editor />\n    </main>\n  );\n}',
+      'lib/state.js': 'export const ZakamuraiState = {};',
+      'package.json':
+        '{\n  "name": "zakamurai",\n  "version": "0.1.0",\n  "dependencies": {\n    "react": "^18.2.0"\n  }\n}',
+    }),
+    [],
+  );
 
-  const initialTheme = (typeof window !== 'undefined' && localStorage.getItem('zakamurai-theme')) || 'dark';
+  const initialTheme = Settings.getTheme();
+
+  const initialTabs = useMemo(() => {
+    const stored = Settings.getOpenTabs();
+    if (stored && stored.length > 0) return stored;
+    return [{ id: 'ai-logs', type: 'logs', label: 'AI Output' }];
+  }, []);
+
+  const initialActiveTabId = useMemo(() => Settings.getActiveTabId() || 'ai-logs', []);
+  const initialExpandedFolders = useMemo(() => ({ src: true, 'src/components': true }), []);
 
   return (
     <div className={styles.root}>
@@ -65,19 +76,17 @@ export default function App() {
           isSidebarOpen={true}
           showAIInput={true}
           folderTree={initialFiles}
-          expandedFolders={{ src: true, 'src/components': true }}
+          expandedFolders={initialExpandedFolders}
         >
-          <TabState
-            openTabs={[{ id: 'ai-logs', type: 'logs', label: 'AI Output' }]}
-            activeTabId={'ai-logs'}
-          >
+          <TabState openTabs={initialTabs} activeTabId={initialActiveTabId}>
             <LogState
               isProcessing={false}
               logs={[
-                { id: 1, role: 'ai', text: 'Zakamurai Core Engine initialized. Project context synced.' },
+                { id: 1, role: 'ai', text: 'Core Engine initialized. Project context synced.' },
               ]}
             >
               <EditorState fileContents={initialContents}>
+                <TabRestorer />
                 <PassiveWrapper />
               </EditorState>
             </LogState>
@@ -95,7 +104,7 @@ function PassiveWrapper() {
 
   // Save theme to localStorage on change
   useEffect(() => {
-    localStorage.setItem('zakamurai-theme', theme);
+    Settings.setTheme(theme);
   }, [theme]);
 
   return (
@@ -125,9 +134,67 @@ function PassiveWrapper() {
 function ProjectNameSaver() {
   const { projectName } = AppState.useState();
   useEffect(() => {
-    if (typeof localStorage !== 'undefined') {
-      localStorage.setItem('zakamurai_project_name', projectName);
-    }
+    Settings.setProjectName(projectName);
   }, [projectName]);
+  return null;
+}
+
+function TabRestorer() {
+  const { fs } = AppState.useState();
+  const tabState = TabState.useState();
+  const editorState = EditorState.useState();
+  const hasRestored = React.useRef(false);
+
+  useEffect(() => {
+    if (!fs?.rootHandle || !fs?.getFileHandleAtPath || hasRestored.current) return;
+
+    const restore = async () => {
+      const parsedTabs = Settings.getOpenTabs();
+      const savedActiveTabId = Settings.getActiveTabId();
+
+      if (parsedTabs && parsedTabs.length > 0) {
+        const restoredTabs = [];
+
+        for (const tab of parsedTabs) {
+          if (tab.type === 'file') {
+            try {
+              const handle = await fs.getFileHandleAtPath(tab.id);
+              if (handle) {
+                const content = await fs.readFile(handle);
+                restoredTabs.push({
+                  ...tab,
+                  file: { name: tab.label, path: tab.id.split('/') },
+                  fsHandle: handle,
+                });
+                if (content !== undefined) {
+                  editorState((draft) => {
+                    if (!draft.fileContents) draft.fileContents = {};
+                    draft.fileContents[tab.id] = content;
+                  });
+                }
+              }
+            } catch (e) {
+              console.error(`Failed to restore tab ${tab.id}`, e);
+            }
+          } else {
+            restoredTabs.push(tab);
+          }
+        }
+
+        if (restoredTabs.length > 0) {
+          tabState((draft) => {
+            draft.openTabs = restoredTabs;
+            if (savedActiveTabId && restoredTabs.some((t) => t.id === savedActiveTabId)) {
+              draft.activeTabId = savedActiveTabId;
+            }
+          });
+        }
+        hasRestored.current = true;
+      }
+    };
+
+    restore();
+  }, [fs, tabState, editorState]);
+
   return null;
 }

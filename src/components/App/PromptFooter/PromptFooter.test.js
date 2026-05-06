@@ -3,6 +3,8 @@ import { describe, expect, it, vi } from 'vitest';
 import { LogState } from '../LogArea';
 import { SidebarState } from '../Sidebar';
 import { TabState } from '../TabBar';
+import { AppState } from '../App';
+import { EditorState } from '../EditorArea';
 import PromptFooter from './PromptFooter';
 
 vi.mock('../LogArea', () => ({
@@ -23,6 +25,18 @@ vi.mock('../TabBar', () => ({
   },
 }));
 
+vi.mock('../App', () => ({
+  AppState: {
+    useState: vi.fn(),
+  },
+}));
+
+vi.mock('../EditorArea', () => ({
+  EditorState: {
+    useState: vi.fn(),
+  },
+}));
+
 describe('PromptFooter', () => {
   it('renders input and button when showAIInput is true', () => {
     SidebarState.useState.mockReturnValue({
@@ -32,10 +46,12 @@ describe('PromptFooter', () => {
       isProcessing: false,
     });
     TabState.useState.mockReturnValue(vi.fn());
+    AppState.useState.mockReturnValue({ fs: {} });
+    EditorState.useState.mockReturnValue(vi.fn());
 
     render(<PromptFooter />);
-    expect(screen.getByPlaceholderText('Command the Scaffolder...')).toBeDefined();
-    expect(screen.getByText('Execute')).toBeDefined();
+    expect(screen.getByPlaceholderText('Enter the AI prompt here...')).toBeDefined();
+    expect(screen.getByTitle('Execute')).toBeDefined();
   });
 
   it('does not render when showAIInput is false', () => {
@@ -44,6 +60,8 @@ describe('PromptFooter', () => {
     });
     LogState.useState.mockReturnValue(vi.fn());
     TabState.useState.mockReturnValue(vi.fn());
+    AppState.useState.mockReturnValue({ fs: {} });
+    EditorState.useState.mockReturnValue(vi.fn());
 
     const { container } = render(<PromptFooter />);
     expect(container.firstChild).toBeNull();
@@ -62,10 +80,12 @@ describe('PromptFooter', () => {
     });
     const tabUpdate = vi.fn();
     TabState.useState.mockReturnValue(tabUpdate);
+    AppState.useState.mockReturnValue({ fs: {} });
+    EditorState.useState.mockReturnValue(vi.fn());
 
     render(<PromptFooter />);
-    const input = screen.getByPlaceholderText('Command the Scaffolder...');
-    const button = screen.getByText('Execute');
+    const input = screen.getByPlaceholderText('Enter the AI prompt here...');
+    const button = screen.getByTitle('Execute');
 
     fireEvent.change(input, { target: { value: 'build app' } });
     fireEvent.click(button);

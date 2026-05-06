@@ -1,5 +1,6 @@
 import React from 'react';
 import { Icons } from '../Icons';
+import { LogState } from '../LogArea';
 import { AppState } from '../App';
 import { TabState } from '../TabBar';
 import { SidebarState } from '../Sidebar';
@@ -16,6 +17,8 @@ export default function TopBar() {
   const sidebarState = SidebarState.useState();
   const { folderTree } = sidebarState;
   const editorState = EditorState.useState();
+  const logState = LogState.useState();
+  const { isProcessing } = logState;
   const activeTab = openTabs.find((t) => t.id === activeTabId);
 
   const handleExportZip = async () => {
@@ -77,7 +80,7 @@ export default function TopBar() {
   let breadcrumb = ['Zakamurai'];
   if (activeTab) {
     if (activeTab.type === 'file') {
-      breadcrumb = activeTab.file.path || [activeTab.label];
+      breadcrumb = activeTab.file?.path || [activeTab.label];
     } else if (activeTab.type === 'logs') {
       breadcrumb = ['System', 'AI Output'];
     }
@@ -112,7 +115,14 @@ export default function TopBar() {
           </React.Fragment>
         ))}
       </div>
+      <div className={styles.centerSection} />
       <div className={styles.actions}>
+        {isProcessing && (
+          <div className={styles.workingIndicator}>
+            <Icons.BotSmall />
+            <span>AI is working...</span>
+          </div>
+        )}
         <Tooltip content="Export as ZIP">
           <button type="button" className={styles.actionBtn} onClick={handleExportZip}>
             <Icons.Plus />

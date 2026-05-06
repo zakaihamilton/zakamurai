@@ -3,6 +3,7 @@ import { createState } from '../../Core/Base/State';
 import { Icons } from '../Icons';
 import { SidebarState } from '../Sidebar';
 import Tooltip from '../../Widgets/Tooltip/Tooltip';
+import Settings from '../../Storage/Settings';
 import styles from './TabBar.module.css';
 
 export const TabState = createState('TabState');
@@ -12,6 +13,14 @@ export default function TabBar() {
   const { openTabs = [], activeTabId } = tabState;
   const sidebarState = SidebarState.useState();
 
+  // Persist open tabs and active tab to localStorage
+  React.useEffect(() => {
+    Settings.setOpenTabs(openTabs);
+    if (activeTabId) {
+      Settings.setActiveTabId(activeTabId);
+    }
+  }, [openTabs, activeTabId]);
+
   const handleTabClick = (tabId) => {
     tabState((draft) => {
       draft.activeTabId = tabId;
@@ -19,7 +28,7 @@ export default function TabBar() {
 
     // Auto-expand sidebar logic
     const tab = openTabs.find((t) => t.id === tabId);
-    if (tab && tab.type === 'file' && tab.file.path) {
+    if (tab && tab.type === 'file' && tab.file?.path) {
       sidebarState((draft) => {
         // Expand all ancestor folders
         const newExpanded = { ...draft.expandedFolders };
@@ -44,7 +53,7 @@ export default function TabBar() {
         draft.activeTabId = newActiveTabId;
 
         const tab = filtered.find((t) => t.id === newActiveTabId);
-        if (tab && tab.type === 'file' && tab.file.path) {
+        if (tab && tab.type === 'file' && tab.file?.path) {
           sidebarState((draft) => {
             const newExpanded = { ...draft.expandedFolders };
             let runningPath = '';

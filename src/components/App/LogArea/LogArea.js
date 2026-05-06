@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { createState } from '../../Core/Base/State';
 import { Icons } from '../Icons';
+import Tooltip from '../../Widgets/Tooltip/Tooltip';
 import styles from './LogArea.module.css';
 
 export const LogState = createState('LogState');
@@ -32,6 +33,15 @@ export default function LogArea() {
               className={`${styles.bubble} ${log.role === 'ai' ? styles.aiBubble : styles.userBubble}`}
             >
               {log.text}
+              <Tooltip content="Copy to clipboard">
+                <button
+                  type="button"
+                  className={styles.copyBtn}
+                  onClick={() => navigator.clipboard.writeText(log.text)}
+                >
+                  <Icons.Copy />
+                </button>
+              </Tooltip>
             </div>
           </div>
         ))}

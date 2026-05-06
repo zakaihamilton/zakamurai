@@ -55,6 +55,36 @@
   border: 1px solid var(--border-light);
   line-height: 1.6;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  white-space: pre-wrap;
+  word-break: break-word;
+  position: relative;
+}
+
+.copyBtn {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  padding: 4px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border-light);
+  border-radius: 6px;
+  color: var(--text-muted);
+  cursor: pointer;
+  opacity: 0;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.bubble:hover .copyBtn {
+  opacity: 1;
+}
+
+.copyBtn:hover {
+  color: var(--text-main);
+  background: var(--bg-surface);
+  border-color: var(--accent);
 }
 
 .aiBubble {

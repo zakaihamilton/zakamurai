@@ -12,7 +12,7 @@ export default function EditorArea({ file }) {
   const tabState = TabState.useState();
   const { fs } = appState;
   const state = EditorState.useState();
-  const filePath = file.path ? file.path.join('/') : file.name;
+  const filePath = file?.path?.join('/') || file?.name;
   const saveTimeoutRef = useRef(null);
 
   // Use local state for immediate synchronous updates to prevent cursor jumping,

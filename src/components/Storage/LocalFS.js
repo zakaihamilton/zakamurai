@@ -130,6 +130,47 @@ export function useFileSystem() {
     [currentDirHandle, refreshDirectory],
   );
 
+  const writeFileAtPath = useCallback(
+    async (path, content, root = rootHandle) => {
+      if (!root) throw new Error('No root directory mounted');
+      try {
+        const parts = path.split('/').filter(Boolean);
+        let currentHandle = root;
+        for (let i = 0; i < parts.length - 1; i++) {
+          currentHandle = await currentHandle.getDirectoryHandle(parts[i], { create: true });
+        }
+        const fileHandle = await currentHandle.getFileHandle(parts[parts.length - 1], {
+          create: true,
+        });
+        const writable = await fileHandle.createWritable();
+        await writable.write(content);
+        await writable.close();
+        await refreshDirectory(root); // Refresh from root to see changes everywhere
+      } catch (err) {
+        setError(`Failed to write file at path: ${err.message}`);
+      }
+    },
+    [rootHandle, refreshDirectory],
+  );
+
+  const getFileHandleAtPath = useCallback(
+    async (path, root = rootHandle) => {
+      if (!root) return null;
+      try {
+        const parts = path.split('/').filter(Boolean);
+        let currentHandle = root;
+        for (let i = 0; i < parts.length - 1; i++) {
+          currentHandle = await currentHandle.getDirectoryHandle(parts[i]);
+        }
+        return await currentHandle.getFileHandle(parts[parts.length - 1]);
+      } catch (err) {
+        console.warn(`Failed to get file handle at path: ${path}`, err);
+        return null;
+      }
+    },
+    [rootHandle],
+  );
+
   const createFolder = useCallback(
     async (folderName, dirHandle = currentDirHandle) => {
       if (!dirHandle) throw new Error('No directory mounted');
@@ -167,6 +208,8 @@ export function useFileSystem() {
     refreshDirectory,
     readFile,
     writeFile,
+    writeFileAtPath,
+    getFileHandleAtPath,
     createFolder,
     deleteEntry,
   };
