@@ -1,7 +1,21 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { EditorState } from './EditorArea';
+import { AppState } from '../App';
+import { TabState } from '../TabBar';
 import EditorArea from './EditorArea';
+
+vi.mock('../App', () => ({
+  AppState: {
+    useState: vi.fn(),
+  },
+}));
+
+vi.mock('../TabBar', () => ({
+  TabState: {
+    useState: vi.fn(),
+  },
+}));
 
 // No need to mock the whole file, just spy on the state hook
 describe('EditorArea', () => {
@@ -10,6 +24,12 @@ describe('EditorArea', () => {
       fileContents: {
         'src/test.js': 'console.log("hello");',
       },
+    });
+    vi.spyOn(AppState, 'useState').mockReturnValue({
+      fs: { mode: null },
+    });
+    vi.spyOn(TabState, 'useState').mockReturnValue({
+      openTabs: [],
     });
 
     render(<EditorArea file={{ path: ['src', 'test.js'], name: 'test.js' }} />);

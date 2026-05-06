@@ -38,6 +38,29 @@
 .actions {
   display: flex;
   align-items: center;
+  gap: 12px;
+}
+
+.actionBtn {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  color: var(--text-main);
+  cursor: pointer;
+  padding: 6px 12px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: bold;
+  transition: all 0.2s;
+  font-family: inherit;
+}
+
+.actionBtn:hover {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
 }
 
 .themeToggle {

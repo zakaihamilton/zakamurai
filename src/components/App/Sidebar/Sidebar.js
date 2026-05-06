@@ -88,7 +88,27 @@ export default function Sidebar() {
           )}
           <span className={styles.tagline}>ZAKAMURAI</span>
         </div>
+        {isSidebarOpen && (
+          <button
+            type="button"
+            onClick={appState.fs.mountLocal}
+            className={styles.headerIconBtn}
+            title="Open Folder"
+          >
+            <Icons.FolderPlus />
+          </button>
+        )}
       </div>
+
+      {/* Mount Section (Only if nothing mounted) */}
+      {isSidebarOpen && !appState.fs.mode && (
+        <div className={styles.mountSection}>
+          <button type="button" onClick={appState.fs.mountLocal} className={styles.mountButton}>
+            <Icons.FolderPlus />
+            <span>Open Folder</span>
+          </button>
+        </div>
+      )}
 
       {/* Filter Section */}
       {isSidebarOpen && (
@@ -109,10 +129,19 @@ export default function Sidebar() {
 
       {/* File Tree Area */}
       <div className={`${styles.treeArea} scroll-hide`} style={{ opacity: isSidebarOpen ? 1 : 0 }}>
-        {filteredTree.map((item) => (
-          <TreeItem key={item.name} item={{ ...item, path: [item.name] }} filterText={filterText} />
-        ))}
-        {filteredTree.length === 0 && isSidebarOpen && (
+        {appState.fs.mode
+          ? appState.fs.files.map((item) => (
+              <TreeItem
+                key={item.name}
+                item={{ ...item, path: [item.name], type: item.kind === 'directory' ? 'folder' : 'file' }}
+                filterText={filterText}
+                fsHandle={item.handle}
+              />
+            ))
+          : filteredTree.map((item) => (
+              <TreeItem key={item.name} item={{ ...item, path: [item.name] }} filterText={filterText} />
+            ))}
+        {filteredTree.length === 0 && !appState.fs.mode && isSidebarOpen && (
           <div className={styles.noFiles}>No files found matching "{filterText}"</div>
         )}
       </div>

@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { createState } from '../Core/Base/State';
+import { useFileSystem } from '../Storage';
 import styles from './App.module.css';
 import EditorArea, { EditorState } from './EditorArea';
 import { Icons } from './Icons';
@@ -14,6 +15,7 @@ import TopBar from './TopBar';
 export const AppState = createState('AppState');
 
 export default function App() {
+  const fs = useFileSystem();
   const initialFiles = [
     {
       name: 'src',
@@ -50,7 +52,7 @@ export default function App() {
 
   return (
     <div className={styles.root}>
-      <AppState theme={initialTheme} projectName="My NextJS App">
+      <AppState theme={initialTheme} projectName="My NextJS App" fs={fs}>
         <SidebarState
           isSidebarOpen={true}
           showAIInput={true}

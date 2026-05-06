@@ -1,12 +1,15 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Icons } from '../Icons';
 import { SidebarState } from '../Sidebar';
 import { TabState } from '../TabBar';
 import { EditorState } from '../EditorArea';
+import { AppState } from '../App';
 import Tooltip from '../../Widgets/Tooltip/Tooltip';
 import styles from './TreeItem.module.css';
 
-export default function TreeItem({ item, level = 0, filterText = '' }) {
+export default function TreeItem({ item, level = 0, filterText = '', fsHandle = null }) {
+  const appState = AppState.useState();
+  const { fs } = appState;
   const sidebarState = SidebarState.useState();
   const { expandedFolders = {} } = sidebarState;
   const tabState = TabState.useState();
@@ -20,9 +23,55 @@ export default function TreeItem({ item, level = 0, filterText = '' }) {
   const isExpanded = filterText ? true : expandedFolders[currentPathStr];
   const isActive = activeTabId === currentPathStr;
 
+  const [children, setChildren] = useState(() => {
+    if (item.children) {
+      return item.children.map(child => ({
+        ...child,
+        path: [...item.path, child.name]
+      }));
+    }
+    return [];
+  });
+  const [isLoading, setIsLoading] = useState(false);
+
+  const loadLocalChildren = async () => {
+    if (!fsHandle || item.type !== 'folder' || children.length > 0) return;
+    setIsLoading(true);
+    try {
+      const entries = [];
+      for await (const [name, handle] of fsHandle.entries()) {
+        entries.push({
+          name,
+          kind: handle.kind,
+          handle,
+          type: handle.kind === 'directory' ? 'folder' : 'file',
+          path: [...item.path, name],
+        });
+      }
+      entries.sort((a, b) => {
+        if (a.kind === b.kind) return a.name.localeCompare(b.name);
+        return a.kind === 'directory' ? -1 : 1;
+      });
+      setChildren(entries);
+    } catch (err) {
+      console.error('Failed to load sub-directory:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (isExpanded && fs.mode === 'local' && fsHandle && children.length === 0) {
+      loadLocalChildren();
+    }
+  }, [isExpanded, fs.mode, fsHandle, children.length, loadLocalChildren]);
+
   const handleToggle = () => {
     if (isEditing) return; // Prevent toggle when clicking to edit
     if (item.type === 'folder') {
+      if (!isExpanded && fs.mode === 'local') {
+        loadLocalChildren();
+      }
       sidebarState((draft) => {
         draft.expandedFolders = {
           ...draft.expandedFolders,
@@ -30,16 +79,31 @@ export default function TreeItem({ item, level = 0, filterText = '' }) {
         };
       });
     } else {
-      tabState((draft) => {
-        const existingTab = draft.openTabs.find((t) => t.id === currentPathStr);
-        if (!existingTab) {
-          draft.openTabs = [
-            ...draft.openTabs,
-            { id: currentPathStr, type: 'file', label: item.name, file: item },
-          ];
+      const openFile = async () => {
+        let content = '';
+        if (fs.mode === 'local' && fsHandle) {
+          content = await fs.readFile(fsHandle);
         }
-        draft.activeTabId = currentPathStr;
-      });
+
+        tabState((draft) => {
+          const existingTab = draft.openTabs.find((t) => t.id === currentPathStr);
+          if (!existingTab) {
+            draft.openTabs = [
+              ...draft.openTabs,
+              { id: currentPathStr, type: 'file', label: item.name, file: item, fsHandle },
+            ];
+          }
+          draft.activeTabId = currentPathStr;
+        });
+
+        if (content) {
+          editorState((draft) => {
+            if (!draft.fileContents) draft.fileContents = {};
+            draft.fileContents[currentPathStr] = content;
+          });
+        }
+      };
+      openFile();
 
       // Auto-expand parent folders
       sidebarState((draft) => {
@@ -166,11 +230,14 @@ export default function TreeItem({ item, level = 0, filterText = '' }) {
             )
           ) : null}
         </span>
-        <span
-          className={styles.typeIcon}
-          style={{ color: item.type === 'folder' ? 'var(--accent)' : 'var(--text-muted)' }}
-        >
-          {item.type === 'folder' ? <Icons.Folder open={isExpanded} /> : <Icons.File />}
+        <span className={styles.typeIcon} style={{ color: item.type === 'folder' ? 'var(--accent)' : 'var(--text-muted)' }}>
+          {isLoading ? (
+            <div className={styles.spinner} />
+          ) : item.type === 'folder' ? (
+            <Icons.Folder open={isExpanded} />
+          ) : (
+            <Icons.File />
+          )}
         </span>
 
         {isEditing ? (
@@ -196,14 +263,15 @@ export default function TreeItem({ item, level = 0, filterText = '' }) {
       </button>
       {item.type === 'folder' &&
         isExpanded &&
-        item.children?.map((child) => {
+        children.map((child) => {
           const childPath = [...item.path, child.name].join('/');
           return (
             <TreeItem
               key={childPath}
-              item={{ ...child, path: [...item.path, child.name] }}
+              item={child}
               level={level + 1}
               filterText={filterText}
+              fsHandle={child.handle}
             />
           );
         })}

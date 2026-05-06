@@ -1,13 +1,19 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { createState } from '../../Core/Base/State';
+import { AppState } from '../App';
+import { TabState } from '../TabBar';
 import { Icons } from '../Icons';
 import styles from './EditorArea.module.css';
 
 export const EditorState = createState('EditorState');
 
 export default function EditorArea({ file }) {
+  const appState = AppState.useState();
+  const tabState = TabState.useState();
+  const { fs } = appState;
   const state = EditorState.useState();
   const filePath = file.path ? file.path.join('/') : file.name;
+  const saveTimeoutRef = useRef(null);
 
   // Use local state for immediate synchronous updates to prevent cursor jumping,
   // falling back to the global state engine context
@@ -33,6 +39,25 @@ export default function EditorArea({ file }) {
         [filePath]: newVal,
       };
     });
+
+    // Save to Local FS if applicable
+    if (fs.mode === 'local') {
+      const currentTab = tabState.openTabs.find((t) => t.id === filePath);
+      const handle = currentTab?.fsHandle;
+      if (handle) {
+        if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+        saveTimeoutRef.current = setTimeout(async () => {
+          try {
+            const writable = await handle.createWritable();
+            await writable.write(newVal);
+            await writable.close();
+            console.log('Saved to FS:', filePath);
+          } catch (err) {
+            console.error('Failed to save to FS:', err);
+          }
+        }, 1000);
+      }
+    }
   };
 
   const highlightCode = (code) => {

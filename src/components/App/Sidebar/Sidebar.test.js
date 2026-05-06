@@ -34,6 +34,7 @@ describe('Sidebar', () => {
     });
     vi.spyOn(AppState, 'useState').mockReturnValue({
       projectName: 'Test Project',
+      fs: { mode: null, mountLocal: vi.fn() },
     });
     vi.spyOn(TabState, 'useState').mockReturnValue({
       activeTabId: null,
@@ -56,6 +57,7 @@ describe('Sidebar', () => {
     );
     vi.spyOn(AppState, 'useState').mockReturnValue({
       projectName: 'Test Project',
+      fs: { mode: null, mountLocal: vi.fn() },
     });
     vi.spyOn(TabState, 'useState').mockReturnValue({
       activeTabId: null,

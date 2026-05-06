@@ -45,7 +45,10 @@ vi.mock('./PromptFooter', () => ({
 
 describe('App', () => {
   it('renders all main components', () => {
-    const appStateMock = Object.assign(vi.fn(), { theme: 'dark' });
+    const appStateMock = Object.assign(vi.fn(), {
+      theme: 'dark',
+      fs: { mode: null, mountLocal: vi.fn() },
+    });
     vi.spyOn(AppState, 'useState').mockReturnValue(appStateMock);
     render(<App />);
     expect(screen.getByTestId('sidebar')).toBeDefined();
