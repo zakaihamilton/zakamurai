@@ -5,8 +5,14 @@ import styles from './TopBar.module.css';
 
 export default function TopBar() {
   const state = ZakamuraiState.useState();
-  const { openTabs = [], activeTabId } = state;
+  const { openTabs = [], activeTabId, theme } = state;
   const activeTab = openTabs.find((t) => t.id === activeTabId);
+
+  const toggleTheme = () => {
+    state((draft) => {
+      draft.theme = draft.theme === 'light' ? 'dark' : 'light';
+    });
+  };
 
   // Build Breadcrumb
   let breadcrumb = ['Zakamurai'];
@@ -47,6 +53,16 @@ export default function TopBar() {
             {i < breadcrumb.length - 1 && <Icons.ChevronRight />}
           </React.Fragment>
         ))}
+      </div>
+      <div className={styles.actions}>
+        <button
+          type="button"
+          onClick={toggleTheme}
+          className={styles.themeToggle}
+          title={`Switch to ${theme === 'light' ? 'dark' : 'light'} theme`}
+        >
+          {theme === 'light' ? <Icons.Moon /> : <Icons.Sun />}
+        </button>
       </div>
     </header>
   );

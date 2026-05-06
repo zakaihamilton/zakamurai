@@ -47,6 +47,7 @@ export default function App() {
   return (
     <div className={styles.root}>
       <ZakamuraiState
+        theme="dark"
         projectName="My NextJS App"
         isSidebarOpen={true}
         showAIInput={true}
@@ -67,11 +68,11 @@ export default function App() {
 }
 
 function PassiveWrapper() {
-  const { openTabs = [], activeTabId } = ZakamuraiState.useState();
+  const { openTabs = [], activeTabId, theme } = ZakamuraiState.useState();
   const activeTab = openTabs.find((t) => t.id === activeTabId);
 
   return (
-    <div className={styles.appWrapper}>
+    <div className={`${styles.appWrapper} ${theme === 'light' ? styles.light : ''}`}>
       <Sidebar />
       <div className={styles.mainContent}>
         <TopBar />

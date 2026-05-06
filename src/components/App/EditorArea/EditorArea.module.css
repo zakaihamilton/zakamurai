@@ -72,7 +72,7 @@
   resize: none;
   background: transparent;
   color: transparent;
-  caret-color: #fff;
+  caret-color: var(--text-main);
   font-family: "JetBrains Mono", "Fira Code", monospace;
   font-size: 14px;
   line-height: 1.6;
@@ -86,7 +86,7 @@
   font-family: "JetBrains Mono", "Fira Code", monospace;
   font-size: 14px;
   line-height: 1.6;
-  color: #e5e7eb;
+  color: var(--text-main);
   white-space: pre;
   pointer-events: none;
   min-height: 100%;
