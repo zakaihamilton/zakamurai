@@ -4,13 +4,15 @@
   gap: 8px;
   cursor: pointer;
   font-size: 13px;
-  transition: all 0.1s;
+  transition: background-color 0.1s, color 0.1s;
   user-select: none;
   background: none;
   border: none;
   color: inherit;
   font-family: inherit;
   width: 100%;
+  min-height: 32px;
+  box-sizing: border-box;
   text-align: left;
 }
 
@@ -25,12 +27,19 @@
 
 .iconContainer {
   width: 14px;
+  height: 14px;
   display: flex;
+  align-items: center;
+  justify-content: center;
   color: var(--text-muted);
 }
 
 .typeIcon {
+  width: 16px;
+  height: 16px;
   display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .spinner {

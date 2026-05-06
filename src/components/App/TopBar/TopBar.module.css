@@ -108,3 +108,45 @@
   50% { opacity: 0.6; }
   100% { opacity: 1; }
 }
+
+.compileBtn {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.compileBtn:hover {
+  background: var(--accent);
+  color: #fff;
+}
+
+.compileGroup {
+  display: flex;
+  align-items: center;
+}
+
+.groupFirst {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.groupLast {
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+  border-left: none;
+}
+
+.terminalToggleBtn {
+  padding: 6px 8px !important;
+}
+
+.activeTab {
+  background: var(--bg-surface) !important;
+  color: var(--accent) !important;
+  border-color: var(--accent) !important;
+}
+
+.activeTab:hover {
+  background: var(--accent) !important;
+  color: #fff !important;
+}
+

@@ -6,6 +6,7 @@ import { TabState } from '../TabBar';
 import { SidebarState } from '../Sidebar';
 import { EditorState } from '../EditorArea';
 import { ZipWriter } from '../../../utils/zip';
+import { Compiler } from '../../../utils/compiler';
 import Tooltip from '../../Widgets/Tooltip/Tooltip';
 import styles from './TopBar.module.css';
 
@@ -20,6 +21,38 @@ export default function TopBar() {
   const logState = LogState.useState();
   const { isProcessing } = logState;
   const activeTab = openTabs.find((t) => t.id === activeTabId);
+
+  const handleCompile = async () => {
+    if (isProcessing) return;
+
+    logState((draft) => {
+      draft.isProcessing = true;
+      // Switch to logs tab if not already there
+      if (activeTabId !== 'ai-logs') {
+        tabState((td) => { td.activeTabId = 'ai-logs'; });
+      }
+    });
+
+    const onLog = (text) => {
+      logState((draft) => {
+        draft.logs = [
+          ...draft.logs,
+          { id: Date.now() + Math.random(), role: 'system', text },
+        ];
+      });
+    };
+
+    try {
+      const compiler = new Compiler(onLog);
+      await compiler.compile(fs, folderTree, editorState.fileContents);
+    } catch (err) {
+      onLog(`Unexpected error: ${err.message}`);
+    } finally {
+      logState((draft) => {
+        draft.isProcessing = false;
+      });
+    }
+  };
 
   const handleExportZip = async () => {
     const zip = new ZipWriter();
@@ -82,7 +115,7 @@ export default function TopBar() {
     if (activeTab.type === 'file') {
       breadcrumb = activeTab.file?.path || [activeTab.label];
     } else if (activeTab.type === 'logs') {
-      breadcrumb = ['System', 'AI Output'];
+      breadcrumb = ['System', 'Log'];
     }
   }
 
@@ -123,6 +156,28 @@ export default function TopBar() {
             <span>AI is working...</span>
           </div>
         )}
+        <div className={styles.compileGroup}>
+          <Tooltip content="Compile Project">
+            <button
+              type="button"
+              className={`${styles.actionBtn} ${styles.compileBtn} ${styles.groupFirst}`}
+              onClick={handleCompile}
+              disabled={isProcessing}
+            >
+              <Icons.Play />
+              <span>Compile</span>
+            </button>
+          </Tooltip>
+          <Tooltip content="Show Log">
+            <button
+              type="button"
+              className={`${styles.actionBtn} ${styles.terminalToggleBtn} ${styles.groupLast} ${activeTabId === 'ai-logs' ? styles.activeTab : ''}`}
+              onClick={() => tabState((td) => { td.activeTabId = 'ai-logs'; })}
+            >
+              <Icons.Terminal />
+            </button>
+          </Tooltip>
+        </div>
         <Tooltip content="Export as ZIP">
           <button type="button" className={styles.actionBtn} onClick={handleExportZip}>
             <Icons.Plus />

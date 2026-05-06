@@ -39,3 +39,10 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# almostnode generated assets
+/public/lib/almostnode
+/public/assets/runtime-worker-*
+/public/__sw__.js
+/public/vite-sw.js
+

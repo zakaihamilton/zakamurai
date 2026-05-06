@@ -2,8 +2,14 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { createState } from '../../Core/Base/State';
 import { Icons } from '../Icons';
 import { AppState } from '../App';
+import { TabState } from '../TabBar';
+import { EditorState } from '../EditorArea';
 import styles from './Sidebar.module.css';
 import TreeItem from './TreeItem';
+
+
+
+
 
 export const SidebarState = createState('SidebarState');
 
@@ -30,29 +36,14 @@ export default function Sidebar() {
   const { isSidebarOpen, folderTree, showAIInput } = sidebarState;
   const appState = AppState.useState();
   const { projectName } = appState;
+  const tabState = TabState.useState();
+  const editorState = EditorState.useState();
   const [filterText, setFilterText] = useState('');
-
-  const [isEditingProj, setIsEditingProj] = useState(false);
-  const [editProjVal, setEditProjVal] = useState(projectName);
-
-  // Sync project name state if it changes externally
-  useEffect(() => {
-    setEditProjVal(projectName);
-  }, [projectName]);
 
   const toggleSidebar = () => {
     sidebarState((d) => {
       d.isSidebarOpen = !d.isSidebarOpen;
     });
-  };
-
-  const submitProjName = () => {
-    if (editProjVal.trim() && editProjVal !== projectName) {
-      appState((draft) => {
-        draft.projectName = editProjVal.trim();
-      });
-    }
-    setIsEditingProj(false);
   };
 
   const filteredTree = useMemo(() => filterTree(folderTree, filterText), [folderTree, filterText]);
@@ -70,34 +61,8 @@ export default function Sidebar() {
           Z
         </button>
         <div className={styles.projectNameContainer} style={{ opacity: isSidebarOpen ? 1 : 0 }}>
-          {isEditingProj ? (
-            <input
-              value={editProjVal}
-              onChange={(e) => setEditProjVal(e.target.value)}
-              onBlur={submitProjName}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') submitProjName();
-                if (e.key === 'Escape') setIsEditingProj(false);
-              }}
-              className={styles.projectInput}
-            />
-          ) : (
-            <span onDoubleClick={() => setIsEditingProj(true)} className={styles.projectName}>
-              {projectName}
-            </span>
-          )}
           <span className={styles.tagline}>ZAKAMURAI</span>
         </div>
-        {isSidebarOpen && (
-          <button
-            type="button"
-            onClick={appState.fs.mountLocal}
-            className={styles.headerIconBtn}
-            title="Open Folder"
-          >
-            <Icons.FolderPlus />
-          </button>
-        )}
       </div>
 
       {/* Mount Section */}
@@ -136,19 +101,22 @@ export default function Sidebar() {
 
       {/* File Tree Area */}
       <div className={`${styles.treeArea} scroll-hide`} style={{ opacity: isSidebarOpen ? 1 : 0 }}>
-        {appState.fs.mode
-          ? appState.fs.files.map((item) => (
-              <TreeItem
-                key={item.name}
-                item={{ ...item, path: [item.name], type: item.kind === 'directory' ? 'folder' : 'file' }}
-                filterText={filterText}
-                fsHandle={item.handle}
-                parentHandle={appState.fs.rootHandle}
-              />
-            ))
-          : filteredTree.map((item) => (
-              <TreeItem key={item.name} item={{ ...item, path: [item.name] }} filterText={filterText} parentHandle={appState.fs.rootHandle} />
-            ))}
+        <TreeItem
+          item={{
+            name: projectName,
+            type: 'folder',
+            path: [],
+            isRoot: true,
+            children: appState.fs.mode ? undefined : filteredTree
+          }}
+          fsHandle={appState.fs.mode ? appState.fs.rootHandle : null}
+          filterText={filterText}
+          onRename={(newName) => {
+            appState((draft) => {
+              draft.projectName = newName;
+            });
+          }}
+        />
         {filteredTree.length === 0 && !appState.fs.mode && isSidebarOpen && (
           <div className={styles.noFiles}>No files found matching "{filterText}"</div>
         )}

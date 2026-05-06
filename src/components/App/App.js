@@ -42,8 +42,10 @@ export default function App() {
     [],
   );
 
-  const initialContents = useMemo(
-    () => ({
+  const initialContents = useMemo(() => {
+    const stored = Settings.getFileContents();
+    if (stored && Object.keys(stored).length > 0) return stored;
+    return {
       'src/components/Sidebar.jsx':
         'export default function Sidebar() {\n  return (\n    <aside>\n      <h2>Sidebar</h2>\n    </aside>\n  );\n}',
       'src/components/Editor.jsx':
@@ -53,16 +55,15 @@ export default function App() {
       'lib/state.js': 'export const ZakamuraiState = {};',
       'package.json':
         '{\n  "name": "zakamurai",\n  "version": "0.1.0",\n  "dependencies": {\n    "react": "^18.2.0"\n  }\n}',
-    }),
-    [],
-  );
+    };
+  }, []);
 
   const initialTheme = Settings.getTheme();
 
   const initialTabs = useMemo(() => {
     const stored = Settings.getOpenTabs();
     if (stored && stored.length > 0) return stored;
-    return [{ id: 'ai-logs', type: 'logs', label: 'AI Output' }];
+    return [{ id: 'ai-logs', type: 'logs', label: 'Log' }];
   }, []);
 
   const initialActiveTabId = useMemo(() => Settings.getActiveTabId() || 'ai-logs', []);
@@ -70,7 +71,7 @@ export default function App() {
   const initialAILogs = useMemo(() => {
     const stored = Settings.getAILogs();
     if (stored && stored.length > 0) return stored;
-    return [{ id: 1, role: 'ai', text: 'Core Engine initialized. Project context synced.' }];
+    return [{ id: 1, role: 'ai', text: 'Zakamurai Log initialized. Ready for commands.' }];
   }, []);
 
   return (
@@ -87,6 +88,7 @@ export default function App() {
             <LogState isProcessing={false} logs={initialAILogs}>
               <EditorState fileContents={initialContents}>
                 <TabRestorer />
+                <ContentSaver />
                 <PassiveWrapper />
               </EditorState>
             </LogState>
@@ -139,6 +141,17 @@ function ProjectNameSaver() {
   return null;
 }
 
+function ContentSaver() {
+  const { fileContents } = EditorState.useState();
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      Settings.setFileContents(fileContents);
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, [fileContents]);
+  return null;
+}
+
 function TabRestorer() {
   const { fs } = AppState.useState();
   const tabState = TabState.useState();
@@ -169,7 +182,7 @@ function TabRestorer() {
                   file: { name: tab.label, path: tab.id.split('/') },
                   fsHandle: handle,
                 });
-                if (content !== undefined) {
+                if (content !== undefined && !editorState.fileContents?.[tab.id]) {
                   newContents[tab.id] = content;
                 }
               }

@@ -42,9 +42,10 @@ export function useFileSystem() {
   const [mode, setMode] = useState(null);
   const [error, setError] = useState(null);
   const [version, setVersion] = useState(0);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   const triggerRefresh = useCallback(() => {
-    setVersion((v) => v + 1);
+    setRefreshTrigger((v) => v + 1);
   }, []);
 
   // 1. Wrapped in useCallback so it can be safely used as a dependency
@@ -118,6 +119,13 @@ export function useFileSystem() {
     };
     init();
   }, [refreshDirectory]);
+
+  // Handle manual refreshes via trigger
+  useEffect(() => {
+    if (rootHandle && mode && refreshTrigger > 0) {
+      refreshDirectory(rootHandle);
+    }
+  }, [refreshTrigger, rootHandle, mode, refreshDirectory]);
 
   const readFile = useCallback(async (fileHandle) => {
     const file = await fileHandle.getFile();

@@ -4,6 +4,7 @@ const KEYS = {
   OPEN_TABS: 'zakamurai_open_tabs',
   ACTIVE_TAB_ID: 'zakamurai_active_tab_id',
   PROMPT_HISTORY: 'zakamurai_prompt_history',
+  FILE_CONTENTS: 'zakamurai_file_contents',
 };
 
 const Settings = {
@@ -99,6 +100,27 @@ const Settings = {
     // Keep only the last 50 logs
     const logsToSave = logs.slice(-50);
     this.set(KEYS.AI_LOGS, JSON.stringify(logsToSave));
+  },
+  
+  getFileContents() {
+    const val = this.get(KEYS.FILE_CONTENTS);
+    if (!val) return null;
+    try {
+      return JSON.parse(val);
+    } catch (e) {
+      console.error('Failed to parse file contents from localStorage', e);
+      return null;
+    }
+  },
+
+  setFileContents(contents) {
+    // We only save contents that are not too large to avoid localStorage limits
+    // For a real app, we'd use IndexedDB or OPFS
+    try {
+      this.set(KEYS.FILE_CONTENTS, JSON.stringify(contents));
+    } catch (e) {
+      console.warn('Failed to save file contents to localStorage (likely size limit)', e);
+    }
   },
 };
 

@@ -38,6 +38,12 @@
   color: var(--accent);
 }
 
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
 .logo {
   width: 28px;
   height: 28px;
@@ -63,34 +69,6 @@
   min-width: 0;
   transition: opacity 0.2s;
 }
-
-.projectInput {
-  width: 100%;
-  box-sizing: border-box;
-  background: var(--bg-input);
-  border: 1px solid var(--accent);
-  color: var(--text-main);
-  outline: none;
-  font-size: 13px;
-  font-weight: bold;
-  padding: 2px 6px;
-  margin: 0 -7px;
-  border-radius: 4px;
-  font-family: inherit;
-}
-
-.projectName {
-  display: block;
-  font-weight: bold;
-  font-size: 13px;
-  color: var(--text-main);
-  white-space: nowrap;
-  text-overflow: ellipsis;
-  overflow: hidden;
-  cursor: text;
-  padding: 3px 0;
-}
-
 .tagline {
   font-size: 10px;
   font-weight: 700;

@@ -9,11 +9,16 @@
     "lint": "biome lint .",
     "format": "biome format . --write",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "setup:almostnode": "mkdir -p public/lib/almostnode public/assets && cp -r node_modules/almostnode/dist/* public/lib/almostnode/ && cp node_modules/almostnode/dist/assets/* public/assets/ && cp node_modules/almostnode/dist/__sw__.js public/",
+    "postinstall": "npm run setup:almostnode",
+    "predev": "npm run setup:almostnode",
+    "prebuild": "npm run setup:almostnode"
   },
   "dependencies": {
     "@mlc-ai/web-llm": "^0.2.83",
     "@testing-library/dom": "^10.4.1",
+    "almostnode": "latest",
     "next": "16.2.4",
     "react": "19.2.4",
     "react-dom": "19.2.4"

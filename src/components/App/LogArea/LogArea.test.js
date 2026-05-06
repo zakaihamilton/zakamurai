@@ -29,6 +29,6 @@ describe('LogArea', () => {
     });
 
     render(<LogArea />);
-    expect(screen.getByText('Generating architecture scaffolding...')).toBeDefined();
+    expect(screen.getByText('Compiling project...')).toBeDefined();
   });
 });

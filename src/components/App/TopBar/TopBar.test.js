@@ -94,4 +94,22 @@ describe('TopBar', () => {
     const exportBtn = getByText('Export ZIP');
     expect(exportBtn).toBeDefined();
   });
+
+  it('renders compile button', () => {
+    TabState.useState.mockReturnValue({
+      openTabs: [],
+      activeTabId: null,
+    });
+    AppState.useState.mockReturnValue({
+      theme: 'dark',
+      fs: { mode: null },
+      projectName: 'Test Project',
+    });
+    SidebarState.useState.mockReturnValue({ folderTree: [] });
+    EditorState.useState.mockReturnValue({ fileContents: {} });
+
+    const { getByText } = render(<TopBar />);
+    const compileBtn = getByText('Compile');
+    expect(compileBtn).toBeDefined();
+  });
 });

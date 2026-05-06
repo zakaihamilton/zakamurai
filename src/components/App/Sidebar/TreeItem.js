@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Icons } from '../Icons';
 import { SidebarState } from '../Sidebar';
 import { TabState } from '../TabBar';
@@ -15,6 +15,7 @@ export default function TreeItem({
   filterText = '',
   fsHandle = null,
   parentHandle = null,
+  onRename = null,
 }) {
   const appState = AppState.useState();
   const { fs } = appState;
@@ -29,6 +30,8 @@ export default function TreeItem({
   const [createValue, setCreateValue] = useState('');
   const [contextMenu, setContextMenu] = useState(null);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const editInputRef = useRef(null);
+  const createInputRef = useRef(null);
 
   const currentPathStr = item.path.join('/');
   // Force expansion if we are actively filtering, otherwise use standard state
@@ -45,6 +48,18 @@ export default function TreeItem({
     return [];
   });
   const [isLoading, setIsLoading] = useState(false);
+  const [showSpinner, setShowSpinner] = useState(false);
+
+  // Delay spinner to prevent flashing on fast loads
+  useEffect(() => {
+    let timeout;
+    if (isLoading) {
+      timeout = setTimeout(() => setShowSpinner(true), 1000);
+    } else {
+      setShowSpinner(false);
+    }
+    return () => clearTimeout(timeout);
+  }, [isLoading]);
 
   // Sync children state from props for mock mode
   useEffect(() => {
@@ -56,7 +71,7 @@ export default function TreeItem({
     }
   }, [item.children, item.path, fs.mode]);
 
-  const loadLocalChildren = async (force = false) => {
+  const loadLocalChildren = useCallback(async (force = false) => {
     if (!fsHandle || item.type !== 'folder') return;
     if (!force && children.length > 0) return;
     setIsLoading(true);
@@ -81,14 +96,13 @@ export default function TreeItem({
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [fsHandle, item.type, item.path, children.length]);
 
   useEffect(() => {
     if (isExpanded && fs.mode === 'local' && fsHandle) {
       loadLocalChildren(true);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isExpanded, fs.mode, fsHandle, fs.version]);
+  }, [isExpanded, fs.mode, fsHandle, loadLocalChildren]);
 
   const handleToggle = () => {
     if (isEditing) return; // Prevent toggle when clicking to edit
@@ -150,6 +164,12 @@ export default function TreeItem({
 
   const handleRenameSubmit = async () => {
     if (editValue.trim() && editValue !== item.name) {
+      if (onRename) {
+        onRename(editValue.trim());
+        setIsEditing(false);
+        return;
+      }
+
       const oldPathStr = item.path.join('/');
       const newPathArr = [...item.path];
       newPathArr[newPathArr.length - 1] = editValue;
@@ -247,6 +267,12 @@ export default function TreeItem({
     setIsEditing(false);
   };
 
+  useEffect(() => {
+    if (isEditing && editInputRef.current) {
+      editInputRef.current.focus();
+    }
+  }, [isEditing]);
+
   const handleCreateSubmit = async () => {
     if (!createValue.trim()) {
       setIsCreating(null);
@@ -256,12 +282,36 @@ export default function TreeItem({
     if (fs.mode === 'local' && fsHandle) {
       try {
         if (isCreating === 'file') {
-          await fsHandle.getFileHandle(createValue, { create: true });
+          const newFileHandle = await fsHandle.getFileHandle(createValue, { create: true });
+          const writable = await newFileHandle.createWritable();
+          await writable.close();
+
+          const newPathStr = [...item.path, createValue].join('/');
+          const newFileItem = { name: createValue, path: [...item.path, createValue], type: 'file' };
+          
+          tabState((draft) => {
+            if (!draft.openTabs.find(t => t.id === newPathStr)) {
+              draft.openTabs.push({
+                id: newPathStr,
+                type: 'file',
+                label: createValue,
+                file: newFileItem,
+                fsHandle: newFileHandle
+              });
+            }
+            draft.activeTabId = newPathStr;
+          });
+          
+          editorState((draft) => {
+            if (!draft.fileContents) draft.fileContents = {};
+            draft.fileContents[newPathStr] = '';
+          });
         } else {
           await fsHandle.getDirectoryHandle(createValue, { create: true });
         }
-        await loadLocalChildren();
+        await loadLocalChildren(true);
         if (!isExpanded) handleToggle();
+        fs.triggerRefresh();
       } catch (err) {
         console.error('Failed to create:', err);
       }
@@ -271,7 +321,10 @@ export default function TreeItem({
         let currentLevel = draft.folderTree;
         for (const seg of item.path) {
           const node = currentLevel.find((n) => n.name === seg);
-          if (node) currentLevel = node.children || (node.children = []);
+          if (node) {
+            if (!node.children) node.children = [];
+            currentLevel = node.children;
+          }
         }
         currentLevel.push({
           name: createValue,
@@ -285,12 +338,20 @@ export default function TreeItem({
     setCreateValue('');
   };
 
+  useEffect(() => {
+    if (isCreating && createInputRef.current) {
+      createInputRef.current.focus();
+    }
+  }, [isCreating]);
+
   const handleDelete = () => {
     setShowDeleteDialog(true);
     setContextMenu(null);
   };
 
   const confirmDelete = async () => {
+    const deletedPathStr = item.path.join('/');
+    
     if (fs.mode === 'local' && parentHandle) {
       try {
         await parentHandle.removeEntry(item.name, { recursive: true });
@@ -310,6 +371,30 @@ export default function TreeItem({
         if (index !== -1) currentLevel.splice(index, 1);
       });
     }
+    
+    // Close tab(s) associated with deleted item (handles both files and folders)
+    tabState((draft) => {
+      const tabsToDelete = draft.openTabs.filter(t => t.id === deletedPathStr || t.id.startsWith(deletedPathStr + '/'));
+      if (tabsToDelete.length > 0) {
+        draft.openTabs = draft.openTabs.filter(t => !tabsToDelete.includes(t));
+        // If active tab was deleted, switch to another tab or null
+        if (tabsToDelete.some(t => t.id === draft.activeTabId)) {
+          draft.activeTabId = draft.openTabs.length > 0 ? draft.openTabs[draft.openTabs.length - 1].id : null;
+        }
+      }
+    });
+
+    // Remove from editor contents
+    editorState((draft) => {
+      if (draft.fileContents) {
+        for (const key in draft.fileContents) {
+          if (key === deletedPathStr || key.startsWith(deletedPathStr + '/')) {
+            delete draft.fileContents[key];
+          }
+        }
+      }
+    });
+    
     setShowDeleteDialog(false);
   };
 
@@ -352,7 +437,7 @@ export default function TreeItem({
           className={styles.typeIcon}
           style={{ color: item.type === 'folder' ? 'var(--accent)' : 'var(--text-muted)' }}
         >
-          {isLoading ? (
+          {showSpinner ? (
             <div className={styles.spinner} />
           ) : item.type === 'folder' ? (
             <Icons.Folder open={isExpanded} />
@@ -363,6 +448,7 @@ export default function TreeItem({
 
         {isEditing ? (
           <input
+            ref={editInputRef}
             value={editValue}
             onChange={(e) => setEditValue(e.target.value)}
             onBlur={handleRenameSubmit}
@@ -420,7 +506,7 @@ export default function TreeItem({
             {isCreating === 'folder' ? <Icons.Folder /> : <Icons.File />}
           </span>
           <input
-            autoFocus
+            ref={createInputRef}
             value={createValue}
             onChange={(e) => setCreateValue(e.target.value)}
             onBlur={handleCreateSubmit}
@@ -443,9 +529,11 @@ export default function TreeItem({
         >
           Rename
         </button>
-        <button type="button" onClick={handleDelete} className={styles.deleteOption}>
-          Delete
-        </button>
+        {!item.isRoot && (
+          <button type="button" onClick={handleDelete} className={styles.deleteOption}>
+            Delete
+          </button>
+        )}
       </ContextMenu>
 
       <Dialog

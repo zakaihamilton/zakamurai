@@ -19,6 +19,20 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="en" className={`${geistSans.variable} ${geistMono.variable}`}>
+      <head>
+        <script type="importmap">
+          {`
+            {
+              "imports": {
+                "pako": "https://esm.sh/pako@2.1.0",
+                "just-bash": "https://esm.sh/just-bash@2.7.0",
+                "resolve.exports": "https://esm.sh/resolve.exports@2.0.3",
+                "comlink": "https://esm.sh/comlink@4.4.2"
+              }
+            }
+          `}
+        </script>
+      </head>
       <body>{children}</body>
     </html>
   );

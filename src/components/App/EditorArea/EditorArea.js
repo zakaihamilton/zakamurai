@@ -60,6 +60,29 @@ export default function EditorArea({ file }) {
     }
   };
 
+  // Flush changes to disk on window reload/close
+  useEffect(() => {
+    if (fs.mode !== 'local') return;
+
+    const flush = async () => {
+      const currentTab = tabState.openTabs.find((t) => t.id === filePath);
+      const handle = currentTab?.fsHandle;
+      if (handle && localContent !== state.fileContents?.[filePath]) {
+        try {
+          const writable = await handle.createWritable();
+          await writable.write(localContent);
+          await writable.close();
+          console.log('Flushed to FS on exit:', filePath);
+        } catch (err) {
+          console.error('Failed to flush to FS on exit:', err);
+        }
+      }
+    };
+
+    window.addEventListener('beforeunload', flush);
+    return () => window.removeEventListener('beforeunload', flush);
+  }, [fs.mode, filePath, localContent, state.fileContents, tabState.openTabs]);
+
   const highlightCode = (code) => {
     if (!code) return '';
     let escaped = code.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
