@@ -1,3 +1,5 @@
+'use client';
+
 import React from 'react';
 import styles from './App.module.css';
 import EditorArea from './EditorArea/EditorArea';
