@@ -16,6 +16,8 @@ export default function PreviewArea({ htmlContent }) {
   const [isSwReady, setIsSwReady] = useState(
     !!(typeof navigator !== 'undefined' && navigator.serviceWorker?.controller),
   );
+  const [isMaximized, setIsMaximized] = useState(false);
+  const containerRef = useRef(null);
 
   useEffect(() => {
     if (!('serviceWorker' in navigator)) return;
@@ -50,6 +52,10 @@ export default function PreviewArea({ htmlContent }) {
     window.open('/__virtual__/3000/index.html', '_blank');
   }, []);
 
+  const toggleMaximize = useCallback(() => {
+    setIsMaximized((v) => !v);
+  }, []);
+
   const handleZoomIn = () => setScale((s) => Math.min(s + 0.1, 2));
   const handleZoomOut = () => setScale((s) => Math.max(s - 0.1, 0.3));
   const handleZoomReset = () => setScale(1);
@@ -70,7 +76,7 @@ export default function PreviewArea({ htmlContent }) {
   }
 
   return (
-    <div className={styles.wrapper}>
+    <div ref={containerRef} className={`${styles.wrapper} ${isMaximized ? styles.maximized : ''}`}>
       <div className={styles.toolbar}>
         <div className={styles.trafficLights}>
           <span className={`${styles.dot} ${styles.dotRed}`} />
@@ -109,6 +115,11 @@ export default function PreviewArea({ htmlContent }) {
           <Tooltip content="Open in new tab">
             <button type="button" className={styles.toolBtn} onClick={handleOpenExternal}>
               <Icons.ExternalLink />
+            </button>
+          </Tooltip>
+          <Tooltip content={isMaximized ? "Exit maximize" : "Maximize preview"}>
+            <button type="button" className={styles.toolBtn} onClick={toggleMaximize}>
+              {isMaximized ? <Icons.Minimize /> : <Icons.Maximize />}
             </button>
           </Tooltip>
         </div>

@@ -6,6 +6,29 @@
   background: var(--bg-base);
 }
 
+.wrapper.maximized {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 9999;
+  background: var(--bg-base);
+  animation: scaleUp 0.2s ease-out;
+}
+
+@keyframes scaleUp {
+  from {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+
+
 /* ---- Toolbar / Browser Chrome ---- */
 .toolbar {
   display: flex;
