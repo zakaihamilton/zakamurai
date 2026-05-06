@@ -120,9 +120,7 @@ export default function LogArea() {
           {isProcessing && (
             <div className={styles.logItem}>
               <span className={styles.prompt}>&gt;</span>
-              <div className={`${styles.logContent} ${styles.processing}`}>
-                Compiling project...
-              </div>
+              <div className={`${styles.logContent} ${styles.processing}`}>Processing...</div>
             </div>
           )}
           <div ref={bottomRef} style={{ height: '10px' }} />
