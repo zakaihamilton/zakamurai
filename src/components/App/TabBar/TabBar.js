@@ -88,7 +88,10 @@ export default function TabBar() {
               <span className={`${styles.tabIcon} ${isActive ? styles.tabIconActive : ''}`}>
                 {tab.type === 'logs' ? <Icons.BotSmall /> : <Icons.File />}
               </span>
-              <Tooltip content={tab.label} className={styles.tabLabelTooltip}>
+              <Tooltip
+                content={tab.type === 'file' ? tab.id : tab.label}
+                className={styles.tabLabelTooltip}
+              >
                 <span className={styles.tabLabelText}>{tab.label}</span>
               </Tooltip>
               {!isLogs && (

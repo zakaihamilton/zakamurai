@@ -100,13 +100,20 @@ export default function Sidebar() {
         )}
       </div>
 
-      {/* Mount Section (Only if nothing mounted) */}
-      {isSidebarOpen && !appState.fs.mode && (
+      {/* Mount Section */}
+      {isSidebarOpen && (
         <div className={styles.mountSection}>
-          <button type="button" onClick={appState.fs.mountLocal} className={styles.mountButton}>
-            <Icons.FolderPlus />
-            <span>Open Folder</span>
-          </button>
+          {!appState.fs.mode ? (
+            <button type="button" onClick={appState.fs.mountLocal} className={styles.mountButton}>
+              <Icons.FolderPlus />
+              <span>Open Folder</span>
+            </button>
+          ) : (
+            <button type="button" onClick={appState.fs.mountLocal} className={styles.relinkButton}>
+              <Icons.FolderPlus />
+              <span>Relink Project</span>
+            </button>
+          )}
         </div>
       )}
 

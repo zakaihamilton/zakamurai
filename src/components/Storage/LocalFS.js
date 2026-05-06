@@ -43,8 +43,12 @@ export function useFileSystem() {
   const [error, setError] = useState(null);
   const [version, setVersion] = useState(0);
 
+  const triggerRefresh = useCallback(() => {
+    setVersion((v) => v + 1);
+  }, []);
+
   // 1. Wrapped in useCallback so it can be safely used as a dependency
-  const refreshDirectory = useCallback(async (dirHandle) => {
+  const refreshDirectory = useCallback(async (dirHandle, updateSidebar = true) => {
     try {
       const entries = [];
       for await (const [name, handle] of dirHandle.entries()) {
@@ -56,10 +60,15 @@ export function useFileSystem() {
         return a.kind === 'directory' ? -1 : 1;
       });
 
-      setFiles(entries);
-      setCurrentDirHandle(dirHandle);
+      // Only update global files list if we are refreshing the root
+      // or if we are in a mode where currentDirHandle tracks the sidebar root
+      if (updateSidebar) {
+        setFiles(entries);
+        setCurrentDirHandle(dirHandle);
+      }
       setVersion((v) => v + 1);
       setError(null);
+      return entries;
     } catch (err) {
       setError(`Failed to read directory: ${err.message}`);
     }
@@ -209,6 +218,7 @@ export function useFileSystem() {
     mountOPFS,
     mountLocal,
     refreshDirectory,
+    triggerRefresh,
     readFile,
     writeFile,
     writeFileAtPath,

@@ -148,12 +148,28 @@ export default function TreeItem({
     setEditValue(item.name);
   };
 
-  const handleRenameSubmit = () => {
+  const handleRenameSubmit = async () => {
     if (editValue.trim() && editValue !== item.name) {
       const oldPathStr = item.path.join('/');
       const newPathArr = [...item.path];
       newPathArr[newPathArr.length - 1] = editValue;
       const newPathStr = newPathArr.join('/');
+
+      if (fs.mode === 'local' && fsHandle) {
+        try {
+          // Check if move is supported
+          if (fsHandle.move) {
+            await fsHandle.move(editValue);
+          } else {
+            // Fallback for older browsers (unlikely in this context but safe)
+            throw new Error('Rename (move) not supported by this browser/handle.');
+          }
+          fs.triggerRefresh();
+        } catch (err) {
+          console.error('Failed to rename local file:', err);
+          return; // Don't update state if FS rename failed
+        }
+      }
 
       sidebarState((draft) => {
         let currentLevel = draft.folderTree;
@@ -278,7 +294,7 @@ export default function TreeItem({
     if (fs.mode === 'local' && parentHandle) {
       try {
         await parentHandle.removeEntry(item.name, { recursive: true });
-        await fs.refreshDirectory(parentHandle);
+        fs.triggerRefresh();
       } catch (err) {
         console.error('Failed to delete:', err);
       }

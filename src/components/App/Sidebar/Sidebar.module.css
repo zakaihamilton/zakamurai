@@ -104,28 +104,46 @@
   min-width: 260px;
 }
 
-.mountButton {
+.mountButton,
+.relinkButton {
   width: 100%;
-  padding: 8px 12px;
-  background: var(--accent-light);
-  border: 1px dashed var(--accent);
-  border-radius: 6px;
-  color: var(--accent);
+  padding: 10px 14px;
+  background: var(--bg-surface);
+  border: 1px dashed var(--border-light);
+  border-radius: 8px;
+  color: var(--text-muted);
   font-size: 13px;
-  font-weight: bold;
+  font-weight: 500;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: 10px;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   font-family: inherit;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 
-.mountButton:hover {
-  background: var(--accent);
-  color: #fff;
+.relinkButton {
+  background: rgba(99, 102, 241, 0.04);
+  border-color: rgba(99, 102, 241, 0.15);
+  color: var(--accent);
+}
+
+.mountButton:hover,
+.relinkButton:hover {
+  background: var(--accent-light);
+  border-color: var(--accent);
+  color: var(--accent);
   border-style: solid;
+  transform: translateY(-1.5px);
+  box-shadow: 0 6px 16px rgba(99, 102, 241, 0.12);
+}
+
+.mountButton:active,
+.relinkButton:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 4px rgba(99, 102, 241, 0.1);
 }
 
 .filterSection {
