@@ -48,6 +48,12 @@ export default function EditorArea({ file }) {
         ...draft.fileContents,
         [filePath]: newVal,
       };
+      // Clear pending diffs on manual edit to avoid index drift
+      if (draft.pendingDiffs?.[filePath]) {
+        const nextDiffs = { ...draft.pendingDiffs };
+        delete nextDiffs[filePath];
+        draft.pendingDiffs = nextDiffs;
+      }
     });
 
     // Save to Local FS if applicable
@@ -119,11 +125,14 @@ export default function EditorArea({ file }) {
     // This is tricky with the existing highlight logic.
     // Let's do it after escaping but before tokens.
 
-    // Protect tokens by replacing them with unmatchable placeholders first
     const tokens = [];
+    const T_PRE = '\x01';
+    const T_POST = '\x02';
+
     const pushToken = (val, type) => {
-      tokens.push(`<span class="${styles[type]}">${val}</span>`);
-      return `\u0001${tokens.length - 1}\u0002`;
+      const idx = tokens.length;
+      tokens.push({ val, type });
+      return `${T_PRE}${idx}${T_POST}`;
     };
 
     // 1. Comments (highest priority)
@@ -133,22 +142,15 @@ export default function EditorArea({ file }) {
     // 2. Strings
     escaped = escaped.replace(/(".*?"|'.*?'|`.*?`)/g, (m) => pushToken(m, 'hl-str'));
 
-    // 3. Keywords
-    escaped = escaped.replace(
-      /\b(export|default|function|return|import|from|const|let|var|if|else|for|while|class|extends|new|true|false|null|undefined|async|await|try|catch|finally|throw|break|continue|case|switch|type|interface|enum|public|private|protected|static|readonly)\b/g,
-      (m) => pushToken(m, 'hl-kw'),
-    );
-
-    // 4. Numbers
-    escaped = escaped.replace(/\b(\d+)\b/g, (m) => pushToken(m, 'hl-num'));
-
-    // 5. CSS specific (if filePath ends with .css)
+    // 3. Language specific (CSS or JSX/HTML)
     if (filePath?.endsWith('.css')) {
       // Properties
       escaped = escaped.replace(/([a-zA-Z\-]+)(?=\s*:)/g, (m) => pushToken(m, 'hl-prop'));
       // Selectors (basic)
-      escaped = escaped.replace(/^([.#a-zA-Z0-9_\-\[\]="':*]+)(?=\s*\{)/gm, (m) =>
-        pushToken(m, 'hl-tag'),
+      escaped = escaped.replace(
+        // biome-ignore lint/suspicious/noControlCharactersInRegex: markers
+        /(^|(?<=\}))(\u0003\d+\u0003|\u0004)*([.#a-zA-Z0-9_\-\[\]="':*]+)(?=\s*\{)/gm,
+        (_m, p1, p2, p3) => p1 + (p2 || '') + pushToken(p3, 'hl-tag'),
       );
       // Values (after colon, before semicolon)
       escaped = escaped.replace(/(?<=:\s*)([^;\}]+)(?=;|\})/g, (m) => {
@@ -159,7 +161,7 @@ export default function EditorArea({ file }) {
           /(\d+)(px|rem|em|%|vh|vw|ms|s|deg)/g,
           (_m2, p1, p2) => `${pushToken(p1, 'hl-num')}${pushToken(p2, 'hl-kw')}`,
         );
-        return pushToken(val, 'hl-val');
+        return val;
       });
       // Variables
       escaped = escaped.replace(/(var\(--[a-zA-Z0-9\-]+\))/g, (m) => pushToken(m, 'hl-func'));
@@ -175,7 +177,21 @@ export default function EditorArea({ file }) {
       escaped = escaped.replace(/\b([a-zA-Z\-]+)(?==)/g, (m) => pushToken(m, 'hl-attr'));
     }
 
-    // Reconstruction with Search Highlights
+    // 4. Keywords
+    escaped = escaped.replace(
+      // biome-ignore lint/suspicious/noControlCharactersInRegex: markers
+      /(\x01\d+\x02|\u0003\d+\u0003|\u0004)|\b(export|default|function|return|import|from|const|let|var|if|else|for|while|class|extends|new|true|false|null|undefined|async|await|try|catch|finally|throw|break|continue|case|switch|type|interface|enum|public|private|protected|static|readonly)\b/g,
+      (_m, p1, p2) => (p1 ? p1 : pushToken(p2, 'hl-kw')),
+    );
+
+    // 5. Numbers
+    escaped = escaped.replace(
+      // biome-ignore lint/suspicious/noControlCharactersInRegex: markers
+      /(\x01\d+\x02|\u0003\d+\u0003|\u0004)|\b(\d+)\b/g,
+      (_m, p1, p2) => (p1 ? p1 : pushToken(p2, 'hl-num')),
+    );
+
+    // Search highlights
     let matchCounter = 0;
     const searchRegex =
       showFind && findQuery
@@ -190,7 +206,7 @@ export default function EditorArea({ file }) {
         : null;
 
     const highlightText = (text) => {
-      if (!searchRegex) return text;
+      if (!searchRegex || !text) return text;
       return text.replace(searchRegex, (m) => {
         const cls = matchCounter === matchIndex ? 'hl-match-active' : 'hl-match';
         matchCounter++;
@@ -198,22 +214,33 @@ export default function EditorArea({ file }) {
       });
     };
 
-    // We need to iterate through 'escaped' and replace placeholders AND highlight text in order
-    // biome-ignore lint/suspicious/noControlCharactersInRegex: markers are intentional for tracking
-    const parts = escaped.split(/(\u0001\d+\u0002)/);
+    const resolveToken = (idx) => {
+      const token = tokens[idx];
+      if (!token) return '';
+
+      // Split content to handle nested tokens
+      // biome-ignore lint/suspicious/noControlCharactersInRegex: markers
+      const parts = token.val.split(/(\x01\d+\x02)/);
+      const resolvedContent = parts
+        .map((part) => {
+          // biome-ignore lint/suspicious/noControlCharactersInRegex: markers
+          const match = part.match(/^\x01(\d+)\x02$/);
+          if (match) return resolveToken(Number.parseInt(match[1]));
+          return highlightText(part);
+        })
+        .join('');
+
+      return `<span class="${styles[token.type] || ''}">${resolvedContent}</span>`;
+    };
+
+    // Final Reconstruction
+    // biome-ignore lint/suspicious/noControlCharactersInRegex: markers
+    const parts = escaped.split(/(\x01\d+\x02)/);
     escaped = parts
       .map((part) => {
-        if (part.startsWith('\u0001') && part.endsWith('\u0002')) {
-          const idx = Number.parseInt(part.substring(1, part.length - 1));
-          let tok = tokens[idx];
-          if (searchRegex) {
-            // Highlight text inside token spans
-            tok = tok.replace(/(>)([^<]+)(<)/g, (_m, p1, p2, p3) => {
-              return p1 + highlightText(p2) + p3;
-            });
-          }
-          return tok;
-        }
+        // biome-ignore lint/suspicious/noControlCharactersInRegex: markers
+        const match = part.match(/^\x01(\d+)\x02$/);
+        if (match) return resolveToken(Number.parseInt(match[1]));
         return highlightText(part);
       })
       .join('');
@@ -245,7 +272,7 @@ export default function EditorArea({ file }) {
     return finalLines.join('\n');
   };
 
-  const handleApprove = () => {
+  const handleApprove = async () => {
     state((draft) => {
       if (draft.pendingDiffs) {
         const nextDiffs = { ...draft.pendingDiffs };
@@ -253,6 +280,14 @@ export default function EditorArea({ file }) {
         draft.pendingDiffs = nextDiffs;
       }
     });
+
+    try {
+      if (fs?.rootHandle && fs?.writeFileAtPath) {
+        await fs.writeFileAtPath(filePath, localContent);
+      }
+    } catch (err) {
+      console.error('Failed to save to FS on approve:', err);
+    }
   };
 
   const handleUndo = async () => {

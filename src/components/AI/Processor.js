@@ -60,17 +60,26 @@ export const processAIResponse = async (
         const result = applySearchReplace(originalContent, blockContent, fileSelectedLines);
         finalContent = result.content;
         diffs = result.diffs;
+      } else if (fileSelectedLines.length > 0) {
+        // If it looks like a snippet and not the full file, replace just the targeted lines
+        const isLikelyFullFile = blockContent.length >= originalContent.length * 0.8;
+        if (!isLikelyFullFile) {
+          const result = applyTargetedReplacement(originalContent, blockContent, fileSelectedLines);
+          finalContent = result.content;
+          diffs = result.diffs;
+        } else {
+          const result = computeDiff(originalContent, blockContent, fileSelectedLines);
+          finalContent = result.content;
+          diffs = result.diffs;
+        }
       } else {
         const result = computeDiff(originalContent, blockContent, fileSelectedLines);
         finalContent = result.content;
         diffs = result.diffs;
       }
 
-      if (fs?.rootHandle) {
-        await fs.writeFileAtPath(filePath, finalContent);
-        filesUpdated++;
-      } else if (sidebarState && editorState) {
-        // Mock logic
+      // Ensure the sidebar reflects new files even if we don't save to FS immediately yet
+      if (sidebarState && editorState) {
         const parts = filePath.split('/').filter(Boolean);
         const fileName = parts[parts.length - 1];
 
@@ -263,6 +272,46 @@ function computeDiff(original, updated, selectedLines = []) {
         end: endUpd,
         type: 'replacement',
         original: original.substring(start, endOrig),
+      },
+    ],
+  };
+}
+
+/**
+ * Replaces specifically the selected lines with the updated snippet.
+ */
+function applyTargetedReplacement(original, snippet, selectedLines = []) {
+  if (selectedLines.length === 0) return { content: original, diffs: [] };
+  
+  const originalLines = original.split('\n');
+  const sortedLines = [...selectedLines].sort((a, b) => a - b);
+  const minLine = sortedLines[0];
+  const maxLine = sortedLines[sortedLines.length - 1];
+
+  const startIdx = Math.max(0, minLine - 1);
+  const endIdx = Math.min(originalLines.length - 1, maxLine - 1);
+
+  const before = originalLines.slice(0, startIdx).join('\n');
+  const after = originalLines.slice(endIdx + 1).join('\n');
+  
+  const beforeStr = before ? `${before}\n` : '';
+  const afterStr = after ? `\n${after}` : '';
+
+  const newContent = `${beforeStr}${snippet}${afterStr}`;
+
+  const start = beforeStr.length;
+  const end = start + snippet.length;
+
+  const originalReplaced = originalLines.slice(startIdx, endIdx + 1).join('\n');
+
+  return {
+    content: newContent,
+    diffs: [
+      {
+        start,
+        end,
+        type: 'replacement',
+        original: originalReplaced,
       },
     ],
   };

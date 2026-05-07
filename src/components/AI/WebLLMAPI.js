@@ -47,15 +47,17 @@ const getEngine = () => {
  * @param {string} prompt - The user's input or full codebase context.
  * @returns {Promise<string>} - The AI's generated response.
  */
-export const askWebLLM = async (prompt) => {
+export const askWebLLM = async (prompt, systemPrompt = '') => {
   try {
     const engine = await getEngine();
+
+    const defaultSystemPrompt =
+      'You are an expert React and JavaScript developer assistant. If you need to modify or create files, use EXACTLY this format (NO markdown codeblocks like ```): \n// --- File: path/to/file.js ---\n[code content]\n// --- End File ---\nIf modifying an existing file, you MUST use the EXACT file path and extension provided in the context. Provide concise, accurate code and explanations.';
 
     const messages = [
       {
         role: 'system',
-        content:
-          'You are an expert React and JavaScript developer assistant. If you need to modify or create files, use EXACTLY this format (NO markdown codeblocks like ```): \n// --- File: path/to/file.js ---\n[code content]\n// --- End File ---\nIf modifying an existing file, you MUST use the EXACT file path and extension provided in the context. Provide concise, accurate code and explanations.',
+        content: systemPrompt || defaultSystemPrompt,
       },
       {
         role: 'user',
@@ -66,6 +68,9 @@ export const askWebLLM = async (prompt) => {
     const reply = await engine.chat.completions.create({
       messages,
       temperature: 0.7,
+      top_p: 0.95,
+      presence_penalty: 0.1,
+      frequency_penalty: 0.1,
     });
 
     return reply.choices?.[0]?.message?.content ?? 'No response generated.';

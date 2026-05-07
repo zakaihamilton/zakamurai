@@ -245,9 +245,7 @@ self.addEventListener('fetch', (event) => {
   DEBUG && console.log('[SW] Fetch:', url.pathname, 'mainPort:', !!mainPort);
 
   // Check if this is a virtual server request
-  const match = url.pathname.startsWith('/preview') 
-    ? [url.pathname, '3000', url.pathname.slice(8) || '/'] 
-    : url.pathname.match(/^\/__virtual__\/(\d+)(\/.*)?$/);
+  const match = url.pathname.match(/^\/__virtual__\/(\d+)(\/.*)?$/);
 
   if (!match) {
     // Not a virtual request - but check if it's from a virtual context
@@ -257,9 +255,7 @@ self.addEventListener('fetch', (event) => {
     if (referer) {
       try {
         const refererUrl = new URL(referer);
-        const refererMatch = refererUrl.pathname.startsWith('/preview')
-          ? ['/preview', '3000']
-          : refererUrl.pathname.match(/^\/__virtual__\/(\d+)/);
+        const refererMatch = refererUrl.pathname.match(/^\/__virtual__\/(\d+)/);
         if (refererMatch) {
           // Request from within a virtual server context
           const virtualPrefix = refererMatch[0];
