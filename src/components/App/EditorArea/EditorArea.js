@@ -1,9 +1,14 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { createState } from '../../Core/Base/State';
 import { AppState } from '../App';
-import { Icons } from '../Icons';
 import { TabState } from '../TabBar';
 import styles from './EditorArea.module.css';
+
+import CodeEditor from './CodeEditor';
+// Sub-components
+import EditorHeader from './EditorHeader';
+import FindReplaceBar from './FindReplaceBar';
+import Gutter from './Gutter';
 
 export const EditorState = createState('EditorState');
 
@@ -172,16 +177,17 @@ export default function EditorArea({ file }) {
 
     // Reconstruction with Search Highlights
     let matchCounter = 0;
-    const searchRegex = (showFind && findQuery)
-      ? new RegExp(
-          findQuery
-            .replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;'),
-          'gi',
-        )
-      : null;
+    const searchRegex =
+      showFind && findQuery
+        ? new RegExp(
+            findQuery
+              .replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+              .replace(/&/g, '&amp;')
+              .replace(/</g, '&lt;')
+              .replace(/>/g, '&gt;'),
+            'gi',
+          )
+        : null;
 
     const highlightText = (text) => {
       if (!searchRegex) return text;
@@ -193,11 +199,12 @@ export default function EditorArea({ file }) {
     };
 
     // We need to iterate through 'escaped' and replace placeholders AND highlight text in order
+    // biome-ignore lint/suspicious/noControlCharactersInRegex: markers are intentional for tracking
     const parts = escaped.split(/(\u0001\d+\u0002)/);
     escaped = parts
       .map((part) => {
         if (part.startsWith('\u0001') && part.endsWith('\u0002')) {
-          const idx = parseInt(part.substring(1, part.length - 1));
+          const idx = Number.parseInt(part.substring(1, part.length - 1));
           let tok = tokens[idx];
           if (searchRegex) {
             // Highlight text inside token spans
@@ -376,136 +383,38 @@ export default function EditorArea({ file }) {
 
   return (
     <div className={styles.editorArea}>
-      <div className={styles.editorHeader}>
-        <div className={styles.headerTitle}>
-          <Icons.File />
-          <span className={styles.filePath}>{filePath}</span>
-        </div>
-        <div className={styles.headerActions}>
-          <button
-            type="button"
-            className={styles.actionBtn}
-            onClick={() => setShowFind(!showFind)}
-            title="Find/Replace (Ctrl+F)"
-          >
-            <Icons.Search />
-          </button>
-          {hasDiff && (
-            <div className={styles.diffHeaderToolbar}>
-              <span className={styles.diffLabel}>Review AI Changes:</span>
-              <button
-                type="button"
-                onClick={handleApprove}
-                className={`${styles.diffButton} ${styles.approveBtn}`}
-              >
-                <Icons.Check /> Approve
-              </button>
-              <button
-                type="button"
-                onClick={handleUndo}
-                className={`${styles.diffButton} ${styles.undoBtn}`}
-              >
-                <Icons.Undo /> Undo
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
+      <EditorHeader
+        filePath={filePath}
+        showFind={showFind}
+        setShowFind={setShowFind}
+        hasDiff={hasDiff}
+        handleApprove={handleApprove}
+        handleUndo={handleUndo}
+      />
 
-      {showFind && (
-        <div className={styles.findBar}>
-          <div className={styles.findRow}>
-            <input
-              // biome-ignore lint/a11y/noAutofocus: autofocus is desirable for find bar
-              autoFocus
-              placeholder="Find..."
-              value={findQuery}
-              onChange={(e) => setFindQuery(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleFind()}
-              className={styles.findInput}
-            />
-            <div className={styles.findStats}>
-              {matches.length > 0 ? `${matchIndex + 1} / ${matches.length}` : 'No results'}
-            </div>
-            <button
-              type="button"
-              onClick={() => setMatchIndex((i) => (matches.length > 0 ? (i + 1) % matches.length : -1))}
-              className={styles.findBtn}
-            >
-              <Icons.ChevronDown />
-            </button>
-            <button
-              type="button"
-              onClick={() =>
-                setMatchIndex((i) => (matches.length > 0 ? (i - 1 + matches.length) % matches.length : -1))
-              }
-              className={styles.findBtn}
-            >
-              <Icons.ChevronUp />
-            </button>
-            <button type="button" onClick={() => setShowFind(false)} className={styles.findBtn}>
-              <Icons.Close />
-            </button>
-          </div>
-          <div className={styles.findRow}>
-            <input
-              placeholder="Replace with..."
-              value={replaceQuery}
-              onChange={(e) => setReplaceQuery(e.target.value)}
-              className={styles.findInput}
-            />
-            <button type="button" onClick={handleReplace} className={styles.replaceBtn}>
-              Replace
-            </button>
-            <button type="button" onClick={handleReplaceAll} className={styles.replaceBtn}>
-              All
-            </button>
-          </div>
-        </div>
-      )}
+      <FindReplaceBar
+        showFind={showFind}
+        setShowFind={setShowFind}
+        findQuery={findQuery}
+        setFindQuery={setFindQuery}
+        replaceQuery={replaceQuery}
+        setReplaceQuery={setReplaceQuery}
+        matches={matches}
+        matchIndex={matchIndex}
+        setMatchIndex={setMatchIndex}
+        handleFind={handleFind}
+        handleReplace={handleReplace}
+        handleReplaceAll={handleReplaceAll}
+      />
 
-      {/* Scrollable Container with sticky line numbers and code layers */}
       <div ref={scrollContainerRef} className={`${styles.scrollContainer} scroll-hide`}>
-        {/* Line Numbers Gutter */}
-        <div className={styles.gutter}>
-          <div className={styles.gutterContent}>
-            {linesArr.map((line) => (
-              // biome-ignore lint/a11y/useKeyWithClickEvents: gutter lines are clickable for selection
-              <div
-                key={line}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  toggleLine(line);
-                }}
-                className={`${styles.gutterLine} ${
-                  selectedLines.some((l) => Number(l) === Number(line))
-                    ? styles.selectedGutterLine
-                    : ''
-                }`}
-              >
-                {line}
-              </div>
-            ))}
-          </div>
-        </div>
+        <Gutter linesArr={linesArr} selectedLines={selectedLines} toggleLine={toggleLine} />
 
-        <div className={styles.editorWrapper}>
-          <textarea
-            value={localContent}
-            onChange={handleChange}
-            spellCheck="false"
-            className={styles.textarea}
-          />
-
-          <pre
-            aria-hidden="true"
-            className={styles.pre}
-            // biome-ignore lint/security/noDangerouslySetInnerHtml: used for code syntax highlighting
-            dangerouslySetInnerHTML={{
-              __html: highlightCode(localContent) + (localContent.endsWith('\n') ? ' ' : ''),
-            }}
-          />
-        </div>
+        <CodeEditor
+          localContent={localContent}
+          handleChange={handleChange}
+          highlightedCode={highlightCode(localContent)}
+        />
       </div>
     </div>
   );
