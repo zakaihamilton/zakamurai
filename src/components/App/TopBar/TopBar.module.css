@@ -5,7 +5,22 @@
   align-items: center;
   justify-content: space-between;
   padding: 0 24px;
-  background: var(--bg-panel);
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  position: relative;
+  z-index: 10;
+}
+
+.header::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent 0%, var(--accent-light) 50%, transparent 100%);
+  pointer-events: none;
 }
 
 .breadcrumb {
@@ -46,25 +61,28 @@
   border: 1px solid var(--border);
   color: var(--text-main);
   cursor: pointer;
-  padding: 6px 12px;
-  border-radius: 6px;
+  padding: 8px 16px;
+  border-radius: 8px;
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 12px;
-  font-weight: bold;
-  transition: all 0.2s;
+  font-size: 13px;
+  font-weight: 600;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   font-family: inherit;
+  box-shadow: var(--shadow-sm);
 }
 
 .actionBtn:hover {
-  background: var(--bg-surface);
-  color: var(--text-main);
-  border-color: var(--text-muted);
+  background: var(--bg-input);
+  color: var(--accent);
+  border-color: var(--accent);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px var(--accent-glow);
 }
 
 .actionBtn.active {
-  background: var(--bg-surface);
+  background: var(--accent-glow);
   color: var(--accent);
   border-color: var(--accent);
 }

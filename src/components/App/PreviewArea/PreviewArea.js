@@ -19,7 +19,7 @@ export default function PreviewArea({ htmlContent, isCompilerReady }) {
   const [isMaximized, setIsMaximized] = useState(false);
   const containerRef = useRef(null);
 
-  const [address, setAddress] = useState('/preview/index.html');
+  const [address, setAddress] = useState('/preview/dist/index.html');
   const [host, setHost] = useState('');
 
   useEffect(() => {

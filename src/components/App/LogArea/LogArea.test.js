@@ -29,6 +29,6 @@ describe('LogArea', () => {
     });
 
     render(<LogArea />);
-    expect(screen.getByText('Compiling project...')).toBeDefined();
+    expect(screen.getByText('Processing...')).toBeDefined();
   });
 });

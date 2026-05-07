@@ -3,7 +3,9 @@
   background: var(--bg-tab-inactive);
   overflow-x: auto;
   border-bottom: 1px solid var(--border);
-  min-height: 40px;
+  min-height: 44px;
+  padding: 4px 4px 0 4px;
+  gap: 2px;
 }
 
 .tab {
@@ -14,20 +16,38 @@
   gap: 8px;
   background: none;
   border: none;
-  border-right: 1px solid var(--border);
-  border-top: 2px solid transparent;
+  border-radius: 8px 8px 0 0;
   cursor: pointer;
   font-size: 13px;
+  font-weight: 500;
   min-width: max-content;
   user-select: none;
-  color: inherit;
+  color: var(--text-muted);
   font-family: inherit;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+}
+
+.tab:hover:not(.activeTab) {
+  background: var(--bg-surface);
+  color: var(--text-main);
 }
 
 .activeTab {
-  background: var(--bg-tab-active);
+  background: var(--bg-base);
   color: var(--text-main);
-  border-top-color: var(--accent);
+  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.2);
+}
+
+.activeTab::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--accent);
+  box-shadow: 0 -2px 8px var(--accent);
 }
 
 .inactiveTab {

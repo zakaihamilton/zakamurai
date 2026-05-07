@@ -1,13 +1,24 @@
 .promptFooter {
   padding: 16px 24px;
-  /*[cite: 3] */
   background: var(--bg-panel);
-  /*[cite: 3] */
   border-top: 1px solid var(--border);
-  /*[cite: 3] */
   display: flex;
   flex-direction: column;
   gap: 12px;
+  position: relative;
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.1);
+  z-index: 10;
+}
+
+.promptFooter::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent 0%, var(--accent-light) 50%, transparent 100%);
+  pointer-events: none;
 }
 
 .tagsContainer {
@@ -50,30 +61,21 @@
 
 .input {
   width: 100%;
-  /*[cite: 3] */
   background: var(--bg-input);
-  /*[cite: 3] */
   border: 1px solid var(--border-light);
-  /*[cite: 3] */
   border-radius: 12px;
-  /*[cite: 3] */
   padding: 16px 20px;
-  /*[cite: 3] */
   color: var(--text-main);
-  /*[cite: 3] */
   outline: none;
-  /*[cite: 3] */
   font-size: 14px;
-  /*[cite: 3] */
-  transition: all 0.2s;
-  /*[cite: 3] */
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
 .input:focus {
   border-color: var(--accent);
-  /*[cite: 3] */
-  box-shadow: 0 0 0 3px var(--accent-glow);
-  /*[cite: 3] */
+  box-shadow: 0 0 0 4px var(--accent-glow), inset 0 2px 4px rgba(0, 0, 0, 0.05);
+  transform: translateY(-1px);
 }
 
 .input:disabled {
@@ -85,51 +87,66 @@
 
 .button {
   position: absolute;
-  /*[cite: 3] */
   right: 12px;
-  /*[cite: 3] */
   top: 50%;
-  /*[cite: 3] */
   transform: translateY(-50%);
-  /*[cite: 3] */
   border: none;
-  /*[cite: 3] */
   border-radius: 8px;
-  /*[cite: 3] */
   padding: 8px;
-  /*[cite: 3] */
   display: flex;
   align-items: center;
   justify-content: center;
   transition: all 0.2s;
-  /*[cite: 3] */
   font-weight: 600;
-  /*[cite: 3] */
   font-family: inherit;
-  /*[cite: 3] */
 }
 
 .buttonActive {
   background: var(--accent);
-  /*[cite: 3] */
   color: #fff;
-  /*[cite: 3] */
   cursor: pointer;
-  /*[cite: 3] */
+  box-shadow: 0 4px 12px var(--accent-glow);
 }
 
 .buttonActive:hover {
+  transform: translateY(-50%) scale(1.05);
   filter: brightness(1.1);
-  /*[cite: 3] */
-  box-shadow: 0 0 15px var(--accent-glow);
-  /*[cite: 3] */
+  box-shadow: 0 6px 16px var(--accent-glow);
 }
 
 .buttonDisabled {
   background: var(--bg-surface);
-  /*[cite: 3] */
   color: var(--text-muted);
-  /*[cite: 3] */
   cursor: not-allowed;
-  /*[cite: 3] */
+}
+
+.processing {
+  position: relative;
+  overflow: hidden;
+}
+
+.processing::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 200%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.05) 50%,
+    transparent 100%
+  );
+  animation: shimmer 1.5s infinite;
+  pointer-events: none;
+}
+
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
 }

@@ -1,4 +1,5 @@
-import { render, screen } from '@testing-library/react';
+import React from 'react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AppState, PreviewState } from '../App';
 import { EditorState } from '../EditorArea';
@@ -17,6 +18,13 @@ vi.mock('../App', () => ({
   },
   PreviewState: {
     useState: vi.fn(),
+  },
+}));
+
+vi.mock('../../Widgets/Tooltip/Tooltip', () => ({
+  __esModule: true,
+  default: ({ children, content }) => {
+    return React.cloneElement(children, { title: content });
   },
 }));
 
@@ -106,8 +114,11 @@ describe('TopBar', () => {
     SidebarState.useState.mockReturnValue({ folderTree: [] });
     EditorState.useState.mockReturnValue({ fileContents: {} });
 
-    const { getByText } = render(<TopBar />);
-    const exportBtn = getByText('Export ZIP');
+    render(<TopBar />);
+    const menuBtn = screen.getByTitle('More actions');
+    fireEvent.click(menuBtn);
+
+    const exportBtn = screen.getByText('Export ZIP');
     expect(exportBtn).toBeDefined();
   });
 

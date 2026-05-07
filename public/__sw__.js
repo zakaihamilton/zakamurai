@@ -246,8 +246,9 @@ self.addEventListener('fetch', (event) => {
 
   // Check if this is a virtual server request
   const match = url.pathname.match(/^\/__virtual__\/(\d+)(\/.*)?$/);
+  const previewMatch = url.pathname.match(/^\/preview(\/.*)?$/);
 
-  if (!match) {
+  if (!match && !previewMatch) {
     // Not a virtual request - but check if it's from a virtual context
     // This handles plain <a href="/about"> links and asset requests (images, scripts)
     // that should stay within the virtual server
@@ -256,10 +257,12 @@ self.addEventListener('fetch', (event) => {
       try {
         const refererUrl = new URL(referer);
         const refererMatch = refererUrl.pathname.match(/^\/__virtual__\/(\d+)/);
-        if (refererMatch) {
+        const previewRefererMatch = refererUrl.pathname.match(/^\/preview/);
+
+        if (refererMatch || previewRefererMatch) {
           // Request from within a virtual server context
-          const virtualPrefix = refererMatch[0];
-          const virtualPort = parseInt(refererMatch[1], 10);
+          const virtualPort = refererMatch ? parseInt(refererMatch[1], 10) : 3000;
+          const virtualPrefix = refererMatch ? refererMatch[0] : '/preview';
           const targetPath = url.pathname + url.search;
 
           if (event.request.mode === 'navigate') {
@@ -285,8 +288,8 @@ self.addEventListener('fetch', (event) => {
 
   DEBUG && console.log('[SW] Virtual request:', url.pathname);
 
-  const port = parseInt(match[1], 10);
-  const path = match[2] || '/';
+  const port = match ? parseInt(match[1], 10) : 3000;
+  const path = (match ? match[2] : previewMatch[1]) || '/';
 
   event.respondWith(handleVirtualRequest(event.request, port, path + url.search));
 });

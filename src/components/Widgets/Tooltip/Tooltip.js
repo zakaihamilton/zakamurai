@@ -25,11 +25,10 @@ export default function Tooltip({ content, children, className = '' }) {
         const topSpace = rect.top;
         const bottomSpace = window.innerHeight - rect.bottom;
 
-        // If not enough space at the top, show at the bottom
-        const newPlacement = topSpace < 40 && bottomSpace > topSpace ? 'bottom' : 'top';
+        // Preliminary placement, will be refined in useLayoutEffect
+        const newPlacement = topSpace < 100 && bottomSpace > topSpace ? 'bottom' : 'top';
         setPlacement(newPlacement);
 
-        // Initial rough position
         const triggerCenter = rect.left + rect.width / 2 + window.scrollX;
 
         setCoords({
@@ -51,22 +50,59 @@ export default function Tooltip({ content, children, className = '' }) {
     if (isVisible && tooltipRef.current && triggerRef.current) {
       const tooltipRect = tooltipRef.current.getBoundingClientRect();
       const triggerRect = triggerRef.current.getBoundingClientRect();
-      const triggerCenter = triggerRect.left + triggerRect.width / 2 + window.scrollX;
-
-      const halfWidth = tooltipRect.width / 2;
       const margin = 10;
+      const arrowHeight = 10;
 
-      let left = triggerCenter;
+      // Vertical flipping logic based on actual height
+      let newPlacement = placement;
+      const tooltipHeight = tooltipRect.height + arrowHeight + margin;
+      const spaceAbove = triggerRect.top;
+      const spaceBelow = window.innerHeight - triggerRect.bottom;
+
+      if (placement === 'top' && spaceAbove < tooltipHeight && spaceBelow > spaceAbove) {
+        newPlacement = 'bottom';
+      } else if (placement === 'bottom' && spaceBelow < tooltipHeight && spaceAbove > spaceBelow) {
+        newPlacement = 'top';
+      }
+
+      if (newPlacement !== placement) {
+        setPlacement(newPlacement);
+        return; // Re-run effect with new placement
+      }
+
+      // Horizontal positioning and clamping
+      const triggerCenter = triggerRect.left + triggerRect.width / 2 + window.scrollX;
+      const halfWidth = tooltipRect.width / 2;
       const minLeft = window.scrollX + halfWidth + margin;
       const maxLeft = window.scrollX + window.innerWidth - halfWidth - margin;
 
-      // Clamp left position to keep tooltip on screen
-      left = Math.max(minLeft, Math.min(maxLeft, left));
+      let left = Math.max(minLeft, Math.min(maxLeft, triggerCenter));
 
-      setCoords((prev) => ({ ...prev, left }));
+      // Final vertical position
+      let top = newPlacement === 'top' 
+        ? triggerRect.top + window.scrollY 
+        : triggerRect.bottom + window.scrollY;
+
+      // Vertical clamping (ensure it doesn't go off screen at the very top/bottom)
+      const viewportTop = window.scrollY + margin;
+      const viewportBottom = window.scrollY + window.innerHeight - margin;
+
+      if (newPlacement === 'top') {
+        const tooltipTop = top - tooltipRect.height - arrowHeight;
+        if (tooltipTop < viewportTop) {
+          top += (viewportTop - tooltipTop);
+        }
+      } else {
+        const tooltipBottom = top + tooltipRect.height + arrowHeight;
+        if (tooltipBottom > viewportBottom) {
+          top -= (tooltipBottom - viewportBottom);
+        }
+      }
+
+      setCoords({ top, left });
       setArrowOffset(triggerCenter - left);
     }
-  }, [isVisible]);
+  }, [isVisible, placement, content]);
 
   useEffect(() => {
     return () => {

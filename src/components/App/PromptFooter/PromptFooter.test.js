@@ -1,3 +1,4 @@
+import React from 'react';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { AppState } from '../App';
@@ -10,6 +11,13 @@ import PromptFooter from './PromptFooter';
 vi.mock('../LogArea', () => ({
   LogState: {
     useState: vi.fn(),
+  },
+}));
+
+vi.mock('../../Widgets/Tooltip/Tooltip', () => ({
+  __esModule: true,
+  default: ({ children, content }) => {
+    return React.cloneElement(children, { title: content });
   },
 }));
 
