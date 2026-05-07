@@ -23,7 +23,7 @@ const Settings = {
     }
   },
 
-  getProjectName(defaultValue = 'My NextJS App') {
+  getProjectName(defaultValue = 'My App') {
     return this.get(KEYS.PROJECT_NAME, defaultValue);
   },
 
