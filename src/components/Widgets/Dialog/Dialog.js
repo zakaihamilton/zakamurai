@@ -16,7 +16,16 @@ export default function Dialog({
 
   return createPortal(
     <div className={styles.wrapper}>
-      <div className={styles.backdrop} onClick={onCancel} />
+      <div
+        className={styles.backdrop}
+        onClick={onCancel}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') onCancel();
+        }}
+        role="button"
+        tabIndex={-1}
+        aria-label="Close dialog"
+      />
       <div className={styles.dialog}>
         <div className={styles.header}>
           <h3>{title}</h3>
