@@ -1,5 +1,6 @@
 import React from 'react';
 import { Icons } from '../Icons';
+import Tooltip from '../../Widgets/Tooltip/Tooltip';
 import styles from './EditorArea.module.css';
 
 export default function EditorHeader({
@@ -17,14 +18,15 @@ export default function EditorHeader({
         <span className={styles.filePath}>{filePath}</span>
       </div>
       <div className={styles.headerActions}>
-        <button
-          type="button"
-          className={styles.actionBtn}
-          onClick={() => setShowFind(!showFind)}
-          title="Find/Replace (Ctrl+F)"
-        >
-          <Icons.Search />
-        </button>
+        <Tooltip content="Find/Replace (Ctrl+F)">
+          <button
+            type="button"
+            className={styles.actionBtn}
+            onClick={() => setShowFind(!showFind)}
+          >
+            <Icons.Search />
+          </button>
+        </Tooltip>
         {hasDiff && (
           <div className={styles.diffHeaderToolbar}>
             <span className={styles.diffLabel}>Review AI Changes:</span>

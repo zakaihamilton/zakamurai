@@ -4,6 +4,7 @@ import { AppState } from '../App';
 import { EditorState } from '../EditorArea';
 import { Icons } from '../Icons';
 import { TabState } from '../TabBar';
+import Tooltip from '../../Widgets/Tooltip/Tooltip';
 import styles from './Sidebar.module.css';
 import TreeItem from './TreeItem';
 
@@ -46,14 +47,16 @@ export default function Sidebar() {
     <aside className={styles.sidebar} style={{ width: isSidebarOpen ? '260px' : '64px' }}>
       {/* Dynamic Header Section */}
       <div className={styles.header}>
-        <button
-          type="button"
-          onClick={toggleSidebar}
-          onKeyDown={(e) => e.key === 'Enter' && toggleSidebar()}
-          className={styles.logo}
-        >
-          Z
-        </button>
+        <Tooltip content={isSidebarOpen ? 'Collapse Sidebar' : 'Expand Sidebar'}>
+          <button
+            type="button"
+            onClick={toggleSidebar}
+            onKeyDown={(e) => e.key === 'Enter' && toggleSidebar()}
+            className={styles.logo}
+          >
+            Z
+          </button>
+        </Tooltip>
         <div className={styles.projectNameContainer} style={{ opacity: isSidebarOpen ? 1 : 0 }}>
           <span className={styles.tagline}>ZAKAMURAI</span>
         </div>
@@ -117,22 +120,24 @@ export default function Sidebar() {
       </div>
 
       {/* AI Prompt Footer Toggle */}
-      <button
-        type="button"
-        onClick={() =>
-          sidebarState((d) => {
-            d.showAIInput = !d.showAIInput;
-          })
-        }
-        className={styles.footerToggle}
-        style={{
-          justifyContent: isSidebarOpen ? 'flex-start' : 'center',
-          color: showAIInput ? 'var(--accent)' : 'var(--text-muted)',
-        }}
-      >
-        {showAIInput ? <Icons.ToggleOn /> : <Icons.ToggleOff />}
-        {isSidebarOpen && <span className={styles.footerToggleLabel}>AI PROMPT</span>}
-      </button>
+      <Tooltip content={showAIInput ? 'Hide AI Prompt' : 'Show AI Prompt'}>
+        <button
+          type="button"
+          onClick={() =>
+            sidebarState((d) => {
+              d.showAIInput = !d.showAIInput;
+            })
+          }
+          className={styles.footerToggle}
+          style={{
+            justifyContent: isSidebarOpen ? 'flex-start' : 'center',
+            color: showAIInput ? 'var(--accent)' : 'var(--text-muted)',
+          }}
+        >
+          {showAIInput ? <Icons.ToggleOn /> : <Icons.ToggleOff />}
+          {isSidebarOpen && <span className={styles.footerToggleLabel}>AI PROMPT</span>}
+        </button>
+      </Tooltip>
     </aside>
   );
 }

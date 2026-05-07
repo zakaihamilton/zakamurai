@@ -7,6 +7,7 @@ import { Icons } from '../Icons';
 import { LogState } from '../LogArea';
 import { SidebarState } from '../Sidebar';
 import { TabState } from '../TabBar';
+import Tooltip from '../../Widgets/Tooltip/Tooltip';
 import styles from './PromptFooter.module.css';
 
 export default function PromptFooter() {
@@ -211,24 +212,26 @@ FORMAT FOR FULL FILE REWRITE:
           className={styles.input}
         />
         {isProcessing && (
-          <button
-            type="button"
-            onClick={handleStop}
-            className={styles.button}
-            style={{ color: 'var(--error, #f44336)' }}
-            title="Stop AI"
-          >
-            <Icons.Close />
-          </button>
+          <Tooltip content="Stop AI">
+            <button
+              type="button"
+              onClick={handleStop}
+              className={styles.button}
+              style={{ color: 'var(--error, #f44336)' }}
+            >
+              <Icons.Close />
+            </button>
+          </Tooltip>
         )}
-        <button
-          type="submit"
-          disabled={!isBtnActive}
-          className={`${styles.button} ${isBtnActive ? styles.buttonActive : styles.buttonDisabled}`}
-          title="Execute"
-        >
-          <Icons.Send />
-        </button>
+        <Tooltip content="Execute">
+          <button
+            type="submit"
+            disabled={!isBtnActive}
+            className={`${styles.button} ${isBtnActive ? styles.buttonActive : styles.buttonDisabled}`}
+          >
+            <Icons.Send />
+          </button>
+        </Tooltip>
       </form>
     </div>
   );

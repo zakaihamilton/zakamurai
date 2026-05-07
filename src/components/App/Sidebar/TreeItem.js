@@ -484,28 +484,30 @@ export default function TreeItem({
         {/* Action Buttons on Hover */}
         {!isEditing && item.type === 'folder' && (
           <div className={styles.itemActions}>
-            <button
-              type="button"
-              className={styles.miniActionBtn}
-              onClick={(e) => {
-                e.stopPropagation();
-                setIsCreating('file');
-              }}
-              title="New File"
-            >
-              <Icons.FilePlus />
-            </button>
-            <button
-              type="button"
-              className={styles.miniActionBtn}
-              onClick={(e) => {
-                e.stopPropagation();
-                setIsCreating('folder');
-              }}
-              title="New Folder"
-            >
-              <Icons.FolderPlus />
-            </button>
+            <Tooltip content="New File">
+              <button
+                type="button"
+                className={styles.miniActionBtn}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsCreating('file');
+                }}
+              >
+                <Icons.FilePlus />
+              </button>
+            </Tooltip>
+            <Tooltip content="New Folder">
+              <button
+                type="button"
+                className={styles.miniActionBtn}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsCreating('folder');
+                }}
+              >
+                <Icons.FolderPlus />
+              </button>
+            </Tooltip>
           </div>
         )}
       </div>
