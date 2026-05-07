@@ -9,6 +9,16 @@ import { SidebarState } from '../Sidebar';
 import { TabState } from '../TabBar';
 import styles from './TreeItem.module.css';
 
+const treeSorter = (a, b) => {
+  const aType = a.type || (a.kind === 'directory' ? 'folder' : 'file');
+  const bType = b.type || (b.kind === 'directory' ? 'folder' : 'file');
+
+  if (aType === bType) {
+    return a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' });
+  }
+  return aType === 'folder' ? -1 : 1;
+};
+
 export default function TreeItem({
   item,
   level = 0,
@@ -41,7 +51,7 @@ export default function TreeItem({
 
   const [children, setChildren] = useState(() => {
     if (item.children) {
-      return item.children.map((child) => ({
+      return [...item.children].sort(treeSorter).map((child) => ({
         ...child,
         path: [...item.path, child.name],
       }));
@@ -66,7 +76,7 @@ export default function TreeItem({
   useEffect(() => {
     if (item.children && fs.mode !== 'local') {
       setChildren(
-        item.children.map((child) => ({
+        [...item.children].sort(treeSorter).map((child) => ({
           ...child,
           path: [...item.path, child.name],
         })),
@@ -90,10 +100,7 @@ export default function TreeItem({
             path: [...item.path, name],
           });
         }
-        entries.sort((a, b) => {
-          if (a.kind === b.kind) return a.name.localeCompare(b.name);
-          return a.kind === 'directory' ? -1 : 1;
-        });
+        entries.sort(treeSorter);
         setChildren(entries);
       } catch (err) {
         console.error('Failed to load sub-directory:', err);

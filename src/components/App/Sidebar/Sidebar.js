@@ -10,22 +10,30 @@ import TreeItem from './TreeItem';
 
 export const SidebarState = createState('SidebarState');
 
+const treeSorter = (a, b) => {
+  if (a.type === b.type) {
+    return a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' });
+  }
+  return a.type === 'folder' ? -1 : 1;
+};
+
 // Filter the folder tree recursively based on the search input
 const filterTree = (nodes, query) => {
-  if (!query) return nodes;
+  if (!query) return nodes.sort(treeSorter);
   const q = query.toLowerCase();
   return nodes
     .map((node) => {
       if (node.type === 'folder') {
         const filteredChildren = filterTree(node.children || [], query);
         if (node.name.toLowerCase().includes(q) || filteredChildren.length > 0) {
-          return { ...node, children: filteredChildren };
+          return { ...node, children: filteredChildren.sort(treeSorter) };
         }
         return null;
       }
       return node.name.toLowerCase().includes(q) ? node : null;
     })
-    .filter(Boolean);
+    .filter(Boolean)
+    .sort(treeSorter);
 };
 
 export default function Sidebar() {
@@ -41,7 +49,10 @@ export default function Sidebar() {
     });
   };
 
-  const filteredTree = useMemo(() => filterTree(folderTree, filterText), [folderTree, filterText]);
+  const filteredTree = useMemo(() => {
+    const nodes = [...folderTree];
+    return filterTree(nodes, filterText);
+  }, [folderTree, filterText]);
 
   return (
     <aside className={styles.sidebar} style={{ width: isSidebarOpen ? '260px' : '64px' }}>
