@@ -97,6 +97,16 @@
   text-transform: uppercase;
 }
 
+.aiHighlight {
+  color: var(--accent);
+  background: linear-gradient(135deg, var(--accent) 0%, #4f46e5 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  text-fill-color: transparent;
+  filter: drop-shadow(0 0 4px var(--accent-glow));
+}
+
 .mountSection {
   padding: 12px 18px;
   border-bottom: 1px solid var(--border);

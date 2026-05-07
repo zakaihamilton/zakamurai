@@ -43,7 +43,7 @@ describe('Sidebar', () => {
 
     render(<Sidebar />);
     expect(screen.getByText('Test Project')).toBeDefined();
-    expect(screen.getByText('ZAKAMURAI')).toBeDefined();
+    expect(screen.getByText(/ZAKAMURAI/i)).toBeDefined();
   });
 
   it('toggles the sidebar when the logo is clicked', () => {

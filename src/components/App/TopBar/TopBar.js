@@ -243,7 +243,13 @@ export default function TopBar() {
               onKeyDown={(e) => e.key === 'Enter' && handleBreadcrumbClick(seg, i)}
               className={`${styles.breadcrumbSegment} ${i === breadcrumb.length - 1 ? styles.active : ''}`}
             >
-              {seg}
+              {seg === 'Zakamurai' ? (
+                <>
+                  Zakamur<span className={styles.aiHighlight}>ai</span>
+                </>
+              ) : (
+                seg
+              )}
             </button>
             {i < breadcrumb.length - 1 && <Icons.ChevronRight />}
           </React.Fragment>

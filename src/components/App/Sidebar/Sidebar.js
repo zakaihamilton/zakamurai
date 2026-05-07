@@ -69,7 +69,7 @@ export default function Sidebar() {
           </button>
         </Tooltip>
         <div className={styles.projectNameContainer} style={{ opacity: isSidebarOpen ? 1 : 0 }}>
-          <span className={styles.tagline}>ZAKAMURAI</span>
+          <span className={styles.tagline}>ZAKAMUR<span className={styles.aiHighlight}>AI</span></span>
         </div>
       </div>
 

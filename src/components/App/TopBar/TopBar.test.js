@@ -98,7 +98,7 @@ describe('TopBar', () => {
     EditorState.useState.mockReturnValue({ fileContents: {} });
 
     render(<TopBar />);
-    expect(screen.getByText('Zakamurai')).toBeDefined();
+    expect(screen.getByText(/Zakamurai/i)).toBeDefined();
   });
 
   it('renders export button and handles click', async () => {
