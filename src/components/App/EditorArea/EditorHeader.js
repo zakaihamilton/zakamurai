@@ -10,6 +10,8 @@ export default function EditorHeader({
   hasDiff,
   handleApprove,
   handleUndo,
+  showSideBySide,
+  setShowSideBySide,
 }) {
   return (
     <div className={styles.editorHeader}>
@@ -40,6 +42,15 @@ export default function EditorHeader({
             >
               <Icons.Undo /> Undo
             </button>
+            <Tooltip content="Toggle Side by Side View">
+              <button
+                type="button"
+                onClick={() => setShowSideBySide(!showSideBySide)}
+                className={`${styles.diffButton} ${showSideBySide ? styles.sideBySideActive : ''}`}
+              >
+                <Icons.Columns /> Diff
+              </button>
+            </Tooltip>
           </div>
         )}
       </div>

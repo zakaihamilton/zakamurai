@@ -1,7 +1,7 @@
 import React from 'react';
 import styles from './EditorArea.module.css';
 
-export default function Gutter({ linesArr, selectedLines, toggleLine }) {
+export default function Gutter({ linesArr, selectedLines = [], toggleLine }) {
   return (
     <div className={styles.gutter}>
       <div className={styles.gutterContent}>
@@ -11,7 +11,7 @@ export default function Gutter({ linesArr, selectedLines, toggleLine }) {
             key={line}
             onClick={(e) => {
               e.stopPropagation();
-              toggleLine(line);
+              if (toggleLine) toggleLine(line);
             }}
             className={`${styles.gutterLine} ${
               selectedLines.some((l) => Number(l) === Number(line)) ? styles.selectedGutterLine : ''

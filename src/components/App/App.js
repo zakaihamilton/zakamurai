@@ -165,13 +165,21 @@ function ProjectNameSaver() {
 }
 
 function ContentSaver() {
-  const { fileContents } = EditorState.useState();
+  const { fileContents, pendingDiffs } = EditorState.useState();
   useEffect(() => {
     const timer = setTimeout(() => {
-      Settings.setFileContents(fileContents);
+      const contentsToSave = { ...fileContents };
+      if (pendingDiffs) {
+        for (const [path, diff] of Object.entries(pendingDiffs)) {
+          if (diff.originalContent !== undefined) {
+            contentsToSave[path] = diff.originalContent;
+          }
+        }
+      }
+      Settings.setFileContents(contentsToSave);
     }, 1000);
     return () => clearTimeout(timer);
-  }, [fileContents]);
+  }, [fileContents, pendingDiffs]);
   return null;
 }
 

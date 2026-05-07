@@ -3,6 +3,7 @@ import { createState } from '../../Core/Base/State';
 import { AppState } from '../App';
 import { TabState } from '../TabBar';
 import styles from './EditorArea.module.css';
+import { Icons } from '../Icons';
 
 import CodeEditor from './CodeEditor';
 // Sub-components
@@ -28,6 +29,22 @@ export default function EditorArea({ file }) {
   const [replaceQuery, setReplaceQuery] = useState('');
   const [matchIndex, setMatchIndex] = useState(-1);
   const [matches, setMatches] = useState([]);
+  const [showSideBySide, setShowSideBySide] = useState(false);
+
+  const leftScrollRef = useRef(null);
+  const rightScrollRef = useRef(null);
+  const isSyncingScroll = useRef(false);
+
+  const handleScroll = (source, target) => {
+    if (!isSyncingScroll.current && source.current && target.current) {
+      isSyncingScroll.current = true;
+      target.current.scrollTop = source.current.scrollTop;
+      target.current.scrollLeft = source.current.scrollLeft;
+      requestAnimationFrame(() => {
+        isSyncingScroll.current = false;
+      });
+    }
+  };
 
   // Generate line numbers array based on line breaks
   const linesCount = localContent.split('\n').length;
@@ -81,6 +98,8 @@ export default function EditorArea({ file }) {
     if (fs.mode !== 'local') return;
 
     const flush = async () => {
+      if (state.pendingDiffs?.[filePath]) return; // Do not flush if there are pending AI changes
+
       const currentTab = tabState.openTabs.find((t) => t.id === filePath);
       const handle = currentTab?.fsHandle;
       if (handle && localContent !== state.fileContents?.[filePath]) {
@@ -414,6 +433,7 @@ export default function EditorArea({ file }) {
   }, [matchIndex, matches]);
 
   const hasDiff = !!state.pendingDiffs?.[filePath];
+  const diffData = state.pendingDiffs?.[filePath];
   const selectedLines = state.selectedLines?.[filePath] || [];
 
   return (
@@ -425,6 +445,8 @@ export default function EditorArea({ file }) {
         hasDiff={hasDiff}
         handleApprove={handleApprove}
         handleUndo={handleUndo}
+        showSideBySide={showSideBySide}
+        setShowSideBySide={setShowSideBySide}
       />
 
       <FindReplaceBar
@@ -442,15 +464,54 @@ export default function EditorArea({ file }) {
         handleReplaceAll={handleReplaceAll}
       />
 
-      <div ref={scrollContainerRef} className={`${styles.scrollContainer} scroll-hide`}>
-        <Gutter linesArr={linesArr} selectedLines={selectedLines} toggleLine={toggleLine} />
+      {showSideBySide && hasDiff ? (
+        <div className={styles.sideBySideContainer}>
+          <div className={styles.sideBySidePane}>
+            <div className={styles.paneHeader}>
+              <Icons.History /> Original
+            </div>
+            <div
+              ref={leftScrollRef}
+              onScroll={() => handleScroll(leftScrollRef, rightScrollRef)}
+              className={`${styles.sideBySideScroll} scroll-hide`}
+            >
+              <Gutter linesArr={diffData.originalContent.split('\n').map((_, i) => i + 1)} />
+              <CodeEditor
+                localContent={diffData.originalContent}
+                highlightedCode={highlightCode(diffData.originalContent)}
+                readOnly={true}
+              />
+            </div>
+          </div>
+          <div className={styles.sideBySidePane}>
+            <div className={styles.paneHeader}>
+              <Icons.Check /> Modified
+            </div>
+            <div
+              ref={rightScrollRef}
+              onScroll={() => handleScroll(rightScrollRef, leftScrollRef)}
+              className={`${styles.sideBySideScroll} scroll-hide`}
+            >
+              <Gutter linesArr={linesArr} selectedLines={selectedLines} toggleLine={toggleLine} />
+              <CodeEditor
+                localContent={localContent}
+                handleChange={handleChange}
+                highlightedCode={highlightCode(localContent)}
+              />
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div ref={scrollContainerRef} className={`${styles.scrollContainer} scroll-hide`}>
+          <Gutter linesArr={linesArr} selectedLines={selectedLines} toggleLine={toggleLine} />
 
-        <CodeEditor
-          localContent={localContent}
-          handleChange={handleChange}
-          highlightedCode={highlightCode(localContent)}
-        />
-      </div>
+          <CodeEditor
+            localContent={localContent}
+            handleChange={handleChange}
+            highlightedCode={highlightCode(localContent)}
+          />
+        </div>
+      )}
     </div>
   );
 }

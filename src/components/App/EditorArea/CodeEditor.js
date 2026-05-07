@@ -1,12 +1,13 @@
 import React from 'react';
 import styles from './EditorArea.module.css';
 
-export default function CodeEditor({ localContent, handleChange, highlightedCode }) {
+export default function CodeEditor({ localContent, handleChange, highlightedCode, readOnly }) {
   return (
     <div className={styles.editorWrapper}>
       <textarea
         value={localContent}
-        onChange={handleChange}
+        onChange={readOnly ? undefined : handleChange}
+        readOnly={readOnly}
         spellCheck="false"
         className={styles.textarea}
       />
