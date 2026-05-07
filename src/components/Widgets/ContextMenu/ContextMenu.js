@@ -1,10 +1,11 @@
 import React from 'react';
+import { createPortal } from 'react-dom';
 import styles from './ContextMenu.module.css';
 
 export default function ContextMenu({ position, onClose, children }) {
   if (!position) return null;
 
-  return (
+  return createPortal(
     <>
       <div
         role="presentation"
@@ -28,6 +29,7 @@ export default function ContextMenu({ position, onClose, children }) {
       >
         {children}
       </div>
-    </>
+    </>,
+    document.body,
   );
 }

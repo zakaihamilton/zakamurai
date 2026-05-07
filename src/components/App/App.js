@@ -124,6 +124,15 @@ function PassiveWrapper() {
   const { htmlContent, isCompilerReady } = PreviewState.useState();
   const activeTab = openTabs.find((t) => t.id === activeTabId);
 
+  // Sync theme with document.body for global Portals
+  useEffect(() => {
+    if (theme === 'light') {
+      document.body.classList.add('light');
+    } else {
+      document.body.classList.remove('light');
+    }
+  }, [theme]);
+
   // Save theme to localStorage on change
   useEffect(() => {
     Settings.setTheme(theme);

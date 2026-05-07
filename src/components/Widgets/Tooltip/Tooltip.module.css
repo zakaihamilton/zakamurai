@@ -9,7 +9,7 @@
   --tooltip-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
 
   pointer-events: none;
-  z-index: 9999;
+  z-index: 120000;
   padding: 8px 14px;
   background: var(--tooltip-bg);
   backdrop-filter: blur(12px);

@@ -1,4 +1,5 @@
 import React from 'react';
+import { createPortal } from 'react-dom';
 import styles from './Dialog.module.css';
 
 export default function Dialog({
@@ -13,9 +14,9 @@ export default function Dialog({
 }) {
   if (!isOpen) return null;
 
-  return (
+  return createPortal(
     <div className={styles.wrapper}>
-      <div className={styles.backdrop} />
+      <div className={styles.backdrop} onClick={onCancel} />
       <div className={styles.dialog}>
         <div className={styles.header}>
           <h3>{title}</h3>
@@ -36,6 +37,7 @@ export default function Dialog({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
