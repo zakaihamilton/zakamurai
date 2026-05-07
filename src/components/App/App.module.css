@@ -90,6 +90,10 @@
   background: transparent;
 }
 
+:global(::-webkit-scrollbar-corner) {
+  background: transparent;
+}
+
 .scroll-hide::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -105,6 +109,10 @@
 }
 
 .scroll-hide::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scroll-hide::-webkit-scrollbar-corner {
   background: transparent;
 }
 
