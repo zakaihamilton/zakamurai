@@ -25,8 +25,13 @@ export default function PreviewArea({ htmlContent, isCompilerReady }) {
   useEffect(() => {
     if (typeof window !== 'undefined') {
       setHost(window.location.host);
+      // If we are on a subpath (e.g. /my-app/), ensure address starts with it
+      const base = window.location.pathname.replace(/\/$/, '');
+      if (base && base !== '/' && !address.startsWith(base)) {
+        setAddress(base + '/preview/dist/index.html');
+      }
     }
-  }, []);
+  }, [address]);
 
   useEffect(() => {
     if (!('serviceWorker' in navigator)) return;

@@ -245,8 +245,8 @@ self.addEventListener('fetch', (event) => {
   DEBUG && console.log('[SW] Fetch:', url.pathname, 'mainPort:', !!mainPort);
 
   // Check if this is a virtual server request
-  const match = url.pathname.match(/^\/__virtual__\/(\d+)(\/.*)?$/);
-  const previewMatch = url.pathname.match(/^\/preview(\/.*)?$/);
+  const match = url.pathname.match(/\/__virtual__\/(\d+)(\/.*)?$/);
+  const previewMatch = url.pathname.match(/\/preview(\/.*)?$/);
 
   if (!match && !previewMatch) {
     // Not a virtual request - but check if it's from a virtual context
@@ -256,13 +256,13 @@ self.addEventListener('fetch', (event) => {
     if (referer) {
       try {
         const refererUrl = new URL(referer);
-        const refererMatch = refererUrl.pathname.match(/^\/__virtual__\/(\d+)/);
-        const previewRefererMatch = refererUrl.pathname.match(/^\/preview/);
+        const refererMatch = refererUrl.pathname.match(/\/__virtual__\/(\d+)/);
+        const previewRefererMatch = refererUrl.pathname.match(/\/preview/);
 
         if (refererMatch || previewRefererMatch) {
           // Request from within a virtual server context
           const virtualPort = refererMatch ? parseInt(refererMatch[1], 10) : 3000;
-          const virtualPrefix = refererMatch ? refererMatch[0] : '/preview';
+          const virtualPrefix = refererMatch ? refererMatch[0] : (refererUrl.pathname.match(/.*\/preview/)?.[0] || '/preview');
           const targetPath = url.pathname + url.search;
 
           if (event.request.mode === 'navigate') {
@@ -286,10 +286,10 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  DEBUG && console.log('[SW] Virtual request:', url.pathname);
-
   const port = match ? parseInt(match[1], 10) : 3000;
   const path = (match ? match[2] : previewMatch[1]) || '/';
+
+  if (DEBUG) console.log('[SW] Intercepted virtual request:', { port, path, originalUrl: url.pathname });
 
   event.respondWith(handleVirtualRequest(event.request, port, path + url.search));
 });
@@ -298,6 +298,7 @@ self.addEventListener('fetch', (event) => {
  * Handle a request to a virtual server
  */
 async function handleVirtualRequest(request, port, path) {
+  if (DEBUG) console.log(`[SW] handleVirtualRequest: port=${port}, path=${path}`);
   try {
     // Build headers object
     const headers = {};
