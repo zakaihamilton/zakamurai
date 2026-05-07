@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { createState } from '../../Core/Base/State';
 import { AppState } from '../App';
+import { Icons } from '../Icons';
 import { TabState } from '../TabBar';
 import styles from './EditorArea.module.css';
-import { Icons } from '../Icons';
 
 import CodeEditor from './CodeEditor';
 // Sub-components
@@ -116,7 +116,7 @@ export default function EditorArea({ file }) {
 
     window.addEventListener('beforeunload', flush);
     return () => window.removeEventListener('beforeunload', flush);
-  }, [fs.mode, filePath, localContent, state.fileContents, tabState.openTabs]);
+  }, [fs.mode, filePath, localContent, state.fileContents, state.pendingDiffs, tabState.openTabs]);
 
   const highlightCode = (code) => {
     if (!code) return '';

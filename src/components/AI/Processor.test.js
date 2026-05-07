@@ -1,12 +1,12 @@
-import { describe, it, expect, test, vi, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it, test, vi } from 'vitest';
 import {
-  resolveFilePath,
-  applySearchReplace,
-  computeDiff,
-  applyTargetedReplacement,
-  processAIResponse,
-  parseAIResponse,
   applyFileUpdate,
+  applySearchReplace,
+  applyTargetedReplacement,
+  computeDiff,
+  parseAIResponse,
+  processAIResponse,
+  resolveFilePath,
 } from './Processor';
 
 describe('AI Processor', () => {

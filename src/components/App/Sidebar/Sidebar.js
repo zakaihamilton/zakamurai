@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { createState } from '../../Core/Base/State';
+import Tooltip from '../../Widgets/Tooltip/Tooltip';
 import { AppState } from '../App';
 import { EditorState } from '../EditorArea';
 import { Icons } from '../Icons';
 import { TabState } from '../TabBar';
-import Tooltip from '../../Widgets/Tooltip/Tooltip';
 import styles from './Sidebar.module.css';
 import TreeItem from './TreeItem';
 

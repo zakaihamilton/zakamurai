@@ -76,12 +76,13 @@ export default function Tooltip({ content, children, className = '' }) {
       const minLeft = window.scrollX + halfWidth + margin;
       const maxLeft = window.scrollX + window.innerWidth - halfWidth - margin;
 
-      let left = Math.max(minLeft, Math.min(maxLeft, triggerCenter));
+      const left = Math.max(minLeft, Math.min(maxLeft, triggerCenter));
 
       // Final vertical position
-      let top = newPlacement === 'top' 
-        ? triggerRect.top + window.scrollY 
-        : triggerRect.bottom + window.scrollY;
+      let top =
+        newPlacement === 'top'
+          ? triggerRect.top + window.scrollY
+          : triggerRect.bottom + window.scrollY;
 
       // Vertical clamping (ensure it doesn't go off screen at the very top/bottom)
       const viewportTop = window.scrollY + margin;
@@ -90,19 +91,19 @@ export default function Tooltip({ content, children, className = '' }) {
       if (newPlacement === 'top') {
         const tooltipTop = top - tooltipRect.height - arrowHeight;
         if (tooltipTop < viewportTop) {
-          top += (viewportTop - tooltipTop);
+          top += viewportTop - tooltipTop;
         }
       } else {
         const tooltipBottom = top + tooltipRect.height + arrowHeight;
         if (tooltipBottom > viewportBottom) {
-          top -= (tooltipBottom - viewportBottom);
+          top -= tooltipBottom - viewportBottom;
         }
       }
 
       setCoords({ top, left });
       setArrowOffset(triggerCenter - left);
     }
-  }, [isVisible, placement, content]);
+  }, [isVisible, placement]);
 
   useEffect(() => {
     return () => {

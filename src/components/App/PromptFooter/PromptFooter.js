@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
 import { askWebLLM, interruptWebLLM, processAIResponse } from '../../AI';
 import Settings from '../../Storage/Settings';
+import Tooltip from '../../Widgets/Tooltip/Tooltip';
 import { AppState } from '../App';
 import { EditorState } from '../EditorArea';
 import { Icons } from '../Icons';
 import { LogState } from '../LogArea';
 import { SidebarState } from '../Sidebar';
 import { TabState } from '../TabBar';
-import Tooltip from '../../Widgets/Tooltip/Tooltip';
 import styles from './PromptFooter.module.css';
 
 export default function PromptFooter() {

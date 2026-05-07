@@ -147,13 +147,14 @@
   position: sticky;
   left: 0;
   z-index: 10;
-  background: var(--bg-base);
+  background: var(--bg-card);
   padding: 20px 16px;
   border-right: 1px solid var(--border);
-  color: var(--border-light);
+  color: var(--text-muted);
   text-align: right;
   font-family: "JetBrains Mono", "Fira Code", monospace;
   font-size: 14px;
+  font-weight: 500;
   line-height: 1.6;
   user-select: none;
   min-height: 100%;

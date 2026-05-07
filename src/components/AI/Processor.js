@@ -22,20 +22,21 @@ import { setInDraft, updateInDraft } from '../Core/Base/StateUtils';
 
 /**
  * Extracts file blocks from the AI response.
- * 
+ *
  * @param {string} response - The raw string from the AI.
  * @param {string} [activeTabId] - Fallback file path if no markers found.
  * @returns {AIFileBlock[]}
  */
 export function parseAIResponse(response, activeTabId) {
   const fileBlocks = [];
-  const fileRegex = /\/\/ --- File: (.*?) ---\s*([\s\S]*?)(?=\s*\/\/ --- (?:End )?File ---|\s*```|$)/g;
-  
+  const fileRegex =
+    /\/\/ --- File: (.*?) ---\s*([\s\S]*?)(?=\s*\/\/ --- (?:End )?File ---|\s*```|$)/g;
+
   let match = fileRegex.exec(response);
   while (match !== null) {
     fileBlocks.push({
       filePath: match[1].trim(),
-      content: match[2].trim()
+      content: match[2].trim(),
     });
     match = fileRegex.exec(response);
   }
@@ -49,7 +50,7 @@ export function parseAIResponse(response, activeTabId) {
     if (contentToProcess && contentToProcess.trim().length > 10) {
       fileBlocks.push({
         filePath: activeTabId,
-        content: contentToProcess.trim()
+        content: contentToProcess.trim(),
       });
     }
   }
@@ -59,10 +60,10 @@ export function parseAIResponse(response, activeTabId) {
 
 /**
  * Decides how to apply the update (search/replace, targeted replacement, or full rewrite).
- * 
- * @param {string} originalContent 
- * @param {string} newContent 
- * @param {number[]} selectedLines 
+ *
+ * @param {string} originalContent
+ * @param {string} newContent
+ * @param {number[]} selectedLines
  * @returns {ProcessingResult}
  */
 export function applyFileUpdate(originalContent, newContent, selectedLines = []) {
@@ -82,13 +83,13 @@ export function applyFileUpdate(originalContent, newContent, selectedLines = [])
 
 /**
  * Main utility to process AI responses and apply changes to the state.
- * 
- * @param {string} webLLMResult 
- * @param {Object} fs 
- * @param {Function} logState 
- * @param {Function} sidebarState 
- * @param {Function} editorState 
- * @param {Object} tabState 
+ *
+ * @param {string} webLLMResult
+ * @param {Object} fs
+ * @param {Function} logState
+ * @param {Function} sidebarState
+ * @param {Function} editorState
+ * @param {Object} tabState
  * @returns {Promise<number>} Number of files updated.
  */
 export const processAIResponse = async (
@@ -102,15 +103,19 @@ export const processAIResponse = async (
   if (!webLLMResult) return 0;
 
   const fileBlocks = parseAIResponse(webLLMResult, tabState?.activeTabId);
-  const selectedLines = (editorState && typeof editorState.useState === 'function') ? {} : (editorState?.selectedLines || {});
-  // Note: if editorState is a store function, we can't easily read selectedLines outside the callback 
-  // unless we pass it explicitly. For simplicity, we assume editorState is the store function 
+  const selectedLines =
+    editorState && typeof editorState.useState === 'function'
+      ? {}
+      : editorState?.selectedLines || {};
+  // Note: if editorState is a store function, we can't easily read selectedLines outside the callback
+  // unless we pass it explicitly. For simplicity, we assume editorState is the store function
   // but we might need the actual state for selectedLines.
-  
+
   let filesUpdated = 0;
-  const existingPaths = editorState && typeof editorState.useState !== 'function' 
-    ? Object.keys(editorState.fileContents || {}) 
-    : [];
+  const existingPaths =
+    editorState && typeof editorState.useState !== 'function'
+      ? Object.keys(editorState.fileContents || {})
+      : [];
 
   for (const block of fileBlocks) {
     const filePath = resolveFilePath(block.filePath, existingPaths);
@@ -127,7 +132,11 @@ export const processAIResponse = async (
       }
 
       const fileSelectedLines = selectedLines[filePath] || [];
-      const { content: finalContent, diffs } = applyFileUpdate(originalContent, block.content, fileSelectedLines);
+      const { content: finalContent, diffs } = applyFileUpdate(
+        originalContent,
+        block.content,
+        fileSelectedLines,
+      );
 
       // Update Sidebar
       if (sidebarState) {

@@ -1,7 +1,6 @@
 import { CreateMLCEngine } from '@mlc-ai/web-llm';
 import { DEFAULT_SYSTEM_PROMPT } from './Prompts';
 
-
 // A single variable to hold the initialization promise
 let enginePromise = null;
 

@@ -1,6 +1,6 @@
 import React from 'react';
-import { Icons } from '../Icons';
 import Tooltip from '../../Widgets/Tooltip/Tooltip';
+import { Icons } from '../Icons';
 import styles from './EditorArea.module.css';
 
 export default function EditorHeader({

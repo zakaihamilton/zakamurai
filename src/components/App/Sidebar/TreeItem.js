@@ -449,7 +449,7 @@ export default function TreeItem({
       if (draggedItem) {
         const sourcePath = draggedItem.path.join('/');
         const targetPath = item.path.join('/');
-        const isInvalid = sourcePath === targetPath || targetPath.startsWith(sourcePath + '/');
+        const isInvalid = sourcePath === targetPath || targetPath.startsWith(`${sourcePath}/`);
         if (!isInvalid) {
           e.preventDefault();
           e.dataTransfer.dropEffect = 'move';
@@ -458,13 +458,13 @@ export default function TreeItem({
     }
   };
 
-  const handleDragEnter = (e) => {
+  const handleDragEnter = (_e) => {
     if (item.type === 'folder') {
       const { draggedItem } = sidebarState;
       if (draggedItem) {
         const sourcePath = draggedItem.path.join('/');
         const targetPath = item.path.join('/');
-        const isInvalid = sourcePath === targetPath || targetPath.startsWith(sourcePath + '/');
+        const isInvalid = sourcePath === targetPath || targetPath.startsWith(`${sourcePath}/`);
         if (!isInvalid) {
           setIsDropTarget(true);
         }
@@ -580,7 +580,10 @@ export default function TreeItem({
         }
       }
 
-      if (draft.activeTabId === sourcePathStr || draft.activeTabId?.startsWith(`${sourcePathStr}/`)) {
+      if (
+        draft.activeTabId === sourcePathStr ||
+        draft.activeTabId?.startsWith(`${sourcePathStr}/`)
+      ) {
         draft.activeTabId = newPathStr + draft.activeTabId.substring(sourcePathStr.length);
       }
     });
