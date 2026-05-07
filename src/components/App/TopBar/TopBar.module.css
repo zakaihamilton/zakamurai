@@ -58,8 +58,14 @@
 }
 
 .actionBtn:hover {
-  background: var(--accent);
-  color: #fff;
+  background: var(--bg-surface);
+  color: var(--text-main);
+  border-color: var(--text-muted);
+}
+
+.actionBtn.active {
+  background: var(--bg-surface);
+  color: var(--accent);
   border-color: var(--accent);
 }
 
@@ -165,4 +171,39 @@
   background: rgba(239, 68, 68, 0.85) !important;
   border-color: #ef4444 !important;
   color: #fff !important;
+}
+
+.menuItem {
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  width: 100% !important;
+  padding: 10px 14px !important;
+  background: none !important;
+  border: none !important;
+  color: var(--text-main) !important;
+  font-size: 13px !important;
+  cursor: pointer !important;
+  border-radius: 6px !important;
+  transition: all 0.2s !important;
+  text-align: left !important;
+  font-family: inherit !important;
+}
+
+.menuItem:hover {
+  background: var(--bg-surface) !important;
+}
+
+.menuItem:disabled {
+  opacity: 0.5 !important;
+  cursor: not-allowed !important;
+}
+
+.menuItem svg {
+  color: var(--text-muted) !important;
+  transition: color 0.2s !important;
+}
+
+.menuItem:hover svg {
+  color: var(--text-main) !important;
 }

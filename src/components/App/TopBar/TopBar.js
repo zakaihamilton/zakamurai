@@ -10,6 +10,7 @@ import { Icons } from '../Icons';
 import { LogState } from '../LogArea';
 import { SidebarState } from '../Sidebar';
 import { TabState } from '../TabBar';
+import ContextMenu from '../../Widgets/ContextMenu/ContextMenu';
 import styles from './TopBar.module.css';
 
 export default function TopBar() {
@@ -24,6 +25,7 @@ export default function TopBar() {
   const previewState = PreviewState.useState();
   const { isProcessing } = logState;
   const [isStartOverDialogOpen, setIsStartOverDialogOpen] = useState(false);
+  const [menuPosition, setMenuPosition] = useState(null);
   const activeTab = openTabs.find((t) => t.id === activeTabId);
 
   const handleCompile = async () => {
@@ -138,6 +140,7 @@ export default function TopBar() {
   };
 
   const handleExportZip = async () => {
+    setMenuPosition(null);
     const zip = new ZipWriter();
 
     if (fs.mode === 'local' && fs.rootHandle) {
@@ -216,6 +219,18 @@ export default function TopBar() {
     });
   };
 
+  const handleMenuOpen = (e) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    setMenuPosition({
+      x: rect.right - 120, // Adjust based on menu width
+      y: rect.bottom + 8,
+    });
+  };
+
+  const handleMenuClose = () => {
+    setMenuPosition(null);
+  };
+
   return (
     <header className={styles.header}>
       <div className={styles.breadcrumb}>
@@ -274,34 +289,52 @@ export default function TopBar() {
             </button>
           </Tooltip>
         </div>
-        <Tooltip content="Export as ZIP">
-          <button type="button" className={styles.actionBtn} onClick={handleExportZip}>
+        <Tooltip content="More actions">
+          <button
+            type="button"
+            className={`${styles.actionBtn} ${menuPosition ? styles.active : ''}`}
+            onClick={handleMenuOpen}
+          >
+            <Icons.MoreVertical />
+          </button>
+        </Tooltip>
+        <ContextMenu position={menuPosition} onClose={handleMenuClose}>
+          <button
+            type="button"
+            className={styles.menuItem}
+            onClick={() => {
+              handleExportZip();
+              handleMenuClose();
+            }}
+          >
             <Icons.Plus />
             <span>Export ZIP</span>
           </button>
-        </Tooltip>
-        <Tooltip content="Start over (unlink project and reset files)">
           <button
             type="button"
-            className={styles.actionBtn}
-            onClick={handleStartOver}
+            className={styles.menuItem}
             disabled={isProcessing}
+            onClick={() => {
+              handleStartOver();
+              handleMenuClose();
+            }}
           >
             <Icons.Refresh />
             <span>Start over</span>
           </button>
-        </Tooltip>
-        <Tooltip content="Clear virtual filesystem (forces fresh compile)">
           <button
             type="button"
-            className={`${styles.actionBtn} ${styles.clearFsBtn}`}
-            onClick={handleClearFS}
+            className={styles.menuItem}
             disabled={isProcessing}
+            onClick={() => {
+              handleClearFS();
+              handleMenuClose();
+            }}
           >
             <Icons.Trash />
             <span>Clear FS</span>
           </button>
-        </Tooltip>
+        </ContextMenu>
         <Tooltip content={`Switch to ${theme === 'light' ? 'dark' : 'light'} theme`}>
           <button type="button" onClick={toggleTheme} className={styles.themeToggle}>
             {theme === 'light' ? <Icons.Moon /> : <Icons.Sun />}
