@@ -9,6 +9,7 @@ export const LogState = createState('LogState');
 LogState.useState.initial = {
   logs: Settings.getAILogs(),
   isProcessing: false,
+  processingType: null, // 'ai' or 'system'
 };
 
 export default function LogArea() {

@@ -29,6 +29,7 @@ export default function PromptFooter() {
     interruptWebLLM();
     logState((draft) => {
       draft.isProcessing = false;
+      draft.processingType = null;
       draft.logs = [
         ...draft.logs,
         { id: Date.now(), role: 'system', text: 'AI generation stopped by user.' },
@@ -57,6 +58,7 @@ export default function PromptFooter() {
     logState((draft) => {
       draft.logs = [...draft.logs, { id: Date.now(), role: 'user', text: userMsg }];
       draft.isProcessing = true;
+      draft.processingType = 'ai';
     });
 
     const runAI = async () => {
@@ -88,6 +90,7 @@ export default function PromptFooter() {
             { id: Date.now() + 1, role: 'ai', text: `[Browser WebLLM]: ${webLLMResult}` },
           ];
           draft.isProcessing = false;
+          draft.processingType = null;
         });
 
         // Use the centralized processor to apply file changes
@@ -104,6 +107,7 @@ export default function PromptFooter() {
             },
           ];
           draft.isProcessing = false;
+          draft.processingType = null;
         });
       }
     };

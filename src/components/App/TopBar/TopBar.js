@@ -31,6 +31,7 @@ export default function TopBar() {
 
     logState((draft) => {
       draft.isProcessing = true;
+      draft.processingType = 'system';
     });
     // Switch to (and open) logs tab if not already there
     if (activeTabId !== 'ai-logs') {
@@ -79,6 +80,7 @@ export default function TopBar() {
     } finally {
       logState((draft) => {
         draft.isProcessing = false;
+        draft.processingType = null;
       });
     }
   };
@@ -233,10 +235,12 @@ export default function TopBar() {
       </div>
       <div className={styles.centerSection} />
       <div className={styles.actions}>
-        {isProcessing && (
+        {logState.isProcessing && (
           <div className={styles.workingIndicator}>
-            <Icons.BotSmall />
-            <span>AI is working...</span>
+            {logState.processingType === 'ai' ? <Icons.BotSmall /> : <Icons.RefreshSmall />}
+            <span>
+              {logState.processingType === 'ai' ? 'AI is working...' : 'System is working...'}
+            </span>
           </div>
         )}
         <div className={styles.compileGroup}>
