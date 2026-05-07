@@ -15,6 +15,20 @@ export const Icons = {
       <path d="M6 9l6 6 6-6" />
     </svg>
   ),
+  ChevronUp: () => (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M18 15l-6-6-6 6" />
+    </svg>
+  ),
   ChevronRight: () => (
     <svg
       width="14"
@@ -27,6 +41,20 @@ export const Icons = {
       strokeLinejoin="round"
     >
       <path d="M9 18l6-6-6-6" />
+    </svg>
+  ),
+  ChevronLeft: () => (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M15 18l-6-6 6-6" />
     </svg>
   ),
   Folder: (props) => (
