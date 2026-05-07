@@ -35,7 +35,7 @@ export default function TreeItem({
 
   const currentPathStr = item.path.join('/');
   // Force expansion if we are actively filtering, otherwise use standard state
-  const isExpanded = filterText ? true : expandedFolders[currentPathStr];
+  const isExpanded = filterText ? true : expandedFolders[currentPathStr] !== false;
   const isActive = activeTabId === currentPathStr;
 
   const [children, setChildren] = useState(() => {
@@ -116,9 +116,10 @@ export default function TreeItem({
         loadLocalChildren();
       }
       sidebarState((draft) => {
+        const current = draft.expandedFolders[currentPathStr] !== false;
         draft.expandedFolders = {
           ...draft.expandedFolders,
-          [currentPathStr]: !draft.expandedFolders[currentPathStr],
+          [currentPathStr]: !current,
         };
       });
     } else {

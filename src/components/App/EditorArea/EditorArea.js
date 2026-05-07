@@ -85,7 +85,25 @@ export default function EditorArea({ file }) {
 
   const highlightCode = (code) => {
     if (!code) return '';
-    let escaped = code.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+    const fileDiff = state.pendingDiffs?.[filePath];
+    const diffs = fileDiff?.diffs || [];
+
+    // 1. Mark diff ranges in the code using non-printing characters
+    let markedCode = code;
+    // Sort diffs descending to avoid index shifting while marking
+    const sortedDiffs = [...diffs].sort((a, b) => b.start - a.start);
+    for (const diff of sortedDiffs) {
+      markedCode = `${markedCode.substring(0, diff.start)}\u0003${markedCode.substring(
+        diff.start,
+        diff.end,
+      )}\u0004${markedCode.substring(diff.end)}`;
+    }
+
+    let escaped = markedCode
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
 
     // Protect tokens by replacing them with unmatchable placeholders first
     const tokens = [];
@@ -111,14 +129,77 @@ export default function EditorArea({ file }) {
       escaped = escaped.replace(`\u0001${i}\u0002`, tok);
     });
 
+    // 5. Replace diff markers with spans
+    // biome-ignore lint/suspicious/noControlCharactersInRegex: markers are intentional for diff highlighting
+    escaped = escaped.replace(/\u0003/g, `<span class="${styles.diffHighlight}">`);
+    // biome-ignore lint/suspicious/noControlCharactersInRegex: markers are intentional for diff highlighting
+    escaped = escaped.replace(/\u0004/g, '</span>');
+
     return escaped;
   };
+
+  const handleApprove = () => {
+    state((draft) => {
+      if (draft.pendingDiffs) {
+        const nextDiffs = { ...draft.pendingDiffs };
+        delete nextDiffs[filePath];
+        draft.pendingDiffs = nextDiffs;
+      }
+    });
+  };
+
+  const handleUndo = async () => {
+    const diff = state.pendingDiffs?.[filePath];
+    if (diff) {
+      const prevContent = diff.originalContent;
+      state((draft) => {
+        draft.fileContents = { ...draft.fileContents, [filePath]: prevContent };
+        if (draft.pendingDiffs) {
+          const nextDiffs = { ...draft.pendingDiffs };
+          delete nextDiffs[filePath];
+          draft.pendingDiffs = nextDiffs;
+        }
+      });
+      setLocalContent(prevContent);
+
+      try {
+        if (fs?.rootHandle && fs?.writeFileAtPath) {
+          await fs.writeFileAtPath(filePath, prevContent);
+        }
+      } catch (err) {
+        console.error('Failed to undo in FS:', err);
+      }
+    }
+  };
+
+  const hasDiff = !!state.pendingDiffs?.[filePath];
 
   return (
     <div className={styles.editorArea}>
       <div className={styles.editorHeader}>
-        <Icons.File />
-        {filePath}
+        <div className={styles.headerTitle}>
+          <Icons.File />
+          <span className={styles.filePath}>{filePath}</span>
+        </div>
+        {hasDiff && (
+          <div className={styles.diffHeaderToolbar}>
+            <span className={styles.diffLabel}>Review AI Changes:</span>
+            <button
+              type="button"
+              onClick={handleApprove}
+              className={`${styles.diffButton} ${styles.approveBtn}`}
+            >
+              <Icons.Check /> Approve
+            </button>
+            <button
+              type="button"
+              onClick={handleUndo}
+              className={`${styles.diffButton} ${styles.undoBtn}`}
+            >
+              <Icons.Undo /> Undo
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Scrollable Container with sticky line numbers and code layers */}

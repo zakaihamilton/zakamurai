@@ -212,9 +212,10 @@ export default function TopBar() {
     const fullPath = pathSegments.join('/');
 
     sidebarState((draft) => {
+      const current = draft.expandedFolders[fullPath] !== false;
       draft.expandedFolders = {
         ...draft.expandedFolders,
-        [fullPath]: !draft.expandedFolders[fullPath],
+        [fullPath]: !current,
       };
     });
   };

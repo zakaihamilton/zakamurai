@@ -63,7 +63,7 @@ function PreviewRestorer() {
         draft.isCompilerReady = true;
       });
     }
-  }, [htmlContent, fs, sidebarState.folderTree, editorState.fileContents]);
+  }, [htmlContent, fs, sidebarState.folderTree, editorState.fileContents, previewState]);
 
   return null;
 }
@@ -89,7 +89,6 @@ export default function App() {
   }, []);
 
   const initialActiveTabId = useMemo(() => Settings.getActiveTabId() || 'ai-logs', []);
-  const initialExpandedFolders = useMemo(() => ({ src: true, 'src/components': true }), []);
   const initialAILogs = useMemo(() => {
     const stored = Settings.getAILogs();
     if (stored && stored.length > 0) return stored;
@@ -104,7 +103,6 @@ export default function App() {
           isSidebarOpen={true}
           showAIInput={true}
           folderTree={initialFiles}
-          expandedFolders={initialExpandedFolders}
         >
           <TabState openTabs={initialTabs} activeTabId={initialActiveTabId}>
             <LogState isProcessing={false} logs={initialAILogs}>

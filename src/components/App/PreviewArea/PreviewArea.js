@@ -56,7 +56,7 @@ export default function PreviewArea({ htmlContent, isCompilerReady }) {
         if (path && path !== 'blank') {
           setAddress(path);
         }
-      } catch (e) {
+      } catch (_e) {
         // Ignore cross-origin errors
       }
     }

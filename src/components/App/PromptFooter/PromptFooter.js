@@ -63,15 +63,33 @@ export default function PromptFooter() {
 
     const runAI = async () => {
       try {
-        let finalPrompt = userMsg;
+        const systemInstructions = `You are an expert developer.
+When updating files, follow these rules:
+1. Prefer SEARCH/REPLACE blocks for small changes.
+2. ONLY use full file content for new files or complete rewrites.
+3. Use the EXACT file path provided in the context. Do not add prefixes like "path/to/" or "./".
+4. Do NOT include comments like "// CHANGE ..." or "// REPLACE ..." inside the code blocks. The code you provide must be valid and ready to run.
+5. If you use full content, you MUST NOT omit any existing code unless explicitly asked to delete it.
 
+SEARCH/REPLACE Example:
+// --- File: path/to/file ---
+<<<<<<< SEARCH
+[exact code to find]
+=======
+[new code to replace it with]
+>>>>>>> REPLACE
+// --- End File ---`;
+
+        let finalPrompt;
         // Inject the active file context if available
         if (
           currentActiveTab &&
           currentActiveTab.type === 'file' &&
           activeFileContent !== undefined
         ) {
-          finalPrompt = `You are an expert developer. Here is the current file I am working on (${currentActiveTabId}):\n\n${activeFileContent}\n\nUser Request:\n${userMsg}`;
+          finalPrompt = `${systemInstructions}\n\nHere is the current file I am working on (${currentActiveTabId}):\n\n${activeFileContent}\n\nUser Request:\n${userMsg}`;
+        } else {
+          finalPrompt = `${systemInstructions}\n\nUser Request:\n${userMsg}`;
         }
 
         const webLLMResult = await askWebLLM(finalPrompt);

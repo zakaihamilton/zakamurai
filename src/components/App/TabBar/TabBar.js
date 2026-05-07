@@ -80,7 +80,7 @@ export default function TabBar() {
     <div className={`${styles.tabBar} scroll-hide`}>
       {openTabs.map((tab) => {
         const isActive = activeTabId === tab.id;
-        const isLogs = tab.id === 'ai-logs';
+        const _isLogs = tab.id === 'ai-logs';
         return (
           <React.Fragment key={tab.id}>
             {/* biome-ignore lint/a11y/useSemanticElements: nesting buttons is invalid HTML */}

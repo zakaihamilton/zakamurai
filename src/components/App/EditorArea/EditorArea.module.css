@@ -10,13 +10,98 @@
 }
 
 .editorHeader {
-  padding: 16px 24px;
+  padding: 12px 24px;
   border-bottom: 1px solid var(--border);
   color: var(--text-muted);
   display: flex;
   align-items: center;
-  gap: 8px;
+  justify-content: space-between;
+  gap: 12px;
   flex-shrink: 0;
+  background: var(--bg-card);
+  min-height: 56px;
+}
+
+.headerTitle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+
+.filePath {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 13px;
+}
+
+.diffHeaderToolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: rgba(76, 175, 80, 0.05);
+  padding: 4px 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(76, 175, 80, 0.15);
+  animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateX(10px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+.diffLabel {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #4caf50;
+}
+
+.diffButton {
+  padding: 6px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg-base);
+  color: var(--text-main);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.diffButton:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.approveBtn {
+  border-color: rgba(76, 175, 80, 0.3);
+  color: #4caf50;
+}
+
+.approveBtn:hover {
+  background: #4caf50;
+  color: white;
+  border-color: #4caf50;
+}
+
+.undoBtn {
+  border-color: rgba(244, 67, 54, 0.3);
+  color: #f44336;
+}
+
+.undoBtn:hover {
+  background: #f44336;
+  color: white;
+  border-color: #f44336;
 }
 
 .scrollContainer {
@@ -107,4 +192,79 @@
 }
 .hl-attr {
   color: #d19a66;
+}
+
+.diffHighlight {
+  background: rgba(76, 175, 80, 0.25);
+  border-bottom: 2px solid rgba(76, 175, 80, 0.5);
+  border-radius: 2px;
+  display: inline;
+}
+
+.diffHeaderToolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: rgba(76, 175, 80, 0.05);
+  padding: 4px 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(76, 175, 80, 0.15);
+  animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateX(10px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+.diffLabel {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #4caf50;
+  white-space: nowrap;
+}
+
+.diffButton {
+  padding: 6px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg-base);
+  color: var(--text-main);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  white-space: nowrap;
+}
+
+.diffButton:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.approveBtn {
+  border-color: rgba(76, 175, 80, 0.3);
+  color: #4caf50;
+}
+
+.approveBtn:hover {
+  background: #4caf50;
+  color: white;
+  border-color: #4caf50;
+}
+
+.undoBtn {
+  border-color: rgba(244, 67, 54, 0.3);
+  color: #f44336;
+}
+
+.undoBtn:hover {
+  background: #f44336;
+  color: white;
+  border-color: #f44336;
 }
