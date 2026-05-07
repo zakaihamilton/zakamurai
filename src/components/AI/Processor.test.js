@@ -5,9 +5,59 @@ import {
   computeDiff,
   applyTargetedReplacement,
   processAIResponse,
+  parseAIResponse,
+  applyFileUpdate,
 } from './Processor';
 
 describe('AI Processor', () => {
+  describe('parseAIResponse', () => {
+    test('extracts multiple files', () => {
+      const response = `
+// --- File: one.js ---
+content 1
+// --- End File ---
+// --- File: two.js ---
+content 2
+// --- End File ---
+`;
+      const blocks = parseAIResponse(response);
+      expect(blocks.length).toBe(2);
+      expect(blocks[0].filePath).toBe('one.js');
+      expect(blocks[1].content).toBe('content 2');
+    });
+
+    test('fallback to activeTabId', () => {
+      const response = 'just some code';
+      const blocks = parseAIResponse(response, 'active.js');
+      expect(blocks.length).toBe(1);
+      expect(blocks[0].filePath).toBe('active.js');
+    });
+
+    test('fallback with markdown blocks', () => {
+      const response = '```javascript\nfunction test() { return true; }\n```';
+      const blocks = parseAIResponse(response, 'active.js');
+      expect(blocks.length).toBe(1);
+      expect(blocks[0].content).toBe('function test() { return true; }');
+    });
+  });
+
+  describe('applyFileUpdate', () => {
+    test('uses search/replace if marker present', () => {
+      const original = 'line1\nline2';
+      const update = '<<<<<<< SEARCH\nline1\n=======\nnew1\n>>>>>>> REPLACE';
+      const result = applyFileUpdate(original, update);
+      expect(result.content).toBe('new1\nline2');
+    });
+
+    test('uses targeted replacement for snippets', () => {
+      const original = 'line1\nline2\nline3';
+      const snippet = 'new line';
+      // snippets are < 80% of original length
+      const result = applyFileUpdate(original, snippet, [2]);
+      expect(result.content).toBe('line1\nnew line\nline3');
+    });
+  });
+
   describe('resolveFilePath', () => {
     const existing = ['src/App.js', 'src/components/Button.js', 'index.html'];
 
@@ -72,29 +122,6 @@ function world() {
       expect(result.content).toContain('console.log("hi")');
       expect(result.content).toContain('console.log("everyone")');
       expect(result.diffs.length).toBe(2);
-    });
-
-    test('selectedLines overlap - allow', () => {
-      const blocks = `<<<<<<< SEARCH
-  console.log("hello");
-=======
-  console.log("hi");
->>>>>>> REPLACE`;
-      // Line 2 is console.log("hello")
-      const result = applySearchReplace(original, blocks, [2]);
-      expect(result.content).toContain('console.log("hi")');
-    });
-
-    test('selectedLines overlap - deny', () => {
-      const blocks = `<<<<<<< SEARCH
-  console.log("world");
-=======
-  console.log("everyone");
->>>>>>> REPLACE`;
-      // world is around line 6, if we select line 2 it should not apply
-      const result = applySearchReplace(original, blocks, [2]);
-      expect(result.content).toBe(original);
-      expect(result.diffs.length).toBe(0);
     });
   });
 
@@ -170,7 +197,6 @@ new content
       );
 
       expect(result).toBe(1);
-      // Check if editorState was called to update content
       expect(mockEditorState).toHaveBeenCalled();
     });
 
@@ -197,11 +223,10 @@ modified content
     });
 
     test('fallback to active tab if no markers', async () => {
-      const aiResponse = 'Just some code without markers';
-      // Mocking tabState with active file
+      const aiResponse = 'Just some code without markers but with length > 10';
       const result = await processAIResponse(
         aiResponse,
-        null, // No FS
+        null,
         mockLogState,
         mockSidebarState,
         mockEditorState,

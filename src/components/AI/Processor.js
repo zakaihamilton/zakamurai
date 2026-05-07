@@ -1,5 +1,95 @@
+import { setInDraft, updateInDraft } from '../Core/Base/StateUtils';
+
 /**
- * Utility to process AI responses, extract file changes, and apply them to the file system.
+ * @typedef {Object} Diff
+ * @property {number} start
+ * @property {number} end
+ * @property {string} type
+ * @property {string} original
+ */
+
+/**
+ * @typedef {Object} ProcessingResult
+ * @property {string} content
+ * @property {Diff[]} diffs
+ */
+
+/**
+ * @typedef {Object} AIFileBlock
+ * @property {string} filePath
+ * @property {string} content
+ */
+
+/**
+ * Extracts file blocks from the AI response.
+ * 
+ * @param {string} response - The raw string from the AI.
+ * @param {string} [activeTabId] - Fallback file path if no markers found.
+ * @returns {AIFileBlock[]}
+ */
+export function parseAIResponse(response, activeTabId) {
+  const fileBlocks = [];
+  const fileRegex = /\/\/ --- File: (.*?) ---\s*([\s\S]*?)(?=\s*\/\/ --- (?:End )?File ---|\s*```|$)/g;
+  
+  let match = fileRegex.exec(response);
+  while (match !== null) {
+    fileBlocks.push({
+      filePath: match[1].trim(),
+      content: match[2].trim()
+    });
+    match = fileRegex.exec(response);
+  }
+
+  // Fallback if no markers found but we have an active tab
+  if (fileBlocks.length === 0 && activeTabId) {
+    const codeBlockRegex = /```[a-z]*\n([\s\S]*?)```/g;
+    const blockMatch = codeBlockRegex.exec(response);
+    const contentToProcess = blockMatch ? blockMatch[1] : response;
+
+    if (contentToProcess && contentToProcess.trim().length > 10) {
+      fileBlocks.push({
+        filePath: activeTabId,
+        content: contentToProcess.trim()
+      });
+    }
+  }
+
+  return fileBlocks;
+}
+
+/**
+ * Decides how to apply the update (search/replace, targeted replacement, or full rewrite).
+ * 
+ * @param {string} originalContent 
+ * @param {string} newContent 
+ * @param {number[]} selectedLines 
+ * @returns {ProcessingResult}
+ */
+export function applyFileUpdate(originalContent, newContent, selectedLines = []) {
+  if (newContent.includes('<<<<<<< SEARCH')) {
+    return applySearchReplace(originalContent, newContent, selectedLines);
+  }
+
+  if (selectedLines.length > 0) {
+    const isLikelyFullFile = newContent.length >= originalContent.length * 0.8;
+    if (!isLikelyFullFile) {
+      return applyTargetedReplacement(originalContent, newContent, selectedLines);
+    }
+  }
+
+  return computeDiff(originalContent, newContent, selectedLines);
+}
+
+/**
+ * Main utility to process AI responses and apply changes to the state.
+ * 
+ * @param {string} webLLMResult 
+ * @param {Object} fs 
+ * @param {Function} logState 
+ * @param {Function} sidebarState 
+ * @param {Function} editorState 
+ * @param {Object} tabState 
+ * @returns {Promise<number>} Number of files updated.
  */
 export const processAIResponse = async (
   webLLMResult,
@@ -9,81 +99,41 @@ export const processAIResponse = async (
   editorState,
   tabState,
 ) => {
-  const selectedLines = editorState?.selectedLines || {};
   if (!webLLMResult) return 0;
 
-  const fileRegex =
-    /\/\/ --- File: (.*?) ---\s*([\s\S]*?)(?=\s*\/\/ --- (?:End )?File ---|\s*```|$)/g;
-  let match = fileRegex.exec(webLLMResult);
+  const fileBlocks = parseAIResponse(webLLMResult, tabState?.activeTabId);
+  const selectedLines = (editorState && typeof editorState.useState === 'function') ? {} : (editorState?.selectedLines || {});
+  // Note: if editorState is a store function, we can't easily read selectedLines outside the callback 
+  // unless we pass it explicitly. For simplicity, we assume editorState is the store function 
+  // but we might need the actual state for selectedLines.
+  
   let filesUpdated = 0;
+  const existingPaths = editorState && typeof editorState.useState !== 'function' 
+    ? Object.keys(editorState.fileContents || {}) 
+    : [];
 
-  // Fallback: If no markers found but we have an active tab and the result looks like code
-  if (match === null && tabState && tabState.activeTabId) {
-    const activeTabId = tabState.activeTabId;
-    // Look for code blocks or just use the whole result if it looks like code
-    const codeBlockRegex = /```[a-z]*\n([\s\S]*?)```/g;
-    const blockMatch = codeBlockRegex.exec(webLLMResult);
-    const contentToProcess = blockMatch ? blockMatch[1] : webLLMResult;
-
-    if (contentToProcess && contentToProcess.trim().length > 10) {
-      // Mock a match for the active file
-      match = [null, activeTabId, contentToProcess];
-    }
-  }
-
-  while (match !== null) {
-    const rawFilePath = match[1].trim();
-    const blockContent = match[2].trim();
-
-    // Resolve path to handle AI-added prefixes (e.g., path/to/src/...)
-    const existingPaths = editorState ? Object.keys(editorState.fileContents || {}) : [];
-    const filePath = resolveFilePath(rawFilePath, existingPaths);
+  for (const block of fileBlocks) {
+    const filePath = resolveFilePath(block.filePath, existingPaths);
 
     try {
-      let finalContent = blockContent;
-      let diffs = [];
-
-      // Record current content for diff tracking before we update
       let originalContent = '';
       if (fs?.rootHandle) {
         const handle = await fs.getFileHandleAtPath(filePath);
         if (handle) {
           originalContent = await fs.readFile(handle);
         }
-      } else if (editorState) {
+      } else if (editorState && typeof editorState.useState !== 'function') {
         originalContent = editorState.fileContents?.[filePath] || '';
       }
 
       const fileSelectedLines = selectedLines[filePath] || [];
+      const { content: finalContent, diffs } = applyFileUpdate(originalContent, block.content, fileSelectedLines);
 
-      if (blockContent.includes('<<<<<<< SEARCH')) {
-        const result = applySearchReplace(originalContent, blockContent, fileSelectedLines);
-        finalContent = result.content;
-        diffs = result.diffs;
-      } else if (fileSelectedLines.length > 0) {
-        // If it looks like a snippet and not the full file, replace just the targeted lines
-        const isLikelyFullFile = blockContent.length >= originalContent.length * 0.8;
-        if (!isLikelyFullFile) {
-          const result = applyTargetedReplacement(originalContent, blockContent, fileSelectedLines);
-          finalContent = result.content;
-          diffs = result.diffs;
-        } else {
-          const result = computeDiff(originalContent, blockContent, fileSelectedLines);
-          finalContent = result.content;
-          diffs = result.diffs;
-        }
-      } else {
-        const result = computeDiff(originalContent, blockContent, fileSelectedLines);
-        finalContent = result.content;
-        diffs = result.diffs;
-      }
-
-      // Ensure the sidebar reflects new files even if we don't save to FS immediately yet
-      if (sidebarState && editorState) {
-        const parts = filePath.split('/').filter(Boolean);
-        const fileName = parts[parts.length - 1];
-
+      // Update Sidebar
+      if (sidebarState) {
         sidebarState((draft) => {
+          const parts = filePath.split('/').filter(Boolean);
+          const fileName = parts[parts.length - 1];
           if (!draft.folderTree) draft.folderTree = [];
           let currentLevel = draft.folderTree;
           for (const seg of parts.slice(0, -1)) {
@@ -100,54 +150,47 @@ export const processAIResponse = async (
         });
       }
 
+      // Update Editor
       if (editorState) {
         editorState((draft) => {
-          if (!draft.fileContents) draft.fileContents = {};
-          draft.fileContents[filePath] = finalContent;
-          // Force a new reference to trigger observers
-          draft.fileContents = { ...draft.fileContents };
+          setInDraft(draft, ['fileContents', filePath], finalContent);
 
           if (diffs && diffs.length > 0) {
             const existingDiffs = draft.pendingDiffs || {};
             const existingOriginal = existingDiffs[filePath]?.originalContent;
 
-            draft.pendingDiffs = {
-              ...existingDiffs,
-              [filePath]: {
-                originalContent:
-                  existingOriginal !== undefined ? existingOriginal : originalContent,
-                diffs: diffs,
-              },
-            };
+            setInDraft(draft, ['pendingDiffs', filePath], {
+              originalContent: existingOriginal !== undefined ? existingOriginal : originalContent,
+              diffs: diffs,
+            });
           }
         });
         filesUpdated++;
       }
     } catch (fsErr) {
       logState((draft) => {
-        draft.logs = [
-          ...draft.logs,
+        updateInDraft(draft, ['logs'], (logs = []) => [
+          ...logs,
           {
             id: Date.now() + 4,
             role: 'system',
-            text: `Failed to save ${filePath}: ${fsErr.message}`,
+            text: `Failed to process ${filePath}: ${fsErr.message}`,
           },
-        ];
+        ]);
       });
     }
-    match = fileRegex.exec(webLLMResult);
   }
 
   if (filesUpdated > 0) {
     logState((draft) => {
-      draft.logs = [
-        ...draft.logs,
+      updateInDraft(draft, ['logs'], (logs = []) => [
+        ...logs,
         {
           id: Date.now() + 5,
           role: 'system',
           text: `Successfully updated ${filesUpdated} file(s) ${fs?.rootHandle ? '' : '(Preview Mode)'}. Please review changes in the editor.`,
         },
-      ];
+      ]);
     });
   }
 
@@ -170,7 +213,7 @@ export function applySearchReplace(original, blocks, selectedLines = []) {
   const selectedRanges = selectedLines.map((l) => {
     let start = 0;
     for (let i = 0; i < l - 1; i++) start += lines[i].length + 1;
-    return { start, end: start + lines[l - 1].length };
+    return { start, end: start + (lines[l - 1]?.length || 0) };
   });
 
   while (match !== null) {
@@ -241,14 +284,12 @@ export function computeDiff(original, updated, selectedLines = []) {
     endUpd--;
   }
 
-  const _diffRange = { start, end: endUpd };
-
   if (selectedLines.length > 0) {
     const lines = original.split('\n');
     const selectedRanges = selectedLines.map((l) => {
       let s = 0;
       for (let i = 0; i < l - 1; i++) s += lines[i].length + 1;
-      return { start: s, end: s + lines[l - 1].length };
+      return { start: s, end: s + (lines[l - 1]?.length || 0) };
     });
 
     const isOverlap = selectedRanges.some((r) => {

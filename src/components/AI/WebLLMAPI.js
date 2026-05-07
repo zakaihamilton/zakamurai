@@ -1,4 +1,6 @@
 import { CreateMLCEngine } from '@mlc-ai/web-llm';
+import { DEFAULT_SYSTEM_PROMPT } from './Prompts';
+
 
 // A single variable to hold the initialization promise
 let enginePromise = null;
@@ -51,8 +53,7 @@ export const askWebLLM = async (prompt, systemPrompt = '') => {
   try {
     const engine = await getEngine();
 
-    const defaultSystemPrompt =
-      'You are an expert React and JavaScript developer assistant. If you need to modify or create files, use EXACTLY this format (NO markdown codeblocks like ```): \n// --- File: path/to/file.js ---\n[code content]\n// --- End File ---\nIf modifying an existing file, you MUST use the EXACT file path and extension provided in the context. Provide concise, accurate code and explanations.';
+    const defaultSystemPrompt = DEFAULT_SYSTEM_PROMPT;
 
     const messages = [
       {
