@@ -5,7 +5,7 @@ import Tooltip from '../../Widgets/Tooltip/Tooltip';
 import { Icons } from '../Icons';
 import styles from './PreviewArea.module.css';
 
-export default function PreviewArea({ htmlContent }) {
+export default function PreviewArea({ htmlContent, isCompilerReady }) {
   const iframeRef = useRef(null);
   const [isLoading, setIsLoading] = useState(false);
   const [scale, setScale] = useState(1);
@@ -78,12 +78,6 @@ export default function PreviewArea({ htmlContent }) {
   return (
     <div ref={containerRef} className={`${styles.wrapper} ${isMaximized ? styles.maximized : ''}`}>
       <div className={styles.toolbar}>
-        <div className={styles.trafficLights}>
-          <span className={`${styles.dot} ${styles.dotRed}`} />
-          <span className={`${styles.dot} ${styles.dotYellow}`} />
-          <span className={`${styles.dot} ${styles.dotGreen}`} />
-        </div>
-
         <div className={styles.addressBar}>
           <Icons.Globe />
           <span className={styles.addressText}>localhost:3000/__virtual__/3000/index.html</span>
@@ -129,10 +123,12 @@ export default function PreviewArea({ htmlContent }) {
             <div className={styles.spinner} />
           </div>
         )}
-        {!isSwReady && (
+        {(!isSwReady || !isCompilerReady) && (
           <div className={styles.loadingOverlay}>
             <div className={styles.spinner} />
-            <p className={styles.loadingText}>Initializing Service Worker...</p>
+            <p className={styles.loadingText}>
+              {!isSwReady ? 'Initializing Service Worker...' : 'Restoring Preview...'}
+            </p>
           </div>
         )}
         <div
@@ -143,19 +139,21 @@ export default function PreviewArea({ htmlContent }) {
               CRITICAL: We point src to /index.html. 
               The almostnode Service Worker MUST be active to intercept this. 
           */}
-          <iframe
-            key={refreshKey}
-            ref={iframeRef}
-            src="/__virtual__/3000/index.html"
-            title="Preview"
-            className={styles.iframe}
-            onLoad={handleLoad}
-            sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
-            style={{
-              width: scale !== 1 ? `${100 / scale}%` : '100%',
-              height: scale !== 1 ? `${100 / scale}%` : '100%',
-            }}
-          />
+          {isCompilerReady && (
+            <iframe
+              key={refreshKey}
+              ref={iframeRef}
+              src="/__virtual__/3000/index.html"
+              title="Preview"
+              className={styles.iframe}
+              onLoad={handleLoad}
+              sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+              style={{
+                width: scale !== 1 ? `${100 / scale}%` : '100%',
+                height: scale !== 1 ? `${100 / scale}%` : '100%',
+              }}
+            />
+          )}
         </div>
       </div>
     </div>

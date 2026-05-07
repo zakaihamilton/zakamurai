@@ -14,9 +14,59 @@ import PromptFooter from './PromptFooter';
 import Sidebar, { SidebarState } from './Sidebar';
 import TabBar, { TabState } from './TabBar';
 import TopBar from './TopBar';
+import { Compiler } from '../../utils/compiler';
 
 export const AppState = createState('AppState');
 export const PreviewState = createState('PreviewState');
+
+function PreviewRestorer() {
+  const previewState = PreviewState.useState();
+  const { htmlContent } = previewState;
+  const { fs } = AppState.useState();
+  const sidebarState = SidebarState.useState();
+  const editorState = EditorState.useState();
+  const restoredRef = React.useRef(false);
+
+  useEffect(() => {
+    if (restoredRef.current || !fs?.isReady) return;
+    restoredRef.current = true;
+
+    if (htmlContent) {
+      const restore = async () => {
+        try {
+          const compiler = new Compiler(() => {});
+          const container = await compiler.init();
+          // Seed the dist folder if it's missing
+          if (!container.vfs.existsSync('/dist/index.html')) {
+            if (!container.vfs.existsSync('/dist')) {
+              container.vfs.mkdirSync('/dist', { recursive: true });
+            }
+            container.vfs.writeFileSync('/dist/index.html', htmlContent);
+            container.vfs.writeFileSync('/index.html', htmlContent);
+
+            // Also sync files so that imports in index.html work
+            await compiler.syncFiles(fs, sidebarState.folderTree, editorState.fileContents);
+          }
+        } catch (e) {
+          console.error('Failed to restore preview filesystem', e);
+        } finally {
+          // Mark as ready even on error so we don't stay stuck
+          previewState((draft) => {
+            draft.isCompilerReady = true;
+          });
+        }
+      };
+      restore();
+    } else if (!htmlContent) {
+      // If no content, it's "ready" in the sense that there's nothing to restore
+      previewState((draft) => {
+        draft.isCompilerReady = true;
+      });
+    }
+  }, [htmlContent, fs, sidebarState.folderTree, editorState.fileContents]);
+
+  return null;
+}
 
 export default function App() {
   const fs = useFileSystem();
@@ -59,9 +109,10 @@ export default function App() {
           <TabState openTabs={initialTabs} activeTabId={initialActiveTabId}>
             <LogState isProcessing={false} logs={initialAILogs}>
               <EditorState fileContents={initialContents}>
-                <PreviewState htmlContent={null}>
-                  <TabRestorer />
-                  <ContentSaver />
+                <PreviewState htmlContent={Settings.getPreviewHtml()} isCompilerReady={false}>
+                   <TabRestorer />
+                   <PreviewRestorer />
+                   <ContentSaver />
                   <PassiveWrapper />
                 </PreviewState>
               </EditorState>
@@ -76,7 +127,7 @@ export default function App() {
 function PassiveWrapper() {
   const { theme } = AppState.useState();
   const { openTabs = [], activeTabId } = TabState.useState();
-  const { htmlContent } = PreviewState.useState();
+  const { htmlContent, isCompilerReady } = PreviewState.useState();
   const activeTab = openTabs.find((t) => t.id === activeTabId);
 
   // Save theme to localStorage on change
@@ -93,7 +144,9 @@ function PassiveWrapper() {
         <div className={styles.editorContainer}>
           {activeTab?.type === 'file' && <EditorArea file={activeTab.file} />}
           {activeTab?.type === 'logs' && <LogArea />}
-          {activeTab?.type === 'preview' && <PreviewArea htmlContent={htmlContent} />}
+          {activeTab?.type === 'preview' && (
+            <PreviewArea htmlContent={htmlContent} isCompilerReady={isCompilerReady} />
+          )}
           {!activeTab && (
             <div className={styles.emptyState}>
               <Icons.Bot />

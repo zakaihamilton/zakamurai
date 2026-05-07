@@ -6,6 +6,7 @@ const KEYS = {
   PROMPT_HISTORY: 'zakamurai_prompt_history',
   FILE_CONTENTS: 'zakamurai_file_contents',
   AI_LOGS: 'zakamurai_ai_logs',
+  PREVIEW_HTML: 'zakamurai_preview_html',
 };
 
 const Settings = {
@@ -121,6 +122,18 @@ const Settings = {
       this.set(KEYS.FILE_CONTENTS, JSON.stringify(contents));
     } catch (e) {
       console.warn('Failed to save file contents to localStorage (likely size limit)', e);
+    }
+  },
+
+  getPreviewHtml() {
+    return this.get(KEYS.PREVIEW_HTML);
+  },
+
+  setPreviewHtml(html) {
+    try {
+      this.set(KEYS.PREVIEW_HTML, html);
+    } catch (e) {
+      console.warn('Failed to save preview HTML to localStorage (likely size limit)', e);
     }
   },
 

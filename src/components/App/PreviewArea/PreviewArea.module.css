@@ -21,6 +21,7 @@
     opacity: 0;
     transform: scale(0.98);
   }
+
   to {
     opacity: 1;
     transform: scale(1);
@@ -37,38 +38,6 @@
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;
   user-select: none;
-}
-
-.trafficLights {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex-shrink: 0;
-}
-
-.dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  display: block;
-  opacity: 0.8;
-  transition: opacity 0.15s;
-}
-
-.dot:hover {
-  opacity: 1;
-}
-
-.dotRed {
-  background: #ff5f57;
-}
-
-.dotYellow {
-  background: #febc2e;
-}
-
-.dotGreen {
-  background: #28c840;
 }
 
 .addressBar {
@@ -111,6 +80,7 @@
 }
 
 @keyframes pulse {
+
   0%,
   100% {
     opacity: 1;

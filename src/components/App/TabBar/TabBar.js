@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { createState } from '../../Core/Base/State';
 import Settings from '../../Storage/Settings';
 import Tooltip from '../../Widgets/Tooltip/Tooltip';
@@ -14,7 +14,7 @@ export default function TabBar() {
   const sidebarState = SidebarState.useState();
 
   // Persist open tabs and active tab to localStorage
-  React.useEffect(() => {
+  useEffect(() => {
     Settings.setOpenTabs(openTabs);
     if (activeTabId) {
       Settings.setActiveTabId(activeTabId);
@@ -107,16 +107,16 @@ export default function TabBar() {
                 <span className={styles.tabLabelText}>{tab.label}</span>
               </Tooltip>
               <Tooltip content="Close Tab">
-                  <button
-                    type="button"
-                    onClick={(e) => closeTab(e, tab.id)}
-                    onKeyDown={(e) => e.key === 'Enter' && closeTab(e, tab.id)}
-                    className={styles.closeButton}
-                    style={{ opacity: isActive ? 1 : 0.5 }}
-                  >
-                    <Icons.Close />
-                  </button>
-                </Tooltip>
+                <button
+                  type="button"
+                  onClick={(e) => closeTab(e, tab.id)}
+                  onKeyDown={(e) => e.key === 'Enter' && closeTab(e, tab.id)}
+                  className={styles.closeButton}
+                  style={{ opacity: isActive ? 1 : 0.5 }}
+                >
+                  <Icons.Close />
+                </button>
+              </Tooltip>
             </div>
           </React.Fragment>
         );

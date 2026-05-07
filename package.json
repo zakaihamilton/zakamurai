@@ -11,9 +11,9 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "setup:almostnode": "mkdir -p public/lib/almostnode public/assets && cp -r node_modules/almostnode/dist/* public/lib/almostnode/ && cp node_modules/almostnode/dist/assets/* public/assets/ && cp node_modules/almostnode/dist/__sw__.js public/",
-    "postinstall": "npm run setup:almostnode",
-    "predev": "npm run setup:almostnode",
-    "prebuild": "npm run setup:almostnode"
+    "postinstall": "\"$npm_execpath\" run setup:almostnode",
+    "predev": "\"$npm_execpath\" run setup:almostnode",
+    "prebuild": "\"$npm_execpath\" run setup:almostnode"
   },
   "dependencies": {
     "@mlc-ai/web-llm": "^0.2.83",

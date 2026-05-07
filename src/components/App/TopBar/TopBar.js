@@ -56,6 +56,7 @@ export default function TopBar() {
             previewState((draft) => {
               draft.htmlContent = html;
             });
+            Settings.setPreviewHtml(html);
             // Open (or switch to) the preview tab
             tabState((draft) => {
               const exists = draft.openTabs.some((t) => t.id === 'preview');
@@ -104,6 +105,10 @@ export default function TopBar() {
 
   const handleClearFS = () => {
     Compiler.reset();
+    previewState((draft) => {
+      draft.htmlContent = null;
+    });
+    Settings.setPreviewHtml(null);
     logState((draft) => {
       draft.logs.push({
         id: `${Date.now()}-${Math.random()}`,

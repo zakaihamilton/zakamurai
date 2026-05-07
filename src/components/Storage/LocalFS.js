@@ -54,6 +54,7 @@ export function useFileSystem() {
   const [error, setError] = useState(null);
   const [version, setVersion] = useState(0);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [isReady, setIsReady] = useState(false);
 
   const triggerRefresh = useCallback(() => {
     setRefreshTrigger((v) => v + 1);
@@ -126,6 +127,8 @@ export function useFileSystem() {
         }
       } catch (err) {
         console.error('Failed to restore FS handle:', err);
+      } finally {
+        setIsReady(true);
       }
     };
     init();
@@ -257,5 +260,6 @@ export function useFileSystem() {
     createFolder,
     deleteEntry,
     unlinkProject,
+    isReady,
   };
 }
