@@ -17,20 +17,38 @@
 .logContainer {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-surface);
+  overflow: hidden;
 }
 
 .logItem {
   display: flex;
-  gap: 12px;
   animation: fadeIn 0.1s ease;
-  padding: 2px 8px;
-  border-radius: 4px;
   align-items: flex-start;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+}
+
+.logItem:last-child {
+  border-bottom: none;
 }
 
 .logItem:hover {
   background: rgba(129, 140, 248, 0.05);
+}
+
+.lineNumber {
+  color: var(--text-muted);
+  font-size: 11px;
+  width: 44px;
+  text-align: right;
+  user-select: none;
+  opacity: 0.5;
+  padding: 6px 12px 6px 0;
+  border-right: 1px solid var(--border);
+  background: rgba(0, 0, 0, 0.1);
+  flex-shrink: 0;
 }
 
 .prompt {
@@ -39,8 +57,11 @@
   font-weight: bold;
   font-size: 13px;
   line-height: 1.5;
-  width: 12px;
+  width: 36px;
   flex-shrink: 0;
+  display: flex;
+  justify-content: center;
+  padding: 6px 0;
 }
 
 .logContent {
@@ -50,6 +71,7 @@
   white-space: pre-wrap;
   word-break: break-all;
   flex: 1;
+  padding: 6px 12px 6px 0;
 }
 
 .aiRow .logContent {

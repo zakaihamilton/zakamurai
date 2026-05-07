@@ -97,7 +97,7 @@ export default function LogArea() {
           </div>
         )}
         <div className={styles.logContainer}>
-          {logs.map((log) => (
+          {logs.map((log, index) => (
             <div
               key={log.id}
               className={`${styles.logItem} ${
@@ -114,12 +114,14 @@ export default function LogArea() {
                   : ''
               }`}
             >
+              <span className={styles.lineNumber}>{index + 1}</span>
               <span className={styles.prompt}>{log.role === 'user' ? '$' : '>'}</span>
               <div className={styles.logContent}>{log.text}</div>
             </div>
           ))}
           {isProcessing && (
             <div className={styles.logItem}>
+              <span className={styles.lineNumber}>{logs.length + 1}</span>
               <span className={styles.prompt}>&gt;</span>
               <div className={`${styles.logContent} ${styles.processing}`}>Processing...</div>
             </div>
