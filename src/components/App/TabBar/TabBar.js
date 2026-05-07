@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { createState } from '../../Core/Base/State';
 import Settings from '../../Storage/Settings';
 import Tooltip from '../../Widgets/Tooltip/Tooltip';
@@ -12,6 +12,8 @@ export default function TabBar() {
   const tabState = TabState.useState();
   const { openTabs = [], activeTabId } = tabState;
   const sidebarState = SidebarState.useState();
+  const [draggedTabId, setDraggedTabId] = useState(null);
+  const [dropTargetId, setDropTargetId] = useState(null);
 
   // Persist open tabs and active tab to localStorage
   useEffect(() => {
@@ -74,22 +76,110 @@ export default function TabBar() {
     });
   };
 
+  const [isOverBar, setIsOverBar] = useState(false);
+
+  const handleDragStart = (e, tabId) => {
+    e.dataTransfer.setData('tabId', tabId);
+    e.dataTransfer.effectAllowed = 'move';
+    setDraggedTabId(tabId);
+    // Set drag image or ghost effect if desired
+  };
+
+  const handleDragOver = (e, tabId) => {
+    e.preventDefault();
+    e.stopPropagation();
+    e.dataTransfer.dropEffect = 'move';
+    setIsOverBar(false);
+    if (tabId !== draggedTabId) {
+      setDropTargetId(tabId);
+    }
+  };
+
+  const handleDragEnd = () => {
+    setDraggedTabId(null);
+    setDropTargetId(null);
+    setIsOverBar(false);
+  };
+
+  const handleDrop = (e, targetTabId) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const draggedId = e.dataTransfer.getData('tabId');
+    if (!draggedId || draggedId === targetTabId) {
+      setDraggedTabId(null);
+      setDropTargetId(null);
+      setIsOverBar(false);
+      return;
+    }
+
+    tabState((draft) => {
+      const draggedIndex = draft.openTabs.findIndex((t) => t.id === draggedId);
+      const targetIndex = draft.openTabs.findIndex((t) => t.id === targetTabId);
+
+      if (draggedIndex !== -1 && targetIndex !== -1) {
+        const [draggedTab] = draft.openTabs.splice(draggedIndex, 1);
+        draft.openTabs.splice(targetIndex, 0, draggedTab);
+      }
+    });
+
+    setDraggedTabId(null);
+    setDropTargetId(null);
+    setIsOverBar(false);
+  };
+
+  const handleDropOnBar = (e) => {
+    e.preventDefault();
+    const draggedId = e.dataTransfer.getData('tabId');
+    if (!draggedId) return;
+
+    tabState((draft) => {
+      const draggedIndex = draft.openTabs.findIndex((t) => t.id === draggedId);
+      if (draggedIndex !== -1) {
+        const [draggedTab] = draft.openTabs.splice(draggedIndex, 1);
+        draft.openTabs.push(draggedTab);
+      }
+    });
+
+    setDraggedTabId(null);
+    setDropTargetId(null);
+    setIsOverBar(false);
+  };
+
   if (openTabs.length === 0) return null;
 
   return (
-    <div className={`${styles.tabBar} scroll-hide`}>
+    <div
+      className={`${styles.tabBar} scroll-hide ${isOverBar ? styles.barDropTarget : ''}`}
+      onDragOver={(e) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        setIsOverBar(true);
+        setDropTargetId(null);
+      }}
+      onDragLeave={() => setIsOverBar(false)}
+      onDrop={handleDropOnBar}
+    >
       {openTabs.map((tab) => {
         const isActive = activeTabId === tab.id;
-        const _isLogs = tab.id === 'ai-logs';
+        const isDragging = draggedTabId === tab.id;
+        const isDropTarget = dropTargetId === tab.id;
+
         return (
           <React.Fragment key={tab.id}>
             {/* biome-ignore lint/a11y/useSemanticElements: nesting buttons is invalid HTML */}
             <div
               role="button"
               tabIndex={0}
+              draggable
+              onDragStart={(e) => handleDragStart(e, tab.id)}
+              onDragOver={(e) => handleDragOver(e, tab.id)}
+              onDragEnd={handleDragEnd}
+              onDrop={(e) => handleDrop(e, tab.id)}
               onClick={() => handleTabClick(tab.id)}
               onKeyDown={(e) => e.key === 'Enter' && handleTabClick(tab.id)}
-              className={`${styles.tab} ${isActive ? styles.activeTab : styles.inactiveTab}`}
+              className={`${styles.tab} ${isActive ? styles.activeTab : styles.inactiveTab} ${
+                isDragging ? styles.tabDragging : ''
+              } ${isDropTarget ? styles.dropTarget : ''}`}
             >
               <span className={`${styles.tabIcon} ${isActive ? styles.tabIconActive : ''}`}>
                 {tab.type === 'logs' ? (

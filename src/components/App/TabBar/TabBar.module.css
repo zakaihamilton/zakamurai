@@ -116,3 +116,28 @@
   background: var(--bg-surface);
   color: var(--accent);
 }
+
+.tabDragging {
+  opacity: 0.5;
+  cursor: grabbing !important;
+}
+
+.dropTarget {
+  position: relative;
+}
+
+.dropTarget::before {
+  content: "";
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  left: -1px;
+  width: 2px;
+  background: var(--accent);
+  box-shadow: 0 0 8px var(--accent);
+  z-index: 10;
+}
+
+.barDropTarget {
+  background: rgba(var(--accent-rgb, 129, 140, 248), 0.05) !important;
+}
