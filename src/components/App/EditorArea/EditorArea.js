@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { createState } from '../../Core/Base/State';
 import { AppState } from '../App';
 import { Icons } from '../Icons';
@@ -170,18 +170,46 @@ export default function EditorArea({ file }) {
       escaped = escaped.replace(/\b([a-zA-Z\-]+)(?==)/g, (m) => pushToken(m, 'hl-attr'));
     }
 
-    // Inject find matches (if any)
-    if (findQuery) {
-      const regex = new RegExp(findQuery.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
-      escaped = escaped.replace(regex, (m) => {
-        return pushToken(m, 'hl-match');
-      });
-    }
+    // Reconstruction with Search Highlights
+    let matchCounter = 0;
+    const searchRegex = (showFind && findQuery)
+      ? new RegExp(
+          findQuery
+            .replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;'),
+          'gi',
+        )
+      : null;
 
-    // Inject protected tokens back into the string
-    tokens.forEach((tok, i) => {
-      escaped = escaped.replace(`\u0001${i}\u0002`, tok);
-    });
+    const highlightText = (text) => {
+      if (!searchRegex) return text;
+      return text.replace(searchRegex, (m) => {
+        const cls = matchCounter === matchIndex ? 'hl-match-active' : 'hl-match';
+        matchCounter++;
+        return `<span class="${styles[cls]}">${m}</span>`;
+      });
+    };
+
+    // We need to iterate through 'escaped' and replace placeholders AND highlight text in order
+    const parts = escaped.split(/(\u0001\d+\u0002)/);
+    escaped = parts
+      .map((part) => {
+        if (part.startsWith('\u0001') && part.endsWith('\u0002')) {
+          const idx = parseInt(part.substring(1, part.length - 1));
+          let tok = tokens[idx];
+          if (searchRegex) {
+            // Highlight text inside token spans
+            tok = tok.replace(/(>)([^<]+)(<)/g, (_m, p1, p2, p3) => {
+              return p1 + highlightText(p2) + p3;
+            });
+          }
+          return tok;
+        }
+        return highlightText(part);
+      })
+      .join('');
 
     // Replace diff markers with spans including original content
     // biome-ignore lint/suspicious/noControlCharactersInRegex: markers are intentional for tracking
@@ -271,58 +299,60 @@ export default function EditorArea({ file }) {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  const handleFind = () => {
+  const handleFind = useCallback(() => {
     if (!findQuery) {
       setMatches([]);
       setMatchIndex(-1);
       return;
     }
-    const lines = localContent.split('\n');
+    const escapedQuery = findQuery.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const regex = new RegExp(escapedQuery, 'gi');
     const newMatches = [];
-    lines.forEach((line, i) => {
-      let idx = line.toLowerCase().indexOf(findQuery.toLowerCase());
-      while (idx !== -1) {
-        newMatches.push({ line: i + 1, index: idx });
-        idx = line.toLowerCase().indexOf(findQuery.toLowerCase(), idx + 1);
-      }
-    });
+    let match;
+    // biome-ignore lint/suspicious/noAssignInExpressions: standard regex match loop
+    while ((match = regex.exec(localContent)) !== null) {
+      const before = localContent.substring(0, match.index);
+      const line = before.split('\n').length;
+      const lineStart = before.lastIndexOf('\n') + 1;
+      newMatches.push({
+        line,
+        index: match.index - lineStart,
+        absoluteIndex: match.index,
+        length: match[0].length,
+      });
+    }
+
     setMatches(newMatches);
-    setMatchIndex(newMatches.length > 0 ? 0 : -1);
-  };
+    setMatchIndex((prev) => {
+      if (newMatches.length === 0) return -1;
+      if (prev === -1) return 0;
+      return prev % newMatches.length;
+    });
+  }, [findQuery, localContent]);
+
+  useEffect(() => {
+    if (showFind) {
+      handleFind();
+    }
+  }, [handleFind, showFind]);
 
   const handleReplace = () => {
     if (matchIndex === -1 || matches.length === 0) return;
     const match = matches[matchIndex];
-    const lines = localContent.split('\n');
-    const lineContent = lines[match.line - 1];
-    const newLineContent =
-      lineContent.substring(0, match.index) +
+    const newVal =
+      localContent.substring(0, match.absoluteIndex) +
       replaceQuery +
-      lineContent.substring(match.index + findQuery.length);
-    lines[match.line - 1] = newLineContent;
-    const newVal = lines.join('\n');
-    handleChange({ target: { value: newVal } });
+      localContent.substring(match.absoluteIndex + match.length);
 
-    // Re-find matches and jump to next
-    const newLines = newVal.split('\n');
-    const newMatches = [];
-    newLines.forEach((line, i) => {
-      let idx = line.toLowerCase().indexOf(findQuery.toLowerCase());
-      while (idx !== -1) {
-        newMatches.push({ line: i + 1, index: idx });
-        idx = line.toLowerCase().indexOf(findQuery.toLowerCase(), idx + 1);
-      }
-    });
-    setMatches(newMatches);
-    if (newMatches.length > 0) {
-      setMatchIndex(matchIndex % newMatches.length);
-    } else {
-      setMatchIndex(-1);
-    }
+    handleChange({ target: { value: newVal } });
+    // handleFind will be triggered by localContent change
   };
 
   const handleReplaceAll = () => {
-    const newVal = localContent.split(findQuery).join(replaceQuery);
+    if (!findQuery) return;
+    const escapedQuery = findQuery.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const regex = new RegExp(escapedQuery, 'gi');
+    const newVal = localContent.replace(regex, () => replaceQuery);
     handleChange({ target: { value: newVal } });
     setShowFind(false);
   };
@@ -399,14 +429,16 @@ export default function EditorArea({ file }) {
             </div>
             <button
               type="button"
-              onClick={() => setMatchIndex((i) => (i + 1) % matches.length)}
+              onClick={() => setMatchIndex((i) => (matches.length > 0 ? (i + 1) % matches.length : -1))}
               className={styles.findBtn}
             >
               <Icons.ChevronDown />
             </button>
             <button
               type="button"
-              onClick={() => setMatchIndex((i) => (i - 1 + matches.length) % matches.length)}
+              onClick={() =>
+                setMatchIndex((i) => (matches.length > 0 ? (i - 1 + matches.length) % matches.length : -1))
+              }
               className={styles.findBtn}
             >
               <Icons.ChevronUp />
