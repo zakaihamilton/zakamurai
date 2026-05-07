@@ -78,16 +78,25 @@ SEARCH/REPLACE Example:
 =======
 [new code to replace it with]
 >>>>>>> REPLACE
-// --- End File ---`;
+// --- End File ---
+6. Be EXTREMELY precise with CSS properties. If the user says "change the color", assume they mean the 'color' property (text color) unless they specify 'background' or it's obvious from context. Do not confuse 'color' with 'background-color'.`;
 
         let finalPrompt;
+        const selectedLines = editorState.selectedLines?.[currentActiveTabId] || [];
+        const selectionInfo =
+          selectedLines.length > 0
+            ? `\n\nCRITICAL: The user has selected the following lines for review: ${selectedLines.join(
+                ', ',
+              )}. ONLY apply changes to these specific lines.`
+            : '';
+
         // Inject the active file context if available
         if (
           currentActiveTab &&
           currentActiveTab.type === 'file' &&
           activeFileContent !== undefined
         ) {
-          finalPrompt = `${systemInstructions}\n\nHere is the current file I am working on (${currentActiveTabId}):\n\n${activeFileContent}\n\nUser Request:\n${userMsg}`;
+          finalPrompt = `${systemInstructions}\n\nHere is the current file I am working on (${currentActiveTabId}):\n\n${activeFileContent}${selectionInfo}\n\nUser Request:\n${userMsg}`;
         } else {
           finalPrompt = `${systemInstructions}\n\nUser Request:\n${userMsg}`;
         }
@@ -112,7 +121,7 @@ SEARCH/REPLACE Example:
         });
 
         // Use the centralized processor to apply file changes
-        await processAIResponse(webLLMResult, fs, logState, sidebarState, editorState);
+        await processAIResponse(webLLMResult, fs, logState, sidebarState, editorState, tabState);
       } catch (err) {
         logState((draft) => {
           if (!draft.isProcessing) return; // Discard if stopped
@@ -156,8 +165,27 @@ SEARCH/REPLACE Example:
 
   const isBtnActive = val.trim() && !isProcessing;
 
+  const currentActiveTabId = tabState.activeTabId;
+  const selectedLines = editorState.selectedLines?.[currentActiveTabId] || [];
+
   return (
     <div className={styles.promptFooter}>
+      {(currentActiveTabId || selectedLines.length > 0) && (
+        <div className={styles.tagsContainer}>
+          {currentActiveTabId && (
+            <div className={styles.tag}>
+              <Icons.File size={12} />
+              <span>{currentActiveTabId.split('/').pop()}</span>
+            </div>
+          )}
+          {selectedLines.length > 0 && (
+            <div className={styles.tag}>
+              <Icons.Check size={12} />
+              <span>Lines: {selectedLines.sort((a, b) => a - b).join(', ')}</span>
+            </div>
+          )}
+        </div>
+      )}
       <form onSubmit={send} className={styles.form}>
         <input
           value={val}

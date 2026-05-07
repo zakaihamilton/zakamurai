@@ -2,10 +2,10 @@
  * Compiler utility that uses almostnode to run build scripts in the browser.
  */
 
-import { getSharedContainer, resetContainer, initContainer } from './container';
+import { getSharedContainer, initContainer, resetContainer } from './container';
 import { setupSmartDevServer } from './dev-server';
-import { syncFilesToContainer } from './syncer';
 import { scaffoldMissingFiles } from './scaffold';
+import { syncFilesToContainer } from './syncer';
 
 export class Compiler {
   constructor(onLog) {

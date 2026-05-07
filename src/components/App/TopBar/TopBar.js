@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Compiler } from '../../../utils/compiler';
 import { ZipWriter } from '../../../utils/zip';
 import Settings from '../../Storage/Settings';
+import ContextMenu from '../../Widgets/ContextMenu/ContextMenu';
 import Dialog from '../../Widgets/Dialog/Dialog';
 import Tooltip from '../../Widgets/Tooltip/Tooltip';
 import { AppState, PreviewState } from '../App';
@@ -10,7 +11,6 @@ import { Icons } from '../Icons';
 import { LogState } from '../LogArea';
 import { SidebarState } from '../Sidebar';
 import { TabState } from '../TabBar';
-import ContextMenu from '../../Widgets/ContextMenu/ContextMenu';
 import styles from './TopBar.module.css';
 
 export default function TopBar() {

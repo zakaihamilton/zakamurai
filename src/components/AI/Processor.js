@@ -1,13 +1,35 @@
 /**
  * Utility to process AI responses, extract file changes, and apply them to the file system.
  */
-export const processAIResponse = async (webLLMResult, fs, logState, sidebarState, editorState) => {
+export const processAIResponse = async (
+  webLLMResult,
+  fs,
+  logState,
+  sidebarState,
+  editorState,
+  tabState,
+) => {
+  const selectedLines = editorState?.selectedLines || {};
   if (!webLLMResult) return 0;
 
   const fileRegex =
     /\/\/ --- File: (.*?) ---\s*([\s\S]*?)(?=\s*\/\/ --- (?:End )?File ---|\s*```|$)/g;
   let match = fileRegex.exec(webLLMResult);
   let filesUpdated = 0;
+
+  // Fallback: If no markers found but we have an active tab and the result looks like code
+  if (match === null && tabState && tabState.activeTabId) {
+    const activeTabId = tabState.activeTabId;
+    // Look for code blocks or just use the whole result if it looks like code
+    const codeBlockRegex = /```[a-z]*\n([\s\S]*?)```/g;
+    const blockMatch = codeBlockRegex.exec(webLLMResult);
+    const contentToProcess = blockMatch ? blockMatch[1] : webLLMResult;
+
+    if (contentToProcess && contentToProcess.trim().length > 10) {
+      // Mock a match for the active file
+      match = [null, activeTabId, contentToProcess];
+    }
+  }
 
   while (match !== null) {
     const rawFilePath = match[1].trim();
@@ -32,12 +54,16 @@ export const processAIResponse = async (webLLMResult, fs, logState, sidebarState
         originalContent = editorState.fileContents?.[filePath] || '';
       }
 
+      const fileSelectedLines = selectedLines[filePath] || [];
+
       if (blockContent.includes('<<<<<<< SEARCH')) {
-        const result = applySearchReplace(originalContent, blockContent);
+        const result = applySearchReplace(originalContent, blockContent, fileSelectedLines);
         finalContent = result.content;
         diffs = result.diffs;
       } else {
-        diffs = computeDiff(originalContent, finalContent);
+        const result = computeDiff(originalContent, blockContent, fileSelectedLines);
+        finalContent = result.content;
+        diffs = result.diffs;
       }
 
       if (fs?.rootHandle) {
@@ -67,22 +93,24 @@ export const processAIResponse = async (webLLMResult, fs, logState, sidebarState
 
       if (editorState) {
         editorState((draft) => {
-          draft.fileContents = {
-            ...(draft.fileContents || {}),
-            [filePath]: finalContent,
-          };
+          if (!draft.fileContents) draft.fileContents = {};
+          draft.fileContents[filePath] = finalContent;
+          // Force a new reference to trigger observers
+          draft.fileContents = { ...draft.fileContents };
 
-          const existingDiffs = draft.pendingDiffs || {};
-          const existingOriginal = existingDiffs[filePath]?.originalContent;
+          if (diffs && diffs.length > 0) {
+            const existingDiffs = draft.pendingDiffs || {};
+            const existingOriginal = existingDiffs[filePath]?.originalContent;
 
-          draft.pendingDiffs = {
-            ...existingDiffs,
-            [filePath]: {
-              originalContent:
-                existingOriginal !== undefined ? existingOriginal : originalContent,
-              diffs: diffs,
-            },
-          };
+            draft.pendingDiffs = {
+              ...existingDiffs,
+              [filePath]: {
+                originalContent:
+                  existingOriginal !== undefined ? existingOriginal : originalContent,
+                diffs: diffs,
+              },
+            };
+          }
         });
         filesUpdated++;
       }
@@ -90,7 +118,11 @@ export const processAIResponse = async (webLLMResult, fs, logState, sidebarState
       logState((draft) => {
         draft.logs = [
           ...draft.logs,
-          { id: Date.now() + 4, role: 'system', text: `Failed to save ${filePath}: ${fsErr.message}` },
+          {
+            id: Date.now() + 4,
+            role: 'system',
+            text: `Failed to save ${filePath}: ${fsErr.message}`,
+          },
         ];
       });
     }
@@ -101,7 +133,11 @@ export const processAIResponse = async (webLLMResult, fs, logState, sidebarState
     logState((draft) => {
       draft.logs = [
         ...draft.logs,
-        { id: Date.now() + 5, role: 'system', text: `Successfully updated ${filesUpdated} file(s) ${fs?.rootHandle ? '' : '(Preview Mode)'}. Please review changes in the editor.` },
+        {
+          id: Date.now() + 5,
+          role: 'system',
+          text: `Successfully updated ${filesUpdated} file(s) ${fs?.rootHandle ? '' : '(Preview Mode)'}. Please review changes in the editor.`,
+        },
       ];
     });
   }
@@ -111,54 +147,64 @@ export const processAIResponse = async (webLLMResult, fs, logState, sidebarState
 
 /**
  * Applies search/replace blocks and returns the new content and the ranges that changed.
+ * Only applies changes if they overlap with selectedLines (if provided).
  */
-function applySearchReplace(original, blocks) {
-  const blockRegex = /<<<<<<< SEARCH\r?\n([\s\S]*?)\r?\n=======\r?\n([\s\S]*?)\r?\n>>>>>>> REPLACE/g;
+function applySearchReplace(original, blocks, selectedLines = []) {
+  const blockRegex =
+    /<<<<<<< SEARCH\r?\n([\s\S]*?)\r?\n=======\r?\n([\s\S]*?)\r?\n>>>>>>> REPLACE/g;
   let result = original;
   const diffs = [];
   let match = blockRegex.exec(blocks);
+
+  // Convert selected line numbers to character ranges for easier overlap checking
+  const lines = original.split('\n');
+  const selectedRanges = selectedLines.map((l) => {
+    let start = 0;
+    for (let i = 0; i < l - 1; i++) start += lines[i].length + 1;
+    return { start, end: start + lines[l - 1].length };
+  });
+
   while (match !== null) {
     const search = match[1];
     const replace = match[2];
 
     if (search || replace) {
-      if (search === '') {
-        const start = result.length;
-        result += replace;
-        diffs.push({ start, end: result.length, type: 'replacement' });
-      } else {
-        const foundIndex = result.indexOf(search);
-        if (foundIndex !== -1) {
-          result =
-            result.substring(0, foundIndex) + replace + result.substring(foundIndex + search.length);
-          diffs.push({ start: foundIndex, end: foundIndex + replace.length, type: 'replacement' });
-        } else {
-          // Fallback: trimmed matching
-          const trimmedSearch = search.trim();
-          const lines = result.split('\n');
-          let fallbackIndex = -1;
-          let subToReplace = '';
+      const foundIndex = original.indexOf(search);
+      const searchEnd = foundIndex + (search ? search.length : 0);
 
-          if (trimmedSearch) {
-            const searchLines = search.split('\n').length;
-            for (let i = 0; i <= lines.length - searchLines; i++) {
-              const sub = lines.slice(i, i + searchLines).join('\n');
-              if (sub.trim() === trimmedSearch) {
-                subToReplace = sub;
-                fallbackIndex = result.indexOf(sub);
-                break;
-              }
-            }
-          }
+      const isAllowed =
+        selectedLines.length === 0 ||
+        selectedRanges.some((r) => {
+          return (
+            (foundIndex >= r.start && foundIndex <= r.end) ||
+            (searchEnd >= r.start && searchEnd <= r.end) ||
+            (r.start >= foundIndex && r.start <= searchEnd)
+          );
+        });
 
-          if (fallbackIndex !== -1) {
+      if (isAllowed) {
+        if (search === '') {
+          const start = result.length;
+          result += replace;
+          diffs.push({
+            start,
+            end: result.length,
+            type: 'replacement',
+            original: '',
+          });
+        } else if (foundIndex !== -1) {
+          const currentIdx = result.indexOf(search);
+          if (currentIdx !== -1) {
             result =
-              result.substring(0, fallbackIndex) +
+              result.substring(0, currentIdx) +
               replace +
-              result.substring(fallbackIndex + subToReplace.length);
-            diffs.push({ start: fallbackIndex, end: fallbackIndex + replace.length, type: 'replacement' });
-          } else {
-            console.warn('Search block not found in file:', search);
+              result.substring(currentIdx + search.length);
+            diffs.push({
+              start: currentIdx,
+              end: currentIdx + replace.length,
+              type: 'replacement',
+              original: search,
+            });
           }
         }
       }
@@ -169,10 +215,10 @@ function applySearchReplace(original, blocks) {
 }
 
 /**
- * Computes a single range diff for full-content replacements by finding common prefix/suffix.
+ * Computes a single range diff and filters it by selectedLines if provided.
  */
-function computeDiff(original, updated) {
-  if (original === updated) return [];
+function computeDiff(original, updated, selectedLines = []) {
+  if (original === updated) return { content: original, diffs: [] };
 
   let start = 0;
   while (start < original.length && start < updated.length && original[start] === updated[start]) {
@@ -186,7 +232,40 @@ function computeDiff(original, updated) {
     endUpd--;
   }
 
-  return [{ start, end: endUpd, type: 'replacement' }];
+  const _diffRange = { start, end: endUpd };
+
+  if (selectedLines.length > 0) {
+    const lines = original.split('\n');
+    const selectedRanges = selectedLines.map((l) => {
+      let s = 0;
+      for (let i = 0; i < l - 1; i++) s += lines[i].length + 1;
+      return { start: s, end: s + lines[l - 1].length };
+    });
+
+    const isOverlap = selectedRanges.some((r) => {
+      return (
+        (start >= r.start && start <= r.end) ||
+        (endUpd >= r.start && endUpd <= r.end) ||
+        (r.start >= start && r.start <= endUpd)
+      );
+    });
+
+    if (!isOverlap) {
+      return { content: original, diffs: [] };
+    }
+  }
+
+  return {
+    content: updated,
+    diffs: [
+      {
+        start,
+        end: endUpd,
+        type: 'replacement',
+        original: original.substring(start, endOrig),
+      },
+    ],
+  };
 }
 
 /**
@@ -204,9 +283,7 @@ function resolveFilePath(providedPath, existingPaths) {
   const fileName = providedSegments[providedSegments.length - 1];
 
   // 1. Try exact filename match if unique
-  const filenameMatches = existingPaths.filter(
-    (p) => p.endsWith(`/${fileName}`) || p === fileName,
-  );
+  const filenameMatches = existingPaths.filter((p) => p.endsWith(`/${fileName}`) || p === fileName);
   if (filenameMatches.length === 1) return filenameMatches[0];
 
   // 2. Try longest suffix match

@@ -23,10 +23,7 @@ export async function setupSmartDevServer(container, onLog) {
 
       if (pathname.endsWith('.module.css')) {
         const secFetchDest =
-          headers['sec-fetch-dest'] ||
-          headers['Sec-Fetch-Dest'] ||
-          headers['SEC-FETCH-DEST'] ||
-          '';
+          headers['sec-fetch-dest'] || headers['Sec-Fetch-Dest'] || headers['SEC-FETCH-DEST'] || '';
 
         const isModuleImport =
           secFetchDest === 'script' || secFetchDest === 'empty' || secFetchDest === '';
@@ -85,9 +82,7 @@ export async function setupSmartDevServer(container, onLog) {
             const placeholder = `__CSS_GLOBAL_BLOCK_${globalBlockMatches.length}__`;
             globalBlockMatches.push(blockContent);
             processedCss =
-              processedCss.substring(0, blockMatch.index) +
-              placeholder +
-              processedCss.substring(i);
+              processedCss.substring(0, blockMatch.index) + placeholder + processedCss.substring(i);
             globalBlockRegex.lastIndex = 0;
           } else {
             break;

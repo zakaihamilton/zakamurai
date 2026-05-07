@@ -18,15 +18,20 @@ export default function EditorArea({ file }) {
   // Use local state for immediate synchronous updates to prevent cursor jumping,
   // falling back to the global state engine context
   const [localContent, setLocalContent] = useState(() => state.fileContents?.[filePath] || '');
+  const [showFind, setShowFind] = useState(false);
+  const [findQuery, setFindQuery] = useState('');
+  const [replaceQuery, setReplaceQuery] = useState('');
+  const [matchIndex, setMatchIndex] = useState(-1);
+  const [matches, setMatches] = useState([]);
 
   // Generate line numbers array based on line breaks
   const linesCount = localContent.split('\n').length;
   const linesArr = Array.from({ length: linesCount }, (_, i) => i + 1);
 
-  // Resync local state if the active file tab changes
+  // Resync local state if the active file tab changes or content is updated externally (e.g. by AI)
   useEffect(() => {
     setLocalContent(state.fileContents?.[filePath] || '');
-  }, [filePath, state.fileContents]);
+  }, [filePath, state.fileContents?.[filePath]]);
 
   const handleChange = (e) => {
     const newVal = e.target.value;
@@ -88,22 +93,26 @@ export default function EditorArea({ file }) {
 
     const fileDiff = state.pendingDiffs?.[filePath];
     const diffs = fileDiff?.diffs || [];
+    const selectedLines = state.selectedLines?.[filePath] || [];
 
-    // 1. Mark diff ranges in the code using non-printing characters
-    let markedCode = code;
-    // Sort diffs descending to avoid index shifting while marking
     const sortedDiffs = [...diffs].sort((a, b) => b.start - a.start);
-    for (const diff of sortedDiffs) {
-      markedCode = `${markedCode.substring(0, diff.start)}\u0003${markedCode.substring(
+
+    // Let's stick to the original logic for diffs but add line selection
+    let escaped = code;
+    // Mark diffs with index for tracking original content
+    for (let i = 0; i < sortedDiffs.length; i++) {
+      const diff = sortedDiffs[i];
+      escaped = `${escaped.substring(0, diff.start)}\u0003${i}\u0003${escaped.substring(
         diff.start,
         diff.end,
-      )}\u0004${markedCode.substring(diff.end)}`;
+      )}\u0004${escaped.substring(diff.end)}`;
     }
 
-    let escaped = markedCode
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;');
+    escaped = escaped.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+    // Mark selected lines by wrapping the whole line if needed
+    // This is tricky with the existing highlight logic.
+    // Let's do it after escaping but before tokens.
 
     // Protect tokens by replacing them with unmatchable placeholders first
     const tokens = [];
@@ -112,30 +121,93 @@ export default function EditorArea({ file }) {
       return `\u0001${tokens.length - 1}\u0002`;
     };
 
+    // 1. Comments (highest priority)
+    escaped = escaped.replace(/(\/\/.+)/g, (m) => pushToken(m, 'hl-comment'));
+    escaped = escaped.replace(/(\/\*[\s\S]*?\*\/)/g, (m) => pushToken(m, 'hl-comment'));
+
+    // 2. Strings
     escaped = escaped.replace(/(".*?"|'.*?'|`.*?`)/g, (m) => pushToken(m, 'hl-str'));
+
+    // 3. Keywords
     escaped = escaped.replace(
-      /\b(export|default|function|return|import|from|const|let|var|if|else|for|while|class|extends|new|true|false|null|undefined)\b/g,
+      /\b(export|default|function|return|import|from|const|let|var|if|else|for|while|class|extends|new|true|false|null|undefined|async|await|try|catch|finally|throw|break|continue|case|switch|type|interface|enum|public|private|protected|static|readonly)\b/g,
       (m) => pushToken(m, 'hl-kw'),
     );
-    escaped = escaped.replace(
-      /(&lt;\/?)([a-zA-Z0-9]+)/g,
-      (_m, p1, p2) => `${p1}${pushToken(p2, 'hl-tag')}`,
-    );
-    escaped = escaped.replace(/\b([a-zA-Z0-9_]+)(?=\()/g, (m) => pushToken(m, 'hl-func'));
-    escaped = escaped.replace(/\b([a-zA-Z\-]+)(?==)/g, (m) => pushToken(m, 'hl-attr'));
+
+    // 4. Numbers
+    escaped = escaped.replace(/\b(\d+)\b/g, (m) => pushToken(m, 'hl-num'));
+
+    // 5. CSS specific (if filePath ends with .css)
+    if (filePath?.endsWith('.css')) {
+      // Properties
+      escaped = escaped.replace(/([a-zA-Z\-]+)(?=\s*:)/g, (m) => pushToken(m, 'hl-prop'));
+      // Selectors (basic)
+      escaped = escaped.replace(/^([.#a-zA-Z0-9_\-\[\]="':*]+)(?=\s*\{)/gm, (m) =>
+        pushToken(m, 'hl-tag'),
+      );
+      // Values (after colon, before semicolon)
+      escaped = escaped.replace(/(?<=:\s*)([^;\}]+)(?=;|\})/g, (m) => {
+        // Highlight hex colors within values
+        let val = m.replace(/(#[a-fA-F0-9]{3,8})/g, (c) => pushToken(c, 'hl-num'));
+        // Highlight units
+        val = val.replace(
+          /(\d+)(px|rem|em|%|vh|vw|ms|s|deg)/g,
+          (_m2, p1, p2) => `${pushToken(p1, 'hl-num')}${pushToken(p2, 'hl-kw')}`,
+        );
+        return pushToken(val, 'hl-val');
+      });
+      // Variables
+      escaped = escaped.replace(/(var\(--[a-zA-Z0-9\-]+\))/g, (m) => pushToken(m, 'hl-func'));
+    } else {
+      // JSX/HTML Tags
+      escaped = escaped.replace(
+        /(&lt;\/?)([a-zA-Z0-9]+)/g,
+        (_m, p1, p2) => `${p1}${pushToken(p2, 'hl-tag')}`,
+      );
+      // Functions
+      escaped = escaped.replace(/\b([a-zA-Z0-9_]+)(?=\()/g, (m) => pushToken(m, 'hl-func'));
+      // Attributes
+      escaped = escaped.replace(/\b([a-zA-Z\-]+)(?==)/g, (m) => pushToken(m, 'hl-attr'));
+    }
+
+    // Inject find matches (if any)
+    if (findQuery) {
+      const regex = new RegExp(findQuery.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+      escaped = escaped.replace(regex, (m) => {
+        return pushToken(m, 'hl-match');
+      });
+    }
 
     // Inject protected tokens back into the string
     tokens.forEach((tok, i) => {
       escaped = escaped.replace(`\u0001${i}\u0002`, tok);
     });
 
-    // 5. Replace diff markers with spans
-    // biome-ignore lint/suspicious/noControlCharactersInRegex: markers are intentional for diff highlighting
-    escaped = escaped.replace(/\u0003/g, `<span class="${styles.diffHighlight}">`);
-    // biome-ignore lint/suspicious/noControlCharactersInRegex: markers are intentional for diff highlighting
+    // Replace diff markers with spans including original content
+    // biome-ignore lint/suspicious/noControlCharactersInRegex: markers are intentional for tracking
+    escaped = escaped.replace(/\u0003(\d+)\u0003/g, (_m, idx) => {
+      const diff = sortedDiffs[Number(idx)];
+      const original = (diff.original || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+      return `<span class="${styles.diffHighlight}" data-original="${original || 'Added'}">`;
+    });
+    // biome-ignore lint/suspicious/noControlCharactersInRegex: markers are intentional for tracking
     escaped = escaped.replace(/\u0004/g, '</span>');
 
-    return escaped;
+    // Add line selection backgrounds
+    const linesArr = escaped.split('\n');
+    const finalLines = linesArr.map((line, i) => {
+      const isSelected = selectedLines.includes(i + 1);
+      if (isSelected) {
+        return `<span class="${styles.selectedLineRow}">${line || ' '}</span>`;
+      }
+      return line;
+    });
+
+    return finalLines.join('\n');
   };
 
   const handleApprove = () => {
@@ -172,7 +244,105 @@ export default function EditorArea({ file }) {
     }
   };
 
+  const toggleLine = (line) => {
+    const lineNum = Number(line);
+    state((draft) => {
+      if (!draft.selectedLines) draft.selectedLines = {};
+      const current = draft.selectedLines[filePath] || [];
+      const exists = current.some((l) => Number(l) === lineNum);
+
+      if (exists) {
+        draft.selectedLines[filePath] = current.filter((l) => Number(l) !== lineNum);
+      } else {
+        draft.selectedLines[filePath] = [...current, lineNum];
+      }
+      draft.selectedLines = { ...draft.selectedLines };
+    });
+  };
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+        e.preventDefault();
+        setShowFind((prev) => !prev);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  const handleFind = () => {
+    if (!findQuery) {
+      setMatches([]);
+      setMatchIndex(-1);
+      return;
+    }
+    const lines = localContent.split('\n');
+    const newMatches = [];
+    lines.forEach((line, i) => {
+      let idx = line.toLowerCase().indexOf(findQuery.toLowerCase());
+      while (idx !== -1) {
+        newMatches.push({ line: i + 1, index: idx });
+        idx = line.toLowerCase().indexOf(findQuery.toLowerCase(), idx + 1);
+      }
+    });
+    setMatches(newMatches);
+    setMatchIndex(newMatches.length > 0 ? 0 : -1);
+  };
+
+  const handleReplace = () => {
+    if (matchIndex === -1 || matches.length === 0) return;
+    const match = matches[matchIndex];
+    const lines = localContent.split('\n');
+    const lineContent = lines[match.line - 1];
+    const newLineContent =
+      lineContent.substring(0, match.index) +
+      replaceQuery +
+      lineContent.substring(match.index + findQuery.length);
+    lines[match.line - 1] = newLineContent;
+    const newVal = lines.join('\n');
+    handleChange({ target: { value: newVal } });
+
+    // Re-find matches and jump to next
+    const newLines = newVal.split('\n');
+    const newMatches = [];
+    newLines.forEach((line, i) => {
+      let idx = line.toLowerCase().indexOf(findQuery.toLowerCase());
+      while (idx !== -1) {
+        newMatches.push({ line: i + 1, index: idx });
+        idx = line.toLowerCase().indexOf(findQuery.toLowerCase(), idx + 1);
+      }
+    });
+    setMatches(newMatches);
+    if (newMatches.length > 0) {
+      setMatchIndex(matchIndex % newMatches.length);
+    } else {
+      setMatchIndex(-1);
+    }
+  };
+
+  const handleReplaceAll = () => {
+    const newVal = localContent.split(findQuery).join(replaceQuery);
+    handleChange({ target: { value: newVal } });
+    setShowFind(false);
+  };
+
+  // Scroll to match
+  const scrollContainerRef = useRef(null);
+  useEffect(() => {
+    if (matchIndex !== -1 && matches[matchIndex] && scrollContainerRef.current) {
+      const match = matches[matchIndex];
+      const lineHeight = 1.6 * 14; // Approximate based on css
+      const top = (match.line - 1) * lineHeight + 20; // 20 is padding
+      scrollContainerRef.current.scrollTo({
+        top: top - 100, // Center it a bit
+        behavior: 'smooth',
+      });
+    }
+  }, [matchIndex, matches]);
+
   const hasDiff = !!state.pendingDiffs?.[filePath];
+  const selectedLines = state.selectedLines?.[filePath] || [];
 
   return (
     <div className={styles.editorArea}>
@@ -181,32 +351,110 @@ export default function EditorArea({ file }) {
           <Icons.File />
           <span className={styles.filePath}>{filePath}</span>
         </div>
-        {hasDiff && (
-          <div className={styles.diffHeaderToolbar}>
-            <span className={styles.diffLabel}>Review AI Changes:</span>
-            <button
-              type="button"
-              onClick={handleApprove}
-              className={`${styles.diffButton} ${styles.approveBtn}`}
-            >
-              <Icons.Check /> Approve
-            </button>
-            <button
-              type="button"
-              onClick={handleUndo}
-              className={`${styles.diffButton} ${styles.undoBtn}`}
-            >
-              <Icons.Undo /> Undo
-            </button>
-          </div>
-        )}
+        <div className={styles.headerActions}>
+          <button
+            type="button"
+            className={styles.actionBtn}
+            onClick={() => setShowFind(!showFind)}
+            title="Find/Replace (Ctrl+F)"
+          >
+            <Icons.Search />
+          </button>
+          {hasDiff && (
+            <div className={styles.diffHeaderToolbar}>
+              <span className={styles.diffLabel}>Review AI Changes:</span>
+              <button
+                type="button"
+                onClick={handleApprove}
+                className={`${styles.diffButton} ${styles.approveBtn}`}
+              >
+                <Icons.Check /> Approve
+              </button>
+              <button
+                type="button"
+                onClick={handleUndo}
+                className={`${styles.diffButton} ${styles.undoBtn}`}
+              >
+                <Icons.Undo /> Undo
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
+      {showFind && (
+        <div className={styles.findBar}>
+          <div className={styles.findRow}>
+            <input
+              // biome-ignore lint/a11y/noAutofocus: autofocus is desirable for find bar
+              autoFocus
+              placeholder="Find..."
+              value={findQuery}
+              onChange={(e) => setFindQuery(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleFind()}
+              className={styles.findInput}
+            />
+            <div className={styles.findStats}>
+              {matches.length > 0 ? `${matchIndex + 1} / ${matches.length}` : 'No results'}
+            </div>
+            <button
+              type="button"
+              onClick={() => setMatchIndex((i) => (i + 1) % matches.length)}
+              className={styles.findBtn}
+            >
+              <Icons.ChevronDown />
+            </button>
+            <button
+              type="button"
+              onClick={() => setMatchIndex((i) => (i - 1 + matches.length) % matches.length)}
+              className={styles.findBtn}
+            >
+              <Icons.ChevronUp />
+            </button>
+            <button type="button" onClick={() => setShowFind(false)} className={styles.findBtn}>
+              <Icons.Close />
+            </button>
+          </div>
+          <div className={styles.findRow}>
+            <input
+              placeholder="Replace with..."
+              value={replaceQuery}
+              onChange={(e) => setReplaceQuery(e.target.value)}
+              className={styles.findInput}
+            />
+            <button type="button" onClick={handleReplace} className={styles.replaceBtn}>
+              Replace
+            </button>
+            <button type="button" onClick={handleReplaceAll} className={styles.replaceBtn}>
+              All
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Scrollable Container with sticky line numbers and code layers */}
-      <div className={`${styles.scrollContainer} scroll-hide`}>
+      <div ref={scrollContainerRef} className={`${styles.scrollContainer} scroll-hide`}>
         {/* Line Numbers Gutter */}
         <div className={styles.gutter}>
-          <pre className={styles.gutterContent}>{linesArr.join('\n')}</pre>
+          <div className={styles.gutterContent}>
+            {linesArr.map((line) => (
+              // biome-ignore lint/a11y/useKeyWithClickEvents: gutter lines are clickable for selection
+              <div
+                key={line}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toggleLine(line);
+                }}
+                className={`${styles.gutterLine} ${
+                  selectedLines.some((l) => Number(l) === Number(line))
+                    ? styles.selectedGutterLine
+                    : ''
+                }`}
+              >
+                {line}
+              </div>
+            ))}
+          </div>
         </div>
 
         <div className={styles.editorWrapper}>

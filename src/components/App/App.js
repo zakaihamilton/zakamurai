@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState, useMemo } from 'react';
+import { Compiler } from '../../utils/compiler';
 import { createState } from '../Core/Base/State';
 import { useFileSystem } from '../Storage';
 import { DEFAULT_CONTENTS, DEFAULT_FILES } from '../Storage/InitialData';
@@ -14,7 +15,6 @@ import PromptFooter from './PromptFooter';
 import Sidebar, { SidebarState } from './Sidebar';
 import TabBar, { TabState } from './TabBar';
 import TopBar from './TopBar';
-import { Compiler } from '../../utils/compiler';
 
 export const AppState = createState('AppState');
 export const PreviewState = createState('PreviewState');
@@ -99,18 +99,14 @@ export default function App() {
     <div className={styles.root}>
       <AppState theme={initialTheme} projectName={initialProjectName} fs={fs}>
         <ProjectNameSaver />
-        <SidebarState
-          isSidebarOpen={true}
-          showAIInput={true}
-          folderTree={initialFiles}
-        >
+        <SidebarState isSidebarOpen={true} showAIInput={true} folderTree={initialFiles}>
           <TabState openTabs={initialTabs} activeTabId={initialActiveTabId}>
             <LogState isProcessing={false} logs={initialAILogs}>
               <EditorState fileContents={initialContents}>
                 <PreviewState htmlContent={Settings.getPreviewHtml()} isCompilerReady={false}>
-                   <TabRestorer />
-                   <PreviewRestorer />
-                   <ContentSaver />
+                  <TabRestorer />
+                  <PreviewRestorer />
+                  <ContentSaver />
                   <PassiveWrapper />
                 </PreviewState>
               </EditorState>
