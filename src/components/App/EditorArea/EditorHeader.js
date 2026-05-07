@@ -19,11 +19,7 @@ export default function EditorHeader({
       </div>
       <div className={styles.headerActions}>
         <Tooltip content="Find/Replace (Ctrl+F)">
-          <button
-            type="button"
-            className={styles.actionBtn}
-            onClick={() => setShowFind(!showFind)}
-          >
+          <button type="button" className={styles.actionBtn} onClick={() => setShowFind(!showFind)}>
             <Icons.Search />
           </button>
         </Tooltip>

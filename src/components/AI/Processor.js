@@ -158,7 +158,7 @@ export const processAIResponse = async (
  * Applies search/replace blocks and returns the new content and the ranges that changed.
  * Only applies changes if they overlap with selectedLines (if provided).
  */
-function applySearchReplace(original, blocks, selectedLines = []) {
+export function applySearchReplace(original, blocks, selectedLines = []) {
   const blockRegex =
     /<<<<<<< SEARCH\r?\n([\s\S]*?)\r?\n=======\r?\n([\s\S]*?)\r?\n>>>>>>> REPLACE/g;
   let result = original;
@@ -226,7 +226,7 @@ function applySearchReplace(original, blocks, selectedLines = []) {
 /**
  * Computes a single range diff and filters it by selectedLines if provided.
  */
-function computeDiff(original, updated, selectedLines = []) {
+export function computeDiff(original, updated, selectedLines = []) {
   if (original === updated) return { content: original, diffs: [] };
 
   let start = 0;
@@ -280,9 +280,9 @@ function computeDiff(original, updated, selectedLines = []) {
 /**
  * Replaces specifically the selected lines with the updated snippet.
  */
-function applyTargetedReplacement(original, snippet, selectedLines = []) {
+export function applyTargetedReplacement(original, snippet, selectedLines = []) {
   if (selectedLines.length === 0) return { content: original, diffs: [] };
-  
+
   const originalLines = original.split('\n');
   const sortedLines = [...selectedLines].sort((a, b) => a - b);
   const minLine = sortedLines[0];
@@ -293,7 +293,7 @@ function applyTargetedReplacement(original, snippet, selectedLines = []) {
 
   const before = originalLines.slice(0, startIdx).join('\n');
   const after = originalLines.slice(endIdx + 1).join('\n');
-  
+
   const beforeStr = before ? `${before}\n` : '';
   const afterStr = after ? `\n${after}` : '';
 
@@ -320,7 +320,7 @@ function applyTargetedReplacement(original, snippet, selectedLines = []) {
 /**
  * Tries to find the best existing file path that matches the provided path.
  */
-function resolveFilePath(providedPath, existingPaths) {
+export function resolveFilePath(providedPath, existingPaths) {
   if (!existingPaths || existingPaths.length === 0) return providedPath;
   if (existingPaths.includes(providedPath)) return providedPath;
 
