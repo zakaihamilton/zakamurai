@@ -30,6 +30,7 @@ export default function TreeItem({
   const [createValue, setCreateValue] = useState('');
   const [contextMenu, setContextMenu] = useState(null);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [isDropTarget, setIsDropTarget] = useState(false);
   const editInputRef = useRef(null);
   const createInputRef = useRef(null);
 
@@ -417,6 +418,174 @@ export default function TreeItem({
     setContextMenu({ x: e.pageX, y: e.pageY });
   };
 
+  const handleDragStart = (e) => {
+    if (isEditing) {
+      e.preventDefault();
+      return;
+    }
+    e.stopPropagation();
+    sidebarState((draft) => {
+      draft.draggedItem = {
+        path: item.path,
+        type: item.type,
+        handle: fsHandle,
+        name: item.name,
+      };
+    });
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', currentPathStr);
+  };
+
+  const handleDragOver = (e) => {
+    if (item.type === 'folder') {
+      const { draggedItem } = sidebarState;
+      if (draggedItem) {
+        const sourcePath = draggedItem.path.join('/');
+        const targetPath = item.path.join('/');
+        const isInvalid = sourcePath === targetPath || targetPath.startsWith(sourcePath + '/');
+        if (!isInvalid) {
+          e.preventDefault();
+          e.dataTransfer.dropEffect = 'move';
+        }
+      }
+    }
+  };
+
+  const handleDragEnter = (e) => {
+    if (item.type === 'folder') {
+      const { draggedItem } = sidebarState;
+      if (draggedItem) {
+        const sourcePath = draggedItem.path.join('/');
+        const targetPath = item.path.join('/');
+        const isInvalid = sourcePath === targetPath || targetPath.startsWith(sourcePath + '/');
+        if (!isInvalid) {
+          setIsDropTarget(true);
+        }
+      }
+    }
+  };
+
+  const handleDragLeave = () => {
+    setIsDropTarget(false);
+  };
+
+  const handleDrop = async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDropTarget(false);
+
+    const { draggedItem } = sidebarState;
+    if (!draggedItem) return;
+
+    const sourcePathStr = draggedItem.path.join('/');
+    const targetPathStr = item.path.join('/');
+
+    // Cannot drop on itself or its own children
+    if (sourcePathStr === targetPathStr || targetPathStr.startsWith(`${sourcePathStr}/`)) {
+      return;
+    }
+
+    if (item.type !== 'folder') return;
+
+    const newPathArr = [...item.path, draggedItem.name];
+    const newPathStr = newPathArr.join('/');
+
+    if (fs.mode === 'local' && draggedItem.handle && fsHandle) {
+      try {
+        await fs.moveEntry(draggedItem.handle, fsHandle);
+        // fs.triggerRefresh() is called inside moveEntry
+      } catch (err) {
+        console.error('Failed to move local item:', err);
+        return;
+      }
+    }
+
+    // Update Sidebar State for mock mode or to sync expanded states
+    sidebarState((draft) => {
+      if (fs.mode !== 'local') {
+        // Find and remove from old location
+        const sourceParentPath = draggedItem.path.slice(0, -1);
+        let sourceLevel = draft.folderTree;
+        for (const seg of sourceParentPath) {
+          const node = sourceLevel.find((n) => n.name === seg);
+          if (node) sourceLevel = node.children;
+        }
+        const sourceIdx = sourceLevel.findIndex((n) => n.name === draggedItem.name);
+        let movedNode = null;
+        if (sourceIdx !== -1) {
+          [movedNode] = sourceLevel.splice(sourceIdx, 1);
+        }
+
+        // Find and add to new location
+        let targetLevel = draft.folderTree;
+        for (const seg of item.path) {
+          const node = targetLevel.find((n) => n.name === seg);
+          if (node) {
+            if (!node.children) node.children = [];
+            targetLevel = node.children;
+          }
+        }
+        if (movedNode) {
+          targetLevel.push(movedNode);
+        }
+      }
+
+      // Update expanded folders
+      const newExpanded = {};
+      for (const key in draft.expandedFolders) {
+        if (key === sourcePathStr || key.startsWith(`${sourcePathStr}/`)) {
+          const newKey = newPathStr + key.substring(sourcePathStr.length);
+          newExpanded[newKey] = draft.expandedFolders[key];
+        } else {
+          newExpanded[key] = draft.expandedFolders[key];
+        }
+      }
+      draft.expandedFolders = newExpanded;
+      draft.draggedItem = null;
+    });
+
+    // Update Editor State
+    editorState((draft) => {
+      if (draft.fileContents) {
+        const newContents = {};
+        for (const key in draft.fileContents) {
+          if (key === sourcePathStr || key.startsWith(`${sourcePathStr}/`)) {
+            const newKey = newPathStr + key.substring(sourcePathStr.length);
+            newContents[newKey] = draft.fileContents[key];
+          } else {
+            newContents[key] = draft.fileContents[key];
+          }
+        }
+        draft.fileContents = newContents;
+      }
+    });
+
+    // Update Tab State
+    tabState((draft) => {
+      for (const t of draft.openTabs) {
+        if (t.id === sourcePathStr || t.id.startsWith(`${sourcePathStr}/`)) {
+          const newId = newPathStr + t.id.substring(sourcePathStr.length);
+          t.id = newId;
+          if (t.file?.path) {
+            const movedPathArr = [...newPathArr, ...t.file.path.slice(draggedItem.path.length)];
+            t.file.path = movedPathArr;
+          }
+        }
+      }
+
+      if (draft.activeTabId === sourcePathStr || draft.activeTabId?.startsWith(`${sourcePathStr}/`)) {
+        draft.activeTabId = newPathStr + draft.activeTabId.substring(sourcePathStr.length);
+      }
+    });
+  };
+
+  const handleDragEnd = () => {
+    sidebarState((draft) => {
+      draft.draggedItem = null;
+    });
+    setIsDropTarget(false);
+  };
+
   useEffect(() => {
     const handleClick = () => setContextMenu(null);
     window.addEventListener('click', handleClick);
@@ -429,7 +598,14 @@ export default function TreeItem({
         onClick={handleToggle}
         onContextMenu={onContextMenu}
         onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && handleToggle()}
-        className={`${styles.item} ${isActive ? styles.active : ''}`}
+        draggable
+        onDragStart={handleDragStart}
+        onDragOver={handleDragOver}
+        onDragEnter={handleDragEnter}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+        onDragEnd={handleDragEnd}
+        className={`${styles.item} ${isActive ? styles.active : ''} ${isDropTarget ? styles.dropTarget : ''} ${sidebarState.draggedItem?.path.join('/') === currentPathStr ? styles.dragging : ''}`}
         style={{
           paddingLeft: `${16 + level * 16}px`,
           paddingRight: '16px',

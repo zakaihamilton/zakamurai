@@ -230,6 +230,25 @@ export function useFileSystem() {
     [currentDirHandle, refreshDirectory],
   );
 
+  const moveEntry = useCallback(
+    async (sourceHandle, destinationDirHandle, newName = null) => {
+      if (!sourceHandle || !destinationDirHandle) throw new Error('Source or destination missing');
+      try {
+        // Use the modern move API if available
+        if (sourceHandle.move) {
+          await sourceHandle.move(destinationDirHandle, newName || sourceHandle.name);
+        } else {
+          throw new Error('FileSystemHandle.move is not supported in this environment');
+        }
+        await refreshDirectory(destinationDirHandle);
+        setRefreshTrigger((v) => v + 1);
+      } catch (err) {
+        setError(`Failed to move entry: ${err.message}`);
+      }
+    },
+    [refreshDirectory],
+  );
+
   const unlinkProject = useCallback(async () => {
     try {
       await clearHandle();
@@ -259,6 +278,7 @@ export function useFileSystem() {
     getFileHandleAtPath,
     createFolder,
     deleteEntry,
+    moveEntry,
     unlinkProject,
     isReady,
   };

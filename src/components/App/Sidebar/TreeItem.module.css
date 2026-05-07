@@ -149,3 +149,15 @@
 .deleteOption:hover {
   background: rgba(255, 77, 77, 0.1) !important;
 }
+
+.dragging {
+  opacity: 0.4;
+  background-color: var(--accent-light);
+}
+
+.dropTarget {
+  background-color: var(--accent-glow) !important;
+  outline: 2px dashed var(--accent);
+  outline-offset: -2px;
+  transform: scale(1.02);
+}
