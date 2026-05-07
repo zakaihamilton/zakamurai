@@ -46,7 +46,7 @@ export function scaffoldMissingFiles(vfs, packageJson, onLog) {
 
     const entryFileRel = entryFile.startsWith('/') ? entryFile.slice(1) : entryFile;
 
-    const defaultHtml = `<!DOCTYPE html>\n<html lang="en">\n  <head>\n    <base href="/__virtual__/3000/">\n    <meta charset="UTF-8" />\n    <meta name="viewport" content="width=device-width, initial-scale=1.0" />\n    <title>${packageJson.name || 'Vite App'}</title>\n  </head>\n  <body>\n    <div id="root"></div>\n    <script type="module" src="${entryFileRel}"></script>\n  </body>\n</html>`;
+    const defaultHtml = `<!DOCTYPE html>\n<html lang="en">\n  <head>\n    <base href="/preview/">\n    <meta charset="UTF-8" />\n    <meta name="viewport" content="width=device-width, initial-scale=1.0" />\n    <title>${packageJson.name || 'Vite App'}</title>\n  </head>\n  <body>\n    <div id="root"></div>\n    <script type="module" src="${entryFileRel}"></script>\n  </body>\n</html>`;
     vfs.writeFileSync('/index.html', defaultHtml);
   }
 }

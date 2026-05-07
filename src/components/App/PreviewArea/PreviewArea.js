@@ -19,6 +19,15 @@ export default function PreviewArea({ htmlContent, isCompilerReady }) {
   const [isMaximized, setIsMaximized] = useState(false);
   const containerRef = useRef(null);
 
+  const [address, setAddress] = useState('/preview/index.html');
+  const [host, setHost] = useState('');
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setHost(window.location.host);
+    }
+  }, []);
+
   useEffect(() => {
     if (!('serviceWorker' in navigator)) return;
 
@@ -41,6 +50,16 @@ export default function PreviewArea({ htmlContent, isCompilerReady }) {
 
   const handleLoad = useCallback(() => {
     setIsLoading(false);
+    if (iframeRef.current) {
+      try {
+        const path = iframeRef.current.contentWindow.location.pathname;
+        if (path && path !== 'blank') {
+          setAddress(path);
+        }
+      } catch (e) {
+        // Ignore cross-origin errors
+      }
+    }
   }, []);
 
   const handleRefresh = useCallback(() => {
@@ -49,8 +68,8 @@ export default function PreviewArea({ htmlContent, isCompilerReady }) {
   }, []);
 
   const handleOpenExternal = useCallback(() => {
-    window.open('/__virtual__/3000/index.html', '_blank');
-  }, []);
+    window.open(address, '_blank');
+  }, [address]);
 
   const toggleMaximize = useCallback(() => {
     setIsMaximized((v) => !v);
@@ -80,7 +99,10 @@ export default function PreviewArea({ htmlContent, isCompilerReady }) {
       <div className={styles.toolbar}>
         <div className={styles.addressBar}>
           <Icons.Globe />
-          <span className={styles.addressText}>localhost:3000/__virtual__/3000/index.html</span>
+          <span className={styles.addressText}>
+            {host}
+            {address}
+          </span>
           {isLoading && <span className={styles.loadingDot} />}
         </div>
 
@@ -143,7 +165,7 @@ export default function PreviewArea({ htmlContent, isCompilerReady }) {
             <iframe
               key={refreshKey}
               ref={iframeRef}
-              src="/__virtual__/3000/index.html"
+              src={address}
               title="Preview"
               className={styles.iframe}
               onLoad={handleLoad}
