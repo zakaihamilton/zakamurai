@@ -164,6 +164,7 @@ export default classMap;
       throw err;
     }
     const devServer = new SmartViteDevServer(container.vfs, { port: 3000, root: '/' });
+    container.devServer = devServer;
     container.serverBridge.registerServer(devServer, 3000);
     console.log('[DevServer] Virtual server registered on port 3000');
     onLog('Service Worker registered. Smart virtual server started on port 3000.');

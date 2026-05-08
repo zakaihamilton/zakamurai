@@ -189,6 +189,152 @@ export default function TopBar() {
     URL.revokeObjectURL(url);
   };
 
+  const handleExportCompiledZip = async () => {
+    setMenuPosition(null);
+    const container = Compiler.getContainer();
+    if (!container) {
+      alert('No compiled files found. Please compile the project first.');
+      return;
+    }
+
+    const zip = new ZipWriter();
+    const vfs = container.vfs;
+
+    // Collect all source file paths from VFS
+    const filePaths = [];
+    const collectFiles = (dirPath) => {
+      try {
+        const entries = vfs.readdirSync(dirPath);
+        for (const name of entries) {
+          if (
+            name === 'node_modules' ||
+            name === '.git' ||
+            name === '.npm' ||
+            name === 'dist' ||
+            name === 'package.json' ||
+            name === 'package-lock.json' ||
+            name === 'tsconfig.json' ||
+            name.startsWith('vite.config') ||
+            name.startsWith('.almostnode')
+          )
+            continue;
+
+          const fullPath = dirPath === '/' ? `/${name}` : `${dirPath}/${name}`;
+
+          try {
+            vfs.readdirSync(fullPath);
+            collectFiles(fullPath);
+          } catch (_dirErr) {
+            filePaths.push(fullPath);
+          }
+        }
+      } catch (_err) {
+        // skip unreadable directories
+      }
+    };
+    collectFiles('/');
+
+    // Strip dev-mode boilerplate from compiled JS files
+    const cleanDevArtifacts = (text) => {
+      return (
+        text
+          // Remove HMR setup line
+          .replace(/\/\/ HMR Setup\n/g, '')
+          .replace(/import\.meta\.hot\s*=\s*window\.__vite_hot_context__\([^)]*\);\n*/g, '')
+          // Remove React Refresh registration block at the end
+          .replace(
+            /\n*\/\/ React Refresh Registration\nif \(import\.meta\.hot\) \{[\s\S]*?\n\}\n*/g,
+            '\n',
+          )
+          // Remove inline source maps
+          .replace(/\/\/#\s*sourceMappingURL=data:[^\n]*/g, '')
+          // Remove $RefreshReg$ calls
+          .replace(/\$RefreshReg\$\([^)]*\);\n*/g, '')
+          // Clean up excessive blank lines
+          .replace(/\n{3,}/g, '\n\n')
+          .trim()
+      );
+    };
+
+    // Rename extensions so files can be served with correct MIME type
+    const toProductionPath = (path) =>
+      path
+        .replace(/\.(jsx|tsx)$/, '.js')
+        .replace(/\.ts$/, '.js')
+        .replace(/\.module\.css$/, '.module.css.js');
+
+    // Rewrite import/export paths for production in compiled JS content
+    const rewriteImports = (text) =>
+      text
+        // Rename .jsx/.tsx imports to .js
+        .replace(/(from\s+["'])([^"']*)\.(jsx|tsx)(["'])/g, '$1$2.js$4')
+        .replace(/(import\s*\(["'])([^"']*)\.(jsx|tsx)(["']\))/g, '$1$2.js$4')
+        // Rename .module.css imports to .module.css.js (they are compiled to JS by the dev server)
+        .replace(/(from\s+["'])([^"']*\.module\.css)(["'])/g, '$1$2.js$3')
+        .replace(/(import\s*\(["'])([^"']*\.module\.css)(["']\))/g, '$1$2.js$3')
+        // Add .js to extensionless relative imports (./foo or ../foo but not bare specifiers)
+        .replace(/(from\s+["'])(\.\.?\/[^"']*?)(["'])/g, (_match, pre, path, post) => {
+          // Skip if it already has a file extension
+          if (/\.\w+$/.test(path)) return _match;
+          return `${pre}${path}.js${post}`;
+        })
+        .replace(/(import\s*\(["'])(\.\.?\/[^"']*?)(["']\))/g, (_match, pre, path, post) => {
+          if (/\.\w+$/.test(path)) return _match;
+          return `${pre}${path}.js${post}`;
+        });
+
+    // Rewrite script src in HTML from .jsx/.tsx to .js
+    const rewriteHtmlScripts = (html) =>
+      html.replace(/(src=["'][^"']*)\.(jsx|tsx)(["'])/g, '$1.js$3');
+
+    // Fetch each file through the Service Worker to get compiled/transformed versions
+    // This uses the same pipeline as the preview iframe (/preview/ path)
+    for (const filePath of filePaths) {
+      try {
+        const response = await fetch(`/preview${filePath}`);
+        if (response.ok) {
+          const contentType = response.headers.get('content-type') || '';
+          const zipPath = toProductionPath(filePath.slice(1));
+
+          if (
+            contentType.includes('javascript') ||
+            contentType.includes('text/') ||
+            filePath.match(/\.(jsx?|tsx?|css|html|json|md|txt|svg)$/)
+          ) {
+            let text = await response.text();
+            if (contentType.includes('javascript') || filePath.match(/\.(jsx?|tsx?|module\.css)$/)) {
+              text = rewriteImports(cleanDevArtifacts(text));
+            } else if (filePath.endsWith('.html')) {
+              text = rewriteHtmlScripts(text);
+            }
+            zip.addFile(zipPath, text);
+          } else {
+            const buffer = await response.arrayBuffer();
+            zip.addFile(zipPath, new Uint8Array(buffer));
+          }
+        }
+      } catch (_fetchErr) {
+        // Fallback: add raw file content from VFS
+        try {
+          const content = vfs.readFileSync(filePath);
+          zip.addFile(toProductionPath(filePath.slice(1)), content);
+        } catch (_readErr) {
+          console.warn(`Could not read ${filePath}`);
+        }
+      }
+    }
+
+    const blob = await zip.generateBlob();
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${projectName.replace(/\s+/g, '_')}_compiled.zip`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
   const toggleTheme = () => {
     appState((draft) => {
       draft.theme = draft.theme === 'light' ? 'dark' : 'light';
@@ -316,6 +462,17 @@ export default function TopBar() {
           >
             <Icons.Plus />
             <span>Export ZIP</span>
+          </button>
+          <button
+            type="button"
+            className={styles.menuItem}
+            onClick={() => {
+              handleExportCompiledZip();
+              handleMenuClose();
+            }}
+          >
+            <Icons.Play />
+            <span>Export compiled files</span>
           </button>
           <button
             type="button"
