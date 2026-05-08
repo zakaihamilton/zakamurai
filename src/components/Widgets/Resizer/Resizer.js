@@ -4,11 +4,14 @@ import styles from './Resizer.module.css';
 export default function Resizer({ onResize, onResizeStart, onResizeEnd, onDoubleClick }) {
   const [isResizing, setIsResizing] = useState(false);
 
-  const startResizing = useCallback((e) => {
-    setIsResizing(true);
-    if (onResizeStart) onResizeStart();
-    e.preventDefault();
-  }, [onResizeStart]);
+  const startResizing = useCallback(
+    (e) => {
+      setIsResizing(true);
+      if (onResizeStart) onResizeStart();
+      e.preventDefault();
+    },
+    [onResizeStart],
+  );
 
   const stopResizing = useCallback(() => {
     setIsResizing(false);
@@ -21,7 +24,7 @@ export default function Resizer({ onResize, onResizeStart, onResizeEnd, onDouble
         onResize(e.clientX);
       }
     },
-    [isResizing, onResize]
+    [isResizing, onResize],
   );
 
   useEffect(() => {

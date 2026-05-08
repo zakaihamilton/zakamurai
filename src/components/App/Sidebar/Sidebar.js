@@ -55,7 +55,10 @@ export default function Sidebar() {
   }, [folderTree, filterText]);
 
   return (
-    <aside className={styles.sidebar} style={{ width: isSidebarOpen ? `${sidebarWidth}px` : '64px' }}>
+    <aside
+      className={styles.sidebar}
+      style={{ width: isSidebarOpen ? `${sidebarWidth}px` : '64px' }}
+    >
       {/* Dynamic Header Section */}
       <div className={styles.header}>
         <Tooltip content={isSidebarOpen ? 'Collapse Sidebar' : 'Expand Sidebar'}>

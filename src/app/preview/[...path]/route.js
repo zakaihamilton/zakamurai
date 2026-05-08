@@ -9,9 +9,7 @@
  * It returns a lightweight HTML page that waits for the SW to become ready,
  * then reloads itself so the SW can serve the actual preview content.
  */
-export async function GET(request) {
-  const url = new URL(request.url);
-
+export async function GET(_request) {
   return new Response(
     `<!DOCTYPE html>
 <html>

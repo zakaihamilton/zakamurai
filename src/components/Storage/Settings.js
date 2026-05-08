@@ -138,10 +138,10 @@ const Settings = {
       console.warn('Failed to save preview HTML to localStorage (likely size limit)', e);
     }
   },
-  
+
   getSidebarWidth(defaultValue = 260) {
     const val = this.get(KEYS.SIDEBAR_WIDTH);
-    return val ? parseInt(val, 10) : defaultValue;
+    return val ? Number.parseInt(val, 10) : defaultValue;
   },
 
   setSidebarWidth(width) {
@@ -150,7 +150,7 @@ const Settings = {
 
   getPromptWidth(defaultValue = 340) {
     const val = this.get(KEYS.PROMPT_WIDTH);
-    return val ? parseInt(val, 10) : defaultValue;
+    return val ? Number.parseInt(val, 10) : defaultValue;
   },
 
   setPromptWidth(width) {

@@ -6,16 +6,16 @@ import { createState } from '../Core/Base/State';
 import { useFileSystem } from '../Storage';
 import { DEFAULT_CONTENTS, DEFAULT_FILES } from '../Storage/InitialData';
 import Settings from '../Storage/Settings';
+import Resizer from '../Widgets/Resizer/Resizer';
 import styles from './App.module.css';
 import EditorArea, { EditorState } from './EditorArea';
 import { Icons } from './Icons';
 import LogArea, { LogState } from './LogArea';
 import PreviewArea from './PreviewArea';
+import Prompt, { PromptState } from './Prompt';
 import Sidebar, { SidebarState } from './Sidebar';
 import TabBar, { TabState } from './TabBar';
 import TopBar from './TopBar';
-import Prompt, { PromptState } from './Prompt';
-import Resizer from '../Widgets/Resizer/Resizer';
 
 export const AppState = createState('AppState');
 export const PreviewState = createState('PreviewState');
@@ -35,17 +35,29 @@ function PreviewRestorer() {
     if (htmlContent) {
       const restore = async () => {
         try {
-          console.log('[PreviewRestorer] Starting restore, htmlContent length:', htmlContent.length);
+          console.log(
+            '[PreviewRestorer] Starting restore, htmlContent length:',
+            htmlContent.length,
+          );
           const compiler = new Compiler(() => {});
           const container = await compiler.init();
-          console.log('[PreviewRestorer] Container initialized, serverBridge:', !!container.serverBridge);
+          console.log(
+            '[PreviewRestorer] Container initialized, serverBridge:',
+            !!container.serverBridge,
+          );
           if (!container.vfs.existsSync('/dist')) {
             container.vfs.mkdirSync('/dist', { recursive: true });
           }
           container.vfs.writeFileSync('/dist/index.html', htmlContent);
           container.vfs.writeFileSync('/index.html', htmlContent);
-          console.log('[PreviewRestorer] VFS seeded. /dist/index.html exists:', container.vfs.existsSync('/dist/index.html'));
-          console.log('[PreviewRestorer] /index.html exists:', container.vfs.existsSync('/index.html'));
+          console.log(
+            '[PreviewRestorer] VFS seeded. /dist/index.html exists:',
+            container.vfs.existsSync('/dist/index.html'),
+          );
+          console.log(
+            '[PreviewRestorer] /index.html exists:',
+            container.vfs.existsSync('/index.html'),
+          );
 
           // List /dist contents for debugging
           try {
@@ -61,13 +73,18 @@ function PreviewRestorer() {
           // Verify SW state
           if ('serviceWorker' in navigator) {
             const reg = await navigator.serviceWorker.getRegistration();
-            console.log('[PreviewRestorer] SW registration:', reg ? {
-              scope: reg.scope,
-              active: !!reg.active,
-              waiting: !!reg.waiting,
-              installing: !!reg.installing,
-              activeScriptURL: reg.active?.scriptURL,
-            } : 'none');
+            console.log(
+              '[PreviewRestorer] SW registration:',
+              reg
+                ? {
+                    scope: reg.scope,
+                    active: !!reg.active,
+                    waiting: !!reg.waiting,
+                    installing: !!reg.installing,
+                    activeScriptURL: reg.active?.scriptURL,
+                  }
+                : 'none',
+            );
             console.log('[PreviewRestorer] SW controller:', !!navigator.serviceWorker.controller);
           }
 
@@ -139,7 +156,12 @@ export default function App() {
     <div className={styles.root}>
       <AppState theme={initialTheme} projectName={initialProjectName} fs={fs}>
         <ProjectNameSaver />
-        <SidebarState isSidebarOpen={true} showAIInput={true} folderTree={initialFiles} sidebarWidth={initialSidebarWidth}>
+        <SidebarState
+          isSidebarOpen={true}
+          showAIInput={true}
+          folderTree={initialFiles}
+          sidebarWidth={initialSidebarWidth}
+        >
           <TabState openTabs={initialTabs} activeTabId={initialActiveTabId}>
             <LogState isProcessing={false} logs={initialAILogs}>
               <EditorState fileContents={initialContents}>
@@ -229,7 +251,9 @@ function PassiveWrapper() {
   };
 
   return (
-    <div className={`${styles.appWrapper} ${theme === 'light' ? styles.light : ''} ${isResizing ? styles.isResizing : ''}`}>
+    <div
+      className={`${styles.appWrapper} ${theme === 'light' ? styles.light : ''} ${isResizing ? styles.isResizing : ''}`}
+    >
       <Sidebar />
       {isSidebarOpen && (
         <Resizer

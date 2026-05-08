@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { createState } from '../../Core/Base/State';
 import { askWebLLM, interruptWebLLM, processAIResponse } from '../../AI';
+import { createState } from '../../Core/Base/State';
 import Settings from '../../Storage/Settings';
 import Tooltip from '../../Widgets/Tooltip/Tooltip';
 import { AppState } from '../App';
@@ -30,7 +30,7 @@ export default function Prompt() {
   const { promptWidth } = promptState;
 
   useEffect(() => {
-    if (reasoningRef.current) {
+    if (reasoning && reasoningRef.current) {
       reasoningRef.current.scrollTop = reasoningRef.current.scrollHeight;
     }
   }, [reasoning]);
@@ -219,7 +219,10 @@ FORMAT FOR FULL FILE REWRITE (ONLY FOR NEW FILES OR COMPLETE OVERHAULS):
     <aside
       className={`${styles.prompt} ${showAIInput ? styles.open : styles.closed}`}
       aria-hidden={!showAIInput}
-      style={{ width: showAIInput ? `${promptWidth}px` : '0px', minWidth: showAIInput ? `${promptWidth}px` : '0px' }}
+      style={{
+        width: showAIInput ? `${promptWidth}px` : '0px',
+        minWidth: showAIInput ? `${promptWidth}px` : '0px',
+      }}
     >
       <div className={styles.content}>
         <div className={styles.header}>
