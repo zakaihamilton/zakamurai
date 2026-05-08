@@ -305,27 +305,29 @@ export default function TopBar() {
     });
   };
 
-  let breadcrumb = ['Zakamurai'];
+  let breadcrumb = [projectName];
   if (activeTab) {
     if (activeTab.type === 'file') {
-      breadcrumb = activeTab.file?.path || [activeTab.label];
+      breadcrumb = [projectName, ...(activeTab.file?.path || [])];
     } else if (activeTab.type === 'logs') {
-      breadcrumb = ['System', 'Log'];
+      breadcrumb = [projectName, 'System', 'Log'];
     } else if (activeTab.type === 'preview') {
-      breadcrumb = ['dist', 'index.html'];
+      breadcrumb = [projectName, 'dist', 'index.html'];
     }
   }
 
   const handleBreadcrumbClick = (_seg, index) => {
-    const pathSegments = breadcrumb.slice(0, index + 1);
-    const fullPath = pathSegments.join('/');
-
     sidebarState((draft) => {
+      if (!draft.expandedFolders) draft.expandedFolders = {};
+
+      let fullPath = '';
+      if (index > 0) {
+        const pathSegments = breadcrumb.slice(1, index + 1);
+        fullPath = pathSegments.join('/');
+      }
+
       const current = draft.expandedFolders[fullPath] !== false;
-      draft.expandedFolders = {
-        ...draft.expandedFolders,
-        [fullPath]: !current,
-      };
+      draft.expandedFolders[fullPath] = !current;
     });
   };
 

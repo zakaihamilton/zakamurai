@@ -161,6 +161,7 @@ export default function App() {
           showAIInput={true}
           folderTree={initialFiles}
           sidebarWidth={initialSidebarWidth}
+          expandedFolders={{}}
         >
           <TabState openTabs={initialTabs} activeTabId={initialActiveTabId}>
             <LogState isProcessing={false} logs={initialAILogs}>
