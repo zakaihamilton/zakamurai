@@ -244,6 +244,17 @@ FORMAT FOR FULL FILE REWRITE (ONLY FOR NEW FILES OR COMPLETE OVERHAULS):
             )}
           </div>
         )}
+        {isProcessing && logState.reasoning && (
+          <div className={styles.reasoningContainer}>
+            <div className={styles.reasoningHeader}>
+              <Icons.Info size={14} />
+              <span>Progress & Reasoning</span>
+            </div>
+            <div ref={reasoningRef} className={`${styles.reasoningContent} scroll-hide`}>
+              {logState.reasoning}
+            </div>
+          </div>
+        )}
         <form onSubmit={send} className={styles.form}>
           <textarea
             value={val}
@@ -286,17 +297,6 @@ FORMAT FOR FULL FILE REWRITE (ONLY FOR NEW FILES OR COMPLETE OVERHAULS):
             </Tooltip>
           </div>
         </form>
-        {isProcessing && logState.reasoning && (
-          <div className={styles.reasoningContainer}>
-            <div className={styles.reasoningHeader}>
-              <Icons.Info size={14} />
-              <span>Progress & Reasoning</span>
-            </div>
-            <div ref={reasoningRef} className={`${styles.reasoningContent} scroll-hide`}>
-              {logState.reasoning}
-            </div>
-          </div>
-        )}
       </div>
     </aside>
   );

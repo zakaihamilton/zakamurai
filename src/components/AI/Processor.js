@@ -28,18 +28,56 @@ import { setInDraft, updateInDraft } from '../Core/Base/StateUtils';
  * @returns {AIFileBlock[]}
  */
 export function parseAIResponse(response, activeTabId) {
-  const fileBlocks = [];
+  const fileBlocksMap = new Map();
   const fileRegex =
-    /\/\/ --- File: (.*?) ---\s*([\s\S]*?)(?=\s*\/\/ --- (?:End )?File ---|\s*```|$)/g;
+    /\/\/ --- File: (.*?) ---\s*([\s\S]*?)(?=\s*\/\/ --- (?:End )?File(?::.*?)? ---|\s*```|$)/g;
 
   let match = fileRegex.exec(response);
   while (match !== null) {
-    fileBlocks.push({
-      filePath: match[1].trim(),
-      content: match[2].trim(),
-    });
+    const filePath = match[1].trim();
+    let content = match[2].trim();
+
+    // Handle internal restarts within a block (e.g. AI self-correction without repeating the header)
+    const isStructured =
+      filePath.endsWith('.md') ||
+      filePath.endsWith('.yaml') ||
+      filePath.endsWith('.yml') ||
+      filePath.endsWith('.txt');
+    if (!isStructured) {
+      const internalRestarts = content.split(/\n\s*(?:={3,}|-{3,})\s*\n/);
+      if (internalRestarts.length > 1) {
+        const firstPart = internalRestarts[0].trim();
+        const lastPart = internalRestarts[internalRestarts.length - 1].trim();
+
+        // Heuristic to decide if it's a restart:
+        // 1. The last part contains SEARCH/REPLACE markers
+        // 2. The first part is short (apology or partial)
+        // 3. The first part contains apology keywords
+        // 4. The last part starts with the same code as the first part
+        const isCorrection =
+          lastPart.includes('<<<<<<< SEARCH') ||
+          firstPart.length < 100 ||
+          /\b(sorry|mistake|confusion|error|restart|correction)\b/i.test(firstPart) ||
+          (firstPart.length > 10 &&
+            lastPart
+              .replace(/\s+/g, '')
+              .startsWith(firstPart.replace(/\s+/g, '').substring(0, 20)));
+
+        if (isCorrection) {
+          content = lastPart;
+        }
+      }
+    }
+
+    // Overwrite previous block for the same file path if it exists (handles AI self-correction)
+    fileBlocksMap.set(filePath, content);
     match = fileRegex.exec(response);
   }
+
+  const fileBlocks = Array.from(fileBlocksMap.entries()).map(([filePath, content]) => ({
+    filePath,
+    content,
+  }));
 
   // Fallback if no markers found but we have an active tab
   if (fileBlocks.length === 0 && activeTabId) {
