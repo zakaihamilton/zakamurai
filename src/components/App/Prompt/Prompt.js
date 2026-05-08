@@ -188,7 +188,7 @@ FORMAT FOR FULL FILE REWRITE (ONLY FOR NEW FILES OR COMPLETE OVERHAULS):
   };
 
   const handleKeyDown = (e) => {
-    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+    if (e.key === 'Enter' && !e.metaKey && !e.ctrlKey && !e.shiftKey) {
       send(e);
     } else if (e.key === 'ArrowUp') {
       const history = Settings.getPromptHistory();
@@ -288,7 +288,7 @@ FORMAT FOR FULL FILE REWRITE (ONLY FOR NEW FILES OR COMPLETE OVERHAULS):
                 </button>
               </Tooltip>
             )}
-            <Tooltip content="Execute (Cmd + Enter)">
+            <Tooltip content="Execute (Enter)">
               <button
                 type="submit"
                 disabled={!isBtnActive || !showAIInput}

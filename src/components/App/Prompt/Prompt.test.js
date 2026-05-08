@@ -79,7 +79,7 @@ describe('Prompt', () => {
 
     render(<Prompt />);
     expect(screen.getByPlaceholderText('Enter the AI prompt here...')).toBeDefined();
-    expect(screen.getByTitle('Execute')).toBeDefined();
+    expect(screen.getByTitle('Execute (Enter)')).toBeDefined();
   });
 
   it('renders collapsed when showAIInput is false', () => {
@@ -125,7 +125,7 @@ describe('Prompt', () => {
 
     render(<Prompt />);
     const input = screen.getByPlaceholderText('Enter the AI prompt here...');
-    const button = screen.getByTitle('Execute');
+    const button = screen.getByTitle('Execute (Enter)');
 
     fireEvent.change(input, { target: { value: 'build app' } });
     fireEvent.click(button);
