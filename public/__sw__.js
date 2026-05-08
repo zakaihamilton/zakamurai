@@ -41,7 +41,7 @@ self.addEventListener('message', (event) => {
     // Initialize communication channel
     mainPort = event.ports[0];
     mainPort.onmessage = handleMainMessage;
-    DEBUG && console.log('[SW] Initialized communication channel with transferred port');
+    console.log('[SW] Initialized communication channel with transferred port');
     // Re-claim clients so that pages opened after SW activation get controlled.
     // Without this, controllerchange never fires for late-arriving pages.
     self.clients.claim();
@@ -433,7 +433,7 @@ async function handleStreamingRequest(port, method, path, headers, body) {
  * Activate immediately
  */
 self.addEventListener('install', (event) => {
-  DEBUG && console.log('[SW] Installing...');
+  console.log('[SW] Installing...');
   event.waitUntil(self.skipWaiting());
 });
 
@@ -441,6 +441,6 @@ self.addEventListener('install', (event) => {
  * Claim all clients immediately
  */
 self.addEventListener('activate', (event) => {
-  DEBUG && console.log('[SW] Activated');
+  console.log('[SW] Activated');
   event.waitUntil(self.clients.claim());
 });
