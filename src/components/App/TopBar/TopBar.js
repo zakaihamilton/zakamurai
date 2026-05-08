@@ -19,7 +19,7 @@ export default function TopBar() {
   const tabState = TabState.useState();
   const { openTabs = [], activeTabId } = tabState;
   const sidebarState = SidebarState.useState();
-  const { folderTree } = sidebarState;
+  const { folderTree, showAIInput } = sidebarState;
   const editorState = EditorState.useState();
   const logState = LogState.useState();
   const previewState = PreviewState.useState();
@@ -345,6 +345,19 @@ export default function TopBar() {
         <Tooltip content={`Switch to ${theme === 'light' ? 'dark' : 'light'} theme`}>
           <button type="button" onClick={toggleTheme} className={styles.themeToggle}>
             {theme === 'light' ? <Icons.Moon /> : <Icons.Sun />}
+          </button>
+        </Tooltip>
+        <Tooltip content={showAIInput ? 'Hide AI Prompt' : 'Show AI Prompt'}>
+          <button
+            type="button"
+            className={`${styles.actionBtn} ${styles.iconBtn} ${showAIInput ? styles.activeTab : ''}`}
+            onClick={() =>
+              sidebarState((draft) => {
+                draft.showAIInput = !draft.showAIInput;
+              })
+            }
+          >
+            <Icons.BotSmall />
           </button>
         </Tooltip>
       </div>

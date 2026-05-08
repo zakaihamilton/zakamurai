@@ -11,7 +11,7 @@ import EditorArea, { EditorState } from './EditorArea';
 import { Icons } from './Icons';
 import LogArea, { LogState } from './LogArea';
 import PreviewArea from './PreviewArea';
-import PromptFooter from './PromptFooter';
+import Prompt from './Prompt';
 import Sidebar, { SidebarState } from './Sidebar';
 import TabBar, { TabState } from './TabBar';
 import TopBar from './TopBar';
@@ -179,23 +179,27 @@ function PassiveWrapper() {
       <Sidebar />
       <div className={styles.mainContent}>
         <TopBar />
-        <TabBar />
-        <div className={styles.editorContainer}>
-          {activeTab?.type === 'file' && <EditorArea file={activeTab.file} />}
-          {activeTab?.type === 'logs' && <LogArea />}
-          {activeTab?.type === 'preview' && (
-            <PreviewArea htmlContent={htmlContent} isCompilerReady={isCompilerReady} />
-          )}
-          {!activeTab && (
-            <div className={styles.emptyState}>
-              <Icons.Bot />
-              <p className={styles.emptyStateText}>
-                No open tabs. Select a file from the explorer.
-              </p>
+        <div className={styles.workspaceContent}>
+          <div className={styles.workspaceMain}>
+            <TabBar />
+            <div className={styles.editorContainer}>
+              {activeTab?.type === 'file' && <EditorArea file={activeTab.file} />}
+              {activeTab?.type === 'logs' && <LogArea />}
+              {activeTab?.type === 'preview' && (
+                <PreviewArea htmlContent={htmlContent} isCompilerReady={isCompilerReady} />
+              )}
+              {!activeTab && (
+                <div className={styles.emptyState}>
+                  <Icons.Bot />
+                  <p className={styles.emptyStateText}>
+                    No open tabs. Select a file from the explorer.
+                  </p>
+                </div>
+              )}
             </div>
-          )}
+          </div>
+          <Prompt />
         </div>
-        <PromptFooter />
       </div>
     </div>
   );

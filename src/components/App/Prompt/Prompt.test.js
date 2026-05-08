@@ -6,7 +6,7 @@ import { EditorState } from '../EditorArea';
 import { LogState } from '../LogArea';
 import { SidebarState } from '../Sidebar';
 import { TabState } from '../TabBar';
-import PromptFooter from './PromptFooter';
+import Prompt from './Prompt';
 
 vi.mock('../LogArea', () => ({
   LogState: {
@@ -59,7 +59,7 @@ vi.mock('../../Storage/Settings', () => ({
   },
 }));
 
-describe('PromptFooter', () => {
+describe('Prompt', () => {
   it('renders input and button when showAIInput is true', () => {
     SidebarState.useState.mockReturnValue({
       showAIInput: true,
@@ -77,12 +77,12 @@ describe('PromptFooter', () => {
     AppState.useState.mockReturnValue({ fs: {} });
     EditorState.useState.mockReturnValue(vi.fn());
 
-    render(<PromptFooter />);
+    render(<Prompt />);
     expect(screen.getByPlaceholderText('Enter the AI prompt here...')).toBeDefined();
     expect(screen.getByTitle('Execute')).toBeDefined();
   });
 
-  it('does not render when showAIInput is false', () => {
+  it('renders collapsed when showAIInput is false', () => {
     SidebarState.useState.mockReturnValue({
       showAIInput: false,
     });
@@ -97,8 +97,9 @@ describe('PromptFooter', () => {
     AppState.useState.mockReturnValue({ fs: {} });
     EditorState.useState.mockReturnValue(vi.fn());
 
-    const { container } = render(<PromptFooter />);
-    expect(container.firstChild).toBeNull();
+    const { container } = render(<Prompt />);
+    expect(container.firstChild).not.toBeNull();
+    expect(container.firstChild.getAttribute('aria-hidden')).toBe('true');
   });
 
   it('calls state update when form is submitted', () => {
@@ -122,7 +123,7 @@ describe('PromptFooter', () => {
     AppState.useState.mockReturnValue({ fs: {} });
     EditorState.useState.mockReturnValue(vi.fn());
 
-    render(<PromptFooter />);
+    render(<Prompt />);
     const input = screen.getByPlaceholderText('Enter the AI prompt here...');
     const button = screen.getByTitle('Execute');
 

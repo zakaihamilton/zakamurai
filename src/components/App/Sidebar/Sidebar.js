@@ -38,7 +38,7 @@ const filterTree = (nodes, query) => {
 
 export default function Sidebar() {
   const sidebarState = SidebarState.useState();
-  const { isSidebarOpen, folderTree, showAIInput } = sidebarState;
+  const { isSidebarOpen, folderTree } = sidebarState;
   const appState = AppState.useState();
   const { projectName } = appState;
   const [filterText, setFilterText] = useState('');
@@ -131,26 +131,6 @@ export default function Sidebar() {
           <div className={styles.noFiles}>No files found matching "{filterText}"</div>
         )}
       </div>
-
-      {/* AI Prompt Footer Toggle */}
-      <Tooltip content={showAIInput ? 'Hide AI Prompt' : 'Show AI Prompt'}>
-        <button
-          type="button"
-          onClick={() =>
-            sidebarState((d) => {
-              d.showAIInput = !d.showAIInput;
-            })
-          }
-          className={styles.footerToggle}
-          style={{
-            justifyContent: isSidebarOpen ? 'flex-start' : 'center',
-            color: showAIInput ? 'var(--accent)' : 'var(--text-muted)',
-          }}
-        >
-          {showAIInput ? <Icons.ToggleOn /> : <Icons.ToggleOff />}
-          {isSidebarOpen && <span className={styles.footerToggleLabel}>AI PROMPT</span>}
-        </button>
-      </Tooltip>
     </aside>
   );
 }

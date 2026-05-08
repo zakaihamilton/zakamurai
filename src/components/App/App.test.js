@@ -41,8 +41,8 @@ vi.mock('./LogArea', () => {
     LogState: State,
   };
 });
-vi.mock('./PromptFooter', () => ({
-  default: () => <div data-testid="footer">Footer</div>,
+vi.mock('./Prompt', () => ({
+  default: () => <div data-testid="prompt">Prompt</div>,
 }));
 
 describe('App', () => {
@@ -56,6 +56,6 @@ describe('App', () => {
     expect(screen.getByTestId('sidebar')).toBeDefined();
     expect(screen.getByTestId('topbar')).toBeDefined();
     expect(screen.getByTestId('tabbar')).toBeDefined();
-    expect(screen.getByTestId('footer')).toBeDefined();
+    expect(screen.getByTestId('prompt')).toBeDefined();
   });
 });

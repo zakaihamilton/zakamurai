@@ -178,6 +178,12 @@
   padding: 6px 8px !important;
 }
 
+.iconBtn {
+  padding: 6px 8px !important;
+  min-width: 34px;
+  justify-content: center;
+}
+
 .activeTab {
   background: var(--bg-surface) !important;
   color: var(--accent) !important;

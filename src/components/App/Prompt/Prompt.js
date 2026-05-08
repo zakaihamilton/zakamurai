@@ -8,9 +8,9 @@ import { Icons } from '../Icons';
 import { LogState } from '../LogArea';
 import { SidebarState } from '../Sidebar';
 import { TabState } from '../TabBar';
-import styles from './PromptFooter.module.css';
+import styles from './Prompt.module.css';
 
-export default function PromptFooter() {
+export default function Prompt() {
   const { fs } = AppState.useState();
   const [val, setVal] = useState('');
   const [historyIndex, setHistoryIndex] = useState(-1);
@@ -22,8 +22,6 @@ export default function PromptFooter() {
   const { showAIInput } = sidebarState;
   const tabState = TabState.useState();
   const editorState = EditorState.useState();
-
-  if (!showAIInput) return null;
 
   const handleStop = (e) => {
     e.preventDefault();
@@ -178,61 +176,76 @@ FORMAT FOR FULL FILE REWRITE:
   const selectedLines = editorState.selectedLines?.[currentActiveTabId] || [];
 
   return (
-    <div className={styles.promptFooter}>
-      {(currentActiveTabId || selectedLines.length > 0) && (
-        <div className={styles.tagsContainer}>
-          {currentActiveTabId && (
-            <div className={styles.tag}>
-              <Icons.File size={12} />
-              <span>{currentActiveTabId.split('/').pop()}</span>
-            </div>
-          )}
-          {selectedLines.length > 0 && (
-            <div className={styles.tag}>
-              <Icons.Check size={12} />
-              <span>Lines: {selectedLines.sort((a, b) => a - b).join(', ')}</span>
-            </div>
-          )}
+    <aside
+      className={`${styles.prompt} ${showAIInput ? styles.open : styles.closed}`}
+      aria-hidden={!showAIInput}
+    >
+      <div className={styles.content}>
+        <div className={styles.header}>
+          <div>
+            <h2 className={styles.title}>AI Prompt</h2>
+          </div>
+          {isProcessing && <span className={styles.status}>Working</span>}
         </div>
-      )}
-      <form onSubmit={send} className={styles.form}>
-        <input
-          value={val}
-          onChange={(e) => {
-            setVal(e.target.value);
-            if (historyIndex === -1) {
-              setDraftVal(e.target.value);
-            }
-          }}
-          onKeyDown={handleKeyDown}
-          disabled={isProcessing}
-          placeholder={
-            isProcessing ? 'AI is working... Please wait.' : 'Enter the AI prompt here...'
-          }
-          className={styles.input}
-        />
-        {isProcessing && (
-          <Tooltip content="Stop AI">
-            <button
-              type="button"
-              onClick={handleStop}
-              className={styles.button}
-              style={{ color: 'var(--error, #f44336)' }}
-            >
-              <Icons.Close />
-            </button>
-          </Tooltip>
+        {(currentActiveTabId || selectedLines.length > 0) && (
+          <div className={styles.tagsContainer}>
+            {currentActiveTabId && (
+              <div className={styles.tag}>
+                <Icons.File size={12} />
+                <span>{currentActiveTabId.split('/').pop()}</span>
+              </div>
+            )}
+            {selectedLines.length > 0 && (
+              <div className={styles.tag}>
+                <Icons.Check size={12} />
+                <span>Lines: {selectedLines.sort((a, b) => a - b).join(', ')}</span>
+              </div>
+            )}
+          </div>
         )}
-        <Tooltip content="Execute">
-          <button
-            type="submit"
-            disabled={!isBtnActive}
-            className={`${styles.button} ${isBtnActive ? styles.buttonActive : styles.buttonDisabled}`}
-          >
-            <Icons.Send />
-          </button>
-        </Tooltip>
-      </form>
-    </div>
+        <form onSubmit={send} className={styles.form}>
+          <textarea
+            value={val}
+            onChange={(e) => {
+              setVal(e.target.value);
+              if (historyIndex === -1) {
+                setDraftVal(e.target.value);
+              }
+            }}
+            onKeyDown={handleKeyDown}
+            disabled={isProcessing || !showAIInput}
+            placeholder={
+              isProcessing ? 'AI is working... Please wait.' : 'Enter the AI prompt here...'
+            }
+            className={styles.input}
+            tabIndex={showAIInput ? undefined : -1}
+          />
+          <div className={styles.actions}>
+            {isProcessing && (
+              <Tooltip content="Stop AI">
+                <button
+                  type="button"
+                  onClick={handleStop}
+                  className={`${styles.button} ${styles.stopButton}`}
+                  tabIndex={showAIInput ? undefined : -1}
+                >
+                  <Icons.Close />
+                </button>
+              </Tooltip>
+            )}
+            <Tooltip content="Execute">
+              <button
+                type="submit"
+                disabled={!isBtnActive || !showAIInput}
+                className={`${styles.button} ${isBtnActive ? styles.buttonActive : styles.buttonDisabled}`}
+                tabIndex={showAIInput ? undefined : -1}
+              >
+                <Icons.Send />
+              </button>
+            </Tooltip>
+          </div>
+        </form>
+      </div>
+    </aside>
   );
 }
