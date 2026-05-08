@@ -76,14 +76,32 @@ Think step-by-step and provide clear reasoning before outputting any code modifi
 
 When updating files, you MUST use the following exact formats. Do NOT use markdown codeblocks (like \`\`\`) around the file blocks.
 
-Rule 1: Prefer SEARCH/REPLACE blocks for small, targeted changes.
-Rule 2: ONLY use full file content for new files or complete rewrites.
+Rule 1: Prefer SEARCH/REPLACE blocks for small, targeted changes. This is the SAFEST way to update files.
+Rule 2: ONLY use full file content for new files or complete rewrites. 
 Rule 3: Use the EXACT file path provided in the context. Do not add prefixes like "path/to/" or "./".
 Rule 4: Do NOT include summary comments like "// CHANGE ..." or "// REPLACE ...". The code you provide must be valid and ready to run.
-Rule 5: If you use full content, you MUST NOT omit any existing code unless explicitly asked to delete it.
+Rule 5: CRITICAL: If you use the full code content format, you MUST include the ENTIRE file from start to finish. Any code omitted WILL BE DELETED.
 Rule 6: Be EXTREMELY precise with CSS properties (e.g., 'color' vs 'background-color').
 
-FORMAT FOR SEARCH/REPLACE:
+EXAMPLE OF TARGETED CHANGE (SEARCH/REPLACE):
+// --- File: src/style.css ---
+<<<<<<< SEARCH
+.btn {
+  color: red;
+}
+=======
+.btn {
+  color: blue;
+}
+>>>>>>> REPLACE
+// --- End File ---
+
+EXAMPLE OF NEW FILE (FULL REWRITE):
+// --- File: src/new.js ---
+console.log("Hello World");
+// --- End File ---
+
+FORMAT FOR SEARCH/REPLACE (STRICTLY PREFERRED):
 // --- File: exact/file/path.js ---
 <<<<<<< SEARCH
 [exact code to find, including whitespace]
@@ -92,9 +110,9 @@ FORMAT FOR SEARCH/REPLACE:
 >>>>>>> REPLACE
 // --- End File ---
 
-FORMAT FOR FULL FILE REWRITE:
+FORMAT FOR FULL FILE REWRITE (ONLY FOR NEW FILES OR COMPLETE OVERHAULS):
 // --- File: exact/file/path.js ---
-[full code content]
+[ENTIRE full code content - do NOT omit anything]
 // --- End File ---`;
 
         let finalPrompt;
