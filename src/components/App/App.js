@@ -72,8 +72,8 @@ function PreviewRestorer() {
 
           // Verification fetch: test that the preview path is served by the SW
           try {
-            console.log('[PreviewRestorer] Running verification fetch for /preview/dist/index.html...');
-            const resp = await fetch('/preview/dist/index.html');
+            console.log('[PreviewRestorer] Running verification fetch for /preview/...');
+            const resp = await fetch('/preview/');
             console.log('[PreviewRestorer] Verification fetch result:', {
               status: resp.status,
               statusText: resp.statusText,
