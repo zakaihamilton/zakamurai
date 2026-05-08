@@ -25,10 +25,19 @@ export default function PreviewArea({ htmlContent, isCompilerReady }) {
   useEffect(() => {
     if (typeof window !== 'undefined') {
       setHost(window.location.host);
-      // If we are on a subpath (e.g. /my-app/), ensure address starts with it
-      const base = window.location.pathname.replace(/\/$/, '');
-      if (base && base !== '/' && !address.startsWith(base)) {
-        setAddress(`${base}/preview/dist/index.html`);
+      // If we are on a subpath, we might need to prefix the address.
+      // But we should only do this if we are sure it's necessary.
+      // For now, let's assume root-relative paths are safer.
+      const currentPath = window.location.pathname;
+      if (currentPath.includes('/preview/')) {
+        const baseBeforePreview = currentPath.split('/preview/')[0];
+        if (
+          baseBeforePreview &&
+          baseBeforePreview !== '/' &&
+          !address.startsWith(baseBeforePreview)
+        ) {
+          setAddress(`${baseBeforePreview}${address}`);
+        }
       }
     }
   }, [address]);

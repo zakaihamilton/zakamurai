@@ -154,10 +154,7 @@ export default classMap;
   }
 
   if (container.serverBridge) {
-    const swUrl =
-      typeof window !== 'undefined'
-        ? `${window.location.pathname.replace(/\/$/, '')}/__sw__.js`.replace(/^\/\//, '/')
-        : '/__sw__.js';
+    const swUrl = '/__sw__.js';
     await container.serverBridge.initServiceWorker({ swUrl });
     const devServer = new SmartViteDevServer(container.vfs, { port: 3000, root: '/' });
     container.serverBridge.registerServer(devServer, 3000);

@@ -287,7 +287,7 @@ self.addEventListener('fetch', (event) => {
   }
 
   const port = match ? parseInt(match[1], 10) : 3000;
-  const path = (match ? match[2] : previewMatch[1]) || '/';
+  const path = (match ? match[2] : (previewMatch ? previewMatch[1] : '/')) || '/';
 
   if (DEBUG) console.log('[SW] Intercepted virtual request:', { port, path, originalUrl: url.pathname });
 
