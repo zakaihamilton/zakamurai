@@ -245,8 +245,8 @@ self.addEventListener('fetch', (event) => {
   DEBUG && console.log('[SW] Fetch:', url.pathname, 'mainPort:', !!mainPort);
 
   // Check if this is a virtual server request
-  const match = url.pathname.match(/\/__virtual__\/(\d+)(\/.*)?$/);
-  const previewMatch = url.pathname.match(/\/preview(\/.*)?$/);
+  const match = url.pathname.match(/\/__virtual__\/(\d+)($|\/.*)/);
+  const previewMatch = url.pathname.match(/\/preview($|\/.*)/);
 
   if (!match && !previewMatch) {
     // Not a virtual request - but check if it's from a virtual context

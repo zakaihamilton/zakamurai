@@ -175,7 +175,7 @@ export default function PreviewArea({ htmlContent, isCompilerReady }) {
               CRITICAL: We point src to /index.html. 
               The almostnode Service Worker MUST be active to intercept this. 
           */}
-          {isCompilerReady && (
+          {isCompilerReady && isSwReady && (
             <iframe
               key={refreshKey}
               ref={iframeRef}
