@@ -29,19 +29,6 @@ const nextConfig = {
       },
     ];
   },
-  async rewrites() {
-    return {
-      // beforeFiles rewrites are checked before pages/public files
-      // This ensures /preview/* requests don't 404 on the server
-      // and instead fall through to be handled by the Service Worker
-      beforeFiles: [
-        {
-          source: '/preview/:path*',
-          destination: '/',
-        },
-      ],
-    };
-  },
 };
 
 export default nextConfig;

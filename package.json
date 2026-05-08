@@ -10,7 +10,7 @@
     "format": "biome format . --write",
     "test": "vitest run",
     "test:watch": "vitest",
-    "setup:almostnode": "mkdir -p public/lib/almostnode public/assets && cp -r node_modules/almostnode/dist/* public/lib/almostnode/ && cp node_modules/almostnode/dist/assets/* public/assets/ && cp node_modules/almostnode/dist/__sw__.js public/",
+    "setup:almostnode": "mkdir -p public/lib/almostnode public/assets && cp -r node_modules/almostnode/dist/* public/lib/almostnode/ && cp node_modules/almostnode/dist/assets/* public/assets/",
     "postinstall": "\"$npm_execpath\" run setup:almostnode",
     "predev": "\"$npm_execpath\" run setup:almostnode",
     "prebuild": "\"$npm_execpath\" run setup:almostnode"
