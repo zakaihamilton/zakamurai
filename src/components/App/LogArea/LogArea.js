@@ -10,6 +10,7 @@ LogState.useState.initial = {
   logs: Settings.getAILogs(),
   isProcessing: false,
   processingType: null, // 'ai' or 'system'
+  reasoning: '',
 };
 
 export default function LogArea() {

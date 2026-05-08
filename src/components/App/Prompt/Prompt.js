@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { askWebLLM, interruptWebLLM, processAIResponse } from '../../AI';
 import Settings from '../../Storage/Settings';
 import Tooltip from '../../Widgets/Tooltip/Tooltip';
@@ -15,13 +15,20 @@ export default function Prompt() {
   const [val, setVal] = useState('');
   const [historyIndex, setHistoryIndex] = useState(-1);
   const [draftVal, setDraftVal] = useState('');
+  const reasoningRef = useRef(null);
 
   const logState = LogState.useState();
-  const { isProcessing } = logState;
+  const { isProcessing, reasoning } = logState;
   const sidebarState = SidebarState.useState();
   const { showAIInput } = sidebarState;
   const tabState = TabState.useState();
   const editorState = EditorState.useState();
+
+  useEffect(() => {
+    if (reasoningRef.current) {
+      reasoningRef.current.scrollTop = reasoningRef.current.scrollHeight;
+    }
+  }, [reasoning]);
 
   const handleStop = (e) => {
     e.preventDefault();
@@ -29,6 +36,7 @@ export default function Prompt() {
     logState((draft) => {
       draft.isProcessing = false;
       draft.processingType = null;
+      draft.reasoning = '';
       draft.logs = [
         ...draft.logs,
         { id: Date.now(), role: 'system', text: 'AI generation stopped by user.' },
@@ -58,6 +66,7 @@ export default function Prompt() {
       draft.logs = [...draft.logs, { id: Date.now(), role: 'user', text: userMsg }];
       draft.isProcessing = true;
       draft.processingType = 'ai';
+      draft.reasoning = '';
     });
 
     const runAI = async () => {
@@ -108,7 +117,11 @@ FORMAT FOR FULL FILE REWRITE:
           finalPrompt = `User Request:\n${userMsg}`;
         }
 
-        const webLLMResult = await askWebLLM(finalPrompt, systemPrompt);
+        const webLLMResult = await askWebLLM(finalPrompt, systemPrompt, (partial) => {
+          logState((draft) => {
+            draft.reasoning = partial;
+          });
+        });
 
         // Check if we're still processing (user might have clicked stop)
         // If isProcessing is false now, we discard the result
@@ -125,6 +138,7 @@ FORMAT FOR FULL FILE REWRITE:
           ];
           draft.isProcessing = false;
           draft.processingType = null;
+          draft.reasoning = '';
         });
 
         // Use the centralized processor to apply file changes
@@ -142,6 +156,7 @@ FORMAT FOR FULL FILE REWRITE:
           ];
           draft.isProcessing = false;
           draft.processingType = null;
+          draft.reasoning = '';
         });
       }
     };
@@ -150,7 +165,9 @@ FORMAT FOR FULL FILE REWRITE:
   };
 
   const handleKeyDown = (e) => {
-    if (e.key === 'ArrowUp') {
+    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+      send(e);
+    } else if (e.key === 'ArrowUp') {
       const history = Settings.getPromptHistory();
       if (historyIndex < history.length - 1) {
         const newIndex = historyIndex + 1;
@@ -233,7 +250,7 @@ FORMAT FOR FULL FILE REWRITE:
                 </button>
               </Tooltip>
             )}
-            <Tooltip content="Execute">
+            <Tooltip content="Execute (Cmd + Enter)">
               <button
                 type="submit"
                 disabled={!isBtnActive || !showAIInput}
@@ -245,6 +262,17 @@ FORMAT FOR FULL FILE REWRITE:
             </Tooltip>
           </div>
         </form>
+        {isProcessing && logState.reasoning && (
+          <div className={styles.reasoningContainer}>
+            <div className={styles.reasoningHeader}>
+              <Icons.Info size={14} />
+              <span>Progress & Reasoning</span>
+            </div>
+            <div ref={reasoningRef} className={`${styles.reasoningContent} scroll-hide`}>
+              {logState.reasoning}
+            </div>
+          </div>
+        )}
       </div>
     </aside>
   );

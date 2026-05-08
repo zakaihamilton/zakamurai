@@ -7,8 +7,9 @@ let enginePromise = null;
 /**
  * Initializes the WebLLM engine exactly once.
  * Subsequent calls will return the already-running engine promise.
+ * @param {function} onProgress - Optional callback for initialization progress.
  */
-const getEngine = () => {
+const getEngine = (onProgress = null) => {
   if (!enginePromise) {
     // Assign an async IIFE to the promise variable to satisfy Biome's
     // no-async-promise-executor rule while maintaining the singleton pattern.
@@ -23,6 +24,9 @@ const getEngine = () => {
           {
             initProgressCallback: (progress) => {
               console.info(`[WebLLM]: ${progress.text}`);
+              if (onProgress) {
+                onProgress(progress.text);
+              }
             },
           },
           {
@@ -46,11 +50,13 @@ const getEngine = () => {
 /**
  * Sends a prompt to the local WebLLM model and returns the text response.
  * @param {string} prompt - The user's input or full codebase context.
+ * @param {string} systemPrompt - Optional system prompt.
+ * @param {function} onUpdate - Optional callback for streaming updates (e.g., partial text).
  * @returns {Promise<string>} - The AI's generated response.
  */
-export const askWebLLM = async (prompt, systemPrompt = '') => {
+export const askWebLLM = async (prompt, systemPrompt = '', onUpdate = null) => {
   try {
-    const engine = await getEngine();
+    const engine = await getEngine(onUpdate);
 
     const defaultSystemPrompt = DEFAULT_SYSTEM_PROMPT;
 
@@ -64,6 +70,25 @@ export const askWebLLM = async (prompt, systemPrompt = '') => {
         content: prompt,
       },
     ];
+
+    if (onUpdate) {
+      const chunks = await engine.chat.completions.create({
+        messages,
+        temperature: 0.7,
+        top_p: 0.95,
+        presence_penalty: 0.1,
+        frequency_penalty: 0.1,
+        stream: true,
+      });
+
+      let fullText = '';
+      for await (const chunk of chunks) {
+        const content = chunk.choices?.[0]?.delta?.content ?? '';
+        fullText += content;
+        onUpdate(fullText);
+      }
+      return fullText;
+    }
 
     const reply = await engine.chat.completions.create({
       messages,
