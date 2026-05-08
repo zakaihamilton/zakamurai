@@ -11,10 +11,11 @@ import EditorArea, { EditorState } from './EditorArea';
 import { Icons } from './Icons';
 import LogArea, { LogState } from './LogArea';
 import PreviewArea from './PreviewArea';
-import Prompt from './Prompt';
 import Sidebar, { SidebarState } from './Sidebar';
 import TabBar, { TabState } from './TabBar';
 import TopBar from './TopBar';
+import Prompt, { PromptState } from './Prompt';
+import Resizer from '../Widgets/Resizer/Resizer';
 
 export const AppState = createState('AppState');
 export const PreviewState = createState('PreviewState');
@@ -131,20 +132,25 @@ export default function App() {
     return [{ id: 1, role: 'ai', text: 'Zakamurai Log initialized. Ready for commands.' }];
   }, []);
 
+  const initialSidebarWidth = useMemo(() => Settings.getSidebarWidth(), []);
+  const initialPromptWidth = useMemo(() => Settings.getPromptWidth(), []);
+
   return (
     <div className={styles.root}>
       <AppState theme={initialTheme} projectName={initialProjectName} fs={fs}>
         <ProjectNameSaver />
-        <SidebarState isSidebarOpen={true} showAIInput={true} folderTree={initialFiles}>
+        <SidebarState isSidebarOpen={true} showAIInput={true} folderTree={initialFiles} sidebarWidth={initialSidebarWidth}>
           <TabState openTabs={initialTabs} activeTabId={initialActiveTabId}>
             <LogState isProcessing={false} logs={initialAILogs}>
               <EditorState fileContents={initialContents}>
-                <PreviewState htmlContent={Settings.getPreviewHtml()} isCompilerReady={false}>
-                  <TabRestorer />
-                  <PreviewRestorer />
-                  <ContentSaver />
-                  <PassiveWrapper />
-                </PreviewState>
+                <PromptState promptWidth={initialPromptWidth}>
+                  <PreviewState htmlContent={Settings.getPreviewHtml()} isCompilerReady={false}>
+                    <TabRestorer />
+                    <PreviewRestorer />
+                    <ContentSaver />
+                    <PassiveWrapper />
+                  </PreviewState>
+                </PromptState>
               </EditorState>
             </LogState>
           </TabState>
@@ -160,6 +166,13 @@ function PassiveWrapper() {
   const { htmlContent, isCompilerReady } = PreviewState.useState();
   const activeTab = openTabs.find((t) => t.id === activeTabId);
 
+  const sidebarState = SidebarState.useState();
+  const promptState = PromptState.useState();
+  const { isSidebarOpen, sidebarWidth } = sidebarState;
+  const { showAIInput } = sidebarState;
+  const { promptWidth } = promptState;
+  const [isResizing, setIsResizing] = useState(false);
+
   // Sync theme with document.body for global Portals
   useEffect(() => {
     if (theme === 'light') {
@@ -174,9 +187,58 @@ function PassiveWrapper() {
     Settings.setTheme(theme);
   }, [theme]);
 
+  // Save widths to localStorage on change
+  useEffect(() => {
+    Settings.setSidebarWidth(sidebarWidth);
+  }, [sidebarWidth]);
+
+  useEffect(() => {
+    Settings.setPromptWidth(promptWidth);
+  }, [promptWidth]);
+
+  const handleSidebarResize = (clientX) => {
+    if (isSidebarOpen) {
+      sidebarState((draft) => {
+        draft.sidebarWidth = Math.max(160, Math.min(clientX, 600));
+      });
+    }
+  };
+
+  const handlePromptResize = (clientX) => {
+    if (showAIInput) {
+      promptState((draft) => {
+        const newWidth = window.innerWidth - clientX;
+        draft.promptWidth = Math.max(260, Math.min(newWidth, 600));
+      });
+    }
+  };
+
+  const handleResizeStart = () => setIsResizing(true);
+  const handleResizeEnd = () => setIsResizing(false);
+
+  const handleSidebarReset = () => {
+    sidebarState((draft) => {
+      draft.sidebarWidth = 260;
+    });
+  };
+
+  const handlePromptReset = () => {
+    promptState((draft) => {
+      draft.promptWidth = 340;
+    });
+  };
+
   return (
-    <div className={`${styles.appWrapper} ${theme === 'light' ? styles.light : ''}`}>
+    <div className={`${styles.appWrapper} ${theme === 'light' ? styles.light : ''} ${isResizing ? styles.isResizing : ''}`}>
       <Sidebar />
+      {isSidebarOpen && (
+        <Resizer
+          onResize={handleSidebarResize}
+          onResizeStart={handleResizeStart}
+          onResizeEnd={handleResizeEnd}
+          onDoubleClick={handleSidebarReset}
+        />
+      )}
       <div className={styles.mainContent}>
         <TopBar />
         <div className={styles.workspaceContent}>
@@ -198,6 +260,14 @@ function PassiveWrapper() {
               )}
             </div>
           </div>
+          {showAIInput && (
+            <Resizer
+              onResize={handlePromptResize}
+              onResizeStart={handleResizeStart}
+              onResizeEnd={handleResizeEnd}
+              onDoubleClick={handlePromptReset}
+            />
+          )}
           <Prompt />
         </div>
       </div>

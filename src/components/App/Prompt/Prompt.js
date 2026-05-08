@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { createState } from '../../Core/Base/State';
 import { askWebLLM, interruptWebLLM, processAIResponse } from '../../AI';
 import Settings from '../../Storage/Settings';
 import Tooltip from '../../Widgets/Tooltip/Tooltip';
@@ -9,6 +10,8 @@ import { LogState } from '../LogArea';
 import { SidebarState } from '../Sidebar';
 import { TabState } from '../TabBar';
 import styles from './Prompt.module.css';
+
+export const PromptState = createState('PromptState');
 
 export default function Prompt() {
   const { fs } = AppState.useState();
@@ -23,6 +26,8 @@ export default function Prompt() {
   const { showAIInput } = sidebarState;
   const tabState = TabState.useState();
   const editorState = EditorState.useState();
+  const promptState = PromptState.useState();
+  const { promptWidth } = promptState;
 
   useEffect(() => {
     if (reasoningRef.current) {
@@ -214,6 +219,7 @@ FORMAT FOR FULL FILE REWRITE (ONLY FOR NEW FILES OR COMPLETE OVERHAULS):
     <aside
       className={`${styles.prompt} ${showAIInput ? styles.open : styles.closed}`}
       aria-hidden={!showAIInput}
+      style={{ width: showAIInput ? `${promptWidth}px` : '0px', minWidth: showAIInput ? `${promptWidth}px` : '0px' }}
     >
       <div className={styles.content}>
         <div className={styles.header}>

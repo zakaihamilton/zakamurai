@@ -38,7 +38,7 @@ const filterTree = (nodes, query) => {
 
 export default function Sidebar() {
   const sidebarState = SidebarState.useState();
-  const { isSidebarOpen, folderTree } = sidebarState;
+  const { isSidebarOpen, folderTree, sidebarWidth } = sidebarState;
   const appState = AppState.useState();
   const { projectName } = appState;
   const [filterText, setFilterText] = useState('');
@@ -55,7 +55,7 @@ export default function Sidebar() {
   }, [folderTree, filterText]);
 
   return (
-    <aside className={styles.sidebar} style={{ width: isSidebarOpen ? '260px' : '64px' }}>
+    <aside className={styles.sidebar} style={{ width: isSidebarOpen ? `${sidebarWidth}px` : '64px' }}>
       {/* Dynamic Header Section */}
       <div className={styles.header}>
         <Tooltip content={isSidebarOpen ? 'Collapse Sidebar' : 'Expand Sidebar'}>

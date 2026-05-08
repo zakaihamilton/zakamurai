@@ -1,0 +1,35 @@
+.resizer {
+  position: relative;
+  flex-shrink: 0;
+  width: 12px;
+  margin-left: -6px;
+  margin-right: -6px;
+  cursor: col-resize;
+  z-index: 100;
+  transition: all 0.2s;
+  background: transparent;
+}
+
+.resizer:hover,
+.resizing {
+  background: rgba(var(--accent-rgb, 99, 102, 241), 0.05);
+}
+
+.resizer::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 1px;
+  background: var(--border);
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.resizer:hover::after,
+.resizing::after {
+  background: var(--accent);
+  width: 2px;
+  box-shadow: 0 0 8px var(--accent-glow);
+}

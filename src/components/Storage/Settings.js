@@ -7,6 +7,8 @@ const KEYS = {
   FILE_CONTENTS: 'zakamurai_file_contents',
   AI_LOGS: 'zakamurai_ai_logs',
   PREVIEW_HTML: 'zakamurai_preview_html',
+  SIDEBAR_WIDTH: 'zakamurai_sidebar_width',
+  PROMPT_WIDTH: 'zakamurai_prompt_width',
 };
 
 const Settings = {
@@ -135,6 +137,24 @@ const Settings = {
     } catch (e) {
       console.warn('Failed to save preview HTML to localStorage (likely size limit)', e);
     }
+  },
+  
+  getSidebarWidth(defaultValue = 260) {
+    const val = this.get(KEYS.SIDEBAR_WIDTH);
+    return val ? parseInt(val, 10) : defaultValue;
+  },
+
+  setSidebarWidth(width) {
+    this.set(KEYS.SIDEBAR_WIDTH, width.toString());
+  },
+
+  getPromptWidth(defaultValue = 340) {
+    const val = this.get(KEYS.PROMPT_WIDTH);
+    return val ? parseInt(val, 10) : defaultValue;
+  },
+
+  setPromptWidth(width) {
+    this.set(KEYS.PROMPT_WIDTH, width.toString());
   },
 
   reset() {

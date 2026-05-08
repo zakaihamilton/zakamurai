@@ -99,6 +99,12 @@
   background-attachment: fixed;
 }
 
+.isResizing * {
+  transition: none !important;
+  user-select: none !important;
+  cursor: col-resize !important;
+}
+
 .mainContent {
   flex: 1;
   display: flex;
