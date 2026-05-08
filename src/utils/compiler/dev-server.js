@@ -155,9 +155,19 @@ export default classMap;
 
   if (container.serverBridge) {
     const swUrl = '/__sw__.js';
-    await container.serverBridge.initServiceWorker({ swUrl });
+    console.log('[DevServer] Registering Service Worker at:', swUrl);
+    try {
+      await container.serverBridge.initServiceWorker({ swUrl });
+      console.log('[DevServer] Service Worker registration complete');
+    } catch (err) {
+      console.error('[DevServer] Service Worker registration FAILED:', err);
+      throw err;
+    }
     const devServer = new SmartViteDevServer(container.vfs, { port: 3000, root: '/' });
     container.serverBridge.registerServer(devServer, 3000);
+    console.log('[DevServer] Virtual server registered on port 3000');
     onLog('Service Worker registered. Smart virtual server started on port 3000.');
+  } else {
+    console.warn('[DevServer] container.serverBridge is missing!');
   }
 }

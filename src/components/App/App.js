@@ -34,16 +34,55 @@ function PreviewRestorer() {
     if (htmlContent) {
       const restore = async () => {
         try {
+          console.log('[PreviewRestorer] Starting restore, htmlContent length:', htmlContent.length);
           const compiler = new Compiler(() => {});
           const container = await compiler.init();
+          console.log('[PreviewRestorer] Container initialized, serverBridge:', !!container.serverBridge);
           if (!container.vfs.existsSync('/dist')) {
             container.vfs.mkdirSync('/dist', { recursive: true });
           }
           container.vfs.writeFileSync('/dist/index.html', htmlContent);
           container.vfs.writeFileSync('/index.html', htmlContent);
+          console.log('[PreviewRestorer] VFS seeded. /dist/index.html exists:', container.vfs.existsSync('/dist/index.html'));
+          console.log('[PreviewRestorer] /index.html exists:', container.vfs.existsSync('/index.html'));
+
+          // List /dist contents for debugging
+          try {
+            const distFiles = container.vfs.readdirSync('/dist');
+            console.log('[PreviewRestorer] /dist contents:', distFiles);
+          } catch (e) {
+            console.log('[PreviewRestorer] Could not list /dist:', e.message);
+          }
 
           // Also sync files so that imports in index.html work
           await compiler.syncFiles(fs, sidebarState.folderTree, editorState.fileContents);
+
+          // Verify SW state
+          if ('serviceWorker' in navigator) {
+            const reg = await navigator.serviceWorker.getRegistration();
+            console.log('[PreviewRestorer] SW registration:', reg ? {
+              scope: reg.scope,
+              active: !!reg.active,
+              waiting: !!reg.waiting,
+              installing: !!reg.installing,
+              activeScriptURL: reg.active?.scriptURL,
+            } : 'none');
+            console.log('[PreviewRestorer] SW controller:', !!navigator.serviceWorker.controller);
+          }
+
+          // Verification fetch: test that the preview path is served by the SW
+          try {
+            console.log('[PreviewRestorer] Running verification fetch for /preview/dist/index.html...');
+            const resp = await fetch('/preview/dist/index.html');
+            console.log('[PreviewRestorer] Verification fetch result:', {
+              status: resp.status,
+              statusText: resp.statusText,
+              contentType: resp.headers.get('content-type'),
+              bodyLength: (await resp.clone().text()).length,
+            });
+          } catch (fetchErr) {
+            console.error('[PreviewRestorer] Verification fetch failed:', fetchErr);
+          }
         } catch (e) {
           console.error('Failed to restore preview filesystem', e);
         } finally {

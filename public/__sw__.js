@@ -286,9 +286,21 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // Always log preview-related requests for diagnostics
+  if (previewMatch) {
+    console.log('[SW] Preview request intercepted:', {
+      pathname: url.pathname,
+      mainPort: !!mainPort,
+      matchGroups: previewMatch,
+    });
+  }
+
   const port = match ? parseInt(match[2], 10) : 3000;
   const path = (match ? match[3] : (previewMatch ? previewMatch[2] : '/')) || '/';
 
+  if (previewMatch) {
+    console.log('[SW] Preview routing:', { port, path, originalUrl: url.pathname });
+  }
   if (DEBUG) console.log('[SW] Intercepted virtual request:', { port, path, originalUrl: url.pathname });
 
   event.respondWith(handleVirtualRequest(event.request, port, path + url.search));
@@ -323,6 +335,15 @@ async function handleVirtualRequest(request, port, path) {
 
     // Send to main thread
     const response = await sendRequest(port, request.method, path, headers, body);
+
+    // Always log response status for preview diagnostics
+    if (path.includes('index.html') || path === '/') {
+      console.log('[SW] Response for', path, ':', {
+        statusCode: response.statusCode,
+        statusMessage: response.statusMessage,
+        bodyLength: response.bodyBase64?.length || 0,
+      });
+    }
 
     DEBUG && console.log('[SW] Got response from main thread:', {
       statusCode: response.statusCode,
