@@ -1,17 +1,18 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Compiler } from '../../../utils/compiler';
 import { ZipWriter } from '../../../utils/zip';
 import Settings from '../../Storage/Settings';
-import ContextMenu from '../../Widgets/ContextMenu/ContextMenu';
-import Dialog from '../../Widgets/Dialog/Dialog';
-import Tooltip from '../../Widgets/Tooltip/Tooltip';
 import { AppState, PreviewState } from '../App';
 import { EditorState } from '../EditorArea';
-import { Icons } from '../Icons';
 import { LogState } from '../LogArea';
 import { SidebarState } from '../Sidebar';
 import { TabState } from '../TabBar';
 import styles from './TopBar.module.css';
+import ActionButtons from './subcomponents/ActionButtons';
+import Breadcrumb from './subcomponents/Breadcrumb';
+import ThemeToggle from './subcomponents/ThemeToggle';
+import TopBarMenu from './subcomponents/TopBarMenu';
+import WorkingIndicator from './subcomponents/WorkingIndicator';
 
 export default function TopBar() {
   const appState = AppState.useState();
@@ -24,8 +25,7 @@ export default function TopBar() {
   const logState = LogState.useState();
   const previewState = PreviewState.useState();
   const { isProcessing } = logState;
-  const [isStartOverDialogOpen, setIsStartOverDialogOpen] = useState(false);
-  const [menuPosition, setMenuPosition] = useState(null);
+
   const activeTab = openTabs.find((t) => t.id === activeTabId);
 
   const handleCompile = async () => {
@@ -35,7 +35,7 @@ export default function TopBar() {
       draft.isProcessing = true;
       draft.processingType = 'system';
     });
-    // Switch to (and open) logs tab if not already there
+
     if (activeTabId !== 'ai-logs') {
       handleOpenLog();
     }
@@ -50,7 +50,6 @@ export default function TopBar() {
       const compiler = new Compiler(onLog);
       await compiler.compile(fs, folderTree, editorState.fileContents);
 
-      // After compilation, try to read dist/index.html from the VFS and store it in PreviewState
       try {
         const container = compiler.container;
         if (container?.vfs?.existsSync('/dist/index.html')) {
@@ -60,7 +59,6 @@ export default function TopBar() {
               draft.htmlContent = html;
             });
             Settings.setPreviewHtml(html);
-            // Open (or switch to) the preview tab
             tabState((draft) => {
               const exists = draft.openTabs.some((t) => t.id === 'preview');
               if (!exists) {
@@ -120,27 +118,16 @@ export default function TopBar() {
         text: 'Virtual filesystem cleared. Next compile will start fresh.',
       });
     });
-    // Switch to (and open) logs tab so the user can see the confirmation
     handleOpenLog();
   };
 
-  const handleStartOver = () => {
-    setIsStartOverDialogOpen(true);
-  };
-
-  const confirmStartOver = async () => {
-    setIsStartOverDialogOpen(false);
+  const handleStartOver = async () => {
     await fs.unlinkProject();
     Settings.reset();
     window.location.reload();
   };
 
-  const cancelStartOver = () => {
-    setIsStartOverDialogOpen(false);
-  };
-
   const handleExportZip = async () => {
-    setMenuPosition(null);
     const zip = new ZipWriter();
 
     if (fs.mode === 'local' && fs.rootHandle) {
@@ -148,7 +135,6 @@ export default function TopBar() {
         for await (const [name, entry] of handle.entries()) {
           const entryPath = path ? `${path}/${name}` : name;
           if (entry.kind === 'file') {
-            // Use in-memory content if available (for unsaved changes), otherwise read from disk
             const inMemory = editorState.fileContents?.[entryPath];
             if (inMemory !== undefined) {
               zip.addFile(entryPath, inMemory);
@@ -190,7 +176,6 @@ export default function TopBar() {
   };
 
   const handleExportCompiledZip = async () => {
-    setMenuPosition(null);
     const container = Compiler.getContainer();
     if (!container) {
       alert('No compiled files found. Please compile the project first.');
@@ -200,7 +185,6 @@ export default function TopBar() {
     const zip = new ZipWriter();
     const vfs = container.vfs;
 
-    // Collect all source file paths from VFS
     const filePaths = [];
     const collectFiles = (dirPath) => {
       try {
@@ -228,53 +212,37 @@ export default function TopBar() {
             filePaths.push(fullPath);
           }
         }
-      } catch (_err) {
-        // skip unreadable directories
-      }
+      } catch (_err) {}
     };
     collectFiles('/');
 
-    // Strip dev-mode boilerplate from compiled JS files
     const cleanDevArtifacts = (text) => {
-      return (
-        text
-          // Remove HMR setup line
-          .replace(/\/\/ HMR Setup\n/g, '')
-          .replace(/import\.meta\.hot\s*=\s*window\.__vite_hot_context__\([^)]*\);\n*/g, '')
-          // Remove React Refresh registration block at the end
-          .replace(
-            /\n*\/\/ React Refresh Registration\nif \(import\.meta\.hot\) \{[\s\S]*?\n\}\n*/g,
-            '\n',
-          )
-          // Remove inline source maps
-          .replace(/\/\/#\s*sourceMappingURL=data:[^\n]*/g, '')
-          // Remove $RefreshReg$ calls
-          .replace(/\$RefreshReg\$\([^)]*\);\n*/g, '')
-          // Clean up excessive blank lines
-          .replace(/\n{3,}/g, '\n\n')
-          .trim()
-      );
+      return text
+        .replace(/\/\/ HMR Setup\n/g, '')
+        .replace(/import\.meta\.hot\s*=\s*window\.__vite_hot_context__\([^)]*\);\n*/g, '')
+        .replace(
+          /\n*\/\/ React Refresh Registration\nif \(import\.meta\.hot\) \{[\s\S]*?\n\}\n*/g,
+          '\n',
+        )
+        .replace(/\/\/#\s*sourceMappingURL=data:[^\n]*/g, '')
+        .replace(/\$RefreshReg\$\([^)]*\);\n*/g, '')
+        .replace(/\n{3,}/g, '\n\n')
+        .trim();
     };
 
-    // Rename extensions so files can be served with correct MIME type
     const toProductionPath = (path) =>
       path
         .replace(/\.(jsx|tsx)$/, '.js')
         .replace(/\.ts$/, '.js')
         .replace(/\.module\.css$/, '.module.css.js');
 
-    // Rewrite import/export paths for production in compiled JS content
     const rewriteImports = (text) =>
       text
-        // Rename .jsx/.tsx imports to .js
         .replace(/(from\s+["'])([^"']*)\.(jsx|tsx)(["'])/g, '$1$2.js$4')
         .replace(/(import\s*\(["'])([^"']*)\.(jsx|tsx)(["']\))/g, '$1$2.js$4')
-        // Rename .module.css imports to .module.css.js (they are compiled to JS by the dev server)
         .replace(/(from\s+["'])([^"']*\.module\.css)(["'])/g, '$1$2.js$3')
         .replace(/(import\s*\(["'])([^"']*\.module\.css)(["']\))/g, '$1$2.js$3')
-        // Add .js to extensionless relative imports (./foo or ../foo but not bare specifiers)
         .replace(/(from\s+["'])(\.\.?\/[^"']*?)(["'])/g, (_match, pre, path, post) => {
-          // Skip if it already has a file extension
           if (/\.\w+$/.test(path)) return _match;
           return `${pre}${path}.js${post}`;
         })
@@ -283,12 +251,9 @@ export default function TopBar() {
           return `${pre}${path}.js${post}`;
         });
 
-    // Rewrite script src in HTML from .jsx/.tsx to .js
     const rewriteHtmlScripts = (html) =>
       html.replace(/(src=["'][^"']*)\.(jsx|tsx)(["'])/g, '$1.js$3');
 
-    // Fetch each file through the Service Worker to get compiled/transformed versions
-    // This uses the same pipeline as the preview iframe (/preview/ path)
     for (const filePath of filePaths) {
       try {
         const response = await fetch(`/preview${filePath}`);
@@ -314,7 +279,6 @@ export default function TopBar() {
           }
         }
       } catch (_fetchErr) {
-        // Fallback: add raw file content from VFS
         try {
           const content = vfs.readFileSync(filePath);
           zip.addFile(toProductionPath(filePath.slice(1)), content);
@@ -341,7 +305,6 @@ export default function TopBar() {
     });
   };
 
-  // Build Breadcrumb
   let breadcrumb = ['Zakamurai'];
   if (activeTab) {
     if (activeTab.type === 'file') {
@@ -366,168 +329,37 @@ export default function TopBar() {
     });
   };
 
-  const handleMenuOpen = (e) => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    setMenuPosition({
-      x: rect.right - 120, // Adjust based on menu width
-      y: rect.bottom + 8,
-    });
-  };
-
-  const handleMenuClose = () => {
-    setMenuPosition(null);
-  };
-
   return (
     <header className={styles.header}>
-      <div className={styles.breadcrumb}>
-        {breadcrumb.map((seg, i) => (
-          <React.Fragment key={breadcrumb.slice(0, i + 1).join('/')}>
-            <button
-              type="button"
-              onClick={() => handleBreadcrumbClick(seg, i)}
-              onKeyDown={(e) => e.key === 'Enter' && handleBreadcrumbClick(seg, i)}
-              className={`${styles.breadcrumbSegment} ${i === breadcrumb.length - 1 ? styles.active : ''}`}
-            >
-              {seg === 'Zakamurai' ? (
-                <>
-                  Zakamur<span className={styles.aiHighlight}>ai</span>
-                </>
-              ) : (
-                seg
-              )}
-            </button>
-            {i < breadcrumb.length - 1 && <Icons.ChevronRight />}
-          </React.Fragment>
-        ))}
-      </div>
+      <Breadcrumb breadcrumb={breadcrumb} onBreadcrumbClick={handleBreadcrumbClick} />
       <div className={styles.centerSection} />
       <div className={styles.actions}>
-        {logState.isProcessing && (
-          <div className={styles.workingIndicator}>
-            {logState.processingType === 'ai' ? <Icons.BotSmall /> : <Icons.RefreshSmall />}
-            <span>
-              {logState.processingType === 'ai' ? 'AI is working...' : 'System is working...'}
-            </span>
-          </div>
-        )}
-        <div className={styles.compileGroup}>
-          <Tooltip content="Compile Project">
-            <button
-              type="button"
-              className={`${styles.actionBtn} ${styles.compileBtn}`}
-              onClick={handleCompile}
-              disabled={isProcessing}
-            >
-              <Icons.Play />
-              <span>Compile</span>
-            </button>
-          </Tooltip>
-          <Tooltip content="Show Log">
-            <button
-              type="button"
-              className={`${styles.actionBtn} ${styles.terminalToggleBtn} ${activeTabId === 'ai-logs' ? styles.activeTab : ''}`}
-              onClick={handleOpenLog}
-            >
-              <Icons.Terminal />
-            </button>
-          </Tooltip>
-          <Tooltip content="Show Preview">
-            <button
-              type="button"
-              className={`${styles.actionBtn} ${styles.terminalToggleBtn} ${activeTabId === 'preview' ? styles.activeTab : ''}`}
-              onClick={handleOpenPreview}
-            >
-              <Icons.Globe />
-            </button>
-          </Tooltip>
-        </div>
-        <Tooltip content="More actions">
-          <button
-            type="button"
-            className={`${styles.actionBtn} ${menuPosition ? styles.active : ''}`}
-            onClick={handleMenuOpen}
-          >
-            <Icons.MoreVertical />
-          </button>
-        </Tooltip>
-        <ContextMenu position={menuPosition} onClose={handleMenuClose}>
-          <button
-            type="button"
-            className={styles.menuItem}
-            onClick={() => {
-              handleExportZip();
-              handleMenuClose();
-            }}
-          >
-            <Icons.Plus />
-            <span>Export ZIP</span>
-          </button>
-          <button
-            type="button"
-            className={styles.menuItem}
-            onClick={() => {
-              handleExportCompiledZip();
-              handleMenuClose();
-            }}
-          >
-            <Icons.Play />
-            <span>Export compiled files</span>
-          </button>
-          <button
-            type="button"
-            className={styles.menuItem}
-            disabled={isProcessing}
-            onClick={() => {
-              handleStartOver();
-              handleMenuClose();
-            }}
-          >
-            <Icons.Refresh />
-            <span>Start over</span>
-          </button>
-          <button
-            type="button"
-            className={styles.menuItem}
-            disabled={isProcessing}
-            onClick={() => {
-              handleClearFS();
-              handleMenuClose();
-            }}
-          >
-            <Icons.Trash />
-            <span>Clear FS</span>
-          </button>
-        </ContextMenu>
-        <Tooltip content={`Switch to ${theme === 'light' ? 'dark' : 'light'} theme`}>
-          <button type="button" onClick={toggleTheme} className={styles.themeToggle}>
-            {theme === 'light' ? <Icons.Moon /> : <Icons.Sun />}
-          </button>
-        </Tooltip>
-        <Tooltip content={showAIInput ? 'Hide AI Prompt' : 'Show AI Prompt'}>
-          <button
-            type="button"
-            className={`${styles.actionBtn} ${styles.iconBtn} ${showAIInput ? styles.activeTab : ''}`}
-            onClick={() =>
-              sidebarState((draft) => {
-                draft.showAIInput = !draft.showAIInput;
-              })
-            }
-          >
-            <Icons.BotSmall />
-          </button>
-        </Tooltip>
+        <WorkingIndicator
+          isProcessing={logState.isProcessing}
+          processingType={logState.processingType}
+        />
+        <ActionButtons
+          onCompile={handleCompile}
+          onOpenLog={handleOpenLog}
+          onOpenPreview={handleOpenPreview}
+          isProcessing={isProcessing}
+          activeTabId={activeTabId}
+          showAIInput={showAIInput}
+          onToggleAIInput={() =>
+            sidebarState((draft) => {
+              draft.showAIInput = !draft.showAIInput;
+            })
+          }
+        />
+        <TopBarMenu
+          onExportZip={handleExportZip}
+          onExportCompiledZip={handleExportCompiledZip}
+          onStartOver={handleStartOver}
+          onClearFS={handleClearFS}
+          isProcessing={isProcessing}
+        />
+        <ThemeToggle theme={theme} onToggle={toggleTheme} />
       </div>
-      <Dialog
-        isOpen={isStartOverDialogOpen}
-        title="Start Over?"
-        message="Are you sure you want to start over? This will unlink the project and reset all files to defaults."
-        onConfirm={confirmStartOver}
-        onCancel={cancelStartOver}
-        confirmText="Start Over"
-        cancelText="Cancel"
-        type="danger"
-      />
     </header>
   );
 }

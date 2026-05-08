@@ -7,7 +7,7 @@
   box-shadow: var(--shadow-lg);
   border-radius: 12px;
   z-index: 100000;
-  min-width: 160px;
+  min-width: 220px;
   padding: 6px;
   display: flex;
   flex-direction: column;
