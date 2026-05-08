@@ -36,17 +36,14 @@ function PreviewRestorer() {
         try {
           const compiler = new Compiler(() => {});
           const container = await compiler.init();
-          // Seed the dist folder if it's missing
-          if (!container.vfs.existsSync('/dist/index.html')) {
-            if (!container.vfs.existsSync('/dist')) {
-              container.vfs.mkdirSync('/dist', { recursive: true });
-            }
-            container.vfs.writeFileSync('/dist/index.html', htmlContent);
-            container.vfs.writeFileSync('/index.html', htmlContent);
-
-            // Also sync files so that imports in index.html work
-            await compiler.syncFiles(fs, sidebarState.folderTree, editorState.fileContents);
+          if (!container.vfs.existsSync('/dist')) {
+            container.vfs.mkdirSync('/dist', { recursive: true });
           }
+          container.vfs.writeFileSync('/dist/index.html', htmlContent);
+          container.vfs.writeFileSync('/index.html', htmlContent);
+
+          // Also sync files so that imports in index.html work
+          await compiler.syncFiles(fs, sidebarState.folderTree, editorState.fileContents);
         } catch (e) {
           console.error('Failed to restore preview filesystem', e);
         } finally {

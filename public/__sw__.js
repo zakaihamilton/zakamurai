@@ -245,8 +245,8 @@ self.addEventListener('fetch', (event) => {
   DEBUG && console.log('[SW] Fetch:', url.pathname, 'mainPort:', !!mainPort);
 
   // Check if this is a virtual server request
-  const match = url.pathname.match(/\/__virtual__\/(\d+)($|\/.*)/);
-  const previewMatch = url.pathname.match(/\/preview($|\/.*)/);
+  const match = url.pathname.match(/(.*)\/__virtual__\/(\d+)($|\/.*)/);
+  const previewMatch = url.pathname.match(/(.*)\/preview($|\/.*)/);
 
   if (!match && !previewMatch) {
     // Not a virtual request - but check if it's from a virtual context
@@ -286,8 +286,8 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  const port = match ? parseInt(match[1], 10) : 3000;
-  const path = (match ? match[2] : (previewMatch ? previewMatch[1] : '/')) || '/';
+  const port = match ? parseInt(match[2], 10) : 3000;
+  const path = (match ? match[3] : (previewMatch ? previewMatch[2] : '/')) || '/';
 
   if (DEBUG) console.log('[SW] Intercepted virtual request:', { port, path, originalUrl: url.pathname });
 
