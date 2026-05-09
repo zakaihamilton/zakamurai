@@ -14,7 +14,7 @@ export default function ActionButtons({
 }) {
   return (
     <div className={styles.compileGroup}>
-      <Tooltip content="Compile Project">
+      <Tooltip content="Compile Project" shortcut="⌘↵">
         <button
           type="button"
           className={`${styles.actionBtn} ${styles.compileBtn}`}
@@ -25,7 +25,7 @@ export default function ActionButtons({
           <span>Compile</span>
         </button>
       </Tooltip>
-      <Tooltip content="Show Log">
+      <Tooltip content="Show Log" shortcut="⌘U">
         <button
           type="button"
           className={`${styles.actionBtn} ${styles.terminalToggleBtn} ${activeTabId === 'ai-logs' ? styles.activeTab : ''}`}
@@ -34,7 +34,7 @@ export default function ActionButtons({
           <Icons.Terminal />
         </button>
       </Tooltip>
-      <Tooltip content="Show Preview">
+      <Tooltip content="Show Preview" shortcut="⌘I">
         <button
           type="button"
           className={`${styles.actionBtn} ${styles.terminalToggleBtn} ${activeTabId === 'preview' ? styles.activeTab : ''}`}
@@ -43,7 +43,10 @@ export default function ActionButtons({
           <Icons.Globe />
         </button>
       </Tooltip>
-      <Tooltip content={showAIInput ? 'Hide AI Prompt' : 'Show AI Prompt'}>
+      <Tooltip
+        content={showAIInput ? 'Hide AI Prompt' : 'Show AI Prompt'}
+        shortcut="⌘J"
+      >
         <button
           type="button"
           className={`${styles.actionBtn} ${styles.iconBtn} ${showAIInput ? styles.activeTab : ''}`}

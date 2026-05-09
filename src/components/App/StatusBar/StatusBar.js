@@ -4,6 +4,7 @@ import { EditorState } from '../EditorArea';
 import { Icons } from '../Icons';
 import styles from './StatusBar.module.css';
 import { TabState } from '../TabBar';
+import Tooltip from '../../Widgets/Tooltip/Tooltip';
 
 export default function StatusBar() {
   const { theme, projectName, fs } = AppState.useState();
@@ -34,14 +35,18 @@ export default function StatusBar() {
   return (
     <footer className={`${styles.statusBar} ${theme === 'light' ? styles.light : ''}`}>
       <div className={styles.left}>
-        <div className={styles.item} title={`Project: ${projectName}`}>
-          <Icons.Folder size={14} />
-          <span>{projectName}</span>
-        </div>
-        <div className={styles.item} title={`FileSystem Mode: ${fs.mode || 'Virtual'}`}>
-          <Icons.Globe size={14} />
-          <span>{fs.mode === 'local' ? 'Local' : 'Virtual'}</span>
-        </div>
+        <Tooltip content={`Project: ${projectName}`}>
+          <div className={styles.item}>
+            <Icons.Folder size={14} />
+            <span>{projectName}</span>
+          </div>
+        </Tooltip>
+        <Tooltip content={`FileSystem Mode: ${fs.mode === 'local' ? 'Local' : 'Virtual'}`}>
+          <div className={styles.item}>
+            <Icons.Globe size={14} />
+            <span>{fs.mode === 'local' ? 'Local' : 'Virtual'}</span>
+          </div>
+        </Tooltip>
       </div>
 
       <div className={styles.right}>

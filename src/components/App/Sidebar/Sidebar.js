@@ -49,6 +49,19 @@ export default function Sidebar() {
     });
   };
 
+  const searchInputRef = React.useRef(null);
+
+  useEffect(() => {
+    const handleFocusSearch = () => {
+      if (searchInputRef.current) {
+        searchInputRef.current.focus();
+        searchInputRef.current.select();
+      }
+    };
+    window.addEventListener('focus-file-search', handleFocusSearch);
+    return () => window.removeEventListener('focus-file-search', handleFocusSearch);
+  }, []);
+
   const filteredTree = useMemo(() => {
     const nodes = [...folderTree];
     return filterTree(nodes, filterText);
@@ -61,7 +74,10 @@ export default function Sidebar() {
     >
       {/* Dynamic Header Section */}
       <div className={styles.header}>
-        <Tooltip content={isSidebarOpen ? 'Collapse Sidebar' : 'Expand Sidebar'}>
+        <Tooltip
+          content={isSidebarOpen ? 'Collapse Sidebar' : 'Expand Sidebar'}
+          shortcut="⌘B"
+        >
           <button
             type="button"
             onClick={toggleSidebar}
@@ -103,9 +119,10 @@ export default function Sidebar() {
               <Icons.Search />
             </div>
             <input
+              ref={searchInputRef}
               value={filterText}
               onChange={(e) => setFilterText(e.target.value)}
-              placeholder="Search files..."
+              placeholder="Search files (⌘F)"
               className={styles.searchInput}
             />
           </div>

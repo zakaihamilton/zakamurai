@@ -9,13 +9,15 @@ import Settings from '../Storage/Settings';
 import Resizer from '../Widgets/Resizer/Resizer';
 import styles from './App.module.css';
 import EditorArea, { EditorState } from './EditorArea';
-import { Icons } from './Icons';
 import LogArea, { LogState } from './LogArea';
 import PreviewArea from './PreviewArea';
 import Prompt, { PromptState } from './Prompt';
 import Sidebar, { SidebarState } from './Sidebar';
 import TabBar, { TabState } from './TabBar';
 import TopBar from './TopBar';
+import { NotificationProvider, useNotification } from '../Widgets/Notification/Notification';
+import Dashboard from './Dashboard/Dashboard';
+import StatusBar from './StatusBar/StatusBar';
 
 export const AppState = createState('AppState');
 export const PreviewState = createState('PreviewState');
@@ -122,10 +124,6 @@ function PreviewRestorer() {
   return null;
 }
 
-import { NotificationProvider } from '../Widgets/Notification/Notification';
-import Dashboard from './Dashboard/Dashboard';
-import StatusBar from './StatusBar/StatusBar';
-
 export default function App() {
   const fs = useFileSystem();
   const [initialProjectName] = useState(() => Settings.getProjectName());
@@ -157,36 +155,35 @@ export default function App() {
   const initialPromptWidth = useMemo(() => Settings.getPromptWidth(), []);
 
   return (
-    <NotificationProvider>
-      <div className={styles.root}>
-        <AppState theme={initialTheme} projectName={initialProjectName} fs={fs}>
-          <ProjectNameSaver />
-          <SidebarState
-            isSidebarOpen={true}
-            showAIInput={true}
-            folderTree={initialFiles}
-            sidebarWidth={initialSidebarWidth}
-            expandedFolders={{}}
-          >
-            <TabState openTabs={initialTabs} activeTabId={initialActiveTabId}>
-              <LogState isProcessing={false} logs={initialAILogs}>
-                <EditorState fileContents={initialContents}>
-                  <PromptState promptWidth={initialPromptWidth}>
-                    <PreviewState htmlContent={Settings.getPreviewHtml()} isCompilerReady={false}>
-                      <TabRestorer />
-                      <PreviewRestorer />
-                      <ContentSaver />
-                      <KeyboardHandler />
-                      <PassiveWrapper />
-                    </PreviewState>
-                  </PromptState>
-                </EditorState>
-              </LogState>
-            </TabState>
-          </SidebarState>
-        </AppState>
-      </div>
-    </NotificationProvider>
+    <div className={styles.root}>
+      <AppState theme={initialTheme} projectName={initialProjectName} fs={fs}>
+        <ProjectNameSaver />
+        <NotificationProvider />
+        <SidebarState
+          isSidebarOpen={true}
+          showAIInput={true}
+          folderTree={initialFiles}
+          sidebarWidth={initialSidebarWidth}
+          expandedFolders={{}}
+        >
+          <TabState openTabs={initialTabs} activeTabId={initialActiveTabId}>
+            <LogState isProcessing={false} logs={initialAILogs}>
+              <EditorState fileContents={initialContents}>
+                <PromptState promptWidth={initialPromptWidth}>
+                  <PreviewState htmlContent={Settings.getPreviewHtml()} isCompilerReady={false}>
+                    <TabRestorer />
+                    <PreviewRestorer />
+                    <ContentSaver />
+                    <KeyboardHandler />
+                    <PassiveWrapper />
+                  </PreviewState>
+                </PromptState>
+              </EditorState>
+            </LogState>
+          </TabState>
+        </SidebarState>
+      </AppState>
+    </div>
   );
 }
 
@@ -394,6 +391,8 @@ function KeyboardHandler() {
   const sidebarState = SidebarState.useState();
   const logState = LogState.useState();
   const appState = AppState.useState();
+  const tabState = TabState.useState();
+  const { addNotification: showNotification } = useNotification();
 
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -416,18 +415,47 @@ function KeyboardHandler() {
           logState((draft) => {
             draft.logs = [];
           });
+          showNotification('Logs cleared', 'info');
+        } else if (e.key === 'u') {
+          e.preventDefault();
+          tabState((draft) => {
+            draft.activeTabId = 'ai-logs';
+          });
+        } else if (e.key === 'i') {
+          e.preventDefault();
+          tabState((draft) => {
+            draft.activeTabId = 'preview';
+          });
+        } else if (e.key === 's') {
+          e.preventDefault();
+          showNotification('Project saved', 'success');
+        } else if (e.key === 't' && e.shiftKey) {
+          e.preventDefault();
+          appState((draft) => {
+            draft.theme = draft.theme === 'light' ? 'dark' : 'light';
+          });
         } else if (e.key === 'Enter') {
           e.preventDefault();
           appState((draft) => {
             draft.compileRequest = (draft.compileRequest || 0) + 1;
           });
+        } else if (e.key === 'f') {
+          e.preventDefault();
+          // If sidebar is closed, open it
+          if (!sidebarState.isSidebarOpen) {
+            sidebarState((draft) => {
+              draft.isSidebarOpen = true;
+            });
+          }
+          // Custom event to focus search
+          window.dispatchEvent(new CustomEvent('focus-file-search'));
         }
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [sidebarState, logState, appState]);
+  }, [sidebarState, logState, appState, tabState, showNotification]);
 
   return null;
 }

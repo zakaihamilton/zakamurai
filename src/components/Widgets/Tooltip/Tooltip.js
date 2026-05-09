@@ -7,7 +7,7 @@ import styles from './Tooltip.module.css';
  * Tooltip component to replace native title tooltips.
  * Uses a portal to avoid clipping and adds a smooth delay for premium feel.
  */
-export default function Tooltip({ content, children, className = '' }) {
+export default function Tooltip({ content, shortcut, children, className = '' }) {
   const { theme } = AppState.useState();
   const [isVisible, setIsVisible] = useState(false);
   const [coords, setCoords] = useState({ top: 0, left: 0 });
@@ -138,7 +138,10 @@ export default function Tooltip({ content, children, className = '' }) {
               '--arrow-offset': `${arrowOffset}px`,
             }}
           >
-            {content}
+            <div className={styles.inner}>
+              <span className={styles.content}>{content}</span>
+              {shortcut && <span className={styles.shortcut}>{shortcut}</span>}
+            </div>
           </div>,
           document.body,
         )}

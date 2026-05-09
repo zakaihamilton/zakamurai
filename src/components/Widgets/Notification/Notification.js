@@ -1,53 +1,74 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { useCallback, useEffect } from 'react';
+import { createPortal } from 'react-dom';
+import { createState } from '../../Core/Base/State';
 import { Icons } from '../../App/Icons';
 import styles from './Notification.module.css';
 
-const NotificationContext = createContext();
+export const NotificationState = createState('NotificationState');
 
-export function NotificationProvider({ children }) {
-  const [notifications, setNotifications] = useState([]);
+export function NotificationProvider() {
+  NotificationState.useState(null, { notifications: [] });
+  return <NotificationUI />;
+}
 
-  const addNotification = useCallback((message, type = 'info', duration = 3000) => {
-    const id = Date.now();
-    setNotifications((prev) => [...prev, { id, message, type }]);
+function NotificationUI() {
+  const notificationState = NotificationState.useState();
+  const { notifications = [] } = notificationState;
 
-    setTimeout(() => {
-      setNotifications((prev) => prev.filter((n) => n.id !== id));
-    }, duration);
-  }, []);
-
-  const removeNotification = useCallback((id) => {
-    setNotifications((prev) => prev.filter((n) => n.id !== id));
-  }, []);
-
-  return (
-    <NotificationContext.Provider value={{ addNotification }}>
-      {children}
-      <div className={styles.container}>
-        {notifications.map((n) => (
-          <button
-            type="button"
-            key={n.id}
-            className={`${styles.toast} ${styles[n.type]}`}
-            onClick={() => removeNotification(n.id)}
-          >
-            <div className={styles.icon}>
-              {n.type === 'success' && <Icons.Code size={16} />}
-              {n.type === 'error' && <Icons.Trash size={16} />}
-              {n.type === 'info' && <Icons.Bot size={16} />}
-            </div>
-            <div className={styles.message}>{n.message}</div>
-          </button>
-        ))}
-      </div>
-    </NotificationContext.Provider>
+  const removeNotification = useCallback(
+    (id) => {
+      notificationState((draft) => {
+        draft.notifications = draft.notifications.filter((n) => n.id !== id);
+      });
+    },
+    [notificationState],
   );
+
+  const content = (
+    <div className={styles.container}>
+      {notifications.map((n) => (
+        <button
+          type="button"
+          key={n.id}
+          className={`${styles.toast} ${styles[n.type]}`}
+          onClick={() => removeNotification(n.id)}
+        >
+          <div className={styles.icon}>
+            {n.type === 'success' && <Icons.Code size={16} />}
+            {n.type === 'error' && <Icons.Trash size={16} />}
+            {n.type === 'info' && <Icons.Bot size={16} />}
+          </div>
+          <div className={styles.message}>{n.message}</div>
+        </button>
+      ))}
+    </div>
+  );
+
+  if (typeof document === 'undefined') return null;
+  return createPortal(content, document.body);
 }
 
 export function useNotification() {
-  const context = useContext(NotificationContext);
-  if (!context) {
-    throw new Error('useNotification must be used within a NotificationProvider');
-  }
-  return context;
+  const notificationState = NotificationState.useState();
+
+  const addNotification = useCallback(
+    (message, type = 'info', duration = 3000) => {
+      const id = Date.now();
+      notificationState((draft) => {
+        if (!draft.notifications) draft.notifications = [];
+        draft.notifications.push({ id, message, type });
+      });
+
+      setTimeout(() => {
+        notificationState((draft) => {
+          if (draft.notifications) {
+            draft.notifications = draft.notifications.filter((n) => n.id !== id);
+          }
+        });
+      }, duration);
+    },
+    [notificationState],
+  );
+
+  return { addNotification };
 }
