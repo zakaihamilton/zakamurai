@@ -55,6 +55,38 @@ vi.mock('./Prompt', () => {
     PromptState: State,
   };
 });
+vi.mock('./PreviewState', () => {
+  const State = ({ children }) => <div data-testid="preview-state">{children}</div>;
+  State.useState = vi.fn(() =>
+    Object.assign(vi.fn(), { htmlContent: '', isCompilerReady: false }),
+  );
+  return {
+    PreviewState: State,
+  };
+});
+
+// Mock subcomponents to avoid side effects and act warnings
+vi.mock('./subcomponents/ContentSaver', () => ({ default: () => null }));
+vi.mock('./subcomponents/KeyboardHandler', () => ({ default: () => null }));
+vi.mock('./subcomponents/PreviewRestorer', () => ({ default: () => null }));
+vi.mock('./subcomponents/ProjectNameSaver', () => ({ default: () => null }));
+vi.mock('./subcomponents/TabRestorer', () => ({ default: () => null }));
+
+vi.mock('@/components/Storage', () => ({
+  useFileSystem: vi.fn(() => ({
+    mode: null,
+    files: [],
+    isReady: true,
+    mountLocal: vi.fn(),
+  })),
+}));
+vi.mock('@/components/Widgets/Notification/Notification', () => ({
+  Notification: () => <div data-testid="notification" />,
+  NotificationProvider: ({ children }) => children,
+  useNotification: vi.fn(() => ({
+    addNotification: vi.fn(),
+  })),
+}));
 
 describe('App', () => {
   it('renders all main components', () => {
