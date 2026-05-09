@@ -1,8 +1,8 @@
 import React from 'react';
-import { Icons } from '../Icons';
-import styles from './Dashboard.module.css';
-import { SidebarState } from '../Sidebar';
 import { useNotification } from '../../Widgets/Notification/Notification';
+import { Icons } from '../Icons';
+import { SidebarState } from '../Sidebar';
+import styles from './Dashboard.module.css';
 
 export default function Dashboard() {
   const sidebarState = SidebarState.useState();
@@ -34,20 +34,30 @@ export default function Dashboard() {
       <div className={styles.grid}>
         <div className={styles.section}>
           <h3>Quick Start</h3>
-          <div className={styles.card} onClick={handleCreateFile}>
+          <button
+            type="button"
+            className={styles.card}
+            onClick={handleCreateFile}
+            onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && handleCreateFile()}
+          >
             <Icons.Code size={20} />
             <div>
               <p className={styles.cardLabel}>Create a file</p>
               <p className={styles.cardHint}>Use the explorer on the left</p>
             </div>
-          </div>
-          <div className={styles.card} onClick={handleToggleAI}>
+          </button>
+          <button
+            type="button"
+            className={styles.card}
+            onClick={handleToggleAI}
+            onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && handleToggleAI()}
+          >
             <Icons.Bot size={20} />
             <div>
               <p className={styles.cardLabel}>Ask AI</p>
               <p className={styles.cardHint}>Click to toggle AI Sidebar</p>
             </div>
-          </div>
+          </button>
         </div>
 
         <div className={styles.section}>

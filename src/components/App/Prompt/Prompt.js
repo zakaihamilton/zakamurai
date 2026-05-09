@@ -188,8 +188,25 @@ FORMAT FOR FULL FILE REWRITE (ONLY FOR NEW FILES OR COMPLETE OVERHAULS):
   };
 
   const handleKeyDown = (e) => {
-    if (e.key === 'Enter' && !e.metaKey && !e.ctrlKey && !e.shiftKey) {
-      send(e);
+    if (e.key === 'Enter') {
+      if (e.metaKey || e.ctrlKey) {
+        // Explicitly add a newline for Cmd+Enter or Ctrl+Enter
+        e.preventDefault();
+        e.stopPropagation();
+        const { selectionStart, selectionEnd, value } = e.target;
+        const newValue = `${value.substring(0, selectionStart)}\n${value.substring(selectionEnd)}`;
+        setVal(newValue);
+
+        // Use requestAnimationFrame or setTimeout to restore cursor position after React render
+        requestAnimationFrame(() => {
+          e.target.selectionStart = e.target.selectionEnd = selectionStart + 1;
+        });
+        return;
+      }
+
+      if (!e.shiftKey) {
+        send(e);
+      }
     } else if (e.key === 'ArrowUp') {
       const history = Settings.getPromptHistory();
       if (historyIndex < history.length - 1) {
@@ -288,7 +305,7 @@ FORMAT FOR FULL FILE REWRITE (ONLY FOR NEW FILES OR COMPLETE OVERHAULS):
                 </button>
               </Tooltip>
             )}
-            <Tooltip content="Execute (Enter)">
+            <Tooltip content="Execute (Enter), Newline (Cmd+Enter)">
               <button
                 type="submit"
                 disabled={!isBtnActive || !showAIInput}

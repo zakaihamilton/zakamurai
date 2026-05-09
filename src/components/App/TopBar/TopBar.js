@@ -30,7 +30,7 @@ export default function TopBar() {
 
   const activeTab = openTabs.find((t) => t.id === activeTabId);
 
-  const handleCompile = async () => {
+  const handleCompile = React.useCallback(async () => {
     if (isProcessing) return;
 
     logState((draft) => {
@@ -86,7 +86,17 @@ export default function TopBar() {
         draft.processingType = null;
       });
     }
-  };
+  }, [
+    isProcessing,
+    activeTabId,
+    fs,
+    folderTree,
+    editorState.fileContents,
+    logState,
+    previewState,
+    tabState,
+    addNotification,
+  ]);
 
   const handleOpenPreview = () => {
     tabState((draft) => {
@@ -102,7 +112,7 @@ export default function TopBar() {
     if (compileRequest > 0) {
       handleCompile();
     }
-  }, [compileRequest]);
+  }, [compileRequest, handleCompile]);
 
   const handleOpenLog = () => {
     tabState((draft) => {

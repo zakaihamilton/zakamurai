@@ -43,10 +43,7 @@ export default function ActionButtons({
           <Icons.Globe />
         </button>
       </Tooltip>
-      <Tooltip
-        content={showAIInput ? 'Hide AI Prompt' : 'Show AI Prompt'}
-        shortcut="⌘J"
-      >
+      <Tooltip content={showAIInput ? 'Hide AI Prompt' : 'Show AI Prompt'} shortcut="⌘J">
         <button
           type="button"
           className={`${styles.actionBtn} ${styles.iconBtn} ${showAIInput ? styles.activeTab : ''}`}

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import ContextMenu from '../../Widgets/ContextMenu/ContextMenu';
 import Dialog from '../../Widgets/Dialog/Dialog';
+import { useNotification } from '../../Widgets/Notification/Notification';
 import Tooltip from '../../Widgets/Tooltip/Tooltip';
 import { AppState } from '../App';
 import { EditorState } from '../EditorArea';
@@ -8,7 +9,6 @@ import { Icons } from '../Icons';
 import { SidebarState } from '../Sidebar';
 import { TabState } from '../TabBar';
 import styles from './TreeItem.module.css';
-import { useNotification } from '../../Widgets/Notification/Notification';
 
 const treeSorter = (a, b) => {
   const aType = a.type || (a.kind === 'directory' ? 'folder' : 'file');
@@ -354,7 +354,10 @@ export default function TreeItem({
         });
       });
       if (!isExpanded) handleToggle();
-      addNotification(`${isCreating === 'folder' ? 'Folder' : 'File'} "${createValue}" created`, 'success');
+      addNotification(
+        `${isCreating === 'folder' ? 'Folder' : 'File'} "${createValue}" created`,
+        'success',
+      );
     }
     setIsCreating(null);
     setCreateValue('');

@@ -74,10 +74,7 @@ export default function Sidebar() {
     >
       {/* Dynamic Header Section */}
       <div className={styles.header}>
-        <Tooltip
-          content={isSidebarOpen ? 'Collapse Sidebar' : 'Expand Sidebar'}
-          shortcut="⌘B"
-        >
+        <Tooltip content={isSidebarOpen ? 'Collapse Sidebar' : 'Expand Sidebar'} shortcut="⌘B">
           <button
             type="button"
             onClick={toggleSidebar}

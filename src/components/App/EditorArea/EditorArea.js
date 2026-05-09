@@ -85,7 +85,10 @@ export default function EditorArea({ file }) {
             await writable.write(newVal);
             await writable.close();
             state((draft) => {
-              draft.lastSaved = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+              draft.lastSaved = new Date().toLocaleTimeString([], {
+                hour: '2-digit',
+                minute: '2-digit',
+              });
             });
             console.log('Saved to FS:', filePath);
           } catch (err) {
@@ -307,7 +310,10 @@ export default function EditorArea({ file }) {
       if (fs?.rootHandle && fs?.writeFileAtPath) {
         await fs.writeFileAtPath(filePath, localContent);
         state((draft) => {
-          draft.lastSaved = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+          draft.lastSaved = new Date().toLocaleTimeString([], {
+            hour: '2-digit',
+            minute: '2-digit',
+          });
         });
       }
     } catch (err) {

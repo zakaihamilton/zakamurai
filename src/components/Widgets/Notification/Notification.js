@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { createState } from '../../Core/Base/State';
 import { Icons } from '../../App/Icons';
+import { createState } from '../../Core/Base/State';
 import styles from './Notification.module.css';
 
 export const NotificationState = createState('NotificationState');

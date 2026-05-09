@@ -1,10 +1,10 @@
 import React from 'react';
+import Tooltip from '../../Widgets/Tooltip/Tooltip';
 import { AppState } from '../App';
 import { EditorState } from '../EditorArea';
 import { Icons } from '../Icons';
-import styles from './StatusBar.module.css';
 import { TabState } from '../TabBar';
-import Tooltip from '../../Widgets/Tooltip/Tooltip';
+import styles from './StatusBar.module.css';
 
 export default function StatusBar() {
   const { theme, projectName, fs } = AppState.useState();

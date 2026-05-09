@@ -58,6 +58,9 @@
 }
 
 .card {
+  width: 100%;
+  text-align: left;
+  font: inherit;
   background: var(--bg-surface);
   border: 1px solid var(--border);
   padding: 16px;
