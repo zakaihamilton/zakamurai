@@ -44,7 +44,15 @@ export default function TopBar() {
 
     const onLog = (text) => {
       logState((draft) => {
-        draft.logs = [...draft.logs, { id: `${Date.now()}-${Math.random()}`, role: 'system', text }];
+        draft.logs = [
+          ...draft.logs,
+          {
+            id: `${Date.now()}-${Math.random()}`,
+            role: 'system',
+            text,
+            timestamp: new Date().toTimeString().split(' ')[0],
+          },
+        ];
       });
     };
 
@@ -139,6 +147,7 @@ export default function TopBar() {
           id: `${Date.now()}-${Math.random()}`,
           role: 'system',
           text: 'Virtual filesystem cleared. Next compile will start fresh.',
+          timestamp: new Date().toTimeString().split(' ')[0],
         },
       ];
     });

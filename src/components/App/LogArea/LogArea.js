@@ -116,6 +116,7 @@ export default function LogArea() {
               }`}
             >
               <span className={styles.lineNumber}>{index + 1}</span>
+              <span className={styles.timestamp}>{log.timestamp || '--:--:--'}</span>
               <span className={styles.prompt}>{log.role === 'user' ? '$' : '>'}</span>
               <div className={styles.logContent}>{log.text}</div>
             </div>

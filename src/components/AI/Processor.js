@@ -222,6 +222,7 @@ export const processAIResponse = async (
             id: Date.now() + 4,
             role: 'system',
             text: `Failed to process ${filePath}: ${fsErr.message}`,
+            timestamp: new Date().toTimeString().split(' ')[0],
           },
         ]);
       });
@@ -236,6 +237,7 @@ export const processAIResponse = async (
           id: Date.now() + 5,
           role: 'system',
           text: `Successfully updated ${filesUpdated} file(s) ${fs?.rootHandle ? '' : '(Preview Mode)'}. Please review changes in the editor.`,
+          timestamp: new Date().toTimeString().split(' ')[0],
         },
       ]);
     });

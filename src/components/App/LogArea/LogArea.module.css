@@ -51,6 +51,19 @@
   flex-shrink: 0;
 }
 
+.timestamp {
+  color: var(--text-muted);
+  font-size: 10px;
+  opacity: 0.4;
+  margin-right: 8px;
+  font-weight: normal;
+  user-select: none;
+  width: 54px;
+  text-align: left;
+  flex-shrink: 0;
+  padding: 8px 0;
+}
+
 .prompt {
   color: var(--terminal-prompt);
   user-select: none;

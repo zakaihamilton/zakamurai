@@ -44,7 +44,12 @@ export default function Prompt() {
       draft.reasoning = '';
       draft.logs = [
         ...draft.logs,
-        { id: Date.now(), role: 'system', text: 'AI generation stopped by user.' },
+        {
+          id: Date.now(),
+          role: 'system',
+          text: 'AI generation stopped by user.',
+          timestamp: new Date().toTimeString().split(' ')[0],
+        },
       ];
     });
   };
@@ -68,7 +73,15 @@ export default function Prompt() {
 
     // Log only the short user message to the UI
     logState((draft) => {
-      draft.logs = [...draft.logs, { id: Date.now(), role: 'user', text: userMsg }];
+      draft.logs = [
+        ...draft.logs,
+        {
+          id: Date.now(),
+          role: 'user',
+          text: userMsg,
+          timestamp: new Date().toTimeString().split(' ')[0],
+        },
+      ];
       draft.isProcessing = true;
       draft.processingType = 'ai';
       draft.reasoning = '';
@@ -157,7 +170,12 @@ FORMAT FOR FULL FILE REWRITE (ONLY FOR NEW FILES OR COMPLETE OVERHAULS):
         logState((draft) => {
           draft.logs = [
             ...draft.logs,
-            { id: Date.now() + 1, role: 'ai', text: `[Browser WebLLM]: ${webLLMResult}` },
+            {
+              id: Date.now() + 1,
+              role: 'ai',
+              text: `[Browser WebLLM]: ${webLLMResult}`,
+              timestamp: new Date().toTimeString().split(' ')[0],
+            },
           ];
           draft.isProcessing = false;
           draft.processingType = null;
@@ -175,6 +193,7 @@ FORMAT FOR FULL FILE REWRITE (ONLY FOR NEW FILES OR COMPLETE OVERHAULS):
               id: Date.now(),
               role: 'ai',
               text: `Error processing AI prompt: ${err.message || err}`,
+              timestamp: new Date().toTimeString().split(' ')[0],
             },
           ];
           draft.isProcessing = false;

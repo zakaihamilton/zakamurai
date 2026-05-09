@@ -149,7 +149,7 @@ export default function App() {
   const initialAILogs = useMemo(() => {
     const stored = Settings.getAILogs();
     if (stored && stored.length > 0) return stored;
-    return [{ id: 1, role: 'ai', text: 'Zakamurai Log initialized. Ready for commands.' }];
+    return [{ id: 1, role: 'ai', text: 'Zakamurai Log initialized. Ready for commands.', timestamp: new Date().toTimeString().split(' ')[0] }];
   }, []);
 
   const initialSidebarWidth = useMemo(() => Settings.getSidebarWidth(), []);
