@@ -44,13 +44,14 @@ export default function TopBar() {
 
     const onLog = (text) => {
       logState((draft) => {
-        draft.logs.push({ id: `${Date.now()}-${Math.random()}`, role: 'system', text });
+        draft.logs = [...draft.logs, { id: `${Date.now()}-${Math.random()}`, role: 'system', text }];
       });
     };
 
     try {
       const compiler = new Compiler(onLog);
       await compiler.compile(fs, folderTree, editorState.fileContents);
+      addNotification('Project compiled successfully', 'success');
 
       try {
         const container = compiler.container;
@@ -72,7 +73,7 @@ export default function TopBar() {
               draft.activeTabId = 'preview';
             });
             onLog('Preview ready. Opened preview tab.');
-            addNotification('Project compiled successfully', 'success');
+
           }
         }
       } catch (previewErr) {
@@ -80,6 +81,7 @@ export default function TopBar() {
       }
     } catch (err) {
       onLog(`Unexpected error: ${err.message}`);
+      addNotification(`Compilation failed: ${err.message}`, 'error');
     } finally {
       logState((draft) => {
         draft.isProcessing = false;
@@ -131,11 +133,14 @@ export default function TopBar() {
     });
     Settings.setPreviewHtml(null);
     logState((draft) => {
-      draft.logs.push({
-        id: `${Date.now()}-${Math.random()}`,
-        role: 'system',
-        text: 'Virtual filesystem cleared. Next compile will start fresh.',
-      });
+      draft.logs = [
+        ...draft.logs,
+        {
+          id: `${Date.now()}-${Math.random()}`,
+          role: 'system',
+          text: 'Virtual filesystem cleared. Next compile will start fresh.',
+        },
+      ];
     });
     handleOpenLog();
   };

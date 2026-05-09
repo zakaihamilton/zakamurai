@@ -159,30 +159,31 @@ export default function App() {
     <div className={styles.root}>
       <AppState theme={initialTheme} projectName={initialProjectName} fs={fs} showShortcuts={false}>
         <ProjectNameSaver />
-        <NotificationProvider />
-        <SidebarState
-          isSidebarOpen={true}
-          showAIInput={true}
-          folderTree={initialFiles}
-          sidebarWidth={initialSidebarWidth}
-          expandedFolders={{}}
-        >
-          <TabState openTabs={initialTabs} activeTabId={initialActiveTabId}>
-            <LogState isProcessing={false} logs={initialAILogs}>
-              <EditorState fileContents={initialContents}>
-                <PromptState promptWidth={initialPromptWidth}>
-                  <PreviewState htmlContent={Settings.getPreviewHtml()} isCompilerReady={false}>
-                    <TabRestorer />
-                    <PreviewRestorer />
-                    <ContentSaver />
-                    <KeyboardHandler />
-                    <PassiveWrapper />
-                  </PreviewState>
-                </PromptState>
-              </EditorState>
-            </LogState>
-          </TabState>
-        </SidebarState>
+        <NotificationProvider>
+          <SidebarState
+            isSidebarOpen={true}
+            showAIInput={true}
+            folderTree={initialFiles}
+            sidebarWidth={initialSidebarWidth}
+            expandedFolders={{}}
+          >
+            <TabState openTabs={initialTabs} activeTabId={initialActiveTabId}>
+              <LogState isProcessing={false} logs={initialAILogs}>
+                <EditorState fileContents={initialContents}>
+                  <PromptState promptWidth={initialPromptWidth}>
+                    <PreviewState htmlContent={Settings.getPreviewHtml()} isCompilerReady={false}>
+                      <TabRestorer />
+                      <PreviewRestorer />
+                      <ContentSaver />
+                      <KeyboardHandler />
+                      <PassiveWrapper />
+                    </PreviewState>
+                  </PromptState>
+                </EditorState>
+              </LogState>
+            </TabState>
+          </SidebarState>
+        </NotificationProvider>
       </AppState>
     </div>
   );

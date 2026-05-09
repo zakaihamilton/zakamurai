@@ -179,6 +179,7 @@ import('${scriptPath}').catch(err => console.error('[Runner Error]', err));
         this.onLog(`Stack: ${err.stack}`);
       }
       console.error(err);
+      throw err;
     }
   }
 }

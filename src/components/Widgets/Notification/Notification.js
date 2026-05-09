@@ -6,9 +6,13 @@ import styles from './Notification.module.css';
 
 export const NotificationState = createState('NotificationState');
 
-export function NotificationProvider() {
-  NotificationState.useState(null, { notifications: [] });
-  return <NotificationUI />;
+export function NotificationProvider({ children }) {
+  return (
+    <NotificationState>
+      {children}
+      <NotificationUI />
+    </NotificationState>
+  );
 }
 
 function NotificationUI() {
@@ -55,8 +59,8 @@ export function useNotification() {
     (message, type = 'info', duration = 3000) => {
       const id = Date.now();
       notificationState((draft) => {
-        if (!draft.notifications) draft.notifications = [];
-        draft.notifications.push({ id, message, type });
+        const notifications = draft.notifications || [];
+        draft.notifications = [...notifications, { id, message, type }];
       });
 
       setTimeout(() => {
