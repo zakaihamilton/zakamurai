@@ -1,21 +1,25 @@
+import { EditorState } from '@/components/App/EditorArea';
+import { LogState } from '@/components/App/LogArea';
+import { SidebarState } from '@/components/App/Sidebar';
+import { TabState } from '@/components/App/TabBar';
 import { fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { AppState, PreviewState } from '../App';
-import { EditorState } from '../EditorArea';
-import { LogState } from '../LogArea';
-import { SidebarState } from '../Sidebar';
-import { TabState } from '../TabBar';
+import { AppState } from '../AppState';
+import { PreviewState } from '../PreviewState';
 import TopBar from './TopBar';
 
 // Mock URL methods
 global.URL.createObjectURL = vi.fn();
 global.URL.revokeObjectURL = vi.fn();
 
-vi.mock('../App', () => ({
+vi.mock('../AppState', () => ({
   AppState: {
     useState: vi.fn(),
   },
+}));
+
+vi.mock('../PreviewState', () => ({
   PreviewState: {
     useState: vi.fn(),
   },
@@ -98,7 +102,8 @@ describe('TopBar', () => {
     EditorState.useState.mockReturnValue({ fileContents: {} });
 
     render(<TopBar />);
-    expect(screen.getByText(/Zakamurai/i)).toBeDefined();
+    expect(screen.getByText(/Zakamur/i)).toBeDefined();
+    expect(screen.getByText(/ai/i)).toBeDefined();
   });
 
   it('renders export button and handles click', async () => {

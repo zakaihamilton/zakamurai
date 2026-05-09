@@ -1,13 +1,14 @@
+import { AppState } from '@/components/App/AppState';
+import { EditorState } from '@/components/App/EditorArea';
+import { LogState } from '@/components/App/LogArea';
+import { PreviewState } from '@/components/App/PreviewState';
+import { SidebarState } from '@/components/App/Sidebar';
+import { TabState } from '@/components/App/TabBar';
+import Settings from '@/components/Storage/Settings';
+import { useNotification } from '@/components/Widgets/Notification/Notification';
+import { Compiler } from '@/utils/compiler';
+import { ZipWriter } from '@/utils/zip';
 import React, { useCallback, useEffect } from 'react';
-import { Compiler } from '../../../utils/compiler';
-import { ZipWriter } from '../../../utils/zip';
-import Settings from '../../Storage/Settings';
-import { useNotification } from '../../Widgets/Notification/Notification';
-import { AppState, PreviewState } from '../App';
-import { EditorState } from '../EditorArea';
-import { LogState } from '../LogArea';
-import { SidebarState } from '../Sidebar';
-import { TabState } from '../TabBar';
 import styles from './TopBar.module.css';
 import ActionButtons from './subcomponents/ActionButtons';
 import Breadcrumb from './subcomponents/Breadcrumb';
@@ -81,7 +82,6 @@ export default function TopBar() {
               draft.activeTabId = 'preview';
             });
             onLog('Preview ready. Opened preview tab.');
-
           }
         }
       } catch (previewErr) {

@@ -1,10 +1,10 @@
+import { AppState } from '@/components/App/AppState';
+import { EditorState } from '@/components/App/EditorArea';
+import { TabState } from '@/components/App/TabBar';
+import { Icons } from '@/components/Core/Base/Icons';
+import { createState } from '@/components/Core/Base/State';
+import Tooltip from '@/components/Widgets/Tooltip/Tooltip';
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { createState } from '../../Core/Base/State';
-import Tooltip from '../../Widgets/Tooltip/Tooltip';
-import { AppState } from '../App';
-import { EditorState } from '../EditorArea';
-import { Icons } from '../Icons';
-import { TabState } from '../TabBar';
 import styles from './Sidebar.module.css';
 import TreeItem from './TreeItem';
 

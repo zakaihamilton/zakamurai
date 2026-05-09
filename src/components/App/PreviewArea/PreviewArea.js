@@ -1,8 +1,8 @@
 'use client';
 
+import { Icons } from '@/components/Core/Base/Icons';
+import Tooltip from '@/components/Widgets/Tooltip/Tooltip';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import Tooltip from '../../Widgets/Tooltip/Tooltip';
-import { Icons } from '../Icons';
 import styles from './PreviewArea.module.css';
 
 export default function PreviewArea({ htmlContent, isCompilerReady }) {

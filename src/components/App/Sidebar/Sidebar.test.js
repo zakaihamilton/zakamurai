@@ -1,13 +1,13 @@
+import { EditorState } from '@/components/App/EditorArea';
+import { TabState } from '@/components/App/TabBar';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import { AppState } from '../App';
-import { EditorState } from '../EditorArea';
-import { TabState } from '../TabBar';
+import { AppState } from '../AppState';
 import { SidebarState } from './Sidebar';
 import Sidebar from './Sidebar';
 
 // Mock the state
-vi.mock('../App', () => ({
+vi.mock('../AppState', () => ({
   AppState: {
     useState: vi.fn(),
   },
@@ -43,7 +43,8 @@ describe('Sidebar', () => {
 
     render(<Sidebar />);
     expect(screen.getByText('Test Project')).toBeDefined();
-    expect(screen.getByText(/ZAKAMURAI/i)).toBeDefined();
+    expect(screen.getByText(/ZAKAMUR/i)).toBeDefined();
+    expect(screen.getByText(/AI/i)).toBeDefined();
   });
 
   it('toggles the sidebar when the logo is clicked', () => {

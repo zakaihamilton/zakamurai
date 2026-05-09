@@ -1,1 +1,2 @@
-export { default, AppState } from './App';
+export { default } from './App';
+export * from './AppState';

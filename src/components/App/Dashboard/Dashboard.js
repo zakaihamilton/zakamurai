@@ -1,7 +1,7 @@
+import { SidebarState } from '@/components/App/Sidebar';
+import { Icons } from '@/components/Core/Base/Icons';
+import { useNotification } from '@/components/Widgets/Notification/Notification';
 import React from 'react';
-import { useNotification } from '../../Widgets/Notification/Notification';
-import { Icons } from '../Icons';
-import { SidebarState } from '../Sidebar';
 import styles from './Dashboard.module.css';
 
 export default function Dashboard() {

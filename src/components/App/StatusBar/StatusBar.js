@@ -1,9 +1,9 @@
+import { AppState } from '@/components/App/AppState';
+import { EditorState } from '@/components/App/EditorArea';
+import { TabState } from '@/components/App/TabBar';
+import { Icons } from '@/components/Core/Base/Icons';
+import Tooltip from '@/components/Widgets/Tooltip/Tooltip';
 import React from 'react';
-import Tooltip from '../../Widgets/Tooltip/Tooltip';
-import { AppState } from '../App';
-import { EditorState } from '../EditorArea';
-import { Icons } from '../Icons';
-import { TabState } from '../TabBar';
 import styles from './StatusBar.module.css';
 
 export default function StatusBar() {

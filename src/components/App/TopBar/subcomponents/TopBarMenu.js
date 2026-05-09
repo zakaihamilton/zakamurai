@@ -1,8 +1,8 @@
+import { Icons } from '@/components/Core/Base/Icons';
+import ContextMenu from '@/components/Widgets/ContextMenu/ContextMenu';
+import Dialog from '@/components/Widgets/Dialog/Dialog';
+import Tooltip from '@/components/Widgets/Tooltip/Tooltip';
 import React, { useState } from 'react';
-import ContextMenu from '../../../Widgets/ContextMenu/ContextMenu';
-import Dialog from '../../../Widgets/Dialog/Dialog';
-import Tooltip from '../../../Widgets/Tooltip/Tooltip';
-import { Icons } from '../../Icons';
 import styles from '../TopBar.module.css';
 
 export default function TopBarMenu({

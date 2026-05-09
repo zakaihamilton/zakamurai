@@ -1,8 +1,8 @@
+import { AppState } from '@/components/App/AppState';
+import { TabState } from '@/components/App/TabBar';
+import { Icons } from '@/components/Core/Base/Icons';
+import { createState } from '@/components/Core/Base/State';
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { createState } from '../../Core/Base/State';
-import { AppState } from '../App';
-import { Icons } from '../Icons';
-import { TabState } from '../TabBar';
 import styles from './EditorArea.module.css';
 
 import CodeEditor from './CodeEditor';

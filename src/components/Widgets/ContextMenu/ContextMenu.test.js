@@ -18,14 +18,14 @@ describe('ContextMenu', () => {
 
   it('calls onClose when overlay is clicked', () => {
     const onClose = vi.fn();
-    const { container } = render(
+    render(
       <ContextMenu position={{ x: 0, y: 0 }} onClose={onClose}>
         <button type="button">Option</button>
       </ContextMenu>,
     );
 
     // Find overlay by class (since it has no text/role)
-    const overlay = container.querySelector('[class*="overlay"]');
+    const overlay = screen.getByRole('presentation');
     fireEvent.click(overlay);
     expect(onClose).toHaveBeenCalled();
   });

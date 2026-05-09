@@ -1,8 +1,8 @@
+import { Icons } from '@/components/Core/Base/Icons';
+import { createState } from '@/components/Core/Base/State';
+import Settings from '@/components/Storage/Settings';
+import Tooltip from '@/components/Widgets/Tooltip/Tooltip';
 import React, { useEffect, useRef, useState } from 'react';
-import { createState } from '../../Core/Base/State';
-import Settings from '../../Storage/Settings';
-import Tooltip from '../../Widgets/Tooltip/Tooltip';
-import { Icons } from '../Icons';
 import styles from './LogArea.module.css';
 
 export const LogState = createState('LogState');

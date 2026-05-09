@@ -1,13 +1,13 @@
+import { AppState } from '@/components/App/AppState';
+import { EditorState } from '@/components/App/EditorArea';
+import { SidebarState } from '@/components/App/Sidebar';
+import { TabState } from '@/components/App/TabBar';
+import { Icons } from '@/components/Core/Base/Icons';
+import ContextMenu from '@/components/Widgets/ContextMenu/ContextMenu';
+import Dialog from '@/components/Widgets/Dialog/Dialog';
+import { useNotification } from '@/components/Widgets/Notification/Notification';
+import Tooltip from '@/components/Widgets/Tooltip/Tooltip';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import ContextMenu from '../../Widgets/ContextMenu/ContextMenu';
-import Dialog from '../../Widgets/Dialog/Dialog';
-import { useNotification } from '../../Widgets/Notification/Notification';
-import Tooltip from '../../Widgets/Tooltip/Tooltip';
-import { AppState } from '../App';
-import { EditorState } from '../EditorArea';
-import { Icons } from '../Icons';
-import { SidebarState } from '../Sidebar';
-import { TabState } from '../TabBar';
 import styles from './TreeItem.module.css';
 
 const treeSorter = (a, b) => {

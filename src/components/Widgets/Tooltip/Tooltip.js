@@ -1,6 +1,6 @@
+import { AppState } from '@/components/App/AppState';
 import React, { useState, useRef, useEffect, useLayoutEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { AppState } from '../../App';
 import styles from './Tooltip.module.css';
 
 /**

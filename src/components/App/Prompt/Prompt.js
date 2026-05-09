@@ -1,14 +1,14 @@
+import { AppState } from '@/components/App/AppState';
+import { EditorState } from '@/components/App/EditorArea';
+import { LogState } from '@/components/App/LogArea';
+import { SidebarState } from '@/components/App/Sidebar';
+import { TabState } from '@/components/App/TabBar';
+import { Icons } from '@/components/Core/Base/Icons';
+import { createState } from '@/components/Core/Base/State';
+import Settings from '@/components/Storage/Settings';
+import Tooltip from '@/components/Widgets/Tooltip/Tooltip';
 import React, { useEffect, useRef, useState } from 'react';
 import { askWebLLM, interruptWebLLM, processAIResponse } from '../../AI';
-import { createState } from '../../Core/Base/State';
-import Settings from '../../Storage/Settings';
-import Tooltip from '../../Widgets/Tooltip/Tooltip';
-import { AppState } from '../App';
-import { EditorState } from '../EditorArea';
-import { Icons } from '../Icons';
-import { LogState } from '../LogArea';
-import { SidebarState } from '../Sidebar';
-import { TabState } from '../TabBar';
 import styles from './Prompt.module.css';
 
 export const PromptState = createState('PromptState');
@@ -265,7 +265,9 @@ FORMAT FOR FULL FILE REWRITE (ONLY FOR NEW FILES OR COMPLETE OVERHAULS):
             <h2 className={styles.title}>AI Prompt</h2>
           </div>
           {isProcessing && (
-            <span className={styles.status}>{processingType === 'ai' ? 'Working' : 'Compiling'}</span>
+            <span className={styles.status}>
+              {processingType === 'ai' ? 'Working' : 'Compiling'}
+            </span>
           )}
         </div>
         {(currentActiveTabId || selectedLines.length > 0) && (

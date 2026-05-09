@@ -1,11 +1,11 @@
+import { EditorState } from '@/components/App/EditorArea';
+import { LogState } from '@/components/App/LogArea';
+import { SidebarState } from '@/components/App/Sidebar';
+import { TabState } from '@/components/App/TabBar';
 import { fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import { describe, expect, it, vi } from 'vitest';
-import { AppState } from '../App';
-import { EditorState } from '../EditorArea';
-import { LogState } from '../LogArea';
-import { SidebarState } from '../Sidebar';
-import { TabState } from '../TabBar';
+import { AppState } from '../AppState';
 import Prompt from './Prompt';
 
 vi.mock('../LogArea', () => ({
@@ -33,7 +33,7 @@ vi.mock('../TabBar', () => ({
   },
 }));
 
-vi.mock('../App', () => ({
+vi.mock('../AppState', () => ({
   AppState: {
     useState: vi.fn(),
   },
@@ -79,7 +79,7 @@ describe('Prompt', () => {
 
     render(<Prompt />);
     expect(screen.getByPlaceholderText('Enter the AI prompt here...')).toBeDefined();
-    expect(screen.getByTitle('Execute (Enter)')).toBeDefined();
+    expect(screen.getByTitle('Execute prompt')).toBeDefined();
   });
 
   it('renders collapsed when showAIInput is false', () => {
@@ -125,7 +125,7 @@ describe('Prompt', () => {
 
     render(<Prompt />);
     const input = screen.getByPlaceholderText('Enter the AI prompt here...');
-    const button = screen.getByTitle('Execute (Enter)');
+    const button = screen.getByTitle('Execute prompt');
 
     fireEvent.change(input, { target: { value: 'build app' } });
     fireEvent.click(button);

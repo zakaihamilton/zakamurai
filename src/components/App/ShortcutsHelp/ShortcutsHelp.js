@@ -1,6 +1,6 @@
+import { Icons } from '@/components/Core/Base/Icons';
 import React from 'react';
 import { createPortal } from 'react-dom';
-import { Icons } from '../Icons';
 import styles from './ShortcutsHelp.module.css';
 
 const SHORTCUTS = [

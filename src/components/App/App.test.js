@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import App, { AppState } from './App';
+import App from './App';
+import { AppState } from './AppState';
 
 // Mock scrollIntoView
 window.HTMLElement.prototype.scrollIntoView = vi.fn();
@@ -9,7 +10,12 @@ window.HTMLElement.prototype.scrollIntoView = vi.fn();
 vi.mock('./Sidebar', () => {
   const State = ({ children }) => <div data-testid="sidebar-state">{children}</div>;
   State.useState = vi.fn(() =>
-    Object.assign(vi.fn(), { isSidebarOpen: true, folderTree: [], showAIInput: true }),
+    Object.assign(vi.fn(), {
+      isSidebarOpen: true,
+      folderTree: [],
+      showAIInput: true,
+      sidebarWidth: 260,
+    }),
   );
   return {
     default: () => <div data-testid="sidebar">Sidebar</div>,
@@ -41,9 +47,14 @@ vi.mock('./LogArea', () => {
     LogState: State,
   };
 });
-vi.mock('./Prompt', () => ({
-  default: () => <div data-testid="prompt">Prompt</div>,
-}));
+vi.mock('./Prompt', () => {
+  const State = ({ children }) => <div data-testid="prompt-state">{children}</div>;
+  State.useState = vi.fn(() => Object.assign(vi.fn(), { promptWidth: 340 }));
+  return {
+    default: () => <div data-testid="prompt">Prompt</div>,
+    PromptState: State,
+  };
+});
 
 describe('App', () => {
   it('renders all main components', () => {
