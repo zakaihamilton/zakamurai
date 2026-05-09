@@ -1,21 +1,12 @@
 import { Icons } from '@/components/Core/Base/Icons';
 import { createState } from '@/components/Core/Base/State';
-import React, { useCallback, useEffect } from 'react';
+import React, { useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import styles from './Notification.module.css';
 
 export const NotificationState = createState('NotificationState');
 
-export function NotificationProvider({ children }) {
-  return (
-    <NotificationState>
-      {children}
-      <NotificationUI />
-    </NotificationState>
-  );
-}
-
-function NotificationUI() {
+export function Notification() {
   const notificationState = NotificationState.useState();
   const { notifications = [] } = notificationState;
 

@@ -3,7 +3,7 @@
 import { useFileSystem } from '@/components/Storage';
 import { DEFAULT_CONTENTS, DEFAULT_FILES } from '@/components/Storage/InitialData';
 import Settings from '@/components/Storage/Settings';
-import { NotificationProvider } from '@/components/Widgets/Notification/Notification';
+import { Notification, NotificationProvider } from '@/components/Widgets/Notification/Notification';
 import Resizer from '@/components/Widgets/Resizer/Resizer';
 import React, { useState, useMemo, useEffect } from 'react';
 import styles from './App.module.css';
@@ -68,29 +68,32 @@ export default function App() {
 
   return (
     <div className={styles.root}>
-      <AppState theme={initialTheme} projectName={initialProjectName} fs={fs} showShortcuts={false}>
-        <ProjectNameSaver />
-        <NotificationProvider>
-          <SidebarState
-            isSidebarOpen={true}
-            showAIInput={true}
-            folderTree={initialFiles}
-            sidebarWidth={initialSidebarWidth}
-            expandedFolders={{}}
-          />
-          <TabState openTabs={initialTabs} activeTabId={initialActiveTabId} />
-          <LogState isProcessing={false} logs={initialAILogs} />
-          <EditorState fileContents={initialContents} />
-          <PromptState promptWidth={initialPromptWidth} />
-          <PreviewState htmlContent={Settings.getPreviewHtml()} isCompilerReady={false} />
+      <AppState
+        theme={initialTheme}
+        projectName={initialProjectName}
+        fs={fs}
+        showShortcuts={false}
+      />
+      <ProjectNameSaver />
+      <Notification />
+      <SidebarState
+        isSidebarOpen={true}
+        showAIInput={true}
+        folderTree={initialFiles}
+        sidebarWidth={initialSidebarWidth}
+        expandedFolders={{}}
+      />
+      <TabState openTabs={initialTabs} activeTabId={initialActiveTabId} />
+      <LogState isProcessing={false} logs={initialAILogs} />
+      <EditorState fileContents={initialContents} />
+      <PromptState promptWidth={initialPromptWidth} />
+      <PreviewState htmlContent={Settings.getPreviewHtml()} isCompilerReady={false} />
 
-          <TabRestorer />
-          <PreviewRestorer />
-          <ContentSaver />
-          <KeyboardHandler />
-          <PassiveWrapper />
-        </NotificationProvider>
-      </AppState>
+      <TabRestorer />
+      <PreviewRestorer />
+      <ContentSaver />
+      <KeyboardHandler />
+      <PassiveWrapper />
     </div>
   );
 }
