@@ -11,6 +11,7 @@ export default function TopBarMenu({
   onStartOver,
   onClearFS,
   isProcessing,
+  onToggleShortcuts,
 }) {
   const [menuPosition, setMenuPosition] = useState(null);
   const [isStartOverDialogOpen, setIsStartOverDialogOpen] = useState(false);
@@ -84,6 +85,18 @@ export default function TopBarMenu({
         >
           <Icons.Trash />
           <span>Clear FS</span>
+        </button>
+        <button
+          type="button"
+          className={styles.menuItem}
+          onClick={() => {
+            onToggleShortcuts();
+            handleMenuClose();
+          }}
+        >
+          <Icons.Info />
+          <span>Keyboard Shortcuts</span>
+          <span className={styles.menuShortcut}>⌘⇧/</span>
         </button>
       </ContextMenu>
       <Dialog

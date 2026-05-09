@@ -18,6 +18,7 @@ import Sidebar, { SidebarState } from './Sidebar';
 import StatusBar from './StatusBar/StatusBar';
 import TabBar, { TabState } from './TabBar';
 import TopBar from './TopBar';
+import ShortcutsHelp from './ShortcutsHelp/ShortcutsHelp';
 
 export const AppState = createState('AppState');
 export const PreviewState = createState('PreviewState');
@@ -156,7 +157,12 @@ export default function App() {
 
   return (
     <div className={styles.root}>
-      <AppState theme={initialTheme} projectName={initialProjectName} fs={fs}>
+      <AppState
+        theme={initialTheme}
+        projectName={initialProjectName}
+        fs={fs}
+        showShortcuts={false}
+      >
         <ProjectNameSaver />
         <NotificationProvider />
         <SidebarState
@@ -188,7 +194,8 @@ export default function App() {
 }
 
 function PassiveWrapper() {
-  const { theme } = AppState.useState();
+  const appState = AppState.useState();
+  const { theme, showShortcuts } = appState;
   const { openTabs = [], activeTabId } = TabState.useState();
   const { htmlContent, isCompilerReady } = PreviewState.useState();
   const activeTab = openTabs.find((t) => t.id === activeTabId);
@@ -294,6 +301,14 @@ function PassiveWrapper() {
         </div>
         <StatusBar />
       </div>
+      <ShortcutsHelp
+        isOpen={showShortcuts}
+        onClose={() =>
+          appState((draft) => {
+            draft.showShortcuts = false;
+          })
+        }
+      />
     </div>
   );
 }
@@ -414,10 +429,16 @@ function KeyboardHandler() {
           });
         } else if (key === 'k') {
           e.preventDefault();
-          logState((draft) => {
-            draft.logs = [];
-          });
-          showNotification('Logs cleared', 'info');
+          if (e.shiftKey) {
+            appState((draft) => {
+              draft.showShortcuts = !draft.showShortcuts;
+            });
+          } else {
+            logState((draft) => {
+              draft.logs = [];
+            });
+            showNotification('Logs cleared', 'info');
+          }
         } else if (key === 'u') {
           e.preventDefault();
           tabState((draft) => {
@@ -508,6 +529,13 @@ function KeyboardHandler() {
             }
           });
         }
+      }
+      if (e.key === 'Escape') {
+        appState((draft) => {
+          if (draft.showShortcuts) {
+            draft.showShortcuts = false;
+          }
+        });
       }
     };
 

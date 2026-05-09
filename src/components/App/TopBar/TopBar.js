@@ -381,6 +381,11 @@ export default function TopBar() {
           onStartOver={handleStartOver}
           onClearFS={handleClearFS}
           isProcessing={isProcessing}
+          onToggleShortcuts={() => {
+            appState((draft) => {
+              draft.showShortcuts = !draft.showShortcuts;
+            });
+          }}
         />
         <ThemeToggle theme={theme} onToggle={toggleTheme} />
       </div>

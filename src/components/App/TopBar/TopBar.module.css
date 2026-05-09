@@ -240,3 +240,14 @@
 .menuItem:hover svg {
   color: var(--text-main) !important;
 }
+
+.menuShortcut {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--text-muted);
+  opacity: 0.6;
+  font-family: var(--font-mono);
+  background: rgba(255, 255, 255, 0.1);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
