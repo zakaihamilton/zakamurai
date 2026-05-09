@@ -393,6 +393,7 @@ function KeyboardHandler() {
   const appState = AppState.useState();
   const tabState = TabState.useState();
   const { addNotification: showNotification } = useNotification();
+  const editorState = EditorState.useState();
 
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -400,36 +401,54 @@ function KeyboardHandler() {
       const modifier = isMac ? e.metaKey : e.ctrlKey;
 
       if (modifier) {
-        if (e.key === 'b') {
+        const key = e.key.toLowerCase();
+        if (key === 'b') {
           e.preventDefault();
           sidebarState((draft) => {
             draft.isSidebarOpen = !draft.isSidebarOpen;
           });
-        } else if (e.key === 'j') {
+        } else if (key === 'j') {
           e.preventDefault();
           sidebarState((draft) => {
             draft.showAIInput = !draft.showAIInput;
           });
-        } else if (e.key === 'k') {
+        } else if (key === 'k') {
           e.preventDefault();
           logState((draft) => {
             draft.logs = [];
           });
           showNotification('Logs cleared', 'info');
-        } else if (e.key === 'u') {
+        } else if (key === 'u') {
           e.preventDefault();
           tabState((draft) => {
             draft.activeTabId = 'ai-logs';
           });
-        } else if (e.key === 'i') {
+        } else if (key === 'i') {
           e.preventDefault();
           tabState((draft) => {
             draft.activeTabId = 'preview';
           });
-        } else if (e.key === 's') {
+        } else if (key === 's') {
           e.preventDefault();
-          showNotification('Project saved', 'success');
-        } else if (e.key === 't' && e.shiftKey) {
+          const activeTabId = tabState.activeTabId;
+          const hasDiff = editorState.pendingDiffs?.[activeTabId];
+          if (hasDiff) {
+            editorState((draft) => {
+              if (draft.pendingDiffs) {
+                const nextDiffs = { ...draft.pendingDiffs };
+                delete nextDiffs[activeTabId];
+                draft.pendingDiffs = nextDiffs;
+              }
+            });
+            const content = editorState.fileContents?.[activeTabId];
+            if (appState.fs?.writeFileAtPath && content !== undefined) {
+              appState.fs.writeFileAtPath(activeTabId, content);
+            }
+            showNotification('Changes approved & saved', 'success');
+          } else {
+            showNotification('Project saved', 'success');
+          }
+        } else if (key === 't' && e.shiftKey) {
           e.preventDefault();
           appState((draft) => {
             draft.theme = draft.theme === 'light' ? 'dark' : 'light';
@@ -439,23 +458,62 @@ function KeyboardHandler() {
           appState((draft) => {
             draft.compileRequest = (draft.compileRequest || 0) + 1;
           });
-        } else if (e.key === 'f') {
+        } else if (key === 'f') {
           e.preventDefault();
-          // If sidebar is closed, open it
           if (!sidebarState.isSidebarOpen) {
             sidebarState((draft) => {
               draft.isSidebarOpen = true;
             });
           }
-          // Custom event to focus search
           window.dispatchEvent(new CustomEvent('focus-file-search'));
+        } else if (e.key === 'Backspace' || e.key === '.') {
+          const activeTabId = tabState.activeTabId;
+          const diff = editorState.pendingDiffs?.[activeTabId];
+          if (diff) {
+            e.preventDefault();
+            const prevContent = diff.originalContent;
+            editorState((draft) => {
+              draft.fileContents = { ...draft.fileContents, [activeTabId]: prevContent };
+              if (draft.pendingDiffs) {
+                const nextDiffs = { ...draft.pendingDiffs };
+                delete nextDiffs[activeTabId];
+                draft.pendingDiffs = nextDiffs;
+              }
+            });
+            if (appState.fs?.writeFileAtPath) {
+              appState.fs.writeFileAtPath(activeTabId, prevContent);
+            }
+            showNotification('Changes cancelled', 'info');
+          }
+        }
+      } else if (e.ctrlKey && e.key.toLowerCase() === 'w') {
+        // Ctrl + W is safe on Mac browsers (unlike Cmd + W)
+        e.preventDefault();
+        const { activeTabId } = tabState;
+        if (e.shiftKey) {
+          // Ctrl + Shift + W to close all
+          tabState((draft) => {
+            draft.openTabs = [];
+            draft.activeTabId = null;
+          });
+          showNotification('All tabs closed', 'info');
+        } else if (activeTabId) {
+          // Ctrl + W to close current
+          tabState((draft) => {
+            const filtered = draft.openTabs.filter((t) => t.id !== activeTabId);
+            draft.openTabs = filtered;
+            if (draft.activeTabId === activeTabId) {
+              const newActiveTabId = filtered.length > 0 ? filtered[filtered.length - 1].id : null;
+              draft.activeTabId = newActiveTabId;
+            }
+          });
         }
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [sidebarState, logState, appState, tabState, showNotification]);
+  }, [sidebarState, logState, appState, tabState, showNotification, editorState]);
 
   return null;
 }

@@ -238,7 +238,6 @@ FORMAT FOR FULL FILE REWRITE (ONLY FOR NEW FILES OR COMPLETE OVERHAULS):
       aria-hidden={!showAIInput}
       style={{
         width: showAIInput ? `${promptWidth}px` : '0px',
-        minWidth: showAIInput ? `${promptWidth}px` : '0px',
       }}
     >
       <div className={styles.content}>
@@ -294,7 +293,7 @@ FORMAT FOR FULL FILE REWRITE (ONLY FOR NEW FILES OR COMPLETE OVERHAULS):
           />
           <div className={styles.actions}>
             {isProcessing && (
-              <Tooltip content="Stop AI">
+              <Tooltip content="Stop AI" shortcut="⌘.">
                 <button
                   type="button"
                   onClick={handleStop}
@@ -305,7 +304,7 @@ FORMAT FOR FULL FILE REWRITE (ONLY FOR NEW FILES OR COMPLETE OVERHAULS):
                 </button>
               </Tooltip>
             )}
-            <Tooltip content="Execute (Enter), Newline (Cmd+Enter)">
+            <Tooltip content="Execute prompt" shortcut="↵">
               <button
                 type="submit"
                 disabled={!isBtnActive || !showAIInput}

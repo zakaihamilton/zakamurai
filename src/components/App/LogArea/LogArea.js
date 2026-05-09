@@ -84,11 +84,11 @@ export default function LogArea() {
                   {copied ? <Icons.Check /> : <Icons.Copy />}
                 </button>
               </Tooltip>
-              <Tooltip content="Clear logs">
+              <Tooltip content="Clear logs" shortcut="⌘K">
                 <button
                   type="button"
-                  className={styles.headerBtn}
                   onClick={handleClear}
+                  className={styles.headerBtn}
                   aria-label="Clear logs"
                 >
                   <Icons.Trash />

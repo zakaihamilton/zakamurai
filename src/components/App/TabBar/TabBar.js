@@ -196,7 +196,7 @@ export default function TabBar() {
               >
                 <span className={styles.tabLabelText}>{tab.label}</span>
               </Tooltip>
-              <Tooltip content="Close Tab">
+              <Tooltip content="Close Tab" shortcut="⌃W">
                 <button
                   type="button"
                   onClick={(e) => closeTab(e, tab.id)}
@@ -213,7 +213,7 @@ export default function TabBar() {
       })}
       {openTabs.length > 1 && (
         <div className={styles.tabActions}>
-          <Tooltip content="Close all tabs">
+          <Tooltip content="Close all tabs" shortcut="⌃⇧W">
             <button
               type="button"
               onClick={handleClearAll}

@@ -20,7 +20,7 @@ export default function EditorHeader({
         <span className={styles.filePath}>{filePath}</span>
       </div>
       <div className={styles.headerActions}>
-        <Tooltip content="Find/Replace (Ctrl+F)">
+        <Tooltip content="Find/Replace" shortcut="⌘F">
           <button type="button" className={styles.actionBtn} onClick={() => setShowFind(!showFind)}>
             <Icons.Search />
           </button>
@@ -28,20 +28,24 @@ export default function EditorHeader({
         {hasDiff && (
           <div className={styles.diffHeaderToolbar}>
             <span className={styles.diffLabel}>Review AI Changes:</span>
-            <button
-              type="button"
-              onClick={handleApprove}
-              className={`${styles.diffButton} ${styles.approveBtn}`}
-            >
-              <Icons.Check /> Approve
-            </button>
-            <button
-              type="button"
-              onClick={handleUndo}
-              className={`${styles.diffButton} ${styles.undoBtn}`}
-            >
-              <Icons.Undo /> Undo
-            </button>
+            <Tooltip content="Approve Changes" shortcut="⌘S">
+              <button
+                type="button"
+                onClick={handleApprove}
+                className={`${styles.diffButton} ${styles.approveBtn}`}
+              >
+                <Icons.Check /> Approve
+              </button>
+            </Tooltip>
+            <Tooltip content="Cancel Changes" shortcut="⌘. / ⌘⌫">
+              <button
+                type="button"
+                onClick={handleUndo}
+                className={`${styles.diffButton} ${styles.undoBtn}`}
+              >
+                <Icons.Undo /> Undo
+              </button>
+            </Tooltip>
             <Tooltip content="Toggle Side by Side View">
               <button
                 type="button"
