@@ -84,6 +84,9 @@ export default function EditorArea({ file }) {
             const writable = await handle.createWritable();
             await writable.write(newVal);
             await writable.close();
+            state((draft) => {
+              draft.lastSaved = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            });
             console.log('Saved to FS:', filePath);
           } catch (err) {
             console.error('Failed to save to FS:', err);
@@ -303,6 +306,9 @@ export default function EditorArea({ file }) {
     try {
       if (fs?.rootHandle && fs?.writeFileAtPath) {
         await fs.writeFileAtPath(filePath, localContent);
+        state((draft) => {
+          draft.lastSaved = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        });
       }
     } catch (err) {
       console.error('Failed to save to FS on approve:', err);
@@ -346,6 +352,15 @@ export default function EditorArea({ file }) {
         draft.selectedLines[filePath] = [...current, lineNum];
       }
       draft.selectedLines = { ...draft.selectedLines };
+    });
+  };
+
+  const handleCursorUpdate = (pos) => {
+    state((draft) => {
+      draft.cursorPos = {
+        ...draft.cursorPos,
+        [filePath]: pos,
+      };
     });
   };
 
@@ -497,6 +512,7 @@ export default function EditorArea({ file }) {
                 localContent={localContent}
                 handleChange={handleChange}
                 highlightedCode={highlightCode(localContent)}
+                onCursorUpdate={handleCursorUpdate}
               />
             </div>
           </div>
@@ -509,6 +525,7 @@ export default function EditorArea({ file }) {
             localContent={localContent}
             handleChange={handleChange}
             highlightedCode={highlightCode(localContent)}
+            onCursorUpdate={handleCursorUpdate}
           />
         </div>
       )}

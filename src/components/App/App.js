@@ -122,6 +122,10 @@ function PreviewRestorer() {
   return null;
 }
 
+import { NotificationProvider } from '../Widgets/Notification/Notification';
+import Dashboard from './Dashboard/Dashboard';
+import StatusBar from './StatusBar/StatusBar';
+
 export default function App() {
   const fs = useFileSystem();
   const [initialProjectName] = useState(() => Settings.getProjectName());
@@ -153,33 +157,36 @@ export default function App() {
   const initialPromptWidth = useMemo(() => Settings.getPromptWidth(), []);
 
   return (
-    <div className={styles.root}>
-      <AppState theme={initialTheme} projectName={initialProjectName} fs={fs}>
-        <ProjectNameSaver />
-        <SidebarState
-          isSidebarOpen={true}
-          showAIInput={true}
-          folderTree={initialFiles}
-          sidebarWidth={initialSidebarWidth}
-          expandedFolders={{}}
-        >
-          <TabState openTabs={initialTabs} activeTabId={initialActiveTabId}>
-            <LogState isProcessing={false} logs={initialAILogs}>
-              <EditorState fileContents={initialContents}>
-                <PromptState promptWidth={initialPromptWidth}>
-                  <PreviewState htmlContent={Settings.getPreviewHtml()} isCompilerReady={false}>
-                    <TabRestorer />
-                    <PreviewRestorer />
-                    <ContentSaver />
-                    <PassiveWrapper />
-                  </PreviewState>
-                </PromptState>
-              </EditorState>
-            </LogState>
-          </TabState>
-        </SidebarState>
-      </AppState>
-    </div>
+    <NotificationProvider>
+      <div className={styles.root}>
+        <AppState theme={initialTheme} projectName={initialProjectName} fs={fs}>
+          <ProjectNameSaver />
+          <SidebarState
+            isSidebarOpen={true}
+            showAIInput={true}
+            folderTree={initialFiles}
+            sidebarWidth={initialSidebarWidth}
+            expandedFolders={{}}
+          >
+            <TabState openTabs={initialTabs} activeTabId={initialActiveTabId}>
+              <LogState isProcessing={false} logs={initialAILogs}>
+                <EditorState fileContents={initialContents}>
+                  <PromptState promptWidth={initialPromptWidth}>
+                    <PreviewState htmlContent={Settings.getPreviewHtml()} isCompilerReady={false}>
+                      <TabRestorer />
+                      <PreviewRestorer />
+                      <ContentSaver />
+                      <KeyboardHandler />
+                      <PassiveWrapper />
+                    </PreviewState>
+                  </PromptState>
+                </EditorState>
+              </LogState>
+            </TabState>
+          </SidebarState>
+        </AppState>
+      </div>
+    </NotificationProvider>
   );
 }
 
@@ -275,14 +282,7 @@ function PassiveWrapper() {
               {activeTab?.type === 'preview' && (
                 <PreviewArea htmlContent={htmlContent} isCompilerReady={isCompilerReady} />
               )}
-              {!activeTab && (
-                <div className={styles.emptyState}>
-                  <Icons.Bot />
-                  <p className={styles.emptyStateText}>
-                    No open tabs. Select a file from the explorer.
-                  </p>
-                </div>
-              )}
+              {!activeTab && <Dashboard />}
             </div>
           </div>
           {showAIInput && (
@@ -295,6 +295,7 @@ function PassiveWrapper() {
           )}
           <Prompt />
         </div>
+        <StatusBar />
       </div>
     </div>
   );
@@ -385,6 +386,48 @@ function TabRestorer() {
 
     restore();
   }, [fs, tabState, editorState]);
+
+  return null;
+}
+
+function KeyboardHandler() {
+  const sidebarState = SidebarState.useState();
+  const logState = LogState.useState();
+  const appState = AppState.useState();
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+      const modifier = isMac ? e.metaKey : e.ctrlKey;
+
+      if (modifier) {
+        if (e.key === 'b') {
+          e.preventDefault();
+          sidebarState((draft) => {
+            draft.isSidebarOpen = !draft.isSidebarOpen;
+          });
+        } else if (e.key === 'j') {
+          e.preventDefault();
+          sidebarState((draft) => {
+            draft.showAIInput = !draft.showAIInput;
+          });
+        } else if (e.key === 'k') {
+          e.preventDefault();
+          logState((draft) => {
+            draft.logs = [];
+          });
+        } else if (e.key === 'Enter') {
+          e.preventDefault();
+          appState((draft) => {
+            draft.compileRequest = (draft.compileRequest || 0) + 1;
+          });
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [sidebarState, logState, appState]);
 
   return null;
 }

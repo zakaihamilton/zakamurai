@@ -8,9 +8,7 @@ export default function WorkingIndicator({ isProcessing, processingType }) {
   return (
     <div className={styles.workingIndicator}>
       {processingType === 'ai' ? <Icons.BotSmall /> : <Icons.RefreshSmall />}
-      <span>
-        {processingType === 'ai' ? 'AI is working...' : 'System is working...'}
-      </span>
+      <span>{processingType === 'ai' ? 'AI is working...' : 'System is working...'}</span>
     </div>
   );
 }

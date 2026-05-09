@@ -2,6 +2,7 @@ import React from 'react';
 import { Compiler } from '../../../utils/compiler';
 import { ZipWriter } from '../../../utils/zip';
 import Settings from '../../Storage/Settings';
+import { useNotification } from '../../Widgets/Notification/Notification';
 import { AppState, PreviewState } from '../App';
 import { EditorState } from '../EditorArea';
 import { LogState } from '../LogArea';
@@ -16,7 +17,7 @@ import WorkingIndicator from './subcomponents/WorkingIndicator';
 
 export default function TopBar() {
   const appState = AppState.useState();
-  const { theme, projectName, fs } = appState;
+  const { theme, projectName, fs, compileRequest } = appState;
   const tabState = TabState.useState();
   const { openTabs = [], activeTabId } = tabState;
   const sidebarState = SidebarState.useState();
@@ -25,6 +26,7 @@ export default function TopBar() {
   const logState = LogState.useState();
   const previewState = PreviewState.useState();
   const { isProcessing } = logState;
+  const { addNotification } = useNotification();
 
   const activeTab = openTabs.find((t) => t.id === activeTabId);
 
@@ -70,6 +72,7 @@ export default function TopBar() {
               draft.activeTabId = 'preview';
             });
             onLog('Preview ready. Opened preview tab.');
+            addNotification('Project compiled successfully', 'success');
           }
         }
       } catch (previewErr) {
@@ -94,6 +97,12 @@ export default function TopBar() {
       draft.activeTabId = 'preview';
     });
   };
+
+  React.useEffect(() => {
+    if (compileRequest > 0) {
+      handleCompile();
+    }
+  }, [compileRequest]);
 
   const handleOpenLog = () => {
     tabState((draft) => {
@@ -267,7 +276,10 @@ export default function TopBar() {
             filePath.match(/\.(jsx?|tsx?|css|html|json|md|txt|svg)$/)
           ) {
             let text = await response.text();
-            if (contentType.includes('javascript') || filePath.match(/\.(jsx?|tsx?|module\.css)$/)) {
+            if (
+              contentType.includes('javascript') ||
+              filePath.match(/\.(jsx?|tsx?|module\.css)$/)
+            ) {
               text = rewriteImports(cleanDevArtifacts(text));
             } else if (filePath.endsWith('.html')) {
               text = rewriteHtmlScripts(text);

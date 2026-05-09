@@ -8,6 +8,7 @@ import { Icons } from '../Icons';
 import { SidebarState } from '../Sidebar';
 import { TabState } from '../TabBar';
 import styles from './TreeItem.module.css';
+import { useNotification } from '../../Widgets/Notification/Notification';
 
 const treeSorter = (a, b) => {
   const aType = a.type || (a.kind === 'directory' ? 'folder' : 'file');
@@ -43,6 +44,7 @@ export default function TreeItem({
   const [isDropTarget, setIsDropTarget] = useState(false);
   const editInputRef = useRef(null);
   const createInputRef = useRef(null);
+  const { addNotification } = useNotification();
 
   const currentPathStr = item.path.join('/');
   // Force expansion if we are actively filtering, otherwise use standard state
@@ -278,6 +280,7 @@ export default function TreeItem({
         }
       });
     }
+    addNotification(`Renamed to "${editValue}"`, 'success');
     setIsEditing(false);
   };
 
@@ -351,6 +354,7 @@ export default function TreeItem({
         });
       });
       if (!isExpanded) handleToggle();
+      addNotification(`${isCreating === 'folder' ? 'Folder' : 'File'} "${createValue}" created`, 'success');
     }
     setIsCreating(null);
     setCreateValue('');
@@ -416,6 +420,7 @@ export default function TreeItem({
       }
     });
 
+    addNotification(`"${item.name}" deleted`, 'info');
     setShowDeleteDialog(false);
   };
 

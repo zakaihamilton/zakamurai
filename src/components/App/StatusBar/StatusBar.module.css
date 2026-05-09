@@ -1,0 +1,85 @@
+.statusBar {
+  height: 28px;
+  background: var(--bg-surface);
+  border-top: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 12px;
+  font-size: 11px;
+  color: var(--text-muted);
+  user-select: none;
+  z-index: 100;
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+}
+
+.left,
+.right {
+  display: flex;
+  align-items: center;
+  height: 100%;
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 12px;
+  height: 100%;
+  cursor: pointer;
+  transition: all 0.2s;
+  min-width: 90px;
+  border-left: 1px solid transparent;
+  border-right: 1px solid transparent;
+}
+
+.left .item:first-child {
+  min-width: 140px;
+  justify-content: flex-start;
+  border-right: 1px solid var(--border-light);
+}
+
+.right .item {
+  border-left: 1px solid var(--border-light);
+}
+
+.right .item:first-child {
+  min-width: 110px; /* Space for Ln XXX, Col XXX */
+}
+
+.item:hover {
+  background: var(--bg-panel);
+  color: var(--text-main);
+}
+
+.pulseDot {
+  width: 6px;
+  height: 6px;
+  background: #10b981;
+  border-radius: 50%;
+  box-shadow: 0 0 0 rgba(16, 185, 129, 0.4);
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4);
+  }
+  70% {
+    box-shadow: 0 0 0 6px rgba(16, 185, 129, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+  }
+}
+
+.light {
+  background: var(--bg-base);
+  border-top: 1px solid var(--border-light);
+}
+
+.light .item:hover {
+  background: var(--bg-surface);
+}
