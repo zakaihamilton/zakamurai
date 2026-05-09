@@ -21,7 +21,7 @@ export default function Prompt() {
   const reasoningRef = useRef(null);
 
   const logState = LogState.useState();
-  const { isProcessing, reasoning } = logState;
+  const { isProcessing, processingType, reasoning } = logState;
   const sidebarState = SidebarState.useState();
   const { showAIInput } = sidebarState;
   const tabState = TabState.useState();
@@ -245,7 +245,9 @@ FORMAT FOR FULL FILE REWRITE (ONLY FOR NEW FILES OR COMPLETE OVERHAULS):
           <div>
             <h2 className={styles.title}>AI Prompt</h2>
           </div>
-          {isProcessing && <span className={styles.status}>Working</span>}
+          {isProcessing && (
+            <span className={styles.status}>{processingType === 'ai' ? 'Working' : 'Compiling'}</span>
+          )}
         </div>
         {(currentActiveTabId || selectedLines.length > 0) && (
           <div className={styles.tagsContainer}>
@@ -286,13 +288,17 @@ FORMAT FOR FULL FILE REWRITE (ONLY FOR NEW FILES OR COMPLETE OVERHAULS):
             onKeyDown={handleKeyDown}
             disabled={isProcessing || !showAIInput}
             placeholder={
-              isProcessing ? 'AI is working... Please wait.' : 'Enter the AI prompt here...'
+              isProcessing
+                ? processingType === 'ai'
+                  ? 'AI is working... Please wait.'
+                  : 'Compiling... Please wait.'
+                : 'Enter the AI prompt here...'
             }
             className={styles.input}
             tabIndex={showAIInput ? undefined : -1}
           />
           <div className={styles.actions}>
-            {isProcessing && (
+            {isProcessing && processingType === 'ai' && (
               <Tooltip content="Stop AI" shortcut="⌘.">
                 <button
                   type="button"

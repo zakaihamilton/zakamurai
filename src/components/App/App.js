@@ -14,11 +14,11 @@ import EditorArea, { EditorState } from './EditorArea';
 import LogArea, { LogState } from './LogArea';
 import PreviewArea from './PreviewArea';
 import Prompt, { PromptState } from './Prompt';
+import ShortcutsHelp from './ShortcutsHelp/ShortcutsHelp';
 import Sidebar, { SidebarState } from './Sidebar';
 import StatusBar from './StatusBar/StatusBar';
 import TabBar, { TabState } from './TabBar';
 import TopBar from './TopBar';
-import ShortcutsHelp from './ShortcutsHelp/ShortcutsHelp';
 
 export const AppState = createState('AppState');
 export const PreviewState = createState('PreviewState');
@@ -157,12 +157,7 @@ export default function App() {
 
   return (
     <div className={styles.root}>
-      <AppState
-        theme={initialTheme}
-        projectName={initialProjectName}
-        fs={fs}
-        showShortcuts={false}
-      >
+      <AppState theme={initialTheme} projectName={initialProjectName} fs={fs} showShortcuts={false}>
         <ProjectNameSaver />
         <NotificationProvider />
         <SidebarState

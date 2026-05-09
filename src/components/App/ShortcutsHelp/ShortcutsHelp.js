@@ -4,33 +4,48 @@ import { Icons } from '../Icons';
 import styles from './ShortcutsHelp.module.css';
 
 const SHORTCUTS = [
-  { group: 'Navigation', items: [
-    { key: '⌘B', desc: 'Toggle Sidebar' },
-    { key: '⌘J', desc: 'Toggle AI Prompt' },
-    { key: '⌘U', desc: 'Show Logs' },
-    { key: '⌘I', desc: 'Show Preview' },
-    { key: '⌘F', desc: 'Search Files' },
-  ]},
-  { group: 'Editor & AI', items: [
-    { key: '⌘S', desc: 'Approve & Save Changes' },
-    { key: '⌘. / ⌘⌫', desc: 'Cancel AI Changes' },
-    { key: '⌘↵', desc: 'Compile Project' },
-    { key: '⌘K', desc: 'Clear Logs (in Log Area)' },
-    { key: '⌘⇧T', desc: 'Toggle Theme' },
-  ]},
-  { group: 'Tabs', items: [
-    { key: '⌃W', desc: 'Close Current Tab' },
-    { key: '⌃⇧W', desc: 'Close All Tabs' },
-  ]},
-  { group: 'AI Prompt', items: [
-    { key: '↵', desc: 'Execute Prompt' },
-    { key: '⌘↵', desc: 'Insert Newline' },
-    { key: '⌘.', desc: 'Stop AI Generation' },
-  ]},
-  { group: 'General', items: [
-    { key: '⌘⇧/', desc: 'Show Keyboard Shortcuts' },
-    { key: 'Esc', desc: 'Close Modal / Cancel' },
-  ]}
+  {
+    group: 'Navigation',
+    items: [
+      { key: '⌘B', desc: 'Toggle Sidebar' },
+      { key: '⌘J', desc: 'Toggle AI Prompt' },
+      { key: '⌘U', desc: 'Show Logs' },
+      { key: '⌘I', desc: 'Show Preview' },
+      { key: '⌘F', desc: 'Search Files' },
+    ],
+  },
+  {
+    group: 'Editor & AI',
+    items: [
+      { key: '⌘S', desc: 'Approve & Save Changes' },
+      { key: '⌘. / ⌘⌫', desc: 'Cancel AI Changes' },
+      { key: '⌘↵', desc: 'Compile Project' },
+      { key: '⌘K', desc: 'Clear Logs (in Log Area)' },
+      { key: '⌘⇧T', desc: 'Toggle Theme' },
+    ],
+  },
+  {
+    group: 'Tabs',
+    items: [
+      { key: '⌃W', desc: 'Close Current Tab' },
+      { key: '⌃⇧W', desc: 'Close All Tabs' },
+    ],
+  },
+  {
+    group: 'AI Prompt',
+    items: [
+      { key: '↵', desc: 'Execute Prompt' },
+      { key: '⌘↵', desc: 'Insert Newline' },
+      { key: '⌘.', desc: 'Stop AI Generation' },
+    ],
+  },
+  {
+    group: 'General',
+    items: [
+      { key: '⌘⇧/', desc: 'Show Keyboard Shortcuts' },
+      { key: 'Esc', desc: 'Close Modal / Cancel' },
+    ],
+  },
 ];
 
 export default function ShortcutsHelp({ isOpen, onClose }) {
@@ -38,7 +53,14 @@ export default function ShortcutsHelp({ isOpen, onClose }) {
 
   return createPortal(
     <div className={styles.wrapper}>
-      <div className={styles.backdrop} onClick={onClose} />
+      <div
+        className={styles.backdrop}
+        onClick={onClose}
+        onKeyDown={(e) => e.key === 'Escape' && onClose()}
+        role="button"
+        tabIndex={-1}
+        aria-label="Close shortcuts"
+      />
       <div className={styles.modal}>
         <div className={styles.header}>
           <h2>Keyboard Shortcuts</h2>
@@ -62,10 +84,14 @@ export default function ShortcutsHelp({ isOpen, onClose }) {
           ))}
         </div>
         <div className={styles.footer}>
-          <span>Press <kbd>⌘</kbd><kbd>⇧</kbd><kbd>/</kbd> anytime to open this view</span>
+          <span>
+            Press <kbd>⌘</kbd>
+            <kbd>⇧</kbd>
+            <kbd>/</kbd> anytime to open this view
+          </span>
         </div>
       </div>
     </div>,
-    document.body
+    document.body,
   );
 }
