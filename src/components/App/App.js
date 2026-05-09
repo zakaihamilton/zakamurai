@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { Compiler } from '../../utils/compiler';
 import { createState } from '../Core/Base/State';
 import { useFileSystem } from '../Storage';
@@ -28,7 +28,7 @@ function PreviewRestorer() {
   const { fs } = AppState.useState();
   const sidebarState = SidebarState.useState();
   const editorState = EditorState.useState();
-  const restoredRef = React.useRef(false);
+  const restoredRef = useRef(false);
 
   useEffect(() => {
     if (restoredRef.current || !fs?.isReady) return;
@@ -329,7 +329,7 @@ function TabRestorer() {
   const { fs } = AppState.useState();
   const tabState = TabState.useState();
   const editorState = EditorState.useState();
-  const lastRootHandleRef = React.useRef(null);
+  const lastRootHandleRef = useRef(null);
 
   useEffect(() => {
     if (!fs?.rootHandle || !fs?.getFileHandleAtPath) return;

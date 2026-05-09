@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { createState } from '../../Core/Base/State';
 import Tooltip from '../../Widgets/Tooltip/Tooltip';
 import { AppState } from '../App';
@@ -49,7 +49,7 @@ export default function Sidebar() {
     });
   };
 
-  const searchInputRef = React.useRef(null);
+  const searchInputRef = useRef(null);
 
   useEffect(() => {
     const handleFocusSearch = () => {

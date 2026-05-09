@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback, useEffect } from 'react';
 import { Compiler } from '../../../utils/compiler';
 import { ZipWriter } from '../../../utils/zip';
 import Settings from '../../Storage/Settings';
@@ -30,7 +30,7 @@ export default function TopBar() {
 
   const activeTab = openTabs.find((t) => t.id === activeTabId);
 
-  const handleCompile = React.useCallback(async () => {
+  const handleCompile = useCallback(async () => {
     if (isProcessing) return;
 
     logState((draft) => {
@@ -108,7 +108,7 @@ export default function TopBar() {
     });
   };
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (compileRequest > 0) {
       handleCompile();
     }
