@@ -122,7 +122,7 @@ describe('TopBar', () => {
     const menuBtn = screen.getByTitle('More actions');
     fireEvent.click(menuBtn);
 
-    const exportBtn = screen.getByText('Export ZIP');
+    const exportBtn = await screen.findByText('Export ZIP');
     expect(exportBtn).toBeDefined();
   });
 

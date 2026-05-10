@@ -4,9 +4,9 @@ import { createState } from '@/components/Core/Base/State';
 import { useFileSystem } from '@/components/Storage';
 import { DEFAULT_CONTENTS, DEFAULT_FILES } from '@/components/Storage/InitialData';
 import Settings from '@/components/Storage/Settings';
-import { Notification, NotificationProvider } from '@/components/Widgets/Notification/Notification';
+import { Notification } from '@/components/Widgets/Notification/Notification';
 import Resizer from '@/components/Widgets/Resizer/Resizer';
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import styles from './App.module.css';
 import {
   Prompt,
@@ -39,7 +39,7 @@ const AppWrapperState = createState('AppWrapperState');
 
 export default function App() {
   const fs = useFileSystem();
-  const [initialProjectName] = useState(() => Settings.getProjectName());
+  const initialProjectName = useMemo(() => Settings.getProjectName(), []);
 
   const initialFiles = useMemo(() => DEFAULT_FILES, []);
 

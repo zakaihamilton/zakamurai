@@ -1,10 +1,12 @@
 import { Icons } from '@/components/Core/Base/Icons';
+import { createState } from '@/components/Core/Base/State';
 import ContextMenu from '@/components/Widgets/ContextMenu/ContextMenu';
 import Dialog from '@/components/Widgets/Dialog/Dialog';
 import Tooltip from '@/components/Widgets/Tooltip/Tooltip';
 import { formatShortcut } from '@/utils/os';
-import React, { useState } from 'react';
 import styles from '../TopBar.module.css';
+
+const TopBarMenuState = createState('TopBarMenuState');
 
 export default function TopBarMenu({
   onExportZip,
@@ -14,19 +16,26 @@ export default function TopBarMenu({
   isProcessing,
   onToggleShortcuts,
 }) {
-  const [menuPosition, setMenuPosition] = useState(null);
-  const [isStartOverDialogOpen, setIsStartOverDialogOpen] = useState(false);
+  const topBarMenuState = TopBarMenuState.useState(null, {
+    menuPosition: null,
+    isStartOverDialogOpen: false,
+  });
+  const { menuPosition = null, isStartOverDialogOpen = false } = topBarMenuState || {};
 
   const handleMenuOpen = (e) => {
     const rect = e.currentTarget.getBoundingClientRect();
-    setMenuPosition({
-      x: rect.right - 220,
-      y: rect.bottom + 8,
+    topBarMenuState((draft) => {
+      draft.menuPosition = {
+        x: rect.right - 220,
+        y: rect.bottom + 8,
+      };
     });
   };
 
   const handleMenuClose = () => {
-    setMenuPosition(null);
+    topBarMenuState((draft) => {
+      draft.menuPosition = null;
+    });
   };
 
   return (
@@ -68,7 +77,9 @@ export default function TopBarMenu({
           className={styles.menuItem}
           disabled={isProcessing}
           onClick={() => {
-            setIsStartOverDialogOpen(true);
+            topBarMenuState((draft) => {
+              draft.isStartOverDialogOpen = true;
+            });
             handleMenuClose();
           }}
         >
@@ -105,10 +116,16 @@ export default function TopBarMenu({
         title="Start Over?"
         message="Are you sure you want to start over? This will unlink the project and reset all files to defaults."
         onConfirm={() => {
-          setIsStartOverDialogOpen(false);
+          topBarMenuState((draft) => {
+            draft.isStartOverDialogOpen = false;
+          });
           onStartOver();
         }}
-        onCancel={() => setIsStartOverDialogOpen(false)}
+        onCancel={() =>
+          topBarMenuState((draft) => {
+            draft.isStartOverDialogOpen = false;
+          })
+        }
         confirmText="Start Over"
         cancelText="Cancel"
         type="danger"
