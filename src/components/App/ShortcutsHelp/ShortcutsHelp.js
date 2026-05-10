@@ -42,7 +42,7 @@ const SHORTCUTS = [
   {
     group: 'General',
     items: [
-      { key: '⌘⇧/', desc: 'Show Keyboard Shortcuts' },
+      { key: '⌘⇧K', desc: 'Show Keyboard Shortcuts' },
       { key: 'Esc', desc: 'Close Modal / Cancel' },
     ],
   },
@@ -87,7 +87,7 @@ export default function ShortcutsHelp({ isOpen, onClose }) {
           <span>
             Press <kbd>⌘</kbd>
             <kbd>⇧</kbd>
-            <kbd>/</kbd> anytime to open this view
+            <kbd>K</kbd> anytime to open this view
           </span>
         </div>
       </div>

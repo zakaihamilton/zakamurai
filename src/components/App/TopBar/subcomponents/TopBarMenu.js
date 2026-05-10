@@ -96,7 +96,7 @@ export default function TopBarMenu({
         >
           <Icons.Info />
           <span>Keyboard Shortcuts</span>
-          <span className={styles.menuShortcut}>⌘⇧/</span>
+          <span className={styles.menuShortcut}>⌘⇧K</span>
         </button>
       </ContextMenu>
       <Dialog
