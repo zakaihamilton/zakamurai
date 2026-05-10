@@ -31,7 +31,7 @@ export default function Dashboard() {
         <h1 className={styles.title}>
           Zakamur<span className={styles.aiHighlight}>ai</span>
         </h1>
-        <p className={styles.subtitle}>Supercharge your coding with AI precision.</p>
+        <p className={styles.subtitle}>Supercharge your coding in the browser.</p>
       </div>
 
       <div className={styles.grid}>
