@@ -1,3 +1,4 @@
+import { AppState } from '@/components/App/AppState';
 import { SidebarState } from '@/components/App/Panes/Sidebar';
 import { TabState } from '@/components/App/Panes/TabBar';
 import { EditorState } from '@/components/App/Views/EditorArea';
@@ -5,7 +6,6 @@ import { LogState } from '@/components/App/Views/LogArea';
 import { fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import { describe, expect, it, vi } from 'vitest';
-import { AppState } from '@/components/App/AppState';
 import Prompt from './Prompt';
 
 vi.mock('@/components/App/Views/LogArea', () => ({

@@ -6,14 +6,15 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "biome lint .",
+    "lint": "biome check .",
     "format": "biome format . --write",
     "test": "vitest run",
     "test:watch": "vitest",
     "setup:almostnode": "mkdir -p public/lib/almostnode public/assets && cp -r node_modules/almostnode/dist/* public/lib/almostnode/ && cp node_modules/almostnode/dist/assets/* public/assets/",
     "postinstall": "\"$npm_execpath\" run setup:almostnode",
     "predev": "\"$npm_execpath\" run setup:almostnode",
-    "prebuild": "\"$npm_execpath\" run setup:almostnode"
+    "prebuild": "\"$npm_execpath\" run setup:almostnode",
+    "verify": "biome check . && vitest run"
   },
   "dependencies": {
     "@mlc-ai/web-llm": "^0.2.83",

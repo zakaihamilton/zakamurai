@@ -1,8 +1,8 @@
+import { AppState } from '@/components/App/AppState';
 import { TabState } from '@/components/App/Panes/TabBar';
 import { EditorState } from '@/components/App/Views/EditorArea';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import { AppState } from '@/components/App/AppState';
 import { SidebarState } from './Sidebar';
 import Sidebar from './Sidebar';
 

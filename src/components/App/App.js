@@ -7,7 +7,16 @@ import { Notification, NotificationProvider } from '@/components/Widgets/Notific
 import Resizer from '@/components/Widgets/Resizer/Resizer';
 import React, { useState, useMemo, useEffect } from 'react';
 import styles from './App.module.css';
-import { Prompt, PromptState, Sidebar, SidebarState, StatusBar, TabBar, TabState, TopBar } from './Panes';
+import {
+  Prompt,
+  PromptState,
+  Sidebar,
+  SidebarState,
+  StatusBar,
+  TabBar,
+  TabState,
+  TopBar,
+} from './Panes';
 import { ShortcutsHelp } from './Popups';
 import Dashboard from './Views/Dashboard';
 import EditorArea, { EditorState } from './Views/EditorArea';

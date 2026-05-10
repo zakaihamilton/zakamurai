@@ -1,7 +1,7 @@
 import { AppState } from '@/components/App/AppState';
-import { PreviewState } from '@/components/App/PreviewState';
 import { SidebarState } from '@/components/App/Panes/Sidebar';
 import { TabState } from '@/components/App/Panes/TabBar';
+import { PreviewState } from '@/components/App/PreviewState';
 import { EditorState } from '@/components/App/Views/EditorArea';
 import { LogState } from '@/components/App/Views/LogArea';
 import Settings from '@/components/Storage/Settings';

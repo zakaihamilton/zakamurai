@@ -62,8 +62,6 @@ vi.mock('./PreviewState', () => {
   };
 });
 
-
-
 // Mock subcomponents to avoid side effects and act warnings
 vi.mock('./subcomponents/ContentSaver', () => ({ default: () => null }));
 vi.mock('./subcomponents/KeyboardHandler', () => ({ default: () => null }));
