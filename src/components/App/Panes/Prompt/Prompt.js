@@ -1,6 +1,6 @@
 import { AppState } from '@/components/App/AppState';
-import { SidebarState } from '@/components/App/Sidebar';
-import { TabState } from '@/components/App/TabBar';
+import { SidebarState } from '@/components/App/Panes/Sidebar';
+import { TabState } from '@/components/App/Panes/TabBar';
 import { EditorState } from '@/components/App/Views/EditorArea';
 import { LogState } from '@/components/App/Views/LogArea';
 import { Icons } from '@/components/Core/Base/Icons';
@@ -9,7 +9,7 @@ import Settings from '@/components/Storage/Settings';
 import Tooltip from '@/components/Widgets/Tooltip/Tooltip';
 import { formatShortcut } from '@/utils/os';
 import React, { useEffect, useRef, useState } from 'react';
-import { askWebLLM, interruptWebLLM, processAIResponse } from '../../AI';
+import { askWebLLM, interruptWebLLM, processAIResponse } from '@/components/AI';
 import styles from './Prompt.module.css';
 
 export const PromptState = createState('PromptState');

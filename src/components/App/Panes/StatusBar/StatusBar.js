@@ -1,5 +1,5 @@
 import { AppState } from '@/components/App/AppState';
-import { TabState } from '@/components/App/TabBar';
+import { TabState } from '@/components/App/Panes/TabBar';
 import { EditorState } from '@/components/App/Views/EditorArea';
 import { Icons } from '@/components/Core/Base/Icons';
 import Tooltip from '@/components/Widgets/Tooltip/Tooltip';

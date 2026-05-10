@@ -1,4 +1,4 @@
-import { SidebarState } from '@/components/App/Sidebar';
+import { SidebarState } from '@/components/App/Panes/Sidebar';
 import { Icons } from '@/components/Core/Base/Icons';
 import { createState } from '@/components/Core/Base/State';
 import Settings from '@/components/Storage/Settings';

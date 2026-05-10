@@ -1,6 +1,6 @@
 import { AppState } from '@/components/App/AppState';
-import { SidebarState } from '@/components/App/Sidebar';
-import { TabState } from '@/components/App/TabBar';
+import { SidebarState } from '@/components/App/Panes/Sidebar';
+import { TabState } from '@/components/App/Panes/TabBar';
 import { EditorState } from '@/components/App/Views/EditorArea';
 import { Icons } from '@/components/Core/Base/Icons';
 import ContextMenu from '@/components/Widgets/ContextMenu/ContextMenu';

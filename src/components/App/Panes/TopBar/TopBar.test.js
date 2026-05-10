@@ -1,12 +1,12 @@
-import { SidebarState } from '@/components/App/Sidebar';
-import { TabState } from '@/components/App/TabBar';
+import { SidebarState } from '@/components/App/Panes/Sidebar';
+import { TabState } from '@/components/App/Panes/TabBar';
 import { EditorState } from '@/components/App/Views/EditorArea';
 import { LogState } from '@/components/App/Views/LogArea';
 import { fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { AppState } from '../AppState';
-import { PreviewState } from '../PreviewState';
+import { AppState } from '@/components/App/AppState';
+import { PreviewState } from '@/components/App/PreviewState';
 import TopBar from './TopBar';
 
 // Mock URL methods
@@ -38,13 +38,13 @@ vi.mock('@/components/App/Views/LogArea', () => ({
   },
 }));
 
-vi.mock('@/components/App/TabBar', () => ({
+vi.mock('@/components/App/Panes/TabBar', () => ({
   TabState: {
     useState: vi.fn(),
   },
 }));
 
-vi.mock('@/components/App/Sidebar', () => ({
+vi.mock('@/components/App/Panes/Sidebar', () => ({
   SidebarState: {
     useState: vi.fn(),
   },

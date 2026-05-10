@@ -1,6 +1,6 @@
 import { AppState } from '@/components/App/AppState';
 import { PreviewState } from '@/components/App/PreviewState';
-import { SidebarState } from '@/components/App/Sidebar';
+import { SidebarState } from '@/components/App/Panes/Sidebar';
 import { EditorState } from '@/components/App/Views/EditorArea';
 import { Compiler } from '@/utils/compiler';
 import { useEffect, useRef } from 'react';

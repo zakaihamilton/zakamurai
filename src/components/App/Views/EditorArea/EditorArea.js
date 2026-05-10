@@ -1,5 +1,5 @@
 import { AppState } from '@/components/App/AppState';
-import { TabState } from '@/components/App/TabBar';
+import { TabState } from '@/components/App/Panes/TabBar';
 import { Icons } from '@/components/Core/Base/Icons';
 import { createState } from '@/components/Core/Base/State';
 import React, { useState, useEffect, useRef, useCallback } from 'react';

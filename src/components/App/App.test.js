@@ -7,9 +7,9 @@ import { AppState } from './AppState';
 window.HTMLElement.prototype.scrollIntoView = vi.fn();
 
 // Mock dependencies that might be tricky
-vi.mock('./Sidebar', () => {
-  const State = ({ children }) => <div data-testid="sidebar-state">{children}</div>;
-  State.useState = vi.fn(() =>
+vi.mock('./Panes', () => {
+  const SidebarState = ({ children }) => <div data-testid="sidebar-state">{children}</div>;
+  SidebarState.useState = vi.fn(() =>
     Object.assign(vi.fn(), {
       isSidebarOpen: true,
       folderTree: [],
@@ -17,20 +17,25 @@ vi.mock('./Sidebar', () => {
       sidebarWidth: 260,
     }),
   );
+
+  const TabState = ({ children }) => <div data-testid="tabbar-state">{children}</div>;
+  TabState.useState = vi.fn(() => Object.assign(vi.fn(), { openTabs: [], activeTabId: null }));
+
+  const PromptState = ({ children }) => <div data-testid="prompt-state">{children}</div>;
+  PromptState.useState = vi.fn(() => Object.assign(vi.fn(), { promptWidth: 340 }));
+
   return {
-    default: () => <div data-testid="sidebar">Sidebar</div>,
-    SidebarState: State,
+    Sidebar: () => <div data-testid="sidebar">Sidebar</div>,
+    SidebarState,
+    TopBar: () => <div data-testid="topbar">TopBar</div>,
+    TabBar: () => <div data-testid="tabbar">TabBar</div>,
+    TabState,
+    StatusBar: () => <div data-testid="statusbar">StatusBar</div>,
+    Prompt: () => <div data-testid="prompt">Prompt</div>,
+    PromptState,
   };
 });
-vi.mock('./TopBar', () => ({ default: () => <div data-testid="topbar">TopBar</div> }));
-vi.mock('./TabBar', () => {
-  const State = ({ children }) => <div data-testid="tabbar-state">{children}</div>;
-  State.useState = vi.fn(() => Object.assign(vi.fn(), { openTabs: [], activeTabId: null }));
-  return {
-    default: () => <div data-testid="tabbar">TabBar</div>,
-    TabState: State,
-  };
-});
+
 vi.mock('./Views/EditorArea', () => {
   const State = ({ children }) => <div data-testid="editor-state">{children}</div>;
   State.useState = vi.fn(() => Object.assign(vi.fn(), {}));
@@ -39,6 +44,7 @@ vi.mock('./Views/EditorArea', () => {
     EditorState: State,
   };
 });
+
 vi.mock('./Views/LogArea', () => {
   const State = ({ children }) => <div data-testid="log-state">{children}</div>;
   State.useState = vi.fn(() => Object.assign(vi.fn(), { logs: [], isProcessing: false }));
@@ -47,14 +53,7 @@ vi.mock('./Views/LogArea', () => {
     LogState: State,
   };
 });
-vi.mock('./Prompt', () => {
-  const State = ({ children }) => <div data-testid="prompt-state">{children}</div>;
-  State.useState = vi.fn(() => Object.assign(vi.fn(), { promptWidth: 340 }));
-  return {
-    default: () => <div data-testid="prompt">Prompt</div>,
-    PromptState: State,
-  };
-});
+
 vi.mock('./PreviewState', () => {
   const State = ({ children }) => <div data-testid="preview-state">{children}</div>;
   State.useState = vi.fn(() => Object.assign(vi.fn(), { htmlContent: '', isCompilerReady: false }));
@@ -62,6 +61,8 @@ vi.mock('./PreviewState', () => {
     PreviewState: State,
   };
 });
+
+
 
 // Mock subcomponents to avoid side effects and act warnings
 vi.mock('./subcomponents/ContentSaver', () => ({ default: () => null }));

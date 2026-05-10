@@ -1,8 +1,8 @@
-import { TabState } from '@/components/App/TabBar';
+import { TabState } from '@/components/App/Panes/TabBar';
 import { EditorState } from '@/components/App/Views/EditorArea';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import { AppState } from '../AppState';
+import { AppState } from '@/components/App/AppState';
 import { SidebarState } from './Sidebar';
 import Sidebar from './Sidebar';
 
@@ -13,7 +13,7 @@ vi.mock('@/components/App/AppState', () => ({
   },
 }));
 
-vi.mock('@/components/App/TabBar', () => ({
+vi.mock('@/components/App/Panes/TabBar', () => ({
   TabState: {
     useState: vi.fn(),
   },

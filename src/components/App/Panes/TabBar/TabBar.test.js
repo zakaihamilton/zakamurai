@@ -1,4 +1,4 @@
-import { SidebarState } from '@/components/App/Sidebar';
+import { SidebarState } from '@/components/App/Panes/Sidebar';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { TabState } from './TabBar';
