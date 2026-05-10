@@ -3,52 +3,9 @@ import { formatShortcut, isMac } from '@/utils/os';
 import React from 'react';
 import { createPortal } from 'react-dom';
 import styles from './ShortcutsHelp.module.css';
+import { getShortcutsByGroup } from '@/components/App/Manager/Shortcuts';
 
-const SHORTCUTS = [
-  {
-    group: 'Navigation',
-    items: [
-      { key: '⌘B', desc: 'Toggle Sidebar' },
-      { key: '⌘J', desc: 'Toggle AI Prompt' },
-      { key: '⌘U', desc: 'Show Logs' },
-      { key: '⌘I', desc: 'Show Preview' },
-      { key: '⌘F', desc: 'Search Files' },
-    ],
-  },
-  {
-    group: 'Editor & AI',
-    items: [
-      { key: '⌘S', desc: 'Approve & Save Changes' },
-      { key: '⌘. / ⌘⌫', desc: 'Cancel AI Changes' },
-      { key: '⌘↵', desc: 'Compile Project' },
-      { key: '⌘⇧↵', desc: 'Compile Project (Stay on Page)' },
-      { key: '⌘K', desc: 'Clear Logs (in Log Area)' },
-      { key: '⌘⇧T', desc: 'Toggle Theme' },
-    ],
-  },
-  {
-    group: 'Tabs',
-    items: [
-      { key: '⌃W', desc: 'Close Current Tab' },
-      { key: '⌃⇧W', desc: 'Close All Tabs' },
-    ],
-  },
-  {
-    group: 'AI Prompt',
-    items: [
-      { key: '↵', desc: 'Execute Prompt' },
-      { key: '⌘↵', desc: 'Insert Newline' },
-      { key: '⌘.', desc: 'Stop AI Generation' },
-    ],
-  },
-  {
-    group: 'General',
-    items: [
-      { key: '⌘⇧K', desc: 'Show Keyboard Shortcuts' },
-      { key: 'Esc', desc: 'Close Modal / Cancel' },
-    ],
-  },
-];
+const SHORTCUTS = getShortcutsByGroup();
 
 export default function ShortcutsHelp({ isOpen, onClose }) {
   if (!isOpen) return null;
