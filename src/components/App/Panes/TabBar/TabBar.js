@@ -3,17 +3,30 @@ import { Icons } from '@/components/Core/Base/Icons';
 import { createState } from '@/components/Core/Base/State';
 import Settings from '@/components/Storage/Settings';
 import Tooltip from '@/components/Widgets/Tooltip/Tooltip';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import styles from './TabBar.module.css';
 
 export const TabState = createState('TabState');
+const TabBarUiState = createState('TabBarUiState');
 
 export default function TabBar() {
   const tabState = TabState.useState();
   const { openTabs = [], activeTabId } = tabState;
   const sidebarState = SidebarState.useState();
-  const [draggedTabId, setDraggedTabId] = useState(null);
-  const [dropTargetId, setDropTargetId] = useState(null);
+  const tabBarUiState = TabBarUiState.useState(null, {
+    draggedTabId: null,
+    dropTargetId: null,
+    isOverBar: false,
+  });
+  const { draggedTabId = null, dropTargetId = null, isOverBar = false } = tabBarUiState || {};
+
+  const resetDragState = () => {
+    tabBarUiState((draft) => {
+      draft.draggedTabId = null;
+      draft.dropTargetId = null;
+      draft.isOverBar = false;
+    });
+  };
 
   // Persist open tabs and active tab to localStorage
   useEffect(() => {
@@ -76,12 +89,12 @@ export default function TabBar() {
     });
   };
 
-  const [isOverBar, setIsOverBar] = useState(false);
-
   const handleDragStart = (e, tabId) => {
     e.dataTransfer.setData('tabId', tabId);
     e.dataTransfer.effectAllowed = 'move';
-    setDraggedTabId(tabId);
+    tabBarUiState((draft) => {
+      draft.draggedTabId = tabId;
+    });
     // Set drag image or ghost effect if desired
   };
 
@@ -89,16 +102,16 @@ export default function TabBar() {
     e.preventDefault();
     e.stopPropagation();
     e.dataTransfer.dropEffect = 'move';
-    setIsOverBar(false);
-    if (tabId !== draggedTabId) {
-      setDropTargetId(tabId);
-    }
+    tabBarUiState((draft) => {
+      draft.isOverBar = false;
+      if (tabId !== draggedTabId) {
+        draft.dropTargetId = tabId;
+      }
+    });
   };
 
   const handleDragEnd = () => {
-    setDraggedTabId(null);
-    setDropTargetId(null);
-    setIsOverBar(false);
+    resetDragState();
   };
 
   const handleDrop = (e, targetTabId) => {
@@ -106,9 +119,7 @@ export default function TabBar() {
     e.stopPropagation();
     const draggedId = e.dataTransfer.getData('tabId');
     if (!draggedId || draggedId === targetTabId) {
-      setDraggedTabId(null);
-      setDropTargetId(null);
-      setIsOverBar(false);
+      resetDragState();
       return;
     }
 
@@ -122,9 +133,7 @@ export default function TabBar() {
       }
     });
 
-    setDraggedTabId(null);
-    setDropTargetId(null);
-    setIsOverBar(false);
+    resetDragState();
   };
 
   const handleDropOnBar = (e) => {
@@ -140,9 +149,7 @@ export default function TabBar() {
       }
     });
 
-    setDraggedTabId(null);
-    setDropTargetId(null);
-    setIsOverBar(false);
+    resetDragState();
   };
 
   if (openTabs.length === 0) return null;
@@ -153,10 +160,16 @@ export default function TabBar() {
       onDragOver={(e) => {
         e.preventDefault();
         e.dataTransfer.dropEffect = 'move';
-        setIsOverBar(true);
-        setDropTargetId(null);
+        tabBarUiState((draft) => {
+          draft.isOverBar = true;
+          draft.dropTargetId = null;
+        });
       }}
-      onDragLeave={() => setIsOverBar(false)}
+      onDragLeave={() =>
+        tabBarUiState((draft) => {
+          draft.isOverBar = false;
+        })
+      }
       onDrop={handleDropOnBar}
     >
       {openTabs.map((tab) => {

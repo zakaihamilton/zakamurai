@@ -1,5 +1,6 @@
 'use client';
 
+import { createState } from '@/components/Core/Base/State';
 import { useFileSystem } from '@/components/Storage';
 import { DEFAULT_CONTENTS, DEFAULT_FILES } from '@/components/Storage/InitialData';
 import Settings from '@/components/Storage/Settings';
@@ -33,6 +34,8 @@ import ContentSaver from './Persistence/ContentSaver';
 import PreviewRestorer from './Persistence/PreviewRestorer';
 import ProjectNameSaver from './Persistence/ProjectNameSaver';
 import TabRestorer from './Persistence/TabRestorer';
+
+const AppWrapperState = createState('AppWrapperState');
 
 export default function App() {
   const fs = useFileSystem();
@@ -107,9 +110,10 @@ function PassiveWrapper() {
 
   const sidebarState = SidebarState.useState();
   const promptState = PromptState.useState();
+  const appWrapperState = AppWrapperState.useState(null, { isResizing: false });
   const { isSidebarOpen, sidebarWidth, showAIInput, expandedFolders } = sidebarState;
   const { promptWidth } = promptState;
-  const [isResizing, setIsResizing] = useState(false);
+  const { isResizing = false } = appWrapperState || {};
 
   // Sync theme with document.body for global Portals
   useEffect(() => {
@@ -163,8 +167,17 @@ function PassiveWrapper() {
     }
   };
 
-  const handleResizeStart = () => setIsResizing(true);
-  const handleResizeEnd = () => setIsResizing(false);
+  const handleResizeStart = () => {
+    appWrapperState((draft) => {
+      draft.isResizing = true;
+    });
+  };
+
+  const handleResizeEnd = () => {
+    appWrapperState((draft) => {
+      draft.isResizing = false;
+    });
+  };
 
   const handleSidebarReset = () => {
     sidebarState((draft) => {

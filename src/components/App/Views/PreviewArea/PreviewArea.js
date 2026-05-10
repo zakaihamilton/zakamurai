@@ -1,30 +1,41 @@
 'use client';
 
 import { Icons } from '@/components/Core/Base/Icons';
+import { createState } from '@/components/Core/Base/State';
 import Tooltip from '@/components/Widgets/Tooltip/Tooltip';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef } from 'react';
 import styles from './PreviewArea.module.css';
+
+const PreviewAreaUiState = createState('PreviewAreaUiState');
 
 export default function PreviewArea({ htmlContent, isCompilerReady }) {
   const iframeRef = useRef(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [scale, setScale] = useState(1);
-  const [, setError] = useState(null);
-
-  // We use a timestamp to force the iframe to reload when the build completes
-  const [refreshKey, setRefreshKey] = useState(Date.now());
-  const [isSwReady, setIsSwReady] = useState(
-    !!(typeof navigator !== 'undefined' && navigator.serviceWorker?.controller),
-  );
-  const [isMaximized, setIsMaximized] = useState(false);
+  const previewAreaUiState = PreviewAreaUiState.useState(null, {
+    isLoading: false,
+    scale: 1,
+    error: null,
+    refreshKey: Date.now(),
+    isSwReady: !!(typeof navigator !== 'undefined' && navigator.serviceWorker?.controller),
+    isMaximized: false,
+    address: '/preview/',
+    host: '',
+  });
+  const {
+    isLoading = false,
+    scale = 1,
+    refreshKey = Date.now(),
+    isSwReady = false,
+    isMaximized = false,
+    address = '/preview/',
+    host = '',
+  } = previewAreaUiState || {};
   const containerRef = useRef(null);
-
-  const [address, setAddress] = useState('/preview/');
-  const [host, setHost] = useState('');
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      setHost(window.location.host);
+      previewAreaUiState((draft) => {
+        draft.host = window.location.host;
+      });
       // If we are on a subpath, we might need to prefix the address.
       // But we should only do this if we are sure it's necessary.
       // For now, let's assume root-relative paths are safer.
@@ -36,62 +47,85 @@ export default function PreviewArea({ htmlContent, isCompilerReady }) {
           baseBeforePreview !== '/' &&
           !address.startsWith(baseBeforePreview)
         ) {
-          setAddress(`${baseBeforePreview}${address}`);
+          previewAreaUiState((draft) => {
+            draft.address = `${baseBeforePreview}${address}`;
+          });
         }
       }
     }
-  }, [address]);
+  }, [address, previewAreaUiState]);
 
   useEffect(() => {
     if (!('serviceWorker' in navigator)) return;
 
     const handleControllerChange = () => {
-      setIsSwReady(!!navigator.serviceWorker.controller);
+      previewAreaUiState((draft) => {
+        draft.isSwReady = !!navigator.serviceWorker.controller;
+      });
     };
 
     navigator.serviceWorker.addEventListener('controllerchange', handleControllerChange);
     return () =>
       navigator.serviceWorker.removeEventListener('controllerchange', handleControllerChange);
-  }, []);
+  }, [previewAreaUiState]);
 
   useEffect(() => {
     if (!htmlContent) return;
-    setIsLoading(true);
-    setError(null);
-    // When htmlContent changes, we simply increment the key to reload the virtual path
-    setRefreshKey(Date.now());
-  }, [htmlContent]);
+    previewAreaUiState((draft) => {
+      draft.isLoading = true;
+      draft.error = null;
+      // When htmlContent changes, we simply increment the key to reload the virtual path
+      draft.refreshKey = Date.now();
+    });
+  }, [htmlContent, previewAreaUiState]);
 
   const handleLoad = useCallback(() => {
-    setIsLoading(false);
+    previewAreaUiState((draft) => {
+      draft.isLoading = false;
+    });
     if (iframeRef.current) {
       try {
         const path = iframeRef.current.contentWindow.location.pathname;
         if (path && path !== 'blank') {
-          setAddress(path);
+          previewAreaUiState((draft) => {
+            draft.address = path;
+          });
         }
       } catch (_e) {
         // Ignore cross-origin errors
       }
     }
-  }, []);
+  }, [previewAreaUiState]);
 
   const handleRefresh = useCallback(() => {
-    setIsLoading(true);
-    setRefreshKey(Date.now());
-  }, []);
+    previewAreaUiState((draft) => {
+      draft.isLoading = true;
+      draft.refreshKey = Date.now();
+    });
+  }, [previewAreaUiState]);
 
   const handleOpenExternal = useCallback(() => {
     window.open(address, '_blank');
   }, [address]);
 
   const toggleMaximize = useCallback(() => {
-    setIsMaximized((v) => !v);
-  }, []);
+    previewAreaUiState((draft) => {
+      draft.isMaximized = !draft.isMaximized;
+    });
+  }, [previewAreaUiState]);
 
-  const handleZoomIn = () => setScale((s) => Math.min(s + 0.1, 2));
-  const handleZoomOut = () => setScale((s) => Math.max(s - 0.1, 0.3));
-  const handleZoomReset = () => setScale(1);
+  const handleZoomIn = () =>
+    previewAreaUiState((draft) => {
+      draft.scale = Math.min(draft.scale + 0.1, 2);
+    });
+  const handleZoomOut = () =>
+    previewAreaUiState((draft) => {
+      draft.scale = Math.max(draft.scale - 0.1, 0.3);
+    });
+  const handleZoomReset = () =>
+    previewAreaUiState((draft) => {
+      draft.scale = 1;
+    });
 
   if (!htmlContent) {
     return (

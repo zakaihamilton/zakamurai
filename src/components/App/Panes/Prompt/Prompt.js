@@ -9,16 +9,16 @@ import { createState } from '@/components/Core/Base/State';
 import Settings from '@/components/Storage/Settings';
 import Tooltip from '@/components/Widgets/Tooltip/Tooltip';
 import { formatShortcut } from '@/utils/os';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef } from 'react';
 import styles from './Prompt.module.css';
 
 export const PromptState = createState('PromptState');
+const PromptUiState = createState('PromptUiState');
 
 export default function Prompt() {
   const { fs } = AppState.useState();
-  const [val, setVal] = useState('');
-  const [historyIndex, setHistoryIndex] = useState(-1);
-  const [draftVal, setDraftVal] = useState('');
+  const promptUiState = PromptUiState.useState(null, { val: '', historyIndex: -1, draftVal: '' });
+  const { val = '', historyIndex = -1, draftVal = '' } = promptUiState || {};
   const reasoningRef = useRef(null);
 
   const logState = LogState.useState();
@@ -60,9 +60,11 @@ export default function Prompt() {
     if (!val.trim() || isProcessing) return;
 
     const userMsg = val;
-    setVal('');
-    setHistoryIndex(-1);
-    setDraftVal('');
+    promptUiState((draft) => {
+      draft.val = '';
+      draft.historyIndex = -1;
+      draft.draftVal = '';
+    });
     Settings.addPromptHistory(userMsg);
 
     const currentActiveTabId = tabState.activeTabId;
@@ -215,7 +217,9 @@ FORMAT FOR FULL FILE REWRITE (ONLY FOR NEW FILES OR COMPLETE OVERHAULS):
         e.stopPropagation();
         const { selectionStart, selectionEnd, value } = e.target;
         const newValue = `${value.substring(0, selectionStart)}\n${value.substring(selectionEnd)}`;
-        setVal(newValue);
+        promptUiState((draft) => {
+          draft.val = newValue;
+        });
 
         // Use requestAnimationFrame or setTimeout to restore cursor position after React render
         requestAnimationFrame(() => {
@@ -231,18 +235,22 @@ FORMAT FOR FULL FILE REWRITE (ONLY FOR NEW FILES OR COMPLETE OVERHAULS):
       const history = Settings.getPromptHistory();
       if (historyIndex < history.length - 1) {
         const newIndex = historyIndex + 1;
-        if (historyIndex === -1) {
-          setDraftVal(val);
-        }
-        setHistoryIndex(newIndex);
-        setVal(history[newIndex]);
+        promptUiState((draft) => {
+          if (historyIndex === -1) {
+            draft.draftVal = val;
+          }
+          draft.historyIndex = newIndex;
+          draft.val = history[newIndex];
+        });
       }
     } else if (e.key === 'ArrowDown') {
       const history = Settings.getPromptHistory();
       if (historyIndex > -1) {
         const newIndex = historyIndex - 1;
-        setHistoryIndex(newIndex);
-        setVal(newIndex === -1 ? draftVal : history[newIndex]);
+        promptUiState((draft) => {
+          draft.historyIndex = newIndex;
+          draft.val = newIndex === -1 ? draftVal : history[newIndex];
+        });
       }
     }
   };
@@ -302,10 +310,12 @@ FORMAT FOR FULL FILE REWRITE (ONLY FOR NEW FILES OR COMPLETE OVERHAULS):
           <textarea
             value={val}
             onChange={(e) => {
-              setVal(e.target.value);
-              if (historyIndex === -1) {
-                setDraftVal(e.target.value);
-              }
+              promptUiState((draft) => {
+                draft.val = e.target.value;
+                if (historyIndex === -1) {
+                  draft.draftVal = e.target.value;
+                }
+              });
             }}
             onKeyDown={handleKeyDown}
             disabled={isProcessing || !showAIInput}

@@ -3,10 +3,11 @@ import { createState } from '@/components/Core/Base/State';
 import Settings from '@/components/Storage/Settings';
 import Tooltip from '@/components/Widgets/Tooltip/Tooltip';
 import { formatShortcut } from '@/utils/os';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef } from 'react';
 import styles from './LogArea.module.css';
 
 export const LogState = createState('LogState');
+const LogAreaUiState = createState('LogAreaUiState');
 LogState.useState.initial = {
   logs: Settings.getAILogs(),
   isProcessing: false,
@@ -17,8 +18,8 @@ LogState.useState.initial = {
 export default function LogArea() {
   const logState = LogState.useState();
   const { logs = [], isProcessing } = logState;
-  const [copied, setCopied] = useState(false);
-  const [autoScroll, setAutoScroll] = useState(true);
+  const logAreaUiState = LogAreaUiState.useState(null, { copied: false, autoScroll: true });
+  const { copied = false, autoScroll = true } = logAreaUiState || {};
   const bottomRef = useRef();
   const containerRef = useRef();
 
@@ -45,19 +46,25 @@ export default function LogArea() {
     const isAtBottom = Math.abs(scrollHeight - clientHeight - scrollTop) < 10;
 
     if (isAtBottom) {
-      setAutoScroll(true);
+      logAreaUiState((draft) => {
+        draft.autoScroll = true;
+      });
     } else {
       // If we are scrolling UP, disable auto-scroll
       // This prevents the smooth scroll to bottom from disabling auto-scroll
       if (scrollTop < lastScrollTop.current && autoScroll) {
-        setAutoScroll(false);
+        logAreaUiState((draft) => {
+          draft.autoScroll = false;
+        });
       }
     }
     lastScrollTop.current = scrollTop;
   };
 
   const scrollToBottom = () => {
-    setAutoScroll(true);
+    logAreaUiState((draft) => {
+      draft.autoScroll = true;
+    });
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
@@ -68,8 +75,16 @@ export default function LogArea() {
   const handleCopyAll = () => {
     const allLogs = logs.map((log) => `[${log.role}] ${log.text}`).join('\n\n');
     navigator.clipboard.writeText(allLogs);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    logAreaUiState((draft) => {
+      draft.copied = true;
+    });
+    setTimeout(
+      () =>
+        logAreaUiState((draft) => {
+          draft.copied = false;
+        }),
+      2000,
+    );
   };
 
   return (

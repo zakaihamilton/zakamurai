@@ -1,6 +1,8 @@
 import React, { useLayoutEffect, useRef } from 'react';
 import styles from './EditorArea.module.css';
 
+import useEditorShortcuts from './EditorShortcuts';
+
 export default function CodeEditor({
   localContent,
   handleChange,
@@ -8,10 +10,17 @@ export default function CodeEditor({
   readOnly,
   onCursorUpdate,
   cursorPos,
+  scrollContainerRef,
 }) {
   const textareaRef = useRef(null);
   const lastReportedIndex = useRef(-1);
   const isLocalEdit = useRef(false);
+
+  const { handleKeyDown } = useEditorShortcuts({
+    handleChange,
+    textareaRef,
+    scrollContainerRef,
+  });
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: localContent is required to catch browser cursor resets after sync
   useLayoutEffect(() => {
@@ -54,6 +63,7 @@ export default function CodeEditor({
         ref={textareaRef}
         value={localContent}
         onChange={readOnly ? undefined : localHandleChange}
+        onKeyDown={readOnly ? undefined : handleKeyDown}
         onKeyUp={handleSelectionChange}
         onBlur={handleSelectionChange}
         onClick={handleSelectionChange}

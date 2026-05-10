@@ -1,22 +1,30 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import { createState } from '@/components/Core/Base/State';
+import React, { useCallback, useEffect } from 'react';
 import styles from './Resizer.module.css';
 
+const ResizerState = createState('ResizerState');
+
 export default function Resizer({ onResize, onResizeStart, onResizeEnd, onDoubleClick }) {
-  const [isResizing, setIsResizing] = useState(false);
+  const resizerState = ResizerState.useState(null, { isResizing: false });
+  const { isResizing = false } = resizerState || {};
 
   const startResizing = useCallback(
     (e) => {
-      setIsResizing(true);
+      resizerState((draft) => {
+        draft.isResizing = true;
+      });
       if (onResizeStart) onResizeStart();
       e.preventDefault();
     },
-    [onResizeStart],
+    [onResizeStart, resizerState],
   );
 
   const stopResizing = useCallback(() => {
-    setIsResizing(false);
+    resizerState((draft) => {
+      draft.isResizing = false;
+    });
     if (onResizeEnd) onResizeEnd();
-  }, [onResizeEnd]);
+  }, [onResizeEnd, resizerState]);
 
   const resize = useCallback(
     (e) => {

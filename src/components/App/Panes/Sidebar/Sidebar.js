@@ -5,11 +5,12 @@ import { Icons } from '@/components/Core/Base/Icons';
 import { createState } from '@/components/Core/Base/State';
 import Tooltip from '@/components/Widgets/Tooltip/Tooltip';
 import { formatShortcut } from '@/utils/os';
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import styles from './Sidebar.module.css';
 import TreeItem from './TreeItem';
 
 export const SidebarState = createState('SidebarState');
+const SidebarUiState = createState('SidebarUiState');
 
 const treeSorter = (a, b) => {
   if (a.type === b.type) {
@@ -42,7 +43,8 @@ export default function Sidebar() {
   const { isSidebarOpen, folderTree, sidebarWidth } = sidebarState;
   const appState = AppState.useState();
   const { projectName } = appState;
-  const [filterText, setFilterText] = useState('');
+  const sidebarUiState = SidebarUiState.useState(null, { filterText: '' });
+  const { filterText = '' } = sidebarUiState || {};
 
   const toggleSidebar = () => {
     sidebarState((d) => {
@@ -122,7 +124,11 @@ export default function Sidebar() {
             <input
               ref={searchInputRef}
               value={filterText}
-              onChange={(e) => setFilterText(e.target.value)}
+              onChange={(e) =>
+                sidebarUiState((draft) => {
+                  draft.filterText = e.target.value;
+                })
+              }
               placeholder={`Search files (${formatShortcut('⌘F')})`}
               className={styles.searchInput}
             />

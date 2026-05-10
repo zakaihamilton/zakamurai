@@ -159,6 +159,7 @@ export default function EditorArea({ file }) {
                 )}
                 readOnly={true}
                 cursorPos={state.cursorPos?.[filePath]}
+                scrollContainerRef={leftScrollRef}
               />
             </div>
           </div>
@@ -190,6 +191,7 @@ export default function EditorArea({ file }) {
                 )}
                 onCursorUpdate={diffActions.handleCursorUpdate}
                 cursorPos={state.cursorPos?.[filePath]}
+                scrollContainerRef={rightScrollRef}
               />
             </div>
           </div>
@@ -216,6 +218,7 @@ export default function EditorArea({ file }) {
             )}
             onCursorUpdate={diffActions.handleCursorUpdate}
             cursorPos={state.cursorPos?.[filePath]}
+            scrollContainerRef={scrollContainerRef}
           />
         </div>
       )}
