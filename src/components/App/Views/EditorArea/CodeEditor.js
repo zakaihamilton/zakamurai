@@ -1,3 +1,4 @@
+import DOMPurify from 'isomorphic-dompurify';
 import React, { useLayoutEffect, useRef } from 'react';
 import styles from './EditorArea.module.css';
 
@@ -79,7 +80,7 @@ export default function CodeEditor({
         className={styles.pre}
         // biome-ignore lint/security/noDangerouslySetInnerHtml: used for code syntax highlighting
         dangerouslySetInnerHTML={{
-          __html: highlightedCode + (localContent.endsWith('\n') ? ' ' : ''),
+          __html: DOMPurify.sanitize(highlightedCode + (localContent.endsWith('\n') ? ' ' : '')),
         }}
       />
     </div>
