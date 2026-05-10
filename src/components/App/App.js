@@ -27,12 +27,12 @@ import PreviewArea from './Views/PreviewArea';
 import { AppState } from './AppState';
 import { PreviewState } from './PreviewState';
 
-import ContentSaver from './subcomponents/ContentSaver';
-import KeyboardHandler from './subcomponents/KeyboardHandler';
-// Subcomponents
-import PreviewRestorer from './subcomponents/PreviewRestorer';
-import ProjectNameSaver from './subcomponents/ProjectNameSaver';
-import TabRestorer from './subcomponents/TabRestorer';
+import KeyboardHandler from './Manager/KeyboardHandler';
+// Persistence
+import ContentSaver from './Persistence/ContentSaver';
+import PreviewRestorer from './Persistence/PreviewRestorer';
+import ProjectNameSaver from './Persistence/ProjectNameSaver';
+import TabRestorer from './Persistence/TabRestorer';
 
 export default function App() {
   const fs = useFileSystem();

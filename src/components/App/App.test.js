@@ -62,12 +62,12 @@ vi.mock('./PreviewState', () => {
   };
 });
 
-// Mock subcomponents to avoid side effects and act warnings
-vi.mock('./subcomponents/ContentSaver', () => ({ default: () => null }));
-vi.mock('./subcomponents/KeyboardHandler', () => ({ default: () => null }));
-vi.mock('./subcomponents/PreviewRestorer', () => ({ default: () => null }));
-vi.mock('./subcomponents/ProjectNameSaver', () => ({ default: () => null }));
-vi.mock('./subcomponents/TabRestorer', () => ({ default: () => null }));
+// Mock managers and persistence to avoid side effects and act warnings
+vi.mock('./Manager/KeyboardHandler', () => ({ default: () => null }));
+vi.mock('./Persistence/ContentSaver', () => ({ default: () => null }));
+vi.mock('./Persistence/PreviewRestorer', () => ({ default: () => null }));
+vi.mock('./Persistence/ProjectNameSaver', () => ({ default: () => null }));
+vi.mock('./Persistence/TabRestorer', () => ({ default: () => null }));
 
 vi.mock('@/components/Storage', () => ({
   useFileSystem: vi.fn(() => ({
