@@ -1,5 +1,6 @@
 import { Icons } from '@/components/Core/Base/Icons';
 import Tooltip from '@/components/Widgets/Tooltip/Tooltip';
+import { formatShortcut } from '@/utils/os';
 import React from 'react';
 import styles from './EditorArea.module.css';
 
@@ -20,7 +21,7 @@ export default function EditorHeader({
         <span className={styles.filePath}>{filePath}</span>
       </div>
       <div className={styles.headerActions}>
-        <Tooltip content="Find/Replace" shortcut="⌘F">
+        <Tooltip content="Find/Replace" shortcut={formatShortcut('⌘F')}>
           <button type="button" className={styles.actionBtn} onClick={() => setShowFind(!showFind)}>
             <Icons.Search />
           </button>
@@ -28,7 +29,7 @@ export default function EditorHeader({
         {hasDiff && (
           <div className={styles.diffHeaderToolbar}>
             <span className={styles.diffLabel}>Review AI Changes:</span>
-            <Tooltip content="Approve Changes" shortcut="⌘S">
+            <Tooltip content="Approve Changes" shortcut={formatShortcut('⌘S')}>
               <button
                 type="button"
                 onClick={handleApprove}
@@ -37,7 +38,10 @@ export default function EditorHeader({
                 <Icons.Check /> Approve
               </button>
             </Tooltip>
-            <Tooltip content="Cancel Changes" shortcut="⌘. / ⌘⌫">
+            <Tooltip
+              content="Cancel Changes"
+              shortcut={`${formatShortcut('⌘.')} / ${formatShortcut('⌘⌫')}`}
+            >
               <button
                 type="button"
                 onClick={handleUndo}

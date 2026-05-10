@@ -1,5 +1,6 @@
 import { Icons } from '@/components/Core/Base/Icons';
 import Tooltip from '@/components/Widgets/Tooltip/Tooltip';
+import { formatShortcut } from '@/utils/os';
 import React from 'react';
 import styles from '../TopBar.module.css';
 
@@ -14,7 +15,7 @@ export default function ActionButtons({
 }) {
   return (
     <div className={styles.compileGroup}>
-      <Tooltip content="Compile Project" shortcut="⌘↵">
+      <Tooltip content="Compile Project" shortcut={formatShortcut('⌘↵')}>
         <button
           type="button"
           className={`${styles.actionBtn} ${styles.compileBtn}`}
@@ -25,7 +26,7 @@ export default function ActionButtons({
           <span>Compile</span>
         </button>
       </Tooltip>
-      <Tooltip content="Show Log" shortcut="⌘U">
+      <Tooltip content="Show Log" shortcut={formatShortcut('⌘U')}>
         <button
           type="button"
           className={`${styles.actionBtn} ${styles.terminalToggleBtn} ${activeTabId === 'ai-logs' ? styles.activeTab : ''}`}
@@ -34,7 +35,7 @@ export default function ActionButtons({
           <Icons.Terminal />
         </button>
       </Tooltip>
-      <Tooltip content="Show Preview" shortcut="⌘I">
+      <Tooltip content="Show Preview" shortcut={formatShortcut('⌘I')}>
         <button
           type="button"
           className={`${styles.actionBtn} ${styles.terminalToggleBtn} ${activeTabId === 'preview' ? styles.activeTab : ''}`}
@@ -43,7 +44,10 @@ export default function ActionButtons({
           <Icons.Globe />
         </button>
       </Tooltip>
-      <Tooltip content={showAIInput ? 'Hide AI Prompt' : 'Show AI Prompt'} shortcut="⌘J">
+      <Tooltip
+        content={showAIInput ? 'Hide AI Prompt' : 'Show AI Prompt'}
+        shortcut={formatShortcut('⌘J')}
+      >
         <button
           type="button"
           className={`${styles.actionBtn} ${styles.iconBtn} ${showAIInput ? styles.activeTab : ''}`}

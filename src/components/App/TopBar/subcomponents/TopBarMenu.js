@@ -2,6 +2,7 @@ import { Icons } from '@/components/Core/Base/Icons';
 import ContextMenu from '@/components/Widgets/ContextMenu/ContextMenu';
 import Dialog from '@/components/Widgets/Dialog/Dialog';
 import Tooltip from '@/components/Widgets/Tooltip/Tooltip';
+import { formatShortcut } from '@/utils/os';
 import React, { useState } from 'react';
 import styles from '../TopBar.module.css';
 
@@ -96,7 +97,7 @@ export default function TopBarMenu({
         >
           <Icons.Info />
           <span>Keyboard Shortcuts</span>
-          <span className={styles.menuShortcut}>⌘⇧K</span>
+          <span className={styles.menuShortcut}>{formatShortcut('⌘⇧K')}</span>
         </button>
       </ContextMenu>
       <Dialog

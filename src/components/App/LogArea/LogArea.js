@@ -2,6 +2,7 @@ import { Icons } from '@/components/Core/Base/Icons';
 import { createState } from '@/components/Core/Base/State';
 import Settings from '@/components/Storage/Settings';
 import Tooltip from '@/components/Widgets/Tooltip/Tooltip';
+import { formatShortcut } from '@/utils/os';
 import React, { useEffect, useRef, useState } from 'react';
 import styles from './LogArea.module.css';
 
@@ -84,7 +85,7 @@ export default function LogArea() {
                   {copied ? <Icons.Check /> : <Icons.Copy />}
                 </button>
               </Tooltip>
-              <Tooltip content="Clear logs" shortcut="⌘K">
+              <Tooltip content="Clear logs" shortcut={formatShortcut('⌘K')}>
                 <button
                   type="button"
                   onClick={handleClear}

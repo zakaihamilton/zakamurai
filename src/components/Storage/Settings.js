@@ -9,6 +9,9 @@ const KEYS = {
   PREVIEW_HTML: 'zakamurai_preview_html',
   SIDEBAR_WIDTH: 'zakamurai_sidebar_width',
   PROMPT_WIDTH: 'zakamurai_prompt_width',
+  IS_SIDEBAR_OPEN: 'zakamurai_is_sidebar_open',
+  SHOW_AI_INPUT: 'zakamurai_show_ai_input',
+  EXPANDED_FOLDERS: 'zakamurai_expanded_folders',
 };
 
 const Settings = {
@@ -155,6 +158,39 @@ const Settings = {
 
   setPromptWidth(width) {
     this.set(KEYS.PROMPT_WIDTH, width.toString());
+  },
+
+  getIsSidebarOpen(defaultValue = true) {
+    const val = this.get(KEYS.IS_SIDEBAR_OPEN, defaultValue.toString());
+    return val === 'true';
+  },
+
+  setIsSidebarOpen(isOpen) {
+    this.set(KEYS.IS_SIDEBAR_OPEN, isOpen.toString());
+  },
+
+  getShowAIInput(defaultValue = true) {
+    const val = this.get(KEYS.SHOW_AI_INPUT, defaultValue.toString());
+    return val === 'true';
+  },
+
+  setShowAIInput(show) {
+    this.set(KEYS.SHOW_AI_INPUT, show.toString());
+  },
+
+  getExpandedFolders() {
+    const val = this.get(KEYS.EXPANDED_FOLDERS);
+    if (!val) return {};
+    try {
+      return JSON.parse(val);
+    } catch (e) {
+      console.error('Failed to parse expanded folders from localStorage', e);
+      return {};
+    }
+  },
+
+  setExpandedFolders(expanded) {
+    this.set(KEYS.EXPANDED_FOLDERS, JSON.stringify(expanded));
   },
 
   reset() {

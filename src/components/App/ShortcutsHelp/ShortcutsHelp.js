@@ -1,4 +1,5 @@
 import { Icons } from '@/components/Core/Base/Icons';
+import { formatShortcut, isMac } from '@/utils/os';
 import React from 'react';
 import { createPortal } from 'react-dom';
 import styles from './ShortcutsHelp.module.css';
@@ -51,6 +52,8 @@ const SHORTCUTS = [
 export default function ShortcutsHelp({ isOpen, onClose }) {
   if (!isOpen) return null;
 
+  const mac = isMac();
+
   return createPortal(
     <div className={styles.wrapper}>
       <div
@@ -76,7 +79,7 @@ export default function ShortcutsHelp({ isOpen, onClose }) {
                 {group.items.map((item) => (
                   <div key={item.desc} className={styles.item}>
                     <span className={styles.desc}>{item.desc}</span>
-                    <span className={styles.key}>{item.key}</span>
+                    <span className={styles.key}>{formatShortcut(item.key)}</span>
                   </div>
                 ))}
               </div>
@@ -85,9 +88,19 @@ export default function ShortcutsHelp({ isOpen, onClose }) {
         </div>
         <div className={styles.footer}>
           <span>
-            Press <kbd>⌘</kbd>
-            <kbd>⇧</kbd>
-            <kbd>K</kbd> anytime to open this view
+            Press{' '}
+            {mac ? (
+              <>
+                <kbd>⌘</kbd>
+                <kbd>⇧</kbd>
+                <kbd>K</kbd>
+              </>
+            ) : (
+              <>
+                <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>K</kbd>
+              </>
+            )}{' '}
+            anytime to open this view
           </span>
         </div>
       </div>

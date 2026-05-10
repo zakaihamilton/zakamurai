@@ -45,26 +45,21 @@ export default function App() {
 
   const initialTabs = useMemo(() => {
     const stored = Settings.getOpenTabs();
-    if (stored && stored.length > 0) return stored;
-    return [{ id: 'ai-logs', type: 'logs', label: 'Log' }];
+    if (stored) return stored;
+    return [];
   }, []);
 
-  const initialActiveTabId = useMemo(() => Settings.getActiveTabId() || 'ai-logs', []);
+  const initialActiveTabId = useMemo(() => Settings.getActiveTabId() || null, []);
   const initialAILogs = useMemo(() => {
     const stored = Settings.getAILogs();
-    if (stored && stored.length > 0) return stored;
-    return [
-      {
-        id: 1,
-        role: 'ai',
-        text: 'Zakamurai Log initialized. Ready for commands.',
-        timestamp: new Date().toTimeString().split(' ')[0],
-      },
-    ];
+    return stored || [];
   }, []);
 
   const initialSidebarWidth = useMemo(() => Settings.getSidebarWidth(), []);
   const initialPromptWidth = useMemo(() => Settings.getPromptWidth(), []);
+  const initialIsSidebarOpen = useMemo(() => Settings.getIsSidebarOpen(), []);
+  const initialShowAIInput = useMemo(() => Settings.getShowAIInput(), []);
+  const initialExpandedFolders = useMemo(() => Settings.getExpandedFolders(), []);
 
   return (
     <div className={styles.root}>
@@ -77,11 +72,11 @@ export default function App() {
       <ProjectNameSaver />
       <Notification />
       <SidebarState
-        isSidebarOpen={true}
-        showAIInput={true}
+        isSidebarOpen={initialIsSidebarOpen}
+        showAIInput={initialShowAIInput}
         folderTree={initialFiles}
         sidebarWidth={initialSidebarWidth}
-        expandedFolders={{}}
+        expandedFolders={initialExpandedFolders}
       />
       <TabState openTabs={initialTabs} activeTabId={initialActiveTabId} />
       <LogState isProcessing={false} logs={initialAILogs} />
@@ -107,8 +102,7 @@ function PassiveWrapper() {
 
   const sidebarState = SidebarState.useState();
   const promptState = PromptState.useState();
-  const { isSidebarOpen, sidebarWidth } = sidebarState;
-  const { showAIInput } = sidebarState;
+  const { isSidebarOpen, sidebarWidth, showAIInput, expandedFolders } = sidebarState;
   const { promptWidth } = promptState;
   const [isResizing, setIsResizing] = useState(false);
 
@@ -134,6 +128,18 @@ function PassiveWrapper() {
   useEffect(() => {
     Settings.setPromptWidth(promptWidth);
   }, [promptWidth]);
+
+  useEffect(() => {
+    Settings.setIsSidebarOpen(isSidebarOpen);
+  }, [isSidebarOpen]);
+
+  useEffect(() => {
+    Settings.setShowAIInput(showAIInput);
+  }, [showAIInput]);
+
+  useEffect(() => {
+    Settings.setExpandedFolders(expandedFolders);
+  }, [expandedFolders]);
 
   const handleSidebarResize = (clientX) => {
     if (isSidebarOpen) {

@@ -4,6 +4,7 @@ import { LogState } from '@/components/App/LogArea';
 import { SidebarState } from '@/components/App/Sidebar';
 import { TabState } from '@/components/App/TabBar';
 import { useNotification } from '@/components/Widgets/Notification/Notification';
+import { isMac as checkIsMac } from '@/utils/os';
 import { useEffect } from 'react';
 
 export default function KeyboardHandler() {
@@ -16,7 +17,7 @@ export default function KeyboardHandler() {
 
   useEffect(() => {
     const handleKeyDown = (e) => {
-      const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+      const isMac = checkIsMac();
       const modifier = isMac ? e.metaKey : e.ctrlKey;
 
       if (modifier) {

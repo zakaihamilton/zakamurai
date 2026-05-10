@@ -7,6 +7,7 @@ import { Icons } from '@/components/Core/Base/Icons';
 import { createState } from '@/components/Core/Base/State';
 import Settings from '@/components/Storage/Settings';
 import Tooltip from '@/components/Widgets/Tooltip/Tooltip';
+import { formatShortcut } from '@/utils/os';
 import React, { useEffect, useRef, useState } from 'react';
 import { askWebLLM, interruptWebLLM, processAIResponse } from '../../AI';
 import styles from './Prompt.module.css';
@@ -320,7 +321,7 @@ FORMAT FOR FULL FILE REWRITE (ONLY FOR NEW FILES OR COMPLETE OVERHAULS):
           />
           <div className={styles.actions}>
             {isProcessing && processingType === 'ai' && (
-              <Tooltip content="Stop AI" shortcut="⌘.">
+              <Tooltip content="Stop AI" shortcut={formatShortcut('⌘.')}>
                 <button
                   type="button"
                   onClick={handleStop}

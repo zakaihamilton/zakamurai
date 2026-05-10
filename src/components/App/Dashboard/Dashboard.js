@@ -1,6 +1,7 @@
 import { SidebarState } from '@/components/App/Sidebar';
 import { Icons } from '@/components/Core/Base/Icons';
 import { useNotification } from '@/components/Widgets/Notification/Notification';
+import { formatShortcut } from '@/utils/os';
 import React from 'react';
 import styles from './Dashboard.module.css';
 
@@ -66,19 +67,19 @@ export default function Dashboard() {
           <h3>Keyboard Shortcuts</h3>
           <div className={styles.shortcut}>
             <span>Compile Project</span>
-            <kbd>⌘ Enter</kbd>
+            <kbd>{formatShortcut('⌘↵')}</kbd>
           </div>
           <div className={styles.shortcut}>
             <span>Toggle Sidebar</span>
-            <kbd>⌘ B</kbd>
+            <kbd>{formatShortcut('⌘B')}</kbd>
           </div>
           <div className={styles.shortcut}>
             <span>Toggle AI Panel</span>
-            <kbd>⌘ J</kbd>
+            <kbd>{formatShortcut('⌘J')}</kbd>
           </div>
           <div className={styles.shortcut}>
             <span>Clear Logs</span>
-            <kbd>⌘ K</kbd>
+            <kbd>{formatShortcut('⌘K')}</kbd>
           </div>
         </div>
       </div>

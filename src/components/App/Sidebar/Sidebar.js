@@ -4,6 +4,7 @@ import { TabState } from '@/components/App/TabBar';
 import { Icons } from '@/components/Core/Base/Icons';
 import { createState } from '@/components/Core/Base/State';
 import Tooltip from '@/components/Widgets/Tooltip/Tooltip';
+import { formatShortcut } from '@/utils/os';
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import styles from './Sidebar.module.css';
 import TreeItem from './TreeItem';
@@ -74,7 +75,10 @@ export default function Sidebar() {
     >
       {/* Dynamic Header Section */}
       <div className={styles.header}>
-        <Tooltip content={isSidebarOpen ? 'Collapse Sidebar' : 'Expand Sidebar'} shortcut="⌘B">
+        <Tooltip
+          content={isSidebarOpen ? 'Collapse Sidebar' : 'Expand Sidebar'}
+          shortcut={formatShortcut('⌘B')}
+        >
           <button
             type="button"
             onClick={toggleSidebar}
@@ -119,7 +123,7 @@ export default function Sidebar() {
               ref={searchInputRef}
               value={filterText}
               onChange={(e) => setFilterText(e.target.value)}
-              placeholder="Search files (⌘F)"
+              placeholder={`Search files (${formatShortcut('⌘F')})`}
               className={styles.searchInput}
             />
           </div>

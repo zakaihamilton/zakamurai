@@ -102,8 +102,7 @@ describe('TopBar', () => {
     EditorState.useState.mockReturnValue({ fileContents: {} });
 
     render(<TopBar />);
-    expect(screen.getByText(/Zakamur/i)).toBeDefined();
-    expect(screen.getByText(/ai/i)).toBeDefined();
+    expect(screen.getByText('Dashboard')).toBeDefined();
   });
 
   it('renders export button and handles click', async () => {
