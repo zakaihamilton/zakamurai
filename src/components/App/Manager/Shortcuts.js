@@ -323,12 +323,12 @@ export const isMatch = (e, s) => {
 
 export const getShortcutsByGroup = () => {
   const groups = {};
-  SHORTCUTS.forEach((s) => {
+  for (const s of SHORTCUTS) {
     if (!groups[s.group]) groups[s.group] = [];
     groups[s.group].push({
       key: s.displayKey,
       desc: s.desc,
     });
-  });
+  }
   return Object.entries(groups).map(([group, items]) => ({ group, items }));
 };

@@ -1,9 +1,9 @@
+import { getShortcutsByGroup } from '@/components/App/Manager/Shortcuts';
 import { Icons } from '@/components/Core/Base/Icons';
 import { formatShortcut, isMac } from '@/utils/os';
 import React from 'react';
 import { createPortal } from 'react-dom';
 import styles from './ShortcutsHelp.module.css';
-import { getShortcutsByGroup } from '@/components/App/Manager/Shortcuts';
 
 const SHORTCUTS = getShortcutsByGroup();
 
