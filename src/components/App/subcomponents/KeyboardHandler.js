@@ -17,6 +17,8 @@ export default function KeyboardHandler() {
 
   useEffect(() => {
     const handleKeyDown = (e) => {
+      if (e.repeat) return;
+
       const isMac = checkIsMac();
       const modifier = isMac ? e.metaKey : e.ctrlKey;
 
@@ -82,7 +84,11 @@ export default function KeyboardHandler() {
         } else if (e.key === 'Enter') {
           e.preventDefault();
           appState((draft) => {
-            draft.compileRequest = (draft.compileRequest || 0) + 1;
+            if (e.shiftKey) {
+              draft.silentCompileRequest = (draft.silentCompileRequest || 0) + 1;
+            } else {
+              draft.compileRequest = (draft.compileRequest || 0) + 1;
+            }
           });
         } else if (key === 'f') {
           e.preventDefault();

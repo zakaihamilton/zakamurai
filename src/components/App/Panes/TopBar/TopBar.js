@@ -8,7 +8,7 @@ import Settings from '@/components/Storage/Settings';
 import { useNotification } from '@/components/Widgets/Notification/Notification';
 import { Compiler } from '@/utils/compiler';
 import { ZipWriter } from '@/utils/zip';
-import React, { useCallback, useEffect } from 'react';
+import React, { useCallback, useEffect, useRef } from 'react';
 import styles from './TopBar.module.css';
 import ActionButtons from './subcomponents/ActionButtons';
 import Breadcrumb from './subcomponents/Breadcrumb';
@@ -18,7 +18,7 @@ import WorkingIndicator from './subcomponents/WorkingIndicator';
 
 export default function TopBar() {
   const appState = AppState.useState();
-  const { theme, projectName, fs, compileRequest } = appState;
+  const { theme, projectName, fs, compileRequest, silentCompileRequest } = appState;
   const tabState = TabState.useState();
   const { openTabs = [], activeTabId } = tabState;
   const sidebarState = SidebarState.useState();
@@ -28,85 +28,111 @@ export default function TopBar() {
   const previewState = PreviewState.useState();
   const { isProcessing } = logState;
   const { addNotification } = useNotification();
+  const isCompilingRef = useRef(false);
 
   const activeTab = openTabs.find((t) => t.id === activeTabId);
 
-  const handleCompile = useCallback(async () => {
-    if (isProcessing) return;
-
-    logState((draft) => {
-      draft.isProcessing = true;
-      draft.processingType = 'system';
+  const handleOpenLog = useCallback(() => {
+    tabState((draft) => {
+      const exists = draft.openTabs.some((t) => t.id === 'ai-logs');
+      if (!exists) {
+        draft.openTabs = [...draft.openTabs, { id: 'ai-logs', type: 'logs', label: 'Logs' }];
+      }
+      draft.activeTabId = 'ai-logs';
     });
+  }, [tabState]);
 
-    if (activeTabId !== 'ai-logs') {
-      handleOpenLog();
-    }
+  const handleCompile = useCallback(
+    async (silent = false) => {
+      if (logState.isProcessing || isCompilingRef.current) return;
+      isCompilingRef.current = true;
 
-    const onLog = (text) => {
       logState((draft) => {
-        draft.logs = [
-          ...draft.logs,
-          {
-            id: `${Date.now()}-${Math.random()}`,
-            role: 'system',
-            text,
-            timestamp: new Date().toTimeString().split(' ')[0],
-          },
-        ];
+        draft.isProcessing = true;
+        draft.processingType = 'system';
       });
-    };
 
-    try {
-      const compiler = new Compiler(onLog);
-      await compiler.compile(fs, folderTree, editorState.fileContents);
-      addNotification('Project compiled successfully', 'success');
+      if (!silent && tabState.activeTabId !== 'ai-logs') {
+        handleOpenLog();
+      }
+
+      const logQueue = [];
+      let logTimer = null;
+
+      const flushLogs = () => {
+        if (logQueue.length === 0) return;
+        const batch = [...logQueue];
+        logQueue.length = 0;
+        logState((draft) => {
+          draft.logs = [
+            ...draft.logs,
+            ...batch.map((text) => ({
+              id: `${Date.now()}-${Math.random()}`,
+              role: 'system',
+              text,
+              timestamp: new Date().toTimeString().split(' ')[0],
+            })),
+          ];
+        });
+      };
+
+      const onLog = (text) => {
+        logQueue.push(text);
+        if (!logTimer) {
+          logTimer = setTimeout(() => {
+            flushLogs();
+            logTimer = null;
+          }, 100);
+        }
+      };
 
       try {
-        const container = compiler.container;
-        if (container?.vfs?.existsSync('/dist/index.html')) {
-          const html = container.vfs.readFileSync('/dist/index.html', 'utf8');
-          if (html) {
-            previewState((draft) => {
-              draft.htmlContent = html;
-            });
-            Settings.setPreviewHtml(html);
-            tabState((draft) => {
-              const exists = draft.openTabs.some((t) => t.id === 'preview');
-              if (!exists) {
-                draft.openTabs = [
-                  ...draft.openTabs,
-                  { id: 'preview', type: 'preview', label: 'Preview' },
-                ];
-              }
-              draft.activeTabId = 'preview';
-            });
-            onLog('Preview ready. Opened preview tab.');
+        const compiler = new Compiler(onLog);
+        await compiler.compile(fs, folderTree, editorState.fileContents);
+        flushLogs();
+        addNotification('Project compiled successfully', 'success');
+
+        try {
+          const container = compiler.container;
+          if (container?.vfs?.existsSync('/dist/index.html')) {
+            const html = container.vfs.readFileSync('/dist/index.html', 'utf8');
+            if (html) {
+              previewState((draft) => {
+                draft.htmlContent = html;
+              });
+              Settings.setPreviewHtml(html);
+              tabState((draft) => {
+                const exists = draft.openTabs.some((t) => t.id === 'preview');
+                if (!exists) {
+                  draft.openTabs = [
+                    ...draft.openTabs,
+                    { id: 'preview', type: 'preview', label: 'Preview' },
+                  ];
+                }
+                if (!silent) {
+                  draft.activeTabId = 'preview';
+                }
+              });
+              onLog(`Preview ready.${!silent ? ' Opened preview tab.' : ''}`);
+            }
           }
+        } catch (previewErr) {
+          onLog(`[WARN] Could not load preview: ${previewErr.message}`);
         }
-      } catch (previewErr) {
-        onLog(`[WARN] Could not load preview: ${previewErr.message}`);
+      } catch (err) {
+        const errorMsg = err?.message || String(err);
+        onLog(`Unexpected error: ${errorMsg}`);
+        addNotification(`Compilation failed: ${errorMsg}`, 'error');
+      } finally {
+        logState((draft) => {
+          draft.isProcessing = false;
+          draft.processingType = null;
+        });
+        isCompilingRef.current = false;
       }
-    } catch (err) {
-      onLog(`Unexpected error: ${err.message}`);
-      addNotification(`Compilation failed: ${err.message}`, 'error');
-    } finally {
-      logState((draft) => {
-        draft.isProcessing = false;
-        draft.processingType = null;
-      });
-    }
-  }, [
-    isProcessing,
-    activeTabId,
-    fs,
-    folderTree,
-    editorState.fileContents,
-    logState,
-    previewState,
-    tabState,
-    addNotification,
-  ]);
+    },
+    [fs, folderTree, editorState, logState, previewState, tabState, addNotification, handleOpenLog],
+  );
 
   const handleOpenPreview = () => {
     tabState((draft) => {
@@ -124,15 +150,11 @@ export default function TopBar() {
     }
   }, [compileRequest, handleCompile]);
 
-  const handleOpenLog = () => {
-    tabState((draft) => {
-      const exists = draft.openTabs.some((t) => t.id === 'ai-logs');
-      if (!exists) {
-        draft.openTabs = [{ id: 'ai-logs', type: 'logs', label: 'Log' }, ...draft.openTabs];
-      }
-      draft.activeTabId = 'ai-logs';
-    });
-  };
+  useEffect(() => {
+    if (silentCompileRequest > 0) {
+      handleCompile(true);
+    }
+  }, [silentCompileRequest, handleCompile]);
 
   const handleClearFS = () => {
     Compiler.reset();

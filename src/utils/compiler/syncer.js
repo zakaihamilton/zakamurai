@@ -5,7 +5,13 @@
 export async function syncFilesToContainer(container, fs, folderTree, fileContents, onLog) {
   onLog('Synchronizing files to virtual environment...');
 
+  let syncCount = 0;
   const syncFile = async (fullPath, contentPromise) => {
+    syncCount++;
+    if (syncCount % 50 === 0) {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    }
+
     const pathStr = String(fullPath);
     const vfsPath = pathStr.startsWith('/') ? pathStr : `/${pathStr}`;
     const inMemory = fileContents[pathStr];
@@ -24,8 +30,20 @@ export async function syncFilesToContainer(container, fs, folderTree, fileConten
   };
 
   if (fs.mode === 'local' && fs.rootHandle) {
-    const traverse = async (handle, path = '') => {
+    let traverseCount = 0;
+    const seenHandles = new Set();
+    const traverse = async (handle, path = '', depth = 0) => {
+      if (depth > 20 || seenHandles.has(handle)) return;
+      seenHandles.add(handle);
+
       for await (const [name, entry] of handle.entries()) {
+        traverseCount++;
+        if (traverseCount % 20 === 0) {
+          await new Promise((resolve) => setTimeout(resolve, 0));
+        }
+
+        if (name === 'node_modules' || name === '.git' || name === 'dist' || name === '.npm')
+          continue;
         const entryPath = path ? `${path}/${name}` : name;
         if (entry.kind === 'file') {
           await syncFile(entryPath, async () => {
@@ -36,13 +54,28 @@ export async function syncFilesToContainer(container, fs, folderTree, fileConten
           if (!container.vfs.existsSync(`/${entryPath}`)) {
             container.vfs.mkdirSync(`/${entryPath}`, { recursive: true });
           }
-          await traverse(entry, entryPath);
+          await traverse(entry, entryPath, depth + 1);
         }
       }
     };
     await traverse(fs.rootHandle);
   } else {
-    const syncNode = async (node, path = '') => {
+    let nodeCount = 0;
+    const traverseNodes = async (node, path = '', depth = 0) => {
+      if (depth > 20) return;
+      if (
+        node.name === 'node_modules' ||
+        node.name === '.git' ||
+        node.name === 'dist' ||
+        node.name === '.npm'
+      )
+        return;
+
+      nodeCount++;
+      if (nodeCount % 50 === 0) {
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      }
+
       const fullPath = path ? `${path}/${node.name}` : node.name;
       if (node.isDir || node.type === 'folder') {
         if (!container.vfs.existsSync(`/${fullPath}`)) {
@@ -50,7 +83,7 @@ export async function syncFilesToContainer(container, fs, folderTree, fileConten
         }
         if (node.children) {
           for (const child of node.children) {
-            await syncNode(child, fullPath);
+            await traverseNodes(child, fullPath, depth + 1);
           }
         }
       } else {
@@ -61,7 +94,7 @@ export async function syncFilesToContainer(container, fs, folderTree, fileConten
     };
 
     for (const node of folderTree) {
-      await syncNode(node);
+      await traverseNodes(node);
     }
   }
   onLog('File synchronization complete.');

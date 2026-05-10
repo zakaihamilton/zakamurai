@@ -30,9 +30,15 @@ export class Compiler {
   }
 
   async init() {
-    return await initContainer(this.onLog, (container) =>
+    const initPromise = initContainer(this.onLog, (container) =>
       setupSmartDevServer(container, this.onLog),
     );
+
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Container initialization timed out after 30s')), 30000),
+    );
+
+    return await Promise.race([initPromise, timeoutPromise]);
   }
 
   async syncFiles(fs, folderTree, fileContents) {
@@ -55,10 +61,16 @@ export class Compiler {
           throw new Error('package.json is empty or invalid');
         }
 
-        await npm.installFromPackageJson({
+        const installPromise = npm.installFromPackageJson({
           includeDev: true,
           onProgress: (msg) => this.onLog(`[NPM] ${msg}`),
         });
+
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('NPM install timed out after 60s')), 60000),
+        );
+
+        await Promise.race([installPromise, timeoutPromise]);
 
         let packageJson;
         try {
@@ -124,7 +136,7 @@ import('${scriptPath}').catch(err => console.error('[Runner Error]', err));
               vfs.writeFileSync('/.almostnode-runner.js', proxyCode);
               await runtime.runFileAsync('/.almostnode-runner.js');
             } else {
-              const result = await container.run(cmdString, {
+              const runPromise = container.run(cmdString, {
                 env: {
                   NODE_ENV: 'production',
                   PWD: '/',
@@ -144,25 +156,38 @@ import('${scriptPath}').catch(err => console.error('[Runner Error]', err));
                 },
               });
 
+              // Add a 30-second timeout to each subcommand
+              const timeoutPromise = new Promise((_, reject) =>
+                setTimeout(
+                  () => reject(new Error(`Command '${cmdString}' timed out after 30s`)),
+                  30000,
+                ),
+              );
+
+              const result = await Promise.race([runPromise, timeoutPromise]);
+
               if (result.exitCode !== 0) {
-                this.onLog(`Command failed with exit code ${result.exitCode}`);
+                const errorMsg = `Command '${cmdString}' failed with exit code ${result.exitCode}`;
+                this.onLog(errorMsg);
+                throw new Error(errorMsg); // Stop execution on failure
               }
             }
           }
 
-          setTimeout(() => {
-            this.onLog('Build sequence completed.');
-            if (vfs.existsSync('/dist')) {
-              const files = vfs.readdirSync('/dist');
-              this.onLog(`Generated files in /dist: ${files.join(', ')}`);
-            }
-          }, 500);
+          this.onLog('Build sequence completed.');
+          if (vfs.existsSync('/dist')) {
+            const files = vfs.readdirSync('/dist');
+            this.onLog(`Generated files in /dist: ${files.join(', ')}`);
+          }
         } else {
           this.onLog('No build script found in package.json.');
           const mainFile = packageJson.main || 'index.js';
           if (vfs.existsSync(`/${mainFile}`)) {
             this.onLog(`Running main file: ${mainFile}`);
-            await runtime.runFileAsync(`/${mainFile}`);
+            // Don't await indefinitely if it's a main entry point that might not exit
+            const runPromise = runtime.runFileAsync(`/${mainFile}`);
+            const timeoutPromise = new Promise((resolve) => setTimeout(resolve, 5000));
+            await Promise.race([runPromise, timeoutPromise]);
           }
         }
       } else {

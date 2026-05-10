@@ -21,6 +21,7 @@ const SHORTCUTS = [
       { key: '⌘S', desc: 'Approve & Save Changes' },
       { key: '⌘. / ⌘⌫', desc: 'Cancel AI Changes' },
       { key: '⌘↵', desc: 'Compile Project' },
+      { key: '⌘⇧↵', desc: 'Compile Project (Stay on Page)' },
       { key: '⌘K', desc: 'Clear Logs (in Log Area)' },
       { key: '⌘⇧T', desc: 'Toggle Theme' },
     ],

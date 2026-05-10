@@ -3,6 +3,7 @@
  */
 
 let _sharedContainer = null;
+let _initPromise = null;
 
 /**
  * Returns the current shared container, or null if not yet initialised.
@@ -15,12 +16,13 @@ export function getSharedContainer() {
  * Destroys the shared container and wipes the module-level reference.
  */
 export async function resetContainer() {
+  _initPromise = null;
   if (_sharedContainer) {
     try {
       if (typeof _sharedContainer.teardown === 'function') {
-        _sharedContainer.teardown();
+        await _sharedContainer.teardown();
       } else if (typeof _sharedContainer.destroy === 'function') {
-        _sharedContainer.destroy();
+        await _sharedContainer.destroy();
       } else {
         _sharedContainer.vfs?.reset?.();
       }
@@ -51,25 +53,33 @@ export async function resetContainer() {
  * Initializes the almostnode container.
  */
 export async function initContainer(onLog, setupDevServer) {
-  if (!_sharedContainer) {
+  if (_sharedContainer) return _sharedContainer;
+  if (_initPromise) return _initPromise;
+
+  _initPromise = (async () => {
     onLog('Starting almostnode container...');
     try {
       const nativeImport = new Function('specifier', 'return import(specifier)');
       const { createContainer } = await nativeImport('/lib/almostnode/index.mjs');
 
-      _sharedContainer = await createContainer({
+      const container = await createContainer({
         onConsole: (level, ...args) => {
           onLog(`[${level.toUpperCase()}] ${args.join(' ')}`);
         },
       });
 
       if (setupDevServer) {
-        await setupDevServer(_sharedContainer);
+        await setupDevServer(container);
       }
+
+      _sharedContainer = container;
+      return container;
     } catch (err) {
+      _initPromise = null;
       onLog(`Failed to start container: ${err.message}`);
       throw err;
     }
-  }
-  return _sharedContainer;
+  })();
+
+  return _initPromise;
 }

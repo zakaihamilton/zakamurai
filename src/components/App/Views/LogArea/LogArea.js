@@ -23,7 +23,10 @@ export default function LogArea() {
   const containerRef = useRef();
 
   useEffect(() => {
-    Settings.setAILogs(logs);
+    const timer = setTimeout(() => {
+      Settings.setAILogs(logs);
+    }, 1000);
+    return () => clearTimeout(timer);
   }, [logs]);
 
   useEffect(() => {
@@ -99,29 +102,32 @@ export default function LogArea() {
           </div>
         )}
         <div className={styles.logContainer}>
-          {logs.map((log, index) => (
-            <div
-              key={log.id}
-              className={`${styles.logItem} ${
-                log.role === 'ai'
-                  ? styles.aiRow
-                  : log.role === 'system'
-                    ? styles.systemRow
-                    : styles.userRow
-              } ${
-                log.text?.startsWith('ERR:') ||
-                log.text?.startsWith('Stack:') ||
-                /\berror\b/i.test(log.text)
-                  ? styles.errorRow
-                  : ''
-              }`}
-            >
-              <span className={styles.lineNumber}>{index + 1}</span>
-              <span className={styles.timestamp}>{log.timestamp || '--:--:--'}</span>
-              <span className={styles.prompt}>{log.role === 'user' ? '$' : '>'}</span>
-              <div className={styles.logContent}>{log.text}</div>
-            </div>
-          ))}
+          {logs.slice(-200).map((log, index) => {
+            const displayIndex = logs.length > 200 ? logs.length - 200 + index : index;
+            return (
+              <div
+                key={log.id}
+                className={`${styles.logItem} ${
+                  log.role === 'ai'
+                    ? styles.aiRow
+                    : log.role === 'system'
+                      ? styles.systemRow
+                      : styles.userRow
+                } ${
+                  log.text?.startsWith('ERR:') ||
+                  log.text?.startsWith('Stack:') ||
+                  /\berror\b/i.test(log.text)
+                    ? styles.errorRow
+                    : ''
+                }`}
+              >
+                <span className={styles.lineNumber}>{displayIndex + 1}</span>
+                <span className={styles.timestamp}>{log.timestamp || '--:--:--'}</span>
+                <span className={styles.prompt}>{log.role === 'user' ? '$' : '>'}</span>
+                <div className={styles.logContent}>{log.text}</div>
+              </div>
+            );
+          })}
           {isProcessing && (
             <div className={styles.logItem}>
               <span className={styles.lineNumber}>{logs.length + 1}</span>
