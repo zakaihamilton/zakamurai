@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useLayoutEffect, useRef } from 'react';
 import styles from './EditorArea.module.css';
 
 export default function CodeEditor({
@@ -7,7 +7,34 @@ export default function CodeEditor({
   highlightedCode,
   readOnly,
   onCursorUpdate,
+  cursorPos,
 }) {
+  const textareaRef = useRef(null);
+  const lastReportedIndex = useRef(-1);
+  const isLocalEdit = useRef(false);
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: localContent is required to catch browser cursor resets after sync
+  useLayoutEffect(() => {
+    if (textareaRef.current && cursorPos?.index !== undefined) {
+      const textarea = textareaRef.current;
+      const externalMove = cursorPos.index !== lastReportedIndex.current;
+      const browserReset = textarea.selectionStart !== cursorPos.index && !isLocalEdit.current;
+
+      if (externalMove || browserReset) {
+        textarea.selectionStart = cursorPos.index;
+        textarea.selectionEnd = cursorPos.index;
+        lastReportedIndex.current = cursorPos.index;
+      }
+    }
+    isLocalEdit.current = false;
+  }, [cursorPos?.index, localContent]);
+
+  const localHandleChange = (e) => {
+    isLocalEdit.current = true;
+    handleChange?.(e);
+    handleSelectionChange(e);
+  };
+
   const handleSelectionChange = (e) => {
     if (!onCursorUpdate) return;
     const textarea = e.target;
@@ -16,15 +43,19 @@ export default function CodeEditor({
     const lines = textBefore.split('\n');
     const line = lines.length;
     const col = lines[lines.length - 1].length + 1;
-    onCursorUpdate({ line, col });
+
+    lastReportedIndex.current = start;
+    onCursorUpdate({ line, col, index: start });
   };
 
   return (
     <div className={styles.editorWrapper}>
       <textarea
+        ref={textareaRef}
         value={localContent}
-        onChange={readOnly ? undefined : handleChange}
+        onChange={readOnly ? undefined : localHandleChange}
         onKeyUp={handleSelectionChange}
+        onBlur={handleSelectionChange}
         onClick={handleSelectionChange}
         onSelect={handleSelectionChange}
         onFocus={handleSelectionChange}

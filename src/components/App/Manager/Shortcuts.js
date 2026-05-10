@@ -140,6 +140,120 @@ export const SHORTCUTS = [
     },
   },
   {
+    id: 'undo',
+    group: SHORTCUT_GROUPS.EDITOR_AI,
+    desc: 'Undo',
+    key: 'z',
+    displayKey: '⌘Z',
+    modifier: 'cmd',
+    isGlobal: true,
+    action: ({ editorState, tabState }) => {
+      const filePath = tabState.activeTabId;
+      if (!filePath) return;
+
+      editorState((draft) => {
+        if (!draft.history) draft.history = {};
+        if (!draft.history[filePath]) {
+          draft.history[filePath] = { past: [], future: [] };
+        }
+        const hist = draft.history[filePath];
+
+        const currentContent = draft.fileContents[filePath];
+        const currentCursor = draft.cursorPos?.[filePath];
+
+        // If the current content hasn't been saved to history yet (because of the 300ms delay),
+        // restore the last snapshot.
+        if (hist.lastSnapshotContent !== undefined && currentContent !== hist.lastSnapshotContent) {
+          if (!hist.future) hist.future = [];
+          hist.future.push({ content: currentContent, cursor: currentCursor });
+
+          draft.fileContents[filePath] = hist.lastSnapshotContent;
+          if (hist.lastSnapshotCursor !== undefined) {
+            if (!draft.cursorPos) draft.cursorPos = {};
+            draft.cursorPos[filePath] = hist.lastSnapshotCursor;
+          }
+          return;
+        }
+
+        if (!hist.past || hist.past.length === 0) return;
+
+        const prevState = hist.past.pop();
+        if (!hist.future) hist.future = [];
+        hist.future.push({ content: currentContent, cursor: currentCursor });
+
+        draft.fileContents[filePath] = prevState.content;
+        if (prevState.cursor !== undefined) {
+          if (!draft.cursorPos) draft.cursorPos = {};
+          draft.cursorPos[filePath] = prevState.cursor;
+        }
+      });
+    },
+  },
+  {
+    id: 'redo',
+    group: SHORTCUT_GROUPS.EDITOR_AI,
+    desc: 'Redo',
+    key: 'z',
+    displayKey: '⌘⇧Z',
+    modifier: 'cmd-shift',
+    isGlobal: true,
+    action: ({ editorState, tabState }) => {
+      const filePath = tabState.activeTabId;
+      if (!filePath) return;
+
+      editorState((draft) => {
+        if (!draft.history || !draft.history[filePath]) return;
+        const hist = draft.history[filePath];
+        if (!hist.future || hist.future.length === 0) return;
+
+        const currentContent = draft.fileContents[filePath];
+        const currentCursor = draft.cursorPos?.[filePath];
+
+        const nextState = hist.future.pop();
+        if (!hist.past) hist.past = [];
+        hist.past.push({ content: currentContent, cursor: currentCursor });
+
+        draft.fileContents[filePath] = nextState.content;
+        if (nextState.cursor !== undefined) {
+          if (!draft.cursorPos) draft.cursorPos = {};
+          draft.cursorPos[filePath] = nextState.cursor;
+        }
+      });
+    },
+  },
+  {
+    id: 'redo-y',
+    group: SHORTCUT_GROUPS.EDITOR_AI,
+    desc: 'Redo',
+    key: 'y',
+    displayKey: '⌘Y',
+    modifier: 'cmd',
+    isGlobal: true,
+    action: ({ editorState, tabState }) => {
+      const filePath = tabState.activeTabId;
+      if (!filePath) return;
+
+      editorState((draft) => {
+        if (!draft.history || !draft.history[filePath]) return;
+        const hist = draft.history[filePath];
+        if (!hist.future || hist.future.length === 0) return;
+
+        const currentContent = draft.fileContents[filePath];
+        const currentCursor = draft.cursorPos?.[filePath];
+
+        const nextState = hist.future.pop();
+        if (!hist.past) hist.past = [];
+        hist.past.push({ content: currentContent, cursor: currentCursor });
+
+        draft.fileContents[filePath] = nextState.content;
+        if (nextState.cursor !== undefined) {
+          if (!draft.cursorPos) draft.cursorPos = {};
+          draft.cursorPos[filePath] = nextState.cursor;
+        }
+      });
+    },
+  },
+  {
     id: 'compile-project',
     group: SHORTCUT_GROUPS.EDITOR_AI,
     desc: 'Compile Project',
@@ -325,10 +439,13 @@ export const getShortcutsByGroup = () => {
   const groups = {};
   for (const s of SHORTCUTS) {
     if (!groups[s.group]) groups[s.group] = [];
-    groups[s.group].push({
-      key: s.displayKey,
-      desc: s.desc,
-    });
+    // Only add if desc is not already in the group to avoid showing multiple Redo bindings
+    if (!groups[s.group].some((item) => item.desc === s.desc)) {
+      groups[s.group].push({
+        key: s.displayKey,
+        desc: s.desc,
+      });
+    }
   }
   return Object.entries(groups).map(([group, items]) => ({ group, items }));
 };

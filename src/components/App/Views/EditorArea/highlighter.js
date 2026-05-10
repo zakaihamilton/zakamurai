@@ -1,0 +1,167 @@
+export const highlightCode = (code, filePath, state, styles, showFind, findQuery, matchIndex) => {
+  if (!code) return '';
+
+  const fileDiff = state.pendingDiffs?.[filePath];
+  const diffs = fileDiff?.diffs || [];
+  const selectedLines = state.selectedLines?.[filePath] || [];
+
+  const sortedDiffs = [...diffs].sort((a, b) => b.start - a.start);
+
+  let escaped = code;
+  // Mark diffs with index for tracking original content
+  for (let i = 0; i < sortedDiffs.length; i++) {
+    const diff = sortedDiffs[i];
+    escaped = `${escaped.substring(0, diff.start)}\u0003${i}\u0003${escaped.substring(
+      diff.start,
+      diff.end,
+    )}\u0004${escaped.substring(diff.end)}`;
+  }
+
+  escaped = escaped.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+  const tokens = [];
+  const T_PRE = '\x01';
+  const T_POST = '\x02';
+
+  const pushToken = (val, type) => {
+    const idx = tokens.length;
+    tokens.push({ val, type });
+    return `${T_PRE}${idx}${T_POST}`;
+  };
+
+  // 1. Comments (highest priority)
+  escaped = escaped.replace(/(\/\/.+)/g, (m) => pushToken(m, 'hl-comment'));
+  escaped = escaped.replace(/(\/\*[\s\S]*?\*\/)/g, (m) => pushToken(m, 'hl-comment'));
+
+  // 2. Strings
+  escaped = escaped.replace(/(".*?"|'.*?'|`.*?`)/g, (m) => pushToken(m, 'hl-str'));
+
+  // 3. Language specific (CSS or JSX/HTML)
+  if (filePath?.endsWith('.css')) {
+    // Properties
+    escaped = escaped.replace(/([a-zA-Z\-]+)(?=\s*:)/g, (m) => pushToken(m, 'hl-prop'));
+    // Selectors (basic)
+    escaped = escaped.replace(
+      // biome-ignore lint/suspicious/noControlCharactersInRegex: markers
+      /(^|(?<=\}))(\u0003\d+\u0003|\u0004)*([.#a-zA-Z0-9_\-\[\]="':*]+)(?=\s*\{)/gm,
+      (_m, p1, p2, p3) => p1 + (p2 || '') + pushToken(p3, 'hl-tag'),
+    );
+    // Values (after colon, before semicolon)
+    escaped = escaped.replace(/(?<=:\s*)([^;\}]+)(?=;|\})/g, (m) => {
+      // Highlight hex colors within values
+      let val = m.replace(/(#[a-fA-F0-9]{3,8})/g, (c) => pushToken(c, 'hl-num'));
+      // Highlight units
+      val = val.replace(
+        /(\d+)(px|rem|em|%|vh|vw|ms|s|deg)/g,
+        (_m2, p1, p2) => `${pushToken(p1, 'hl-num')}${pushToken(p2, 'hl-kw')}`,
+      );
+      return val;
+    });
+    // Variables
+    escaped = escaped.replace(/(var\(--[a-zA-Z0-9\-]+\))/g, (m) => pushToken(m, 'hl-func'));
+  } else {
+    // JSX/HTML Tags
+    escaped = escaped.replace(
+      /(&lt;\/?)([a-zA-Z0-9]+)/g,
+      (_m, p1, p2) => `${p1}${pushToken(p2, 'hl-tag')}`,
+    );
+    // Functions
+    escaped = escaped.replace(/\b([a-zA-Z0-9_]+)(?=\()/g, (m) => pushToken(m, 'hl-func'));
+    // Attributes
+    escaped = escaped.replace(/\b([a-zA-Z\-]+)(?==)/g, (m) => pushToken(m, 'hl-attr'));
+  }
+
+  // 4. Keywords
+  escaped = escaped.replace(
+    // biome-ignore lint/suspicious/noControlCharactersInRegex: markers
+    /(\x01\d+\x02|\u0003\d+\u0003|\u0004)|\b(export|default|function|return|import|from|const|let|var|if|else|for|while|class|extends|new|true|false|null|undefined|async|await|try|catch|finally|throw|break|continue|case|switch|type|interface|enum|public|private|protected|static|readonly)\b/g,
+    (_m, p1, p2) => (p1 ? p1 : pushToken(p2, 'hl-kw')),
+  );
+
+  // 5. Numbers
+  escaped = escaped.replace(
+    // biome-ignore lint/suspicious/noControlCharactersInRegex: markers
+    /(\x01\d+\x02|\u0003\d+\u0003|\u0004)|\b(\d+)\b/g,
+    (_m, p1, p2) => (p1 ? p1 : pushToken(p2, 'hl-num')),
+  );
+
+  // Search highlights
+  let matchCounter = 0;
+  const searchRegex =
+    showFind && findQuery
+      ? new RegExp(
+          findQuery
+            .replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;'),
+          'gi',
+        )
+      : null;
+
+  const highlightText = (text) => {
+    if (!searchRegex || !text) return text;
+    return text.replace(searchRegex, (m) => {
+      const cls = matchCounter === matchIndex ? 'hl-match-active' : 'hl-match';
+      matchCounter++;
+      return `<span class="${styles[cls]}">${m}</span>`;
+    });
+  };
+
+  const resolveToken = (idx) => {
+    const token = tokens[idx];
+    if (!token) return '';
+
+    // Split content to handle nested tokens
+    // biome-ignore lint/suspicious/noControlCharactersInRegex: markers
+    const parts = token.val.split(/(\x01\d+\x02)/);
+    const resolvedContent = parts
+      .map((part) => {
+        // biome-ignore lint/suspicious/noControlCharactersInRegex: markers
+        const match = part.match(/^\x01(\d+)\x02$/);
+        if (match) return resolveToken(Number.parseInt(match[1]));
+        return highlightText(part);
+      })
+      .join('');
+
+    return `<span class="${styles[token.type] || ''}">${resolvedContent}</span>`;
+  };
+
+  // Final Reconstruction
+  // biome-ignore lint/suspicious/noControlCharactersInRegex: markers
+  const parts = escaped.split(/(\x01\d+\x02)/);
+  escaped = parts
+    .map((part) => {
+      // biome-ignore lint/suspicious/noControlCharactersInRegex: markers
+      const match = part.match(/^\x01(\d+)\x02$/);
+      if (match) return resolveToken(Number.parseInt(match[1]));
+      return highlightText(part);
+    })
+    .join('');
+
+  // Replace diff markers with spans including original content
+  // biome-ignore lint/suspicious/noControlCharactersInRegex: markers are intentional for tracking
+  escaped = escaped.replace(/\u0003(\d+)\u0003/g, (_m, idx) => {
+    const diff = sortedDiffs[Number(idx)];
+    const original = (diff.original || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+    return `<span class="${styles.diffHighlight}" data-original="${original || 'Added'}">`;
+  });
+  // biome-ignore lint/suspicious/noControlCharactersInRegex: markers are intentional for tracking
+  escaped = escaped.replace(/\u0004/g, '</span>');
+
+  // Add line selection backgrounds
+  const linesArr = escaped.split('\n');
+  const finalLines = linesArr.map((line, i) => {
+    const isSelected = selectedLines.includes(i + 1);
+    if (isSelected) {
+      return `<span class="${styles.selectedLineRow}">${line || ' '}</span>`;
+    }
+    return line;
+  });
+
+  return finalLines.join('\n');
+};
