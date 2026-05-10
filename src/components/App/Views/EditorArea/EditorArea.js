@@ -2,7 +2,7 @@ import { AppState } from '@/components/App/AppState';
 import { TabState } from '@/components/App/Panes/TabBar';
 import { Icons } from '@/components/Core/Base/Icons';
 import { createState } from '@/components/Core/Base/State';
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import styles from './EditorArea.module.css';
 
 import CodeEditor from './CodeEditor';
@@ -82,6 +82,33 @@ export default function EditorArea({ file }) {
   const diffData = state.pendingDiffs?.[filePath];
   const selectedLines = state.selectedLines?.[filePath] || [];
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: proxy state needs specific primitive triggers
+  const highlightedLocalCode = useMemo(() => {
+    return highlightCode(localContent, filePath, state, styles, showFind, findQuery, matchIndex);
+  }, [localContent, filePath, diffData, selectedLines, showFind, findQuery, matchIndex]);
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: proxy state needs specific primitive triggers
+  const highlightedOriginalCode = useMemo(() => {
+    if (!diffData?.originalContent) return '';
+    return highlightCode(
+      diffData.originalContent,
+      filePath,
+      state,
+      styles,
+      showFind,
+      findQuery,
+      matchIndex,
+    );
+  }, [
+    diffData?.originalContent,
+    filePath,
+    diffData,
+    selectedLines,
+    showFind,
+    findQuery,
+    matchIndex,
+  ]);
+
   return (
     <div className={styles.editorArea}>
       <HistoryHandler
@@ -148,15 +175,7 @@ export default function EditorArea({ file }) {
               <Gutter linesArr={diffData.originalContent.split('\n').map((_, i) => i + 1)} />
               <CodeEditor
                 localContent={diffData.originalContent}
-                highlightedCode={highlightCode(
-                  diffData.originalContent,
-                  filePath,
-                  state,
-                  styles,
-                  showFind,
-                  findQuery,
-                  matchIndex,
-                )}
+                highlightedCode={highlightedOriginalCode}
                 readOnly={true}
                 cursorPos={state.cursorPos?.[filePath]}
                 scrollContainerRef={leftScrollRef}
@@ -180,15 +199,7 @@ export default function EditorArea({ file }) {
               <CodeEditor
                 localContent={localContent}
                 handleChange={handleChange}
-                highlightedCode={highlightCode(
-                  localContent,
-                  filePath,
-                  state,
-                  styles,
-                  showFind,
-                  findQuery,
-                  matchIndex,
-                )}
+                highlightedCode={highlightedLocalCode}
                 onCursorUpdate={diffActions.handleCursorUpdate}
                 cursorPos={state.cursorPos?.[filePath]}
                 scrollContainerRef={rightScrollRef}
@@ -207,15 +218,7 @@ export default function EditorArea({ file }) {
           <CodeEditor
             localContent={localContent}
             handleChange={handleChange}
-            highlightedCode={highlightCode(
-              localContent,
-              filePath,
-              state,
-              styles,
-              showFind,
-              findQuery,
-              matchIndex,
-            )}
+            highlightedCode={highlightedLocalCode}
             onCursorUpdate={diffActions.handleCursorUpdate}
             cursorPos={state.cursorPos?.[filePath]}
             scrollContainerRef={scrollContainerRef}

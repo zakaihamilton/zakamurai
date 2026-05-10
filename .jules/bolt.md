@@ -1,0 +1,3 @@
+## 2024-05-24 - Memoizing Proxy State Outputs
+**Learning:** When trying to memoize an output that depends on a custom Proxy-based `state` object, you cannot put the `state` object itself into the dependency array (e.g. `[state]`) because the Proxy reference does not change across updates.
+**Action:** Always extract the specific pieces of data from the proxy (`diffData = state.pendingDiffs?.[filePath]`) and pass those specific primitives/object references into the `useMemo` dependency array. Also, ensure you pass the `state` proxy into the compute function if the inner function accesses it, since it reads real-time.
