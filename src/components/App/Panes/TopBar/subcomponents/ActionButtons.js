@@ -21,6 +21,7 @@ export default function ActionButtons({
           className={`${styles.actionBtn} ${styles.compileBtn}`}
           onClick={onCompile}
           disabled={isProcessing}
+          aria-label="Compile Project"
         >
           <Icons.Play />
           <span>Compile</span>
@@ -31,6 +32,7 @@ export default function ActionButtons({
           type="button"
           className={`${styles.actionBtn} ${styles.terminalToggleBtn} ${activeTabId === 'ai-logs' ? styles.activeTab : ''}`}
           onClick={onOpenLog}
+          aria-label="Show Log"
         >
           <Icons.Terminal />
         </button>
@@ -40,6 +42,7 @@ export default function ActionButtons({
           type="button"
           className={`${styles.actionBtn} ${styles.terminalToggleBtn} ${activeTabId === 'preview' ? styles.activeTab : ''}`}
           onClick={onOpenPreview}
+          aria-label="Show Preview"
         >
           <Icons.Globe />
         </button>
@@ -52,6 +55,7 @@ export default function ActionButtons({
           type="button"
           className={`${styles.actionBtn} ${styles.iconBtn} ${showAIInput ? styles.activeTab : ''}`}
           onClick={onToggleAIInput}
+          aria-label={showAIInput ? 'Hide AI Prompt' : 'Show AI Prompt'}
         >
           <Icons.BotSmall />
         </button>

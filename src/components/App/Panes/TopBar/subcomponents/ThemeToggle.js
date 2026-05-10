@@ -10,7 +10,12 @@ export default function ThemeToggle({ theme, onToggle }) {
       content={`Switch to ${theme === 'light' ? 'dark' : 'light'} theme`}
       shortcut={formatShortcut('⌘⇧T')}
     >
-      <button type="button" onClick={onToggle} className={styles.themeToggle}>
+      <button
+        type="button"
+        onClick={onToggle}
+        className={styles.themeToggle}
+        aria-label={`Switch to ${theme === 'light' ? 'dark' : 'light'} theme`}
+      >
         {theme === 'light' ? <Icons.Moon /> : <Icons.Sun />}
       </button>
     </Tooltip>
