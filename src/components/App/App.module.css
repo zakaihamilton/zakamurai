@@ -97,6 +97,7 @@
   background-image: radial-gradient(at 0% 0%, var(--accent-light) 0, transparent 50%),
     radial-gradient(at 100% 0%, var(--accent-light) 0, transparent 50%);
   background-attachment: fixed;
+  position: relative;
 }
 
 .isResizing {
@@ -150,4 +151,19 @@
 .emptyStateText {
   margin-top: 16px;
   color: var(--text-muted);
+}
+
+.mobileOverlay {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .mobileOverlay {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 999;
+    backdrop-filter: blur(2px);
+  }
 }

@@ -178,10 +178,28 @@ function PassiveWrapper() {
     });
   };
 
+  const closeOverlays = () => {
+    if (window.innerWidth <= 768) {
+      if (isSidebarOpen) {
+        sidebarState((draft) => {
+          draft.isSidebarOpen = false;
+        });
+      }
+      if (showAIInput) {
+        sidebarState((draft) => {
+          draft.showAIInput = false;
+        });
+      }
+    }
+  };
+
   return (
     <div
       className={`${styles.appWrapper} ${theme === 'light' ? styles.light : ''} ${isResizing ? styles.isResizing : ''}`}
     >
+      {(isSidebarOpen || showAIInput) && (
+        <div className={styles.mobileOverlay} onClick={closeOverlays} />
+      )}
       <Sidebar />
       {isSidebarOpen && (
         <Resizer
