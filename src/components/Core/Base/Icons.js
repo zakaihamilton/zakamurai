@@ -572,4 +572,28 @@ export const Icons = {
       <polyline points="8 6 2 12 8 18" />
     </svg>
   ),
+  ZLogo: ({ size = 32, className = '', style = {} }) => (
+    <div
+      className={className}
+      style={{
+        width: size,
+        height: size,
+        background: 'linear-gradient(135deg, var(--accent) 0%, #4f46e5 100%)',
+        borderRadius: `${Math.max(2, Math.round(size * 0.25))}px`,
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        fontWeight: 800,
+        color: '#fff',
+        fontSize: `${Math.round(size * 0.56)}px`,
+        userSelect: 'none',
+        flexShrink: 0,
+        lineHeight: 1,
+        fontFamily: 'inherit',
+        ...style,
+      }}
+    >
+      Z
+    </div>
+  ),
 };

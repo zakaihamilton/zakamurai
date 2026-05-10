@@ -81,7 +81,7 @@ export default function Sidebar() {
             onKeyDown={(e) => e.key === 'Enter' && toggleSidebar()}
             className={styles.logo}
           >
-            Z
+            <Icons.ZLogo size={32} />
           </button>
         </Tooltip>
         <div className={styles.projectNameContainer} style={{ opacity: isSidebarOpen ? 1 : 0 }}>

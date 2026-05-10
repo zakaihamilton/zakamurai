@@ -25,9 +25,11 @@ export default function Dashboard() {
     <div className={styles.dashboard}>
       <div className={styles.hero}>
         <div className={styles.logoWrapper}>
-          <Icons.Bot size={80} className={styles.logo} />
+          <Icons.ZLogo size={80} className={styles.logo} />
         </div>
-        <h1 className={styles.title}>Zakamurai</h1>
+        <h1 className={styles.title}>
+          Zakamur<span className={styles.aiHighlight}>ai</span>
+        </h1>
         <p className={styles.subtitle}>Supercharge your coding with AI precision.</p>
       </div>
 
