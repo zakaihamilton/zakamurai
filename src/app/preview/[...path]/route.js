@@ -43,7 +43,7 @@ export async function GET(_request) {
     @keyframes spin { to { transform: rotate(360deg); } }
     h2 { margin: 0 0 0.5rem; font-weight: 500; }
     p { color: #888; font-size: 0.9rem; margin: 0; }
-    #status { margin-top: 1rem; font-size: 0.8rem; color: #666; }
+    #status { margin-top: 1rem; font-size: 0.8rem; color: #666; white-space: pre-line; }
   </style>
 </head>
 <body>
@@ -69,7 +69,7 @@ export async function GET(_request) {
       }
 
       if (attempts >= maxAttempts) {
-        statusEl.innerHTML = 'Service worker did not activate.<br>Please go back and compile your project first.';
+        statusEl.textContent = 'Service worker did not activate.\\nPlease go back and compile your project first.';
         return;
       }
 
