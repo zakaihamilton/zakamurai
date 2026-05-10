@@ -1,7 +1,7 @@
-import { EditorState } from '@/components/App/EditorArea';
-import { LogState } from '@/components/App/LogArea';
 import { SidebarState } from '@/components/App/Sidebar';
 import { TabState } from '@/components/App/TabBar';
+import { EditorState } from '@/components/App/Views/EditorArea';
+import { LogState } from '@/components/App/Views/LogArea';
 import { fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -13,44 +13,44 @@ import TopBar from './TopBar';
 global.URL.createObjectURL = vi.fn();
 global.URL.revokeObjectURL = vi.fn();
 
-vi.mock('../AppState', () => ({
+vi.mock('@/components/App/AppState', () => ({
   AppState: {
     useState: vi.fn(),
   },
 }));
 
-vi.mock('../PreviewState', () => ({
+vi.mock('@/components/App/PreviewState', () => ({
   PreviewState: {
     useState: vi.fn(),
   },
 }));
 
-vi.mock('../../Widgets/Tooltip/Tooltip', () => ({
+vi.mock('@/components/Widgets/Tooltip/Tooltip', () => ({
   __esModule: true,
   default: ({ children, content }) => {
     return React.cloneElement(children, { title: content });
   },
 }));
 
-vi.mock('../LogArea', () => ({
+vi.mock('@/components/App/Views/LogArea', () => ({
   LogState: {
     useState: vi.fn(),
   },
 }));
 
-vi.mock('../TabBar', () => ({
+vi.mock('@/components/App/TabBar', () => ({
   TabState: {
     useState: vi.fn(),
   },
 }));
 
-vi.mock('../Sidebar', () => ({
+vi.mock('@/components/App/Sidebar', () => ({
   SidebarState: {
     useState: vi.fn(),
   },
 }));
 
-vi.mock('../EditorArea', () => ({
+vi.mock('@/components/App/Views/EditorArea', () => ({
   EditorState: {
     useState: vi.fn(),
   },

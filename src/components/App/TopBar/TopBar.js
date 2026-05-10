@@ -1,9 +1,9 @@
 import { AppState } from '@/components/App/AppState';
-import { EditorState } from '@/components/App/EditorArea';
-import { LogState } from '@/components/App/LogArea';
 import { PreviewState } from '@/components/App/PreviewState';
 import { SidebarState } from '@/components/App/Sidebar';
 import { TabState } from '@/components/App/TabBar';
+import { EditorState } from '@/components/App/Views/EditorArea';
+import { LogState } from '@/components/App/Views/LogArea';
 import Settings from '@/components/Storage/Settings';
 import { useNotification } from '@/components/Widgets/Notification/Notification';
 import { Compiler } from '@/utils/compiler';

@@ -31,7 +31,7 @@ vi.mock('./TabBar', () => {
     TabState: State,
   };
 });
-vi.mock('./EditorArea', () => {
+vi.mock('./Views/EditorArea', () => {
   const State = ({ children }) => <div data-testid="editor-state">{children}</div>;
   State.useState = vi.fn(() => Object.assign(vi.fn(), {}));
   return {
@@ -39,7 +39,7 @@ vi.mock('./EditorArea', () => {
     EditorState: State,
   };
 });
-vi.mock('./LogArea', () => {
+vi.mock('./Views/LogArea', () => {
   const State = ({ children }) => <div data-testid="log-state">{children}</div>;
   State.useState = vi.fn(() => Object.assign(vi.fn(), { logs: [], isProcessing: false }));
   return {
@@ -57,9 +57,7 @@ vi.mock('./Prompt', () => {
 });
 vi.mock('./PreviewState', () => {
   const State = ({ children }) => <div data-testid="preview-state">{children}</div>;
-  State.useState = vi.fn(() =>
-    Object.assign(vi.fn(), { htmlContent: '', isCompilerReady: false }),
-  );
+  State.useState = vi.fn(() => Object.assign(vi.fn(), { htmlContent: '', isCompilerReady: false }));
   return {
     PreviewState: State,
   };

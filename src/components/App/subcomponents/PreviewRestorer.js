@@ -1,7 +1,7 @@
 import { AppState } from '@/components/App/AppState';
-import { EditorState } from '@/components/App/EditorArea';
 import { PreviewState } from '@/components/App/PreviewState';
 import { SidebarState } from '@/components/App/Sidebar';
+import { EditorState } from '@/components/App/Views/EditorArea';
 import { Compiler } from '@/utils/compiler';
 import { useEffect, useRef } from 'react';
 

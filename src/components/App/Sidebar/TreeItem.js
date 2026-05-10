@@ -1,7 +1,7 @@
 import { AppState } from '@/components/App/AppState';
-import { EditorState } from '@/components/App/EditorArea';
 import { SidebarState } from '@/components/App/Sidebar';
 import { TabState } from '@/components/App/TabBar';
+import { EditorState } from '@/components/App/Views/EditorArea';
 import { Icons } from '@/components/Core/Base/Icons';
 import ContextMenu from '@/components/Widgets/ContextMenu/ContextMenu';
 import Dialog from '@/components/Widgets/Dialog/Dialog';

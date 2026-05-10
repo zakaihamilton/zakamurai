@@ -1,8 +1,8 @@
 import { AppState } from '@/components/App/AppState';
-import { EditorState } from '@/components/App/EditorArea';
-import { LogState } from '@/components/App/LogArea';
 import { SidebarState } from '@/components/App/Sidebar';
 import { TabState } from '@/components/App/TabBar';
+import { EditorState } from '@/components/App/Views/EditorArea';
+import { LogState } from '@/components/App/Views/LogArea';
 import { Icons } from '@/components/Core/Base/Icons';
 import { createState } from '@/components/Core/Base/State';
 import Settings from '@/components/Storage/Settings';

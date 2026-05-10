@@ -1,61 +1,62 @@
-import { EditorState } from '@/components/App/EditorArea';
-import { LogState } from '@/components/App/LogArea';
 import { SidebarState } from '@/components/App/Sidebar';
 import { TabState } from '@/components/App/TabBar';
+import { EditorState } from '@/components/App/Views/EditorArea';
+import { LogState } from '@/components/App/Views/LogArea';
 import { fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { AppState } from '../AppState';
 import Prompt from './Prompt';
 
-vi.mock('../LogArea', () => ({
+vi.mock('@/components/App/Views/LogArea', () => ({
   LogState: {
     useState: vi.fn(),
   },
 }));
 
-vi.mock('../../Widgets/Tooltip/Tooltip', () => ({
+vi.mock('@/components/Widgets/Tooltip/Tooltip', () => ({
   __esModule: true,
   default: ({ children, content }) => {
     return React.cloneElement(children, { title: content });
   },
 }));
 
-vi.mock('../Sidebar', () => ({
+vi.mock('@/components/App/Sidebar', () => ({
   SidebarState: {
     useState: vi.fn(),
   },
 }));
 
-vi.mock('../TabBar', () => ({
+vi.mock('@/components/App/TabBar', () => ({
   TabState: {
     useState: vi.fn(),
   },
 }));
 
-vi.mock('../AppState', () => ({
+vi.mock('@/components/App/AppState', () => ({
   AppState: {
     useState: vi.fn(),
   },
 }));
 
-vi.mock('../EditorArea', () => ({
+vi.mock('@/components/App/Views/EditorArea', () => ({
   EditorState: {
     useState: vi.fn(),
   },
 }));
 
-vi.mock('../../AI', () => ({
+vi.mock('@/components/AI', () => ({
   askWebLLM: vi.fn().mockResolvedValue('Mock response'),
   interruptWebLLM: vi.fn(),
   processAIResponse: vi.fn().mockResolvedValue(undefined),
 }));
 
-vi.mock('../../Storage/Settings', () => ({
+vi.mock('@/components/Storage/Settings', () => ({
   __esModule: true,
   default: {
     addPromptHistory: vi.fn(),
     getPromptHistory: vi.fn().mockReturnValue([]),
+    getAILogs: vi.fn().mockReturnValue([]),
   },
 }));
 

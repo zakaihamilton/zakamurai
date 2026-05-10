@@ -1,4 +1,4 @@
-import { EditorState } from '@/components/App/EditorArea';
+import { EditorState } from '@/components/App/Views/EditorArea';
 import Settings from '@/components/Storage/Settings';
 import { useEffect } from 'react';
 

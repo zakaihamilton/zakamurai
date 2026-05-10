@@ -1,5 +1,5 @@
-import { EditorState } from '@/components/App/EditorArea';
 import { TabState } from '@/components/App/TabBar';
+import { EditorState } from '@/components/App/Views/EditorArea';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { AppState } from '../AppState';
@@ -7,19 +7,19 @@ import { SidebarState } from './Sidebar';
 import Sidebar from './Sidebar';
 
 // Mock the state
-vi.mock('../AppState', () => ({
+vi.mock('@/components/App/AppState', () => ({
   AppState: {
     useState: vi.fn(),
   },
 }));
 
-vi.mock('../TabBar', () => ({
+vi.mock('@/components/App/TabBar', () => ({
   TabState: {
     useState: vi.fn(),
   },
 }));
 
-vi.mock('../EditorArea', () => ({
+vi.mock('@/components/App/Views/EditorArea', () => ({
   EditorState: {
     useState: vi.fn(),
   },

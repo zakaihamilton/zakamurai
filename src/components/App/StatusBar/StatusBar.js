@@ -1,6 +1,6 @@
 import { AppState } from '@/components/App/AppState';
-import { EditorState } from '@/components/App/EditorArea';
 import { TabState } from '@/components/App/TabBar';
+import { EditorState } from '@/components/App/Views/EditorArea';
 import { Icons } from '@/components/Core/Base/Icons';
 import Tooltip from '@/components/Widgets/Tooltip/Tooltip';
 import React from 'react';

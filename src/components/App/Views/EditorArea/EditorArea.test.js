@@ -1,17 +1,17 @@
+import { AppState } from '@/components/App/AppState';
 import { TabState } from '@/components/App/TabBar';
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import { AppState } from '../AppState';
 import { EditorState } from './EditorArea';
 import EditorArea from './EditorArea';
 
-vi.mock('../AppState', () => ({
+vi.mock('@/components/App/AppState', () => ({
   AppState: {
     useState: vi.fn(),
   },
 }));
 
-vi.mock('../TabBar', () => ({
+vi.mock('@/components/App/TabBar', () => ({
   TabState: {
     useState: vi.fn(),
   },
