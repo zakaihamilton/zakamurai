@@ -1,4 +1,4 @@
-import { setInDraft, updateInDraft } from '../Core/Base/StateUtils';
+import { setInDraft, updateInDraft } from '../Core/Base/StateUtils.js';
 
 /**
  * @typedef {Object} Diff
@@ -258,12 +258,7 @@ export function applySearchReplace(original, blocks, selectedLines = []) {
   let match = blockRegex.exec(blocks);
 
   // Convert selected line numbers to character ranges for easier overlap checking
-  const lines = original.split('\n');
-  const selectedRanges = selectedLines.map((l) => {
-    let start = 0;
-    for (let i = 0; i < l - 1; i++) start += lines[i].length + 1;
-    return { start, end: start + (lines[l - 1]?.length || 0) };
-  });
+  const selectedRanges = _getSelectedRanges(original, selectedLines);
 
   while (match !== null) {
     const search = match[1];
@@ -334,12 +329,7 @@ export function computeDiff(original, updated, selectedLines = []) {
   }
 
   if (selectedLines.length > 0) {
-    const lines = original.split('\n');
-    const selectedRanges = selectedLines.map((l) => {
-      let s = 0;
-      for (let i = 0; i < l - 1; i++) s += lines[i].length + 1;
-      return { start: s, end: s + (lines[l - 1]?.length || 0) };
-    });
+    const selectedRanges = _getSelectedRanges(original, selectedLines);
 
     const isOverlap = selectedRanges.some((r) => {
       return (
@@ -365,6 +355,31 @@ export function computeDiff(original, updated, selectedLines = []) {
       },
     ],
   };
+}
+
+/**
+ * Internal helper to convert selected line numbers to character ranges.
+ * Precomputes offsets in O(L) where L is the number of lines.
+ *
+ * @param {string} original
+ * @param {number[]} selectedLines
+ * @returns {{start: number, end: number}[]}
+ */
+function _getSelectedRanges(original, selectedLines) {
+  if (!selectedLines || selectedLines.length === 0) return [];
+
+  const lines = original.split('\n');
+  const lineOffsets = new Array(lines.length);
+  let currentOffset = 0;
+  for (let i = 0; i < lines.length; i++) {
+    lineOffsets[i] = currentOffset;
+    currentOffset += lines[i].length + 1;
+  }
+
+  return selectedLines.map((l) => {
+    const start = lineOffsets[l - 1] ?? 0;
+    return { start, end: start + (lines[l - 1]?.length || 0) };
+  });
 }
 
 /**
