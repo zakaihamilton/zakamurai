@@ -341,12 +341,12 @@ export default function TopBar() {
     });
   };
 
-  let breadcrumb = [projectName];
+  let breadcrumb = ['Dashboard'];
   if (activeTab) {
     if (activeTab.type === 'file') {
       breadcrumb = [projectName, ...(activeTab.file?.path || [])];
     } else if (activeTab.type === 'logs') {
-      breadcrumb = [projectName, 'System', 'Log'];
+      breadcrumb = ['Log'];
     } else if (activeTab.type === 'preview') {
       breadcrumb = [projectName, 'dist', 'index.html'];
     }
