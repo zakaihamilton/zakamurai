@@ -83,6 +83,18 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
+      <div className={styles.footer}>
+        <span className={styles.footerText}>Zakai Hamilton</span>
+        <a
+          href="https://www.linkedin.com/in/zakai-hamilton"
+          target="_blank"
+          rel="noopener noreferrer"
+          className={styles.linkedinLink}
+          title="LinkedIn Profile"
+        >
+          <Icons.Linkedin size={18} />
+        </a>
+      </div>
     </div>
   );
 }
