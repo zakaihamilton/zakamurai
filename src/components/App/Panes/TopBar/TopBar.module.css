@@ -35,10 +35,15 @@
 .breadcrumb {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
   font-size: 14px;
   color: var(--text-muted);
   font-weight: 500;
+  overflow: hidden;
+  white-space: nowrap;
+  flex: 1;
+  min-width: 0;
+  margin-right: 12px;
 }
 
 .breadcrumb svg {
@@ -85,6 +90,13 @@
   padding: 4px 8px;
   border-radius: 6px;
   transition: all 0.2s var(--ease-premium);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 200px;
+  min-width: 0;
+  display: inline-block;
+  vertical-align: middle;
 }
 
 .breadcrumbSegment:hover:not(.active) {
