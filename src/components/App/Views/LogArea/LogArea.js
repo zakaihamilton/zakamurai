@@ -10,14 +10,15 @@ export const LogState = createState('LogState');
 const LogAreaUiState = createState('LogAreaUiState');
 LogState.useState.initial = {
   logs: Settings.getAILogs(),
-  isProcessing: false,
-  processingType: null, // 'ai' or 'system'
+  isSystemProcessing: false,
+  isAIProcessing: false,
   reasoning: '',
 };
 
 export default function LogArea() {
   const logState = LogState.useState();
-  const { logs = [], isProcessing } = logState;
+  const { logs = [], isSystemProcessing, isAIProcessing } = logState;
+  const isProcessing = isSystemProcessing || isAIProcessing;
   const logAreaUiState = LogAreaUiState.useState(null, { copied: false, autoScroll: true });
   const { copied = false, autoScroll = true } = logAreaUiState || {};
   const bottomRef = useRef();
@@ -147,7 +148,13 @@ export default function LogArea() {
             <div className={styles.logItem}>
               <span className={styles.lineNumber}>{logs.length + 1}</span>
               <span className={styles.prompt}>&gt;</span>
-              <div className={`${styles.logContent} ${styles.processing}`}>Processing...</div>
+              <div className={`${styles.logContent} ${styles.processing}`}>
+                {isAIProcessing && isSystemProcessing
+                  ? 'AI & System working...'
+                  : isAIProcessing
+                    ? 'AI is working...'
+                    : 'System is working...'}
+              </div>
             </div>
           )}
           <div ref={bottomRef} style={{ height: '10px' }} />

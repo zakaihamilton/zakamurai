@@ -13,7 +13,8 @@ export default function TopBarMenu({
   onExportCompiledZip,
   onStartOver,
   onClearFS,
-  isProcessing,
+  isSystemProcessing,
+  isAIProcessing,
   onToggleShortcuts,
 }) {
   const topBarMenuState = TopBarMenuState.useState(null, {
@@ -37,6 +38,8 @@ export default function TopBarMenu({
       draft.menuPosition = null;
     });
   };
+
+  const isProcessing = isSystemProcessing || isAIProcessing;
 
   return (
     <>

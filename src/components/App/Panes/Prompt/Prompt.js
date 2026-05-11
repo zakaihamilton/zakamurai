@@ -22,7 +22,7 @@ export default function Prompt() {
   const reasoningRef = useRef(null);
 
   const logState = LogState.useState();
-  const { isProcessing, processingType, reasoning } = logState;
+  const { isSystemProcessing, isAIProcessing, reasoning } = logState;
   const sidebarState = SidebarState.useState();
   const { showAIInput } = sidebarState;
   const tabState = TabState.useState();
@@ -40,8 +40,7 @@ export default function Prompt() {
     e.preventDefault();
     interruptWebLLM();
     logState((draft) => {
-      draft.isProcessing = false;
-      draft.processingType = null;
+      draft.isAIProcessing = false;
       draft.reasoning = '';
       draft.logs = [
         ...draft.logs,
@@ -57,7 +56,7 @@ export default function Prompt() {
 
   const send = (e) => {
     e.preventDefault();
-    if (!val.trim() || isProcessing) return;
+    if (!val.trim() || isAIProcessing) return;
 
     const userMsg = val;
     promptUiState((draft) => {
@@ -85,8 +84,7 @@ export default function Prompt() {
           timestamp: new Date().toTimeString().split(' ')[0],
         },
       ];
-      draft.isProcessing = true;
-      draft.processingType = 'ai';
+      draft.isAIProcessing = true;
       draft.reasoning = '';
     });
 
@@ -162,11 +160,9 @@ FORMAT FOR FULL FILE REWRITE (ONLY FOR NEW FILES OR COMPLETE OVERHAULS):
           });
         });
 
-        // Check if we're still processing (user might have clicked stop)
-        // If isProcessing is false now, we discard the result
         let stillProcessing = false;
         logState((draft) => {
-          stillProcessing = draft.isProcessing;
+          stillProcessing = draft.isAIProcessing;
         });
         if (!stillProcessing) return;
 
@@ -180,8 +176,7 @@ FORMAT FOR FULL FILE REWRITE (ONLY FOR NEW FILES OR COMPLETE OVERHAULS):
               timestamp: new Date().toTimeString().split(' ')[0],
             },
           ];
-          draft.isProcessing = false;
-          draft.processingType = null;
+          draft.isAIProcessing = false;
           draft.reasoning = '';
         });
 
@@ -189,7 +184,7 @@ FORMAT FOR FULL FILE REWRITE (ONLY FOR NEW FILES OR COMPLETE OVERHAULS):
         await processAIResponse(webLLMResult, fs, logState, sidebarState, editorState, tabState);
       } catch (err) {
         logState((draft) => {
-          if (!draft.isProcessing) return; // Discard if stopped
+          if (!draft.isAIProcessing) return; // Discard if stopped
           draft.logs = [
             ...draft.logs,
             {
@@ -199,8 +194,7 @@ FORMAT FOR FULL FILE REWRITE (ONLY FOR NEW FILES OR COMPLETE OVERHAULS):
               timestamp: new Date().toTimeString().split(' ')[0],
             },
           ];
-          draft.isProcessing = false;
-          draft.processingType = null;
+          draft.isAIProcessing = false;
           draft.reasoning = '';
         });
       }
@@ -255,7 +249,7 @@ FORMAT FOR FULL FILE REWRITE (ONLY FOR NEW FILES OR COMPLETE OVERHAULS):
     }
   };
 
-  const isBtnActive = val.trim() && !isProcessing;
+  const isBtnActive = val.trim() && !isAIProcessing;
 
   const currentActiveTabId = tabState.activeTabId;
   const selectedLines = editorState.selectedLines?.[currentActiveTabId] || [];
@@ -278,11 +272,8 @@ FORMAT FOR FULL FILE REWRITE (ONLY FOR NEW FILES OR COMPLETE OVERHAULS):
           <div>
             <h2 className={styles.title}>AI Prompt</h2>
           </div>
-          {isProcessing && (
-            <span className={styles.status}>
-              {processingType === 'ai' ? 'Working' : 'Compiling'}
-            </span>
-          )}
+          {isAIProcessing && <span className={styles.status}>AI Working</span>}
+          {isSystemProcessing && <span className={styles.status}>Compiling</span>}
         </div>
         {(currentActiveTabId || selectedLines.length > 0) && (
           <div className={styles.tagsContainer}>
@@ -300,7 +291,7 @@ FORMAT FOR FULL FILE REWRITE (ONLY FOR NEW FILES OR COMPLETE OVERHAULS):
             )}
           </div>
         )}
-        {isProcessing && logState.reasoning && (
+        {isAIProcessing && logState.reasoning && (
           <div className={styles.reasoningContainer}>
             <div className={styles.reasoningHeader}>
               <Icons.Info size={14} />
@@ -323,19 +314,17 @@ FORMAT FOR FULL FILE REWRITE (ONLY FOR NEW FILES OR COMPLETE OVERHAULS):
               });
             }}
             onKeyDown={handleKeyDown}
-            disabled={isProcessing || !showAIInput}
+            disabled={isAIProcessing || !showAIInput}
             placeholder={
-              isProcessing
-                ? processingType === 'ai'
-                  ? 'AI is working... Please wait.'
-                  : 'Compiling... Please wait.'
+              isAIProcessing
+                ? 'AI is working... Please wait.'
                 : 'Enter the AI prompt here...'
             }
             className={styles.input}
             tabIndex={showAIInput ? undefined : -1}
           />
           <div className={styles.actions}>
-            {isProcessing && processingType === 'ai' && (
+            {isAIProcessing && (
               <Tooltip content="Stop AI" shortcut={formatShortcut('⌘.')}>
                 <button
                   type="button"

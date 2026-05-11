@@ -328,7 +328,7 @@
 .workingIndicator {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 12px;
   background: var(--accent-light);
   padding: 6px 14px;
   border-radius: 20px;
@@ -338,6 +338,18 @@
   font-weight: 600;
   animation: pulse 2s infinite ease-in-out;
   box-shadow: 0 0 10px var(--accent-glow);
+}
+
+.indicatorGroup {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.indicatorGroup:not(:last-child)::after {
+  content: "|";
+  margin-left: 6px;
+  opacity: 0.3;
 }
 
 @keyframes pulse {

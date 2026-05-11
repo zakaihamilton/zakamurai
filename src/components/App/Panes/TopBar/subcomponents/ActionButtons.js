@@ -8,7 +8,7 @@ export default function ActionButtons({
   onCompile,
   onOpenLog,
   onOpenPreview,
-  isProcessing,
+  isSystemProcessing,
   activeTabId,
   showAIInput,
   onToggleAIInput,
@@ -20,7 +20,7 @@ export default function ActionButtons({
           type="button"
           className={`${styles.actionBtn} ${styles.compileBtn}`}
           onClick={onCompile}
-          disabled={isProcessing}
+          disabled={isSystemProcessing}
         >
           <Icons.Play />
           <span className={styles.hideOnMobile}>Compile</span>

@@ -102,7 +102,7 @@ export default function App() {
           expandedFolders={initialExpandedFolders}
         >
           <TabState openTabs={initialTabs} activeTabId={initialActiveTabId}>
-            <LogState isProcessing={false} logs={initialAILogs}>
+            <LogState isSystemProcessing={false} isAIProcessing={false} logs={initialAILogs}>
               <EditorState fileContents={initialContents}>
                 <PromptState promptWidth={initialPromptWidth}>
                   <PreviewState htmlContent={Settings.getPreviewHtml()} isCompilerReady={false}>

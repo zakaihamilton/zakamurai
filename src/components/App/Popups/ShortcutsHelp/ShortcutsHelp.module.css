@@ -68,17 +68,17 @@
 }
 
 .content {
-  padding: 32px;
+  padding: 24px;
   overflow-y: auto;
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 32px;
+  gap: 20px;
 }
 
 .group {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px;
 }
 
 .groupTitle {
@@ -89,6 +89,23 @@
   color: var(--accent);
   letter-spacing: 0.1em;
   opacity: 0.8;
+  display: flex;
+  align-items: center;
+}
+
+.sectionIndex {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  background: var(--accent);
+  color: #fff;
+  border-radius: 4px;
+  font-size: 10px;
+  margin-right: 8px;
+  font-weight: 800;
+  opacity: 1;
 }
 
 .items {

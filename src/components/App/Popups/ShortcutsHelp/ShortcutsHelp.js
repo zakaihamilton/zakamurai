@@ -8,9 +8,22 @@ import styles from './ShortcutsHelp.module.css';
 const SHORTCUTS = getShortcutsByGroup();
 
 export default function ShortcutsHelp({ isOpen, onClose }) {
+  const groupRefs = React.useRef([]);
   if (!isOpen) return null;
 
   const mac = isMac();
+
+  // Handle number keys to jump to sections
+  React.useEffect(() => {
+    const handleKeyDown = (e) => {
+      const num = Number.parseInt(e.key);
+      if (num >= 1 && num <= SHORTCUTS.length) {
+        groupRefs.current[num - 1]?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   return createPortal(
     <div className={styles.wrapper}>
@@ -30,9 +43,18 @@ export default function ShortcutsHelp({ isOpen, onClose }) {
           </button>
         </div>
         <div className={styles.content}>
-          {SHORTCUTS.map((group) => (
-            <div key={group.group} className={styles.group}>
-              <h3 className={styles.groupTitle}>{group.group}</h3>
+          {SHORTCUTS.map((group, index) => (
+            <div
+              key={group.group}
+              className={styles.group}
+              ref={(el) => {
+                groupRefs.current[index] = el;
+              }}
+            >
+              <h3 className={styles.groupTitle}>
+                <span className={styles.sectionIndex}>{index + 1}</span>
+                {group.group}
+              </h3>
               <div className={styles.items}>
                 {group.items.map((item) => (
                   <div key={item.desc} className={styles.item}>
@@ -49,13 +71,14 @@ export default function ShortcutsHelp({ isOpen, onClose }) {
             Press{' '}
             {mac ? (
               <>
-                <kbd>⌘</kbd>
+                <kbd>1-5</kbd> to jump to sections • <kbd>⌘</kbd>
                 <kbd>⇧</kbd>
                 <kbd>K</kbd>
               </>
             ) : (
               <>
-                <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>K</kbd>
+                <kbd>1-5</kbd> to jump to sections • <kbd>Ctrl</kbd> + <kbd>Shift</kbd> +{' '}
+                <kbd>K</kbd>
               </>
             )}{' '}
             anytime to open this view

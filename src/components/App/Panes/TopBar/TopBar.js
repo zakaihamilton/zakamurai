@@ -29,7 +29,7 @@ export default function TopBar() {
   const editorState = EditorState.useState();
   const logState = LogState.useState();
   const previewState = PreviewState.useState();
-  const { isProcessing } = logState;
+  const { isSystemProcessing, isAIProcessing } = logState;
   const { addNotification } = useNotification();
   const isCompilingRef = useRef(false);
 
@@ -47,12 +47,11 @@ export default function TopBar() {
 
   const handleCompile = useCallback(
     async (silent = false) => {
-      if (logState.isProcessing || isCompilingRef.current) return;
+      if (isSystemProcessing || isCompilingRef.current) return;
       isCompilingRef.current = true;
 
       logState((draft) => {
-        draft.isProcessing = true;
-        draft.processingType = 'system';
+        draft.isSystemProcessing = true;
       });
 
       if (!silent && tabState.activeTabId !== 'ai-logs') {
@@ -128,13 +127,22 @@ export default function TopBar() {
         addNotification(`Compilation failed: ${errorMsg}`, 'error');
       } finally {
         logState((draft) => {
-          draft.isProcessing = false;
-          draft.processingType = null;
+          draft.isSystemProcessing = false;
         });
         isCompilingRef.current = false;
       }
     },
-    [fs, folderTree, editorState, logState, previewState, tabState, addNotification, handleOpenLog],
+    [
+      fs,
+      folderTree,
+      editorState,
+      logState,
+      previewState,
+      tabState,
+      addNotification,
+      handleOpenLog,
+      isSystemProcessing,
+    ],
   );
 
   const handleOpenPreview = () => {
@@ -416,15 +424,13 @@ export default function TopBar() {
       <Breadcrumb breadcrumb={breadcrumb} onBreadcrumbClick={handleBreadcrumbClick} />
       <div className={styles.centerSection} />
       <div className={styles.actions}>
-        <WorkingIndicator
-          isProcessing={logState.isProcessing}
-          processingType={logState.processingType}
-        />
+        <WorkingIndicator isSystemProcessing={isSystemProcessing} isAIProcessing={isAIProcessing} />
         <ActionButtons
           onCompile={handleCompile}
           onOpenLog={handleOpenLog}
           onOpenPreview={handleOpenPreview}
-          isProcessing={isProcessing}
+          isSystemProcessing={isSystemProcessing}
+          isAIProcessing={isAIProcessing}
           activeTabId={activeTabId}
           showAIInput={showAIInput}
           onToggleAIInput={() =>
@@ -438,7 +444,8 @@ export default function TopBar() {
           onExportCompiledZip={handleExportCompiledZip}
           onStartOver={handleStartOver}
           onClearFS={handleClearFS}
-          isProcessing={isProcessing}
+          isSystemProcessing={isSystemProcessing}
+          isAIProcessing={isAIProcessing}
           onToggleShortcuts={() => {
             appState((draft) => {
               draft.showShortcuts = !draft.showShortcuts;
