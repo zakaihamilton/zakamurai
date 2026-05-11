@@ -21,11 +21,12 @@ import WorkingIndicator from './subcomponents/WorkingIndicator';
 
 export default function TopBar() {
   const appState = AppState.useState();
-  const { theme, projectName, fs, compileRequest, silentCompileRequest } = appState;
+  const { projectName, fs, compileRequest, silentCompileRequest, isMobile } = appState;
   const tabState = TabState.useState();
   const { openTabs = [], activeTabId } = tabState;
   const sidebarState = SidebarState.useState();
-  const { folderTree, showAIInput } = sidebarState;
+  const { folderTree, showAIInput, isSidebarOpen, isSidebarPopupOpen, isAIInputPopupOpen } =
+    sidebarState;
   const editorState = EditorState.useState();
   const logState = LogState.useState();
   const previewState = PreviewState.useState();
@@ -339,7 +340,7 @@ export default function TopBar() {
             ) {
               text = rewriteImports(cleanDevArtifacts(text));
             } else if (filePath.endsWith('.html')) {
-              text = rewriteHtmlScripts(text);
+              text = rewriteHtmlScripts(html);
             }
             zip.addFile(zipPath, text);
           } else {
@@ -368,12 +369,6 @@ export default function TopBar() {
     URL.revokeObjectURL(url);
   };
 
-  const toggleTheme = () => {
-    appState((draft) => {
-      draft.theme = draft.theme === 'light' ? 'dark' : 'light';
-    });
-  };
-
   let breadcrumb = ['Dashboard'];
   if (activeTab) {
     if (activeTab.type === 'file') {
@@ -400,12 +395,13 @@ export default function TopBar() {
     });
   };
 
-  const { isSidebarOpen } = sidebarState;
+  const isSidebarActive = isMobile ? isSidebarPopupOpen : isSidebarOpen;
+  const isAIInputActive = isMobile ? isAIInputPopupOpen : showAIInput;
 
   return (
-    <header className={`${styles.header} ${isSidebarOpen ? styles.sidebarOpen : ''}`}>
+    <header className={`${styles.header} ${isSidebarActive ? styles.sidebarOpen : ''}`}>
       <Tooltip
-        content={sidebarState.isSidebarOpen ? 'Collapse Sidebar' : 'Expand Sidebar'}
+        content={isSidebarActive ? 'Collapse Sidebar' : 'Expand Sidebar'}
         shortcut={formatShortcut('⌘B')}
         className={styles.menuToggle}
       >
@@ -413,7 +409,12 @@ export default function TopBar() {
           type="button"
           onClick={() =>
             sidebarState((draft) => {
-              draft.isSidebarOpen = !draft.isSidebarOpen;
+              if (isMobile) {
+                draft.isSidebarPopupOpen = !draft.isSidebarPopupOpen;
+                draft.isAIInputPopupOpen = false;
+              } else {
+                draft.isSidebarOpen = !draft.isSidebarOpen;
+              }
             })
           }
         >
@@ -432,10 +433,15 @@ export default function TopBar() {
           isSystemProcessing={isSystemProcessing}
           isAIProcessing={isAIProcessing}
           activeTabId={activeTabId}
-          showAIInput={showAIInput}
+          showAIInput={isAIInputActive}
           onToggleAIInput={() =>
             sidebarState((draft) => {
-              draft.showAIInput = !draft.showAIInput;
+              if (isMobile) {
+                draft.isAIInputPopupOpen = !draft.isAIInputPopupOpen;
+                draft.isSidebarPopupOpen = false;
+              } else {
+                draft.showAIInput = !draft.showAIInput;
+              }
             })
           }
         />
@@ -452,7 +458,7 @@ export default function TopBar() {
             });
           }}
         />
-        <ThemeToggle theme={theme} onToggle={toggleTheme} />
+        <ThemeToggle />
       </div>
     </header>
   );

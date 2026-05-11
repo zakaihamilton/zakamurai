@@ -38,17 +38,22 @@ const filterTree = (nodes, query) => {
     .sort(treeSorter);
 };
 
-export default function Sidebar({ isMobile }) {
+export default function Sidebar() {
   const sidebarState = SidebarState.useState();
   const { isSidebarOpen, folderTree, sidebarWidth } = sidebarState;
   const appState = AppState.useState();
-  const { projectName } = appState;
+  const { projectName, isMobile } = appState;
   const sidebarUiState = SidebarUiState.useState(null, { filterText: '' });
   const { filterText = '' } = sidebarUiState || {};
 
   const toggleSidebar = () => {
     sidebarState((d) => {
-      d.isSidebarOpen = !d.isSidebarOpen;
+      if (isMobile) {
+        d.isSidebarPopupOpen = !d.isSidebarPopupOpen;
+        d.isAIInputPopupOpen = false;
+      } else {
+        d.isSidebarOpen = !d.isSidebarOpen;
+      }
     });
   };
 
@@ -70,18 +75,20 @@ export default function Sidebar({ isMobile }) {
     return filterTree(nodes, filterText);
   }, [folderTree, filterText]);
 
+  const isOpen = isMobile ? sidebarState.isSidebarPopupOpen : isSidebarOpen;
+
   return (
     <aside
-      className={`${styles.sidebar} ${isSidebarOpen ? styles.isOpen : ''}`}
+      className={`${styles.sidebar} ${isOpen ? styles.isOpen : ''}`}
       style={{
-        width: isMobile ? undefined : isSidebarOpen ? `${sidebarWidth}px` : '0px',
+        width: isMobile ? undefined : isOpen ? `${sidebarWidth}px` : '0px',
       }}
     >
       {/* Dynamic Header Section */}
-      {isSidebarOpen && (
+      {isOpen && (
         <div className={styles.header}>
           <Tooltip
-            content={isSidebarOpen ? 'Collapse Sidebar' : 'Expand Sidebar'}
+            content={isOpen ? 'Collapse Sidebar' : 'Expand Sidebar'}
             shortcut={formatShortcut('⌘B')}
           >
             <button
@@ -93,7 +100,7 @@ export default function Sidebar({ isMobile }) {
               <Icons.ZLogo size={32} />
             </button>
           </Tooltip>
-          <div className={styles.projectNameContainer} style={{ opacity: isSidebarOpen ? 1 : 0 }}>
+          <div className={styles.projectNameContainer} style={{ opacity: isOpen ? 1 : 0 }}>
             <span className={styles.tagline}>
               ZAKAMUR<span className={styles.aiHighlight}>AI</span>
             </span>
@@ -102,7 +109,7 @@ export default function Sidebar({ isMobile }) {
       )}
 
       {/* Mount Section */}
-      {isSidebarOpen && (
+      {isOpen && (
         <div className={styles.mountSection}>
           {!appState.fs.mode ? (
             <button type="button" onClick={appState.fs.mountLocal} className={styles.mountButton}>
@@ -119,7 +126,7 @@ export default function Sidebar({ isMobile }) {
       )}
 
       {/* Filter Section */}
-      {isSidebarOpen && (
+      {isOpen && (
         <div className={styles.filterSection}>
           <div className={styles.searchContainer}>
             <div className={styles.searchIcon}>
@@ -144,8 +151,8 @@ export default function Sidebar({ isMobile }) {
       <div
         className={`${styles.treeArea} scroll-hide`}
         style={{
-          opacity: isSidebarOpen ? 1 : 0,
-          pointerEvents: isSidebarOpen ? 'auto' : 'none',
+          opacity: isOpen ? 1 : 0,
+          pointerEvents: isOpen ? 'auto' : 'none',
         }}
       >
         <TreeItem
@@ -164,7 +171,7 @@ export default function Sidebar({ isMobile }) {
             });
           }}
         />
-        {filteredTree.length === 0 && !appState.fs.mode && isSidebarOpen && (
+        {filteredTree.length === 0 && !appState.fs.mode && isOpen && (
           <div className={styles.noFiles}>No files found matching "{filterText}"</div>
         )}
       </div>

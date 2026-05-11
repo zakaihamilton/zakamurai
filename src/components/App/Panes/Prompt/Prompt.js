@@ -15,8 +15,8 @@ import styles from './Prompt.module.css';
 export const PromptState = createState('PromptState');
 const PromptUiState = createState('PromptUiState');
 
-export default function Prompt({ isMobile }) {
-  const { fs } = AppState.useState();
+export default function Prompt() {
+  const { fs, isMobile } = AppState.useState();
   const promptUiState = PromptUiState.useState(null, { val: '', historyIndex: -1, draftVal: '' });
   const { val = '', historyIndex = -1, draftVal = '' } = promptUiState || {};
   const reasoningRef = useRef(null);
@@ -254,12 +254,14 @@ FORMAT FOR FULL FILE REWRITE (ONLY FOR NEW FILES OR COMPLETE OVERHAULS):
   const currentActiveTabId = tabState.activeTabId;
   const selectedLines = editorState.selectedLines?.[currentActiveTabId] || [];
 
+  const isOpen = isMobile ? sidebarState.isAIInputPopupOpen : showAIInput;
+
   return (
     <aside
-      className={`${styles.prompt} ${showAIInput ? styles.open : styles.closed}`}
-      aria-hidden={!showAIInput}
+      className={`${styles.prompt} ${isOpen ? styles.open : styles.closed}`}
+      aria-hidden={!isOpen}
       style={{
-        width: isMobile ? undefined : showAIInput ? `${promptWidth}px` : '0px',
+        width: isMobile ? undefined : isOpen ? `${promptWidth}px` : '0px',
       }}
     >
       <div className={styles.content}>
@@ -309,12 +311,12 @@ FORMAT FOR FULL FILE REWRITE (ONLY FOR NEW FILES OR COMPLETE OVERHAULS):
               });
             }}
             onKeyDown={handleKeyDown}
-            disabled={isAIProcessing || !showAIInput}
+            disabled={isAIProcessing || !isOpen}
             placeholder={
               isAIProcessing ? 'AI is working... Please wait.' : 'Enter the AI prompt here...'
             }
             className={styles.input}
-            tabIndex={showAIInput ? undefined : -1}
+            tabIndex={isOpen ? undefined : -1}
           />
           <div className={styles.actions}>
             {isAIProcessing && (
@@ -323,7 +325,7 @@ FORMAT FOR FULL FILE REWRITE (ONLY FOR NEW FILES OR COMPLETE OVERHAULS):
                   type="button"
                   onClick={handleStop}
                   className={`${styles.button} ${styles.stopButton}`}
-                  tabIndex={showAIInput ? undefined : -1}
+                  tabIndex={isOpen ? undefined : -1}
                 >
                   <Icons.Close />
                 </button>
@@ -332,9 +334,9 @@ FORMAT FOR FULL FILE REWRITE (ONLY FOR NEW FILES OR COMPLETE OVERHAULS):
             <Tooltip content="Execute prompt" shortcut="↵">
               <button
                 type="submit"
-                disabled={!isBtnActive || !showAIInput}
+                disabled={!isBtnActive || !isOpen}
                 className={`${styles.button} ${isBtnActive ? styles.buttonActive : styles.buttonDisabled}`}
-                tabIndex={showAIInput ? undefined : -1}
+                tabIndex={isOpen ? undefined : -1}
               >
                 <Icons.Send />
               </button>
