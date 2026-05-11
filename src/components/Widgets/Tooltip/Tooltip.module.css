@@ -25,6 +25,7 @@
   box-shadow: var(--tooltip-shadow);
   border: 1px solid var(--tooltip-border);
   transition: opacity 0.2s;
+  overflow: hidden;
 }
 
 .light {
@@ -109,7 +110,14 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  white-space: nowrap;
+  white-space: normal;
+  max-width: 100%;
+}
+
+.content {
+  flex: 1;
+  min-width: 0;
+  line-height: 1.4;
 }
 
 .shortcut {

@@ -67,16 +67,24 @@ export default function Tooltip({ content, shortcut, children, className = '' })
 
       if (newPlacement !== placement) {
         setPlacement(newPlacement);
-        return; // Re-run effect with new placement
+        return;
       }
 
       // Horizontal positioning and clamping
       const triggerCenter = triggerRect.left + triggerRect.width / 2 + window.scrollX;
       const halfWidth = tooltipRect.width / 2;
+      
+      // Ensure we don't go off screen horizontally
       const minLeft = window.scrollX + halfWidth + margin;
       const maxLeft = window.scrollX + window.innerWidth - halfWidth - margin;
 
-      const left = Math.max(minLeft, Math.min(maxLeft, triggerCenter));
+      // Handle cases where tooltip is wider than window
+      let left = triggerCenter;
+      if (tooltipRect.width + 2 * margin > window.innerWidth) {
+        left = window.scrollX + window.innerWidth / 2;
+      } else {
+        left = Math.max(minLeft, Math.min(maxLeft, triggerCenter));
+      }
 
       // Final vertical position
       let top =
@@ -101,7 +109,11 @@ export default function Tooltip({ content, shortcut, children, className = '' })
       }
 
       setCoords({ top, left });
-      setArrowOffset(triggerCenter - left);
+      
+      // Clamp arrow offset to stay within tooltip boundaries (considering border radius)
+      const maxArrowOffset = Math.max(0, halfWidth - 15);
+      const rawArrowOffset = triggerCenter - left;
+      setArrowOffset(Math.max(-maxArrowOffset, Math.min(maxArrowOffset, rawArrowOffset)));
     }
   }, [isVisible, placement]);
 
@@ -136,6 +148,7 @@ export default function Tooltip({ content, shortcut, children, className = '' })
               left: `${coords.left}px`,
               position: 'absolute',
               '--arrow-offset': `${arrowOffset}px`,
+              maxWidth: `min(280px, ${window.innerWidth - 20}px)`,
             }}
           >
             <div className={styles.inner}>

@@ -9,12 +9,11 @@ const SHORTCUTS = getShortcutsByGroup();
 
 export default function ShortcutsHelp({ isOpen, onClose }) {
   const groupRefs = React.useRef([]);
-  if (!isOpen) return null;
-
-  const mac = isMac();
 
   // Handle number keys to jump to sections
   React.useEffect(() => {
+    if (!isOpen) return;
+
     const handleKeyDown = (e) => {
       const num = Number.parseInt(e.key);
       if (num >= 1 && num <= SHORTCUTS.length) {
@@ -23,7 +22,11 @@ export default function ShortcutsHelp({ isOpen, onClose }) {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
+  }, [isOpen]);
+
+  if (!isOpen) return null;
+
+  const mac = isMac();
 
   return createPortal(
     <div className={styles.wrapper}>

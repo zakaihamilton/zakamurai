@@ -234,6 +234,28 @@
   padding: 8px 16px;
   border-radius: 10px;
   box-shadow: 0 4px 12px var(--accent-glow);
+  cursor: pointer;
+  transition: all 0.2s var(--ease-premium);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.compileBtn:hover:not(:disabled) {
+  filter: brightness(1.1);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px var(--accent-glow);
+}
+
+.compileBtn:active:not(:disabled) {
+  transform: translateY(0) scale(0.98);
+  filter: brightness(0.9);
+}
+
+.compileBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  filter: grayscale(1);
 }
 
 .tabBtn {
