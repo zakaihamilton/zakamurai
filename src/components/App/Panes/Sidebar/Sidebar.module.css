@@ -243,3 +243,8 @@
     transform: translateX(-100%);
   }
 }
+
+.sidebar:not(.isOpen) {
+  border-right: none;
+}
+

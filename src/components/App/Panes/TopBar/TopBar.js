@@ -7,6 +7,8 @@ import { LogState } from '@/components/App/Views/LogArea';
 import { Icons } from '@/components/Core/Base/Icons';
 import Settings from '@/components/Storage/Settings';
 import { useNotification } from '@/components/Widgets/Notification/Notification';
+import { formatShortcut } from '@/utils/os';
+import Tooltip from '@/components/Widgets/Tooltip/Tooltip';
 import { Compiler } from '@/utils/compiler';
 import { ZipWriter } from '@/utils/zip';
 import React, { useCallback, useEffect, useRef } from 'react';
@@ -390,19 +392,27 @@ export default function TopBar() {
     });
   };
 
+  const { isSidebarOpen } = sidebarState;
+
   return (
-    <header className={styles.header}>
-      <button
-        type="button"
+    <header className={`${styles.header} ${isSidebarOpen ? styles.sidebarOpen : ''}`}>
+      <Tooltip
+        content={sidebarState.isSidebarOpen ? 'Collapse Sidebar' : 'Expand Sidebar'}
+        shortcut={formatShortcut('⌘B')}
         className={styles.menuToggle}
-        onClick={() =>
-          sidebarState((draft) => {
-            draft.isSidebarOpen = !draft.isSidebarOpen;
-          })
-        }
       >
-        <Icons.Menu />
-      </button>
+        <button
+          type="button"
+          onClick={() =>
+            sidebarState((draft) => {
+              draft.isSidebarOpen = !draft.isSidebarOpen;
+            })
+          }
+        >
+          <Icons.ZLogo size={32} />
+        </button>
+      </Tooltip>
+
       <Breadcrumb breadcrumb={breadcrumb} onBreadcrumbClick={handleBreadcrumbClick} />
       <div className={styles.centerSection} />
       <div className={styles.actions}>

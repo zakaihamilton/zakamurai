@@ -79,30 +79,32 @@ export default function Sidebar() {
             ? undefined
             : isSidebarOpen
               ? `${sidebarWidth}px`
-              : '64px',
+              : '0px',
       }}
     >
       {/* Dynamic Header Section */}
-      <div className={styles.header}>
-        <Tooltip
-          content={isSidebarOpen ? 'Collapse Sidebar' : 'Expand Sidebar'}
-          shortcut={formatShortcut('⌘B')}
-        >
-          <button
-            type="button"
-            onClick={toggleSidebar}
-            onKeyDown={(e) => e.key === 'Enter' && toggleSidebar()}
-            className={styles.logo}
+      {isSidebarOpen && (
+        <div className={styles.header}>
+          <Tooltip
+            content={isSidebarOpen ? 'Collapse Sidebar' : 'Expand Sidebar'}
+            shortcut={formatShortcut('⌘B')}
           >
-            <Icons.ZLogo size={32} />
-          </button>
-        </Tooltip>
-        <div className={styles.projectNameContainer} style={{ opacity: isSidebarOpen ? 1 : 0 }}>
-          <span className={styles.tagline}>
-            ZAKAMUR<span className={styles.aiHighlight}>AI</span>
-          </span>
+            <button
+              type="button"
+              onClick={toggleSidebar}
+              onKeyDown={(e) => e.key === 'Enter' && toggleSidebar()}
+              className={styles.logo}
+            >
+              <Icons.ZLogo size={32} />
+            </button>
+          </Tooltip>
+          <div className={styles.projectNameContainer} style={{ opacity: isSidebarOpen ? 1 : 0 }}>
+            <span className={styles.tagline}>
+              ZAKAMUR<span className={styles.aiHighlight}>AI</span>
+            </span>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Mount Section */}
       {isSidebarOpen && (

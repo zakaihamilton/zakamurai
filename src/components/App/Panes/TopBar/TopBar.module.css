@@ -129,20 +129,42 @@
 }
 
 .menuToggle {
-  display: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  color: var(--text-main);
+  padding: 0;
+  cursor: pointer;
+  margin-right: 18px;
+  flex-shrink: 0;
+  transition: transform 0.2s var(--ease-premium);
+}
+
+.menuToggle:hover {
+  transform: scale(1.05) rotate(-5deg);
+}
+
+.menuToggle button {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  display: flex;
+  color: inherit;
+}
+
+@media (min-width: 769px) {
+  .sidebarOpen .menuToggle {
+    display: none;
+  }
 }
 
 @media (max-width: 768px) {
   .menuToggle {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: none;
-    border: none;
-    color: var(--text-main);
-    padding: 8px;
-    cursor: pointer;
     margin-right: 8px;
+    padding: 8px;
   }
 }
 
