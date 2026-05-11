@@ -29,13 +29,13 @@ import PreviewArea from './Views/PreviewArea';
 import { AppState } from './AppState';
 import { PreviewState } from './PreviewState';
 
+import Node from '../Core/Base/Node';
 import KeyboardHandler from './Manager/KeyboardHandler';
 // Persistence
 import ContentSaver from './Persistence/ContentSaver';
 import PreviewRestorer from './Persistence/PreviewRestorer';
 import ProjectNameSaver from './Persistence/ProjectNameSaver';
 import TabRestorer from './Persistence/TabRestorer';
-import Node from '../Core/Base/Node';
 
 const AppWrapperState = createState('AppWrapperState');
 
