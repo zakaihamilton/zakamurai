@@ -189,16 +189,50 @@
 }
 @media (max-width: 768px) {
   .dashboard {
-    padding: 24px 20px;
+    padding: 24px 16px;
+    justify-content: flex-start;
+  }
+  .hero {
+    margin-bottom: 24px;
+  }
+  .logoWrapper {
+    margin-bottom: 12px;
+    transform: scale(0.8);
   }
   .title {
-    font-size: 32px;
+    font-size: 28px;
+    letter-spacing: -0.5px;
+  }
+  .subtitle {
+    font-size: 14px;
+    padding: 0 10px;
+    max-width: 100%;
   }
   .grid {
     grid-template-columns: 1fr;
-    gap: 30px;
+    gap: 24px;
   }
-  .hero {
-    margin-bottom: 40px;
+  .section h3 {
+    margin-bottom: 10px;
+    font-size: 11px;
+  }
+  .card {
+    padding: 12px;
+    gap: 10px;
+  }
+  .cardLabel {
+    font-size: 14px;
+  }
+  .cardHint {
+    font-size: 11px;
+  }
+  .shortcut {
+    padding: 10px 0;
+    font-size: 13px;
+  }
+  .footer {
+    margin-top: 32px;
+    padding-top: 16px;
+    padding-bottom: 40px;
   }
 }

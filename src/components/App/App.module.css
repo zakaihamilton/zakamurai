@@ -92,6 +92,7 @@
 .appWrapper {
   display: flex;
   height: 100vh;
+  height: 100dvh;
   width: 100vw;
   background: var(--bg-base);
   background-image: radial-gradient(at 0% 0%, var(--accent-light) 0, transparent 50%),

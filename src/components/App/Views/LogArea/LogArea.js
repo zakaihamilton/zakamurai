@@ -21,7 +21,6 @@ export default function LogArea() {
   const isProcessing = isSystemProcessing || isAIProcessing;
   const logAreaUiState = LogAreaUiState.useState(null, { copied: false, autoScroll: true });
   const { copied = false, autoScroll = true } = logAreaUiState || {};
-  const bottomRef = useRef();
   const containerRef = useRef();
 
   useEffect(() => {
@@ -32,8 +31,8 @@ export default function LogArea() {
   }, [logs]);
 
   useEffect(() => {
-    if (autoScroll && (logs.length || isProcessing)) {
-      bottomRef.current?.scrollIntoView({ behavior: 'auto' });
+    if (autoScroll && containerRef.current && (logs.length || isProcessing)) {
+      containerRef.current.scrollTop = containerRef.current.scrollHeight;
     }
   }, [logs, isProcessing, autoScroll]);
 
@@ -66,7 +65,10 @@ export default function LogArea() {
     logAreaUiState((draft) => {
       draft.autoScroll = true;
     });
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    containerRef.current?.scrollTo({
+      top: containerRef.current.scrollHeight,
+      behavior: 'smooth',
+    });
   };
 
   const handleClear = () => {
@@ -157,7 +159,6 @@ export default function LogArea() {
               </div>
             </div>
           )}
-          <div ref={bottomRef} style={{ height: '10px' }} />
         </div>
       </div>
 

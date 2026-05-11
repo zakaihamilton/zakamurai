@@ -173,6 +173,23 @@ function PassiveWrapper() {
     Settings.setExpandedFolders(expandedFolders);
   }, [expandedFolders]);
 
+  // Close sidebars when transitioning to mobile view
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth <= 768) {
+        if (isSidebarOpen || showAIInput) {
+          sidebarState((draft) => {
+            draft.isSidebarOpen = false;
+            draft.showAIInput = false;
+          });
+        }
+      }
+    };
+    window.addEventListener("resize", handleResize);
+    handleResize();
+    return () => window.removeEventListener("resize", handleResize);
+  }, [isSidebarOpen, showAIInput, sidebarState]);
+
   const handleSidebarResize = (clientX) => {
     if (isSidebarOpen) {
       sidebarState((draft) => {

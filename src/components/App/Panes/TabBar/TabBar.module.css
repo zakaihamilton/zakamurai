@@ -3,7 +3,9 @@
   background: var(--bg-tab-inactive);
   border-bottom: 1px solid var(--border);
   min-height: 44px;
-  position: relative;
+  position: sticky;
+  top: 0;
+  z-index: 500;
 }
 
 .tabBar {
