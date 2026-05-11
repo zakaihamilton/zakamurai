@@ -40,7 +40,7 @@ export default function AppContent() {
   };
 
   const closeOverlays = () => {
-    if (window.innerWidth <= 768) {
+    if (isMobile) {
       sidebarState((draft) => {
         draft.isSidebarPopupOpen = false;
         draft.isAIInputPopupOpen = false;

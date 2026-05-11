@@ -113,7 +113,7 @@
 .actions {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 16px;
 }
 
 @media (max-width: 768px) {
@@ -169,6 +169,35 @@
   }
 }
 
+.actionGroups {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.compileGroup {
+  display: flex;
+  align-items: center;
+}
+
+.viewTabs {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  background: var(--bg-input);
+  padding: 4px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  box-shadow: 
+    inset 0 2px 4px rgba(0, 0, 0, 0.2),
+    0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.sidebarToggleGroup {
+  display: flex;
+  align-items: center;
+}
+
 .actionBtn {
   background: var(--bg-surface);
   border: 1px solid var(--border);
@@ -183,7 +212,9 @@
   font-weight: 500;
   transition: all 0.2s var(--ease-premium);
   font-family: inherit;
-  box-shadow: var(--shadow-sm);
+  box-shadow: 
+    var(--shadow-sm),
+    0 0 0 1px rgba(255, 255, 255, 0.05);
   position: relative;
   overflow: hidden;
 }
@@ -195,106 +226,76 @@
   box-shadow: 0 4px 15px var(--accent-glow);
 }
 
-.actionBtn:active {
-  transform: translateY(0) scale(0.96);
-  box-shadow: 0 2px 5px var(--accent-glow);
-}
-
-.actionBtn.active {
-  background: var(--accent-light);
-  color: var(--accent);
-  border-color: var(--accent);
-}
-
 .compileBtn {
   background: linear-gradient(135deg, var(--accent) 0%, #6366f1 100%);
   color: white;
-  border: none;
+  border: 1px solid rgba(255, 255, 255, 0.1);
   font-weight: 600;
-  padding: 8px 20px;
+  padding: 8px 16px;
+  border-radius: 10px;
   box-shadow: 0 4px 12px var(--accent-glow);
-  position: relative;
-  overflow: hidden;
 }
 
-.compileBtn::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-  transition: 0.5s;
-}
-
-.compileBtn:hover:not(:disabled)::before {
-  left: 100%;
-}
-
-.compileBtn:hover:not(:disabled) {
-  filter: brightness(1.1);
-  transform: translateY(-2px) scale(1.02);
-  box-shadow: 0 8px 25px var(--accent-glow);
-  color: white;
-}
-
-.compileBtn:active:not(:disabled) {
-  transform: translateY(0) scale(0.96);
-  box-shadow: 0 2px 8px var(--accent-glow);
-  filter: brightness(0.9);
-}
-
-.compileBtn:disabled {
-  background: var(--bg-surface);
+.tabBtn {
+  background: transparent;
+  border: 1px solid transparent;
   color: var(--text-muted);
-  border: 1px solid var(--border);
-  box-shadow: none;
-  cursor: not-allowed;
-  filter: grayscale(1);
-  opacity: 0.6;
-}
-
-.compileBtn svg {
-  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
-  transition: transform 0.2s var(--ease-premium);
-}
-
-.compileBtn:hover:not(:disabled) svg {
-  transform: rotate(10deg);
-}
-
-.compileGroup {
+  padding: 6px 12px;
+  border-radius: 8px;
+  cursor: pointer;
   display: flex;
   align-items: center;
-  gap: 6px;
-  background: var(--bg-input);
-  padding: 4px;
-  border-radius: 12px;
-  border: 1px solid var(--border);
+  justify-content: center;
+  transition: all 0.2s var(--ease-premium);
+  min-width: 40px;
+  height: 32px;
 }
 
-.terminalToggleBtn,
-.iconBtn {
-  background: transparent;
-  border: none;
-  box-shadow: none;
-  padding: 8px;
-  border-radius: 8px;
-  color: var(--text-muted);
-}
-
-.terminalToggleBtn:hover,
-.iconBtn:hover {
-  background: var(--bg-surface);
+.tabBtn:hover {
   color: var(--text-main);
-  transform: none;
-  box-shadow: none;
+  background: rgba(255, 255, 255, 0.05);
 }
 
 .activeTab {
   background: var(--bg-surface) !important;
   color: var(--accent) !important;
+  border: 1px solid var(--border-light) !important;
+  box-shadow: 
+    0 2px 8px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.sidebarBtn {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.2s var(--ease-premium);
+  box-shadow: 
+    var(--shadow-sm),
+    0 0 0 1px rgba(255, 255, 255, 0.05);
+}
+
+.sidebarBtn:hover {
+  border-color: var(--accent);
+  color: var(--text-main);
+  transform: scale(1.05);
+  box-shadow: 0 4px 15px var(--accent-glow);
+}
+
+.activeSidebar {
+  background: var(--accent-light) !important;
+  color: var(--accent) !important;
+  border-color: var(--accent) !important;
+  box-shadow: 
+    0 0 20px var(--accent-glow),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.05) !important;
 }
 
 .themeToggle {

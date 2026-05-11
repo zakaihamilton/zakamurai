@@ -40,7 +40,7 @@ export const SHORTCUTS = [
   {
     id: 'show-logs',
     group: SHORTCUT_GROUPS.NAVIGATION,
-    desc: 'Show Logs',
+    desc: 'Goto Logs',
     key: 'u',
     displayKey: '⌘U',
     modifier: 'cmd',
@@ -54,7 +54,7 @@ export const SHORTCUTS = [
   {
     id: 'show-preview',
     group: SHORTCUT_GROUPS.NAVIGATION,
-    desc: 'Show Preview',
+    desc: 'Goto Preview',
     key: 'i',
     displayKey: '⌘I',
     modifier: 'cmd',

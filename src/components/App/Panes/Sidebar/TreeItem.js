@@ -29,7 +29,7 @@ export default function TreeItem({
   onRename = null,
 }) {
   const appState = AppState.useState();
-  const { fs } = appState;
+  const { fs, isMobile } = appState;
   const sidebarState = SidebarState.useState();
   const { expandedFolders = {} } = sidebarState;
   const tabState = TabState.useState();
@@ -157,7 +157,7 @@ export default function TreeItem({
           });
         }
 
-        if (typeof window !== 'undefined' && window.innerWidth <= 768) {
+        if (isMobile) {
           sidebarState((draft) => {
             draft.isSidebarOpen = false;
           });

@@ -12,6 +12,7 @@ import { LogState } from './Views/LogArea';
 
 // App State
 import { AppState } from './AppState';
+import { MOBILE_BREAKPOINT } from '@/constants/Layout';
 
 import AppBackgroundServices from './App/AppBackgroundServices';
 import AppContent from './App/AppContent';
@@ -52,7 +53,7 @@ export default function App() {
     fs,
     showShortcuts: false,
     isResizing: false,
-    isMobile: typeof window !== 'undefined' ? window.innerWidth <= 768 : false,
+    isMobile: typeof window !== 'undefined' ? window.innerWidth <= MOBILE_BREAKPOINT : false,
   });
   const sidebarState = SidebarState.useState(null, {
     isSidebarOpen: initialIsSidebarOpen,
@@ -103,7 +104,7 @@ export default function App() {
 
   useEffect(() => {
     const checkMobile = () => {
-      const isMobileNow = window.innerWidth <= 768;
+      const isMobileNow = window.innerWidth <= MOBILE_BREAKPOINT;
       appState((draft) => {
         draft.isMobile = isMobileNow;
       });
