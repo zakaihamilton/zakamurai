@@ -1,5 +1,6 @@
 'use client';
 
+import { Icons } from '@/components/Core/Base/Icons';
 import { createState } from '@/components/Core/Base/State';
 import { useFileSystem } from '@/components/Storage';
 import { DEFAULT_CONTENTS, DEFAULT_FILES } from '@/components/Storage/InitialData';
@@ -34,6 +35,7 @@ import ContentSaver from './Persistence/ContentSaver';
 import PreviewRestorer from './Persistence/PreviewRestorer';
 import ProjectNameSaver from './Persistence/ProjectNameSaver';
 import TabRestorer from './Persistence/TabRestorer';
+import Node from '../Core/Base/Node';
 
 const AppWrapperState = createState('AppWrapperState');
 
@@ -69,34 +71,55 @@ export default function App() {
   const initialShowAIInput = useMemo(() => Settings.getShowAIInput(), []);
   const initialExpandedFolders = useMemo(() => Settings.getExpandedFolders(), []);
 
+  if (!fs.isReady) {
+    return (
+      <div className={styles.loadingContainer}>
+        <div className={styles.loadingContent}>
+          <div className={styles.logoWrapper}>
+            <Icons.ZLogo size={64} className={styles.loadingLogo} />
+            <div className={styles.logoGlow} />
+          </div>
+          <div className={styles.loadingText}>
+            <h2>Zakamurai</h2>
+            <div className={styles.progressTrack}>
+              <div className={styles.progressBar} />
+            </div>
+            <p>Initializing workspace...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className={styles.root}>
-      <AppState
-        theme={initialTheme}
-        projectName={initialProjectName}
-        fs={fs}
-        showShortcuts={false}
-      />
-      <ProjectNameSaver />
-      <Notification />
-      <SidebarState
-        isSidebarOpen={initialIsSidebarOpen}
-        showAIInput={initialShowAIInput}
-        folderTree={initialFiles}
-        sidebarWidth={initialSidebarWidth}
-        expandedFolders={initialExpandedFolders}
-      />
-      <TabState openTabs={initialTabs} activeTabId={initialActiveTabId} />
-      <LogState isProcessing={false} logs={initialAILogs} />
-      <EditorState fileContents={initialContents} />
-      <PromptState promptWidth={initialPromptWidth} />
-      <PreviewState htmlContent={Settings.getPreviewHtml()} isCompilerReady={false} />
-
-      <TabRestorer />
-      <PreviewRestorer />
-      <ContentSaver />
-      <KeyboardHandler />
-      <PassiveWrapper />
+      <AppState theme={initialTheme} projectName={initialProjectName} fs={fs} showShortcuts={false}>
+        <SidebarState
+          isSidebarOpen={initialIsSidebarOpen}
+          showAIInput={initialShowAIInput}
+          folderTree={initialFiles}
+          sidebarWidth={initialSidebarWidth}
+          expandedFolders={initialExpandedFolders}
+        >
+          <TabState openTabs={initialTabs} activeTabId={initialActiveTabId}>
+            <LogState isProcessing={false} logs={initialAILogs}>
+              <EditorState fileContents={initialContents}>
+                <PromptState promptWidth={initialPromptWidth}>
+                  <PreviewState htmlContent={Settings.getPreviewHtml()} isCompilerReady={false}>
+                    <ProjectNameSaver />
+                    <Notification />
+                    <TabRestorer />
+                    <PreviewRestorer />
+                    <ContentSaver />
+                    <KeyboardHandler />
+                    <PassiveWrapper />
+                  </PreviewState>
+                </PromptState>
+              </EditorState>
+            </LogState>
+          </TabState>
+        </SidebarState>
+      </AppState>
     </div>
   );
 }
@@ -228,12 +251,14 @@ function PassiveWrapper() {
       )}
       <Sidebar />
       {isSidebarOpen && (
-        <Resizer
-          onResize={handleSidebarResize}
-          onResizeStart={handleResizeStart}
-          onResizeEnd={handleResizeEnd}
-          onDoubleClick={handleSidebarReset}
-        />
+        <Node>
+          <Resizer
+            onResize={handleSidebarResize}
+            onResizeStart={handleResizeStart}
+            onResizeEnd={handleResizeEnd}
+            onDoubleClick={handleSidebarReset}
+          />
+        </Node>
       )}
       <div className={styles.mainContent}>
         <TopBar />
@@ -250,12 +275,14 @@ function PassiveWrapper() {
             </div>
           </div>
           {showAIInput && (
-            <Resizer
-              onResize={handlePromptResize}
-              onResizeStart={handleResizeStart}
-              onResizeEnd={handleResizeEnd}
-              onDoubleClick={handlePromptReset}
-            />
+            <Node>
+              <Resizer
+                onResize={handlePromptResize}
+                onResizeStart={handleResizeStart}
+                onResizeEnd={handleResizeEnd}
+                onDoubleClick={handlePromptReset}
+              />
+            </Node>
           )}
           <Prompt />
         </div>

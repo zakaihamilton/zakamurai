@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 const DB_NAME = 'ZakamuraiFS';
 const STORE_NAME = 'handles';
@@ -261,25 +261,48 @@ export function useFileSystem() {
     }
   }, []);
 
-  return {
-    mode,
-    files,
-    error,
-    version,
-    currentDirHandle,
-    rootHandle,
-    mountOPFS,
-    mountLocal,
-    refreshDirectory,
-    triggerRefresh,
-    readFile,
-    writeFile,
-    writeFileAtPath,
-    getFileHandleAtPath,
-    createFolder,
-    deleteEntry,
-    moveEntry,
-    unlinkProject,
-    isReady,
-  };
+  return useMemo(
+    () => ({
+      mode,
+      files,
+      error,
+      version,
+      currentDirHandle,
+      rootHandle,
+      mountOPFS,
+      mountLocal,
+      refreshDirectory,
+      triggerRefresh,
+      readFile,
+      writeFile,
+      writeFileAtPath,
+      getFileHandleAtPath,
+      createFolder,
+      deleteEntry,
+      moveEntry,
+      unlinkProject,
+      isReady,
+    }),
+    [
+      mode,
+      files,
+      error,
+      version,
+      currentDirHandle,
+      rootHandle,
+      mountOPFS,
+      mountLocal,
+      refreshDirectory,
+      triggerRefresh,
+      readFile,
+      writeFile,
+      writeFileAtPath,
+      getFileHandleAtPath,
+      createFolder,
+      deleteEntry,
+      moveEntry,
+      unlinkProject,
+      isReady,
+    ],
+  );
 }
