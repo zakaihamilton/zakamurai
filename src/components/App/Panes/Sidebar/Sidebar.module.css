@@ -223,3 +223,15 @@
   margin-left: 12px;
   white-space: nowrap;
 }
+
+@media (max-width: 768px) {
+  .sidebar {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 1000;
+    box-shadow: 4px 0 20px rgba(0, 0, 0, 0.5);
+    background: var(--bg-surface);
+  }
+}

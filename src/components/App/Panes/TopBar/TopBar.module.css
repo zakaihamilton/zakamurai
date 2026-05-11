@@ -103,6 +103,21 @@
   gap: 10px;
 }
 
+@media (max-width: 768px) {
+  .header {
+    overflow-x: auto;
+    padding: 0 10px;
+    -webkit-overflow-scrolling: touch;
+    -webkit-overflow-scrolling: touch;
+  }
+  .breadcrumb {
+    flex-shrink: 0;
+  }
+  .actions {
+    flex-shrink: 0;
+  }
+}
+
 .actionBtn {
   background: var(--bg-surface);
   border: 1px solid var(--border);

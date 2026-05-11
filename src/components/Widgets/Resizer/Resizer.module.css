@@ -33,3 +33,9 @@
   width: 2px;
   box-shadow: 0 0 8px var(--accent-glow);
 }
+
+@media (max-width: 768px) {
+  .resizer {
+    display: none;
+  }
+}
