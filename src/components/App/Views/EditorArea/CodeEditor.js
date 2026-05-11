@@ -11,6 +11,9 @@ export default function CodeEditor({
   onCursorUpdate,
   cursorPos,
   scrollContainerRef,
+  suggestion,
+  onAcceptSuggestion,
+  onCancelSuggestion,
 }) {
   const textareaRef = useRef(null);
   const lastReportedIndex = useRef(-1);
@@ -20,6 +23,9 @@ export default function CodeEditor({
     handleChange,
     textareaRef,
     scrollContainerRef,
+    suggestion,
+    onAcceptSuggestion,
+    onCancelSuggestion,
   });
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: localContent is required to catch browser cursor resets after sync

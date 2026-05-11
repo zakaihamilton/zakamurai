@@ -39,6 +39,13 @@
   border-right: 1px solid transparent;
 }
 
+button.item {
+  border-top: 0;
+  border-bottom: 0;
+  font: inherit;
+  background: transparent;
+}
+
 .left .item:first-child {
   min-width: 140px;
   justify-content: flex-start;
@@ -86,6 +93,37 @@
 
 .light .item:hover {
   background: var(--bg-surface);
+}
+
+.thinking {
+  color: var(--accent) !important;
+  animation: thinkingPulse 1.5s infinite ease-in-out;
+}
+
+@keyframes thinkingPulse {
+  0% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+.aiItem {
+  min-width: 100px !important;
+  color: var(--text-muted);
+}
+
+.aiItemActive {
+  color: var(--accent);
+}
+
+.aiItemDisabled {
+  color: var(--text-muted);
+  opacity: 0.6;
 }
 
 @media (max-width: 768px) {

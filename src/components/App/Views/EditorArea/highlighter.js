@@ -1,4 +1,14 @@
-export const highlightCode = (code, filePath, state, styles, showFind, findQuery, matchIndex) => {
+export const highlightCode = (
+  code,
+  filePath,
+  state,
+  styles,
+  showFind,
+  findQuery,
+  matchIndex,
+  suggestion,
+  cursorPos,
+) => {
   if (!code) return '';
 
   const fileDiff = state.pendingDiffs?.[filePath];
@@ -6,18 +16,32 @@ export const highlightCode = (code, filePath, state, styles, showFind, findQuery
   const selectedLines = state.selectedLines?.[filePath] || [];
 
   const sortedDiffs = [...diffs].sort((a, b) => b.start - a.start);
+  const escapeHtml = (value) =>
+    value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
   let escaped = code;
+
+  // Insert suggestion marker if present
+  const hasSuggestion = suggestion && cursorPos && cursorPos.index !== undefined;
+  if (hasSuggestion) {
+    const idx = cursorPos.index;
+    escaped = `${escaped.substring(0, idx)}\u0005${escaped.substring(idx)}`;
+  }
+
   // Mark diffs with index for tracking original content
   for (let i = 0; i < sortedDiffs.length; i++) {
     const diff = sortedDiffs[i];
-    escaped = `${escaped.substring(0, diff.start)}\u0003${i}\u0003${escaped.substring(
-      diff.start,
-      diff.end,
-    )}\u0004${escaped.substring(diff.end)}`;
+    // Adjust diff indices if they are after the suggestion insertion
+    const start = hasSuggestion && diff.start >= cursorPos.index ? diff.start + 1 : diff.start;
+    const end = hasSuggestion && diff.end >= cursorPos.index ? diff.end + 1 : diff.end;
+
+    escaped = `${escaped.substring(0, start)}\u0003${i}\u0003${escaped.substring(
+      start,
+      end,
+    )}\u0004${escaped.substring(end)}`;
   }
 
-  escaped = escaped.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  escaped = escapeHtml(escaped);
 
   const tokens = [];
   const T_PRE = '\x01';
@@ -43,7 +67,7 @@ export const highlightCode = (code, filePath, state, styles, showFind, findQuery
     // Selectors (basic)
     escaped = escaped.replace(
       // biome-ignore lint/suspicious/noControlCharactersInRegex: markers
-      /(^|(?<=\}))(\u0003\d+\u0003|\u0004)*([.#a-zA-Z0-9_\-\[\]="':*]+)(?=\s*\{)/gm,
+      /(^|(?<=\}))(\u0003\d+\u0003|\u0004|\u0005)*([.#a-zA-Z0-9_\-\[\]="':*]+)(?=\s*\{)/gm,
       (_m, p1, p2, p3) => p1 + (p2 || '') + pushToken(p3, 'hl-tag'),
     );
     // Values (after colon, before semicolon)
@@ -74,14 +98,14 @@ export const highlightCode = (code, filePath, state, styles, showFind, findQuery
   // 4. Keywords
   escaped = escaped.replace(
     // biome-ignore lint/suspicious/noControlCharactersInRegex: markers
-    /(\x01\d+\x02|\u0003\d+\u0003|\u0004)|\b(export|default|function|return|import|from|const|let|var|if|else|for|while|class|extends|new|true|false|null|undefined|async|await|try|catch|finally|throw|break|continue|case|switch|type|interface|enum|public|private|protected|static|readonly)\b/g,
+    /(\x01\d+\x02|\u0003\d+\u0003|\u0004|\u0005)|\b(export|default|function|return|import|from|const|let|var|if|else|for|while|class|extends|new|true|false|null|undefined|async|await|try|catch|finally|throw|break|continue|case|switch|type|interface|enum|public|private|protected|static|readonly)\b/g,
     (_m, p1, p2) => (p1 ? p1 : pushToken(p2, 'hl-kw')),
   );
 
   // 5. Numbers
   escaped = escaped.replace(
     // biome-ignore lint/suspicious/noControlCharactersInRegex: markers
-    /(\x01\d+\x02|\u0003\d+\u0003|\u0004)|\b(\d+)\b/g,
+    /(\x01\d+\x02|\u0003\d+\u0003|\u0004|\u0005)|\b(\d+)\b/g,
     (_m, p1, p2) => (p1 ? p1 : pushToken(p2, 'hl-num')),
   );
 
@@ -152,6 +176,14 @@ export const highlightCode = (code, filePath, state, styles, showFind, findQuery
   });
   // biome-ignore lint/suspicious/noControlCharactersInRegex: markers are intentional for tracking
   escaped = escaped.replace(/\u0004/g, '</span>');
+
+  escaped = escaped.replace(
+    // biome-ignore lint/suspicious/noControlCharactersInRegex: markers are intentional
+    /\u0005/g,
+    `<span class="${styles.hlGhost}" aria-hidden="true">${escapeHtml(suggestion || '')}${
+      suggestion ? `<span class="${styles.tabHint}">Press <kbd>Tab</kbd></span>` : ''
+    }</span>`,
+  );
 
   // Add line selection backgrounds
   const linesArr = escaped.split('\n');

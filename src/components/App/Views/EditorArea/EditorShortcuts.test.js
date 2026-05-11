@@ -7,16 +7,22 @@ vi.mock('@/utils/os', () => ({
 }));
 
 describe('useEditorShortcuts', () => {
-  const handleChange = vi.fn();
-  const textareaRef = {
-    current: {
-      selectionStart: 0,
-      selectionEnd: 0,
-      value: '',
-      focus: vi.fn(),
-      scrollTo: vi.fn(),
-    },
-  };
+  let handleChange;
+  let textareaRef;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    handleChange = vi.fn();
+    textareaRef = {
+      current: {
+        selectionStart: 0,
+        selectionEnd: 0,
+        value: '',
+        focus: vi.fn(),
+        scrollTo: vi.fn(),
+      },
+    };
+  });
 
   it('adds a closing bracket when typing "("', () => {
     const localContent = '';
@@ -95,5 +101,52 @@ describe('useEditorShortcuts', () => {
 
     expect(event.preventDefault).toHaveBeenCalled();
     expect(handleChange).toHaveBeenCalledWith({ target: { value: 'if (true) {\n  ' } });
+  });
+
+  it('accepts AI suggestion with Tab', () => {
+    const onAcceptSuggestion = vi.fn();
+    const { result } = renderHook(() =>
+      useEditorShortcuts({
+        handleChange,
+        textareaRef,
+        suggestion: 'completion',
+        onAcceptSuggestion,
+      }),
+    );
+
+    const event = {
+      key: 'Tab',
+      preventDefault: vi.fn(),
+    };
+
+    result.current.handleKeyDown(event);
+
+    expect(event.preventDefault).toHaveBeenCalled();
+    expect(onAcceptSuggestion).toHaveBeenCalledWith('completion');
+    // Normal Tab indentation should NOT be called
+    expect(handleChange).not.toHaveBeenCalled();
+  });
+
+  it('cancels AI suggestion with Escape', () => {
+    const onCancelSuggestion = vi.fn();
+    const { result } = renderHook(() =>
+      useEditorShortcuts({
+        handleChange,
+        textareaRef,
+        suggestion: 'completion',
+        onCancelSuggestion,
+      }),
+    );
+
+    const event = {
+      key: 'Escape',
+      preventDefault: vi.fn(),
+    };
+
+    result.current.handleKeyDown(event);
+
+    expect(event.preventDefault).toHaveBeenCalled();
+    expect(onCancelSuggestion).toHaveBeenCalledWith({ pauseUntilEdit: true });
+    expect(handleChange).not.toHaveBeenCalled();
   });
 });

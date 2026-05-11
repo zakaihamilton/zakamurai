@@ -6,6 +6,7 @@ import React, { useState, useRef } from 'react';
 import styles from './EditorArea.module.css';
 
 import CodeEditor from './CodeEditor';
+import useCompletion from './CompletionHandler';
 import DiffHandler from './DiffHandler';
 import EditorHeader from './EditorHeader';
 import FindHandler from './FindHandler';
@@ -81,6 +82,51 @@ export default function EditorArea({ file }) {
   const hasDiff = !!state.pendingDiffs?.[filePath];
   const diffData = state.pendingDiffs?.[filePath];
   const selectedLines = state.selectedLines?.[filePath] || [];
+  const cursorPos = state.cursorPos?.[filePath];
+  const aiCompletionEnabled = state.aiCompletionEnabled === true;
+
+  const { suggestion, cancelSuggestion, loading } = useCompletion({
+    localContent,
+    cursorPos,
+    filePath,
+    enabled: !hasDiff && aiCompletionEnabled,
+    onDebugUpdate: (debug) => {
+      state((draft) => {
+        draft.aiCompletionDebug = debug;
+      });
+    },
+  });
+
+  // Sync loading state to global EditorState
+  React.useEffect(() => {
+    state((draft) => {
+      if (!draft.isCompleting) draft.isCompleting = {};
+      draft.isCompleting[filePath] = loading;
+    });
+  }, [loading, filePath, state]);
+
+  React.useEffect(() => {
+    if (!aiCompletionEnabled) {
+      cancelSuggestion();
+    }
+  }, [aiCompletionEnabled, cancelSuggestion]);
+
+  const handleAcceptSuggestion = (text) => {
+    if (!cursorPos) return;
+    const { index } = cursorPos;
+    const newVal = localContent.substring(0, index) + text + localContent.substring(index);
+    const nextIndex = index + text.length;
+    const textBeforeCursor = newVal.substring(0, nextIndex);
+    const linesBeforeCursor = textBeforeCursor.split('\n');
+
+    handleChange({ target: { value: newVal } });
+    cancelSuggestion();
+    diffActions.handleCursorUpdate?.({
+      line: linesBeforeCursor.length,
+      col: linesBeforeCursor[linesBeforeCursor.length - 1].length + 1,
+      index: nextIndex,
+    });
+  };
 
   return (
     <div className={styles.editorArea}>
@@ -156,6 +202,8 @@ export default function EditorArea({ file }) {
                   showFind,
                   findQuery,
                   matchIndex,
+                  undefined,
+                  state.cursorPos?.[filePath],
                 )}
                 readOnly={true}
                 cursorPos={state.cursorPos?.[filePath]}
@@ -188,6 +236,8 @@ export default function EditorArea({ file }) {
                   showFind,
                   findQuery,
                   matchIndex,
+                  suggestion,
+                  cursorPos,
                 )}
                 onCursorUpdate={diffActions.handleCursorUpdate}
                 cursorPos={state.cursorPos?.[filePath]}
@@ -215,10 +265,15 @@ export default function EditorArea({ file }) {
               showFind,
               findQuery,
               matchIndex,
+              suggestion,
+              cursorPos,
             )}
             onCursorUpdate={diffActions.handleCursorUpdate}
-            cursorPos={state.cursorPos?.[filePath]}
+            cursorPos={cursorPos}
             scrollContainerRef={scrollContainerRef}
+            suggestion={suggestion}
+            onAcceptSuggestion={handleAcceptSuggestion}
+            onCancelSuggestion={cancelSuggestion}
           />
         </div>
       )}

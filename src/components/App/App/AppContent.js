@@ -4,13 +4,13 @@ import Node from '../../Core/Base/Node';
 import styles from '../App.module.css';
 import { AppState } from '../AppState';
 import { Sidebar, SidebarState, StatusBar, TopBar } from '../Panes';
-import { ShortcutsHelp } from '../Popups';
+import { CompletionDebug, ShortcutsHelp } from '../Popups';
 import WorkspaceArea from './WorkspaceArea';
 
 export default function AppContent() {
   const appState = AppState.useState();
   const sidebarState = SidebarState.useState();
-  const { theme, showShortcuts, isResizing = false, isMobile } = appState;
+  const { theme, showShortcuts, showCompletionDebug, isResizing = false, isMobile } = appState;
   const { isSidebarOpen, isSidebarPopupOpen, isAIInputPopupOpen } = sidebarState;
 
   const handleSidebarResize = (clientX) => {
@@ -91,6 +91,14 @@ export default function AppContent() {
         onClose={() =>
           appState((draft) => {
             draft.showShortcuts = false;
+          })
+        }
+      />
+      <CompletionDebug
+        isOpen={showCompletionDebug}
+        onClose={() =>
+          appState((draft) => {
+            draft.showCompletionDebug = false;
           })
         }
       />

@@ -390,6 +390,20 @@ export const SHORTCUTS = [
     },
   },
   {
+    id: 'show-ai-completion-debug',
+    group: SHORTCUT_GROUPS.EDITOR_AI,
+    desc: 'Show AI Completion Debug',
+    key: 'c',
+    displayKey: '⌃⇧C',
+    modifier: 'ctrl-shift',
+    isGlobal: true,
+    action: ({ appState }) => {
+      appState((draft) => {
+        draft.showCompletionDebug = !draft.showCompletionDebug;
+      });
+    },
+  },
+  {
     id: 'indent',
     group: SHORTCUT_GROUPS.EDITOR_AI,
     desc: 'Indent Selection',
@@ -437,6 +451,9 @@ export const SHORTCUTS = [
       appState((draft) => {
         if (draft.showShortcuts) {
           draft.showShortcuts = false;
+        }
+        if (draft.showCompletionDebug) {
+          draft.showCompletionDebug = false;
         }
       });
     },

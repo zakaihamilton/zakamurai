@@ -20,11 +20,23 @@ vi.mock('@/components/App/Panes/TabBar', () => ({
 // No need to mock the whole file, just spy on the state hook
 describe('EditorArea', () => {
   it('renders the file path and content', () => {
-    vi.spyOn(EditorState, 'useState').mockReturnValue({
+    const mockState = {
       fileContents: {
         'src/test.js': 'console.log("hello");',
       },
+      cursorPos: {},
+      isCompleting: {},
+    };
+    const stateHook = vi.fn((producer) => {
+      if (typeof producer === 'function') {
+        producer(mockState);
+      }
+      return mockState;
     });
+    // Add properties to the function so it can be used as the state object
+    Object.assign(stateHook, mockState);
+
+    vi.spyOn(EditorState, 'useState').mockReturnValue(stateHook);
     vi.spyOn(AppState, 'useState').mockReturnValue({
       fs: { mode: null },
     });

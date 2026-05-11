@@ -1,7 +1,14 @@
 import { isMac } from '@/utils/os';
 import { useCallback } from 'react';
 
-export default function useEditorShortcuts({ handleChange, textareaRef, scrollContainerRef }) {
+export default function useEditorShortcuts({
+  handleChange,
+  textareaRef,
+  scrollContainerRef,
+  suggestion,
+  onAcceptSuggestion,
+  onCancelSuggestion,
+}) {
   const handleKeyDown = useCallback(
     (e) => {
       const textarea = textareaRef.current;
@@ -10,6 +17,12 @@ export default function useEditorShortcuts({ handleChange, textareaRef, scrollCo
       const { selectionStart, selectionEnd, value } = textarea;
       const mac = isMac();
       const cmdKey = mac ? e.metaKey : e.ctrlKey;
+
+      if (e.key === 'Escape' && suggestion) {
+        e.preventDefault();
+        onCancelSuggestion?.({ pauseUntilEdit: true });
+        return;
+      }
 
       // 0. Jump to Line (Ctrl+G)
       if (e.ctrlKey && e.key === 'g') {
@@ -40,8 +53,14 @@ export default function useEditorShortcuts({ handleChange, textareaRef, scrollCo
         return;
       }
 
-      // 1. Tab Indentation
+      // 1. Tab Indentation or Accept Suggestion
       if (e.key === 'Tab') {
+        if (suggestion) {
+          e.preventDefault();
+          onAcceptSuggestion(suggestion);
+          return;
+        }
+
         e.preventDefault();
         if (e.shiftKey) {
           // Outdent
@@ -230,7 +249,14 @@ export default function useEditorShortcuts({ handleChange, textareaRef, scrollCo
         }
       }
     },
-    [handleChange, textareaRef, scrollContainerRef],
+    [
+      handleChange,
+      textareaRef,
+      scrollContainerRef,
+      suggestion,
+      onAcceptSuggestion,
+      onCancelSuggestion,
+    ],
   );
 
   return { handleKeyDown };

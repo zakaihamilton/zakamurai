@@ -268,6 +268,43 @@
   box-shadow: 0 0 5px rgba(255, 165, 0, 0.5);
 }
 
+.hl-ghost {
+  color: color-mix(in srgb, var(--text-muted) 80%, var(--accent, #61afef));
+  opacity: 0.42;
+  pointer-events: none;
+  white-space: pre;
+  border-bottom: 1px dotted color-mix(in srgb, var(--text-muted) 65%, transparent);
+}
+
+.tabHint {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  background: color-mix(in srgb, var(--bg-card) 88%, var(--accent, #61afef));
+  color: var(--text-main);
+  border: 1px solid color-mix(in srgb, var(--border) 75%, var(--accent, #61afef));
+  border-radius: 4px;
+  padding: 1px 5px;
+  margin-left: 8px;
+  font-size: 9px;
+  font-style: normal;
+  font-family: var(--font-mono);
+  vertical-align: middle;
+  line-height: 1.3;
+  opacity: 0.82;
+}
+
+.tabHint kbd {
+  border: 1px solid var(--border);
+  border-bottom-width: 2px;
+  border-radius: 3px;
+  padding: 0 3px;
+  background: var(--bg-base);
+  color: var(--text-main);
+  font: inherit;
+}
+
 .selectedLineRow {
   background: rgba(97, 175, 239, 0.15);
   display: inline-block;

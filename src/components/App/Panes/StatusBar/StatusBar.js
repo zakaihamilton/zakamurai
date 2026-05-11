@@ -16,6 +16,17 @@ export default function StatusBar() {
 
   const currentCursor = cursorPos[activeTabId] || { line: 1, col: 1 };
   const { line, col } = currentCursor;
+  const isCompleting = editorState.isCompleting?.[activeTabId];
+  const aiCompletionEnabled = editorState.aiCompletionEnabled === true;
+
+  const toggleAICompletion = () => {
+    editorState((draft) => {
+      draft.aiCompletionEnabled = draft.aiCompletionEnabled !== true;
+      if (!draft.aiCompletionEnabled && draft.isCompleting && activeTabId) {
+        draft.isCompleting[activeTabId] = false;
+      }
+    });
+  };
 
   const encoding = 'UTF-8';
   const language =
@@ -71,8 +82,34 @@ export default function StatusBar() {
             <div className={`${styles.item} ${styles.hideOnMobile}`}>
               <span>{encoding}</span>
             </div>
+            <Tooltip
+              content={
+                aiCompletionEnabled
+                  ? isCompleting
+                    ? 'AI is thinking. Tap to turn completion off.'
+                    : 'AI completion is on. Tap to turn it off.'
+                  : 'AI completion is off. Tap to turn it on.'
+              }
+            >
+              <button
+                type="button"
+                className={`${styles.item} ${styles.aiItem} ${
+                  aiCompletionEnabled ? styles.aiItemActive : styles.aiItemDisabled
+                } ${isCompleting ? styles.thinking : ''}`}
+                onClick={toggleAICompletion}
+                aria-pressed={aiCompletionEnabled}
+                aria-label={
+                  aiCompletionEnabled ? 'Turn AI completion off' : 'Turn AI completion on'
+                }
+              >
+                <Icons.BotSmall />
+                <span>
+                  {aiCompletionEnabled ? (isCompleting ? 'Thinking...' : 'AI Ready') : 'AI Off'}
+                </span>
+              </button>
+            </Tooltip>
             <div className={styles.item}>
-              <Icons.Bot size={14} />
+              <Icons.BotSmall size={14} />
               <span className={styles.hideOnMobile}>{language}</span>
             </div>
           </>

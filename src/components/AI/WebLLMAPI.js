@@ -52,9 +52,10 @@ const getEngine = (onProgress = null) => {
  * @param {string} prompt - The user's input or full codebase context.
  * @param {string} systemPrompt - Optional system prompt.
  * @param {function} onUpdate - Optional callback for streaming updates (e.g., partial text).
+ * @param {object} options - Optional generation overrides.
  * @returns {Promise<string>} - The AI's generated response.
  */
-export const askWebLLM = async (prompt, systemPrompt = '', onUpdate = null) => {
+export const askWebLLM = async (prompt, systemPrompt = '', onUpdate = null, options = {}) => {
   try {
     const engine = await getEngine(onUpdate);
 
@@ -71,13 +72,21 @@ export const askWebLLM = async (prompt, systemPrompt = '', onUpdate = null) => {
       },
     ];
 
+    const generationOptions = {
+      temperature: options.temperature ?? 0.7,
+      top_p: options.top_p ?? 0.95,
+      presence_penalty: options.presence_penalty ?? 0.1,
+      frequency_penalty: options.frequency_penalty ?? 0.1,
+    };
+
+    if (options.max_tokens !== undefined) {
+      generationOptions.max_tokens = options.max_tokens;
+    }
+
     if (onUpdate) {
       const chunks = await engine.chat.completions.create({
         messages,
-        temperature: 0.7,
-        top_p: 0.95,
-        presence_penalty: 0.1,
-        frequency_penalty: 0.1,
+        ...generationOptions,
         stream: true,
       });
 
@@ -92,10 +101,7 @@ export const askWebLLM = async (prompt, systemPrompt = '', onUpdate = null) => {
 
     const reply = await engine.chat.completions.create({
       messages,
-      temperature: 0.7,
-      top_p: 0.95,
-      presence_penalty: 0.1,
-      frequency_penalty: 0.1,
+      ...generationOptions,
     });
 
     return reply.choices?.[0]?.message?.content ?? 'No response generated.';
