@@ -71,15 +71,15 @@ export default function Dashboard() {
           </div>
           <div className={styles.shortcut}>
             <span>Toggle Sidebar</span>
-            <kbd>{formatShortcut('⌘B')}</kbd>
+            <kbd>{formatShortcut('⌃B')}</kbd>
           </div>
           <div className={styles.shortcut}>
             <span>Toggle AI Panel</span>
-            <kbd>{formatShortcut('⌘J')}</kbd>
+            <kbd>{formatShortcut('⌃J')}</kbd>
           </div>
           <div className={styles.shortcut}>
             <span>Clear Logs</span>
-            <kbd>{formatShortcut('⌘K')}</kbd>
+            <kbd>{formatShortcut('⌃K')}</kbd>
           </div>
         </div>
       </div>

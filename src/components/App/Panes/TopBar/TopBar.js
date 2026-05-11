@@ -402,7 +402,7 @@ export default function TopBar() {
     <header className={`${styles.header} ${isSidebarActive ? styles.sidebarOpen : ''}`}>
       <Tooltip
         content={isSidebarActive ? 'Collapse Sidebar' : 'Expand Sidebar'}
-        shortcut={formatShortcut('⌘B')}
+        shortcut={formatShortcut('⌃B')}
         className={styles.menuToggle}
       >
         <button

@@ -30,7 +30,7 @@ export default function ActionButtons({
       </div>
 
       <div className={styles.viewTabs}>
-        <Tooltip content="Goto Logs" shortcut={formatShortcut('⌘U')}>
+        <Tooltip content="Goto Logs" shortcut={formatShortcut('⌃U')}>
           <button
             type="button"
             className={`${styles.tabBtn} ${activeTabId === 'ai-logs' ? styles.activeTab : ''}`}
@@ -39,7 +39,7 @@ export default function ActionButtons({
             <Icons.Terminal />
           </button>
         </Tooltip>
-        <Tooltip content="Goto Preview" shortcut={formatShortcut('⌘I')}>
+        <Tooltip content="Goto Preview" shortcut={formatShortcut('⌃I')}>
           <button
             type="button"
             className={`${styles.tabBtn} ${activeTabId === 'preview' ? styles.activeTab : ''}`}
@@ -53,7 +53,7 @@ export default function ActionButtons({
       <div className={styles.sidebarToggleGroup}>
         <Tooltip
           content={showAIInput ? 'Hide AI Prompt' : 'Show AI Prompt'}
-          shortcut={formatShortcut('⌘J')}
+          shortcut={formatShortcut('⌃J')}
         >
           <button
             type="button"

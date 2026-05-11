@@ -89,7 +89,7 @@ export default function Sidebar() {
         <div className={styles.header}>
           <Tooltip
             content={isOpen ? 'Collapse Sidebar' : 'Expand Sidebar'}
-            shortcut={formatShortcut('⌘B')}
+            shortcut={formatShortcut('⌃B')}
           >
             <button
               type="button"
@@ -140,7 +140,7 @@ export default function Sidebar() {
                   draft.filterText = e.target.value;
                 })
               }
-              placeholder={`Search files (${formatShortcut('⌘F')})`}
+              placeholder={`Search files (${formatShortcut('⌃P')})`}
               className={styles.searchInput}
             />
           </div>

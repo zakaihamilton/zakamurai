@@ -18,7 +18,7 @@ export default function ThemeToggle() {
   return (
     <Tooltip
       content={`Switch to ${theme === 'light' ? 'dark' : 'light'} theme`}
-      shortcut={formatShortcut('⌘⇧T')}
+      shortcut={formatShortcut('⌃⇧T')}
     >
       <button type="button" onClick={toggleTheme} className={styles.themeToggle}>
         {theme === 'light' ? <Icons.Moon /> : <Icons.Sun />}

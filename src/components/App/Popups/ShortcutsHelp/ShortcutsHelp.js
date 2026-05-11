@@ -74,7 +74,7 @@ export default function ShortcutsHelp({ isOpen, onClose }) {
             Press{' '}
             {mac ? (
               <>
-                <kbd>1-5</kbd> to jump to sections • <kbd>⌘</kbd>
+                <kbd>1-5</kbd> to jump to sections • <kbd>⌃</kbd>
                 <kbd>⇧</kbd>
                 <kbd>K</kbd>
               </>

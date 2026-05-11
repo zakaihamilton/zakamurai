@@ -14,8 +14,8 @@ export const SHORTCUTS = [
     group: SHORTCUT_GROUPS.NAVIGATION,
     desc: 'Toggle Sidebar',
     key: 'b',
-    displayKey: '⌘B',
-    modifier: 'cmd',
+    displayKey: '⌃B',
+    modifier: 'ctrl',
     isGlobal: true,
     action: ({ sidebarState }) => {
       sidebarState((draft) => {
@@ -28,8 +28,8 @@ export const SHORTCUTS = [
     group: SHORTCUT_GROUPS.NAVIGATION,
     desc: 'Toggle AI Prompt',
     key: 'j',
-    displayKey: '⌘J',
-    modifier: 'cmd',
+    displayKey: '⌃J',
+    modifier: 'ctrl',
     isGlobal: true,
     action: ({ sidebarState }) => {
       sidebarState((draft) => {
@@ -42,8 +42,8 @@ export const SHORTCUTS = [
     group: SHORTCUT_GROUPS.NAVIGATION,
     desc: 'Goto Logs',
     key: 'u',
-    displayKey: '⌘U',
-    modifier: 'cmd',
+    displayKey: '⌃U',
+    modifier: 'ctrl',
     isGlobal: true,
     action: ({ tabState }) => {
       tabState((draft) => {
@@ -56,8 +56,8 @@ export const SHORTCUTS = [
     group: SHORTCUT_GROUPS.NAVIGATION,
     desc: 'Goto Preview',
     key: 'i',
-    displayKey: '⌘I',
-    modifier: 'cmd',
+    displayKey: '⌃I',
+    modifier: 'ctrl',
     isGlobal: true,
     action: ({ tabState }) => {
       tabState((draft) => {
@@ -69,9 +69,9 @@ export const SHORTCUTS = [
     id: 'search-files',
     group: SHORTCUT_GROUPS.NAVIGATION,
     desc: 'Search Files',
-    key: 'f',
-    displayKey: '⌘F',
-    modifier: 'cmd',
+    key: 'p',
+    displayKey: '⌃P',
+    modifier: 'ctrl',
     isGlobal: true,
     action: ({ sidebarState }) => {
       if (!sidebarState.isSidebarOpen) {
@@ -286,8 +286,8 @@ export const SHORTCUTS = [
     group: SHORTCUT_GROUPS.EDITOR_AI,
     desc: 'Clear Logs (in Log Area)',
     key: 'k',
-    displayKey: '⌘K',
-    modifier: 'cmd',
+    displayKey: '⌃K',
+    modifier: 'ctrl',
     isGlobal: true,
     action: ({ logState, showNotification }) => {
       logState((draft) => {
@@ -301,8 +301,8 @@ export const SHORTCUTS = [
     group: SHORTCUT_GROUPS.EDITOR_AI,
     desc: 'Toggle Theme',
     key: 't',
-    displayKey: '⌘⇧T',
-    modifier: 'cmd-shift',
+    displayKey: '⌃⇧T',
+    modifier: 'ctrl-shift',
     isGlobal: true,
     action: ({ appState }) => {
       appState((draft) => {
@@ -380,8 +380,8 @@ export const SHORTCUTS = [
     group: SHORTCUT_GROUPS.GENERAL,
     desc: 'Show Keyboard Shortcuts',
     key: 'k',
-    displayKey: '⌘⇧K',
-    modifier: 'cmd-shift',
+    displayKey: '⌃⇧K',
+    modifier: 'ctrl-shift',
     isGlobal: true,
     action: ({ appState }) => {
       appState((draft) => {
@@ -421,8 +421,8 @@ export const SHORTCUTS = [
     group: SHORTCUT_GROUPS.EDITOR_AI,
     desc: 'Jump to Line',
     key: 'g',
-    displayKey: '⌘G',
-    modifier: 'cmd',
+    displayKey: '⌃G',
+    modifier: 'ctrl',
     isGlobal: false,
   },
   {

@@ -106,7 +106,7 @@ export default function LogArea() {
                   {copied ? <Icons.Check /> : <Icons.Copy />}
                 </button>
               </Tooltip>
-              <Tooltip content="Clear logs" shortcut={formatShortcut('⌘K')}>
+              <Tooltip content="Clear logs" shortcut={formatShortcut('⌃K')}>
                 <button
                   type="button"
                   onClick={handleClear}

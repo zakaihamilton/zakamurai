@@ -11,8 +11,8 @@ export default function useEditorShortcuts({ handleChange, textareaRef, scrollCo
       const mac = isMac();
       const cmdKey = mac ? e.metaKey : e.ctrlKey;
 
-      // 0. Jump to Line (Cmd+G)
-      if (cmdKey && e.key === 'g') {
+      // 0. Jump to Line (Ctrl+G)
+      if (e.ctrlKey && e.key === 'g') {
         e.preventDefault();
         const lineStr = window.prompt('Enter line number:');
         const lineNum = Number.parseInt(lineStr, 10);
