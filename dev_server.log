@@ -1,0 +1,24 @@
+
+> zakamurai@0.1.0 predev
+> "$npm_execpath" run setup:almostnode
+
+
+> zakamurai@0.1.0 setup:almostnode
+> mkdir -p public/lib/almostnode public/assets && cp -r node_modules/almostnode/dist/* public/lib/almostnode/ && cp node_modules/almostnode/dist/assets/* public/assets/
+
+
+> zakamurai@0.1.0 dev
+> next dev
+
+▲ Next.js 16.2.4 (Turbopack)
+- Local:         http://localhost:3000
+- Network:       http://192.168.0.2:3000
+✓ Ready in 628ms
+Attention: Next.js now collects completely anonymous telemetry regarding usage.
+This information is used to shape Next.js' roadmap and prioritize features.
+You can learn more, including how to opt-out if you'd not like to participate in this anonymous program, by visiting the following URL:
+https://nextjs.org/telemetry
+
+
+○ Compiling / ...
+ GET / 200 in 4.5s (next.js: 4.3s, application-code: 267ms)

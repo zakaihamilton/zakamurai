@@ -10,9 +10,9 @@ import { PreviewState } from './PreviewState';
 import { EditorState } from './Views/EditorArea';
 import { LogState } from './Views/LogArea';
 
+import { MOBILE_BREAKPOINT } from '@/constants/Layout';
 // App State
 import { AppState } from './AppState';
-import { MOBILE_BREAKPOINT } from '@/constants/Layout';
 
 import AppBackgroundServices from './App/AppBackgroundServices';
 import AppContent from './App/AppContent';

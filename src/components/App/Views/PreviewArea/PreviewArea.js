@@ -156,31 +156,61 @@ export default function PreviewArea({ htmlContent, isCompilerReady }) {
 
         <div className={styles.toolbarActions}>
           <Tooltip content="Zoom out">
-            <button type="button" className={styles.toolBtn} onClick={handleZoomOut}>
+            <button
+              type="button"
+              className={styles.toolBtn}
+              onClick={handleZoomOut}
+              aria-label="Zoom out"
+            >
               −
             </button>
           </Tooltip>
-          <button type="button" className={styles.zoomLevel} onClick={handleZoomReset}>
+          <button
+            type="button"
+            className={styles.zoomLevel}
+            onClick={handleZoomReset}
+            aria-label="Reset zoom"
+          >
             {Math.round(scale * 100)}%
           </button>
           <Tooltip content="Zoom in">
-            <button type="button" className={styles.toolBtn} onClick={handleZoomIn}>
+            <button
+              type="button"
+              className={styles.toolBtn}
+              onClick={handleZoomIn}
+              aria-label="Zoom in"
+            >
               +
             </button>
           </Tooltip>
           <div className={styles.separator} />
           <Tooltip content="Refresh preview">
-            <button type="button" className={styles.toolBtn} onClick={handleRefresh}>
+            <button
+              type="button"
+              className={styles.toolBtn}
+              onClick={handleRefresh}
+              aria-label="Refresh preview"
+            >
               <Icons.Refresh />
             </button>
           </Tooltip>
           <Tooltip content="Open in new tab">
-            <button type="button" className={styles.toolBtn} onClick={handleOpenExternal}>
+            <button
+              type="button"
+              className={styles.toolBtn}
+              onClick={handleOpenExternal}
+              aria-label="Open in new tab"
+            >
               <Icons.ExternalLink />
             </button>
           </Tooltip>
           <Tooltip content={isMaximized ? 'Exit maximize' : 'Maximize preview'}>
-            <button type="button" className={styles.toolBtn} onClick={toggleMaximize}>
+            <button
+              type="button"
+              className={styles.toolBtn}
+              onClick={toggleMaximize}
+              aria-label={isMaximized ? 'Exit maximize' : 'Maximize preview'}
+            >
               {isMaximized ? <Icons.Minimize /> : <Icons.Maximize />}
             </button>
           </Tooltip>

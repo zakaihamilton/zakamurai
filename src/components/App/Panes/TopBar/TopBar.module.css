@@ -188,9 +188,7 @@
   padding: 4px;
   border-radius: 12px;
   border: 1px solid var(--border);
-  box-shadow: 
-    inset 0 2px 4px rgba(0, 0, 0, 0.2),
-    0 1px 0 rgba(255, 255, 255, 0.05);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2), 0 1px 0 rgba(255, 255, 255, 0.05);
 }
 
 .sidebarToggleGroup {
@@ -212,9 +210,7 @@
   font-weight: 500;
   transition: all 0.2s var(--ease-premium);
   font-family: inherit;
-  box-shadow: 
-    var(--shadow-sm),
-    0 0 0 1px rgba(255, 255, 255, 0.05);
+  box-shadow: var(--shadow-sm), 0 0 0 1px rgba(255, 255, 255, 0.05);
   position: relative;
   overflow: hidden;
 }
@@ -282,9 +278,7 @@
   background: var(--bg-surface) !important;
   color: var(--accent) !important;
   border: 1px solid var(--border-light) !important;
-  box-shadow: 
-    0 2px 8px rgba(0, 0, 0, 0.3),
-    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
 
 .sidebarBtn {
@@ -299,9 +293,7 @@
   color: var(--text-muted);
   cursor: pointer;
   transition: all 0.2s var(--ease-premium);
-  box-shadow: 
-    var(--shadow-sm),
-    0 0 0 1px rgba(255, 255, 255, 0.05);
+  box-shadow: var(--shadow-sm), 0 0 0 1px rgba(255, 255, 255, 0.05);
 }
 
 .sidebarBtn:hover {
@@ -315,9 +307,7 @@
   background: var(--accent-light) !important;
   color: var(--accent) !important;
   border-color: var(--accent) !important;
-  box-shadow: 
-    0 0 20px var(--accent-glow),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.05) !important;
+  box-shadow: 0 0 20px var(--accent-glow), inset 0 0 0 1px rgba(255, 255, 255, 0.05) !important;
 }
 
 .themeToggle {

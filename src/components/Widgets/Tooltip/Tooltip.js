@@ -73,7 +73,7 @@ export default function Tooltip({ content, shortcut, children, className = '' })
       // Horizontal positioning and clamping
       const triggerCenter = triggerRect.left + triggerRect.width / 2 + window.scrollX;
       const halfWidth = tooltipRect.width / 2;
-      
+
       // Ensure we don't go off screen horizontally
       const minLeft = window.scrollX + halfWidth + margin;
       const maxLeft = window.scrollX + window.innerWidth - halfWidth - margin;
@@ -109,7 +109,7 @@ export default function Tooltip({ content, shortcut, children, className = '' })
       }
 
       setCoords({ top, left });
-      
+
       // Clamp arrow offset to stay within tooltip boundaries (considering border radius)
       const maxArrowOffset = Math.max(0, halfWidth - 15);
       const rawArrowOffset = triggerCenter - left;
