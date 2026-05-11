@@ -316,9 +316,7 @@ FORMAT FOR FULL FILE REWRITE (ONLY FOR NEW FILES OR COMPLETE OVERHAULS):
             onKeyDown={handleKeyDown}
             disabled={isAIProcessing || !showAIInput}
             placeholder={
-              isAIProcessing
-                ? 'AI is working... Please wait.'
-                : 'Enter the AI prompt here...'
+              isAIProcessing ? 'AI is working... Please wait.' : 'Enter the AI prompt here...'
             }
             className={styles.input}
             tabIndex={showAIInput ? undefined : -1}
