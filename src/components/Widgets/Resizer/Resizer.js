@@ -29,7 +29,10 @@ export default function Resizer({ onResize, onResizeStart, onResizeEnd, onDouble
   const resize = useCallback(
     (e) => {
       if (isResizing) {
-        onResize(e.clientX);
+        const clientX = e.clientX || (e.touches && e.touches[0].clientX);
+        if (clientX !== undefined) {
+          onResize(clientX);
+        }
       }
     },
     [isResizing, onResize],
@@ -39,14 +42,20 @@ export default function Resizer({ onResize, onResizeStart, onResizeEnd, onDouble
     if (isResizing) {
       window.addEventListener('mousemove', resize);
       window.addEventListener('mouseup', stopResizing);
+      window.addEventListener('touchmove', resize, { passive: false });
+      window.addEventListener('touchend', stopResizing);
     } else {
       window.removeEventListener('mousemove', resize);
       window.removeEventListener('mouseup', stopResizing);
+      window.removeEventListener('touchmove', resize);
+      window.removeEventListener('touchend', stopResizing);
     }
 
     return () => {
       window.removeEventListener('mousemove', resize);
       window.removeEventListener('mouseup', stopResizing);
+      window.removeEventListener('touchmove', resize);
+      window.removeEventListener('touchend', stopResizing);
     };
   }, [isResizing, resize, stopResizing]);
 
@@ -54,6 +63,7 @@ export default function Resizer({ onResize, onResizeStart, onResizeEnd, onDouble
     <div
       className={`${styles.resizer} ${isResizing ? styles.resizing : ''}`}
       onMouseDown={startResizing}
+      onTouchStart={startResizing}
       onDoubleClick={onDoubleClick}
     />
   );

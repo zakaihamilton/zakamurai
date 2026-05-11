@@ -4,6 +4,7 @@ import { TabState } from '@/components/App/Panes/TabBar';
 import { PreviewState } from '@/components/App/PreviewState';
 import { EditorState } from '@/components/App/Views/EditorArea';
 import { LogState } from '@/components/App/Views/LogArea';
+import { Icons } from '@/components/Core/Base/Icons';
 import Settings from '@/components/Storage/Settings';
 import { useNotification } from '@/components/Widgets/Notification/Notification';
 import { Compiler } from '@/utils/compiler';
@@ -391,6 +392,17 @@ export default function TopBar() {
 
   return (
     <header className={styles.header}>
+      <button
+        type="button"
+        className={styles.menuToggle}
+        onClick={() =>
+          sidebarState((draft) => {
+            draft.isSidebarOpen = !draft.isSidebarOpen;
+          })
+        }
+      >
+        <Icons.Menu />
+      </button>
       <Breadcrumb breadcrumb={breadcrumb} onBreadcrumbClick={handleBreadcrumbClick} />
       <div className={styles.centerSection} />
       <div className={styles.actions}>

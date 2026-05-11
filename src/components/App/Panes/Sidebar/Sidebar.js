@@ -72,8 +72,15 @@ export default function Sidebar() {
 
   return (
     <aside
-      className={styles.sidebar}
-      style={{ width: isSidebarOpen ? `${sidebarWidth}px` : '64px' }}
+      className={`${styles.sidebar} ${isSidebarOpen ? styles.isOpen : ''}`}
+      style={{
+        width:
+          typeof window !== 'undefined' && window.innerWidth <= 768
+            ? undefined
+            : isSidebarOpen
+              ? `${sidebarWidth}px`
+              : '64px',
+      }}
     >
       {/* Dynamic Header Section */}
       <div className={styles.header}>
@@ -137,7 +144,13 @@ export default function Sidebar() {
       )}
 
       {/* File Tree Area */}
-      <div className={`${styles.treeArea} scroll-hide`} style={{ opacity: isSidebarOpen ? 1 : 0 }}>
+      <div
+        className={`${styles.treeArea} scroll-hide`}
+        style={{
+          opacity: isSidebarOpen ? 1 : 0,
+          pointerEvents: isSidebarOpen ? 'auto' : 'none',
+        }}
+      >
         <TreeItem
           item={{
             name: projectName,

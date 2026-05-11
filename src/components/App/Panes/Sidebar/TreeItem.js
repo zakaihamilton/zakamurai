@@ -156,6 +156,12 @@ export default function TreeItem({
             draft.fileContents[currentPathStr] = content;
           });
         }
+
+        if (typeof window !== 'undefined' && window.innerWidth <= 768) {
+          sidebarState((draft) => {
+            draft.isSidebarOpen = false;
+          });
+        }
       };
       openFile();
 

@@ -65,15 +65,15 @@ export default function StatusBar() {
                 Ln {line}, Col {col}
               </span>
             </div>
-            <div className={styles.item}>
+            <div className={`${styles.item} ${styles.hideOnMobile}`}>
               <span>Spaces: 2</span>
             </div>
-            <div className={styles.item}>
+            <div className={`${styles.item} ${styles.hideOnMobile}`}>
               <span>{encoding}</span>
             </div>
             <div className={styles.item}>
               <Icons.Bot size={14} />
-              <span>{language}</span>
+              <span className={styles.hideOnMobile}>{language}</span>
             </div>
           </>
         )}

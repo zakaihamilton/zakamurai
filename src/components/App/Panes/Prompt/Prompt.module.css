@@ -279,12 +279,22 @@
 
 @media (max-width: 768px) {
   .prompt {
-    position: absolute;
+    position: fixed;
     top: 0;
     bottom: 0;
     right: 0;
     z-index: 1000;
-    box-shadow: -4px 0 20px rgba(0, 0, 0, 0.5);
+    width: 90vw !important;
+    max-width: 400px;
+    box-shadow: -10px 0 30px rgba(0, 0, 0, 0.4);
     background: var(--bg-surface);
+    transform: translateX(0);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .prompt.closed {
+    transform: translateX(100%);
+    width: 90vw !important;
+    display: flex; /* Override closed display: none if any */
   }
 }

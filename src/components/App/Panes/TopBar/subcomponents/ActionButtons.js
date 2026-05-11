@@ -23,7 +23,7 @@ export default function ActionButtons({
           disabled={isProcessing}
         >
           <Icons.Play />
-          <span>Compile</span>
+          <span className={styles.hideOnMobile}>Compile</span>
         </button>
       </Tooltip>
       <Tooltip content="Show Log" shortcut={formatShortcut('⌘U')}>

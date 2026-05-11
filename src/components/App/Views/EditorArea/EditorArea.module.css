@@ -513,3 +513,13 @@
   border-color: var(--accent) !important;
   color: var(--accent) !important;
 }
+@media (max-width: 768px) {
+  .textarea,
+  .pre,
+  .gutter {
+    font-size: 16px;
+  }
+  .editorHeader {
+    padding: 12px 16px;
+  }
+}

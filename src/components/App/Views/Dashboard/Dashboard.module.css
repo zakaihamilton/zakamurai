@@ -187,3 +187,18 @@
   border-color: rgba(0, 119, 181, 0.2);
   transform: translateY(-1px);
 }
+@media (max-width: 768px) {
+  .dashboard {
+    padding: 24px 20px;
+  }
+  .title {
+    font-size: 32px;
+  }
+  .grid {
+    grid-template-columns: 1fr;
+    gap: 30px;
+  }
+  .hero {
+    margin-bottom: 40px;
+  }
+}
