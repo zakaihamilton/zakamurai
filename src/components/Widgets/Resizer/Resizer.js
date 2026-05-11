@@ -29,7 +29,7 @@ export default function Resizer({ onResize, onResizeStart, onResizeEnd, onDouble
   const resize = useCallback(
     (e) => {
       if (isResizing) {
-        const clientX = e.clientX || (e.touches && e.touches[0].clientX);
+        const clientX = e.clientX || e.touches?.[0].clientX;
         if (clientX !== undefined) {
           onResize(clientX);
         }

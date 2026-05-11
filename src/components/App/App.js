@@ -206,12 +206,25 @@ function PassiveWrapper() {
     }
   };
 
+  const handleOverlayKeyDown = (e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      closeOverlays();
+    }
+  };
+
   return (
     <div
       className={`${styles.appWrapper} ${theme === 'light' ? styles.light : ''} ${isResizing ? styles.isResizing : ''}`}
     >
       {(isSidebarOpen || showAIInput) && (
-        <div className={styles.mobileOverlay} onClick={closeOverlays} />
+        <div
+          className={styles.mobileOverlay}
+          onClick={closeOverlays}
+          onKeyDown={handleOverlayKeyDown}
+          role="button"
+          tabIndex={0}
+          aria-label="Close overlays"
+        />
       )}
       <Sidebar />
       {isSidebarOpen && (
