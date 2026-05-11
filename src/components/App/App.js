@@ -41,103 +41,81 @@ const AppWrapperState = createState('AppWrapperState');
 
 export default function App() {
   const fs = useFileSystem();
+
   const initialProjectName = useMemo(() => Settings.getProjectName(), []);
-
   const initialFiles = useMemo(() => DEFAULT_FILES, []);
-
   const initialContents = useMemo(() => {
     const stored = Settings.getFileContents();
     if (stored && Object.keys(stored).length > 0) return stored;
     return DEFAULT_CONTENTS;
   }, []);
-
   const initialTheme = Settings.getTheme();
-
   const initialTabs = useMemo(() => {
     const stored = Settings.getOpenTabs();
     if (stored) return stored;
     return [];
   }, []);
-
   const initialActiveTabId = useMemo(() => Settings.getActiveTabId() || null, []);
   const initialAILogs = useMemo(() => {
     const stored = Settings.getAILogs();
     return stored || [];
   }, []);
-
   const initialSidebarWidth = useMemo(() => Settings.getSidebarWidth(), []);
   const initialPromptWidth = useMemo(() => Settings.getPromptWidth(), []);
   const initialIsSidebarOpen = useMemo(() => Settings.getIsSidebarOpen(), []);
   const initialShowAIInput = useMemo(() => Settings.getShowAIInput(), []);
   const initialExpandedFolders = useMemo(() => Settings.getExpandedFolders(), []);
 
-  if (!fs.isReady) {
-    return (
-      <div className={styles.loadingContainer}>
-        <div className={styles.loadingContent}>
-          <div className={styles.logoWrapper}>
-            <Icons.ZLogo size={64} className={styles.loadingLogo} />
-            <div className={styles.logoGlow} />
-          </div>
-          <div className={styles.loadingText}>
-            <h2>Zakamurai</h2>
-            <div className={styles.progressTrack}>
-              <div className={styles.progressBar} />
-            </div>
-            <p>Initializing workspace...</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className={styles.root}>
-      <AppState theme={initialTheme} projectName={initialProjectName} fs={fs} showShortcuts={false}>
-        <SidebarState
-          isSidebarOpen={initialIsSidebarOpen}
-          showAIInput={initialShowAIInput}
-          folderTree={initialFiles}
-          sidebarWidth={initialSidebarWidth}
-          expandedFolders={initialExpandedFolders}
-        >
-          <TabState openTabs={initialTabs} activeTabId={initialActiveTabId}>
-            <LogState isSystemProcessing={false} isAIProcessing={false} logs={initialAILogs}>
-              <EditorState fileContents={initialContents}>
-                <PromptState promptWidth={initialPromptWidth}>
-                  <PreviewState htmlContent={Settings.getPreviewHtml()} isCompilerReady={false}>
-                    <ProjectNameSaver />
-                    <Notification />
-                    <TabRestorer />
-                    <PreviewRestorer />
-                    <ContentSaver />
-                    <KeyboardHandler />
-                    <PassiveWrapper />
-                  </PreviewState>
-                </PromptState>
-              </EditorState>
-            </LogState>
-          </TabState>
-        </SidebarState>
-      </AppState>
-    </div>
-  );
-}
-
-function PassiveWrapper() {
-  const appState = AppState.useState();
-  const { theme, showShortcuts } = appState;
-  const { openTabs = [], activeTabId } = TabState.useState();
-  const { htmlContent, isCompilerReady } = PreviewState.useState();
-  const activeTab = openTabs.find((t) => t.id === activeTabId);
-
-  const sidebarState = SidebarState.useState();
-  const promptState = PromptState.useState();
+  // Initialize all states - MUST be at the top level before any early returns
+  const appState = AppState.useState(null, {
+    theme: initialTheme,
+    projectName: initialProjectName,
+    fs,
+    showShortcuts: false,
+  });
+  const sidebarState = SidebarState.useState(null, {
+    isSidebarOpen: initialIsSidebarOpen,
+    showAIInput: initialShowAIInput,
+    folderTree: initialFiles,
+    sidebarWidth: initialSidebarWidth,
+    expandedFolders: initialExpandedFolders,
+  });
+  const tabState = TabState.useState(null, {
+    openTabs: initialTabs,
+    activeTabId: initialActiveTabId,
+  });
+  LogState.useState(null, {
+    isSystemProcessing: false,
+    isAIProcessing: false,
+    logs: initialAILogs,
+  });
+  EditorState.useState(null, {
+    fileContents: initialContents,
+  });
+  const promptState = PromptState.useState(null, {
+    promptWidth: initialPromptWidth,
+  });
+  const previewState = PreviewState.useState(null, {
+    htmlContent: Settings.getPreviewHtml(),
+    isCompilerReady: false,
+  });
   const appWrapperState = AppWrapperState.useState(null, { isResizing: false });
+
+  // Sync fs when it changes (since useState initial is only used on first create)
+  useEffect(() => {
+    appState((draft) => {
+      draft.fs = fs;
+    });
+  }, [fs, appState]);
+
+  const { theme, showShortcuts } = appState;
+  const { openTabs = [], activeTabId } = tabState;
+  const { htmlContent, isCompilerReady } = previewState;
   const { isSidebarOpen, sidebarWidth, showAIInput, expandedFolders } = sidebarState;
   const { promptWidth } = promptState;
   const { isResizing = false } = appWrapperState || {};
 
+  const activeTab = openTabs.find((t) => t.id === activeTabId);
   const [isMobile, setIsMobile] = React.useState(false);
 
   useEffect(() => {
@@ -158,12 +136,11 @@ function PassiveWrapper() {
     }
   }, [theme]);
 
-  // Save theme to localStorage on change
+  // Save state to localStorage on change
   useEffect(() => {
     Settings.setTheme(theme);
   }, [theme]);
 
-  // Save widths to localStorage on change
   useEffect(() => {
     Settings.setSidebarWidth(sidebarWidth);
   }, [sidebarWidth]);
@@ -194,7 +171,7 @@ function PassiveWrapper() {
         });
       }
     }
-  }, [isMobile, sidebarState]); // Removed isSidebarOpen/showAIInput from deps to only trigger on transition
+  }, [isMobile, sidebarState, isSidebarOpen, showAIInput]);
 
   const handleSidebarResize = (clientX) => {
     if (isSidebarOpen) {
@@ -258,67 +235,97 @@ function PassiveWrapper() {
     }
   };
 
-  return (
-    <div
-      className={`${styles.appWrapper} ${theme === 'light' ? styles.light : ''} ${isResizing ? styles.isResizing : ''}`}
-    >
-      {(isSidebarOpen || showAIInput) && (
-        <div
-          className={styles.mobileOverlay}
-          onClick={closeOverlays}
-          onKeyDown={handleOverlayKeyDown}
-          role="button"
-          tabIndex={0}
-          aria-label="Close overlays"
-        />
-      )}
-      <Sidebar isMobile={isMobile} />
-      {isSidebarOpen && !isMobile && (
-        <Node>
-          <Resizer
-            onResize={handleSidebarResize}
-            onResizeStart={handleResizeStart}
-            onResizeEnd={handleResizeEnd}
-            onDoubleClick={handleSidebarReset}
-          />
-        </Node>
-      )}
-      <div className={styles.mainContent}>
-        <TopBar />
-        <div className={styles.workspaceContent}>
-          <div className={styles.workspaceMain}>
-            <TabBar />
-            <div className={styles.editorContainer}>
-              {activeTab?.type === 'file' && <EditorArea file={activeTab.file} />}
-              {activeTab?.type === 'logs' && <LogArea />}
-              {activeTab?.type === 'preview' && (
-                <PreviewArea htmlContent={htmlContent} isCompilerReady={isCompilerReady} />
-              )}
-              {!activeTab && <Dashboard />}
-            </div>
+  if (!fs.isReady) {
+    return (
+      <div className={styles.loadingContainer}>
+        <div className={styles.loadingContent}>
+          <div className={styles.logoWrapper}>
+            <Icons.ZLogo size={64} className={styles.loadingLogo} />
+            <div className={styles.logoGlow} />
           </div>
-          {showAIInput && !isMobile && (
-            <Node>
-              <Resizer
-                onResize={handlePromptResize}
-                onResizeStart={handleResizeStart}
-                onResizeEnd={handleResizeEnd}
-                onDoubleClick={handlePromptReset}
-              />
-            </Node>
-          )}
-          <Prompt isMobile={isMobile} />
+          <div className={styles.loadingText}>
+            <h2>Zakamurai</h2>
+            <div className={styles.progressTrack}>
+              <div className={styles.progressBar} />
+            </div>
+            <p>Initializing workspace...</p>
+          </div>
         </div>
-        <StatusBar />
       </div>
-      <ShortcutsHelp
-        isOpen={showShortcuts}
-        onClose={() =>
-          appState((draft) => {
-            draft.showShortcuts = false;
-          })
-        }
-      />
+    );
+  }
+
+  return (
+    <div className={styles.root}>
+      <ProjectNameSaver />
+      <Notification />
+      <TabRestorer />
+      <PreviewRestorer />
+      <ContentSaver />
+      <KeyboardHandler />
+      <div
+        className={`${styles.appWrapper} ${theme === 'light' ? styles.light : ''} ${
+          isResizing ? styles.isResizing : ''
+        }`}
+      >
+        {(isSidebarOpen || showAIInput) && (
+          <div
+            className={styles.mobileOverlay}
+            onClick={closeOverlays}
+            onKeyDown={handleOverlayKeyDown}
+            role="button"
+            tabIndex={0}
+            aria-label="Close overlays"
+          />
+        )}
+        <Sidebar isMobile={isMobile} />
+        {isSidebarOpen && !isMobile && (
+          <Node>
+            <Resizer
+              onResize={handleSidebarResize}
+              onResizeStart={handleResizeStart}
+              onResizeEnd={handleResizeEnd}
+              onDoubleClick={handleSidebarReset}
+            />
+          </Node>
+        )}
+        <div className={styles.mainContent}>
+          <TopBar />
+          <div className={styles.workspaceContent}>
+            <div className={styles.workspaceMain}>
+              <TabBar />
+              <div className={styles.editorContainer}>
+                {activeTab?.type === 'file' && <EditorArea file={activeTab.file} />}
+                {activeTab?.type === 'logs' && <LogArea />}
+                {activeTab?.type === 'preview' && (
+                  <PreviewArea htmlContent={htmlContent} isCompilerReady={isCompilerReady} />
+                )}
+                {!activeTab && <Dashboard />}
+              </div>
+            </div>
+            {showAIInput && !isMobile && (
+              <Node>
+                <Resizer
+                  onResize={handlePromptResize}
+                  onResizeStart={handleResizeStart}
+                  onResizeEnd={handleResizeEnd}
+                  onDoubleClick={handlePromptReset}
+                />
+              </Node>
+            )}
+            <Prompt isMobile={isMobile} />
+          </div>
+          <StatusBar />
+        </div>
+        <ShortcutsHelp
+          isOpen={showShortcuts}
+          onClose={() =>
+            appState((draft) => {
+              draft.showShortcuts = false;
+            })
+          }
+        />
+      </div>
     </div>
   );
 }

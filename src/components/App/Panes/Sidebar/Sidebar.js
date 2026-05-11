@@ -74,11 +74,7 @@ export default function Sidebar({ isMobile }) {
     <aside
       className={`${styles.sidebar} ${isSidebarOpen ? styles.isOpen : ''}`}
       style={{
-        width: isMobile
-          ? undefined
-          : isSidebarOpen
-            ? `${sidebarWidth}px`
-            : '0px',
+        width: isMobile ? undefined : isSidebarOpen ? `${sidebarWidth}px` : '0px',
       }}
     >
       {/* Dynamic Header Section */}

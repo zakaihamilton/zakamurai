@@ -259,11 +259,7 @@ FORMAT FOR FULL FILE REWRITE (ONLY FOR NEW FILES OR COMPLETE OVERHAULS):
       className={`${styles.prompt} ${showAIInput ? styles.open : styles.closed}`}
       aria-hidden={!showAIInput}
       style={{
-        width: isMobile
-          ? undefined
-          : showAIInput
-            ? `${promptWidth}px`
-            : '0px',
+        width: isMobile ? undefined : showAIInput ? `${promptWidth}px` : '0px',
       }}
     >
       <div className={styles.content}>
