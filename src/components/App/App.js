@@ -138,6 +138,17 @@ function PassiveWrapper() {
   const { promptWidth } = promptState;
   const { isResizing = false } = appWrapperState || {};
 
+  const [isMobile, setIsMobile] = React.useState(false);
+
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+    window.addEventListener('resize', checkMobile);
+    checkMobile();
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
   // Sync theme with document.body for global Portals
   useEffect(() => {
     if (theme === 'light') {
@@ -175,20 +186,15 @@ function PassiveWrapper() {
 
   // Close sidebars when transitioning to mobile view
   useEffect(() => {
-    const handleResize = () => {
-      if (window.innerWidth <= 768) {
-        if (isSidebarOpen || showAIInput) {
-          sidebarState((draft) => {
-            draft.isSidebarOpen = false;
-            draft.showAIInput = false;
-          });
-        }
+    if (isMobile) {
+      if (isSidebarOpen || showAIInput) {
+        sidebarState((draft) => {
+          draft.isSidebarOpen = false;
+          draft.showAIInput = false;
+        });
       }
-    };
-    window.addEventListener("resize", handleResize);
-    handleResize();
-    return () => window.removeEventListener("resize", handleResize);
-  }, [isSidebarOpen, showAIInput, sidebarState]);
+    }
+  }, [isMobile, sidebarState]); // Removed isSidebarOpen/showAIInput from deps to only trigger on transition
 
   const handleSidebarResize = (clientX) => {
     if (isSidebarOpen) {
@@ -266,8 +272,8 @@ function PassiveWrapper() {
           aria-label="Close overlays"
         />
       )}
-      <Sidebar />
-      {isSidebarOpen && (
+      <Sidebar isMobile={isMobile} />
+      {isSidebarOpen && !isMobile && (
         <Node>
           <Resizer
             onResize={handleSidebarResize}
@@ -291,7 +297,7 @@ function PassiveWrapper() {
               {!activeTab && <Dashboard />}
             </div>
           </div>
-          {showAIInput && (
+          {showAIInput && !isMobile && (
             <Node>
               <Resizer
                 onResize={handlePromptResize}
@@ -301,7 +307,7 @@ function PassiveWrapper() {
               />
             </Node>
           )}
-          <Prompt />
+          <Prompt isMobile={isMobile} />
         </div>
         <StatusBar />
       </div>

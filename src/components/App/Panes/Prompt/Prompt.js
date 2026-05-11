@@ -15,7 +15,7 @@ import styles from './Prompt.module.css';
 export const PromptState = createState('PromptState');
 const PromptUiState = createState('PromptUiState');
 
-export default function Prompt() {
+export default function Prompt({ isMobile }) {
   const { fs } = AppState.useState();
   const promptUiState = PromptUiState.useState(null, { val: '', historyIndex: -1, draftVal: '' });
   const { val = '', historyIndex = -1, draftVal = '' } = promptUiState || {};
@@ -259,12 +259,11 @@ FORMAT FOR FULL FILE REWRITE (ONLY FOR NEW FILES OR COMPLETE OVERHAULS):
       className={`${styles.prompt} ${showAIInput ? styles.open : styles.closed}`}
       aria-hidden={!showAIInput}
       style={{
-        width:
-          typeof window !== 'undefined' && window.innerWidth <= 768
-            ? undefined
-            : showAIInput
-              ? `${promptWidth}px`
-              : '0px',
+        width: isMobile
+          ? undefined
+          : showAIInput
+            ? `${promptWidth}px`
+            : '0px',
       }}
     >
       <div className={styles.content}>

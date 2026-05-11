@@ -38,7 +38,7 @@ const filterTree = (nodes, query) => {
     .sort(treeSorter);
 };
 
-export default function Sidebar() {
+export default function Sidebar({ isMobile }) {
   const sidebarState = SidebarState.useState();
   const { isSidebarOpen, folderTree, sidebarWidth } = sidebarState;
   const appState = AppState.useState();
@@ -74,12 +74,11 @@ export default function Sidebar() {
     <aside
       className={`${styles.sidebar} ${isSidebarOpen ? styles.isOpen : ''}`}
       style={{
-        width:
-          typeof window !== 'undefined' && window.innerWidth <= 768
-            ? undefined
-            : isSidebarOpen
-              ? `${sidebarWidth}px`
-              : '0px',
+        width: isMobile
+          ? undefined
+          : isSidebarOpen
+            ? `${sidebarWidth}px`
+            : '0px',
       }}
     >
       {/* Dynamic Header Section */}
