@@ -1,9 +1,15 @@
-.tabBar {
+.tabBarContainer {
   display: flex;
   background: var(--bg-tab-inactive);
-  overflow-x: auto;
   border-bottom: 1px solid var(--border);
   min-height: 44px;
+  position: relative;
+}
+
+.tabBar {
+  display: flex;
+  flex: 1;
+  overflow-x: auto;
   padding: 4px 4px 0 4px;
   gap: 2px;
 }
@@ -94,11 +100,9 @@
   display: flex;
   align-items: center;
   padding: 0 8px;
-  margin-left: auto;
-  position: sticky;
-  right: 0;
-  background: var(--bg-tab-inactive);
   border-left: 1px solid var(--border);
+  background: transparent;
+  z-index: 10;
 }
 
 .clearAllButton {

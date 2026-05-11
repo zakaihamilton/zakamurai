@@ -156,7 +156,7 @@ export default function TabBar() {
 
   return (
     <div
-      className={`${styles.tabBar} scroll-hide ${isOverBar ? styles.barDropTarget : ''}`}
+      className={`${styles.tabBarContainer} ${isOverBar ? styles.barDropTarget : ''}`}
       onDragOver={(e) => {
         e.preventDefault();
         e.dataTransfer.dropEffect = 'move';
@@ -172,58 +172,60 @@ export default function TabBar() {
       }
       onDrop={handleDropOnBar}
     >
-      {openTabs.map((tab) => {
-        const isActive = activeTabId === tab.id;
-        const isDragging = draggedTabId === tab.id;
-        const isDropTarget = dropTargetId === tab.id;
+      <div className={`${styles.tabBar} scroll-hide`}>
+        {openTabs.map((tab) => {
+          const isActive = activeTabId === tab.id;
+          const isDragging = draggedTabId === tab.id;
+          const isDropTarget = dropTargetId === tab.id;
 
-        return (
-          <React.Fragment key={tab.id}>
-            {/* biome-ignore lint/a11y/useSemanticElements: nesting buttons is invalid HTML */}
-            <div
-              role="button"
-              tabIndex={0}
-              draggable
-              onDragStart={(e) => handleDragStart(e, tab.id)}
-              onDragOver={(e) => handleDragOver(e, tab.id)}
-              onDragEnd={handleDragEnd}
-              onDrop={(e) => handleDrop(e, tab.id)}
-              onClick={() => handleTabClick(tab.id)}
-              onKeyDown={(e) => e.key === 'Enter' && handleTabClick(tab.id)}
-              className={`${styles.tab} ${isActive ? styles.activeTab : styles.inactiveTab} ${
-                isDragging ? styles.tabDragging : ''
-              } ${isDropTarget ? styles.dropTarget : ''}`}
-            >
-              <span className={`${styles.tabIcon} ${isActive ? styles.tabIconActive : ''}`}>
-                {tab.type === 'logs' ? (
-                  <Icons.BotSmall />
-                ) : tab.type === 'preview' ? (
-                  <Icons.Globe />
-                ) : (
-                  <Icons.File />
-                )}
-              </span>
-              <Tooltip
-                content={tab.type === 'file' ? tab.id : tab.label}
-                className={styles.tabLabelTooltip}
+          return (
+            <React.Fragment key={tab.id}>
+              {/* biome-ignore lint/a11y/useSemanticElements: nesting buttons is invalid HTML */}
+              <div
+                role="button"
+                tabIndex={0}
+                draggable
+                onDragStart={(e) => handleDragStart(e, tab.id)}
+                onDragOver={(e) => handleDragOver(e, tab.id)}
+                onDragEnd={handleDragEnd}
+                onDrop={(e) => handleDrop(e, tab.id)}
+                onClick={() => handleTabClick(tab.id)}
+                onKeyDown={(e) => e.key === 'Enter' && handleTabClick(tab.id)}
+                className={`${styles.tab} ${isActive ? styles.activeTab : styles.inactiveTab} ${
+                  isDragging ? styles.tabDragging : ''
+                } ${isDropTarget ? styles.dropTarget : ''}`}
               >
-                <span className={styles.tabLabelText}>{tab.label}</span>
-              </Tooltip>
-              <Tooltip content="Close Tab" shortcut="⌃W">
-                <button
-                  type="button"
-                  onClick={(e) => closeTab(e, tab.id)}
-                  onKeyDown={(e) => e.key === 'Enter' && closeTab(e, tab.id)}
-                  className={styles.closeButton}
-                  style={{ opacity: isActive ? 1 : 0.5 }}
+                <span className={`${styles.tabIcon} ${isActive ? styles.tabIconActive : ''}`}>
+                  {tab.type === 'logs' ? (
+                    <Icons.BotSmall />
+                  ) : tab.type === 'preview' ? (
+                    <Icons.Globe />
+                  ) : (
+                    <Icons.File />
+                  )}
+                </span>
+                <Tooltip
+                  content={tab.type === 'file' ? tab.id : tab.label}
+                  className={styles.tabLabelTooltip}
                 >
-                  <Icons.Close />
-                </button>
-              </Tooltip>
-            </div>
-          </React.Fragment>
-        );
-      })}
+                  <span className={styles.tabLabelText}>{tab.label}</span>
+                </Tooltip>
+                <Tooltip content="Close Tab" shortcut="⌃W">
+                  <button
+                    type="button"
+                    onClick={(e) => closeTab(e, tab.id)}
+                    onKeyDown={(e) => e.key === 'Enter' && closeTab(e, tab.id)}
+                    className={styles.closeButton}
+                    style={{ opacity: isActive ? 1 : 0.5 }}
+                  >
+                    <Icons.Close />
+                  </button>
+                </Tooltip>
+              </div>
+            </React.Fragment>
+          );
+        })}
+      </div>
       {openTabs.length > 1 && (
         <div className={styles.tabActions}>
           <Tooltip content="Close all tabs" shortcut="⌃⇧W">
