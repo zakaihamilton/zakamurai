@@ -108,10 +108,7 @@
     overflow-x: auto;
     padding: 0 10px;
     -webkit-overflow-scrolling: touch;
-    scrollbar-width: none; /* Firefox */
-  }
-  .header::-webkit-scrollbar {
-    display: none; /* Chrome/Safari */
+    -webkit-overflow-scrolling: touch;
   }
   .breadcrumb {
     flex-shrink: 0;
