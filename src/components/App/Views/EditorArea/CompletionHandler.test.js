@@ -15,7 +15,6 @@ vi.mock('@/utils/rag/search-utility', () => ({
 }));
 
 const { askWebLLM } = await import('@/components/AI/WebLLMAPI');
-const { ragSearch } = await import('@/utils/rag/search-utility');
 
 const flushCompletionDelay = async () => {
   await act(async () => {

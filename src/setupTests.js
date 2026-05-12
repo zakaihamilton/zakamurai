@@ -22,7 +22,6 @@ if (
 // Mock Worker
 if (typeof globalThis.Worker === 'undefined') {
   globalThis.Worker = class {
-    constructor() {}
     postMessage() {}
     terminate() {}
     addEventListener() {}

@@ -85,14 +85,14 @@ async function indexFile({ filePath, content }) {
   await init();
 
   // Simple chunking strategy: split by double newline
-  const chunks = content.split(/\n\s*\n/).filter(c => c.trim().length > 10);
-  
+  const chunks = content.split(/\n\s*\n/).filter((c) => c.trim().length > 10);
+
   let added = 0;
   for (const chunkContent of chunks) {
     const hash = await getHash(chunkContent);
-    
+
     // Skip if already indexed
-    if (index.some(item => item.hash === hash)) continue;
+    if (index.some((item) => item.hash === hash)) continue;
 
     const output = await extractor(chunkContent, { pooling: 'mean', normalize: true });
     const vector = Array.from(output.data);
@@ -102,7 +102,7 @@ async function indexFile({ filePath, content }) {
       filePath,
       content: chunkContent,
       hash,
-      timestamp: Date.now()
+      timestamp: Date.now(),
     });
     added++;
   }
@@ -120,12 +120,13 @@ async function search({ query, k = 5 }) {
   const queryVector = Array.from(output.data);
 
   // Brute-force search
-  const results = index.map(item => ({
-    ...item,
-    score: cosineSimilarity(queryVector, item.vector)
-  }))
-  .sort((a, b) => b.score - a.score)
-  .slice(0, k);
+  const results = index
+    .map((item) => ({
+      ...item,
+      score: cosineSimilarity(queryVector, item.vector),
+    }))
+    .sort((a, b) => b.score - a.score)
+    .slice(0, k);
 
   return results;
 }
