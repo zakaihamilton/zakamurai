@@ -243,21 +243,27 @@ export default function Prompt() {
           <div>
             <h2 className={styles.title}>AI Prompt</h2>
           </div>
-          {isAIProcessing && <span className={styles.status}>AI Working</span>}
-          {isSystemProcessing && <span className={styles.status}>Compiling</span>}
-          {!isAIProcessing && logState.reasoning && !isReasoningVisible && (
-            <button
-              type="button"
-              className={styles.showReasoningBtn}
-              onClick={() =>
-                promptUiState((draft) => {
-                  draft.isReasoningVisible = true;
-                })
-              }
-            >
-              Show Reasoning
-            </button>
-          )}
+          <div className={styles.headerActions}>
+            {isAIProcessing && <span className={styles.status}>AI Working</span>}
+            {isSystemProcessing && <span className={styles.status}>Compiling</span>}
+            {logState.reasoning && (
+              <Tooltip content={isReasoningVisible ? 'Hide Reasoning' : 'Show Reasoning'}>
+                <button
+                  type="button"
+                  className={`${styles.headerActionBtn} ${
+                    isReasoningVisible ? styles.headerActionBtnActive : ''
+                  }`}
+                  onClick={() =>
+                    promptUiState((draft) => {
+                      draft.isReasoningVisible = !draft.isReasoningVisible;
+                    })
+                  }
+                >
+                  <Icons.BotSmall />
+                </button>
+              </Tooltip>
+            )}
+          </div>
         </div>
         {(currentActiveTabId || selectedLines.length > 0) && (
           <div className={styles.tagsContainer}>
@@ -275,11 +281,17 @@ export default function Prompt() {
             )}
           </div>
         )}
-        {logState.reasoning && isReasoningVisible && (
+        <div
+          className={`${styles.reasoningWrapper} ${
+            logState.reasoning && isReasoningVisible ? styles.reasoningVisible : ''
+          }`}
+        >
           <div className={styles.reasoningContainer}>
             <div className={styles.reasoningHeader}>
-              <Icons.Info size={14} />
-              <span>Progress & Reasoning</span>
+              <div className={styles.reasoningTitle}>
+                <Icons.Info size={14} />
+                <span>Progress & Reasoning</span>
+              </div>
               <div className={styles.reasoningActions}>
                 <Tooltip content={isCopied ? 'Copied!' : 'Copy Reasoning'}>
                   <button
@@ -294,28 +306,13 @@ export default function Prompt() {
                     {isCopied ? <Icons.Check size={14} /> : <Icons.Copy size={14} />}
                   </button>
                 </Tooltip>
-                {!isAIProcessing && (
-                  <Tooltip content="Hide Reasoning">
-                    <button
-                      type="button"
-                      className={styles.iconButton}
-                      onClick={() =>
-                        promptUiState((draft) => {
-                          draft.isReasoningVisible = false;
-                        })
-                      }
-                    >
-                      <Icons.Close size={14} />
-                    </button>
-                  </Tooltip>
-                )}
               </div>
             </div>
             <div ref={reasoningRef} className={`${styles.reasoningContent} scroll-hide`}>
               {logState.reasoning}
             </div>
           </div>
-        )}
+        </div>
         <form onSubmit={send} className={styles.form}>
           <textarea
             value={val}

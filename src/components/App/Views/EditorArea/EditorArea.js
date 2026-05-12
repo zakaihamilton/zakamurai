@@ -14,6 +14,7 @@ import Gutter from './Gutter';
 import HistoryHandler from './HistoryHandler';
 import SyncHandler from './SyncHandler';
 import { highlightCode } from './highlighter';
+import { formatCode } from '@/utils/formatter';
 
 export const EditorState = createState('EditorState');
 
@@ -128,6 +129,13 @@ export default function EditorArea({ file }) {
     });
   };
 
+  const handleFormat = () => {
+    const formatted = formatCode(localContent, filePath);
+    if (formatted !== localContent) {
+      handleChange({ target: { value: formatted } });
+    }
+  };
+
   return (
     <div className={styles.editorArea}>
       <HistoryHandler
@@ -145,6 +153,7 @@ export default function EditorArea({ file }) {
         handleUndo={diffActions.handleUndo}
         showSideBySide={showSideBySide}
         setShowSideBySide={setShowSideBySide}
+        handleFormat={handleFormat}
       />
 
       <FindHandler
@@ -208,6 +217,7 @@ export default function EditorArea({ file }) {
                 readOnly={true}
                 cursorPos={state.cursorPos?.[filePath]}
                 scrollContainerRef={leftScrollRef}
+                filePath={filePath}
               />
             </div>
           </div>
@@ -242,6 +252,7 @@ export default function EditorArea({ file }) {
                 onCursorUpdate={diffActions.handleCursorUpdate}
                 cursorPos={state.cursorPos?.[filePath]}
                 scrollContainerRef={rightScrollRef}
+                filePath={filePath}
               />
             </div>
           </div>
@@ -274,6 +285,7 @@ export default function EditorArea({ file }) {
             suggestion={suggestion}
             onAcceptSuggestion={handleAcceptSuggestion}
             onCancelSuggestion={cancelSuggestion}
+            filePath={filePath}
           />
         </div>
       )}

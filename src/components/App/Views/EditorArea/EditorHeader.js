@@ -13,6 +13,7 @@ export default function EditorHeader({
   handleUndo,
   showSideBySide,
   setShowSideBySide,
+  handleFormat,
 }) {
   return (
     <div className={styles.editorHeader}>
@@ -24,6 +25,11 @@ export default function EditorHeader({
         <Tooltip content="Find/Replace" shortcut={formatShortcut('⌘F')}>
           <button type="button" className={styles.actionBtn} onClick={() => setShowFind(!showFind)}>
             <Icons.Search />
+          </button>
+        </Tooltip>
+        <Tooltip content="Format Code" shortcut={formatShortcut('⌥⇧F')}>
+          <button type="button" className={styles.actionBtn} onClick={handleFormat}>
+            <Icons.Layout />
           </button>
         </Tooltip>
         {hasDiff && (

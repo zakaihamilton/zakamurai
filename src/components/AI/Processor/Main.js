@@ -1,4 +1,5 @@
 import { setInDraft, updateInDraft } from '../../Core/Base/StateUtils';
+import { formatCode } from '@/utils/formatter';
 import { applyFileUpdate } from './utils/Applier';
 import { parseAIResponse } from './utils/Parser';
 import { resolveFilePath } from './utils/PathResolver';
@@ -74,11 +75,13 @@ export const processAIResponse = async (
       // to allow for fuzzy-matched snippets.
 
       const fileSelectedLines = selectedLines[filePath] || [];
-      const { content: finalContent, diffs } = applyFileUpdate(
+      const { content: appliedContent, diffs } = applyFileUpdate(
         originalContent,
         block.content,
         fileSelectedLines,
       );
+
+      const finalContent = formatCode(appliedContent, filePath);
 
       if (finalContent === originalContent || !diffs || diffs.length === 0) {
         logState((draft) => {

@@ -1,5 +1,6 @@
 import { isMac } from '@/utils/os';
 import { useCallback } from 'react';
+import { formatCode } from '@/utils/formatter';
 
 export default function useEditorShortcuts({
   handleChange,
@@ -8,6 +9,7 @@ export default function useEditorShortcuts({
   suggestion,
   onAcceptSuggestion,
   onCancelSuggestion,
+  filePath,
 }) {
   const handleKeyDown = useCallback(
     (e) => {
@@ -248,6 +250,15 @@ export default function useEditorShortcuts({
           }
         }
       }
+
+      // 5. Format Code (Alt+Shift+F)
+      if (e.altKey && e.shiftKey && e.key === 'F') {
+        e.preventDefault();
+        const formatted = formatCode(value, filePath);
+        if (formatted !== value) {
+          handleChange({ target: { value: formatted } });
+        }
+      }
     },
     [
       handleChange,
@@ -256,6 +267,7 @@ export default function useEditorShortcuts({
       suggestion,
       onAcceptSuggestion,
       onCancelSuggestion,
+      filePath,
     ],
   );
 

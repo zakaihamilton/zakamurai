@@ -14,6 +14,7 @@ export default function CodeEditor({
   suggestion,
   onAcceptSuggestion,
   onCancelSuggestion,
+  filePath,
 }) {
   const textareaRef = useRef(null);
   const lastReportedIndex = useRef(-1);
@@ -26,6 +27,7 @@ export default function CodeEditor({
     suggestion,
     onAcceptSuggestion,
     onCancelSuggestion,
+    filePath,
   });
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: localContent is required to catch browser cursor resets after sync

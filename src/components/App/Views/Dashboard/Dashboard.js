@@ -81,6 +81,10 @@ export default function Dashboard() {
             <span>Clear Logs</span>
             <kbd>{formatShortcut('⌃K')}</kbd>
           </div>
+          <div className={styles.shortcut}>
+            <span>Format Code</span>
+            <kbd>{formatShortcut('⌥⇧F')}</kbd>
+          </div>
         </div>
       </div>
       <div className={styles.footer}>
