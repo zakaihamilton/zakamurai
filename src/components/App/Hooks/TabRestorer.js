@@ -4,7 +4,7 @@ import { EditorState } from '@/components/App/Views/EditorArea';
 import Settings from '@/components/Storage/Settings';
 import { useEffect, useRef } from 'react';
 
-export default function TabRestorer() {
+export function useTabRestorer() {
   const { fs } = AppState.useState();
   const tabState = TabState.useState();
   const editorState = EditorState.useState();
@@ -62,6 +62,4 @@ export default function TabRestorer() {
 
     restore();
   }, [fs, tabState, editorState]);
-
-  return null;
 }

@@ -5,9 +5,9 @@ import { EditorState } from '@/components/App/Views/EditorArea';
 import { LogState } from '@/components/App/Views/LogArea';
 import { useNotification } from '@/components/Widgets/Notification/Notification';
 import { useEffect } from 'react';
-import { SHORTCUTS, isMatch } from './Shortcuts';
+import { SHORTCUTS, isMatch } from '../Manager/Shortcuts';
 
-export default function KeyboardHandler() {
+export function useKeyboardHandler() {
   const sidebarState = SidebarState.useState();
   const logState = LogState.useState();
   const appState = AppState.useState();
@@ -40,6 +40,4 @@ export default function KeyboardHandler() {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [sidebarState, logState, appState, tabState, showNotification, editorState]);
-
-  return null;
 }

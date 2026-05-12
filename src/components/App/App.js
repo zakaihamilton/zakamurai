@@ -10,79 +10,90 @@ import { PreviewState } from './PreviewState';
 import { EditorState } from './Views/EditorArea';
 import { LogState } from './Views/LogArea';
 
+import { MOBILE_BREAKPOINT } from '@/constants/Layout';
 // App State
 import { AppState } from './AppState';
-import { MOBILE_BREAKPOINT } from '@/constants/Layout';
 
 import AppBackgroundServices from './App/AppBackgroundServices';
 import AppContent from './App/AppContent';
-// Sub Components
 import AppLoading from './App/AppLoading';
+
+// Hooks
+import { useSettingsSync } from './Hooks/SettingsSync';
+import { useWindowResize } from './Hooks/WindowResize';
 
 export default function App() {
   const fs = useFileSystem();
 
-  const initialProjectName = useMemo(() => Settings.getProjectName(), []);
-  const initialFiles = useMemo(() => DEFAULT_FILES, []);
-  const initialContents = useMemo(() => {
-    const stored = Settings.getFileContents();
-    if (stored && Object.keys(stored).length > 0) return stored;
-    return DEFAULT_CONTENTS;
-  }, []);
-  const initialTheme = Settings.getTheme();
-  const initialTabs = useMemo(() => {
-    const stored = Settings.getOpenTabs();
-    if (stored) return stored;
-    return [];
-  }, []);
-  const initialActiveTabId = useMemo(() => Settings.getActiveTabId() || null, []);
-  const initialAILogs = useMemo(() => {
-    const stored = Settings.getAILogs();
-    return stored || [];
-  }, []);
-  const initialSidebarWidth = useMemo(() => Settings.getSidebarWidth(), []);
-  const initialPromptWidth = useMemo(() => Settings.getPromptWidth(), []);
-  const initialIsSidebarOpen = useMemo(() => Settings.getIsSidebarOpen(), []);
-  const initialShowAIInput = useMemo(() => Settings.getShowAIInput(), []);
-  const initialExpandedFolders = useMemo(() => Settings.getExpandedFolders(), []);
+  // Memoized initial values from Settings
+  const initialValues = useMemo(
+    () => ({
+      projectName: Settings.getProjectName(),
+      files: DEFAULT_FILES,
+      contents: (() => {
+        const stored = Settings.getFileContents();
+        return stored && Object.keys(stored).length > 0 ? stored : DEFAULT_CONTENTS;
+      })(),
+      theme: Settings.getTheme(),
+      tabs: Settings.getOpenTabs() || [],
+      activeTabId: Settings.getActiveTabId() || null,
+      aiLogs: Settings.getAILogs() || [],
+      sidebarWidth: Settings.getSidebarWidth(),
+      promptWidth: Settings.getPromptWidth(),
+      isSidebarOpen: Settings.getIsSidebarOpen(),
+      showAIInput: Settings.getShowAIInput(),
+      expandedFolders: Settings.getExpandedFolders(),
+    }),
+    [],
+  );
 
   // Initialize all states
   const appState = AppState.useState(null, {
-    theme: initialTheme,
-    projectName: initialProjectName,
+    theme: initialValues.theme,
+    projectName: initialValues.projectName,
     fs,
     showShortcuts: false,
     isResizing: false,
     isMobile: typeof window !== 'undefined' ? window.innerWidth <= MOBILE_BREAKPOINT : false,
   });
+
   const sidebarState = SidebarState.useState(null, {
-    isSidebarOpen: initialIsSidebarOpen,
-    showAIInput: initialShowAIInput,
+    isSidebarOpen: initialValues.isSidebarOpen,
+    showAIInput: initialValues.showAIInput,
     isSidebarPopupOpen: false,
     isAIInputPopupOpen: false,
-    folderTree: initialFiles,
-    sidebarWidth: initialSidebarWidth,
-    expandedFolders: initialExpandedFolders,
+    folderTree: initialValues.files,
+    sidebarWidth: initialValues.sidebarWidth,
+    expandedFolders: initialValues.expandedFolders,
   });
-  const _tabState = TabState.useState(null, {
-    openTabs: initialTabs,
-    activeTabId: initialActiveTabId,
+
+  TabState.useState(null, {
+    openTabs: initialValues.tabs,
+    activeTabId: initialValues.activeTabId,
   });
+
   LogState.useState(null, {
     isSystemProcessing: false,
     isAIProcessing: false,
-    logs: initialAILogs,
+    logs: initialValues.aiLogs,
   });
+
   EditorState.useState(null, {
-    fileContents: initialContents,
+    fileContents: initialValues.contents,
   });
+
   const promptState = PromptState.useState(null, {
-    promptWidth: initialPromptWidth,
+    promptWidth: initialValues.promptWidth,
   });
+
   PreviewState.useState(null, {
     htmlContent: Settings.getPreviewHtml(),
     isCompilerReady: false,
   });
+
+  // Background Services & Sync
+  useWindowResize(appState, sidebarState);
+  useSettingsSync(appState, sidebarState, promptState);
 
   // Sync fs when it changes
   useEffect(() => {
@@ -91,77 +102,10 @@ export default function App() {
     });
   }, [fs, appState]);
 
-  const { theme, isMobile } = appState;
-  const {
-    isSidebarOpen,
-    sidebarWidth,
-    showAIInput,
-    isSidebarPopupOpen,
-    isAIInputPopupOpen,
-    expandedFolders,
-  } = sidebarState;
-  const { promptWidth } = promptState;
-
+  // Global side effects
   useEffect(() => {
-    const checkMobile = () => {
-      const isMobileNow = window.innerWidth <= MOBILE_BREAKPOINT;
-      appState((draft) => {
-        draft.isMobile = isMobileNow;
-      });
-    };
-    window.addEventListener('resize', checkMobile);
-    checkMobile();
-    return () => window.removeEventListener('resize', checkMobile);
-  }, [appState]);
-
-  // Sync theme with document.body for global Portals
-  useEffect(() => {
-    if (theme === 'light') {
-      document.body.classList.add('light');
-    } else {
-      document.body.classList.remove('light');
-    }
-  }, [theme]);
-
-  // Save state to localStorage on change
-  useEffect(() => {
-    Settings.setTheme(theme);
-  }, [theme]);
-
-  useEffect(() => {
-    Settings.setSidebarWidth(sidebarWidth);
-  }, [sidebarWidth]);
-
-  useEffect(() => {
-    Settings.setPromptWidth(promptWidth);
-  }, [promptWidth]);
-
-  useEffect(() => {
-    Settings.setIsSidebarOpen(isSidebarOpen);
-  }, [isSidebarOpen]);
-
-  useEffect(() => {
-    Settings.setShowAIInput(showAIInput);
-  }, [showAIInput]);
-
-  useEffect(() => {
-    Settings.setExpandedFolders(expandedFolders);
-  }, [expandedFolders]);
-
-  const prevIsMobile = React.useRef(isMobile);
-
-  // Close popup sidebars when transitioning to desktop view
-  useEffect(() => {
-    if (!isMobile && prevIsMobile.current) {
-      if (isSidebarPopupOpen || isAIInputPopupOpen) {
-        sidebarState((draft) => {
-          draft.isSidebarPopupOpen = false;
-          draft.isAIInputPopupOpen = false;
-        });
-      }
-    }
-    prevIsMobile.current = isMobile;
-  }, [isMobile, sidebarState, isSidebarPopupOpen, isAIInputPopupOpen]);
+    document.body.classList.toggle('light', appState.theme === 'light');
+  }, [appState.theme]);
 
   if (!fs.isReady) {
     return <AppLoading />;

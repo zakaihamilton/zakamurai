@@ -6,7 +6,12 @@ import { LogState } from '@/components/App/Views/LogArea';
 import { useNotification } from '@/components/Widgets/Notification/Notification';
 import { fireEvent, render } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import KeyboardHandler from './KeyboardHandler';
+import { useKeyboardHandler } from './KeyboardHandler';
+
+function TestComponent() {
+  useKeyboardHandler();
+  return null;
+}
 
 vi.mock('@/components/App/AppState', () => ({
   AppState: { useState: vi.fn() },
@@ -64,10 +69,10 @@ describe('KeyboardHandler', () => {
     vi.clearAllMocks();
   });
 
-  it('toggles sidebar on Cmd+B', () => {
-    render(<KeyboardHandler />);
+  it('toggles sidebar on Ctrl+B', () => {
+    render(<TestComponent />);
 
-    fireEvent.keyDown(window, { key: 'b', metaKey: true });
+    fireEvent.keyDown(window, { key: 'b', ctrlKey: true });
 
     expect(sidebarState).toHaveBeenCalled();
     const updateFn = sidebarState.mock.calls[0][0];
@@ -76,10 +81,10 @@ describe('KeyboardHandler', () => {
     expect(draft.isSidebarOpen).toBe(false);
   });
 
-  it('shows logs on Cmd+U', () => {
-    render(<KeyboardHandler />);
+  it('shows logs on Ctrl+U', () => {
+    render(<TestComponent />);
 
-    fireEvent.keyDown(window, { key: 'u', metaKey: true });
+    fireEvent.keyDown(window, { key: 'u', ctrlKey: true });
 
     expect(tabState).toHaveBeenCalled();
     const updateFn = tabState.mock.calls[0][0];
@@ -89,7 +94,7 @@ describe('KeyboardHandler', () => {
   });
 
   it('saves project on Cmd+S', () => {
-    render(<KeyboardHandler />);
+    render(<TestComponent />);
 
     fireEvent.keyDown(window, { key: 's', metaKey: true });
 
@@ -97,9 +102,9 @@ describe('KeyboardHandler', () => {
   });
 
   it('does not trigger shortcut if repeat is true', () => {
-    render(<KeyboardHandler />);
+    render(<TestComponent />);
 
-    fireEvent.keyDown(window, { key: 'b', metaKey: true, repeat: true });
+    fireEvent.keyDown(window, { key: 'b', ctrlKey: true, repeat: true });
 
     expect(sidebarState).not.toHaveBeenCalled();
   });

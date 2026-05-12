@@ -22,13 +22,14 @@ describe('LogArea', () => {
     expect(screen.getByText('Hello bot')).toBeDefined();
   });
 
-  it('renders processing message when isProcessing is true', () => {
+  it('renders processing message when isAIProcessing is true', () => {
     vi.spyOn(LogState, 'useState').mockReturnValue({
       logs: [],
-      isProcessing: true,
+      isAIProcessing: true,
+      isSystemProcessing: false,
     });
 
     render(<LogArea />);
-    expect(screen.getByText('Processing...')).toBeDefined();
+    expect(screen.getByText('AI is working...')).toBeDefined();
   });
 });

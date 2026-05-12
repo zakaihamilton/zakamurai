@@ -2,7 +2,7 @@ import { EditorState } from '@/components/App/Views/EditorArea';
 import Settings from '@/components/Storage/Settings';
 import { useEffect } from 'react';
 
-export default function ContentSaver() {
+export function useContentSaver() {
   const { fileContents, pendingDiffs } = EditorState.useState();
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -18,5 +18,4 @@ export default function ContentSaver() {
     }, 1000);
     return () => clearTimeout(timer);
   }, [fileContents, pendingDiffs]);
-  return null;
 }
