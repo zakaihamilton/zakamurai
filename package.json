@@ -3,17 +3,18 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
+    "dev": "next dev --webpack",
+    "build": "next build --webpack",
     "start": "next start",
     "lint": "biome check .",
     "format": "biome format . --write",
     "test": "vitest run",
     "test:watch": "vitest",
     "setup:almostnode": "mkdir -p public/lib/almostnode public/assets && cp -r node_modules/almostnode/dist/* public/lib/almostnode/ && cp node_modules/almostnode/dist/assets/* public/assets/",
-    "postinstall": "\"$npm_execpath\" run setup:almostnode",
-    "predev": "\"$npm_execpath\" run setup:almostnode",
-    "prebuild": "\"$npm_execpath\" run setup:almostnode",
+    "setup:wasm": "mkdir -p public/wasm && cp node_modules/onnxruntime-web/dist/* public/wasm/",
+    "postinstall": "\"$npm_execpath\" run setup:almostnode && \"$npm_execpath\" run setup:wasm",
+    "predev": "\"$npm_execpath\" run setup:almostnode && \"$npm_execpath\" run setup:wasm",
+    "prebuild": "\"$npm_execpath\" run setup:almostnode && \"$npm_execpath\" run setup:wasm",
     "verify": "biome check . && vitest run"
   },
   "dependencies": {
@@ -25,7 +26,8 @@
     "apache-arrow": "^18.1.0",
     "next": "16.2.4",
     "react": "19.2.4",
-    "react-dom": "19.2.4"
+    "react-dom": "19.2.4",
+    "wasm-loader": "^1.3.0"
   },
   "devDependencies": {
     "@biomejs/biome": "1.9.4",

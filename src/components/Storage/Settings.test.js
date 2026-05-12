@@ -41,6 +41,14 @@ describe('Settings', () => {
     expect(Settings.getSidebarWidth()).toBe(300);
   });
 
+  it('gets and sets AI completion enabled', () => {
+    expect(Settings.getAICompletionEnabled(true)).toBe(true);
+    Settings.setAICompletionEnabled(false);
+    expect(Settings.getAICompletionEnabled()).toBe(false);
+    Settings.setAICompletionEnabled(true);
+    expect(Settings.getAICompletionEnabled()).toBe(true);
+  });
+
   it('resets settings', () => {
     Settings.setProjectName('Test');
     Settings.reset();

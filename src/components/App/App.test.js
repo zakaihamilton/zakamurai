@@ -62,12 +62,16 @@ vi.mock('./PreviewState', () => {
   };
 });
 
-// Mock managers and persistence to avoid side effects and act warnings
-vi.mock('./Manager/KeyboardHandler', () => ({ default: () => null }));
-vi.mock('./Persistence/ContentSaver', () => ({ default: () => null }));
-vi.mock('./Persistence/PreviewRestorer', () => ({ default: () => null }));
-vi.mock('./Persistence/ProjectNameSaver', () => ({ default: () => null }));
-vi.mock('./Persistence/TabRestorer', () => ({ default: () => null }));
+// Mock background services and sync hooks
+vi.mock('@/components/AI/RagIndexer', () => ({ useRagIndexer: vi.fn() }));
+vi.mock('@/components/App/Manager/KeyboardHandler', () => ({ useKeyboardHandler: vi.fn() }));
+vi.mock('@/components/App/Panes/TabBar/TabRestorer', () => ({ useTabRestorer: vi.fn() }));
+vi.mock('@/components/App/Views/PreviewArea/PreviewRestorer', () => ({
+  usePreviewRestorer: vi.fn(),
+}));
+vi.mock('@/components/Storage/ContentSaver', () => ({ useContentSaver: vi.fn() }));
+vi.mock('@/components/Storage/SettingsSync', () => ({ useSettingsSync: vi.fn() }));
+vi.mock('./WindowResize', () => ({ useWindowResize: vi.fn() }));
 
 vi.mock('@/components/Storage', () => ({
   useFileSystem: vi.fn(() => ({

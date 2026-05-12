@@ -19,8 +19,8 @@ import AppContent from './App/AppContent';
 import AppLoading from './App/AppLoading';
 
 // Hooks
-import { useSettingsSync } from './Hooks/SettingsSync';
-import { useWindowResize } from './Hooks/WindowResize';
+import { useSettingsSync } from '@/components/Storage/SettingsSync';
+import { useWindowResize } from './WindowResize';
 
 export default function App() {
   const fs = useFileSystem();
@@ -43,6 +43,7 @@ export default function App() {
       isSidebarOpen: Settings.getIsSidebarOpen(),
       showAIInput: Settings.getShowAIInput(),
       expandedFolders: Settings.getExpandedFolders(),
+      aiCompletionEnabled: Settings.getAICompletionEnabled(),
     }),
     [],
   );
@@ -78,8 +79,9 @@ export default function App() {
     logs: initialValues.aiLogs,
   });
 
-  EditorState.useState(null, {
+  const editorState = EditorState.useState(null, {
     fileContents: initialValues.contents,
+    aiCompletionEnabled: initialValues.aiCompletionEnabled,
   });
 
   const promptState = PromptState.useState(null, {
@@ -93,7 +95,7 @@ export default function App() {
 
   // Background Services & Sync
   useWindowResize(appState, sidebarState);
-  useSettingsSync(appState, sidebarState, promptState);
+  useSettingsSync(appState, sidebarState, promptState, editorState);
 
   // Sync fs when it changes
   useEffect(() => {

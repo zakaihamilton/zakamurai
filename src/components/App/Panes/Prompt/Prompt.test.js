@@ -51,6 +51,14 @@ vi.mock('@/components/AI', () => ({
   processAIResponse: vi.fn().mockResolvedValue(undefined),
 }));
 
+vi.mock('@/utils/rag/search-utility', () => ({
+  ragSearch: {
+    retrieveContext: vi.fn().mockResolvedValue([]),
+    formatPromptContext: vi.fn().mockReturnValue(''),
+    init: vi.fn().mockResolvedValue(undefined),
+  },
+}));
+
 vi.mock('@/components/Storage/Settings', () => ({
   __esModule: true,
   default: {

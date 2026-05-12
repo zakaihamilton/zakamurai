@@ -1,10 +1,11 @@
 import Settings from '@/components/Storage/Settings';
 import { useEffect } from 'react';
 
-export function useSettingsSync(appState, sidebarState, promptState) {
+export function useSettingsSync(appState, sidebarState, promptState, editorState) {
   const { theme, projectName } = appState;
   const { sidebarWidth, isSidebarOpen, showAIInput, expandedFolders } = sidebarState;
   const { promptWidth } = promptState;
+  const { aiCompletionEnabled } = editorState;
 
   useEffect(() => {
     Settings.setTheme(theme);
@@ -33,4 +34,8 @@ export function useSettingsSync(appState, sidebarState, promptState) {
   useEffect(() => {
     Settings.setExpandedFolders(expandedFolders);
   }, [expandedFolders]);
+
+  useEffect(() => {
+    Settings.setAICompletionEnabled(aiCompletionEnabled === true);
+  }, [aiCompletionEnabled]);
 }
