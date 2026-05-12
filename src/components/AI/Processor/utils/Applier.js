@@ -361,8 +361,6 @@ export function computeDiff(original, updated, selectedLines = []) {
   };
 }
 
-
-
 /**
  * Replaces specifically the selected lines with the updated snippet.
  */
