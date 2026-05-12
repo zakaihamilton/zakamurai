@@ -44,7 +44,7 @@ export class RagSearchUtility {
   }
 
   /**
-   * Search LanceDB for context and dynamically inject linked CSS modules.
+   * Search for context and dynamically inject linked CSS modules.
    * @param {string} query - The user's prompt or search query.
    * @param {number} k - Number of chunks to retrieve.
    * @returns {Promise<Array>} List of context items, including resolved CSS blocks.
@@ -52,7 +52,6 @@ export class RagSearchUtility {
   async retrieveContext(query, k = 5) {
     await this.init();
 
-    // Get raw chunks from LanceDB WebGPU worker
     const rawResults = await this.controller.search(query, k);
     const enrichedResults = [];
 
@@ -60,7 +59,7 @@ export class RagSearchUtility {
       const item = {
         filePath: result.filePath,
         content: result.content,
-        score: result._distance,
+        score: result.score || 0,
         linkedCss: [],
       };
 

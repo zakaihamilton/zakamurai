@@ -9,6 +9,7 @@ import { createState } from '@/components/Core/Base/State';
 import Settings from '@/components/Storage/Settings';
 import Tooltip from '@/components/Widgets/Tooltip/Tooltip';
 import { formatShortcut } from '@/utils/os';
+import { ragSearch } from '@/utils/rag/search-utility';
 import React, { useEffect, useRef } from 'react';
 import styles from './Prompt.module.css';
 
@@ -134,7 +135,19 @@ FORMAT FOR FULL FILE REWRITE (ONLY FOR NEW FILES OR COMPLETE OVERHAULS):
 [ENTIRE full code content - do NOT omit anything]
 // --- End File ---`;
 
-        let finalPrompt;
+        let finalPrompt = '';
+
+        console.info('[Prompt] Starting AI request for:', userMsg);
+        // 1. Retrieve RAG context
+        try {
+          console.info('[Prompt] Retrieving RAG context...');
+          const ragResults = await ragSearch.retrieveContext(userMsg, 5);
+          console.info('[Prompt] RAG context retrieved:', ragResults.length, 'items');
+          finalPrompt += ragSearch.formatPromptContext(ragResults);
+        } catch (ragErr) {
+          console.error('[Prompt] RAG retrieval failed:', ragErr);
+        }
+
         const selectedLines = editorState.selectedLines?.[currentActiveTabId] || [];
         const selectionInfo =
           selectedLines.length > 0
@@ -143,17 +156,18 @@ FORMAT FOR FULL FILE REWRITE (ONLY FOR NEW FILES OR COMPLETE OVERHAULS):
               )}. ONLY apply changes to these specific lines.`
             : '';
 
-        // Inject the active file context if available
+        // 2. Inject the active file context if available
         if (
           currentActiveTab &&
           currentActiveTab.type === 'file' &&
           activeFileContent !== undefined
         ) {
-          finalPrompt = `Here is the current file I am working on (${currentActiveTabId}):\n\n${activeFileContent}${selectionInfo}\n\nUser Request:\n${userMsg}`;
+          finalPrompt += `Here is the current file I am working on (${currentActiveTabId}):\n\n${activeFileContent}${selectionInfo}\n\nUser Request:\n${userMsg}`;
         } else {
-          finalPrompt = `User Request:\n${userMsg}`;
+          finalPrompt += `User Request:\n${userMsg}`;
         }
 
+        console.info('[Prompt] Calling askWebLLM...');
         const webLLMResult = await askWebLLM(finalPrompt, systemPrompt, (partial) => {
           logState((draft) => {
             draft.reasoning = partial;

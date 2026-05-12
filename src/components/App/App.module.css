@@ -6,52 +6,6 @@
   /* Theme class moved to globals.css */
 }
 
-:global(*) {
-  box-sizing: border-box;
-}
-
-:global(body),
-:global(html) {
-  margin: 0;
-  padding: 0;
-  height: 100%;
-  background: var(--bg-base);
-  color: var(--text-main);
-  font-family: "Inter", system-ui, sans-serif;
-  overflow: hidden;
-}
-
-:global(#root) {
-  height: 100%;
-}
-
-:global(::-webkit-scrollbar) {
-  width: 8px;
-  height: 8px;
-}
-
-:global(::-webkit-scrollbar-thumb) {
-  background: var(--bg-surface);
-  border: 2px solid transparent;
-  background-clip: padding-box;
-  border-radius: 10px;
-  transition: background 0.2s;
-}
-
-:global(::-webkit-scrollbar-thumb:hover) {
-  background: var(--text-muted);
-  border: 2px solid transparent;
-  background-clip: padding-box;
-}
-
-:global(::-webkit-scrollbar-track) {
-  background: transparent;
-}
-
-:global(::-webkit-scrollbar-corner) {
-  background: transparent;
-}
-
 .scroll-hide::-webkit-scrollbar {
   width: 6px;
   height: 6px;

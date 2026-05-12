@@ -57,7 +57,9 @@ const getEngine = (onProgress = null) => {
  */
 export const askWebLLM = async (prompt, systemPrompt = '', onUpdate = null, options = {}) => {
   try {
+    console.info('[WebLLM] Retrieving engine...');
     const engine = await getEngine(onUpdate);
+    console.info('[WebLLM] Engine retrieved. Starting completion...');
 
     const defaultSystemPrompt = DEFAULT_SYSTEM_PROMPT;
 

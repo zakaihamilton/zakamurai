@@ -19,3 +19,26 @@ if (
     },
   };
 }
+// Mock Worker
+if (typeof globalThis.Worker === 'undefined') {
+  globalThis.Worker = class {
+    postMessage() {}
+    terminate() {}
+    addEventListener() {}
+    removeEventListener() {}
+  };
+}
+
+// Mock navigator.storage
+if (typeof globalThis.navigator.storage === 'undefined') {
+  globalThis.navigator.storage = {
+    getDirectory: async () => ({
+      getDirectoryHandle: async () => ({}),
+      getFileHandle: async () => ({
+        getFile: async () => ({
+          text: async () => '',
+        }),
+      }),
+    }),
+  };
+}

@@ -12,6 +12,7 @@ const KEYS = {
   IS_SIDEBAR_OPEN: 'zakamurai_is_sidebar_open',
   SHOW_AI_INPUT: 'zakamurai_show_ai_input',
   EXPANDED_FOLDERS: 'zakamurai_expanded_folders',
+  AI_COMPLETION_ENABLED: 'zakamurai_ai_completion_enabled',
 };
 
 const Settings = {
@@ -191,6 +192,15 @@ const Settings = {
 
   setExpandedFolders(expanded) {
     this.set(KEYS.EXPANDED_FOLDERS, JSON.stringify(expanded));
+  },
+
+  getAICompletionEnabled(defaultValue = true) {
+    const val = this.get(KEYS.AI_COMPLETION_ENABLED, defaultValue.toString());
+    return val === 'true';
+  },
+
+  setAICompletionEnabled(enabled) {
+    this.set(KEYS.AI_COMPLETION_ENABLED, enabled.toString());
   },
 
   reset() {

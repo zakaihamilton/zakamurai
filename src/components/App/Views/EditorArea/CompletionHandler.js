@@ -1,5 +1,6 @@
 import { COMPLETION_SYSTEM_PROMPT } from '@/components/AI/Prompts';
 import { askWebLLM } from '@/components/AI/WebLLMAPI';
+import { ragSearch } from '@/utils/rag/search-utility';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 export const COMPLETION_DEBOUNCE_MS = 1000;
@@ -155,11 +156,12 @@ const getCurrentToken = (before) => {
   return match?.[0] || '';
 };
 
-const buildCompletionPrompt = ({ filePath, before, after }) => {
+const buildCompletionPrompt = ({ filePath, before, after, ragContext = '' }) => {
   const beforeWindow = before.slice(-2400);
   const afterWindow = after.slice(0, 1200);
 
   return `
+${ragContext}
 File: ${filePath}
 Language: ${getLanguage(filePath)}
 Cursor is marked with ▮.
@@ -280,26 +282,11 @@ export default function useCompletion({
     const scheduledCursor = cursorPos;
     const scheduledBefore = scheduledContent.substring(0, scheduledCursor.index);
     const scheduledAfter = scheduledContent.substring(scheduledCursor.index);
-    const scheduledPrompt = buildCompletionPrompt({
-      filePath,
-      before: scheduledBefore,
-      after: scheduledAfter,
-    });
 
     // Clear previous suggestion immediately on type
     lastRequestRef.current = scheduledRequestId;
     setSuggestion('');
     setLoading(true);
-    onDebugUpdateRef.current?.({
-      status: 'scheduled',
-      filePath,
-      prompt: scheduledPrompt,
-      rawResult: '',
-      completion: '',
-      error: '',
-      cursor: scheduledCursor,
-      requestedAt: new Date().toISOString(),
-    });
 
     if (timeoutRef.current) {
       clearTimeout(timeoutRef.current);
@@ -313,15 +300,24 @@ export default function useCompletion({
         const before = scheduledContent.substring(0, index);
         const after = scheduledContent.substring(index);
 
-        // Don't request if we just finished a line or are in middle of whitespace
-        const lastChar = before.slice(-1);
-        if (!lastChar || (/[\s\n]/.test(lastChar) && before.length > 0 && !/[\n]/.test(lastChar))) {
-          // We might want to complete after space if it's start of a word, but let's be conservative
-          // Actually, completion after newline or space is often desired.
-          // Let's only skip if before is empty.
+        if (before.trim().length === 0 && after.trim().length === 0) return;
+
+        // Retrieve RAG context using the current line as query
+        const currentLine = before.split('\n').pop() || '';
+        let ragContext = '';
+        try {
+          const ragResults = await ragSearch.retrieveContext(currentLine, 3);
+          ragContext = ragSearch.formatPromptContext(ragResults);
+        } catch (ragErr) {
+          console.error('[Completion] RAG retrieval failed:', ragErr);
         }
 
-        if (before.trim().length === 0 && after.trim().length === 0) return;
+        const scheduledPrompt = buildCompletionPrompt({
+          filePath,
+          before: scheduledBefore,
+          after: scheduledAfter,
+          ragContext,
+        });
 
         onDebugUpdateRef.current?.({
           status: 'thinking',

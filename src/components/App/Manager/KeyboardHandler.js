@@ -5,7 +5,7 @@ import { EditorState } from '@/components/App/Views/EditorArea';
 import { LogState } from '@/components/App/Views/LogArea';
 import { useNotification } from '@/components/Widgets/Notification/Notification';
 import { useEffect } from 'react';
-import { SHORTCUTS, isMatch } from '../Manager/Shortcuts';
+import { SHORTCUTS, isMatch } from './Shortcuts';
 
 export function useKeyboardHandler() {
   const sidebarState = SidebarState.useState();

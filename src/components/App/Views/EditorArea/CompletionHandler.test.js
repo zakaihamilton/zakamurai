@@ -6,6 +6,14 @@ vi.mock('@/components/AI/WebLLMAPI', () => ({
   askWebLLM: vi.fn().mockResolvedValue('<completion>Done</completion>'),
 }));
 
+vi.mock('@/utils/rag/search-utility', () => ({
+  ragSearch: {
+    retrieveContext: vi.fn().mockResolvedValue([]),
+    formatPromptContext: vi.fn().mockReturnValue(''),
+    init: vi.fn().mockResolvedValue(undefined),
+  },
+}));
+
 const { askWebLLM } = await import('@/components/AI/WebLLMAPI');
 
 const flushCompletionDelay = async () => {

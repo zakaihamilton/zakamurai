@@ -44,4 +44,5 @@ next-env.d.ts
 /public/lib/almostnode
 /public/assets/runtime-worker-*
 /public/vite-sw.js
+/public/wasm
 

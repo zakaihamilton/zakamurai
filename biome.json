@@ -6,6 +6,7 @@
       "node_modules/**",
       "public/lib/**",
       "public/assets/**",
+      "public/wasm/**",
       "public/__sw__.js"
     ]
   },
