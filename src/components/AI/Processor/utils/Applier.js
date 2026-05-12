@@ -11,7 +11,9 @@ export function applyFileUpdate(originalContent, newContent, selectedLines = [])
     return applySearchReplace(originalContent, newContent, selectedLines);
   }
 
-  if (/new line/i.test(newContent)) {
+  const markerPattern =
+    /\s*(?:\/\/|\/\*|\{\/\*|<!--)\s*(?:<<<)?\s*NEW LINE\s*(?:>>>)?\s*(?:\*\/|\*\/\}|-->)\s*/i;
+  if (markerPattern.test(newContent)) {
     return applyMarkerReplacement(originalContent, newContent, selectedLines);
   }
 

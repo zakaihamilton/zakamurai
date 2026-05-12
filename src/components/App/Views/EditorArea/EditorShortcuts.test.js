@@ -150,3 +150,45 @@ describe('useEditorShortcuts', () => {
     expect(handleChange).not.toHaveBeenCalled();
   });
 });
+
+vi.mock('@/utils/formatter', () => ({
+  formatCode: vi.fn((code) => `formatted: ${code}`),
+}));
+
+describe('useEditorShortcuts formatting', () => {
+  let handleChange;
+  let textareaRef;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    handleChange = vi.fn();
+    textareaRef = {
+      current: {
+        selectionStart: 0,
+        selectionEnd: 0,
+        value: 'unformatted',
+        focus: vi.fn(),
+      },
+    };
+  });
+
+  it('formats code with Control+Shift+F', () => {
+    const { result } = renderHook(() =>
+      useEditorShortcuts({ handleChange, textareaRef, filePath: 'test.js' }),
+    );
+
+    const event = {
+      key: 'f',
+      ctrlKey: true,
+      shiftKey: true,
+      preventDefault: vi.fn(),
+      stopPropagation: vi.fn(),
+    };
+
+    result.current.handleKeyDown(event);
+
+    expect(event.preventDefault).toHaveBeenCalled();
+    expect(event.stopPropagation).toHaveBeenCalled();
+    expect(handleChange).toHaveBeenCalledWith({ target: { value: 'formatted: unformatted' } });
+  });
+});

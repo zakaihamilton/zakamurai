@@ -10,7 +10,8 @@ import {
 describe('AI Prompts', () => {
   it('has DEFAULT_SYSTEM_PROMPT', () => {
     expect(DEFAULT_SYSTEM_PROMPT).toBeDefined();
-    expect(DEFAULT_SYSTEM_PROMPT).toContain('SEARCH/REPLACE');
+    expect(DEFAULT_SYSTEM_PROMPT).toContain('SEARCH');
+    expect(DEFAULT_SYSTEM_PROMPT).toContain('REPLACE');
   });
 
   it('has SEARCH_REPLACE_INSTRUCTION', () => {

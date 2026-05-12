@@ -440,6 +440,15 @@ export const SHORTCUTS = [
     isGlobal: false,
   },
   {
+    id: 'format-code',
+    group: SHORTCUT_GROUPS.EDITOR_AI,
+    desc: 'Format Code',
+    key: 'f',
+    displayKey: '⌃⇧F',
+    modifier: 'ctrl-shift',
+    isGlobal: false,
+  },
+  {
     id: 'close-modal',
     group: SHORTCUT_GROUPS.GENERAL,
     desc: 'Close Modal / Cancel',
@@ -478,6 +487,8 @@ export const isMatch = (e, s) => {
     match = ctrl && !meta && !shift && !alt;
   } else if (mod === 'ctrl-shift') {
     match = ctrl && shift && !meta && !alt;
+  } else if (mod === 'cmd-alt') {
+    match = (mac ? meta : ctrl) && alt && !shift;
   } else if (mod === 'none') {
     match = !meta && !ctrl && !shift && !alt;
   }

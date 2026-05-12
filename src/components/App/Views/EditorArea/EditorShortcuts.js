@@ -251,9 +251,10 @@ export default function useEditorShortcuts({
         }
       }
 
-      // 5. Format Code (Alt+Shift+F)
-      if (e.altKey && e.shiftKey && e.key === 'F') {
+      // 5. Format Code (Control+Shift+F)
+      if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'f') {
         e.preventDefault();
+        e.stopPropagation();
         const formatted = formatCode(value, filePath);
         if (formatted !== value) {
           handleChange({ target: { value: formatted } });

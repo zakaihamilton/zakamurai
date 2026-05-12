@@ -9,6 +9,7 @@ vi.mock('@/components/Core/Base/Icons', () => ({
     Check: () => <div data-testid="icon-check" />,
     Undo: () => <div data-testid="icon-undo" />,
     Columns: () => <div data-testid="icon-columns" />,
+    Layout: () => <div data-testid="icon-layout" />,
   },
 }));
 

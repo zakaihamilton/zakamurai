@@ -56,7 +56,7 @@ export default function FindHandler({
   // Global shortcut for Find
   useEffect(() => {
     const handleKeyDown = (e) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'f' && !e.shiftKey) {
         e.preventDefault();
         setShowFind((prev) => !prev);
       }

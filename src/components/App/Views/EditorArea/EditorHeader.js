@@ -27,7 +27,7 @@ export default function EditorHeader({
             <Icons.Search />
           </button>
         </Tooltip>
-        <Tooltip content="Format Code" shortcut={formatShortcut('⌥⇧F')}>
+        <Tooltip content="Format Code" shortcut={formatShortcut('⌃⇧F')}>
           <button type="button" className={styles.actionBtn} onClick={handleFormat}>
             <Icons.Layout />
           </button>

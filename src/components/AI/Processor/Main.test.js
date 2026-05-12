@@ -13,7 +13,7 @@ describe('Main', () => {
       mockFS = {
         rootHandle: {},
         getFileHandleAtPath: vi.fn().mockResolvedValue({}),
-        readFile: vi.fn().mockResolvedValue('original content'),
+        readFile: vi.fn().mockResolvedValue('old content'),
       };
       mockLogState = vi.fn((fn) => {
         const draft = { logs: [] };
@@ -22,7 +22,7 @@ describe('Main', () => {
       });
       mockSidebarState = vi.fn();
       mockEditorState = vi.fn((fn) => {
-        const draft = { fileContents: { 'test.js': 'original content' }, pendingDiffs: {} };
+        const draft = { fileContents: { 'test.js': 'old content' }, pendingDiffs: {} };
         fn(draft);
         return draft;
       });
@@ -50,7 +50,7 @@ new content
     test('processes SEARCH/REPLACE block', async () => {
       const aiResponse = `// --- File: test.js ---
 <<<<<<< SEARCH
-original content
+old content
 =======
 modified content
 >>>>>>> REPLACE
