@@ -19,7 +19,6 @@
   },
   "dependencies": {
     "@huggingface/transformers": "^4.2.0",
-    "@lancedb/lancedb": "^0.27.2",
     "@mlc-ai/web-llm": "^0.2.83",
     "@testing-library/dom": "^10.4.1",
     "almostnode": "latest",

@@ -34,21 +34,11 @@ const nextConfig = {
       'node:stream': false,
       'node:buffer': false,
       child_process: false,
-      '@lancedb/lancedb-darwin-arm64': false,
-      '@lancedb/lancedb-linux-x64-gnu': false,
-      '@lancedb/lancedb-linux-arm64-gnu': false,
-      '@lancedb/lancedb-linux-x64-musl': false,
-      '@lancedb/lancedb-linux-arm64-musl': false,
-      '@lancedb/lancedb-win32-x64-msvc': false,
-      '@lancedb/lancedb-win32-arm64-msvc': false,
     };
     config.plugins.push(
       new webpack.NormalModuleReplacementPlugin(/^node:/, (resource) => {
         resource.request = resource.request.replace(/^node:/, '');
-      }),
-      new webpack.DefinePlugin({
-        'process.platform': JSON.stringify('browser'),
-      }),
+      })
     );
     return config;
   },
@@ -62,7 +52,6 @@ const nextConfig = {
         ],
       },
       {
-        // Allow Service Worker to control all routes
         source: '/__sw__.js',
         headers: [
           { key: 'Service-Worker-Allowed', value: '/' },
