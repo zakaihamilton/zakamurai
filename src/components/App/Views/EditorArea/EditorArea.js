@@ -5,6 +5,7 @@ import { createState } from '@/components/Core/Base/State';
 import React, { useState, useRef } from 'react';
 import styles from './EditorArea.module.css';
 
+import { formatCode } from '@/utils/formatter';
 import CodeEditor from './CodeEditor';
 import useCompletion from './CompletionHandler';
 import DiffHandler from './DiffHandler';
@@ -14,7 +15,6 @@ import Gutter from './Gutter';
 import HistoryHandler from './HistoryHandler';
 import SyncHandler from './SyncHandler';
 import { highlightCode } from './highlighter';
-import { formatCode } from '@/utils/formatter';
 
 export const EditorState = createState('EditorState');
 

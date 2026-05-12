@@ -107,7 +107,12 @@ export function parseAIResponse(response, activeTabId) {
         // Skip hallucinated Vendor/Context labels
         if (/^Vendor [A-Z]:/i.test(trimmed)) return false;
         // Skip lines that look like apologies or chatter
-        if (/^(?:sorry|apologize|mistake|confusion|error|restart|correction|here is the|correct response|user request)\b/i.test(trimmed)) return false;
+        if (
+          /^(?:sorry|apologize|mistake|confusion|error|restart|correction|here is the|correct response|user request)\b/i.test(
+            trimmed,
+          )
+        )
+          return false;
         return true;
       })
       .map((line) => {

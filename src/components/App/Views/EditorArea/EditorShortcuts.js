@@ -1,6 +1,6 @@
+import { formatCode } from '@/utils/formatter';
 import { isMac } from '@/utils/os';
 import { useCallback } from 'react';
-import { formatCode } from '@/utils/formatter';
 
 export default function useEditorShortcuts({
   handleChange,

@@ -4,7 +4,7 @@
 
 /**
  * Formats the given code based on the file path extension.
- * 
+ *
  * @param {string} code - The code to format
  * @param {string} filePath - The path to the file (to determine language)
  * @returns {string} - The formatted code
@@ -18,13 +18,20 @@ export function formatCode(code, filePath) {
       // JSON is easy to format using built-in stringify
       const obj = JSON.parse(code);
       return JSON.stringify(obj, null, 2);
-    } catch (e) {
+    } catch (_e) {
       // If JSON is invalid, return as is (or could try to fix common issues)
       return code;
     }
   }
 
-  if (ext === 'css' || ext === 'js' || ext === 'jsx' || ext === 'ts' || ext === 'tsx' || ext === 'jss') {
+  if (
+    ext === 'css' ||
+    ext === 'js' ||
+    ext === 'jsx' ||
+    ext === 'ts' ||
+    ext === 'tsx' ||
+    ext === 'jss'
+  ) {
     return indentCode(code);
   }
 
@@ -39,14 +46,14 @@ function indentCode(code) {
   const lines = code.split('\n');
   let indentLevel = 0;
   let inBlockComment = false;
-  
-  const formatted = lines.map(line => {
-    let trimmed = line.trim();
+
+  const formatted = lines.map((line) => {
+    const trimmed = line.trim();
     if (!trimmed) return '';
 
     // Handle block comments start/end
     if (trimmed.startsWith('/*')) inBlockComment = true;
-    
+
     // Decrease indent BEFORE the line if it starts with a closing bracket or closing tag
     let decreaseThisLine = 0;
     if (!inBlockComment) {
@@ -67,11 +74,11 @@ function indentCode(code) {
     // Update indentLevel for the NEXT line
     if (!inBlockComment) {
       const { opening, closing } = analyzeLine(trimmed);
-      indentLevel += (opening - closing);
+      indentLevel += opening - closing;
     }
 
     if (trimmed.endsWith('*/')) inBlockComment = false;
-    
+
     return newLine;
   });
 
@@ -116,7 +123,6 @@ function analyzeLine(line) {
       // Brackets
       if (char === '{' || char === '[' || char === '(') opening++;
       else if (char === '}' || char === ']' || char === ')') closing++;
-      
       // JSX Tags
       else if (char === '<') {
         if (nextChar === '/') {

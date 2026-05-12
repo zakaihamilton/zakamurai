@@ -9,10 +9,6 @@ describe('formatter', () => {
   });
 
   it('formats CSS correctly', () => {
-    const input = '.btn{color:red;background:blue;} .active { font-weight: bold; }';
-    const output = formatCode(input, 'test.css');
-    // Note: My simple formatter is line-based, so it won't split single-line CSS into multiple lines
-    // unless they were already split. But it will fix indentation if they are.
     const input2 = '.btn {\ncolor: red;\n}';
     const output2 = formatCode(input2, 'test.css');
     expect(output2).toBe('.btn {\n  color: red;\n}');
@@ -25,9 +21,12 @@ describe('formatter', () => {
   });
 
   it('handles closing brackets on the same line', () => {
-    const input = 'function test() {\n  if(true) {\n    console.log("hello");\n    } else {\n    console.log("world");\n  }\n}';
+    const input =
+      'function test() {\n  if(true) {\n    console.log("hello");\n    } else {\n    console.log("world");\n  }\n}';
     const output = formatCode(input, 'test.js');
-    expect(output).toBe('function test() {\n  if(true) {\n    console.log("hello");\n  } else {\n    console.log("world");\n  }\n}');
+    expect(output).toBe(
+      'function test() {\n  if(true) {\n    console.log("hello");\n  } else {\n    console.log("world");\n  }\n}',
+    );
   });
 
   it('ignores brackets in strings', () => {
@@ -43,8 +42,11 @@ describe('formatter', () => {
   });
 
   it('formats JSX correctly', () => {
-    const input = 'function App() {\nreturn (\n<div className="app">\n<header>\n<h1>Hello World</h1>\n</header>\n<main>\n<p>Content</p>\n<img src="logo.png" />\n</main>\n</div>\n);\n}';
+    const input =
+      'function App() {\nreturn (\n<div className="app">\n<header>\n<h1>Hello World</h1>\n</header>\n<main>\n<p>Content</p>\n<img src="logo.png" />\n</main>\n</div>\n);\n}';
     const output = formatCode(input, 'App.jsx');
-    expect(output).toBe('function App() {\n  return (\n    <div className="app">\n      <header>\n        <h1>Hello World</h1>\n      </header>\n      <main>\n        <p>Content</p>\n        <img src="logo.png" />\n      </main>\n    </div>\n  );\n}');
+    expect(output).toBe(
+      'function App() {\n  return (\n    <div className="app">\n      <header>\n        <h1>Hello World</h1>\n      </header>\n      <main>\n        <p>Content</p>\n        <img src="logo.png" />\n      </main>\n    </div>\n  );\n}',
+    );
   });
 });

@@ -1,5 +1,5 @@
-import { setInDraft, updateInDraft } from '../../Core/Base/StateUtils';
 import { formatCode } from '@/utils/formatter';
+import { setInDraft, updateInDraft } from '../../Core/Base/StateUtils';
 import { applyFileUpdate } from './utils/Applier';
 import { parseAIResponse } from './utils/Parser';
 import { resolveFilePath } from './utils/PathResolver';
