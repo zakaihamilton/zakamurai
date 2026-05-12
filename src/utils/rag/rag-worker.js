@@ -3,14 +3,14 @@ import { env, pipeline } from '@huggingface/transformers';
 // Configure transformers.js for WebGPU and browser environment
 env.allowLocalModels = false;
 env.useBrowserCache = true;
-try {
-  if (env.backends?.onnx?.wasm) {
-    env.backends.onnx.wasm.wasmPaths = '/wasm/';
-  }
-} catch (e) {
-  console.warn('[RAG] Failed to set backend wasmPaths:', e);
+
+// Ensure backends are configured for the browser environment
+if (env.backends?.onnx) {
+  env.backends.onnx.wasm.wasmPaths = '/wasm/';
+  console.log('[RAG] Set backend wasmPaths to:', env.backends.onnx.wasm.wasmPaths);
 }
 env.wasmPaths = '/wasm/';
+console.log('[RAG] Initialized with wasmPaths:', env.wasmPaths);
 
 let extractor;
 let index = []; // In-memory cache of chunks and vectors
@@ -63,9 +63,9 @@ async function init() {
         dtype: 'fp16',
       });
     } catch (e) {
-      console.warn('[RAG] WebGPU failed, falling back to CPU:', e);
+      console.warn('[RAG] WebGPU failed, falling back to WASM:', e);
       extractor = await pipeline('feature-extraction', 'Xenova/all-MiniLM-L6-v2', {
-        device: 'cpu',
+        device: 'wasm',
       });
     }
   }

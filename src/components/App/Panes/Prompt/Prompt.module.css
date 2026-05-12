@@ -255,6 +255,58 @@
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.5px;
+  width: 100%;
+}
+
+.reasoningActions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+}
+
+.iconButton {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  outline: none;
+}
+
+.iconButton:hover {
+  background: rgba(var(--accent-rgb, 129, 140, 248), 0.1);
+  color: var(--accent);
+}
+
+.iconButtonActive {
+  color: var(--accent);
+}
+
+.copySuccess {
+  color: #10b981 !important; /* var(--terminal-prompt) */
+}
+
+.showReasoningBtn {
+  background: transparent;
+  border: 1px solid var(--border-light);
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.showReasoningBtn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
 }
 
 .reasoningContent {

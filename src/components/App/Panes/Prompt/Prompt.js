@@ -1,4 +1,5 @@
 import { askWebLLM, interruptWebLLM, processAIResponse } from '@/components/AI';
+import { DEFAULT_SYSTEM_PROMPT, buildEditPrompt } from '@/components/AI/Prompts';
 import { AppState } from '@/components/App/AppState';
 import { SidebarState } from '@/components/App/Panes/Sidebar';
 import { TabState } from '@/components/App/Panes/TabBar';
@@ -18,8 +19,19 @@ const PromptUiState = createState('PromptUiState');
 
 export default function Prompt() {
   const { fs, isMobile } = AppState.useState();
-  const promptUiState = PromptUiState.useState(null, { val: '', historyIndex: -1, draftVal: '' });
-  const { val = '', historyIndex = -1, draftVal = '' } = promptUiState || {};
+  const promptUiState = PromptUiState.useState(null, {
+    val: '',
+    historyIndex: -1,
+    draftVal: '',
+    isReasoningVisible: true,
+  });
+  const {
+    val = '',
+    historyIndex = -1,
+    draftVal = '',
+    isReasoningVisible = true,
+  } = promptUiState || {};
+  const [isCopied, setIsCopied] = React.useState(false);
   const reasoningRef = useRef(null);
 
   const logState = LogState.useState();
@@ -91,88 +103,38 @@ export default function Prompt() {
 
     const runAI = async () => {
       try {
-        const systemPrompt = `You are an expert developer assistant.
-Think step-by-step and provide clear reasoning before outputting any code modifications.
-
-When updating files, you MUST use the following exact formats. Do NOT use markdown codeblocks (like \`\`\`) around the file blocks.
-
-Rule 1: Prefer SEARCH/REPLACE blocks for small, targeted changes. This is the SAFEST way to update files.
-Rule 2: ONLY use full file content for new files or complete rewrites. 
-Rule 3: Use the EXACT file path provided in the context. Do not add prefixes like "path/to/" or "./".
-Rule 4: Do NOT include summary comments like "// CHANGE ..." or "// REPLACE ...". The code you provide must be valid and ready to run.
-Rule 5: CRITICAL: If you use the full code content format, you MUST include the ENTIRE file from start to finish. Any code omitted WILL BE DELETED.
-Rule 6: Be EXTREMELY precise with CSS properties (e.g., 'color' vs 'background-color').
-
-EXAMPLE OF TARGETED CHANGE (SEARCH/REPLACE):
-// --- File: src/style.css ---
-<<<<<<< SEARCH
-.btn {
-  color: red;
-}
-=======
-.btn {
-  color: blue;
-}
->>>>>>> REPLACE
-// --- End File ---
-
-EXAMPLE OF NEW FILE (FULL REWRITE):
-// --- File: src/new.js ---
-console.log("Hello World");
-// --- End File ---
-
-FORMAT FOR SEARCH/REPLACE (STRICTLY PREFERRED):
-// --- File: exact/file/path.js ---
-<<<<<<< SEARCH
-[exact code to find, including whitespace]
-=======
-[new code to replace it with]
->>>>>>> REPLACE
-// --- End File ---
-
-FORMAT FOR FULL FILE REWRITE (ONLY FOR NEW FILES OR COMPLETE OVERHAULS):
-// --- File: exact/file/path.js ---
-[ENTIRE full code content - do NOT omit anything]
-// --- End File ---`;
-
-        let finalPrompt = '';
-
         console.info('[Prompt] Starting AI request for:', userMsg);
+        let ragResults = [];
+
         // 1. Retrieve RAG context
         try {
           console.info('[Prompt] Retrieving RAG context...');
-          const ragResults = await ragSearch.retrieveContext(userMsg, 5);
+          ragResults = await ragSearch.retrieveContext(userMsg, 3);
           console.info('[Prompt] RAG context retrieved:', ragResults.length, 'items');
-          finalPrompt += ragSearch.formatPromptContext(ragResults);
         } catch (ragErr) {
           console.error('[Prompt] RAG retrieval failed:', ragErr);
         }
 
         const selectedLines = editorState.selectedLines?.[currentActiveTabId] || [];
-        const selectionInfo =
-          selectedLines.length > 0
-            ? `\n\nCRITICAL: The user has selected the following lines for review: ${selectedLines.join(
-                ', ',
-              )}. ONLY apply changes to these specific lines.`
-            : '';
-
-        // 2. Inject the active file context if available
-        if (
-          currentActiveTab &&
-          currentActiveTab.type === 'file' &&
-          activeFileContent !== undefined
-        ) {
-          finalPrompt += `Here is the current file I am working on (${currentActiveTabId}):\n\n${activeFileContent}${selectionInfo}\n\nUser Request:\n${userMsg}`;
-        } else {
-          finalPrompt += `User Request:\n${userMsg}`;
-        }
+        const finalPrompt = buildEditPrompt({
+          userRequest: userMsg,
+          activeFilePath: currentActiveTab?.type === 'file' ? currentActiveTabId : undefined,
+          activeFileContent,
+          selectedLines,
+          relatedContext: ragResults,
+        });
 
         console.info('[Prompt] Calling askWebLLM...');
-        const webLLMResult = await askWebLLM(finalPrompt, systemPrompt, (partial) => {
-          logState((draft) => {
-            draft.reasoning = partial;
-          });
-        });
+        const webLLMResult = await askWebLLM(
+          finalPrompt,
+          DEFAULT_SYSTEM_PROMPT,
+          (partial) => {
+            logState((draft) => {
+              draft.reasoning = partial;
+            });
+          },
+          { temperature: 0.2, top_p: 0.8 },
+        );
 
         let stillProcessing = false;
         logState((draft) => {
@@ -191,7 +153,6 @@ FORMAT FOR FULL FILE REWRITE (ONLY FOR NEW FILES OR COMPLETE OVERHAULS):
             },
           ];
           draft.isAIProcessing = false;
-          draft.reasoning = '';
         });
 
         // Use the centralized processor to apply file changes
@@ -209,7 +170,6 @@ FORMAT FOR FULL FILE REWRITE (ONLY FOR NEW FILES OR COMPLETE OVERHAULS):
             },
           ];
           draft.isAIProcessing = false;
-          draft.reasoning = '';
         });
       }
     };
@@ -285,6 +245,19 @@ FORMAT FOR FULL FILE REWRITE (ONLY FOR NEW FILES OR COMPLETE OVERHAULS):
           </div>
           {isAIProcessing && <span className={styles.status}>AI Working</span>}
           {isSystemProcessing && <span className={styles.status}>Compiling</span>}
+          {!isAIProcessing && logState.reasoning && !isReasoningVisible && (
+            <button
+              type="button"
+              className={styles.showReasoningBtn}
+              onClick={() =>
+                promptUiState((draft) => {
+                  draft.isReasoningVisible = true;
+                })
+              }
+            >
+              Show Reasoning
+            </button>
+          )}
         </div>
         {(currentActiveTabId || selectedLines.length > 0) && (
           <div className={styles.tagsContainer}>
@@ -302,11 +275,41 @@ FORMAT FOR FULL FILE REWRITE (ONLY FOR NEW FILES OR COMPLETE OVERHAULS):
             )}
           </div>
         )}
-        {isAIProcessing && logState.reasoning && (
+        {logState.reasoning && isReasoningVisible && (
           <div className={styles.reasoningContainer}>
             <div className={styles.reasoningHeader}>
               <Icons.Info size={14} />
               <span>Progress & Reasoning</span>
+              <div className={styles.reasoningActions}>
+                <Tooltip content={isCopied ? 'Copied!' : 'Copy Reasoning'}>
+                  <button
+                    type="button"
+                    className={`${styles.iconButton} ${isCopied ? styles.copySuccess : ''}`}
+                    onClick={() => {
+                      navigator.clipboard.writeText(logState.reasoning);
+                      setIsCopied(true);
+                      setTimeout(() => setIsCopied(false), 2000);
+                    }}
+                  >
+                    {isCopied ? <Icons.Check size={14} /> : <Icons.Copy size={14} />}
+                  </button>
+                </Tooltip>
+                {!isAIProcessing && (
+                  <Tooltip content="Hide Reasoning">
+                    <button
+                      type="button"
+                      className={styles.iconButton}
+                      onClick={() =>
+                        promptUiState((draft) => {
+                          draft.isReasoningVisible = false;
+                        })
+                      }
+                    >
+                      <Icons.Close size={14} />
+                    </button>
+                  </Tooltip>
+                )}
+              </div>
             </div>
             <div ref={reasoningRef} className={`${styles.reasoningContent} scroll-hide`}>
               {logState.reasoning}
