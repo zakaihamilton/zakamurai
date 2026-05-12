@@ -242,56 +242,126 @@ export function applySearchReplace(original, blocks, selectedLines = []) {
 }
 
 /**
- * Computes a single range diff and filters it by selectedLines if provided.
+ * Computes multiple granular diff ranges and filters them by selectedLines if provided.
  */
 export function computeDiff(original, updated, selectedLines = []) {
-  if (original === updated) return { content: original, diffs: [] };
+  if (original === updated) return { content: updated, diffs: [] };
 
-  let start = 0;
-  while (start < original.length && start < updated.length && original[start] === updated[start]) {
-    start++;
-  }
+  const originalLines = original.split('\n');
+  const updatedLines = updated.split('\n');
+  const allDiffs = [];
 
-  let endOrig = original.length;
-  let endUpd = updated.length;
-  while (endOrig > start && endUpd > start && original[endOrig - 1] === updated[endUpd - 1]) {
-    endOrig--;
-    endUpd--;
-  }
+  let i = 0; // index in originalLines
+  let j = 0; // index in updatedLines
 
-  if (selectedLines.length > 0) {
-    const lines = original.split('\n');
-    const selectedRanges = selectedLines.map((l) => {
-      let s = 0;
-      for (let i = 0; i < l - 1; i++) s += lines[i].length + 1;
-      return { start: s, end: s + (lines[l - 1]?.length || 0) };
-    });
+  while (i < originalLines.length || j < updatedLines.length) {
+    if (
+      i < originalLines.length &&
+      j < updatedLines.length &&
+      originalLines[i] === updatedLines[j]
+    ) {
+      i++;
+      j++;
+    } else {
+      const startI = i;
+      const startJ = j;
 
-    const isOverlap = selectedRanges.some((r) => {
-      return (
-        (start >= r.start && start <= r.end) ||
-        (endUpd >= r.start && endUpd <= r.end) ||
-        (r.start >= start && r.start <= endUpd)
-      );
-    });
+      // Find resync point: next pair of matching lines
+      let resyncI = originalLines.length;
+      let resyncJ = updatedLines.length;
+      let foundResync = false;
 
-    if (!isOverlap) {
-      return { content: original, diffs: [] };
+      // Lookahead up to 50 lines
+      const lookahead = 50;
+      for (let k = 0; k < lookahead; k++) {
+        for (let l = 0; l < lookahead; l++) {
+          if (k === 0 && l === 0) continue;
+          if (
+            i + k < originalLines.length &&
+            j + l < updatedLines.length &&
+            originalLines[i + k] === updatedLines[j + l]
+          ) {
+            resyncI = i + k;
+            resyncJ = j + l;
+            foundResync = true;
+            break;
+          }
+        }
+        if (foundResync) break;
+      }
+
+      allDiffs.push({
+        origStart: startI,
+        origEnd: resyncI,
+        updStart: startJ,
+        updEnd: resyncJ,
+        original: originalLines.slice(startI, resyncI).join('\n'),
+        updated: updatedLines.slice(startJ, resyncJ).join('\n'),
+      });
+
+      i = resyncI;
+      j = resyncJ;
     }
   }
 
+  if (selectedLines.length > 0) {
+    const selectedRanges = selectedLines.map((l) => {
+      let s = 0;
+      for (let k = 0; k < l - 1; k++) s += (originalLines[k]?.length || 0) + 1;
+      return { start: s, end: s + (originalLines[l - 1]?.length || 0) };
+    });
+
+    const allowedDiffs = allDiffs.filter((d) => {
+      let startOffset = 0;
+      for (let k = 0; k < d.origStart; k++) startOffset += (originalLines[k]?.length || 0) + 1;
+      const endOffset = startOffset + d.original.length;
+
+      return selectedRanges.some((r) => {
+        return (
+          (startOffset >= r.start && startOffset <= r.end) ||
+          (endOffset >= r.start && endOffset <= r.end) ||
+          (r.start >= startOffset && r.start <= endOffset)
+        );
+      });
+    });
+
+    if (allowedDiffs.length === 0) {
+      return { content: original, diffs: [] };
+    }
+
+    // Reconstruct content with only allowed changes
+    const finalContentLines = [...originalLines];
+    const sortedAllowed = [...allowedDiffs].sort((a, b) => b.origStart - a.origStart);
+    for (const d of sortedAllowed) {
+      finalContentLines.splice(
+        d.origStart,
+        d.origEnd - d.origStart,
+        ...updatedLines.slice(d.updStart, d.updEnd),
+      );
+    }
+    const finalContent = finalContentLines.join('\n');
+    // Recursive call to get correct offsets for the new content
+    return computeDiff(original, finalContent, []);
+  }
+
+  const resultDiffs = allDiffs.map((d) => {
+    let offset = 0;
+    for (let k = 0; k < d.updStart; k++) offset += (updatedLines[k]?.length || 0) + 1;
+    return {
+      start: offset,
+      end: offset + d.updated.length,
+      type: 'replacement',
+      original: d.original,
+    };
+  });
+
   return {
     content: updated,
-    diffs: [
-      {
-        start,
-        end: endUpd,
-        type: 'replacement',
-        original: original.substring(start, endOrig),
-      },
-    ],
+    diffs: resultDiffs,
   };
 }
+
+
 
 /**
  * Replaces specifically the selected lines with the updated snippet.

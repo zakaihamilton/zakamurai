@@ -2,7 +2,7 @@ import { AppState } from '@/components/App/AppState';
 import { TabState } from '@/components/App/Panes/TabBar';
 import { Icons } from '@/components/Core/Base/Icons';
 import { createState } from '@/components/Core/Base/State';
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import styles from './EditorArea.module.css';
 
 import { formatCode } from '@/utils/formatter';
@@ -27,6 +27,15 @@ export default function EditorArea({ file }) {
 
   const [localContent, setLocalContent] = useState(() => state.fileContents?.[filePath] || '');
   const [showFind, setShowFind] = useState(false);
+
+  // Sync localContent when state.fileContents changes externally (e.g. from AI)
+  useEffect(() => {
+    const externalContent = state.fileContents?.[filePath] || '';
+    if (externalContent !== localContent) {
+      setLocalContent(externalContent);
+    }
+  }, [state.fileContents?.[filePath], filePath]);
+
   const [findQuery, setFindQuery] = useState('');
   const [replaceQuery, setReplaceQuery] = useState('');
   const [matchIndex, setMatchIndex] = useState(-1);

@@ -1,6 +1,6 @@
 import { formatCode } from '@/utils/formatter';
 import { setInDraft, updateInDraft } from '../../Core/Base/StateUtils';
-import { applyFileUpdate } from './utils/Applier';
+import { applyFileUpdate, computeDiff } from './utils/Applier';
 import { parseAIResponse } from './utils/Parser';
 import { resolveFilePath } from './utils/PathResolver';
 
@@ -82,8 +82,10 @@ export const processAIResponse = async (
       );
 
       const finalContent = formatCode(appliedContent, filePath);
+      const finalDiffData = computeDiff(originalContent, finalContent, fileSelectedLines);
+      const finalDiffs = finalDiffData.diffs;
 
-      if (finalContent === originalContent || !diffs || diffs.length === 0) {
+      if (finalContent === originalContent || !finalDiffs || finalDiffs.length === 0) {
         logState((draft) => {
           updateInDraft(draft, ['logs'], (logs = []) => [
             ...logs,
@@ -130,7 +132,7 @@ export const processAIResponse = async (
 
             setInDraft(draft, ['pendingDiffs', filePath], {
               originalContent: existingOriginal !== undefined ? existingOriginal : originalContent,
-              diffs: diffs,
+              diffs: finalDiffs,
             });
           }
         });
