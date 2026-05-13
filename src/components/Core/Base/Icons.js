@@ -541,13 +541,13 @@ export const Icons = {
       <polyline points="2 6 3.4 7 2 8" />
     </svg>
   ),
-  Info: () => (
+  Info: (props) => (
     <svg
-      width="14"
-      height="14"
+      width={props.size || 14}
+      height={props.size || 14}
       viewBox="0 0 24 24"
       fill="none"
-      stroke="currentColor"
+      stroke={props.stroke || 'currentColor'}
       strokeWidth="2"
       strokeLinecap="round"
       strokeLinejoin="round"

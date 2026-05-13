@@ -40,6 +40,21 @@ export default function Dashboard() {
     tabState.activeTabId = 'project-info';
   };
 
+  const handleShowInstructions = () => {
+    const exists = tabState.openTabs.some((t) => t.id === 'instructions');
+    if (!exists) {
+      tabState.openTabs = [
+        ...tabState.openTabs,
+        {
+          id: 'instructions',
+          type: 'instructions',
+          label: 'Instructions',
+        },
+      ];
+    }
+    tabState.activeTabId = 'instructions';
+  };
+
   return (
     <div className={styles.dashboard}>
       <div className={styles.hero}>
@@ -89,6 +104,18 @@ export default function Dashboard() {
             <div>
               <p className={styles.cardLabel}>Ask AI</p>
               <p className={styles.cardHint}>Click to toggle AI Sidebar</p>
+            </div>
+          </button>
+          <button
+            type="button"
+            className={styles.card}
+            onClick={handleShowInstructions}
+            onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && handleShowInstructions()}
+          >
+            <Icons.Info size={20} stroke="#fff" />
+            <div>
+              <p className={styles.cardLabel}>Instructions</p>
+              <p className={styles.cardHint}>Learn how to use Zakamurai</p>
             </div>
           </button>
         </div>

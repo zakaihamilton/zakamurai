@@ -2,7 +2,8 @@ import { isMac } from '@/utils/os';
 
 export const SHORTCUT_GROUPS = {
   NAVIGATION: 'Navigation',
-  EDITOR_AI: 'Editor & AI',
+  EDITOR: 'Editor',
+  AI: 'AI',
   TABS: 'Tabs',
   AI_PROMPT: 'AI Prompt',
   GENERAL: 'General',
@@ -83,62 +84,8 @@ export const SHORTCUTS = [
     },
   },
   {
-    id: 'approve-save',
-    group: SHORTCUT_GROUPS.EDITOR_AI,
-    desc: 'Approve & Save Changes',
-    key: 's',
-    displayKey: '⌘S',
-    modifier: 'cmd',
-    isGlobal: true,
-    action: ({ tabState, editorState, appState, showNotification }) => {
-      const activeTabId = tabState.activeTabId;
-      const hasDiff = editorState.pendingDiffs?.[activeTabId];
-      if (hasDiff) {
-        editorState((draft) => {
-          if (draft.pendingDiffs) {
-            delete draft.pendingDiffs[activeTabId];
-          }
-        });
-        const content = editorState.fileContents?.[activeTabId];
-        if (appState.fs?.writeFileAtPath && content !== undefined) {
-          appState.fs.writeFileAtPath(activeTabId, content);
-        }
-        showNotification('Changes approved & saved', 'success');
-      } else {
-        showNotification('Project saved', 'success');
-      }
-    },
-  },
-  {
-    id: 'cancel-changes',
-    group: SHORTCUT_GROUPS.EDITOR_AI,
-    desc: 'Cancel AI Changes',
-    key: ['.', 'Backspace'],
-    displayKey: '⌘. / ⌘⌫',
-    modifier: 'cmd',
-    isGlobal: true,
-    action: ({ tabState, editorState, appState, showNotification }) => {
-      const activeTabId = tabState.activeTabId;
-      const diff = editorState.pendingDiffs?.[activeTabId];
-      if (diff) {
-        const prevContent = diff.originalContent;
-        editorState((draft) => {
-          if (!draft.fileContents) draft.fileContents = {};
-          draft.fileContents[activeTabId] = prevContent;
-          if (draft.pendingDiffs) {
-            delete draft.pendingDiffs[activeTabId];
-          }
-        });
-        if (appState.fs?.writeFileAtPath) {
-          appState.fs.writeFileAtPath(activeTabId, prevContent);
-        }
-        showNotification('Changes cancelled', 'info');
-      }
-    },
-  },
-  {
     id: 'undo',
-    group: SHORTCUT_GROUPS.EDITOR_AI,
+    group: SHORTCUT_GROUPS.EDITOR,
     desc: 'Undo',
     key: 'z',
     displayKey: '⌘Z',
@@ -158,8 +105,6 @@ export const SHORTCUTS = [
         const currentContent = draft.fileContents[filePath];
         const currentCursor = draft.cursorPos?.[filePath];
 
-        // If the current content hasn't been saved to history yet (because of the 300ms delay),
-        // restore the last snapshot.
         if (hist.lastSnapshotContent !== undefined && currentContent !== hist.lastSnapshotContent) {
           if (!hist.future) hist.future = [];
           hist.future.push({ content: currentContent, cursor: currentCursor });
@@ -190,7 +135,7 @@ export const SHORTCUTS = [
   },
   {
     id: 'redo',
-    group: SHORTCUT_GROUPS.EDITOR_AI,
+    group: SHORTCUT_GROUPS.EDITOR,
     desc: 'Redo',
     key: 'z',
     displayKey: '⌘⇧Z',
@@ -222,7 +167,7 @@ export const SHORTCUTS = [
   },
   {
     id: 'redo-y',
-    group: SHORTCUT_GROUPS.EDITOR_AI,
+    group: SHORTCUT_GROUPS.EDITOR,
     desc: 'Redo',
     key: 'y',
     displayKey: '⌘Y',
@@ -254,7 +199,7 @@ export const SHORTCUTS = [
   },
   {
     id: 'compile-project',
-    group: SHORTCUT_GROUPS.EDITOR_AI,
+    group: SHORTCUT_GROUPS.EDITOR,
     desc: 'Compile Project',
     key: 'Enter',
     displayKey: '⌘↵',
@@ -268,7 +213,7 @@ export const SHORTCUTS = [
   },
   {
     id: 'compile-project-silent',
-    group: SHORTCUT_GROUPS.EDITOR_AI,
+    group: SHORTCUT_GROUPS.EDITOR,
     desc: 'Compile Project (Stay on Page)',
     key: 'Enter',
     displayKey: '⌘⇧↵',
@@ -281,31 +226,115 @@ export const SHORTCUTS = [
     },
   },
   {
-    id: 'clear-logs',
-    group: SHORTCUT_GROUPS.EDITOR_AI,
-    desc: 'Clear Logs (in Log Area)',
-    key: 'k',
-    displayKey: '⌃K',
+    id: 'indent',
+    group: SHORTCUT_GROUPS.EDITOR,
+    desc: 'Indent Selection',
+    key: 'Tab',
+    displayKey: 'Tab',
+    modifier: 'none',
+    isGlobal: false,
+  },
+  {
+    id: 'outdent',
+    group: SHORTCUT_GROUPS.EDITOR,
+    desc: 'Outdent Selection',
+    key: 'Tab',
+    displayKey: '⇧Tab',
+    modifier: 'shift',
+    isGlobal: false,
+  },
+  {
+    id: 'toggle-comment',
+    group: SHORTCUT_GROUPS.EDITOR,
+    desc: 'Toggle Line Comment',
+    key: '/',
+    displayKey: '⌘/',
+    modifier: 'cmd',
+    isGlobal: false,
+  },
+  {
+    id: 'jump-to-line',
+    group: SHORTCUT_GROUPS.EDITOR,
+    desc: 'Jump to Line',
+    key: 'g',
+    displayKey: '⌃G',
     modifier: 'ctrl',
+    isGlobal: false,
+  },
+  {
+    id: 'format-code',
+    group: SHORTCUT_GROUPS.EDITOR,
+    desc: 'Format Code',
+    key: 'f',
+    displayKey: '⌃⇧F',
+    modifier: 'ctrl-shift',
+    isGlobal: false,
+  },
+  {
+    id: 'approve-save',
+    group: SHORTCUT_GROUPS.AI,
+    desc: 'Approve & Save Changes',
+    key: 's',
+    displayKey: '⌘S',
+    modifier: 'cmd',
     isGlobal: true,
-    action: ({ logState, showNotification }) => {
-      logState((draft) => {
-        draft.logs = [];
-      });
-      showNotification('Logs cleared', 'info');
+    action: ({ tabState, editorState, appState, showNotification }) => {
+      const activeTabId = tabState.activeTabId;
+      const hasDiff = editorState.pendingDiffs?.[activeTabId];
+      if (hasDiff) {
+        editorState((draft) => {
+          if (draft.pendingDiffs) {
+            delete draft.pendingDiffs[activeTabId];
+          }
+        });
+        const content = editorState.fileContents?.[activeTabId];
+        if (appState.fs?.writeFileAtPath && content !== undefined) {
+          appState.fs.writeFileAtPath(activeTabId, content);
+        }
+        showNotification('Changes approved & saved', 'success');
+      } else {
+        showNotification('Project saved', 'success');
+      }
     },
   },
   {
-    id: 'toggle-theme',
-    group: SHORTCUT_GROUPS.EDITOR_AI,
-    desc: 'Toggle Theme',
-    key: 't',
-    displayKey: '⌃⇧T',
+    id: 'cancel-changes',
+    group: SHORTCUT_GROUPS.AI,
+    desc: 'Cancel AI Changes',
+    key: ['.', 'Backspace'],
+    displayKey: '⌘. / ⌘⌫',
+    modifier: 'cmd',
+    isGlobal: true,
+    action: ({ tabState, editorState, appState, showNotification }) => {
+      const activeTabId = tabState.activeTabId;
+      const diff = editorState.pendingDiffs?.[activeTabId];
+      if (diff) {
+        const prevContent = diff.originalContent;
+        editorState((draft) => {
+          if (!draft.fileContents) draft.fileContents = {};
+          draft.fileContents[activeTabId] = prevContent;
+          if (draft.pendingDiffs) {
+            delete draft.pendingDiffs[activeTabId];
+          }
+        });
+        if (appState.fs?.writeFileAtPath) {
+          appState.fs.writeFileAtPath(activeTabId, prevContent);
+        }
+        showNotification('Changes cancelled', 'info');
+      }
+    },
+  },
+  {
+    id: 'show-ai-completion-debug',
+    group: SHORTCUT_GROUPS.AI,
+    desc: 'Show AI Completion Debug',
+    key: 'c',
+    displayKey: '⌃⇧C',
     modifier: 'ctrl-shift',
     isGlobal: true,
     action: ({ appState }) => {
       appState((draft) => {
-        draft.theme = draft.theme === 'light' ? 'dark' : 'light';
+        draft.showCompletionDebug = !draft.showCompletionDebug;
       });
     },
   },
@@ -389,63 +418,33 @@ export const SHORTCUTS = [
     },
   },
   {
-    id: 'show-ai-completion-debug',
-    group: SHORTCUT_GROUPS.EDITOR_AI,
-    desc: 'Show AI Completion Debug',
-    key: 'c',
-    displayKey: '⌃⇧C',
+    id: 'clear-logs',
+    group: SHORTCUT_GROUPS.GENERAL,
+    desc: 'Clear Logs (in Log Area)',
+    key: 'k',
+    displayKey: '⌃K',
+    modifier: 'ctrl',
+    isGlobal: true,
+    action: ({ logState, showNotification }) => {
+      logState((draft) => {
+        draft.logs = [];
+      });
+      showNotification('Logs cleared', 'info');
+    },
+  },
+  {
+    id: 'toggle-theme',
+    group: SHORTCUT_GROUPS.GENERAL,
+    desc: 'Toggle Theme',
+    key: 't',
+    displayKey: '⌃⇧T',
     modifier: 'ctrl-shift',
     isGlobal: true,
     action: ({ appState }) => {
       appState((draft) => {
-        draft.showCompletionDebug = !draft.showCompletionDebug;
+        draft.theme = draft.theme === 'light' ? 'dark' : 'light';
       });
     },
-  },
-  {
-    id: 'indent',
-    group: SHORTCUT_GROUPS.EDITOR_AI,
-    desc: 'Indent Selection',
-    key: 'Tab',
-    displayKey: 'Tab',
-    modifier: 'none',
-    isGlobal: false,
-  },
-  {
-    id: 'outdent',
-    group: SHORTCUT_GROUPS.EDITOR_AI,
-    desc: 'Outdent Selection',
-    key: 'Tab',
-    displayKey: '⇧Tab',
-    modifier: 'shift',
-    isGlobal: false,
-  },
-  {
-    id: 'toggle-comment',
-    group: SHORTCUT_GROUPS.EDITOR_AI,
-    desc: 'Toggle Line Comment',
-    key: '/',
-    displayKey: '⌘/',
-    modifier: 'cmd',
-    isGlobal: false,
-  },
-  {
-    id: 'jump-to-line',
-    group: SHORTCUT_GROUPS.EDITOR_AI,
-    desc: 'Jump to Line',
-    key: 'g',
-    displayKey: '⌃G',
-    modifier: 'ctrl',
-    isGlobal: false,
-  },
-  {
-    id: 'format-code',
-    group: SHORTCUT_GROUPS.EDITOR_AI,
-    desc: 'Format Code',
-    key: 'f',
-    displayKey: '⌃⇧F',
-    modifier: 'ctrl-shift',
-    isGlobal: false,
   },
   {
     id: 'close-modal',

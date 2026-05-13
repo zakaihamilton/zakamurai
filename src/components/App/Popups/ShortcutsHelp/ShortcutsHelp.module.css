@@ -70,15 +70,16 @@
 .content {
   padding: 24px;
   overflow-y: auto;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 20px;
+  columns: 2;
+  column-gap: 20px;
 }
 
 .group {
+  break-inside: avoid;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 4px;
+  margin-bottom: 16px;
 }
 
 .groupTitle {
@@ -91,6 +92,7 @@
   opacity: 0.8;
   display: flex;
   align-items: center;
+  margin-bottom: 2px;
 }
 
 .sectionIndex {
@@ -210,7 +212,7 @@
 
 @media (max-width: 600px) {
   .content {
-    grid-template-columns: 1fr;
+    columns: 1;
     padding: 20px;
   }
   .modal {

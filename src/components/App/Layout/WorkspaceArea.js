@@ -7,6 +7,7 @@ import { Prompt, PromptState, SidebarState, TabBar, TabState } from '../Panes';
 import { PreviewState } from '../PreviewState';
 import Dashboard from '../Views/Dashboard';
 import EditorArea from '../Views/EditorArea';
+import Instructions from '../Views/Instructions';
 import LogArea from '../Views/LogArea';
 import PreviewArea from '../Views/PreviewArea';
 import ProjectInfo from '../Views/ProjectInfo';
@@ -63,6 +64,7 @@ export default function WorkspaceArea() {
             <PreviewArea htmlContent={htmlContent} isCompilerReady={isCompilerReady} />
           )}
           {activeTab?.type === 'project-info' && <ProjectInfo />}
+          {activeTab?.type === 'instructions' && <Instructions />}
           {!activeTab && <Dashboard />}
         </div>
       </div>

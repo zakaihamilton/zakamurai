@@ -74,13 +74,13 @@ export default function ShortcutsHelp({ isOpen, onClose }) {
             Press{' '}
             {mac ? (
               <>
-                <kbd>1-5</kbd> to jump to sections • <kbd>⌃</kbd>
+                <kbd>1-6</kbd> to jump to sections • <kbd>⌃</kbd>
                 <kbd>⇧</kbd>
                 <kbd>K</kbd>
               </>
             ) : (
               <>
-                <kbd>1-5</kbd> to jump to sections • <kbd>Ctrl</kbd> + <kbd>Shift</kbd> +{' '}
+                <kbd>1-6</kbd> to jump to sections • <kbd>Ctrl</kbd> + <kbd>Shift</kbd> +{' '}
                 <kbd>K</kbd>
               </>
             )}{' '}
