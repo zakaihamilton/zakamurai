@@ -259,7 +259,7 @@ export default function Prompt() {
                     })
                   }
                 >
-                  <Icons.BotSmall />
+                  <Icons.Brain />
                 </button>
               </Tooltip>
             )}
@@ -289,7 +289,7 @@ export default function Prompt() {
           <div className={styles.reasoningContainer}>
             <div className={styles.reasoningHeader}>
               <div className={styles.reasoningTitle}>
-                <Icons.Info size={14} />
+                <Icons.Brain size={14} />
                 <span>Progress & Reasoning</span>
               </div>
               <div className={styles.reasoningActions}>
