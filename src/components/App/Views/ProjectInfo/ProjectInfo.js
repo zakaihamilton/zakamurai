@@ -4,8 +4,8 @@ import styles from './ProjectInfo.module.css';
 
 const technologies = [
   {
-    name: 'React & JS',
-    desc: 'Powering a dynamic and responsive user interface.',
+    name: 'Next.js & React',
+    desc: 'Leveraging the power of Next.js and React for a high-performance web experience.',
   },
   {
     name: 'CSS Modules',
@@ -20,12 +20,24 @@ const technologies = [
     desc: 'Custom AI processor integrated for seamless code generation and refactoring.',
   },
   {
-    name: 'Immutable State',
-    desc: 'Robust state management using Immer for predictable application behavior.',
+    name: 'Reactive Proxy State',
+    desc: 'Custom, fine-grained state management built on JavaScript Proxies.',
   },
   {
-    name: 'Smart Formatting',
-    desc: 'Automatic indentation and code style enforcement for JSS, CSS, and JSON.',
+    name: 'Smart Indentation',
+    desc: 'Automatic indentation and style enforcement for JS, JSX, CSS, and JSON.',
+  },
+  {
+    name: 'almostnode',
+    desc: 'A virtual environment bringing Node.js capabilities directly to your browser.',
+  },
+  {
+    name: 'WebAssembly (WASM)',
+    desc: 'Powering high-performance tasks like in-browser compilation and AI inference.',
+  },
+  {
+    name: 'WebLLM & AI Models',
+    desc: 'Running state-of-the-art AI locally for a private and ultra-fast experience.',
   },
 ];
 
