@@ -1,4 +1,4 @@
-import React, { useLayoutEffect, useRef } from 'react';
+import React, { useLayoutEffect, useRef, useCallback } from 'react';
 import styles from './EditorArea.module.css';
 
 import useEditorShortcuts from './EditorShortcuts';
@@ -20,8 +20,33 @@ export default function CodeEditor({
   const lastReportedIndex = useRef(-1);
   const isLocalEdit = useRef(false);
 
+  const handleSelectionChange = useCallback(
+    (e) => {
+      if (!onCursorUpdate) return;
+      const textarea = e.target;
+      const start = textarea.selectionStart;
+      const textBefore = localContent.substring(0, start);
+      const lines = textBefore.split('\n');
+      const line = lines.length;
+      const col = lines[lines.length - 1].length + 1;
+
+      lastReportedIndex.current = start;
+      onCursorUpdate({ line, col, index: start });
+    },
+    [onCursorUpdate, localContent],
+  );
+
+  const localHandleChange = useCallback(
+    (e) => {
+      isLocalEdit.current = true;
+      handleChange?.(e);
+      handleSelectionChange(e);
+    },
+    [handleChange, handleSelectionChange],
+  );
+
   const { handleKeyDown } = useEditorShortcuts({
-    handleChange,
+    handleChange: localHandleChange,
     textareaRef,
     scrollContainerRef,
     suggestion,
@@ -45,25 +70,6 @@ export default function CodeEditor({
     }
     isLocalEdit.current = false;
   }, [cursorPos?.index, localContent]);
-
-  const localHandleChange = (e) => {
-    isLocalEdit.current = true;
-    handleChange?.(e);
-    handleSelectionChange(e);
-  };
-
-  const handleSelectionChange = (e) => {
-    if (!onCursorUpdate) return;
-    const textarea = e.target;
-    const start = textarea.selectionStart;
-    const textBefore = localContent.substring(0, start);
-    const lines = textBefore.split('\n');
-    const line = lines.length;
-    const col = lines[lines.length - 1].length + 1;
-
-    lastReportedIndex.current = start;
-    onCursorUpdate({ line, col, index: start });
-  };
 
   return (
     <div className={styles.editorWrapper}>

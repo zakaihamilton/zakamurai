@@ -9,9 +9,22 @@ describe('HistoryHandler', () => {
 
   beforeEach(() => {
     vi.useFakeTimers();
-    state = vi.fn();
+    state = vi.fn((updateFn) => {
+      if (typeof updateFn === 'function') {
+        const draft = {
+          history: state.history || {},
+          fileContents: state.fileContents || {},
+          cursorPos: state.cursorPos || {},
+        };
+        updateFn(draft);
+        state.history = draft.history;
+        state.fileContents = draft.fileContents;
+        state.cursorPos = draft.cursorPos;
+      }
+    });
     state.fileContents = {};
     state.cursorPos = {};
+    state.history = {};
     setLocalContent = vi.fn();
   });
 
@@ -100,5 +113,43 @@ describe('HistoryHandler', () => {
 
     // Should be called because fileSwitched is true
     expect(setLocalContent).toHaveBeenCalledWith('content 2');
+  });
+
+  it('correctly captures the cursor position for the last snapshot', () => {
+    state.fileContents[filePath] = 'initial';
+    state.cursorPos[filePath] = { line: 1, col: 1, index: 0 };
+
+    const { rerender } = render(
+      <HistoryHandler
+        filePath={filePath}
+        localContent=""
+        setLocalContent={setLocalContent}
+        state={state}
+      />,
+    );
+
+    // Initial snapshot happens on mount because localContent ("") !== globalContent ("initial")
+    vi.runAllTimers();
+    expect(state.history[filePath]).toBeDefined();
+    expect(state.history[filePath].lastSnapshotCursor.index).toBe(0);
+
+    // User types "abc", cursor moves to 3
+    state.cursorPos[filePath] = { line: 1, col: 4, index: 3 };
+    rerender(
+      <HistoryHandler
+        filePath={filePath}
+        localContent="abc"
+        setLocalContent={setLocalContent}
+        state={state}
+      />,
+    );
+
+    // Snapshot triggers after 300ms
+    vi.advanceTimersByTime(300);
+
+    // The snapshot should have captured the cursor position after typing "abc"
+    expect(state.history[filePath].lastSnapshotCursor.index).toBe(3);
+    // The "past" entry should have captured the cursor position BEFORE typing "abc"
+    expect(state.history[filePath].past[0].cursor.index).toBe(0);
   });
 });

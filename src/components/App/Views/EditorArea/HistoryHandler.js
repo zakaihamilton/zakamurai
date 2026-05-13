@@ -45,14 +45,15 @@ export default function HistoryHandler({ filePath, localContent, setLocalContent
 
   // Continuously track the current cursor for the next snapshot
   useEffect(() => {
-    // Only update the "pre-change" cursor if we haven't started a change yet
-    if (localContent === lastHistoryContent.current) {
-      const currentCursor = state.cursorPos?.[filePath];
-      if (currentCursor) {
+    const currentCursor = state.cursorPos?.[filePath];
+    if (currentCursor) {
+      // If we are currently at the same content as the last snapshot,
+      // then this cursor position is a good candidate for the "pre-change" cursor.
+      if (localContent === lastHistoryContent.current) {
         lastHistoryCursor.current = currentCursor;
       }
     }
-  }, [state.cursorPos?.[filePath], localContent, filePath, state]);
+  }, [state.cursorPos?.[filePath], localContent, filePath]);
 
   // History tracking (debounced snapshots)
   useEffect(() => {
@@ -74,7 +75,7 @@ export default function HistoryHandler({ filePath, localContent, setLocalContent
           if (hist.past.length > 100) hist.past.shift();
 
           hist.lastSnapshotContent = localContent;
-          hist.lastSnapshotCursor = lastHistoryCursor.current;
+          hist.lastSnapshotCursor = state.cursorPos?.[filePath] || lastHistoryCursor.current;
           lastHistoryContent.current = localContent;
         });
       }
