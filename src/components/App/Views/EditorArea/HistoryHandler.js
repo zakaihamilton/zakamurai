@@ -7,7 +7,6 @@ export default function HistoryHandler({ filePath, localContent, setLocalContent
   const lastFilePath = useRef(filePath);
 
   // Sync local state if the active file tab changes or content is updated externally
-  // biome-ignore lint/correctness/useExhaustiveDependencies: state is a stable dispatcher in this context
   useEffect(() => {
     const globalContent = state.fileContents?.[filePath] || '';
     const fileSwitched = filePath !== lastFilePath.current;
@@ -35,7 +34,14 @@ export default function HistoryHandler({ filePath, localContent, setLocalContent
       lastFilePath.current = filePath;
       // Also clear history triggered redo stack if needed? No, state manages it.
     }
-  }, [filePath, state.fileContents?.[filePath], localContent, setLocalContent, state.cursorPos]);
+  }, [
+    filePath,
+    state.fileContents?.[filePath],
+    localContent,
+    setLocalContent,
+    state.cursorPos,
+    state,
+  ]);
 
   // Continuously track the current cursor for the next snapshot
   useEffect(() => {
@@ -46,7 +52,7 @@ export default function HistoryHandler({ filePath, localContent, setLocalContent
         lastHistoryCursor.current = currentCursor;
       }
     }
-  }, [state.cursorPos?.[filePath], localContent, filePath]);
+  }, [state.cursorPos?.[filePath], localContent, filePath, state]);
 
   // History tracking (debounced snapshots)
   useEffect(() => {

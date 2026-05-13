@@ -5,7 +5,6 @@ export default function SyncHandler({ fs, filePath, localContent, state, tabStat
   const lastSavedContent = useRef(localContent);
 
   // Auto-save to Local FS if applicable
-  // biome-ignore lint/correctness/useExhaustiveDependencies: state is a stable dispatcher in this context, and including it would cause infinite loops
   useEffect(() => {
     if (fs.mode !== 'local' || !filePath) return;
     if (localContent === lastSavedContent.current) return;
@@ -36,7 +35,7 @@ export default function SyncHandler({ fs, filePath, localContent, state, tabStat
     return () => {
       if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
     };
-  }, [localContent, filePath, fs.mode, tabState.openTabs]);
+  }, [localContent, filePath, fs.mode, tabState.openTabs, state]);
 
   // Flush changes to disk on window reload/close
   useEffect(() => {
@@ -61,7 +60,15 @@ export default function SyncHandler({ fs, filePath, localContent, state, tabStat
 
     window.addEventListener('beforeunload', flush);
     return () => window.removeEventListener('beforeunload', flush);
-  }, [fs.mode, filePath, localContent, state.fileContents, state.pendingDiffs, tabState.openTabs]);
+  }, [
+    fs.mode,
+    filePath,
+    localContent,
+    state.fileContents,
+    state.pendingDiffs,
+    tabState.openTabs,
+    state,
+  ]);
 
   return null;
 }

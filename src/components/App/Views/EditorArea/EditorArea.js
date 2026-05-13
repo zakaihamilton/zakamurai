@@ -34,7 +34,7 @@ export default function EditorArea({ file }) {
     if (externalContent !== localContent) {
       setLocalContent(externalContent);
     }
-  }, [state.fileContents?.[filePath], filePath, localContent]);
+  }, [state.fileContents?.[filePath], filePath, localContent, state]);
 
   const [findQuery, setFindQuery] = useState('');
   const [replaceQuery, setReplaceQuery] = useState('');
