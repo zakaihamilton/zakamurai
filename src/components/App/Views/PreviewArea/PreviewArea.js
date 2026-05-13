@@ -2,6 +2,7 @@
 
 import { Icons } from '@/components/Core/Base/Icons';
 import { createState } from '@/components/Core/Base/State';
+import Dialog from '@/components/Widgets/Dialog/Dialog';
 import Tooltip from '@/components/Widgets/Tooltip/Tooltip';
 import React, { useCallback, useEffect, useRef } from 'react';
 import styles from './PreviewArea.module.css';
@@ -23,6 +24,7 @@ export default function PreviewArea({ htmlContent, isCompilerReady }) {
   const {
     isLoading = false,
     scale = 1,
+    error = null,
     refreshKey = Date.now(),
     isSwReady = false,
     isMaximized = false,
@@ -85,12 +87,26 @@ export default function PreviewArea({ htmlContent, isCompilerReady }) {
     });
     if (iframeRef.current) {
       try {
-        const path = iframeRef.current.contentWindow.location.pathname;
+        const win = iframeRef.current.contentWindow;
+        const path = win.location.pathname;
         if (path && path !== 'blank') {
           previewAreaUiState((draft) => {
             draft.address = path;
           });
         }
+
+        win.addEventListener('error', (event) => {
+          previewAreaUiState((draft) => {
+            draft.error = event.message || 'An unknown error occurred in the preview.';
+          });
+        });
+
+        win.addEventListener('unhandledrejection', (event) => {
+          previewAreaUiState((draft) => {
+            draft.error =
+              event.reason?.message || 'An unhandled promise rejection occurred in the preview.';
+          });
+        });
       } catch (_e) {
         // Ignore cross-origin errors
       }
@@ -226,6 +242,24 @@ export default function PreviewArea({ htmlContent, isCompilerReady }) {
           )}
         </div>
       </div>
+
+      <Dialog
+        isOpen={!!error}
+        title="Preview Error"
+        message={error}
+        onConfirm={() =>
+          previewAreaUiState((draft) => {
+            draft.error = null;
+          })
+        }
+        onCancel={() =>
+          previewAreaUiState((draft) => {
+            draft.error = null;
+          })
+        }
+        confirmText="Close"
+        type="danger"
+      />
     </div>
   );
 }

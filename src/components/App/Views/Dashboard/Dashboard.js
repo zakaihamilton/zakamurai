@@ -1,12 +1,15 @@
-import { SidebarState } from '@/components/App/Panes/Sidebar';
+import { SidebarState } from '@/components/App/Panes';
+import { TabState } from '@/components/App/Panes';
 import { Icons } from '@/components/Core/Base/Icons';
 import { useNotification } from '@/components/Widgets/Notification/Notification';
+import Tooltip from '@/components/Widgets/Tooltip/Tooltip';
 import { formatShortcut } from '@/utils/os';
 import React from 'react';
 import styles from './Dashboard.module.css';
 
 export default function Dashboard() {
   const sidebarState = SidebarState.useState();
+  const tabState = TabState.useState();
   const { addNotification } = useNotification();
 
   const handleCreateFile = () => {
@@ -22,6 +25,21 @@ export default function Dashboard() {
     });
   };
 
+  const handleShowInfo = () => {
+    const exists = tabState.openTabs.some((t) => t.id === 'project-info');
+    if (!exists) {
+      tabState.openTabs = [
+        ...tabState.openTabs,
+        {
+          id: 'project-info',
+          type: 'project-info',
+          label: 'Project Info',
+        },
+      ];
+    }
+    tabState.activeTabId = 'project-info';
+  };
+
   return (
     <div className={styles.dashboard}>
       <div className={styles.hero}>
@@ -31,7 +49,19 @@ export default function Dashboard() {
         <h1 className={styles.title}>
           Zakamur<span className={styles.aiHighlight}>ai</span>
         </h1>
-        <p className={styles.subtitle}>Supercharge your coding in the browser.</p>
+        <div className={styles.subtitleWrapper}>
+          <p className={styles.subtitle}>Supercharge your coding in the browser.</p>
+          <Tooltip content="Project Information">
+            <button
+              type="button"
+              className={styles.infoButton}
+              onClick={handleShowInfo}
+              aria-label="Show project information"
+            >
+              <Icons.Info size={18} />
+            </button>
+          </Tooltip>
+        </div>
       </div>
 
       <div className={styles.grid}>

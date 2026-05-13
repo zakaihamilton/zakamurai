@@ -48,10 +48,39 @@
   filter: drop-shadow(0 0 4px var(--accent-glow));
 }
 
+.subtitleWrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 8px;
+}
+
 .subtitle {
   color: var(--text-muted);
   font-size: 18px;
   max-width: 400px;
+}
+
+.infoButton {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  border: 1px solid transparent;
+}
+
+.infoButton:hover {
+  color: var(--accent);
+  background: var(--bg-surface);
+  border-color: var(--border);
+  transform: scale(1.1);
 }
 
 .grid {

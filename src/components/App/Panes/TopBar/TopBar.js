@@ -126,6 +126,7 @@ export default function TopBar() {
         const errorMsg = err?.message || String(err);
         onLog(`Unexpected error: ${errorMsg}`);
         addNotification(`Compilation failed: ${errorMsg}`, 'error');
+        handleOpenLog();
       } finally {
         logState((draft) => {
           draft.isSystemProcessing = false;

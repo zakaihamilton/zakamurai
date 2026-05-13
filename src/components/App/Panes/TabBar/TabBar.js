@@ -200,6 +200,8 @@ export default function TabBar() {
                     <Icons.BotSmall />
                   ) : tab.type === 'preview' ? (
                     <Icons.Globe />
+                  ) : tab.type === 'project-info' ? (
+                    <Icons.Info />
                   ) : (
                     <Icons.File />
                   )}

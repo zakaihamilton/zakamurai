@@ -9,6 +9,7 @@ import Dashboard from '../Views/Dashboard';
 import EditorArea from '../Views/EditorArea';
 import LogArea from '../Views/LogArea';
 import PreviewArea from '../Views/PreviewArea';
+import ProjectInfo from '../Views/ProjectInfo';
 
 export default function WorkspaceArea() {
   const appState = AppState.useState();
@@ -61,6 +62,7 @@ export default function WorkspaceArea() {
           {activeTab?.type === 'preview' && (
             <PreviewArea htmlContent={htmlContent} isCompilerReady={isCompilerReady} />
           )}
+          {activeTab?.type === 'project-info' && <ProjectInfo />}
           {!activeTab && <Dashboard />}
         </div>
       </div>
