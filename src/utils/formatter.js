@@ -58,7 +58,12 @@ function indentCode(code) {
 
     // Decrease indent BEFORE the line if it starts with closing elements
     let decreaseThisLine = 0;
-    if (!state.inBlockComment && !state.inSingleQuote && !state.inDoubleQuote && !state.inBacktick) {
+    if (
+      !state.inBlockComment &&
+      !state.inSingleQuote &&
+      !state.inDoubleQuote &&
+      !state.inBacktick
+    ) {
       let tempTrimmed = trimmed;
       while (tempTrimmed.length > 0) {
         if (/^[\}\]\)]/.test(tempTrimmed)) {
