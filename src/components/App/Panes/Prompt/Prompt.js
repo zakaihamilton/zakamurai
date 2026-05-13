@@ -178,6 +178,14 @@ export default function Prompt() {
   };
 
   const handleKeyDown = (e) => {
+    const mac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+    const cmdKey = mac ? e.metaKey : e.ctrlKey;
+
+    if (cmdKey && e.key === '.') {
+      handleStop(e);
+      return;
+    }
+
     if (e.key === 'Enter') {
       if (e.metaKey || e.ctrlKey) {
         // Explicitly add a newline for Cmd+Enter or Ctrl+Enter
