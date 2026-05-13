@@ -22,6 +22,25 @@ describe('Applier', () => {
       const result = applyFileUpdate(original, snippet, [2]);
       expect(result.content).toBe('line1\nnew line\nline3');
     });
+
+    test('fuzzy match handles additions with context', () => {
+      const original = 'line1\nline2\nline3\nline4\nline5';
+      // Snippet includes context (line3) and a new line
+      const snippet = 'line3\nnew line';
+      const result = applyFileUpdate(original, snippet);
+      expect(result.content).toBe('line1\nline2\nline3\nnew line\nline4\nline5');
+    });
+
+    test('heuristic insertion handles list items without context', () => {
+      const original = `<ul>
+  <li className="item">Apple</li>
+  <li className="item">Banana</li>
+  <li className="item">Cherry</li>
+</ul>`;
+      const snippet = '<li className="item">Date</li>';
+      const result = applyFileUpdate(original, snippet);
+      expect(result.content).toContain('Cherry</li>\n  <li className="item">Date</li>');
+    });
   });
 
   describe('applySearchReplace', () => {

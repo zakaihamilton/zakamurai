@@ -17,6 +17,8 @@ Rules:
 1. ONLY code.
 2. Be brief.
 3. No chat.
+4. Use SEARCH/REPLACE for most edits.
+5. If providing a snippet WITHOUT SEARCH/REPLACE, you MUST include 1-2 lines of existing code as context (anchors) so the change can be located.
 `.trim();
 
 export const SEARCH_REPLACE_INSTRUCTION = `

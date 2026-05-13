@@ -29,6 +29,10 @@ export function applyFileUpdate(originalContent, newContent, selectedLines = [])
     const fuzzy = applyFuzzyReplacement(originalContent, newContent);
     if (fuzzy.diffs.length > 0) return fuzzy;
 
+    // Try heuristic insertion as a last resort for single-line additions
+    const heuristic = applyHeuristicInsertion(originalContent, newContent);
+    if (heuristic) return heuristic;
+
     // If it's a snippet but no match found, don't replace the whole file.
     return { content: originalContent, diffs: [] };
   }
@@ -101,8 +105,9 @@ export function applyFuzzyReplacement(original, snippet) {
     if (maxMatchedLines >= snippetLines.length) break;
   }
 
-  // Minimum 2 line match or full match if snippet is 1 line
-  const threshold = Math.min(2, snippetLines.length);
+  // Minimum 1 line match for short snippets, 2 for longer ones.
+  // This allows for "Existing Line + New Line" additions to work.
+  const threshold = Math.max(1, Math.min(2, snippetLines.length - 1));
   if (maxMatchedLines >= threshold && bestRangeEnd - bestMatchIdx < 100) {
     const before = originalLines.slice(0, bestMatchIdx).join('\n');
     const after = originalLines.slice(bestRangeEnd + 1).join('\n');
@@ -127,6 +132,59 @@ export function applyFuzzyReplacement(original, snippet) {
   }
 
   return { content: original, diffs: [] };
+}
+
+/**
+ * Last-resort heuristic to insert a single-line snippet into a list or repeating structure.
+ * Looks for lines with the same prefix and suffix as the snippet.
+ */
+export function applyHeuristicInsertion(original, snippet) {
+  const snippetLines = snippet.split('\n').filter((l) => l.trim() !== '');
+  if (snippetLines.length !== 1) return null;
+
+  const line = snippetLines[0].trim();
+  if (line.length < 10) return null;
+
+  const originalLines = original.split('\n');
+
+  // Signature: first 15 and last 5 characters
+  const prefix = line.substring(0, 15);
+  const suffix = line.substring(Math.max(0, line.length - 5));
+
+  let lastMatchIdx = -1;
+  let matchCount = 0;
+  for (let i = 0; i < originalLines.length; i++) {
+    const trimmed = originalLines[i].trim();
+    if (trimmed.startsWith(prefix) && trimmed.endsWith(suffix) && trimmed !== line) {
+      lastMatchIdx = i;
+      matchCount++;
+    }
+  }
+
+  // If we found at least 2 similar items, it's likely a list
+  if (matchCount >= 2 && lastMatchIdx !== -1) {
+    const resultLines = [...originalLines];
+    const indent = originalLines[lastMatchIdx].match(/^[ \t]*/)[0];
+    resultLines.splice(lastMatchIdx + 1, 0, indent + line);
+
+    const newContent = resultLines.join('\n');
+    let offset = 0;
+    for (let i = 0; i <= lastMatchIdx; i++) offset += originalLines[i].length + 1;
+
+    return {
+      content: newContent,
+      diffs: [
+        {
+          start: offset,
+          end: offset + indent.length + line.length + 1,
+          type: 'replacement',
+          original: '',
+        },
+      ],
+    };
+  }
+
+  return null;
 }
 
 function isPlaceholderSearch(search) {
