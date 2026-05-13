@@ -2,7 +2,7 @@ import { AppState } from '@/components/App/AppState';
 import { TabState } from '@/components/App/Panes/TabBar';
 import { Icons } from '@/components/Core/Base/Icons';
 import { createState } from '@/components/Core/Base/State';
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import styles from './EditorArea.module.css';
 
 import { formatCode } from '@/utils/formatter';
@@ -68,10 +68,8 @@ export default function EditorArea({ file }) {
 
     // Asynchronous dispatch to your state engine
     state((draft) => {
-      draft.fileContents = {
-        ...draft.fileContents,
-        [filePath]: newVal,
-      };
+      if (!draft.fileContents) draft.fileContents = {};
+      draft.fileContents[filePath] = newVal;
 
       // Clear redo history on manual edit
       if (draft.history?.[filePath]) {
@@ -80,9 +78,7 @@ export default function EditorArea({ file }) {
 
       // Clear pending diffs on manual edit to avoid index drift
       if (draft.pendingDiffs?.[filePath]) {
-        const nextDiffs = { ...draft.pendingDiffs };
-        delete nextDiffs[filePath];
-        draft.pendingDiffs = nextDiffs;
+        delete draft.pendingDiffs[filePath];
       }
     });
   };
@@ -108,14 +104,14 @@ export default function EditorArea({ file }) {
   });
 
   // Sync loading state to global EditorState
-  React.useEffect(() => {
+  useEffect(() => {
     state((draft) => {
       if (!draft.isCompleting) draft.isCompleting = {};
       draft.isCompleting[filePath] = loading;
     });
   }, [loading, filePath, state]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (!aiCompletionEnabled) {
       cancelSuggestion();
     }
@@ -144,6 +140,57 @@ export default function EditorArea({ file }) {
       handleChange({ target: { value: formatted } });
     }
   };
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: state is intentionally omitted to prevent re-highlighting on every state change
+  const highlightedCode = useMemo(() => {
+    return highlightCode(
+      localContent,
+      filePath,
+      state,
+      styles,
+      showFind,
+      findQuery,
+      matchIndex,
+      suggestion,
+      cursorPos,
+    );
+  }, [
+    localContent,
+    filePath,
+    state.pendingDiffs?.[filePath],
+    state.selectedLines?.[filePath],
+    showFind,
+    findQuery,
+    matchIndex,
+    suggestion,
+    cursorPos,
+  ]);
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: state is intentionally omitted to prevent re-highlighting on every state change
+  const originalHighlightedCode = useMemo(() => {
+    if (!showSideBySide || !diffData) return '';
+    return highlightCode(
+      diffData.originalContent,
+      filePath,
+      state,
+      styles,
+      showFind,
+      findQuery,
+      matchIndex,
+      undefined,
+      state.cursorPos?.[filePath],
+    );
+  }, [
+    showSideBySide,
+    diffData,
+    filePath,
+    state.pendingDiffs?.[filePath],
+    state.selectedLines?.[filePath],
+    showFind,
+    findQuery,
+    matchIndex,
+    state.cursorPos?.[filePath],
+  ]);
 
   return (
     <div className={styles.editorArea}>
@@ -212,17 +259,7 @@ export default function EditorArea({ file }) {
               <Gutter linesArr={diffData.originalContent.split('\n').map((_, i) => i + 1)} />
               <CodeEditor
                 localContent={diffData.originalContent}
-                highlightedCode={highlightCode(
-                  diffData.originalContent,
-                  filePath,
-                  state,
-                  styles,
-                  showFind,
-                  findQuery,
-                  matchIndex,
-                  undefined,
-                  state.cursorPos?.[filePath],
-                )}
+                highlightedCode={originalHighlightedCode}
                 readOnly={true}
                 cursorPos={state.cursorPos?.[filePath]}
                 scrollContainerRef={leftScrollRef}
@@ -247,17 +284,7 @@ export default function EditorArea({ file }) {
               <CodeEditor
                 localContent={localContent}
                 handleChange={handleChange}
-                highlightedCode={highlightCode(
-                  localContent,
-                  filePath,
-                  state,
-                  styles,
-                  showFind,
-                  findQuery,
-                  matchIndex,
-                  suggestion,
-                  cursorPos,
-                )}
+                highlightedCode={highlightedCode}
                 onCursorUpdate={diffActions.handleCursorUpdate}
                 cursorPos={state.cursorPos?.[filePath]}
                 scrollContainerRef={rightScrollRef}
@@ -277,17 +304,7 @@ export default function EditorArea({ file }) {
           <CodeEditor
             localContent={localContent}
             handleChange={handleChange}
-            highlightedCode={highlightCode(
-              localContent,
-              filePath,
-              state,
-              styles,
-              showFind,
-              findQuery,
-              matchIndex,
-              suggestion,
-              cursorPos,
-            )}
+            highlightedCode={highlightedCode}
             onCursorUpdate={diffActions.handleCursorUpdate}
             cursorPos={cursorPos}
             scrollContainerRef={scrollContainerRef}

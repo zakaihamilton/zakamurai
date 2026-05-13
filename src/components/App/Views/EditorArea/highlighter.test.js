@@ -34,4 +34,30 @@ describe('highlighter', () => {
     expect(result).toContain('&lt;div&gt;');
     expect(result).not.toContain('<div>');
   });
+
+  it('uses cache for identical content and parameters', () => {
+    const code = 'const x = 10;';
+    const state = { pendingDiffs: {}, selectedLines: {} };
+    const result1 = highlightCode(code, 'test.js', state, styles, false, '', -1, '');
+    const result2 = highlightCode(code, 'test.js', state, styles, false, '', -1, '');
+
+    expect(result1).toBe(result2);
+  });
+
+  it('invalidates cache when code changes', () => {
+    const state = { pendingDiffs: {}, selectedLines: {} };
+    const result1 = highlightCode('const x = 10;', 'test.js', state, styles, false, '', -1, '');
+    const result2 = highlightCode('const x = 20;', 'test.js', state, styles, false, '', -1, '');
+
+    expect(result1).not.toBe(result2);
+  });
+
+  it('invalidates cache when filePath changes to a different language', () => {
+    const code = 'body { color: red; }';
+    const state = { pendingDiffs: {}, selectedLines: {} };
+    const result1 = highlightCode(code, 'styles.css', state, styles, false, '', -1, '');
+    const result2 = highlightCode(code, 'script.js', state, styles, false, '', -1, '');
+
+    expect(result1).not.toBe(result2);
+  });
 });

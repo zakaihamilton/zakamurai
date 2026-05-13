@@ -96,9 +96,7 @@ export const SHORTCUTS = [
       if (hasDiff) {
         editorState((draft) => {
           if (draft.pendingDiffs) {
-            const nextDiffs = { ...draft.pendingDiffs };
-            delete nextDiffs[activeTabId];
-            draft.pendingDiffs = nextDiffs;
+            delete draft.pendingDiffs[activeTabId];
           }
         });
         const content = editorState.fileContents?.[activeTabId];
@@ -125,11 +123,10 @@ export const SHORTCUTS = [
       if (diff) {
         const prevContent = diff.originalContent;
         editorState((draft) => {
-          draft.fileContents = { ...draft.fileContents, [activeTabId]: prevContent };
+          if (!draft.fileContents) draft.fileContents = {};
+          draft.fileContents[activeTabId] = prevContent;
           if (draft.pendingDiffs) {
-            const nextDiffs = { ...draft.pendingDiffs };
-            delete nextDiffs[activeTabId];
-            draft.pendingDiffs = nextDiffs;
+            delete draft.pendingDiffs[activeTabId];
           }
         });
         if (appState.fs?.writeFileAtPath) {
@@ -166,6 +163,7 @@ export const SHORTCUTS = [
         if (hist.lastSnapshotContent !== undefined && currentContent !== hist.lastSnapshotContent) {
           if (!hist.future) hist.future = [];
           hist.future.push({ content: currentContent, cursor: currentCursor });
+          if (hist.future.length > 100) hist.future.shift();
 
           draft.fileContents[filePath] = hist.lastSnapshotContent;
           if (hist.lastSnapshotCursor !== undefined) {
@@ -180,6 +178,7 @@ export const SHORTCUTS = [
         const prevState = hist.past.pop();
         if (!hist.future) hist.future = [];
         hist.future.push({ content: currentContent, cursor: currentCursor });
+        if (hist.future.length > 100) hist.future.shift();
 
         draft.fileContents[filePath] = prevState.content;
         if (prevState.cursor !== undefined) {

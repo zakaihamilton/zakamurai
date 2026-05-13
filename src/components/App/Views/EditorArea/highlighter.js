@@ -1,3 +1,6 @@
+const highlightCache = new Map();
+const MAX_CACHE_SIZE = 50;
+
 export const highlightCode = (
   code,
   filePath,
@@ -10,6 +13,22 @@ export const highlightCode = (
   cursorPos,
 ) => {
   if (!code) return '';
+
+  const cacheKey = JSON.stringify([
+    code,
+    filePath,
+    !!state.pendingDiffs?.[filePath],
+    state.selectedLines?.[filePath],
+    showFind,
+    findQuery,
+    matchIndex,
+    suggestion,
+    cursorPos?.index,
+  ]);
+
+  if (highlightCache.has(cacheKey)) {
+    return highlightCache.get(cacheKey);
+  }
 
   const fileDiff = state.pendingDiffs?.[filePath];
   const diffs = fileDiff?.diffs || [];
@@ -195,5 +214,14 @@ export const highlightCode = (
     return line;
   });
 
-  return finalLines.join('\n');
+  const result = finalLines.join('\n');
+
+  // Store in cache
+  highlightCache.set(cacheKey, result);
+  if (highlightCache.size > MAX_CACHE_SIZE) {
+    const firstKey = highlightCache.keys().next().value;
+    highlightCache.delete(firstKey);
+  }
+
+  return result;
 };
