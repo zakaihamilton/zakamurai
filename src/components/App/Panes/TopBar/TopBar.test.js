@@ -16,12 +16,14 @@ global.URL.revokeObjectURL = vi.fn();
 vi.mock('@/components/App/AppState', () => ({
   AppState: {
     useState: vi.fn(),
+    usePassiveState: vi.fn(),
   },
 }));
 
 vi.mock('@/components/App/PreviewState', () => ({
   PreviewState: {
     useState: vi.fn(),
+    usePassiveState: vi.fn(),
   },
 }));
 
@@ -35,32 +37,43 @@ vi.mock('@/components/Widgets/Tooltip/Tooltip', () => ({
 vi.mock('@/components/App/Views/LogArea', () => ({
   LogState: {
     useState: vi.fn(),
+    usePassiveState: vi.fn(),
   },
 }));
 
 vi.mock('@/components/App/Panes/TabBar', () => ({
   TabState: {
     useState: vi.fn(),
+    usePassiveState: vi.fn(),
   },
 }));
 
 vi.mock('@/components/App/Panes/Sidebar', () => ({
   SidebarState: {
     useState: vi.fn(),
+    usePassiveState: vi.fn(),
   },
 }));
 
 vi.mock('@/components/App/Views/EditorArea', () => ({
   EditorState: {
     useState: vi.fn(),
+    usePassiveState: vi.fn(),
   },
 }));
 
 describe('TopBar', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    LogState.useState.mockReturnValue({ isProcessing: false, logs: [] });
+    const mockLogState = { isProcessing: false, logs: [] };
+    LogState.useState.mockReturnValue(mockLogState);
+    LogState.usePassiveState.mockReturnValue(mockLogState);
     PreviewState.useState.mockReturnValue({});
+    PreviewState.usePassiveState.mockReturnValue({});
+    TabState.usePassiveState.mockReturnValue({});
+    AppState.usePassiveState.mockReturnValue({});
+    SidebarState.usePassiveState.mockReturnValue({});
+    EditorState.usePassiveState.mockReturnValue({});
   });
 
   it('renders breadcrumbs for an active file', () => {

@@ -18,7 +18,7 @@ export const PromptState = createState('PromptState');
 const PromptUiState = createState('PromptUiState');
 
 export default function Prompt() {
-  const { fs, isMobile } = AppState.useState();
+  const { fs, isMobile } = AppState.useState(['fs', 'isMobile']);
   const promptUiState = PromptUiState.useState(null, {
     val: '',
     historyIndex: -1,
@@ -34,8 +34,12 @@ export default function Prompt() {
   const [isCopied, setIsCopied] = React.useState(false);
   const reasoningRef = useRef(null);
 
-  const logState = LogState.useState();
-  const { isSystemProcessing, isAIProcessing, reasoning } = logState;
+  const logState = LogState.usePassiveState();
+  const { isSystemProcessing, isAIProcessing, reasoning } = LogState.useState([
+    'isSystemProcessing',
+    'isAIProcessing',
+    'reasoning',
+  ]);
   const sidebarState = SidebarState.useState();
   const { showAIInput } = sidebarState;
   const tabState = TabState.useState();

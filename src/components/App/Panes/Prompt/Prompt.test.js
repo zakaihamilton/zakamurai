@@ -11,6 +11,7 @@ import Prompt from './Prompt';
 vi.mock('@/components/App/Views/LogArea', () => ({
   LogState: {
     useState: vi.fn(),
+    usePassiveState: vi.fn(),
   },
 }));
 
@@ -24,24 +25,28 @@ vi.mock('@/components/Widgets/Tooltip/Tooltip', () => ({
 vi.mock('@/components/App/Panes/Sidebar', () => ({
   SidebarState: {
     useState: vi.fn(),
+    usePassiveState: vi.fn(),
   },
 }));
 
 vi.mock('@/components/App/Panes/TabBar', () => ({
   TabState: {
     useState: vi.fn(),
+    usePassiveState: vi.fn(),
   },
 }));
 
 vi.mock('@/components/App/AppState', () => ({
   AppState: {
     useState: vi.fn(),
+    usePassiveState: vi.fn(),
   },
 }));
 
 vi.mock('@/components/App/Views/EditorArea', () => ({
   EditorState: {
     useState: vi.fn(),
+    usePassiveState: vi.fn(),
   },
 }));
 
@@ -73,9 +78,9 @@ describe('Prompt', () => {
     SidebarState.useState.mockReturnValue({
       showAIInput: true,
     });
-    LogState.useState.mockReturnValue({
-      isProcessing: false,
-    });
+    const mockLogState = { isProcessing: false };
+    LogState.useState.mockReturnValue(mockLogState);
+    LogState.usePassiveState.mockReturnValue(mockLogState);
     const tabUpdate = vi.fn();
     TabState.useState.mockReturnValue(
       Object.assign(tabUpdate, {
@@ -83,7 +88,9 @@ describe('Prompt', () => {
         activeTabId: null,
       }),
     );
-    AppState.useState.mockReturnValue({ fs: {} });
+    const mockAppState = { fs: {} };
+    AppState.useState.mockReturnValue(mockAppState);
+    AppState.usePassiveState.mockReturnValue(mockAppState);
     EditorState.useState.mockReturnValue(vi.fn());
 
     render(<Prompt />);
@@ -96,6 +103,7 @@ describe('Prompt', () => {
       showAIInput: false,
     });
     LogState.useState.mockReturnValue(vi.fn());
+    LogState.usePassiveState.mockReturnValue(vi.fn());
     const tabUpdate = vi.fn();
     TabState.useState.mockReturnValue(
       Object.assign(tabUpdate, {
@@ -103,7 +111,9 @@ describe('Prompt', () => {
         activeTabId: null,
       }),
     );
-    AppState.useState.mockReturnValue({ fs: {} });
+    const mockAppState = { fs: {} };
+    AppState.useState.mockReturnValue(mockAppState);
+    AppState.usePassiveState.mockReturnValue(mockAppState);
     EditorState.useState.mockReturnValue(vi.fn());
 
     const { container } = render(<Prompt />);
@@ -113,12 +123,12 @@ describe('Prompt', () => {
 
   it('calls state update when form is submitted', async () => {
     const stateUpdate = vi.fn();
-    LogState.useState.mockReturnValue(
-      Object.assign(stateUpdate, {
-        isProcessing: false,
-        logs: [],
-      }),
-    );
+    const mockLogState = Object.assign(stateUpdate, {
+      isProcessing: false,
+      logs: [],
+    });
+    LogState.useState.mockReturnValue(mockLogState);
+    LogState.usePassiveState.mockReturnValue(mockLogState);
     SidebarState.useState.mockReturnValue({
       showAIInput: true,
     });
@@ -129,7 +139,9 @@ describe('Prompt', () => {
         activeTabId: null,
       }),
     );
-    AppState.useState.mockReturnValue({ fs: {} });
+    const mockAppState = { fs: {} };
+    AppState.useState.mockReturnValue(mockAppState);
+    AppState.usePassiveState.mockReturnValue(mockAppState);
     EditorState.useState.mockReturnValue(vi.fn());
 
     render(<Prompt />);

@@ -28,11 +28,16 @@ export default function TopBar() {
   const { folderTree, showAIInput, isSidebarOpen, isSidebarPopupOpen, isAIInputPopupOpen } =
     sidebarState;
   const editorState = EditorState.useState();
-  const logState = LogState.useState();
-  const previewState = PreviewState.useState();
-  const { isSystemProcessing, isAIProcessing } = logState;
+  const logState = LogState.usePassiveState();
+  const previewState = PreviewState.usePassiveState();
+  const { isSystemProcessing, isAIProcessing } = LogState.useState([
+    'isSystemProcessing',
+    'isAIProcessing',
+  ]);
   const { addNotification } = useNotification();
   const isCompilingRef = useRef(false);
+  const lastCompileRequestRef = useRef(0);
+  const lastSilentCompileRequestRef = useRef(0);
 
   const activeTab = openTabs.find((t) => t.id === activeTabId);
 
@@ -46,6 +51,7 @@ export default function TopBar() {
     });
   }, [tabState]);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: isSystemProcessing is intentionally omitted to avoid infinite loop
   const handleCompile = useCallback(
     async (silent = false) => {
       const isSilent = silent === true;
@@ -135,17 +141,7 @@ export default function TopBar() {
         isCompilingRef.current = false;
       }
     },
-    [
-      fs,
-      folderTree,
-      editorState,
-      logState,
-      previewState,
-      tabState,
-      addNotification,
-      handleOpenLog,
-      isSystemProcessing,
-    ],
+    [fs, folderTree, editorState, logState, previewState, tabState, addNotification, handleOpenLog],
   );
 
   const handleOpenPreview = () => {
@@ -159,13 +155,15 @@ export default function TopBar() {
   };
 
   useEffect(() => {
-    if (compileRequest > 0) {
+    if (compileRequest > 0 && compileRequest !== lastCompileRequestRef.current) {
+      lastCompileRequestRef.current = compileRequest;
       handleCompile();
     }
   }, [compileRequest, handleCompile]);
 
   useEffect(() => {
-    if (silentCompileRequest > 0) {
+    if (silentCompileRequest > 0 && silentCompileRequest !== lastSilentCompileRequestRef.current) {
+      lastSilentCompileRequestRef.current = silentCompileRequest;
       handleCompile(true);
     }
   }, [silentCompileRequest, handleCompile]);
