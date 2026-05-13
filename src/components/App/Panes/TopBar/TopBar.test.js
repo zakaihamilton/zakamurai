@@ -143,4 +143,46 @@ describe('TopBar', () => {
     const compileBtn = getByText('Compile');
     expect(compileBtn).toBeDefined();
   });
+
+  it('renders new project button and handles click', async () => {
+    TabState.useState.mockReturnValue({
+      openTabs: [],
+      activeTabId: null,
+    });
+    AppState.useState.mockReturnValue({
+      theme: 'dark',
+      fs: { mode: null },
+      projectName: 'Test Project',
+    });
+    SidebarState.useState.mockReturnValue({ folderTree: [] });
+    EditorState.useState.mockReturnValue({ fileContents: {} });
+
+    render(<TopBar />);
+    const menuBtn = screen.getByTitle('More actions');
+    fireEvent.click(menuBtn);
+
+    const newProjectBtn = await screen.findByText('New Project');
+    expect(newProjectBtn).toBeDefined();
+  });
+
+  it('renders new project from scratch button and handles click', async () => {
+    TabState.useState.mockReturnValue({
+      openTabs: [],
+      activeTabId: null,
+    });
+    AppState.useState.mockReturnValue({
+      theme: 'dark',
+      fs: { mode: null },
+      projectName: 'Test Project',
+    });
+    SidebarState.useState.mockReturnValue({ folderTree: [] });
+    EditorState.useState.mockReturnValue({ fileContents: {} });
+
+    render(<TopBar />);
+    const menuBtn = screen.getByTitle('More actions');
+    fireEvent.click(menuBtn);
+
+    const scratchBtn = await screen.findByText('New Project from Scratch');
+    expect(scratchBtn).toBeDefined();
+  });
 });

@@ -13,6 +13,7 @@ const KEYS = {
   SHOW_AI_INPUT: 'zakamurai_show_ai_input',
   EXPANDED_FOLDERS: 'zakamurai_expanded_folders',
   AI_COMPLETION_ENABLED: 'zakamurai_ai_completion_enabled',
+  TEMPLATE: 'zakamurai_template',
 };
 
 const Settings = {
@@ -203,10 +204,21 @@ const Settings = {
     this.set(KEYS.AI_COMPLETION_ENABLED, enabled.toString());
   },
 
-  reset() {
+  getTemplate(defaultValue = 'default') {
+    return this.get(KEYS.TEMPLATE, defaultValue);
+  },
+
+  setTemplate(template) {
+    this.set(KEYS.TEMPLATE, template);
+  },
+
+  reset(template = 'default') {
     if (typeof localStorage !== 'undefined') {
       for (const key of Object.values(KEYS)) {
         localStorage.removeItem(key);
+      }
+      if (template) {
+        this.setTemplate(template);
       }
     }
   },

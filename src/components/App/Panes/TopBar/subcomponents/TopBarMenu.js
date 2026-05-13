@@ -11,7 +11,7 @@ const TopBarMenuState = createState('TopBarMenuState');
 export default function TopBarMenu({
   onExportZip,
   onExportCompiledZip,
-  onStartOver,
+  onNewProject,
   onClearFS,
   isSystemProcessing,
   isAIProcessing,
@@ -19,9 +19,9 @@ export default function TopBarMenu({
 }) {
   const topBarMenuState = TopBarMenuState.useState(null, {
     menuPosition: null,
-    isStartOverDialogOpen: false,
+    newProjectTemplate: null,
   });
-  const { menuPosition = null, isStartOverDialogOpen = false } = topBarMenuState || {};
+  const { menuPosition = null, newProjectTemplate = null } = topBarMenuState || {};
 
   const handleMenuOpen = (e) => {
     const rect = e.currentTarget.getBoundingClientRect();
@@ -56,6 +56,37 @@ export default function TopBarMenu({
         <button
           type="button"
           className={styles.menuItem}
+          disabled={isProcessing}
+          onClick={() => {
+            topBarMenuState((draft) => {
+              draft.newProjectTemplate = 'default';
+            });
+            handleMenuClose();
+          }}
+        >
+          <Icons.FilePlus />
+          <span>New Project</span>
+        </button>
+        <button
+          type="button"
+          className={styles.menuItem}
+          disabled={isProcessing}
+          onClick={() => {
+            topBarMenuState((draft) => {
+              draft.newProjectTemplate = 'scratch';
+            });
+            handleMenuClose();
+          }}
+        >
+          <Icons.Code />
+          <span>New Project from Scratch</span>
+        </button>
+
+        <div className={styles.menuSeparator} />
+
+        <button
+          type="button"
+          className={styles.menuItem}
           onClick={() => {
             onExportZip();
             handleMenuClose();
@@ -75,20 +106,9 @@ export default function TopBarMenu({
           <Icons.Play />
           <span>Export compiled files</span>
         </button>
-        <button
-          type="button"
-          className={styles.menuItem}
-          disabled={isProcessing}
-          onClick={() => {
-            topBarMenuState((draft) => {
-              draft.isStartOverDialogOpen = true;
-            });
-            handleMenuClose();
-          }}
-        >
-          <Icons.Refresh />
-          <span>Start over</span>
-        </button>
+
+        <div className={styles.menuSeparator} />
+
         <button
           type="button"
           className={styles.menuItem}
@@ -101,6 +121,9 @@ export default function TopBarMenu({
           <Icons.Trash />
           <span>Clear FS</span>
         </button>
+
+        <div className={styles.menuSeparator} />
+
         <button
           type="button"
           className={styles.menuItem}
@@ -115,21 +138,26 @@ export default function TopBarMenu({
         </button>
       </ContextMenu>
       <Dialog
-        isOpen={isStartOverDialogOpen}
-        title="Start Over?"
-        message="Are you sure you want to start over? This will unlink the project and reset all files to defaults."
+        isOpen={!!newProjectTemplate}
+        title={newProjectTemplate === 'scratch' ? 'New Project from Scratch?' : 'New Project?'}
+        message={
+          newProjectTemplate === 'scratch'
+            ? 'Are you sure you want to start a new project from scratch? This will unlink the current project and reset all files to a minimal setup.'
+            : 'Are you sure you want to start a new project? This will unlink the current project and reset all files to defaults.'
+        }
         onConfirm={() => {
+          const template = newProjectTemplate;
           topBarMenuState((draft) => {
-            draft.isStartOverDialogOpen = false;
+            draft.newProjectTemplate = null;
           });
-          onStartOver();
+          onNewProject(template);
         }}
         onCancel={() =>
           topBarMenuState((draft) => {
-            draft.isStartOverDialogOpen = false;
+            draft.newProjectTemplate = null;
           })
         }
-        confirmText="Start Over"
+        confirmText="New Project"
         cancelText="Cancel"
         type="danger"
       />

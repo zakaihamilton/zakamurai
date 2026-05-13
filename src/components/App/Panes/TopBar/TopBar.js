@@ -188,9 +188,9 @@ export default function TopBar() {
     handleOpenLog();
   };
 
-  const handleStartOver = async () => {
+  const handleStartOver = async (template = 'default') => {
     await fs.unlinkProject();
-    Settings.reset();
+    Settings.reset(template);
     window.location.reload();
   };
 
@@ -448,7 +448,7 @@ export default function TopBar() {
         <TopBarMenu
           onExportZip={handleExportZip}
           onExportCompiledZip={handleExportCompiledZip}
-          onStartOver={handleStartOver}
+          onNewProject={handleStartOver}
           onClearFS={handleClearFS}
           isSystemProcessing={isSystemProcessing}
           isAIProcessing={isAIProcessing}

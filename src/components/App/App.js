@@ -1,7 +1,12 @@
 'use client';
 
 import { useFileSystem } from '@/components/Storage';
-import { DEFAULT_CONTENTS, DEFAULT_FILES } from '@/components/Storage/InitialData';
+import {
+  DEFAULT_CONTENTS,
+  DEFAULT_FILES,
+  SCRATCH_CONTENTS,
+  SCRATCH_FILES,
+} from '@/components/Storage/InitialData';
 import Settings from '@/components/Storage/Settings';
 import React, { useEffect, useMemo } from 'react';
 import styles from './App.module.css';
@@ -11,14 +16,12 @@ import { EditorState } from './Views/EditorArea';
 import { LogState } from './Views/LogArea';
 
 import { MOBILE_BREAKPOINT } from '@/constants/Layout';
-// App State
 import { AppState } from './AppState';
 
-import AppBackgroundServices from './App/AppBackgroundServices';
-import AppContent from './App/AppContent';
-import AppLoading from './App/AppLoading';
+import AppBackgroundServices from './Layout/AppBackgroundServices';
+import AppContent from './Layout/AppContent';
+import AppLoading from './Layout/AppLoading';
 
-// Hooks
 import { useSettingsSync } from '@/components/Storage/SettingsSync';
 import { useWindowResize } from './WindowResize';
 
@@ -26,13 +29,18 @@ export default function App() {
   const fs = useFileSystem();
 
   // Memoized initial values from Settings
-  const initialValues = useMemo(
-    () => ({
+  const initialValues = useMemo(() => {
+    const template = Settings.getTemplate();
+    const isScratch = template === 'scratch';
+    const defaultFiles = isScratch ? SCRATCH_FILES : DEFAULT_FILES;
+    const defaultContents = isScratch ? SCRATCH_CONTENTS : DEFAULT_CONTENTS;
+
+    return {
       projectName: Settings.getProjectName(),
-      files: DEFAULT_FILES,
+      files: defaultFiles,
       contents: (() => {
         const stored = Settings.getFileContents();
-        return stored && Object.keys(stored).length > 0 ? stored : DEFAULT_CONTENTS;
+        return stored && Object.keys(stored).length > 0 ? stored : defaultContents;
       })(),
       theme: Settings.getTheme(),
       tabs: Settings.getOpenTabs() || [],
@@ -44,9 +52,8 @@ export default function App() {
       showAIInput: Settings.getShowAIInput(),
       expandedFolders: Settings.getExpandedFolders(),
       aiCompletionEnabled: Settings.getAICompletionEnabled(),
-    }),
-    [],
-  );
+    };
+  }, []);
 
   // Initialize all states
   const appState = AppState.useState(null, {

@@ -46,3 +46,29 @@ export const DEFAULT_CONTENTS = {
   'vite.config.js':
     'import { defineConfig } from "vite";\nimport react from "@vitejs/plugin-react";\n\nexport default defineConfig({\n  plugins: [react()],\n});',
 };
+export const SCRATCH_FILES = [
+  {
+    name: 'src',
+    type: 'folder',
+    children: [
+      { name: 'App.jsx', type: 'file' },
+      { name: 'main.jsx', type: 'file' },
+    ],
+  },
+  { name: 'package.json', type: 'file' },
+  { name: 'vite.config.js', type: 'file' },
+];
+
+export const SCRATCH_CONTENTS = {
+  'src/main.jsx':
+    'import React from "react";\nimport ReactDOM from "react-dom/client";\nimport App from "./App";\n\nReactDOM.createRoot(document.getElementById("root")).render(\n  <React.StrictMode>\n    <App />\n  </React.StrictMode>\n);',
+
+  'src/App.jsx':
+    'export default function App() {\n  return (\n    <div>\n      <h1>New Project</h1>\n      <p>Start coding here...</p>\n    </div>\n  );\n}',
+
+  'package.json':
+    '{\n  "name": "new-project",\n  "private": true,\n  "version": "0.1.0",\n  "type": "module",\n  "scripts": {\n    "dev": "vite",\n    "build": "vite build",\n    "preview": "vite preview"\n  },\n  "dependencies": {\n    "react": "^18.2.0",\n    "react-dom": "^18.2.0"\n  },\n  "devDependencies": {\n    "@vitejs/plugin-react": "^4.0.0",\n    "vite": "^4.3.0"\n  }\n}',
+
+  'vite.config.js':
+    'import { defineConfig } from "vite";\nimport react from "@vitejs/plugin-react";\n\nexport default defineConfig({\n  plugins: [react()],\n});',
+};
