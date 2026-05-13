@@ -49,4 +49,31 @@ describe('formatter', () => {
       'function App() {\n  return (\n    <div className="app">\n      <header>\n        <h1>Hello World</h1>\n      </header>\n      <main>\n        <p>Content</p>\n        <img src="logo.png" />\n      </main>\n    </div>\n  );\n}',
     );
   });
+  it('formats JSX fragments correctly', () => {
+    const input = '<>\n<div>Hello</div>\n</>';
+    const output = formatCode(input, 'test.jsx');
+    expect(output).toBe('<>\n  <div>Hello</div>\n</>');
+  });
+
+  it('does not indent for comparison operators', () => {
+    const input = 'if (a<b) {\nconsole.log(1);\n}';
+    const output = formatCode(input, 'test.js');
+    expect(output).toBe('if (a<b) {\n  console.log(1);\n}');
+  });
+
+  it('handles multi-line tags correctly', () => {
+    const input = '<div\nclassName="test"\n>\n<span>Hi</span>\n</div>';
+    const output = formatCode(input, 'test.jsx');
+    expect(output).toBe('<div\n  className="test"\n>\n  <span>Hi</span>\n</div>');
+  });
+  it('does not break on URLs in strings', () => {
+    const input = 'const url = "https://google.com";\nif (true) {\nconsole.log(url);\n}';
+    const output = formatCode(input, 'test.js');
+    expect(output).toBe('const url = "https://google.com";\nif (true) {\n  console.log(url);\n}');
+  });
+  it('handles brackets after URLs on the same line', () => {
+    const input = 'const url = "https://google.com"; if (true) {\nconsole.log(url);\n}';
+    const output = formatCode(input, 'test.js');
+    expect(output).toBe('const url = "https://google.com"; if (true) {\n  console.log(url);\n}');
+  });
 });

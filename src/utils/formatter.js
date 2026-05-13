@@ -19,7 +19,7 @@ export function formatCode(code, filePath) {
       const obj = JSON.parse(code);
       return JSON.stringify(obj, null, 2);
     } catch (_e) {
-      // If JSON is invalid, return as is (or could try to fix common issues)
+      // If JSON is invalid, return as is
       return code;
     }
   }
@@ -40,44 +40,53 @@ export function formatCode(code, filePath) {
 
 /**
  * A basic indentation-based formatter that tracks brackets and braces.
- * Handles strings and simple comments to avoid false matches.
+ * Properly handles strings, comments, and JSX tags.
  */
 function indentCode(code) {
   const lines = code.split('\n');
   let indentLevel = 0;
-  let inBlockComment = false;
+  let state = {
+    inBlockComment: false,
+    inSingleQuote: false,
+    inDoubleQuote: false,
+    inBacktick: false,
+  };
 
   const formatted = lines.map((line) => {
     const trimmed = line.trim();
     if (!trimmed) return '';
 
-    // Handle block comments start/end
-    if (trimmed.startsWith('/*')) inBlockComment = true;
-
-    // Decrease indent BEFORE the line if it starts with a closing bracket or closing tag
+    // Decrease indent BEFORE the line if it starts with closing elements
     let decreaseThisLine = 0;
-    if (!inBlockComment) {
-      // Count closing brackets at the start of the line
-      const startsWithClosingBracket = trimmed.match(/^([\}\]\)])+/);
-      if (startsWithClosingBracket) {
-        decreaseThisLine += startsWithClosingBracket[0].length;
-      }
-      // Check if line starts with a JSX closing tag
-      if (trimmed.startsWith('</')) {
-        decreaseThisLine += 1;
+    if (!state.inBlockComment && !state.inSingleQuote && !state.inDoubleQuote && !state.inBacktick) {
+      let tempTrimmed = trimmed;
+      while (tempTrimmed.length > 0) {
+        if (/^[\}\]\)]/.test(tempTrimmed)) {
+          decreaseThisLine++;
+          tempTrimmed = tempTrimmed.substring(1);
+        } else if (tempTrimmed.startsWith('</') || tempTrimmed.startsWith('/>')) {
+          decreaseThisLine++;
+          tempTrimmed = tempTrimmed.substring(2);
+        } else if (
+          tempTrimmed.startsWith('>') &&
+          !tempTrimmed.startsWith('>=') &&
+          !tempTrimmed.startsWith('>>')
+        ) {
+          decreaseThisLine++;
+          tempTrimmed = tempTrimmed.substring(1);
+        } else {
+          break;
+        }
       }
     }
 
     const currentIndent = Math.max(0, indentLevel - decreaseThisLine);
     const newLine = '  '.repeat(currentIndent) + trimmed;
 
-    // Update indentLevel for the NEXT line
-    if (!inBlockComment) {
-      const { opening, closing } = analyzeLine(trimmed);
-      indentLevel += opening - closing;
-    }
-
-    if (trimmed.endsWith('*/')) inBlockComment = false;
+    // Update state and indentLevel for the NEXT line
+    const result = analyzeLine(line, state);
+    indentLevel += result.opening - result.closing;
+    state = result.state;
 
     return newLine;
   });
@@ -86,24 +95,17 @@ function indentCode(code) {
 }
 
 /**
- * Analyzes a line to determine how much the indentation should change for subsequent lines.
- * Tracks brackets, braces, and JSX tags.
+ * Analyzes a line char-by-char to determine indentation changes and track state.
  */
-function analyzeLine(line) {
+function analyzeLine(line, initialState) {
   let opening = 0;
   let closing = 0;
-  let inSingleQuote = false;
-  let inDoubleQuote = false;
-  let inBacktick = false;
+  const state = { ...initialState };
   let escaped = false;
 
-  // Simple line comment check - ignore everything after //
-  const lineCommentIdx = line.indexOf('//');
-  const cleanLine = lineCommentIdx !== -1 ? line.substring(0, lineCommentIdx) : line;
-
-  for (let i = 0; i < cleanLine.length; i++) {
-    const char = cleanLine[i];
-    const nextChar = cleanLine[i + 1];
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i];
+    const nextChar = line[i + 1];
 
     if (escaped) {
       escaped = false;
@@ -115,31 +117,93 @@ function analyzeLine(line) {
       continue;
     }
 
-    if (char === "'" && !inDoubleQuote && !inBacktick) inSingleQuote = !inSingleQuote;
-    else if (char === '"' && !inSingleQuote && !inBacktick) inDoubleQuote = !inDoubleQuote;
-    else if (char === '`' && !inSingleQuote && !inDoubleQuote) inBacktick = !inBacktick;
+    // Handle block comments
+    if (state.inBlockComment) {
+      if (char === '*' && nextChar === '/') {
+        state.inBlockComment = false;
+        i++;
+      }
+      continue;
+    }
 
-    if (!inSingleQuote && !inDoubleQuote && !inBacktick) {
-      // Brackets
-      if (char === '{' || char === '[' || char === '(') opening++;
-      else if (char === '}' || char === ']' || char === ')') closing++;
-      // JSX Tags
-      else if (char === '<') {
-        if (nextChar === '/') {
-          // Closing tag </Tag>
-          closing++;
-          i++; // Skip the /
-        } else if (/[a-zA-Z_]/.test(nextChar)) {
-          // Opening tag <Tag
+    // Handle strings
+    if (state.inSingleQuote) {
+      if (char === "'") state.inSingleQuote = false;
+      continue;
+    }
+    if (state.inDoubleQuote) {
+      if (char === '"') state.inDoubleQuote = false;
+      continue;
+    }
+    if (state.inBacktick) {
+      if (char === '`') state.inBacktick = false;
+      continue;
+    }
+
+    // Start of block comment
+    if (char === '/' && nextChar === '*') {
+      state.inBlockComment = true;
+      i++;
+      continue;
+    }
+
+    // Line comment
+    if (char === '/' && nextChar === '/') {
+      break;
+    }
+
+    // Start of string
+    if (char === "'") {
+      state.inSingleQuote = true;
+      continue;
+    }
+    if (char === '"') {
+      state.inDoubleQuote = true;
+      continue;
+    }
+    if (char === '`') {
+      state.inBacktick = true;
+      continue;
+    }
+
+    // Brackets
+    if (char === '{' || char === '[' || char === '(') {
+      opening++;
+    } else if (char === '}' || char === ']' || char === ')') {
+      closing++;
+    }
+    // JSX Tags
+    else if (char === '<') {
+      if (nextChar === '/') {
+        // Closing tag </Tag> or </>
+        closing++;
+        i++;
+      } else if (nextChar === '>') {
+        // Fragment opening <>
+        opening++;
+        i++;
+      } else if (/[a-zA-Z_]/.test(nextChar)) {
+        // Heuristic to distinguish between tag and comparison
+        const prevText = line.substring(0, i).trim();
+        const prevChar = prevText[prevText.length - 1] || '';
+        const isPrecededByLetterOrDigit = /[a-zA-Z0-9]/.test(prevChar);
+
+        let isKeyword = false;
+        if (isPrecededByLetterOrDigit) {
+          const beforeMatch = prevText.match(/(return|case|yield|await|default)$/);
+          if (beforeMatch) isKeyword = true;
+        }
+
+        if (!isPrecededByLetterOrDigit || isKeyword) {
           opening++;
         }
-      } else if (char === '/' && nextChar === '>') {
-        // Self-closing tag />
-        closing++;
-        i++; // Skip the >
       }
+    } else if (char === '/' && nextChar === '>') {
+      // Self-closing tag />
+      closing++;
+      i++;
     }
   }
 
-  return { opening, closing };
+  return { opening, closing, state };
 }
