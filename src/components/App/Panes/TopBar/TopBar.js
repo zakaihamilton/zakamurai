@@ -48,6 +48,7 @@ export default function TopBar() {
 
   const handleCompile = useCallback(
     async (silent = false) => {
+      const isSilent = silent === true;
       if (isSystemProcessing || isCompilingRef.current) return;
       isCompilingRef.current = true;
 
@@ -55,7 +56,7 @@ export default function TopBar() {
         draft.isSystemProcessing = true;
       });
 
-      if (!silent && tabState.activeTabId !== 'ai-logs') {
+      if (!isSilent && tabState.activeTabId !== 'ai-logs') {
         handleOpenLog();
       }
 
@@ -112,11 +113,11 @@ export default function TopBar() {
                     { id: 'preview', type: 'preview', label: 'Preview' },
                   ];
                 }
-                if (!silent) {
+                if (!isSilent) {
                   draft.activeTabId = 'preview';
                 }
               });
-              onLog(`Preview ready.${!silent ? ' Opened preview tab.' : ''}`);
+              onLog(`Preview ready.${!isSilent ? ' Opened preview tab.' : ''}`);
             }
           }
         } catch (previewErr) {
