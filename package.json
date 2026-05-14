@@ -10,6 +10,7 @@
     "format": "biome format . --write",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:visual": "npx playwright test",
     "setup:almostnode": "mkdir -p public/lib/almostnode public/assets && cp -r node_modules/almostnode/dist/* public/lib/almostnode/ && cp node_modules/almostnode/dist/assets/* public/assets/",
     "setup:wasm": "mkdir -p public/wasm && cp node_modules/onnxruntime-web/dist/* public/wasm/",
     "postinstall": "\"$npm_execpath\" run setup:almostnode && \"$npm_execpath\" run setup:wasm",
@@ -31,6 +32,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "1.9.4",
+    "@next/bundle-analyzer": "latest",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.2.0",
     "@vitejs/plugin-react": "^4.3.4",
@@ -42,6 +44,7 @@
     "lint-staged": "^15.0.0",
     "fast-check": "^3.0.0",
     "promptfoo": "latest",
+    "stylelint": "^17.0.0",
     "stylelint-config-standard": "latest",
     "@playwright/test": "latest"
   },

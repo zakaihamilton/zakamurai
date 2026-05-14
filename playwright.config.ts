@@ -1,5 +1,9 @@
 import { defineConfig, devices } from '@playwright/test';
 
+/**
+ * Playwright configuration for Zakamurai end-to-end tests.
+ * To run tests: npm run test:visual
+ */
 export default defineConfig({
   testDir: './tests/visual',
   fullyParallel: true,
@@ -8,7 +12,9 @@ export default defineConfig({
   workers: process.env.CI ? 1 : undefined,
   reporter: 'html',
   use: {
+    baseURL: 'http://localhost:3000',
     trace: 'on-first-retry',
+    screenshot: 'only-on-failure',
   },
   projects: [
     {

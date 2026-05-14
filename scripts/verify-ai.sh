@@ -14,4 +14,7 @@ fi
 echo "--- Starting Semantic Correctness Evaluation ---"
 npx promptfoo eval
 
+echo "--- Starting Performance Budget Check ---"
+node scripts/check-performance.js
+
 echo "--- AI Regression Guard Complete ---"
