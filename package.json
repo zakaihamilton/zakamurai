@@ -42,7 +42,6 @@
     "lint-staged": "^15.0.0",
     "fast-check": "^3.0.0",
     "promptfoo": "latest",
-    "stylelint": "^16.0.0",
     "stylelint-config-standard": "latest",
     "@playwright/test": "latest"
   },
