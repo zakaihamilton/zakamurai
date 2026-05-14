@@ -1,0 +1,30 @@
+# promptfoo configuration
+# For verifying AI-generated features
+
+prompts:
+  - "Check that all generated UI components strictly use Vanilla CSS Modules and avoid inline styles or utility-first frameworks like Tailwind CSS."
+
+providers:
+  - id: openai:gpt-4o
+
+tests:
+  - vars:
+      file_content: "{{file_content}}"
+    assert:
+      - type: javascript
+        value: |
+          // Basic check for CSS Modules import and absence of utility classes
+          const hasCssModule = /import .* from ['"].*\.module\.css['"]/.test(vars.file_content);
+          const hasInlineStyles = /style={{/.test(vars.file_content);
+          const hasTailwind = /className=['"].*(?:bg-|text-|p-|m-|flex|grid).*['"]/.test(vars.file_content);
+          
+          if (!hasCssModule && /return \(/.test(vars.file_content)) {
+            return { pass: false, reason: 'Missing CSS Module import in UI component' };
+          }
+          if (hasInlineStyles) {
+            return { pass: false, reason: 'Inline styles are forbidden' };
+          }
+          if (hasTailwind) {
+            return { pass: false, reason: 'Utility-first frameworks like Tailwind are forbidden' };
+          }
+          return true;

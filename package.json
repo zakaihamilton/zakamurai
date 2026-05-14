@@ -15,7 +15,8 @@
     "postinstall": "\"$npm_execpath\" run setup:almostnode && \"$npm_execpath\" run setup:wasm",
     "predev": "\"$npm_execpath\" run setup:almostnode && \"$npm_execpath\" run setup:wasm",
     "prebuild": "\"$npm_execpath\" run setup:almostnode && \"$npm_execpath\" run setup:wasm",
-    "verify": "biome check . && vitest run"
+    "verify": "biome check . && vitest run",
+    "prepare": "husky"
   },
   "dependencies": {
     "@huggingface/transformers": "^4.2.0",
@@ -36,6 +37,17 @@
     "eslint": "^9",
     "eslint-config-next": "16.2.4",
     "jsdom": "^26.0.0",
-    "vitest": "^3.0.4"
+    "vitest": "^3.0.4",
+    "husky": "^9.0.0",
+    "lint-staged": "^15.0.0",
+    "fast-check": "^3.0.0",
+    "promptfoo": "latest",
+    "stylelint": "^16.0.0",
+    "stylelint-config-standard": "latest",
+    "@playwright/test": "latest"
+  },
+  "lint-staged": {
+    "src/**/*.{ts,tsx}": ["eslint --fix", "vitest related --run"],
+    "src/**/*.module.css": ["stylelint --fix", "npx playwright test"]
   }
 }

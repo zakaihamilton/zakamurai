@@ -12,11 +12,12 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
+      src: path.resolve(__dirname, './src'),
     },
   },
   esbuild: {
-    loader: 'jsx',
-    include: /src\/.*\.js$/,
+    loader: 'tsx',
+    include: /src\/.*\.[jt]sx?$/,
     exclude: [],
   },
   optimizeDeps: {
