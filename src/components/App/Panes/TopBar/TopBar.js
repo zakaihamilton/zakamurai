@@ -369,7 +369,7 @@ export default function TopBar() {
     URL.revokeObjectURL(url);
   };
 
-  let breadcrumb = ['Dashboard'];
+  let breadcrumb = ['Welcome'];
   if (activeTab) {
     if (activeTab.type === 'file') {
       breadcrumb = [projectName, ...(activeTab.file?.path || [])];

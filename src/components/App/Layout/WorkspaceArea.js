@@ -5,12 +5,12 @@ import styles from '../App.module.css';
 import { AppState } from '../AppState';
 import { Prompt, PromptState, SidebarState, TabBar, TabState } from '../Panes';
 import { PreviewState } from '../PreviewState';
-import Dashboard from '../Views/Dashboard';
 import EditorArea from '../Views/EditorArea';
 import Instructions from '../Views/Instructions';
 import LogArea from '../Views/LogArea';
 import PreviewArea from '../Views/PreviewArea';
 import ProjectInfo from '../Views/ProjectInfo';
+import Welcome from '../Views/Welcome';
 
 export default function WorkspaceArea() {
   const appState = AppState.useState();
@@ -65,7 +65,7 @@ export default function WorkspaceArea() {
           )}
           {activeTab?.type === 'project-info' && <ProjectInfo />}
           {activeTab?.type === 'instructions' && <Instructions />}
-          {!activeTab && <Dashboard />}
+          {!activeTab && <Welcome />}
         </div>
       </div>
       {showAIInput && !isMobile && (

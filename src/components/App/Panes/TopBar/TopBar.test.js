@@ -115,7 +115,7 @@ describe('TopBar', () => {
     EditorState.useState.mockReturnValue({ fileContents: {} });
 
     render(<TopBar />);
-    expect(screen.getByText('Dashboard')).toBeDefined();
+    expect(screen.getByText('Welcome')).toBeDefined();
   });
 
   it('renders export button and handles click', async () => {

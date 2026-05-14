@@ -223,13 +223,13 @@
 }
 
 .compileBtn {
-  background: linear-gradient(135deg, var(--accent) 0%, #6366f1 100%);
-  color: white;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  font-weight: 600;
-  padding: 8px 16px;
+  background: var(--bg-surface);
+  color: var(--text-main);
+  border: 1px solid var(--border);
+  font-weight: 500;
+  padding: 8px 14px;
   border-radius: 10px;
-  box-shadow: 0 4px 12px var(--accent-glow);
+  box-shadow: var(--shadow-sm);
   cursor: pointer;
   transition: all 0.2s var(--ease-premium);
   display: flex;
@@ -238,14 +238,16 @@
 }
 
 .compileBtn:hover:not(:disabled) {
-  filter: brightness(1.1);
+  color: var(--accent);
+  background: var(--bg-input);
+  border-color: var(--accent);
   transform: translateY(-1px);
-  box-shadow: 0 6px 20px var(--accent-glow);
+  box-shadow: var(--shadow-md);
 }
 
 .compileBtn:active:not(:disabled) {
   transform: translateY(0) scale(0.98);
-  filter: brightness(0.9);
+  background: var(--bg-surface);
 }
 
 .compileBtn:disabled {
