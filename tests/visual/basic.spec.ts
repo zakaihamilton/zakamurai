@@ -2,8 +2,8 @@ import { test, expect } from '@playwright/test';
 
 test.describe('Zakamurai Basic Tests', () => {
   test.beforeEach(async ({ page }) => {
-    // Using localhost as identified in the user's browser state
-    await page.goto('http://localhost:3000/');
+    // Using 127.0.0.1 for better reliability
+    await page.goto('http://127.0.0.1:3000/');
     // Wait for the loading screen to disappear
     await expect(page.getByText('Initializing workspace...')).not.toBeVisible({ timeout: 60000 });
   });

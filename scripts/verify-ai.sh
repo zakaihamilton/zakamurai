@@ -17,4 +17,7 @@ npx promptfoo eval
 echo "--- Starting Performance Budget Check ---"
 node scripts/check-performance.js
 
+echo "--- Starting Visual Regression Tests ---"
+npm run test:visual
+
 echo "--- AI Regression Guard Complete ---"

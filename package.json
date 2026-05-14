@@ -49,7 +49,13 @@
     "@playwright/test": "latest"
   },
   "lint-staged": {
-    "src/**/*.{ts,tsx}": ["eslint --fix", "vitest related --run"],
-    "src/**/*.module.css": ["stylelint --fix", "npx playwright test"]
+    "src/**/*.{ts,tsx}": [
+      "biome check --write",
+      "vitest related --run",
+      "npx playwright test"
+    ],
+    "src/**/*.module.css": [
+      "stylelint --fix"
+    ]
   }
 }

@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 
 test.describe('Zakamurai Advanced Tests', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('http://localhost:3000/');
+    await page.goto('http://127.0.0.1:3000/');
     await expect(page.getByText('Initializing workspace...')).not.toBeVisible({ timeout: 60000 });
   });
 
