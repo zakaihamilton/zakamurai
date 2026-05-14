@@ -61,10 +61,7 @@ export default function HistoryHandler({ filePath, localContent, setLocalContent
           if (draft.history?.[filePath]) {
             const history = { ...draft.history };
             const hist = { ...history[filePath] };
-            if (
-              !hist.lastSnapshotCursor ||
-              hist.lastSnapshotCursor.index !== currentCursor.index
-            ) {
+            if (!hist.lastSnapshotCursor || hist.lastSnapshotCursor.index !== currentCursor.index) {
               hist.lastSnapshotCursor = { ...currentCursor };
               history[filePath] = hist;
               draft.history = history;
@@ -82,7 +79,11 @@ export default function HistoryHandler({ filePath, localContent, setLocalContent
 
     const timer = setTimeout(() => {
       // Ensure we are still on the same file and the content is still what we intended to snapshot
-      if (filePath === initialFilePath && localContent === initialContent && localContent !== lastHistoryContent.current) {
+      if (
+        filePath === initialFilePath &&
+        localContent === initialContent &&
+        localContent !== lastHistoryContent.current
+      ) {
         state((draft) => {
           const history = { ...(draft.history || {}) };
           if (!history[filePath]) {
@@ -104,7 +105,7 @@ export default function HistoryHandler({ filePath, localContent, setLocalContent
 
           hist.lastSnapshotContent = localContent;
           hist.lastSnapshotCursor = state.cursorPos?.[filePath] || lastHistoryCursor.current;
-          
+
           draft.history = history;
           lastHistoryContent.current = localContent;
         });
