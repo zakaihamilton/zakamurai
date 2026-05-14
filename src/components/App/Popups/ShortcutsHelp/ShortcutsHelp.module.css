@@ -95,20 +95,6 @@
   margin-bottom: 2px;
 }
 
-.sectionIndex {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 18px;
-  height: 18px;
-  background: var(--accent);
-  color: #fff;
-  border-radius: 4px;
-  font-size: 10px;
-  margin-right: 8px;
-  font-weight: 800;
-  opacity: 1;
-}
 
 .items {
   display: flex;
