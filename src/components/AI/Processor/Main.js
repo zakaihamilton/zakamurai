@@ -129,9 +129,12 @@ export const processAIResponse = async (
           if (diffs && diffs.length > 0) {
             const existingDiffs = draft.pendingDiffs || {};
             const existingOriginal = existingDiffs[filePath]?.originalContent;
+            const existingCursor = existingDiffs[filePath]?.originalCursorPos;
+            const currentCursor = editorState.cursorPos?.[filePath];
 
             setInDraft(draft, ['pendingDiffs', filePath], {
               originalContent: existingOriginal !== undefined ? existingOriginal : originalContent,
+              originalCursorPos: existingCursor !== undefined ? existingCursor : currentCursor,
               diffs: finalDiffs,
             });
           }

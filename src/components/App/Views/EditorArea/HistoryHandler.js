@@ -17,16 +17,19 @@ export default function HistoryHandler({ filePath, localContent, setLocalContent
       lastHistoryCursor.current = state.cursorPos?.[filePath] || { line: 1, col: 1, index: 0 };
 
       state((draft) => {
-        if (!draft.history) draft.history = {};
-        if (!draft.history[filePath]) {
-          draft.history[filePath] = { past: [], future: [] };
+        const history = { ...(draft.history || {}) };
+        if (!history[filePath]) {
+          history[filePath] = { past: [], future: [] };
+        } else {
+          history[filePath] = { ...history[filePath] };
         }
-        draft.history[filePath].lastSnapshotContent = globalContent;
-        draft.history[filePath].lastSnapshotCursor = state.cursorPos?.[filePath] || {
+        history[filePath].lastSnapshotContent = globalContent;
+        history[filePath].lastSnapshotCursor = state.cursorPos?.[filePath] || {
           line: 1,
           col: 1,
           index: 0,
         };
+        draft.history = history;
       });
     }
 
@@ -51,31 +54,58 @@ export default function HistoryHandler({ filePath, localContent, setLocalContent
       // then this cursor position is a good candidate for the "pre-change" cursor.
       if (localContent === lastHistoryContent.current) {
         lastHistoryCursor.current = currentCursor;
+
+        // Also update the global lastSnapshotCursor so undo knows where to return to
+        // if an undo is performed before the next snapshot is taken.
+        state((draft) => {
+          if (draft.history?.[filePath]) {
+            const history = { ...draft.history };
+            const hist = { ...history[filePath] };
+            if (
+              !hist.lastSnapshotCursor ||
+              hist.lastSnapshotCursor.index !== currentCursor.index
+            ) {
+              hist.lastSnapshotCursor = { ...currentCursor };
+              history[filePath] = hist;
+              draft.history = history;
+            }
+          }
+        });
       }
     }
-  }, [state.cursorPos?.[filePath], localContent, filePath]);
+  }, [state.cursorPos?.[filePath], localContent, filePath, state]);
 
   // History tracking (debounced snapshots)
   useEffect(() => {
+    const initialFilePath = filePath;
+    const initialContent = localContent;
+
     const timer = setTimeout(() => {
-      if (localContent !== lastHistoryContent.current) {
+      // Ensure we are still on the same file and the content is still what we intended to snapshot
+      if (filePath === initialFilePath && localContent === initialContent && localContent !== lastHistoryContent.current) {
         state((draft) => {
-          if (!draft.history) draft.history = {};
-          if (!draft.history[filePath]) {
-            draft.history[filePath] = { past: [], future: [] };
+          const history = { ...(draft.history || {}) };
+          if (!history[filePath]) {
+            history[filePath] = { past: [], future: [] };
+          } else {
+            history[filePath] = { ...history[filePath] };
           }
-          const hist = draft.history[filePath];
+          const hist = history[filePath];
 
           // Push current state to past before updating lastHistoryContent
           // We use a capture of the cursor from BEFORE the content changed
-          hist.past.push({
+          const past = [...(hist.past || [])];
+          past.push({
             content: lastHistoryContent.current,
             cursor: lastHistoryCursor.current,
           });
-          if (hist.past.length > 100) hist.past.shift();
+          if (past.length > 100) past.shift();
+          hist.past = past;
 
           hist.lastSnapshotContent = localContent;
           hist.lastSnapshotCursor = state.cursorPos?.[filePath] || lastHistoryCursor.current;
+          
+          draft.history = history;
           lastHistoryContent.current = localContent;
         });
       }

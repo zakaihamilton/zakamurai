@@ -36,8 +36,13 @@ export default function DiffHandler({
     const diff = state.pendingDiffs?.[filePath];
     if (diff) {
       const prevContent = diff.originalContent;
+      const prevCursor = diff.originalCursorPos;
+
       state((draft) => {
         draft.fileContents = { ...draft.fileContents, [filePath]: prevContent };
+        if (prevCursor) {
+          draft.cursorPos = { ...draft.cursorPos, [filePath]: prevCursor };
+        }
         if (draft.pendingDiffs) {
           const nextDiffs = { ...draft.pendingDiffs };
           delete nextDiffs[filePath];

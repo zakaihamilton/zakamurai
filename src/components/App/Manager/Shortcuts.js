@@ -96,40 +96,44 @@ export const SHORTCUTS = [
       if (!filePath) return;
 
       editorState((draft) => {
-        if (!draft.history) draft.history = {};
-        if (!draft.history[filePath]) {
-          draft.history[filePath] = { past: [], future: [] };
+        const history = { ...(draft.history || {}) };
+        if (!history[filePath]) {
+          history[filePath] = { past: [], future: [] };
+        } else {
+          history[filePath] = { ...history[filePath] };
         }
-        const hist = draft.history[filePath];
+        const hist = history[filePath];
 
         const currentContent = draft.fileContents[filePath];
-        const currentCursor = draft.cursorPos?.[filePath];
+        const currentCursor = draft.cursorPos?.[filePath] || { line: 1, col: 1, index: 0 };
 
         if (hist.lastSnapshotContent !== undefined && currentContent !== hist.lastSnapshotContent) {
-          if (!hist.future) hist.future = [];
-          hist.future.push({ content: currentContent, cursor: currentCursor });
-          if (hist.future.length > 100) hist.future.shift();
+          const future = [...(hist.future || [])];
+          future.push({ content: currentContent, cursor: currentCursor });
+          if (future.length > 100) future.shift();
+          hist.future = future;
 
-          draft.fileContents[filePath] = hist.lastSnapshotContent;
+          draft.fileContents = { ...draft.fileContents, [filePath]: hist.lastSnapshotContent };
           if (hist.lastSnapshotCursor !== undefined) {
-            if (!draft.cursorPos) draft.cursorPos = {};
-            draft.cursorPos[filePath] = hist.lastSnapshotCursor;
+            draft.cursorPos = { ...draft.cursorPos, [filePath]: { ...hist.lastSnapshotCursor } };
           }
+          draft.history = history;
           return;
         }
 
         if (!hist.past || hist.past.length === 0) return;
 
         const prevState = hist.past.pop();
-        if (!hist.future) hist.future = [];
-        hist.future.push({ content: currentContent, cursor: currentCursor });
-        if (hist.future.length > 100) hist.future.shift();
+        const future = [...(hist.future || [])];
+        future.push({ content: currentContent, cursor: currentCursor });
+        if (future.length > 100) future.shift();
+        hist.future = future;
 
-        draft.fileContents[filePath] = prevState.content;
+        draft.fileContents = { ...draft.fileContents, [filePath]: prevState.content };
         if (prevState.cursor !== undefined) {
-          if (!draft.cursorPos) draft.cursorPos = {};
-          draft.cursorPos[filePath] = prevState.cursor;
+          draft.cursorPos = { ...draft.cursorPos, [filePath]: { ...prevState.cursor } };
         }
+        draft.history = history;
       });
     },
   },
@@ -147,21 +151,24 @@ export const SHORTCUTS = [
 
       editorState((draft) => {
         if (!draft.history || !draft.history[filePath]) return;
-        const hist = draft.history[filePath];
+        const history = { ...draft.history };
+        const hist = { ...history[filePath] };
         if (!hist.future || hist.future.length === 0) return;
 
         const currentContent = draft.fileContents[filePath];
-        const currentCursor = draft.cursorPos?.[filePath];
+        const currentCursor = draft.cursorPos?.[filePath] || { line: 1, col: 1, index: 0 };
 
         const nextState = hist.future.pop();
-        if (!hist.past) hist.past = [];
-        hist.past.push({ content: currentContent, cursor: currentCursor });
+        const past = [...(hist.past || [])];
+        past.push({ content: currentContent, cursor: currentCursor });
+        hist.past = past;
 
-        draft.fileContents[filePath] = nextState.content;
+        draft.fileContents = { ...draft.fileContents, [filePath]: nextState.content };
         if (nextState.cursor !== undefined) {
-          if (!draft.cursorPos) draft.cursorPos = {};
-          draft.cursorPos[filePath] = nextState.cursor;
+          draft.cursorPos = { ...draft.cursorPos, [filePath]: { ...nextState.cursor } };
         }
+        history[filePath] = hist;
+        draft.history = history;
       });
     },
   },
@@ -179,21 +186,24 @@ export const SHORTCUTS = [
 
       editorState((draft) => {
         if (!draft.history || !draft.history[filePath]) return;
-        const hist = draft.history[filePath];
+        const history = { ...draft.history };
+        const hist = { ...history[filePath] };
         if (!hist.future || hist.future.length === 0) return;
 
         const currentContent = draft.fileContents[filePath];
-        const currentCursor = draft.cursorPos?.[filePath];
+        const currentCursor = draft.cursorPos?.[filePath] || { line: 1, col: 1, index: 0 };
 
         const nextState = hist.future.pop();
-        if (!hist.past) hist.past = [];
-        hist.past.push({ content: currentContent, cursor: currentCursor });
+        const past = [...(hist.past || [])];
+        past.push({ content: currentContent, cursor: currentCursor });
+        hist.past = past;
 
-        draft.fileContents[filePath] = nextState.content;
+        draft.fileContents = { ...draft.fileContents, [filePath]: nextState.content };
         if (nextState.cursor !== undefined) {
-          if (!draft.cursorPos) draft.cursorPos = {};
-          draft.cursorPos[filePath] = nextState.cursor;
+          draft.cursorPos = { ...draft.cursorPos, [filePath]: { ...nextState.cursor } };
         }
+        history[filePath] = hist;
+        draft.history = history;
       });
     },
   },
@@ -310,11 +320,16 @@ export const SHORTCUTS = [
       const diff = editorState.pendingDiffs?.[activeTabId];
       if (diff) {
         const prevContent = diff.originalContent;
+        const prevCursor = diff.originalCursorPos;
         editorState((draft) => {
-          if (!draft.fileContents) draft.fileContents = {};
-          draft.fileContents[activeTabId] = prevContent;
+          draft.fileContents = { ...draft.fileContents, [activeTabId]: prevContent };
+          if (prevCursor) {
+            draft.cursorPos = { ...draft.cursorPos, [activeTabId]: prevCursor };
+          }
           if (draft.pendingDiffs) {
-            delete draft.pendingDiffs[activeTabId];
+            const nextDiffs = { ...draft.pendingDiffs };
+            delete nextDiffs[activeTabId];
+            draft.pendingDiffs = nextDiffs;
           }
         });
         if (appState.fs?.writeFileAtPath) {

@@ -60,7 +60,7 @@ export default function CodeEditor({
     if (textareaRef.current && cursorPos?.index !== undefined) {
       const textarea = textareaRef.current;
       const externalMove = cursorPos.index !== lastReportedIndex.current;
-      const browserReset = textarea.selectionStart !== cursorPos.index && !isLocalEdit.current;
+      const browserReset = (textarea.selectionStart !== cursorPos.index || textarea.selectionEnd !== cursorPos.index) && !isLocalEdit.current;
 
       if (externalMove || browserReset) {
         textarea.selectionStart = cursorPos.index;

@@ -68,17 +68,21 @@ export default function EditorArea({ file }) {
 
     // Asynchronous dispatch to your state engine
     state((draft) => {
-      if (!draft.fileContents) draft.fileContents = {};
-      draft.fileContents[filePath] = newVal;
+      draft.fileContents = { ...draft.fileContents, [filePath]: newVal };
 
       // Clear redo history on manual edit
       if (draft.history?.[filePath]) {
-        draft.history[filePath].future = [];
+        const history = { ...draft.history };
+        const hist = { ...history[filePath], future: [] };
+        history[filePath] = hist;
+        draft.history = history;
       }
 
       // Clear pending diffs on manual edit to avoid index drift
       if (draft.pendingDiffs?.[filePath]) {
-        delete draft.pendingDiffs[filePath];
+        const nextDiffs = { ...draft.pendingDiffs };
+        delete nextDiffs[filePath];
+        draft.pendingDiffs = nextDiffs;
       }
     });
   };
