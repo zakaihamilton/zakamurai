@@ -96,6 +96,8 @@ export default function Sidebar() {
               onClick={toggleSidebar}
               onKeyDown={(e) => e.key === 'Enter' && toggleSidebar()}
               className={styles.logo}
+              aria-label={isOpen ? 'Collapse Sidebar' : 'Expand Sidebar'}
+              data-testid="sidebar-toggle"
             >
               <Icons.ZLogo size={32} />
             </button>

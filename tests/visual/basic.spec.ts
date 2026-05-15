@@ -1,11 +1,12 @@
-import { test, expect } from '@playwright/test';
+import { expect, test } from '@playwright/test';
 
 test.describe('Zakamurai Basic Tests', () => {
   test.beforeEach(async ({ page }) => {
     // Using 127.0.0.1 for better reliability
-    await page.goto('http://127.0.0.1:3000/');
+    await page.goto('/');
     // Wait for the loading screen to disappear
     await expect(page.getByText('Initializing workspace...')).not.toBeVisible({ timeout: 60000 });
+    await page.waitForSelector('[data-testid]', { state: 'visible', timeout: 30000 });
   });
 
   test('should load the application and show key elements', async ({ page }) => {
@@ -14,18 +15,18 @@ test.describe('Zakamurai Basic Tests', () => {
 
     // Check for the Sidebar toggle (Z logo)
     // It's a button with the text "Z"
-    await expect(page.getByRole('button', { name: 'Z', exact: true })).toBeVisible();
+    await expect(page.getByTestId('sidebar-toggle').filter({ visible: true })).toBeVisible();
   });
 
   test('should toggle the sidebar', async ({ page }) => {
     // Initially sidebar should be open and 'src' folder visible
     // The screenshot confirms 'src' is visible
     await expect(page.getByText('src', { exact: true })).toBeVisible({ timeout: 10000 });
-    
+
     // The sidebar toggle is the "Z" button
-    const sidebarToggle = page.getByRole('button', { name: 'Z', exact: true });
+    const sidebarToggle = page.getByTestId('sidebar-toggle').filter({ visible: true });
     await sidebarToggle.click();
-    
+
     // Verify it's still there
     await expect(sidebarToggle).toBeVisible();
   });
@@ -41,7 +42,7 @@ test.describe('Zakamurai Basic Tests', () => {
 
   test('should interact with the AI prompt', async ({ page }) => {
     const textarea = page.getByPlaceholder('Enter the AI prompt here...');
-    
+
     // In the screenshot, AI Prompt is already open
     await expect(textarea).toBeVisible({ timeout: 10000 });
     await textarea.fill('Hello AI, help me code!');

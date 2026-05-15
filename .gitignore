@@ -12,6 +12,10 @@
 
 # testing
 /coverage
+/playwright-report
+/test-results
+/blob-report
+/playwright/.cache
 
 # next.js
 /.next/
@@ -45,6 +49,3 @@ next-env.d.ts
 /public/assets/runtime-worker-*
 /public/vite-sw.js
 /public/wasm
-
-/playwright-report
-/test-results

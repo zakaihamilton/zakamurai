@@ -22,6 +22,7 @@ export default function ActionButtons({
             className={styles.compileBtn}
             onClick={onCompile}
             disabled={isSystemProcessing}
+            data-testid="compile-btn"
           >
             <Icons.Play />
             <span className={styles.hideOnMobile}>Compile</span>
@@ -35,6 +36,8 @@ export default function ActionButtons({
             type="button"
             className={`${styles.tabBtn} ${activeTabId === 'ai-logs' ? styles.activeTab : ''}`}
             onClick={onOpenLog}
+            aria-label="Goto Logs"
+            data-testid="logs-tab"
           >
             <Icons.Terminal />
           </button>
@@ -44,6 +47,8 @@ export default function ActionButtons({
             type="button"
             className={`${styles.tabBtn} ${activeTabId === 'preview' ? styles.activeTab : ''}`}
             onClick={onOpenPreview}
+            aria-label="Goto Preview"
+            data-testid="preview-tab"
           >
             <Icons.Globe />
           </button>
@@ -59,6 +64,8 @@ export default function ActionButtons({
             type="button"
             className={`${styles.sidebarBtn} ${showAIInput ? styles.activeSidebar : ''}`}
             onClick={onToggleAIInput}
+            aria-label={showAIInput ? 'Hide AI Prompt' : 'Show AI Prompt'}
+            data-testid="ai-prompt-toggle"
           >
             <Icons.BotSmall />
           </button>

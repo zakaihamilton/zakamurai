@@ -417,6 +417,8 @@ export default function TopBar() {
               }
             })
           }
+          aria-label={isSidebarActive ? 'Collapse Sidebar' : 'Expand Sidebar'}
+          data-testid="sidebar-toggle"
         >
           <Icons.ZLogo size={32} />
         </button>

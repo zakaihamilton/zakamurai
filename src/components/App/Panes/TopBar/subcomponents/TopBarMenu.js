@@ -48,6 +48,8 @@ export default function TopBarMenu({
           type="button"
           className={`${styles.actionBtn} ${menuPosition ? styles.active : ''}`}
           onClick={handleMenuOpen}
+          aria-label="More actions"
+          data-testid="more-actions-btn"
         >
           <Icons.MoreVertical />
         </button>
