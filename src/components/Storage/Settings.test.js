@@ -49,6 +49,12 @@ describe('Settings', () => {
     expect(Settings.getAICompletionEnabled()).toBe(true);
   });
 
+  it('gets and sets AI prompt model', () => {
+    expect(Settings.getAIPromptModel('default-model')).toBe('default-model');
+    Settings.setAIPromptModel('Qwen2.5-Coder-7B-Instruct-q4f16_1-MLC');
+    expect(Settings.getAIPromptModel()).toBe('Qwen2.5-Coder-7B-Instruct-q4f16_1-MLC');
+  });
+
   it('resets settings', () => {
     Settings.setProjectName('Test');
     Settings.reset();

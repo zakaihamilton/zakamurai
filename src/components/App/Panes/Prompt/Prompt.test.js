@@ -3,6 +3,7 @@ import { SidebarState } from '@/components/App/Panes/Sidebar';
 import { TabState } from '@/components/App/Panes/TabBar';
 import { EditorState } from '@/components/App/Views/EditorArea';
 import { LogState } from '@/components/App/Views/LogArea';
+import Settings from '@/components/Storage/Settings';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import React from 'react';
 import { describe, expect, it, vi } from 'vitest';
@@ -52,8 +53,29 @@ vi.mock('@/components/App/Views/EditorArea', () => ({
 
 vi.mock('@/components/AI', () => ({
   askWebLLM: vi.fn().mockResolvedValue('Mock response'),
+  getCachedWebLLMModelIds: vi.fn().mockResolvedValue(['Phi-4-mini-instruct-q4f16_1-MLC']),
   interruptWebLLM: vi.fn(),
   processAIResponse: vi.fn().mockResolvedValue(undefined),
+  RECOMMENDED_WEB_LLM_MODEL: {
+    id: 'Qwen2.5-Coder-7B-Instruct-q4f16_1-MLC',
+    name: 'Qwen2.5 Coder 7B',
+    requirement: 'Best code quality.',
+    recommended: true,
+  },
+  WEB_LLM_MODELS: [
+    {
+      id: 'Qwen2.5-Coder-7B-Instruct-q4f16_1-MLC',
+      name: 'Qwen2.5 Coder 7B',
+      requirement: 'Best code quality.',
+      recommended: true,
+    },
+    {
+      id: 'Phi-4-mini-instruct-q4f16_1-MLC',
+      name: 'Phi-4 Mini',
+      requirement: 'Lower memory use.',
+      recommended: false,
+    },
+  ],
 }));
 
 vi.mock('@/utils/rag/search-utility', () => ({
@@ -70,11 +92,13 @@ vi.mock('@/components/Storage/Settings', () => ({
     addPromptHistory: vi.fn(),
     getPromptHistory: vi.fn().mockReturnValue([]),
     getAILogs: vi.fn().mockReturnValue([]),
+    getAIPromptModel: vi.fn((defaultValue) => defaultValue),
+    setAIPromptModel: vi.fn(),
   },
 }));
 
 describe('Prompt', () => {
-  it('renders input and button when showAIInput is true', () => {
+  it('renders input and button when showAIInput is true', async () => {
     SidebarState.useState.mockReturnValue({
       showAIInput: true,
     });
@@ -96,9 +120,21 @@ describe('Prompt', () => {
     render(<Prompt />);
     expect(screen.getByPlaceholderText('Enter the AI prompt here...')).toBeDefined();
     expect(screen.getByTitle('Execute prompt')).toBeDefined();
+    const modelDropdown = screen.getByRole('button', { name: /model/i });
+    expect(modelDropdown).toBeDefined();
+    await act(async () => {
+      fireEvent.click(modelDropdown);
+    });
+    expect(screen.getByText('Best code quality.')).toBeDefined();
+    expect(screen.getByText('Recommended')).toBeDefined();
+    await waitFor(() => expect(screen.getByText('Cached')).toBeDefined());
+    await act(async () => {
+      fireEvent.click(screen.getByText('Phi-4 Mini'));
+    });
+    expect(Settings.setAIPromptModel).toHaveBeenCalledWith('Phi-4-mini-instruct-q4f16_1-MLC');
   });
 
-  it('renders collapsed when showAIInput is false', () => {
+  it('renders collapsed when showAIInput is false', async () => {
     SidebarState.useState.mockReturnValue({
       showAIInput: false,
     });
@@ -117,6 +153,7 @@ describe('Prompt', () => {
     EditorState.useState.mockReturnValue(vi.fn());
 
     const { container } = render(<Prompt />);
+    await waitFor(() => expect(container.firstChild).not.toBeNull());
     expect(container.firstChild).not.toBeNull();
     expect(container.firstChild.getAttribute('aria-hidden')).toBe('true');
   });

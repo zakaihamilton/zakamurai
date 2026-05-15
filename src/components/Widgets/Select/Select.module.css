@@ -1,0 +1,144 @@
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+.label {
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.control {
+  position: relative;
+  width: 100%;
+}
+
+.trigger {
+  width: 100%;
+  min-height: 36px;
+  background: var(--bg-input);
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  color: var(--text-main);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  outline: none;
+  padding: 8px 10px;
+  text-align: left;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.trigger svg {
+  flex-shrink: 0;
+  color: var(--text-muted);
+}
+
+.triggerText {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.trigger:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-glow);
+}
+
+.trigger:disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  left: 0;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: min(320px, 60vh);
+  overflow-y: auto;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  box-shadow: 0 12px 28px rgb(0 0 0 / 22%);
+  padding: 6px;
+}
+
+.option {
+  width: 100%;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  color: var(--text-main);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font: inherit;
+  padding: 8px;
+  text-align: left;
+}
+
+.option:hover,
+.option:focus {
+  background: rgb(var(--accent-rgb, 97, 175, 239), 0.1);
+  border-color: rgb(var(--accent-rgb, 97, 175, 239), 0.18);
+  outline: none;
+}
+
+.optionSelected {
+  background: rgb(var(--accent-rgb, 97, 175, 239), 0.14);
+  border-color: rgb(var(--accent-rgb, 97, 175, 239), 0.24);
+}
+
+.optionHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.optionLabel {
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.25;
+}
+
+.optionBadges {
+  display: flex;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 4px;
+}
+
+.optionBadge {
+  flex-shrink: 0;
+  background: rgb(var(--accent-rgb, 97, 175, 239), 0.12);
+  border: 1px solid rgb(var(--accent-rgb, 97, 175, 239), 0.24);
+  border-radius: 6px;
+  color: var(--accent);
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1;
+  padding: 4px 6px;
+}
+
+.optionDescription {
+  color: var(--text-muted);
+  font-size: 11px;
+  line-height: 1.35;
+}

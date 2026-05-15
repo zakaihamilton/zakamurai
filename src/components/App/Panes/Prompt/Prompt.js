@@ -1,4 +1,11 @@
-import { askWebLLM, interruptWebLLM, processAIResponse } from '@/components/AI';
+import {
+  RECOMMENDED_WEB_LLM_MODEL,
+  WEB_LLM_MODELS,
+  askWebLLM,
+  getCachedWebLLMModelIds,
+  interruptWebLLM,
+  processAIResponse,
+} from '@/components/AI';
 import { DEFAULT_SYSTEM_PROMPT, buildEditPrompt } from '@/components/AI/Prompts';
 import { AppState } from '@/components/App/AppState';
 import { SidebarState } from '@/components/App/Panes/Sidebar';
@@ -8,6 +15,7 @@ import { LogState } from '@/components/App/Views/LogArea';
 import { Icons } from '@/components/Core/Base/Icons';
 import { createState } from '@/components/Core/Base/State';
 import Settings from '@/components/Storage/Settings';
+import Select from '@/components/Widgets/Select';
 import Tooltip from '@/components/Widgets/Tooltip/Tooltip';
 import { formatShortcut } from '@/utils/os';
 import { ragSearch } from '@/utils/rag/search-utility';
@@ -16,6 +24,8 @@ import styles from './Prompt.module.css';
 
 export const PromptState = createState('PromptState');
 const PromptUiState = createState('PromptUiState');
+const getInitialSelectedModel = () =>
+  Settings.getAIPromptModel(RECOMMENDED_WEB_LLM_MODEL.id) || RECOMMENDED_WEB_LLM_MODEL.id;
 
 export default function Prompt() {
   const { fs, isMobile } = AppState.useState(['fs', 'isMobile']);
@@ -24,14 +34,17 @@ export default function Prompt() {
     historyIndex: -1,
     draftVal: '',
     isReasoningVisible: true,
+    selectedModel: getInitialSelectedModel(),
   });
   const {
     val = '',
     historyIndex = -1,
     draftVal = '',
     isReasoningVisible = true,
+    selectedModel = RECOMMENDED_WEB_LLM_MODEL.id,
   } = promptUiState || {};
   const [isCopied, setIsCopied] = React.useState(false);
+  const [cachedModelIds, setCachedModelIds] = React.useState([]);
   const reasoningRef = useRef(null);
 
   const logState = LogState.usePassiveState();
@@ -52,6 +65,20 @@ export default function Prompt() {
       reasoningRef.current.scrollTop = reasoningRef.current.scrollHeight;
     }
   }, [reasoning]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    getCachedWebLLMModelIds().then((modelIds) => {
+      if (isMounted) {
+        setCachedModelIds(modelIds);
+      }
+    });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const handleStop = (e) => {
     e.preventDefault();
@@ -137,7 +164,7 @@ export default function Prompt() {
               draft.reasoning = partial;
             });
           },
-          { temperature: 0.2, top_p: 0.8 },
+          { temperature: 0.2, top_p: 0.8, model: selectedModel },
         );
 
         let stillProcessing = false;
@@ -239,6 +266,17 @@ export default function Prompt() {
 
   const currentActiveTabId = tabState.activeTabId;
   const selectedLines = editorState.selectedLines?.[currentActiveTabId] || [];
+  const selectedModelInfo =
+    WEB_LLM_MODELS.find((model) => model.id === selectedModel) || RECOMMENDED_WEB_LLM_MODEL;
+  const modelOptions = WEB_LLM_MODELS.map((model) => ({
+    value: model.id,
+    label: model.name,
+    description: model.requirement,
+    badges: [
+      model.recommended ? 'Recommended' : '',
+      cachedModelIds.includes(model.id) ? 'Cached' : '',
+    ].filter(Boolean),
+  }));
 
   const isOpen = isMobile ? sidebarState.isAIInputPopupOpen : showAIInput;
 
@@ -293,6 +331,22 @@ export default function Prompt() {
             )}
           </div>
         )}
+        <div className={styles.modelPanel}>
+          <Select
+            id="ai-model-select"
+            label="Model"
+            value={selectedModelInfo.id}
+            options={modelOptions}
+            onChange={(nextModel) =>
+              promptUiState((draft) => {
+                draft.selectedModel = nextModel;
+                Settings.setAIPromptModel(nextModel);
+              })
+            }
+            disabled={isAIProcessing || !isOpen}
+            tabIndex={isOpen ? undefined : -1}
+          />
+        </div>
         <div
           className={`${styles.reasoningWrapper} ${
             logState.reasoning && isReasoningVisible ? styles.reasoningVisible : ''

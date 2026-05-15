@@ -1,23 +1,71 @@
-import { CreateMLCEngine } from '@mlc-ai/web-llm';
+import { CreateMLCEngine, hasModelInCache } from '@mlc-ai/web-llm';
 import { DEFAULT_SYSTEM_PROMPT } from './Prompts';
 
-// A single variable to hold the initialization promise
-let enginePromise = null;
+export const WEB_LLM_MODELS = [
+  {
+    id: 'Qwen2.5-Coder-7B-Instruct-q4f16_1-MLC',
+    name: 'Qwen2.5 Coder 7B',
+    requirement: 'Best code quality. Requires a stronger GPU and several GB of browser storage.',
+    recommended: true,
+  },
+  {
+    id: 'Qwen3-4B-q4f16_1-MLC',
+    name: 'Qwen3 4B',
+    requirement: 'Balanced option. Good for lighter devices while keeping solid reasoning.',
+    recommended: false,
+  },
+  {
+    id: 'Phi-4-mini-instruct-q4f16_1-MLC',
+    name: 'Phi-4 Mini',
+    requirement: 'Lower memory use. Faster startup with more compact responses.',
+    recommended: false,
+  },
+  {
+    id: 'Llama-3.2-3B-Instruct-q4f16_1-MLC',
+    name: 'Llama 3.2 3B',
+    requirement: 'Small general model. Good fallback for devices with limited GPU memory.',
+    recommended: false,
+  },
+];
+
+export const RECOMMENDED_WEB_LLM_MODEL =
+  WEB_LLM_MODELS.find((model) => model.recommended) || WEB_LLM_MODELS[0];
+
+const DEFAULT_WEB_LLM_MODEL_ID = RECOMMENDED_WEB_LLM_MODEL.id;
+
+// A map of initialization promises keyed by model ID.
+const enginePromises = new Map();
+
+export const getCachedWebLLMModelIds = async () => {
+  const cacheEntries = await Promise.all(
+    WEB_LLM_MODELS.map(async (model) => {
+      try {
+        return [model.id, await hasModelInCache(model.id)];
+      } catch (error) {
+        console.warn(`Failed to check WebLLM cache for ${model.id}:`, error);
+        return [model.id, false];
+      }
+    }),
+  );
+
+  return cacheEntries.filter(([_, isCached]) => isCached).map(([modelId]) => modelId);
+};
 
 /**
  * Initializes the WebLLM engine exactly once.
  * Subsequent calls will return the already-running engine promise.
+ * @param {string} modelId - WebLLM model id to initialize.
  * @param {function} onProgress - Optional callback for initialization progress.
  */
-const getEngine = (onProgress = null) => {
-  if (!enginePromise) {
+const getEngine = (modelId = DEFAULT_WEB_LLM_MODEL_ID, onProgress = null) => {
+  const selectedModel = modelId || DEFAULT_WEB_LLM_MODEL_ID;
+
+  if (!enginePromises.has(selectedModel)) {
     // Assign an async IIFE to the promise variable to satisfy Biome's
     // no-async-promise-executor rule while maintaining the singleton pattern.
-    enginePromise = (async () => {
+    const enginePromise = (async () => {
       try {
-        const selectedModel = 'Qwen2.5-Coder-7B-Instruct-q4f16_1-MLC';
-
-        console.info('Initializing WebLLM...');
+        console.info(`Initializing WebLLM with ${selectedModel}...`);
 
         const engine = await CreateMLCEngine(
           selectedModel,
@@ -38,13 +86,14 @@ const getEngine = (onProgress = null) => {
       } catch (error) {
         console.error('Failed to initialize WebLLM engine:', error);
         // Reset on failure so the user can try again without reloading
-        enginePromise = null;
+        enginePromises.delete(selectedModel);
         throw error;
       }
     })();
+    enginePromises.set(selectedModel, enginePromise);
   }
 
-  return enginePromise;
+  return enginePromises.get(selectedModel);
 };
 
 /**
@@ -58,7 +107,7 @@ const getEngine = (onProgress = null) => {
 export const askWebLLM = async (prompt, systemPrompt = '', onUpdate = null, options = {}) => {
   try {
     console.info('[WebLLM] Retrieving engine...');
-    const engine = await getEngine(onUpdate);
+    const engine = await getEngine(options.model, onUpdate);
     console.info('[WebLLM] Engine retrieved. Starting completion...');
 
     const defaultSystemPrompt = DEFAULT_SYSTEM_PROMPT;
@@ -117,11 +166,10 @@ export const askWebLLM = async (prompt, systemPrompt = '', onUpdate = null, opti
  * Halts the current generation process of the WebLLM engine.
  */
 export const interruptWebLLM = async () => {
-  if (enginePromise) {
+  for (const enginePromise of enginePromises.values()) {
     try {
       const engine = await enginePromise;
       await engine.interruptGenerate();
-      engine.interruptSignal = false; // Reset the signal so future prompts can run
     } catch (e) {
       console.warn('Failed to interrupt WebLLM:', e);
     }
