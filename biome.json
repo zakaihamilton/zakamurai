@@ -7,7 +7,17 @@
       "public/lib/**",
       "public/assets/**",
       "public/wasm/**",
-      "public/__sw__.js"
+      "public/__sw__.js",
+      "playwright-report/**",
+      "test-results/**",
+      ".npm-cache/**",
+      ".npm-tmp/**",
+      ".tmp_config/**",
+      ".tmp_home/**",
+      "coverage/**",
+      "out/**",
+      "build/**",
+      "playwright/.cache/**"
     ]
   },
   "organizeImports": {

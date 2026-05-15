@@ -1,7 +1,33 @@
 {
   "compilerOptions": {
+    "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"]
-    }
-  }
+    },
+    "checkJs": true,
+    "jsx": "react-jsx",
+    "lib": ["dom", "dom.iterable", "esnext"],
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "noEmit": true,
+    "resolveJsonModule": true,
+    "allowJs": true
+  },
+  "exclude": [
+    "node_modules",
+    ".next",
+    "playwright-report",
+    "test-results",
+    ".npm-cache",
+    ".npm-tmp",
+    ".tmp_config",
+    ".tmp_home",
+    "public/wasm",
+    "public/lib",
+    "public/assets",
+    "coverage",
+    "out",
+    "build",
+    "playwright/.cache"
+  ]
 }
