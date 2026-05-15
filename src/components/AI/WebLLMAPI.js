@@ -15,7 +15,7 @@ const getEngine = (onProgress = null) => {
     // no-async-promise-executor rule while maintaining the singleton pattern.
     enginePromise = (async () => {
       try {
-        const selectedModel = 'Phi-3-mini-4k-instruct-q4f16_1-MLC';
+        const selectedModel = 'Qwen2.5-Coder-7B-Instruct-q4f16_1-MLC';
 
         console.info('Initializing WebLLM...');
 
@@ -30,7 +30,7 @@ const getEngine = (onProgress = null) => {
             },
           },
           {
-            context_window_size: 4096,
+            context_window_size: 8192,
           },
         );
 
