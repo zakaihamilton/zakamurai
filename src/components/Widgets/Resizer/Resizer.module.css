@@ -6,13 +6,21 @@
   margin-right: -6px;
   cursor: col-resize;
   z-index: 1500;
-  transition: all 0.2s;
+  transition: background 0.2s;
   background: transparent;
+}
+
+.resizer:hover {
+  transition-delay: 0.28s;
 }
 
 .resizer:hover,
 .resizing {
   background: rgb(var(--accent-rgb, 99, 102, 241), 0.15);
+}
+
+.resizing {
+  transition-delay: 0s;
 }
 
 .resizer::after {
@@ -25,6 +33,11 @@
   background: var(--border);
   transform: translateX(-50%);
   pointer-events: none;
+  transition: background 0.2s, width 0.2s, box-shadow 0.2s;
+}
+
+.resizer:hover::after {
+  transition-delay: 0.28s;
 }
 
 .resizer:hover::after,
@@ -32,6 +45,10 @@
   background: var(--accent);
   width: 2px;
   box-shadow: 0 0 8px var(--accent-glow);
+}
+
+.resizing::after {
+  transition-delay: 0s;
 }
 
 @media (width <= 768px) {
