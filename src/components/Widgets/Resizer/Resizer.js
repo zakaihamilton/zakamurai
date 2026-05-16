@@ -9,7 +9,7 @@ export default function Resizer({ onResize, onResizeStart, onResizeEnd, onDouble
   const { isResizing = false } = resizerState || {};
 
   const startResizing = useCallback(
-    (e) => {
+    (_e) => {
       resizerState((draft) => {
         draft.isResizing = true;
       });
@@ -62,13 +62,12 @@ export default function Resizer({ onResize, onResizeStart, onResizeEnd, onDouble
     <div
       className={`${styles.resizer} ${isResizing ? styles.resizing : ''}`}
       onMouseDown={(e) => {
-        if (e.detail === 2 && onDoubleClick) {
-          onDoubleClick(e);
-        } else {
+        if (e.detail < 2) {
           startResizing(e);
         }
       }}
       onTouchStart={startResizing}
+      onDoubleClick={onDoubleClick}
       data-resizer="true"
     />
   );

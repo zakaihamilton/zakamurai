@@ -34,7 +34,7 @@
   box-shadow: 0 0 8px var(--accent-glow);
 }
 
-@media (width <=768px) {
+@media (width <= 768px) {
   .resizer {
     display: none;
   }
