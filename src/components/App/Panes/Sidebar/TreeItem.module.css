@@ -93,8 +93,8 @@
   color: var(--text-main);
   outline: none;
   font-size: 13px;
-  padding: 1px 5px;
-  margin: 0 -6px;
+  padding: 4px 8px;
+  margin: 0;
   border-radius: 4px;
   font-family: inherit;
 }
@@ -139,15 +139,37 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 4px 16px;
+  margin: 0 8px;
+  min-height: 34px;
+  box-sizing: border-box;
 }
 
 .deleteOption {
-  color: #ff4d4d;
+  color: #ff4d4d !important;
+}
+
+.contextMenuOption {
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  font-weight: 500 !important;
+}
+
+.contextMenuOption svg {
+  width: 16px;
+  height: 16px;
+  opacity: 0.7;
+}
+
+.divider {
+  height: 1px;
+  background: var(--border);
+  margin: 4px 8px;
+  opacity: 0.5;
 }
 
 .deleteOption:hover {
-  background: rgba(255, 77, 77, 0.1) !important;
+  background: rgb(255 77 77 / 10%) !important;
 }
 
 .dragging {

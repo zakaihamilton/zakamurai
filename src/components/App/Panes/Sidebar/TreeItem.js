@@ -714,9 +714,15 @@ export default function TreeItem({
 
       {isCreating && (
         <div
-          style={{ paddingLeft: `${32 + level * 16}px`, paddingRight: '16px' }}
+          style={{
+            paddingLeft: `${16 + (level + 1) * 16}px`,
+            paddingRight: '16px',
+            paddingTop: '8px',
+            paddingBottom: '8px',
+          }}
           className={styles.createInputContainer}
         >
+          <span className={styles.iconContainer} />
           <span className={styles.typeIcon}>
             {isCreating === 'folder' ? <Icons.Folder /> : <Icons.File />}
           </span>
@@ -735,17 +741,53 @@ export default function TreeItem({
       )}
 
       <ContextMenu position={contextMenu} onClose={() => setContextMenu(null)}>
+        {item.type === 'folder' && (
+          <>
+            <button
+              type="button"
+              onClick={() => {
+                setIsCreating('file');
+                setContextMenu(null);
+                if (!isExpanded) handleToggle();
+              }}
+              className={styles.contextMenuOption}
+            >
+              <Icons.FilePlus />
+              New File
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setIsCreating('folder');
+                setContextMenu(null);
+                if (!isExpanded) handleToggle();
+              }}
+              className={styles.contextMenuOption}
+            >
+              <Icons.FolderPlus />
+              New Folder
+            </button>
+            <div className={styles.divider} />
+          </>
+        )}
         <button
           type="button"
           onClick={() => {
             setIsEditing(true);
             setContextMenu(null);
           }}
+          className={styles.contextMenuOption}
         >
+          <Icons.Edit />
           Rename
         </button>
         {!item.isRoot && (
-          <button type="button" onClick={handleDelete} className={styles.deleteOption}>
+          <button
+            type="button"
+            onClick={handleDelete}
+            className={`${styles.deleteOption} ${styles.contextMenuOption}`}
+          >
+            <Icons.Trash />
             Delete
           </button>
         )}
