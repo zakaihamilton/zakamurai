@@ -258,7 +258,7 @@ export default function EditorArea({ file }) {
             <div
               ref={leftScrollRef}
               onScroll={() => handleScroll(leftScrollRef, rightScrollRef)}
-              className={`${styles.sideBySideScroll} scroll-hide`}
+              className={`${styles.sideBySideScroll} scrollHide`}
             >
               <Gutter linesArr={diffData.originalContent.split('\n').map((_, i) => i + 1)} />
               <CodeEditor
@@ -278,7 +278,7 @@ export default function EditorArea({ file }) {
             <div
               ref={rightScrollRef}
               onScroll={() => handleScroll(rightScrollRef, leftScrollRef)}
-              className={`${styles.sideBySideScroll} scroll-hide`}
+              className={`${styles.sideBySideScroll} scrollHide`}
             >
               <Gutter
                 linesArr={linesArr}
@@ -298,7 +298,7 @@ export default function EditorArea({ file }) {
           </div>
         </div>
       ) : (
-        <div ref={scrollContainerRef} className={`${styles.scrollContainer} scroll-hide`}>
+        <div ref={scrollContainerRef} className={`${styles.scrollContainer} scrollHide`}>
           <Gutter
             linesArr={linesArr}
             selectedLines={selectedLines}

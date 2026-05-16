@@ -25,9 +25,9 @@
 
 .logItem {
   display: flex;
-  animation: fadeIn 0.1s ease;
+  animation: fade-in 0.1s ease;
   align-items: flex-start;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+  border-bottom: 1px solid rgb(255 255 255 / 3%);
 }
 
 .logItem:last-child {
@@ -35,7 +35,7 @@
 }
 
 .logItem:hover {
-  background: rgba(129, 140, 248, 0.05);
+  background: rgb(129 140 248 / 5%);
 }
 
 .lineNumber {
@@ -47,7 +47,7 @@
   opacity: 0.5;
   padding: 6px 12px 6px 0;
   border-right: 1px solid var(--border);
-  background: rgba(0, 0, 0, 0.1);
+  background: rgb(0 0 0 / 10%);
   flex-shrink: 0;
 }
 
@@ -148,7 +148,7 @@
 }
 
 .errorRow {
-  background: rgba(239, 68, 68, 0.1) !important;
+  background: rgb(239 68 68 / 10%) !important;
   border-left: 3px solid #ef4444;
 }
 
@@ -160,11 +160,12 @@
   color: #ef4444 !important;
 }
 
-@keyframes fadeIn {
+@keyframes fade-in {
   from {
     opacity: 0;
     transform: translateY(4px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -176,7 +177,7 @@
   bottom: 24px;
   right: 32px;
   z-index: 20;
-  animation: slideUp 0.3s ease-out;
+  animation: slide-up 0.3s ease-out;
 }
 
 .jumpBtn {
@@ -190,7 +191,7 @@
   border: 1px solid var(--border);
   color: var(--accent);
   cursor: pointer;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.05);
+  box-shadow: 0 4px 12px rgb(0 0 0 / 30%), 0 0 0 1px rgb(255 255 255 / 5%);
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   backdrop-filter: blur(8px);
 }
@@ -199,20 +200,47 @@
   transform: translateY(-2px);
   background: var(--bg-panel);
   border-color: var(--accent);
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4), 0 0 0 1px var(--accent);
+  box-shadow: 0 6px 16px rgb(0 0 0 / 40%), 0 0 0 1px var(--accent);
 }
 
 .jumpBtn:active {
   transform: translateY(0);
 }
 
-@keyframes slideUp {
+@keyframes slide-up {
   from {
     opacity: 0;
     transform: translateY(10px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+@media (width <= 768px) {
+  .lineNumber {
+    display: none;
+  }
+
+  .timestamp {
+    width: 40px;
+    font-size: 9px;
+  }
+
+  .logContent {
+    padding: 6px 8px 6px 0;
+    font-size: 12px;
+  }
+
+  .jumpBtn {
+    width: 40px;
+    height: 40px;
+  }
+
+  .scrollButtonContainer {
+    bottom: 16px;
+    right: 16px;
   }
 }

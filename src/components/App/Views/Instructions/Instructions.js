@@ -4,7 +4,7 @@ import styles from './Instructions.module.css';
 
 export default function Instructions() {
   return (
-    <div className={`${styles.wrapper} scroll-hide`}>
+    <div className={`${styles.wrapper} scrollHide`}>
       <div className={styles.container}>
         <header className={styles.header}>
           <h1 className={styles.title}>Welcome to Zakamurai</h1>

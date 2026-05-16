@@ -172,7 +172,7 @@ export default function TabBar() {
       }
       onDrop={handleDropOnBar}
     >
-      <div className={`${styles.tabBar} scroll-hide`}>
+      <div className={`${styles.tabBar} scrollHide`}>
         {openTabs.map((tab) => {
           const isActive = activeTabId === tab.id;
           const isDragging = draggedTabId === tab.id;

@@ -151,7 +151,7 @@ export default function Sidebar() {
 
       {/* File Tree Area */}
       <div
-        className={`${styles.treeArea} scroll-hide`}
+        className={`${styles.treeArea} scrollHide`}
         style={{
           opacity: isOpen ? 1 : 0,
           pointerEvents: isOpen ? 'auto' : 'none',

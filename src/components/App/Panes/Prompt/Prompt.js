@@ -374,7 +374,7 @@ export default function Prompt() {
                 </Tooltip>
               </div>
             </div>
-            <div ref={reasoningRef} className={`${styles.reasoningContent} scroll-hide`}>
+            <div ref={reasoningRef} className={`${styles.reasoningContent} scrollHide`}>
               {logState.reasoning}
             </div>
           </div>

@@ -73,59 +73,59 @@ export const highlightCode = (
   };
 
   // 1. Comments (highest priority)
-  escaped = escaped.replace(/(\/\/.+)/g, (m) => pushToken(m, 'hl-comment'));
-  escaped = escaped.replace(/(\/\*[\s\S]*?\*\/)/g, (m) => pushToken(m, 'hl-comment'));
+  escaped = escaped.replace(/(\/\/.+)/g, (m) => pushToken(m, 'hlComment'));
+  escaped = escaped.replace(/(\/\*[\s\S]*?\*\/)/g, (m) => pushToken(m, 'hlComment'));
 
   // 2. Strings
-  escaped = escaped.replace(/(".*?"|'.*?'|`.*?`)/g, (m) => pushToken(m, 'hl-str'));
+  escaped = escaped.replace(/(".*?"|'.*?'|`.*?`)/g, (m) => pushToken(m, 'hlStr'));
 
   // 3. Language specific (CSS or JSX/HTML)
   if (filePath?.endsWith('.css')) {
     // Properties
-    escaped = escaped.replace(/([a-zA-Z\-]+)(?=\s*:)/g, (m) => pushToken(m, 'hl-prop'));
+    escaped = escaped.replace(/([a-zA-Z\-]+)(?=\s*:)/g, (m) => pushToken(m, 'hlProp'));
     // Selectors (basic)
     escaped = escaped.replace(
       // biome-ignore lint/suspicious/noControlCharactersInRegex: markers
       /(^|(?<=\}))(\u0003\d+\u0003|\u0004|\u0005)*([.#a-zA-Z0-9_\-\[\]="':*]+)(?=\s*\{)/gm,
-      (_m, p1, p2, p3) => p1 + (p2 || '') + pushToken(p3, 'hl-tag'),
+      (_m, p1, p2, p3) => p1 + (p2 || '') + pushToken(p3, 'hlTag'),
     );
     // Values (after colon, before semicolon)
     escaped = escaped.replace(/(?<=:\s*)([^;\}]+)(?=;|\})/g, (m) => {
       // Highlight hex colors within values
-      let val = m.replace(/(#[a-fA-F0-9]{3,8})/g, (c) => pushToken(c, 'hl-num'));
+      let val = m.replace(/(#[a-fA-F0-9]{3,8})/g, (c) => pushToken(c, 'hlNum'));
       // Highlight units
       val = val.replace(
         /(\d+)(px|rem|em|%|vh|vw|ms|s|deg)/g,
-        (_m2, p1, p2) => `${pushToken(p1, 'hl-num')}${pushToken(p2, 'hl-kw')}`,
+        (_m2, p1, p2) => `${pushToken(p1, 'hlNum')}${pushToken(p2, 'hlKw')}`,
       );
       return val;
     });
     // Variables
-    escaped = escaped.replace(/(var\(--[a-zA-Z0-9\-]+\))/g, (m) => pushToken(m, 'hl-func'));
+    escaped = escaped.replace(/(var\(--[a-zA-Z0-9\-]+\))/g, (m) => pushToken(m, 'hlFunc'));
   } else {
     // JSX/HTML Tags
     escaped = escaped.replace(
       /(&lt;\/?)([a-zA-Z0-9]+)/g,
-      (_m, p1, p2) => `${p1}${pushToken(p2, 'hl-tag')}`,
+      (_m, p1, p2) => `${p1}${pushToken(p2, 'hlTag')}`,
     );
     // Functions
-    escaped = escaped.replace(/\b([a-zA-Z0-9_]+)(?=\()/g, (m) => pushToken(m, 'hl-func'));
+    escaped = escaped.replace(/\b([a-zA-Z0-9_]+)(?=\()/g, (m) => pushToken(m, 'hlFunc'));
     // Attributes
-    escaped = escaped.replace(/\b([a-zA-Z\-]+)(?==)/g, (m) => pushToken(m, 'hl-attr'));
+    escaped = escaped.replace(/\b([a-zA-Z\-]+)(?==)/g, (m) => pushToken(m, 'hlAttr'));
   }
 
   // 4. Keywords
   escaped = escaped.replace(
     // biome-ignore lint/suspicious/noControlCharactersInRegex: markers
     /(\x01\d+\x02|\u0003\d+\u0003|\u0004|\u0005)|\b(export|default|function|return|import|from|const|let|var|if|else|for|while|class|extends|new|true|false|null|undefined|async|await|try|catch|finally|throw|break|continue|case|switch|type|interface|enum|public|private|protected|static|readonly)\b/g,
-    (_m, p1, p2) => (p1 ? p1 : pushToken(p2, 'hl-kw')),
+    (_m, p1, p2) => (p1 ? p1 : pushToken(p2, 'hlKw')),
   );
 
   // 5. Numbers
   escaped = escaped.replace(
     // biome-ignore lint/suspicious/noControlCharactersInRegex: markers
     /(\x01\d+\x02|\u0003\d+\u0003|\u0004|\u0005)|\b(\d+)\b/g,
-    (_m, p1, p2) => (p1 ? p1 : pushToken(p2, 'hl-num')),
+    (_m, p1, p2) => (p1 ? p1 : pushToken(p2, 'hlNum')),
   );
 
   // Search highlights
@@ -145,7 +145,7 @@ export const highlightCode = (
   const highlightText = (text) => {
     if (!searchRegex || !text) return text;
     return text.replace(searchRegex, (m) => {
-      const cls = matchCounter === matchIndex ? 'hl-match-active' : 'hl-match';
+      const cls = matchCounter === matchIndex ? 'hlMatchActive' : 'hlMatch';
       matchCounter++;
       return `<span class="${styles[cls]}">${m}</span>`;
     });

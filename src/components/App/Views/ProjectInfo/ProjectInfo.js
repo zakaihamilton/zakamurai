@@ -43,7 +43,7 @@ const technologies = [
 
 export default function ProjectInfo() {
   return (
-    <div className={`${styles.wrapper} scroll-hide`}>
+    <div className={`${styles.wrapper} scrollHide`}>
       <div className={styles.container}>
         <header className={styles.header}>
           <h1 className={styles.title}>Zakamurai</h1>

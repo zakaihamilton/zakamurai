@@ -20,7 +20,7 @@
   flex-shrink: 0;
   background: var(--bg-card);
   min-height: 56px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 5%);
 }
 
 .headerActions {
@@ -67,18 +67,19 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  background: rgba(76, 175, 80, 0.05);
+  background: rgb(76 175 80 / 5%);
   padding: 4px 12px;
   border-radius: 8px;
-  border: 1px solid rgba(76, 175, 80, 0.15);
-  animation: fadeIn 0.3s ease-out;
+  border: 1px solid rgb(76 175 80 / 15%);
+  animation: fade-in 0.3s ease-out;
 }
 
-@keyframes fadeIn {
+@keyframes fade-in {
   from {
     opacity: 0;
     transform: translateX(10px);
   }
+
   to {
     opacity: 1;
     transform: translateX(0);
@@ -110,11 +111,11 @@
 
 .diffButton:hover {
   transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 8px rgb(0 0 0 / 10%);
 }
 
 .approveBtn {
-  border-color: rgba(76, 175, 80, 0.3);
+  border-color: rgb(76 175 80 / 30%);
   color: #4caf50;
 }
 
@@ -125,7 +126,7 @@
 }
 
 .undoBtn {
-  border-color: rgba(244, 67, 54, 0.3);
+  border-color: rgb(244 67 54 / 30%);
   color: #f44336;
 }
 
@@ -179,7 +180,7 @@
 }
 
 .selectedGutterLine {
-  background: rgba(var(--primary-rgb, 97, 175, 239), 0.1);
+  background: rgb(var(--primary-rgb, 97, 175, 239), 0.1);
   color: #61afef;
   font-weight: bold;
 }
@@ -193,10 +194,7 @@
 
 .textarea {
   position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  inset: 0;
   width: 100%;
   height: 100%;
   margin: 0;
@@ -227,48 +225,57 @@
 }
 
 /* Syntax Highlighting Tokens */
-.hl-str {
+.hlStr {
   color: #98c379;
 }
-.hl-kw {
+
+.hlKw {
   color: #c678dd;
   font-weight: 500;
 }
-.hl-tag {
+
+.hlTag {
   color: #e06c75;
 }
-.hl-func {
+
+.hlFunc {
   color: #61afef;
 }
-.hl-attr {
+
+.hlAttr {
   color: #d19a66;
 }
-.hl-comment {
+
+.hlComment {
   color: #5c6370;
   font-style: italic;
 }
-.hl-num {
+
+.hlNum {
   color: #d19a66;
 }
-.hl-prop {
+
+.hlProp {
   color: #56b6c2;
 }
-.hl-val {
+
+.hlVal {
   color: #98c379;
 }
-.hl-match {
-  background: rgba(255, 255, 0, 0.3);
+
+.hlMatch {
+  background: rgb(255 255 0 / 30%);
   border-bottom: 1px solid yellow;
 }
 
-.hl-match-active {
-  background: rgba(255, 165, 0, 0.6);
+.hlMatchActive {
+  background: rgb(255 165 0 / 60%);
   border: 1px solid orange;
   border-radius: 2px;
-  box-shadow: 0 0 5px rgba(255, 165, 0, 0.5);
+  box-shadow: 0 0 5px rgb(255 165 0 / 50%);
 }
 
-.hl-ghost {
+.hlGhost {
   color: color-mix(in srgb, var(--text-muted) 80%, var(--accent, #61afef));
   opacity: 0.42;
   pointer-events: none;
@@ -306,7 +313,7 @@
 }
 
 .selectedLineRow {
-  background: rgba(97, 175, 239, 0.15);
+  background: rgb(97 175 239 / 15%);
   display: inline-block;
   min-width: 100%;
   border-left: 3px solid #61afef;
@@ -315,8 +322,8 @@
 }
 
 .diffHighlight {
-  background: rgba(76, 175, 80, 0.25);
-  border-bottom: 2px solid rgba(76, 175, 80, 0.5);
+  background: rgb(76 175 80 / 25%);
+  border-bottom: 2px solid rgb(76 175 80 / 50%);
   border-radius: 2px;
   display: inline;
   position: relative;
@@ -337,9 +344,9 @@
   white-space: pre;
   z-index: 1000;
   pointer-events: none;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 4px 12px rgb(0 0 0 / 30%);
   margin-bottom: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid rgb(255 255 255 / 10%);
   max-width: 400px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -357,79 +364,7 @@
   z-index: 1000;
 }
 
-.diffHeaderToolbar {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  background: rgba(76, 175, 80, 0.05);
-  padding: 4px 12px;
-  border-radius: 8px;
-  border: 1px solid rgba(76, 175, 80, 0.15);
-  animation: fadeIn 0.3s ease-out;
-}
 
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateX(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
-}
-
-.diffLabel {
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: #4caf50;
-  white-space: nowrap;
-}
-
-.diffButton {
-  padding: 6px 12px;
-  border-radius: 6px;
-  border: 1px solid var(--border);
-  background: var(--bg-base);
-  color: var(--text-main);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 12px;
-  font-weight: 500;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  white-space: nowrap;
-}
-
-.diffButton:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-
-.approveBtn {
-  border-color: rgba(76, 175, 80, 0.3);
-  color: #4caf50;
-}
-
-.approveBtn:hover {
-  background: #4caf50;
-  color: white;
-  border-color: #4caf50;
-}
-
-.undoBtn {
-  border-color: rgba(244, 67, 54, 0.3);
-  color: #f44336;
-}
-
-.undoBtn:hover {
-  background: #f44336;
-  color: white;
-  border-color: #f44336;
-}
 
 .findBar {
   background: var(--bg-card);
@@ -438,14 +373,15 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
-  animation: slideDown 0.2s ease-out;
+  animation: slide-down 0.2s ease-out;
 }
 
-@keyframes slideDown {
+@keyframes slide-down {
   from {
     transform: translateY(-100%);
     opacity: 0;
   }
+
   to {
     transform: translateY(0);
     opacity: 1;
@@ -493,14 +429,14 @@
   gap: 4px;
 }
 
-.findBtn:hover,
-.replaceBtn:hover {
-  background: var(--bg-hover);
-}
-
 .replaceBtn {
   min-width: 60px;
   justify-content: center;
+}
+
+.findBtn:hover,
+.replaceBtn:hover {
+  background: var(--bg-hover);
 }
 
 .sideBySideContainer {
@@ -550,12 +486,14 @@
   border-color: var(--accent) !important;
   color: var(--accent) !important;
 }
-@media (max-width: 768px) {
+
+@media (width <= 768px) {
   .textarea,
   .pre,
   .gutter {
     font-size: 16px;
   }
+
   .editorHeader {
     padding: 12px 16px;
   }

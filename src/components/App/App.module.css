@@ -6,33 +6,34 @@
   /* Theme class moved to globals.css */
 }
 
-.scroll-hide::-webkit-scrollbar {
+.scrollHide::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 
-.scroll-hide::-webkit-scrollbar-thumb {
+.scrollHide::-webkit-scrollbar-thumb {
   background: var(--bg-surface);
   border-radius: 10px;
 }
 
-.scroll-hide::-webkit-scrollbar-thumb:hover {
+.scrollHide::-webkit-scrollbar-thumb:hover {
   background: var(--border-light);
 }
 
-.scroll-hide::-webkit-scrollbar-track {
+.scrollHide::-webkit-scrollbar-track {
   background: transparent;
 }
 
-.scroll-hide::-webkit-scrollbar-corner {
+.scrollHide::-webkit-scrollbar-corner {
   background: transparent;
 }
 
-@keyframes fadeIn {
+@keyframes fade-in {
   from {
     opacity: 0;
     transform: translateY(8px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -40,7 +41,7 @@
 }
 
 .fadeIn {
-  animation: fadeIn 0.3s ease;
+  animation: fade-in 0.3s ease;
 }
 
 .appWrapper {
@@ -112,24 +113,27 @@
   display: none;
 }
 
-@media (max-width: 768px) {
+@media (width <= 768px) {
   .mobileOverlay {
     display: block;
     position: fixed;
     inset: 0;
-    background: rgba(0, 0, 0, 0.4);
+    background: rgb(0 0 0 / 40%);
     z-index: 1050;
     backdrop-filter: blur(4px);
-    -webkit-backdrop-filter: blur(4px);
-    animation: fadeInOverlay 0.3s ease;
+    backdrop-filter: blur(4px);
+    animation: fade-in-overlay 0.4s var(--ease-premium);
   }
 
-  @keyframes fadeInOverlay {
+  @keyframes fade-in-overlay {
     from {
       opacity: 0;
+      backdrop-filter: blur(0);
     }
+
     to {
       opacity: 1;
+      backdrop-filter: blur(4px);
     }
   }
 }
@@ -142,7 +146,7 @@
   justify-content: center;
   background: #0b0f19;
   color: #f9fafb;
-  font-family: "Inter", system-ui, sans-serif;
+  font-family: Inter, system-ui, sans-serif;
   position: fixed;
   inset: 0;
   z-index: 9999;
@@ -157,7 +161,7 @@
 
 .logoWrapper {
   position: relative;
-  animation: logoFloat 3s ease-in-out infinite;
+  animation: logo-float 3s ease-in-out infinite;
 }
 
 .loadingLogo {
@@ -176,7 +180,7 @@
   filter: blur(40px);
   opacity: 0.4;
   z-index: 1;
-  animation: glowPulse 2s ease-in-out infinite alternate;
+  animation: glow-pulse 2s ease-in-out infinite alternate;
 }
 
 .loadingText {
@@ -184,17 +188,17 @@
 }
 
 .loadingText h2 {
-  margin: 0 0 12px 0;
+  margin: 0 0 12px;
   font-size: 24px;
   font-weight: 700;
   letter-spacing: -0.02em;
   background: linear-gradient(to right, #fff, var(--text-muted));
-  -webkit-background-clip: text;
+  background-clip: text;
   -webkit-text-fill-color: transparent;
 }
 
 .loadingText p {
-  margin: 12px 0 0 0;
+  margin: 12px 0 0;
   color: var(--text-muted);
   font-size: 14px;
 }
@@ -202,7 +206,7 @@
 .progressTrack {
   width: 160px;
   height: 4px;
-  background: rgba(255, 255, 255, 0.05);
+  background: rgb(255 255 255 / 5%);
   border-radius: 2px;
   overflow: hidden;
   margin: 0 auto;
@@ -213,37 +217,41 @@
   height: 100%;
   background: var(--accent);
   border-radius: 2px;
-  animation: progressMove 2s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+  animation: progress-move 2s cubic-bezier(0.65, 0, 0.35, 1) infinite;
 }
 
-@keyframes logoFloat {
+@keyframes logo-float {
   0%,
   100% {
     transform: translateY(0);
   }
+
   50% {
     transform: translateY(-10px);
   }
 }
 
-@keyframes glowPulse {
+@keyframes glow-pulse {
   from {
     opacity: 0.3;
     transform: translate(-50%, -50%) scale(0.9);
   }
+
   to {
     opacity: 0.5;
     transform: translate(-50%, -50%) scale(1.1);
   }
 }
 
-@keyframes progressMove {
+@keyframes progress-move {
   0% {
     transform: translateX(-100%);
   }
+
   50% {
     transform: translateX(0);
   }
+
   100% {
     transform: translateX(100%);
   }

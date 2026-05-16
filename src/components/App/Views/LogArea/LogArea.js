@@ -92,7 +92,7 @@ export default function LogArea() {
 
   return (
     <div className={styles.logAreaWrapper}>
-      <div ref={containerRef} className={`${styles.logArea} scroll-hide`} onScroll={handleScroll}>
+      <div ref={containerRef} className={`${styles.logArea} scrollHide`} onScroll={handleScroll}>
         {logs.length > 0 && (
           <div className={styles.header}>
             <div className={styles.headerActions}>
