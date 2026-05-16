@@ -11,24 +11,24 @@
 .backdrop {
   position: absolute;
   inset: 0;
-  background: rgba(0, 0, 0, 0.7);
+  background: rgb(0 0 0 / 70%);
   backdrop-filter: blur(4px);
-  animation: fadeIn 0.2s ease-out;
+  animation: fade-in 0.2s ease-out;
 }
 
 .modal {
   position: relative;
   width: 100%;
-  max-width: 640px;
+  max-width: 1100px;
   max-height: 90vh;
   background: var(--bg-surface);
   border: 1px solid var(--border);
   border-radius: 16px;
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.05);
+  box-shadow: 0 20px 50px rgb(0 0 0 / 50%), 0 0 0 1px rgb(255 255 255 / 5%);
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  animation: slideUp 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  animation: slide-up 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .header {
@@ -37,7 +37,7 @@
   justify-content: space-between;
   padding: 24px 32px;
   border-bottom: 1px solid var(--border);
-  background: rgba(0, 0, 0, 0.1);
+  background: rgb(0 0 0 / 10%);
 }
 
 .header h2 {
@@ -63,15 +63,15 @@
 }
 
 .closeBtn:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgb(255 255 255 / 10%);
   color: var(--text-main);
 }
 
 .content {
-  padding: 24px;
+  padding: 32px;
   overflow-y: auto;
-  columns: 2;
-  column-gap: 20px;
+  columns: 3;
+  column-gap: 32px;
 }
 
 .group {
@@ -84,15 +84,15 @@
 
 .groupTitle {
   margin: 0;
-  font-size: 12px;
-  font-weight: 700;
+  font-size: 13px;
+  font-weight: 800;
   text-transform: uppercase;
   color: var(--accent);
-  letter-spacing: 0.1em;
-  opacity: 0.8;
+  letter-spacing: 0.12em;
+  opacity: 0.9;
   display: flex;
   align-items: center;
-  margin-bottom: 2px;
+  margin-bottom: 8px;
 }
 
 .items {
@@ -105,16 +105,17 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 12px;
-  background: rgba(255, 255, 255, 0.03);
-  border-radius: 8px;
+  padding: 10px 14px;
+  background: rgb(255 255 255 / 2%);
+  border-radius: 10px;
   border: 1px solid transparent;
-  transition: all 0.2s ease;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .item:hover {
-  background: rgba(255, 255, 255, 0.05);
-  border-color: rgba(255, 255, 255, 0.1);
+  background: rgb(255 255 255 / 5%);
+  border-color: rgb(255 255 255 / 10%);
+  transform: translateX(4px);
 }
 
 .desc {
@@ -124,21 +125,24 @@
 
 .key {
   font-family: var(--font-mono);
-  font-size: 12px;
-  background: rgba(129, 140, 248, 0.1);
+  font-size: 11px;
+  font-weight: 600;
+  background: linear-gradient(180deg, rgb(255 255 255 / 5%) 0%, rgb(255 255 255 / 0%) 100%),
+    rgb(129 140 248 / 15%);
   color: var(--accent);
-  padding: 2px 8px;
-  border-radius: 4px;
-  border: 1px solid rgba(129, 140, 248, 0.2);
-  min-width: 40px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1px solid rgb(129 140 248 / 30%);
+  min-width: 44px;
   text-align: center;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 2px 0 rgb(0 0 0 / 30%), inset 0 1px 0 rgb(255 255 255 / 10%);
+  letter-spacing: 0.05em;
 }
 
 .footer {
   padding: 16px 32px;
   border-top: 1px solid var(--border);
-  background: rgba(0, 0, 0, 0.1);
+  background: rgb(0 0 0 / 10%);
   text-align: center;
 }
 
@@ -148,7 +152,7 @@
 }
 
 .footer kbd {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgb(255 255 255 / 10%);
   padding: 2px 6px;
   border-radius: 4px;
   border: 1px solid var(--border);
@@ -157,20 +161,22 @@
   margin: 0 2px;
 }
 
-@keyframes fadeIn {
+@keyframes fade-in {
   from {
     opacity: 0;
   }
+
   to {
     opacity: 1;
   }
 }
 
-@keyframes slideUp {
+@keyframes slide-up {
   from {
     opacity: 0;
     transform: translateY(20px) scale(0.98);
   }
+
   to {
     opacity: 1;
     transform: translateY(0) scale(1);
@@ -187,20 +193,60 @@
 }
 
 .content::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgb(255 255 255 / 10%);
   border-radius: 3px;
 }
 
 .content::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.2);
+  background: rgb(255 255 255 / 20%);
 }
 
-@media (max-width: 600px) {
+@media (width <= 1100px) {
+  .modal {
+    max-width: 800px;
+  }
+
+  .content {
+    columns: 2;
+    padding: 24px;
+  }
+}
+
+@media (width <= 768px) {
+  .modal {
+    max-width: 100%;
+    margin: 10px;
+  }
+
   .content {
     columns: 1;
     padding: 20px;
+    column-gap: 0;
   }
-  .modal {
-    max-width: 100%;
+
+  .header {
+    padding: 20px 24px;
+  }
+}
+
+@media (width <= 480px) {
+  .header {
+    padding: 16px 20px;
+  }
+
+  .header h2 {
+    font-size: 18px;
+  }
+
+  .desc {
+    font-size: 13px;
+  }
+
+  .item {
+    padding: 8px 10px;
+  }
+
+  .content {
+    padding: 16px;
   }
 }

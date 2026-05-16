@@ -524,5 +524,17 @@ export const getShortcutsByGroup = () => {
       });
     }
   }
-  return Object.entries(groups).map(([group, items]) => ({ group, items }));
+
+  const order = [
+    SHORTCUT_GROUPS.NAVIGATION,
+    SHORTCUT_GROUPS.AI,
+    SHORTCUT_GROUPS.EDITOR,
+    SHORTCUT_GROUPS.TABS,
+    SHORTCUT_GROUPS.AI_PROMPT,
+    SHORTCUT_GROUPS.GENERAL,
+  ];
+
+  return order
+    .filter((name) => groups[name])
+    .map((name) => ({ group: name, items: groups[name] }));
 };
