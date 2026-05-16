@@ -16,6 +16,8 @@ export default function Tooltip({ content, shortcut, children, className = '' })
   const triggerRef = useRef(null);
   const tooltipRef = useRef(null);
   const timeoutRef = useRef(null);
+  const viewportMargin = 10;
+  const arrowHeight = 10;
 
   const showTooltip = () => {
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
@@ -50,8 +52,7 @@ export default function Tooltip({ content, shortcut, children, className = '' })
     if (isVisible && tooltipRef.current && triggerRef.current) {
       const tooltipRect = tooltipRef.current.getBoundingClientRect();
       const triggerRect = triggerRef.current.getBoundingClientRect();
-      const margin = 10;
-      const arrowHeight = 10;
+      const margin = viewportMargin;
 
       // Vertical flipping logic based on actual height
       let newPlacement = placement;
@@ -95,17 +96,13 @@ export default function Tooltip({ content, shortcut, children, className = '' })
       // Vertical clamping (ensure it doesn't go off screen at the very top/bottom)
       const viewportTop = window.scrollY + margin;
       const viewportBottom = window.scrollY + window.innerHeight - margin;
+      const minTopAnchor = viewportTop + tooltipRect.height + arrowHeight;
+      const maxBottomAnchor = viewportBottom - tooltipRect.height - arrowHeight;
 
       if (newPlacement === 'top') {
-        const tooltipTop = top - tooltipRect.height - arrowHeight;
-        if (tooltipTop < viewportTop) {
-          top += viewportTop - tooltipTop;
-        }
+        top = Math.max(top, minTopAnchor);
       } else {
-        const tooltipBottom = top + tooltipRect.height + arrowHeight;
-        if (tooltipBottom > viewportBottom) {
-          top -= tooltipBottom - viewportBottom;
-        }
+        top = Math.min(top, maxBottomAnchor);
       }
 
       setCoords({ top, left });
@@ -148,7 +145,8 @@ export default function Tooltip({ content, shortcut, children, className = '' })
               left: `${coords.left}px`,
               position: 'absolute',
               '--arrow-offset': `${arrowOffset}px`,
-              maxWidth: `min(280px, ${window.innerWidth - 20}px)`,
+              maxWidth: `${Math.max(0, window.innerWidth - viewportMargin * 2)}px`,
+              maxHeight: `${Math.max(0, window.innerHeight - viewportMargin * 2 - arrowHeight)}px`,
             }}
           >
             <div className={styles.inner}>

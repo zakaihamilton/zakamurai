@@ -3,64 +3,71 @@
 }
 
 .tooltip {
-  --tooltip-bg: rgba(17, 24, 39, 0.95);
-  --tooltip-border: rgba(255, 255, 255, 0.15);
-  --tooltip-text: #ffffff;
-  --tooltip-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  --tooltip-bg: rgb(17 24 39 / 95%);
+  --tooltip-border: rgb(255 255 255 / 15%);
+  --tooltip-text: #fff;
+  --tooltip-shadow: 0 4px 12px rgb(0 0 0 / 50%);
 
   pointer-events: none;
+  box-sizing: border-box;
   z-index: 120000;
   padding: 8px 14px;
   background: var(--tooltip-bg);
   backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
   color: var(--tooltip-text);
   font-size: 12px;
   font-weight: 500;
   border-radius: 8px;
   white-space: normal;
-  word-wrap: break-word;
+  overflow-wrap: break-word;
   max-width: 280px;
   width: max-content;
   box-shadow: var(--tooltip-shadow);
   border: 1px solid var(--tooltip-border);
   transition: opacity 0.2s;
-  overflow: hidden;
+  overflow: auto;
+  scrollbar-width: none;
+}
+
+.tooltip::-webkit-scrollbar {
+  display: none;
 }
 
 .light {
-  --tooltip-bg: rgba(255, 255, 255, 0.95);
-  --tooltip-border: rgba(0, 0, 0, 0.1);
+  --tooltip-bg: rgb(255 255 255 / 95%);
+  --tooltip-border: rgb(0 0 0 / 10%);
   --tooltip-text: #111827;
-  --tooltip-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  --tooltip-shadow: 0 4px 12px rgb(0 0 0 / 15%);
 }
 
 .top {
   transform: translateX(-50%) translateY(-100%) translateY(-10px);
-  animation: topAppear 0.2s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  animation: top-appear 0.2s cubic-bezier(0.4, 0, 0.2, 1) forwards;
 }
 
 .bottom {
   transform: translateX(-50%) translateY(10px);
-  animation: bottomAppear 0.2s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  animation: bottom-appear 0.2s cubic-bezier(0.4, 0, 0.2, 1) forwards;
 }
 
-@keyframes topAppear {
+@keyframes top-appear {
   from {
     opacity: 0;
     transform: translateX(-50%) translateY(-100%) translateY(-6px);
   }
+
   to {
     opacity: 1;
     transform: translateX(-50%) translateY(-100%) translateY(-10px);
   }
 }
 
-@keyframes bottomAppear {
+@keyframes bottom-appear {
   from {
     opacity: 0;
     transform: translateX(-50%) translateY(6px);
   }
+
   to {
     opacity: 1;
     transform: translateX(-50%) translateY(10px);
@@ -124,17 +131,17 @@
   display: inline-flex;
   align-items: center;
   padding: 1px 4px;
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgb(255 255 255 / 10%);
+  border: 1px solid rgb(255 255 255 / 20%);
   border-radius: 4px;
   font-size: 10px;
-  color: rgba(255, 255, 255, 0.6);
+  color: rgb(255 255 255 / 60%);
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
     "Courier New", monospace;
 }
 
 .light .shortcut {
-  background: rgba(0, 0, 0, 0.05);
-  border-color: rgba(0, 0, 0, 0.1);
-  color: rgba(0, 0, 0, 0.5);
+  background: rgb(0 0 0 / 5%);
+  border-color: rgb(0 0 0 / 10%);
+  color: rgb(0 0 0 / 50%);
 }
