@@ -5,7 +5,7 @@ import { Icons } from '@/components/Core/Base/Icons';
 import { createState } from '@/components/Core/Base/State';
 import Tooltip from '@/components/Widgets/Tooltip/Tooltip';
 import { formatShortcut } from '@/utils/os';
-import React, { useEffect, useMemo, useRef } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import styles from './Sidebar.module.css';
 import TreeItem from './TreeItem';
 
@@ -76,16 +76,33 @@ export default function Sidebar() {
   }, [folderTree, filterText]);
 
   const isOpen = isMobile ? sidebarState.isSidebarPopupOpen : isSidebarOpen;
+  const [animatedWidth, setAnimatedWidth] = useState(isOpen ? sidebarWidth : 0);
+
+  useEffect(() => {
+    if (isMobile) return undefined;
+
+    if (isOpen) {
+      const frame = window.requestAnimationFrame(() => setAnimatedWidth(sidebarWidth));
+      return () => window.cancelAnimationFrame(frame);
+    }
+
+    setAnimatedWidth(sidebarWidth);
+    const frame = window.requestAnimationFrame(() => setAnimatedWidth(0));
+    return () => window.cancelAnimationFrame(frame);
+  }, [isMobile, isOpen, sidebarWidth]);
+
+  const desktopWidth = `${animatedWidth}px`;
 
   return (
     <aside
       className={`${styles.sidebar} ${isOpen ? styles.isOpen : ''}`}
+      aria-hidden={!isOpen}
       style={{
-        width: isMobile ? undefined : isOpen ? `${sidebarWidth}px` : '0px',
+        width: isMobile ? undefined : desktopWidth,
+        flexBasis: isMobile ? undefined : desktopWidth,
       }}
     >
-      {/* Dynamic Header Section */}
-      {isOpen && (
+      <div className={styles.contentWrapper}>
         <div className={styles.header}>
           <Tooltip
             content={isOpen ? 'Collapse Sidebar' : 'Expand Sidebar'}
@@ -108,10 +125,7 @@ export default function Sidebar() {
             </span>
           </div>
         </div>
-      )}
 
-      {/* Mount Section */}
-      {isOpen && (
         <div className={styles.mountSection}>
           {!appState.fs.mode ? (
             <button type="button" onClick={appState.fs.mountLocal} className={styles.mountButton}>
@@ -125,10 +139,7 @@ export default function Sidebar() {
             </button>
           )}
         </div>
-      )}
 
-      {/* Filter Section */}
-      {isOpen && (
         <div className={styles.filterSection}>
           <div className={styles.searchContainer}>
             <div className={styles.searchIcon}>
@@ -147,35 +158,33 @@ export default function Sidebar() {
             />
           </div>
         </div>
-      )}
 
-      {/* File Tree Area */}
-      <div
-        className={`${styles.treeArea} scrollHide`}
-        style={{
-          opacity: isOpen ? 1 : 0,
-          pointerEvents: isOpen ? 'auto' : 'none',
-        }}
-      >
-        <TreeItem
-          item={{
-            name: projectName,
-            type: 'folder',
-            path: [],
-            isRoot: true,
-            children: appState.fs.mode ? undefined : filteredTree,
+        <div
+          className={`${styles.treeArea} scrollHide`}
+          style={{
+            pointerEvents: isOpen ? 'auto' : 'none',
           }}
-          fsHandle={appState.fs.mode ? appState.fs.rootHandle : null}
-          filterText={filterText}
-          onRename={(newName) => {
-            appState((draft) => {
-              draft.projectName = newName;
-            });
-          }}
-        />
-        {filteredTree.length === 0 && !appState.fs.mode && isOpen && (
-          <div className={styles.noFiles}>No files found matching "{filterText}"</div>
-        )}
+        >
+          <TreeItem
+            item={{
+              name: projectName,
+              type: 'folder',
+              path: [],
+              isRoot: true,
+              children: appState.fs.mode ? undefined : filteredTree,
+            }}
+            fsHandle={appState.fs.mode ? appState.fs.rootHandle : null}
+            filterText={filterText}
+            onRename={(newName) => {
+              appState((draft) => {
+                draft.projectName = newName;
+              });
+            }}
+          />
+          {filteredTree.length === 0 && !appState.fs.mode && (
+            <div className={styles.noFiles}>No files found matching "{filterText}"</div>
+          )}
+        </div>
       </div>
     </aside>
   );

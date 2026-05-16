@@ -71,13 +71,14 @@ export default function AppContent() {
         />
       )}
       <Sidebar />
-      {isSidebarOpen && !isMobile && (
+      {!isMobile && (
         <Node>
           <Resizer
             onResize={handleSidebarResize}
             onResizeStart={handleResizeStart}
             onResizeEnd={handleResizeEnd}
             onDoubleClick={handleSidebarReset}
+            className={!isSidebarOpen ? styles.hidden : ''}
           />
         </Node>
       )}

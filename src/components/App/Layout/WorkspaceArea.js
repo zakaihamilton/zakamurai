@@ -68,13 +68,14 @@ export default function WorkspaceArea() {
           {!activeTab && <Welcome />}
         </div>
       </div>
-      {showAIInput && !isMobile && (
+      {!isMobile && (
         <Node>
           <Resizer
             onResize={handlePromptResize}
             onResizeStart={handleResizeStart}
             onResizeEnd={handleResizeEnd}
             onDoubleClick={handlePromptReset}
+            className={!showAIInput ? styles.hidden : ''}
           />
         </Node>
       )}

@@ -12,7 +12,7 @@ import Settings from '@/components/Storage/Settings';
 import Select from '@/components/Widgets/Select';
 import Tooltip from '@/components/Widgets/Tooltip/Tooltip';
 import { formatShortcut } from '@/utils/os';
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import styles from './Prompt.module.css';
 
 export const PromptState = createState('PromptState');
@@ -276,13 +276,30 @@ export default function Prompt() {
   }));
 
   const isOpen = isMobile ? sidebarState.isAIInputPopupOpen : showAIInput;
+  const [animatedWidth, setAnimatedWidth] = useState(isOpen ? promptWidth : 0);
+
+  useEffect(() => {
+    if (isMobile) return undefined;
+
+    if (isOpen) {
+      const frame = window.requestAnimationFrame(() => setAnimatedWidth(promptWidth));
+      return () => window.cancelAnimationFrame(frame);
+    }
+
+    setAnimatedWidth(promptWidth);
+    const frame = window.requestAnimationFrame(() => setAnimatedWidth(0));
+    return () => window.cancelAnimationFrame(frame);
+  }, [isMobile, isOpen, promptWidth]);
+
+  const desktopWidth = `${animatedWidth}px`;
 
   return (
     <aside
-      className={`${styles.prompt} ${isOpen ? styles.open : styles.closed}`}
+      className={`${styles.prompt} ${isOpen ? '' : styles.closed}`}
       aria-hidden={!isOpen}
       style={{
-        width: isMobile ? undefined : isOpen ? `${promptWidth}px` : '0px',
+        width: isMobile ? undefined : desktopWidth,
+        flexBasis: isMobile ? undefined : desktopWidth,
       }}
     >
       <div className={styles.content}>

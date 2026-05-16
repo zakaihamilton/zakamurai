@@ -1,4 +1,5 @@
 .prompt {
+  flex: 0 0 auto;
   height: 100%;
   padding: 18px;
   background: var(--bg-panel);
@@ -9,10 +10,11 @@
   position: relative;
   box-shadow: -4px 0 20px rgb(0 0 0 / 10%);
   z-index: 10;
-  flex-shrink: 0;
   overflow: hidden;
   min-width: 0;
-  transition: width 0.28s cubic-bezier(0.4, 0, 0.2, 1), padding 0.28s cubic-bezier(0.4, 0, 0.2, 1),
+  transition: width 0.28s cubic-bezier(0.4, 0, 0.2, 1),
+    flex-basis 0.28s cubic-bezier(0.4, 0, 0.2, 1),
+    padding 0.28s cubic-bezier(0.4, 0, 0.2, 1),
     border-color 0.28s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.28s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
@@ -57,6 +59,7 @@
 .closed .content {
   opacity: 0;
   transform: translateX(24px);
+  visibility: hidden;
 }
 
 .header {
@@ -388,8 +391,4 @@
     width: 90vw !important;
     display: flex; /* Override closed display: none if any */
   }
-}
-
-.prompt:not(.closed) {
-  min-width: 300px;
 }
