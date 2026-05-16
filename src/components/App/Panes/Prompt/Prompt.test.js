@@ -51,31 +51,14 @@ vi.mock('@/components/App/Views/EditorArea', () => ({
   },
 }));
 
-vi.mock('@/components/AI', () => ({
+vi.mock('@/components/AI/Processor', () => ({
+  processAIResponse: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock('@/components/AI/WebLLMAPI', () => ({
   askWebLLM: vi.fn().mockResolvedValue('Mock response'),
   getCachedWebLLMModelIds: vi.fn().mockResolvedValue(['Phi-4-mini-instruct-q4f16_1-MLC']),
   interruptWebLLM: vi.fn(),
-  processAIResponse: vi.fn().mockResolvedValue(undefined),
-  RECOMMENDED_WEB_LLM_MODEL: {
-    id: 'Qwen2.5-Coder-7B-Instruct-q4f16_1-MLC',
-    name: 'Qwen2.5 Coder 7B',
-    requirement: 'Best code quality.',
-    recommended: true,
-  },
-  WEB_LLM_MODELS: [
-    {
-      id: 'Qwen2.5-Coder-7B-Instruct-q4f16_1-MLC',
-      name: 'Qwen2.5 Coder 7B',
-      requirement: 'Best code quality.',
-      recommended: true,
-    },
-    {
-      id: 'Phi-4-mini-instruct-q4f16_1-MLC',
-      name: 'Phi-4 Mini',
-      requirement: 'Lower memory use.',
-      recommended: false,
-    },
-  ],
 }));
 
 vi.mock('@/utils/rag/search-utility', () => ({
@@ -123,15 +106,16 @@ describe('Prompt', () => {
     const modelDropdown = screen.getByRole('button', { name: /model/i });
     expect(modelDropdown).toBeDefined();
     await act(async () => {
+      fireEvent.pointerDown(modelDropdown);
       fireEvent.click(modelDropdown);
     });
-    expect(screen.getByText('Best code quality.')).toBeDefined();
+    expect(screen.getByText(/Best code quality/)).toBeDefined();
     expect(screen.getByText('Recommended')).toBeDefined();
     await waitFor(() => expect(screen.getByText('Cached')).toBeDefined());
     await act(async () => {
-      fireEvent.click(screen.getByText('Phi-4 Mini'));
+      fireEvent.click(screen.getByText('Qwen3 4B'));
     });
-    expect(Settings.setAIPromptModel).toHaveBeenCalledWith('Phi-4-mini-instruct-q4f16_1-MLC');
+    expect(Settings.setAIPromptModel).toHaveBeenCalledWith('Qwen3-4B-q4f16_1-MLC');
   });
 
   it('renders collapsed when showAIInput is false', async () => {

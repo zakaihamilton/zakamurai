@@ -1,12 +1,6 @@
-import {
-  RECOMMENDED_WEB_LLM_MODEL,
-  WEB_LLM_MODELS,
-  askWebLLM,
-  getCachedWebLLMModelIds,
-  interruptWebLLM,
-  processAIResponse,
-} from '@/components/AI';
+import { processAIResponse } from '@/components/AI/Processor';
 import { DEFAULT_SYSTEM_PROMPT, buildEditPrompt } from '@/components/AI/Prompts';
+import { RECOMMENDED_WEB_LLM_MODEL, WEB_LLM_MODELS } from '@/components/AI/WebLLMModels';
 import { AppState } from '@/components/App/AppState';
 import { SidebarState } from '@/components/App/Panes/Sidebar';
 import { TabState } from '@/components/App/Panes/TabBar';
@@ -18,7 +12,6 @@ import Settings from '@/components/Storage/Settings';
 import Select from '@/components/Widgets/Select';
 import Tooltip from '@/components/Widgets/Tooltip/Tooltip';
 import { formatShortcut } from '@/utils/os';
-import { ragSearch } from '@/utils/rag/search-utility';
 import React, { useEffect, useRef } from 'react';
 import styles from './Prompt.module.css';
 
@@ -45,6 +38,7 @@ export default function Prompt() {
   } = promptUiState || {};
   const [isCopied, setIsCopied] = React.useState(false);
   const [cachedModelIds, setCachedModelIds] = React.useState([]);
+  const hasLoadedModelCacheRef = useRef(false);
   const reasoningRef = useRef(null);
 
   const logState = LogState.usePassiveState();
@@ -66,23 +60,24 @@ export default function Prompt() {
     }
   }, [reasoning]);
 
-  useEffect(() => {
-    let isMounted = true;
+  const loadCachedModelIds = () => {
+    if (hasLoadedModelCacheRef.current) return;
+    hasLoadedModelCacheRef.current = true;
 
-    getCachedWebLLMModelIds().then((modelIds) => {
-      if (isMounted) {
-        setCachedModelIds(modelIds);
-      }
-    });
-
-    return () => {
-      isMounted = false;
-    };
-  }, []);
+    import('@/components/AI/WebLLMAPI')
+      .then(({ getCachedWebLLMModelIds }) => getCachedWebLLMModelIds())
+      .then(setCachedModelIds)
+      .catch((error) => {
+        hasLoadedModelCacheRef.current = false;
+        console.warn('[Prompt] Failed to load cached model metadata:', error);
+      });
+  };
 
   const handleStop = (e) => {
     e.preventDefault();
-    interruptWebLLM();
+    import('@/components/AI/WebLLMAPI').then(({ interruptWebLLM }) => {
+      interruptWebLLM();
+    });
     logState((draft) => {
       draft.isAIProcessing = false;
       draft.reasoning = '';
@@ -140,6 +135,7 @@ export default function Prompt() {
         // 1. Retrieve RAG context
         try {
           console.info('[Prompt] Retrieving RAG context...');
+          const { ragSearch } = await import('@/utils/rag/search-utility');
           ragResults = await ragSearch.retrieveContext(userMsg, 3);
           console.info('[Prompt] RAG context retrieved:', ragResults.length, 'items');
         } catch (ragErr) {
@@ -156,6 +152,7 @@ export default function Prompt() {
         });
 
         console.info('[Prompt] Calling askWebLLM...');
+        const { askWebLLM } = await import('@/components/AI/WebLLMAPI');
         const webLLMResult = await askWebLLM(
           finalPrompt,
           DEFAULT_SYSTEM_PROMPT,
@@ -331,7 +328,11 @@ export default function Prompt() {
             )}
           </div>
         )}
-        <div className={styles.modelPanel}>
+        <div
+          className={styles.modelPanel}
+          onFocusCapture={loadCachedModelIds}
+          onPointerDown={loadCachedModelIds}
+        >
           <Select
             id="ai-model-select"
             label="Model"

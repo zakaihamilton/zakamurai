@@ -3,7 +3,7 @@ import { highlightCode } from './highlighter';
 
 describe('highlighter', () => {
   const styles = {
-    'hlKw': 'hlKw',
+    hlKw: 'hlKw',
     hlGhost: 'hlGhost',
     tabHint: 'tabHint',
   };

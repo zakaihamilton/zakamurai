@@ -17,17 +17,35 @@ const KEYS = {
   TEMPLATE: 'zakamurai_template',
 };
 
+const getStorage = () => {
+  if (typeof localStorage === 'undefined') {
+    return null;
+  }
+
+  if (
+    typeof localStorage.getItem !== 'function' ||
+    typeof localStorage.setItem !== 'function' ||
+    typeof localStorage.removeItem !== 'function'
+  ) {
+    return null;
+  }
+
+  return localStorage;
+};
+
 const Settings = {
   get(key, defaultValue) {
-    if (typeof localStorage !== 'undefined') {
-      return localStorage.getItem(key) || defaultValue;
+    const storage = getStorage();
+    if (storage) {
+      return storage.getItem(key) || defaultValue;
     }
     return defaultValue;
   },
 
   set(key, value) {
-    if (typeof localStorage !== 'undefined') {
-      localStorage.setItem(key, value);
+    const storage = getStorage();
+    if (storage) {
+      storage.setItem(key, value);
     }
   },
 
@@ -222,9 +240,10 @@ const Settings = {
   },
 
   reset(template = 'default') {
-    if (typeof localStorage !== 'undefined') {
+    const storage = getStorage();
+    if (storage) {
       for (const key of Object.values(KEYS)) {
-        localStorage.removeItem(key);
+        storage.removeItem(key);
       }
       if (template) {
         this.setTemplate(template);

@@ -14,7 +14,11 @@ console.log('[RAG] Initialized with wasmPaths:', env.wasmPaths);
 
 let extractor;
 let index = []; // In-memory cache of chunks and vectors
+let hashes = new Set();
 const DB_NAME = 'zakamurai-rag-data.json';
+const MAX_INDEX_ITEMS = 1500;
+const MAX_FILE_BYTES = 512 * 1024;
+const MAX_CHUNK_CHARS = 2000;
 
 /**
  * Dot product of two normalized vectors is the cosine similarity.
@@ -34,12 +38,19 @@ async function loadIndex() {
     const file = await fileHandle.getFile();
     const text = await file.text();
     if (text) {
-      index = JSON.parse(text);
+      index = JSON.parse(text)
+        .slice(-MAX_INDEX_ITEMS)
+        .map((item) => ({
+          ...item,
+          vector: Float32Array.from(item.vector || []),
+        }));
+      hashes = new Set(index.map((item) => item.hash));
       console.log(`[RAG] Loaded ${index.length} chunks from OPFS.`);
     }
   } catch (e) {
     console.error('[RAG] Failed to load index:', e);
     index = [];
+    hashes = new Set();
   }
 }
 
@@ -48,7 +59,14 @@ async function saveIndex() {
     const root = await navigator.storage.getDirectory();
     const fileHandle = await root.getFileHandle(DB_NAME, { create: true });
     const writable = await fileHandle.createWritable();
-    await writable.write(JSON.stringify(index));
+    await writable.write(
+      JSON.stringify(
+        index.map((item) => ({
+          ...item,
+          vector: Array.from(item.vector),
+        })),
+      ),
+    );
     await writable.close();
   } catch (e) {
     console.error('[RAG] Failed to save index:', e);
@@ -84,18 +102,26 @@ async function getHash(text) {
 async function indexFile({ filePath, content }) {
   await init();
 
+  if (!content || content.length > MAX_FILE_BYTES) {
+    return;
+  }
+
   // Simple chunking strategy: split by double newline
-  const chunks = content.split(/\n\s*\n/).filter((c) => c.trim().length > 10);
+  const chunks = content
+    .split(/\n\s*\n/)
+    .map((chunk) => chunk.trim())
+    .filter((chunk) => chunk.length > 10)
+    .map((chunk) => chunk.slice(0, MAX_CHUNK_CHARS));
 
   let added = 0;
   for (const chunkContent of chunks) {
     const hash = await getHash(chunkContent);
 
     // Skip if already indexed
-    if (index.some((item) => item.hash === hash)) continue;
+    if (hashes.has(hash)) continue;
 
     const output = await extractor(chunkContent, { pooling: 'mean', normalize: true });
-    const vector = Array.from(output.data);
+    const vector = Float32Array.from(output.data);
 
     index.push({
       vector,
@@ -104,6 +130,13 @@ async function indexFile({ filePath, content }) {
       hash,
       timestamp: Date.now(),
     });
+    hashes.add(hash);
+
+    while (index.length > MAX_INDEX_ITEMS) {
+      const removed = index.shift();
+      hashes.delete(removed.hash);
+    }
+
     added++;
   }
 
@@ -117,12 +150,15 @@ async function search({ query, k = 5 }) {
   await init();
 
   const output = await extractor(query, { pooling: 'mean', normalize: true });
-  const queryVector = Array.from(output.data);
+  const queryVector = output.data;
 
   // Brute-force search
   const results = index
     .map((item) => ({
-      ...item,
+      filePath: item.filePath,
+      content: item.content,
+      hash: item.hash,
+      timestamp: item.timestamp,
       score: cosineSimilarity(queryVector, item.vector),
     }))
     .sort((a, b) => b.score - a.score)

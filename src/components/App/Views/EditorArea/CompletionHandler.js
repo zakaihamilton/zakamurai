@@ -1,6 +1,4 @@
 import { COMPLETION_SYSTEM_PROMPT } from '@/components/AI/Prompts';
-import { askWebLLM } from '@/components/AI/WebLLMAPI';
-import { ragSearch } from '@/utils/rag/search-utility';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 export const COMPLETION_DEBOUNCE_MS = 1000;
@@ -306,6 +304,7 @@ export default function useCompletion({
         const currentLine = before.split('\n').pop() || '';
         let ragContext = '';
         try {
+          const { ragSearch } = await import('@/utils/rag/search-utility');
           const ragResults = await ragSearch.retrieveContext(currentLine, 3);
           ragContext = ragSearch.formatPromptContext(ragResults);
         } catch (ragErr) {
@@ -331,6 +330,7 @@ export default function useCompletion({
         });
 
         try {
+          const { askWebLLM } = await import('@/components/AI/WebLLMAPI');
           const result = await askWebLLM(scheduledPrompt, COMPLETION_SYSTEM_PROMPT, null, {
             temperature: 0.15,
             top_p: 0.75,

@@ -8,9 +8,19 @@ export class IndexerController {
     this.DEBOUNCE_MS = 750; // Leaky bucket debounce duration
     this.msgId = 0;
     this.resolvers = new Map();
+    this.initPromise = null;
   }
 
   async init() {
+    if (this.initPromise) {
+      return this.initPromise;
+    }
+
+    this.initPromise = this.initialize();
+    return this.initPromise;
+  }
+
+  async initialize() {
     // 1. Initialize Worker
     this.worker = new Worker(new URL('./rag-worker.js', import.meta.url), {
       type: 'module',
@@ -125,8 +135,29 @@ export class IndexerController {
 
   async search(query, k = 5) {
     if (!this.worker) {
-      throw new Error('[IndexerController] Worker not initialized');
+      await this.init();
     }
     return this.sendMessage('SEARCH', { query, k });
+  }
+
+  dispose() {
+    if (this.observer?.disconnect) {
+      this.observer.disconnect();
+    }
+
+    for (const timeout of this.debouncerMap.values()) {
+      clearTimeout(timeout);
+    }
+
+    for (const { reject } of this.resolvers.values()) {
+      reject(new Error('[IndexerController] Disposed'));
+    }
+
+    this.worker?.terminate();
+    this.worker = null;
+    this.observer = null;
+    this.debouncerMap.clear();
+    this.resolvers.clear();
+    this.initPromise = null;
   }
 }

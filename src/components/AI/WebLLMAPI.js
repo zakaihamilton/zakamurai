@@ -1,35 +1,7 @@
 import { CreateMLCEngine, hasModelInCache } from '@mlc-ai/web-llm';
 import { DEFAULT_SYSTEM_PROMPT } from './Prompts';
-
-export const WEB_LLM_MODELS = [
-  {
-    id: 'Qwen2.5-Coder-7B-Instruct-q4f16_1-MLC',
-    name: 'Qwen2.5 Coder 7B',
-    requirement: 'Best code quality. Requires a stronger GPU and several GB of browser storage.',
-    recommended: true,
-  },
-  {
-    id: 'Qwen3-4B-q4f16_1-MLC',
-    name: 'Qwen3 4B',
-    requirement: 'Balanced option. Good for lighter devices while keeping solid reasoning.',
-    recommended: false,
-  },
-  {
-    id: 'Phi-4-mini-instruct-q4f16_1-MLC',
-    name: 'Phi-4 Mini',
-    requirement: 'Lower memory use. Faster startup with more compact responses.',
-    recommended: false,
-  },
-  {
-    id: 'Llama-3.2-3B-Instruct-q4f16_1-MLC',
-    name: 'Llama 3.2 3B',
-    requirement: 'Small general model. Good fallback for devices with limited GPU memory.',
-    recommended: false,
-  },
-];
-
-export const RECOMMENDED_WEB_LLM_MODEL =
-  WEB_LLM_MODELS.find((model) => model.recommended) || WEB_LLM_MODELS[0];
+import { RECOMMENDED_WEB_LLM_MODEL, WEB_LLM_MODELS } from './WebLLMModels';
+export { RECOMMENDED_WEB_LLM_MODEL, WEB_LLM_MODELS } from './WebLLMModels';
 
 const DEFAULT_WEB_LLM_MODEL_ID = RECOMMENDED_WEB_LLM_MODEL.id;
 
@@ -57,7 +29,7 @@ export const getCachedWebLLMModelIds = async () => {
  * @param {string} modelId - WebLLM model id to initialize.
  * @param {function} onProgress - Optional callback for initialization progress.
  */
-const getEngine = (modelId = DEFAULT_WEB_LLM_MODEL_ID, onProgress = null) => {
+const getEngine = (modelId = DEFAULT_WEB_LLM_MODEL_ID, onProgress = null, options = {}) => {
   const selectedModel = modelId || DEFAULT_WEB_LLM_MODEL_ID;
 
   if (!enginePromises.has(selectedModel)) {
@@ -78,7 +50,7 @@ const getEngine = (modelId = DEFAULT_WEB_LLM_MODEL_ID, onProgress = null) => {
             },
           },
           {
-            context_window_size: 8192,
+            context_window_size: options.contextWindowSize ?? 4096,
           },
         );
 
@@ -107,7 +79,7 @@ const getEngine = (modelId = DEFAULT_WEB_LLM_MODEL_ID, onProgress = null) => {
 export const askWebLLM = async (prompt, systemPrompt = '', onUpdate = null, options = {}) => {
   try {
     console.info('[WebLLM] Retrieving engine...');
-    const engine = await getEngine(options.model, onUpdate);
+    const engine = await getEngine(options.model, onUpdate, options);
     console.info('[WebLLM] Engine retrieved. Starting completion...');
 
     const defaultSystemPrompt = DEFAULT_SYSTEM_PROMPT;
