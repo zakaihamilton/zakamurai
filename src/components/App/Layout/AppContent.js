@@ -16,7 +16,7 @@ export default function AppContent() {
   const handleSidebarResize = (clientX) => {
     if (isSidebarOpen) {
       sidebarState((draft) => {
-        draft.sidebarWidth = Math.max(160, Math.min(clientX, 600));
+        draft.sidebarWidth = Math.max(240, Math.min(clientX, 600));
       });
     }
   };
@@ -35,7 +35,7 @@ export default function AppContent() {
 
   const handleSidebarReset = () => {
     sidebarState((draft) => {
-      draft.sidebarWidth = 260;
+      draft.sidebarWidth = 280;
     });
   };
 

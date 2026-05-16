@@ -389,3 +389,7 @@
     display: flex; /* Override closed display: none if any */
   }
 }
+
+.prompt:not(.closed) {
+  min-width: 300px;
+}

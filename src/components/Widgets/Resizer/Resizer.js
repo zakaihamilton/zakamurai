@@ -14,7 +14,6 @@ export default function Resizer({ onResize, onResizeStart, onResizeEnd, onDouble
         draft.isResizing = true;
       });
       if (onResizeStart) onResizeStart();
-      e.preventDefault();
     },
     [onResizeStart, resizerState],
   );
@@ -62,9 +61,15 @@ export default function Resizer({ onResize, onResizeStart, onResizeEnd, onDouble
   return (
     <div
       className={`${styles.resizer} ${isResizing ? styles.resizing : ''}`}
-      onMouseDown={startResizing}
+      onMouseDown={(e) => {
+        if (e.detail === 2 && onDoubleClick) {
+          onDoubleClick(e);
+        } else {
+          startResizing(e);
+        }
+      }}
       onTouchStart={startResizing}
-      onDoubleClick={onDoubleClick}
+      data-resizer="true"
     />
   );
 }

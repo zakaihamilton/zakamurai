@@ -127,6 +127,14 @@
   transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   font-family: inherit;
   box-shadow: 0 1px 2px rgb(0 0 0 / 5%);
+  white-space: nowrap;
+}
+
+.mountButton svg,
+.relinkButton svg,
+.mountButton span,
+.relinkButton span {
+  flex-shrink: 0;
 }
 
 .relinkButton {
@@ -262,4 +270,8 @@
 
 .sidebar:not(.isOpen) {
   border-right: none;
+}
+
+.sidebar.isOpen {
+  min-width: 240px;
 }

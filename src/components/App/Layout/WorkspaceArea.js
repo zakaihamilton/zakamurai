@@ -28,7 +28,7 @@ export default function WorkspaceArea() {
     if (showAIInput) {
       promptState((draft) => {
         const newWidth = window.innerWidth - clientX;
-        draft.promptWidth = Math.max(260, Math.min(newWidth, 600));
+        draft.promptWidth = Math.max(300, Math.min(newWidth, 600));
       });
     }
   };
@@ -47,7 +47,7 @@ export default function WorkspaceArea() {
 
   const handlePromptReset = () => {
     promptState((draft) => {
-      draft.promptWidth = 340;
+      draft.promptWidth = 360;
     });
   };
 

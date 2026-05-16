@@ -60,10 +60,14 @@
   cursor: col-resize !important;
 }
 
-.isResizing * {
+.isResizing *:not([data-resizer]) {
   transition: none !important;
   user-select: none !important;
   pointer-events: none !important;
+}
+
+.isResizing [data-resizer] {
+  pointer-events: auto !important;
 }
 
 .mainContent {
@@ -120,7 +124,6 @@
     inset: 0;
     background: rgb(0 0 0 / 40%);
     z-index: 1050;
-    backdrop-filter: blur(4px);
     backdrop-filter: blur(4px);
     animation: fade-in-overlay 0.4s var(--ease-premium);
   }

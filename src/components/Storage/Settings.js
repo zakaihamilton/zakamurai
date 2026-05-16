@@ -163,7 +163,7 @@ const Settings = {
     }
   },
 
-  getSidebarWidth(defaultValue = 260) {
+  getSidebarWidth(defaultValue = 280) {
     const val = this.get(KEYS.SIDEBAR_WIDTH);
     return val ? Number.parseInt(val, 10) : defaultValue;
   },
@@ -172,7 +172,7 @@ const Settings = {
     this.set(KEYS.SIDEBAR_WIDTH, width.toString());
   },
 
-  getPromptWidth(defaultValue = 340) {
+  getPromptWidth(defaultValue = 360) {
     const val = this.get(KEYS.PROMPT_WIDTH);
     return val ? Number.parseInt(val, 10) : defaultValue;
   },
