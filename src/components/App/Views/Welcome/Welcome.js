@@ -1,7 +1,6 @@
 import { TabState } from '@/components/App/Panes';
 import { Icons } from '@/components/Core/Base/Icons';
 import Tooltip from '@/components/Widgets/Tooltip/Tooltip';
-import React from 'react';
 import styles from './Welcome.module.css';
 
 export default function Welcome() {
@@ -84,15 +83,26 @@ export default function Welcome() {
 
         <footer className={styles.footer}>
           <span className={styles.footerText}>Zakai Hamilton</span>
-          <a
-            href="https://www.linkedin.com/in/zakai-hamilton"
-            target="_blank"
-            rel="noopener noreferrer"
-            className={styles.linkedinLink}
-            title="LinkedIn Profile"
-          >
-            <Icons.Linkedin size={18} />
-          </a>
+          <Tooltip content="GitHub Repository">
+            <a
+              href="https://github.com/zakaihamilton/zakamurai"
+              target="_blank"
+              rel="noopener noreferrer"
+              className={styles.githubLink}
+            >
+              <Icons.Github size={18} />
+            </a>
+          </Tooltip>
+          <Tooltip content="LinkedIn Profile">
+            <a
+              href="https://www.linkedin.com/in/zakai-hamilton"
+              target="_blank"
+              rel="noopener noreferrer"
+              className={styles.linkedinLink}
+            >
+              <Icons.Linkedin size={18} />
+            </a>
+          </Tooltip>
         </footer>
       </div>
     </div>

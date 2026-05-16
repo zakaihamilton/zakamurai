@@ -7,7 +7,7 @@
   padding: 48px 28px;
   background: var(--bg-base);
   overflow-y: auto;
-  animation: pageIn 0.35s ease both;
+  animation: page-in 0.35s ease both;
 }
 
 .hero {
@@ -31,9 +31,9 @@
   background: var(--bg-surface);
   border: 1px solid var(--border);
   border-radius: 18px;
-  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.18);
+  box-shadow: 0 18px 42px rgb(0 0 0 / 18%);
   overflow: hidden;
-  animation: logoEnter 0.55s cubic-bezier(0.2, 0.85, 0.25, 1.2) 0.05s both, logoFloat 5.5s
+  animation: logo-enter 0.55s cubic-bezier(0.2, 0.85, 0.25, 1.2) 0.05s both, logo-float 5.5s
     ease-in-out 0.8s infinite;
 }
 
@@ -41,9 +41,9 @@
   position: absolute;
   inset: 0;
   content: "";
-  background: linear-gradient(120deg, transparent 20%, rgba(255, 255, 255, 0.18), transparent 80%);
+  background: linear-gradient(120deg, transparent 20%, rgb(255 255 255 / 18%), transparent 80%);
   transform: translateX(-120%);
-  animation: logoSweep 4.8s ease-in-out 1.2s infinite;
+  animation: logo-sweep 4.8s ease-in-out 1.2s infinite;
 }
 
 .logo {
@@ -59,7 +59,7 @@
   font-weight: 750;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  animation: riseIn 0.45s ease 0.12s both;
+  animation: rise-in 0.48s ease 0.52s both;
 }
 
 .title {
@@ -69,7 +69,7 @@
   font-size: 42px;
   font-weight: 760;
   line-height: 1.08;
-  animation: riseIn 0.48s ease 0.2s both;
+  animation: rise-in 0.48s ease 0.2s both;
 }
 
 .subtitle {
@@ -78,7 +78,7 @@
   color: var(--text-muted);
   font-size: 16px;
   line-height: 1.65;
-  animation: riseIn 0.48s ease 0.28s both;
+  animation: rise-in 0.48s ease 0.28s both;
 }
 
 .intro {
@@ -88,7 +88,7 @@
   justify-content: center;
   gap: 8px;
   color: var(--text-muted);
-  animation: riseIn 0.48s ease 0.36s both;
+  animation: rise-in 0.48s ease 0.36s both;
 }
 
 .intro span {
@@ -106,14 +106,11 @@
   justify-content: center;
   gap: 8px;
   margin-top: 28px;
-  animation: riseIn 0.48s ease 0.44s both;
+  animation: rise-in 0.48s ease 0.44s both;
 }
 
 .textAction {
   font: inherit;
-}
-
-.textAction {
   min-height: 32px;
   display: flex;
   align-items: center;
@@ -133,11 +130,7 @@
   border-color: var(--border);
 }
 
-.textAction:focus-visible,
-.linkedinLink:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 3px;
-}
+
 
 .footer {
   margin-top: 34px;
@@ -146,7 +139,7 @@
   justify-content: center;
   gap: 10px;
   color: var(--text-muted);
-  animation: riseIn 0.48s ease 0.52s both;
+  animation: rise-in 0.48s ease 0.52s both;
 }
 
 .footerText {
@@ -154,7 +147,8 @@
   font-weight: 500;
 }
 
-.linkedinLink {
+.linkedinLink,
+.githubLink {
   width: 32px;
   height: 32px;
   display: flex;
@@ -167,14 +161,28 @@
   transition: color 0.2s ease, background 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
 }
 
-.linkedinLink:hover {
-  color: #0077b5;
-  background: rgba(0, 119, 181, 0.08);
-  border-color: rgba(0, 119, 181, 0.2);
+.githubLink:hover {
+  color: var(--text-main);
+  background: var(--bg-surface);
+  border-color: var(--border);
   transform: translateY(-1px);
 }
 
-@keyframes pageIn {
+.linkedinLink:hover {
+  color: #0077b5;
+  background: rgb(0 119 181 / 8%);
+  border-color: rgb(0 119 181 / 20%);
+  transform: translateY(-1px);
+}
+
+.textAction:focus-visible,
+.linkedinLink:focus-visible,
+.githubLink:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+@keyframes page-in {
   from {
     opacity: 0;
   }
@@ -184,7 +192,7 @@
   }
 }
 
-@keyframes riseIn {
+@keyframes rise-in {
   from {
     opacity: 0;
     transform: translateY(10px);
@@ -196,7 +204,7 @@
   }
 }
 
-@keyframes logoEnter {
+@keyframes logo-enter {
   from {
     opacity: 0;
     transform: translateY(10px) scale(0.94);
@@ -208,7 +216,7 @@
   }
 }
 
-@keyframes logoFloat {
+@keyframes logo-float {
   0%,
   100% {
     transform: translateY(0);
@@ -219,7 +227,7 @@
   }
 }
 
-@keyframes logoSweep {
+@keyframes logo-sweep {
   0%,
   55% {
     transform: translateX(-120%);
@@ -231,7 +239,7 @@
   }
 }
 
-@media (max-width: 760px) {
+@media (width <= 760px) {
   .welcome {
     align-items: flex-start;
     padding: 34px 18px 44px;
@@ -260,7 +268,7 @@
   }
 }
 
-@media (max-width: 520px) {
+@media (width <= 520px) {
   .supportingActions {
     align-items: stretch;
     width: 100%;
