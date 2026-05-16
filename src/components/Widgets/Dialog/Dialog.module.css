@@ -1,9 +1,6 @@
 .wrapper {
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  inset: 0;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -12,11 +9,8 @@
 
 .backdrop {
   position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.6);
+  inset: 0;
+  background: rgb(0 0 0 / 60%);
   backdrop-filter: blur(4px);
 }
 
@@ -27,15 +21,16 @@
   border-radius: 12px;
   width: 90%;
   max-width: 400px;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
-  animation: modalIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 20px 40px rgb(0 0 0 / 40%);
+  animation: modal-in 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-@keyframes modalIn {
+@keyframes modal-in {
   from {
     opacity: 0;
     transform: scale(0.95) translateY(10px);
   }
+
   to {
     opacity: 1;
     transform: scale(1) translateY(0);
@@ -57,7 +52,7 @@
   padding: 20px 24px;
 }
 
-.content p {
+.message {
   margin: 0;
   color: var(--text-muted);
   line-height: 1.5;
@@ -69,7 +64,7 @@
   display: flex;
   justify-content: flex-end;
   gap: 12px;
-  background: rgba(0, 0, 0, 0.1);
+  background: rgb(0 0 0 / 10%);
   border-bottom-left-radius: 12px;
   border-bottom-right-radius: 12px;
 }
@@ -110,5 +105,5 @@
 }
 
 .confirmBtn.danger:hover {
-  background: #ff3333;
+  background: #f33;
 }

@@ -796,7 +796,26 @@ export default function TreeItem({
       <Dialog
         isOpen={showDeleteDialog}
         title="Delete Item"
-        message={`Are you sure you want to delete "${item.name}"? This action cannot be undone.`}
+        message={
+          <>
+            Are you sure you want to delete <strong>{item.name}</strong>?
+            <div
+              style={{
+                marginTop: '12px',
+                fontSize: '12px',
+                opacity: 0.8,
+                wordBreak: 'break-all',
+                fontFamily: 'monospace',
+                background: 'rgba(0,0,0,0.2)',
+                padding: '8px',
+                borderRadius: '4px',
+              }}
+            >
+              {currentPathStr}
+            </div>
+            <div style={{ marginTop: '12px' }}>This action cannot be undone.</div>
+          </>
+        }
         confirmText="Delete"
         cancelText="Cancel"
         type="danger"

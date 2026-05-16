@@ -31,7 +31,7 @@ export default function Dialog({
           <h3>{title}</h3>
         </div>
         <div className={styles.content}>
-          <p>{message}</p>
+          <div className={styles.message}>{message}</div>
         </div>
         <div className={styles.footer}>
           <button type="button" className={styles.cancelBtn} onClick={onCancel}>
