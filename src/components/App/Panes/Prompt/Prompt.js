@@ -13,6 +13,7 @@ import Select from '@/components/Widgets/Select';
 import Tooltip from '@/components/Widgets/Tooltip/Tooltip';
 import { formatShortcut } from '@/utils/os';
 import React, { useEffect, useRef, useState } from 'react';
+import ReactMarkdown from 'react-markdown';
 import styles from './Prompt.module.css';
 
 export const PromptState = createState('PromptState');
@@ -393,7 +394,32 @@ export default function Prompt() {
               </div>
             </div>
             <div ref={reasoningRef} className={`${styles.reasoningContent} scrollHide`}>
-              {logState.reasoning}
+              <ReactMarkdown
+                components={{
+                  a: ({ node, ...props }) => <a className={styles.reasoningLink} {...props} />,
+                  blockquote: ({ node, ...props }) => (
+                    <blockquote className={styles.reasoningBlockquote} {...props} />
+                  ),
+                  code: ({ node, ...props }) => (
+                    <code className={styles.reasoningCode} {...props} />
+                  ),
+                  h1: ({ node, ...props }) => <h1 className={styles.reasoningHeading} {...props} />,
+                  h2: ({ node, ...props }) => <h2 className={styles.reasoningHeading} {...props} />,
+                  h3: ({ node, ...props }) => <h3 className={styles.reasoningHeading} {...props} />,
+                  h4: ({ node, ...props }) => <h4 className={styles.reasoningHeading} {...props} />,
+                  h5: ({ node, ...props }) => <h5 className={styles.reasoningHeading} {...props} />,
+                  h6: ({ node, ...props }) => <h6 className={styles.reasoningHeading} {...props} />,
+                  li: ({ node, ...props }) => (
+                    <li className={styles.reasoningListItem} {...props} />
+                  ),
+                  ol: ({ node, ...props }) => <ol className={styles.reasoningList} {...props} />,
+                  p: ({ node, ...props }) => <p className={styles.reasoningParagraph} {...props} />,
+                  pre: ({ node, ...props }) => <pre className={styles.reasoningPre} {...props} />,
+                  ul: ({ node, ...props }) => <ul className={styles.reasoningList} {...props} />,
+                }}
+              >
+                {logState.reasoning}
+              </ReactMarkdown>
             </div>
           </div>
         </div>

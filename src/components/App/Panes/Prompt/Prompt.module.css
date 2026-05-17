@@ -12,7 +12,8 @@
   z-index: 10;
   overflow: hidden;
   min-width: 0;
-  transition: width 0.28s cubic-bezier(0.4, 0, 0.2, 1),
+  transition:
+    width 0.28s cubic-bezier(0.4, 0, 0.2, 1),
     flex-basis 0.28s cubic-bezier(0.4, 0, 0.2, 1),
     padding 0.28s cubic-bezier(0.4, 0, 0.2, 1),
     border-color 0.28s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.28s cubic-bezier(0.4, 0, 0.2, 1);
@@ -364,11 +365,81 @@
   line-height: 1.5;
   color: var(--text-muted);
   overflow-y: auto;
-  white-space: pre-wrap;
-  font-family: var(--font-mono, "Fira Code", monospace);
+  overflow-wrap: anywhere;
   padding: 4px;
   opacity: 0.9;
   min-height: 0;
+}
+
+.reasoningContent * {
+  max-width: 100%;
+}
+
+.reasoningContent *:first-child {
+  margin-top: 0;
+}
+
+.reasoningContent *:last-child {
+  margin-bottom: 0;
+}
+
+.reasoningParagraph,
+.reasoningList,
+.reasoningPre,
+.reasoningBlockquote {
+  margin: 0 0 10px;
+}
+
+.reasoningList {
+  padding-left: 20px;
+}
+
+.reasoningListItem {
+  margin: 4px 0;
+}
+
+.reasoningHeading {
+  margin: 12px 0 6px;
+  color: var(--text-main);
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.reasoningCode {
+  border-radius: 4px;
+  background: var(--bg-input);
+  color: var(--text-main);
+  font-family: var(--font-mono, "Fira Code", monospace);
+  font-size: 11px;
+  padding: 1px 4px;
+}
+
+.reasoningPre {
+  overflow-x: hidden;
+  border: 1px solid var(--border-light);
+  border-radius: 6px;
+  background: var(--bg-input);
+  padding: 10px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.reasoningPre .reasoningCode {
+  display: block;
+  background: transparent;
+  padding: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.reasoningBlockquote {
+  border-left: 2px solid var(--accent);
+  color: var(--text-muted);
+  padding-left: 10px;
+}
+
+.reasoningLink {
+  color: var(--accent);
 }
 
 @media (width <= 768px) {

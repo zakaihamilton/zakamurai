@@ -142,6 +142,66 @@ describe('Prompt', () => {
     expect(container.firstChild.getAttribute('aria-hidden')).toBe('true');
   });
 
+  it('renders reasoning as markdown', () => {
+    SidebarState.useState.mockReturnValue({
+      showAIInput: true,
+    });
+    const mockLogState = {
+      isAIProcessing: true,
+      isSystemProcessing: false,
+      reasoning: '## Plan\n\n- **bold step**\n\n```js\nconst ready = true;\n```',
+    };
+    LogState.useState.mockReturnValue(mockLogState);
+    LogState.usePassiveState.mockReturnValue(mockLogState);
+    const tabUpdate = vi.fn();
+    TabState.useState.mockReturnValue(
+      Object.assign(tabUpdate, {
+        openTabs: [],
+        activeTabId: null,
+      }),
+    );
+    const mockAppState = { fs: {}, isMobile: false };
+    AppState.useState.mockReturnValue(mockAppState);
+    AppState.usePassiveState.mockReturnValue(mockAppState);
+    EditorState.useState.mockReturnValue(vi.fn());
+
+    render(<Prompt />);
+
+    expect(screen.getByRole('heading', { name: 'Plan' })).toBeDefined();
+    expect(screen.getByText('bold step').tagName).toBe('STRONG');
+    expect(screen.getByText('const ready = true;').tagName).toBe('CODE');
+  });
+
+  it('wraps long reasoning code blocks inside the prompt pane', () => {
+    SidebarState.useState.mockReturnValue({
+      showAIInput: true,
+    });
+    const mockLogState = {
+      isAIProcessing: true,
+      isSystemProcessing: false,
+      reasoning: '```text\nthis-is-a-very-long-agent-output-line-without-natural-breaks\n```',
+    };
+    LogState.useState.mockReturnValue(mockLogState);
+    LogState.usePassiveState.mockReturnValue(mockLogState);
+    const tabUpdate = vi.fn();
+    TabState.useState.mockReturnValue(
+      Object.assign(tabUpdate, {
+        openTabs: [],
+        activeTabId: null,
+      }),
+    );
+    const mockAppState = { fs: {}, isMobile: false };
+    AppState.useState.mockReturnValue(mockAppState);
+    AppState.usePassiveState.mockReturnValue(mockAppState);
+    EditorState.useState.mockReturnValue(vi.fn());
+
+    const { container } = render(<Prompt />);
+    const codeBlock = container.querySelector('pre code');
+
+    expect(codeBlock).not.toBeNull();
+    expect(codeBlock.textContent).toContain('this-is-a-very-long-agent-output-line');
+  });
+
   it('calls state update when form is submitted', async () => {
     const stateUpdate = vi.fn();
     const mockLogState = Object.assign(stateUpdate, {
