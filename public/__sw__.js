@@ -1,10 +1,27 @@
 /**
  * Service Worker for Mini WebContainers
  * Intercepts fetch requests and routes them to virtual servers
- * Version: 15 - cleanup: extract helpers, gate debug logs, remove test endpoints
+ * Version: 16 - add offline application shell caching
  */
 
 const DEBUG = false;
+const APP_CACHE_NAME = 'zakamurai-app-shell-v1';
+const RUNTIME_CACHE_NAME = 'zakamurai-runtime-v1';
+const APP_SHELL_URLS = [
+  '/',
+  '/file.svg',
+  '/globe.svg',
+  '/next.svg',
+  '/vercel.svg',
+  '/window.svg',
+];
+const STATIC_CACHE_PATTERNS = [
+  /^\/_next\/static\//,
+  /^\/assets\//,
+  /^\/lib\//,
+  /^\/wasm\//,
+  /\.(?:css|js|mjs|wasm|svg|png|jpg|jpeg|webp|gif|ico|woff2?)$/i,
+];
 
 // Communication port with main thread
 let mainPort = null;
@@ -15,6 +32,70 @@ let requestId = 0;
 
 // Registered virtual server ports
 const registeredPorts = new Set();
+
+function isCacheableAppRequest(request, url) {
+  if (request.method !== 'GET' || url.origin !== self.location.origin) {
+    return false;
+  }
+
+  if (url.pathname === '/__sw__.js' || url.pathname.startsWith('/__virtual__')) {
+    return false;
+  }
+
+  if (url.pathname === '/preview' || url.pathname.startsWith('/preview/')) {
+    return false;
+  }
+
+  return request.mode === 'navigate' || STATIC_CACHE_PATTERNS.some((pattern) => pattern.test(url.pathname));
+}
+
+async function cacheResponse(cacheName, request, response) {
+  if (!response || response.status !== 200 || response.type === 'error') {
+    return;
+  }
+
+  const cache = await caches.open(cacheName);
+  await cache.put(request, response.clone());
+}
+
+async function networkFirstAppRequest(request) {
+  const cache = await caches.open(APP_CACHE_NAME);
+
+  try {
+    const response = await fetch(request);
+    await cacheResponse(APP_CACHE_NAME, request, response);
+    return response;
+  } catch (error) {
+    const cached = await cache.match(request);
+    if (cached) return cached;
+
+    if (request.mode === 'navigate') {
+      const shell = await cache.match('/');
+      if (shell) return shell;
+    }
+
+    throw error;
+  }
+}
+
+async function staleWhileRevalidateAppRequest(request) {
+  const runtimeCache = await caches.open(RUNTIME_CACHE_NAME);
+  const cached = await runtimeCache.match(request);
+  const fetchPromise = fetch(request)
+    .then(async (response) => {
+      await cacheResponse(RUNTIME_CACHE_NAME, request, response);
+      return response;
+    })
+    .catch(() => null);
+
+  return cached || (await fetchPromise) || Response.error();
+}
+
+function handleAppRequest(request) {
+  return request.mode === 'navigate'
+    ? networkFirstAppRequest(request)
+    : staleWhileRevalidateAppRequest(request);
+}
 
 /**
  * Decode base64 string to Uint8Array
@@ -282,6 +363,10 @@ self.addEventListener('fetch', (event) => {
         // Invalid referer URL, ignore
       }
     }
+    if (isCacheableAppRequest(event.request, url)) {
+      event.respondWith(handleAppRequest(event.request));
+    }
+
     // Not a virtual request, let it pass through
     return;
   }
@@ -434,7 +519,12 @@ async function handleStreamingRequest(port, method, path, headers, body) {
  */
 self.addEventListener('install', (event) => {
   console.log('[SW] Installing...');
-  event.waitUntil(self.skipWaiting());
+  event.waitUntil(
+    caches
+      .open(APP_CACHE_NAME)
+      .then((cache) => cache.addAll(APP_SHELL_URLS))
+      .then(() => self.skipWaiting()),
+  );
 });
 
 /**
@@ -442,5 +532,16 @@ self.addEventListener('install', (event) => {
  */
 self.addEventListener('activate', (event) => {
   console.log('[SW] Activated');
-  event.waitUntil(self.clients.claim());
+  event.waitUntil(
+    Promise.all([
+      self.clients.claim(),
+      caches.keys().then((cacheNames) =>
+        Promise.all(
+          cacheNames
+            .filter((name) => name.startsWith('zakamurai-') && name !== APP_CACHE_NAME && name !== RUNTIME_CACHE_NAME)
+            .map((name) => caches.delete(name)),
+        ),
+      ),
+    ]),
+  );
 });

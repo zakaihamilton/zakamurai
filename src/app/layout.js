@@ -14,6 +14,11 @@ const geistMono = Geist_Mono({
 export const metadata = {
   title: 'Zakamurai',
   description: 'Your personal AI developer assistant.',
+  manifest: '/manifest.webmanifest',
+};
+
+export const viewport = {
+  themeColor: '#111827',
 };
 
 export default function RootLayout({ children }) {

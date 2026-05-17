@@ -1,4 +1,5 @@
 import { AppState } from '@/components/App/AppState';
+import { useShouldShowKeyboardShortcuts } from '@/utils/keyboard';
 import React, { useState, useRef, useEffect, useLayoutEffect } from 'react';
 import { createPortal } from 'react-dom';
 import styles from './Tooltip.module.css';
@@ -9,6 +10,7 @@ import styles from './Tooltip.module.css';
  */
 export default function Tooltip({ content, shortcut, children, className = '' }) {
   const { theme } = AppState.useState();
+  const showShortcut = useShouldShowKeyboardShortcuts();
   const [isVisible, setIsVisible] = useState(false);
   const [coords, setCoords] = useState({ top: 0, left: 0 });
   const [placement, setPlacement] = useState('top'); // 'top' or 'bottom'
@@ -151,7 +153,7 @@ export default function Tooltip({ content, shortcut, children, className = '' })
           >
             <div className={styles.inner}>
               <span className={styles.content}>{content}</span>
-              {shortcut && <span className={styles.shortcut}>{shortcut}</span>}
+              {shortcut && showShortcut && <span className={styles.shortcut}>{shortcut}</span>}
             </div>
           </div>,
           document.body,

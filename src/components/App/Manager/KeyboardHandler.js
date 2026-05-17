@@ -4,6 +4,7 @@ import { TabState } from '@/components/App/Panes/TabBar';
 import { EditorState } from '@/components/App/Views/EditorArea';
 import { LogState } from '@/components/App/Views/LogArea';
 import { useNotification } from '@/components/Widgets/Notification/Notification';
+import { markKeyboardActivity } from '@/utils/keyboard';
 import { useEffect } from 'react';
 import { SHORTCUTS, isMatch } from './Shortcuts';
 
@@ -18,6 +19,7 @@ export function useKeyboardHandler() {
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.repeat) return;
+      if (!e.isComposing) markKeyboardActivity();
 
       const states = {
         sidebarState,

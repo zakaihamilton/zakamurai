@@ -1,5 +1,6 @@
 import { getShortcutsByGroup } from '@/components/App/Manager/Shortcuts';
 import { Icons } from '@/components/Core/Base/Icons';
+import { useShouldShowKeyboardShortcuts } from '@/utils/keyboard';
 import { formatShortcut, isMac } from '@/utils/os';
 import React from 'react';
 import { createPortal } from 'react-dom';
@@ -8,7 +9,9 @@ import styles from './ShortcutsHelp.module.css';
 const SHORTCUTS = getShortcutsByGroup();
 
 export default function ShortcutsHelp({ isOpen, onClose }) {
-  if (!isOpen) return null;
+  const showShortcuts = useShouldShowKeyboardShortcuts();
+
+  if (!isOpen || !showShortcuts) return null;
 
   const mac = isMac();
 

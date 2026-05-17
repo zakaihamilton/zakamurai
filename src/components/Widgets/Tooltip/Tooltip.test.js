@@ -1,4 +1,5 @@
 import { AppState } from '@/components/App/AppState';
+import { useShouldShowKeyboardShortcuts } from '@/utils/keyboard';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import Tooltip from './Tooltip';
@@ -9,9 +10,14 @@ vi.mock('@/components/App/AppState', () => ({
   },
 }));
 
+vi.mock('@/utils/keyboard', () => ({
+  useShouldShowKeyboardShortcuts: vi.fn(() => true),
+}));
+
 describe('Tooltip', () => {
   beforeEach(() => {
     vi.spyOn(AppState, 'useState').mockReturnValue({ theme: 'dark' });
+    useShouldShowKeyboardShortcuts.mockReturnValue(true);
     vi.useFakeTimers();
   });
 
@@ -49,6 +55,26 @@ describe('Tooltip', () => {
     expect(screen.getByRole('tooltip')).toBeDefined();
     expect(screen.getByText('Helper text')).toBeDefined();
     expect(screen.getByText('⌘S')).toBeDefined();
+  });
+
+  it('hides shortcut labels when keyboard shortcuts should not be shown', () => {
+    useShouldShowKeyboardShortcuts.mockReturnValue(false);
+
+    render(
+      <Tooltip content="Helper text" shortcut="⌘S">
+        <button type="button">Hover me</button>
+      </Tooltip>,
+    );
+
+    const trigger = screen.getByText('Hover me').parentElement;
+    fireEvent.mouseEnter(trigger);
+    act(() => {
+      vi.advanceTimersByTime(400);
+    });
+
+    expect(screen.getByRole('tooltip')).toBeDefined();
+    expect(screen.getByText('Helper text')).toBeDefined();
+    expect(screen.queryByText('⌘S')).toBeNull();
   });
 
   it('hides tooltip on mouse leave', () => {
