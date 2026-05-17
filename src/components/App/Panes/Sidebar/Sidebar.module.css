@@ -1,8 +1,8 @@
 .sidebar {
   flex: 0 0 auto;
   min-width: 0;
-  transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1),
-    flex-basis 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1), flex-basis 0.25s
+    cubic-bezier(0.4, 0, 0.2, 1);
   background: var(--glass-bg);
   backdrop-filter: var(--glass-blur);
   border-right: 1px solid var(--border);
