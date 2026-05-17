@@ -118,6 +118,18 @@
 }
 
 @media (width <= 768px) {
+  .appWrapper {
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  .mainContent,
+  .workspaceContent,
+  .workspaceMain,
+  .editorContainer {
+    min-width: 0;
+  }
+
   .mobileOverlay {
     display: block;
     position: fixed;

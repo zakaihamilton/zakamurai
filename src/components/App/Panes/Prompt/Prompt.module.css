@@ -378,8 +378,10 @@
     bottom: 0;
     right: 0;
     z-index: 2000;
-    width: 90vw !important;
-    max-width: 400px;
+    width: min(400px, 90vw) !important;
+    max-width: calc(100vw - 24px);
+    height: 100vh;
+    height: 100dvh;
     box-shadow: -10px 0 30px rgb(0 0 0 / 40%);
     background: var(--bg-surface);
     transform: translateX(0);
@@ -388,7 +390,30 @@
 
   .prompt.closed {
     transform: translateX(100%);
-    width: 90vw !important;
+    width: min(400px, 90vw) !important;
     display: flex; /* Override closed display: none if any */
+  }
+}
+
+@media (width <= 380px) {
+  .prompt {
+    width: calc(100vw - 20px) !important;
+    max-width: calc(100vw - 20px);
+    padding: 14px;
+    gap: 12px;
+  }
+
+  .prompt.closed {
+    width: calc(100vw - 20px) !important;
+  }
+
+  .content,
+  .form {
+    gap: 10px;
+  }
+
+  .input {
+    min-height: 96px;
+    height: 96px;
   }
 }

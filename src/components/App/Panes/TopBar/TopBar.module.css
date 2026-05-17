@@ -7,7 +7,6 @@
   padding: 0 20px;
   background: var(--glass-bg);
   backdrop-filter: var(--glass-blur);
-  backdrop-filter: var(--glass-blur);
   position: sticky;
   top: 0;
   z-index: 1000;
@@ -56,7 +55,6 @@
 .aiHighlight {
   color: var(--accent);
   background: linear-gradient(135deg, var(--accent) 0%, #a855f7 100%);
-  background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
   font-weight: 700;
@@ -114,12 +112,14 @@
   display: flex;
   align-items: center;
   gap: 16px;
+  min-width: 0;
 }
 
 @media (width <= 768px) {
   .header {
     height: 56px;
     padding: 0 8px;
+    min-width: 0;
   }
 
   .breadcrumb {
@@ -135,13 +135,17 @@
     flex: 1;
     justify-content: flex-end;
     gap: 8px;
+    min-width: 0;
   }
 
   .actionBtn {
-    padding: 8px 10px;
+    width: 40px;
+    min-width: 40px;
+    padding: 8px;
   }
 
   .compileBtn {
+    min-width: 40px;
     padding: 8px 10px;
   }
 }
@@ -190,6 +194,7 @@
   display: flex;
   align-items: center;
   gap: 12px;
+  min-width: 0;
 }
 
 .compileGroup {
@@ -360,6 +365,7 @@
   transform: translateX(-50%);
   display: flex;
   align-items: center;
+  pointer-events: none;
 }
 
 .workingIndicator {
@@ -457,6 +463,55 @@
 @media (width <= 768px) {
   .hideOnMobile {
     display: none;
+  }
+
+  .actionBtn {
+    width: 40px;
+    min-width: 40px;
+    padding: 8px;
+  }
+
+  .compileBtn {
+    min-width: 40px;
+    padding: 8px 10px;
+  }
+}
+
+@media (width <= 380px) {
+  .header {
+    padding: 0 6px;
+  }
+
+  .menuToggle {
+    margin-right: 4px;
+    padding: 6px;
+  }
+
+  .actions,
+  .actionGroups {
+    gap: 4px;
+  }
+
+  .viewTabs {
+    padding: 2px;
+  }
+
+  .tabBtn {
+    width: 34px;
+    min-width: 34px;
+    height: 34px;
+    padding: 6px;
+  }
+
+  .sidebarBtn,
+  .themeToggle,
+  .actionBtn,
+  .compileBtn {
+    width: 36px;
+    min-width: 36px;
+    height: 36px;
+    padding: 7px;
+    border-radius: 9px;
   }
 }
 

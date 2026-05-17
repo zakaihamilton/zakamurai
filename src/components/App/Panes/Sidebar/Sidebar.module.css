@@ -249,8 +249,8 @@
     bottom: 0;
     left: 0;
     z-index: 2000;
-    width: 280px !important;
-    max-width: 85vw;
+    width: min(280px, 88vw) !important;
+    max-width: calc(100vw - 24px);
     box-shadow: 20px 0 50px rgb(0 0 0 / 50%);
     background: var(--bg-panel);
     backdrop-filter: blur(20px);
@@ -267,6 +267,20 @@
   .header {
     min-height: 56px;
     padding: 0 16px;
+  }
+}
+
+@media (width <= 380px) {
+  .sidebar {
+    width: calc(100vw - 20px) !important;
+    max-width: calc(100vw - 20px);
+  }
+
+  .header,
+  .mountSection,
+  .filterSection {
+    padding-right: 12px;
+    padding-left: 12px;
   }
 }
 
