@@ -1,4 +1,4 @@
-import { CreateMLCEngine, hasModelInCache } from '@mlc-ai/web-llm';
+import { CreateMLCEngine, deleteModelAllInfoInCache, hasModelInCache } from '@mlc-ai/web-llm';
 import { DEFAULT_SYSTEM_PROMPT } from './Prompts';
 import { RECOMMENDED_WEB_LLM_MODEL, WEB_LLM_MODELS } from './WebLLMModels';
 export { RECOMMENDED_WEB_LLM_MODEL, WEB_LLM_MODELS } from './WebLLMModels';
@@ -21,6 +21,16 @@ export const getCachedWebLLMModelIds = async () => {
   );
 
   return cacheEntries.filter(([_, isCached]) => isCached).map(([modelId]) => modelId);
+};
+
+export const cacheWebLLMModel = async (modelId, onProgress = null) => {
+  await getEngine(modelId, onProgress);
+};
+
+export const deleteCachedWebLLMModel = async (modelId) => {
+  await interruptWebLLM();
+  enginePromises.delete(modelId);
+  await deleteModelAllInfoInCache(modelId);
 };
 
 /**

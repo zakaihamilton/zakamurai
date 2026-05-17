@@ -179,6 +179,241 @@
   flex-shrink: 0;
 }
 
+.modelControlRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 36px;
+  align-items: end;
+  gap: 8px;
+}
+
+.modelSelect {
+  min-width: 0;
+}
+
+.modelManagerButton {
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  background: var(--bg-input);
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.modelManagerButton:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.modelManagerButton:hover:not(:disabled) {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: rgb(var(--accent-rgb, 129, 140, 248), 0.1);
+  transform: translateY(-1px);
+}
+
+.modelDialog {
+  max-width: min(720px, calc(100vw - 32px));
+  max-height: min(86vh, 760px);
+}
+
+.modelManager {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: min(68vh, 620px);
+  overflow-y: auto;
+  padding: 0 2px 12px 0;
+}
+
+.modelManagerItem {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  background: var(--bg-surface);
+  padding: 10px 12px;
+}
+
+.modelManagerInfo {
+  min-width: 0;
+}
+
+.modelManagerTitleRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.modelManagerTitleRow h4 {
+  margin: 0;
+  color: var(--text-main);
+  font-size: 14px;
+  line-height: 1.3;
+}
+
+.modelManagerInfo p {
+  margin: 5px 0 0;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.modelManagerDetails {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  margin: 8px 0 0;
+}
+
+.modelManagerDetail {
+  min-width: 0;
+  border: 1px solid var(--border-light);
+  border-radius: 6px;
+  background: var(--bg-input);
+  padding: 6px 8px;
+}
+
+.modelManagerDetail dt {
+  margin: 0 0 2px;
+  color: var(--accent);
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.modelManagerDetail dd {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 11px;
+  line-height: 1.3;
+}
+
+.modelManagerBadges {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.modelManagerBadges span {
+  border: 1px solid rgb(var(--accent-rgb, 97, 175, 239), 0.25);
+  border-radius: 6px;
+  background: rgb(var(--accent-rgb, 97, 175, 239), 0.1);
+  color: var(--accent);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+  padding: 4px 6px;
+}
+
+.modelManagerActions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.modelManagerActions code {
+  color: var(--text-muted);
+  font-size: 10px;
+  line-height: 1.35;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.modelManagerButtonGroup {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.modelCacheToggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--border-light);
+  border-radius: 6px;
+  background: var(--bg-input);
+  color: var(--text-muted);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  min-height: 30px;
+  padding: 6px 10px;
+  transition: all 0.2s;
+}
+
+.modelCacheToggle:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+}
+
+.modelCacheToggle:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.modelCacheToggleOn {
+  border-color: rgb(var(--accent-rgb, 97, 175, 239), 0.35);
+  background: rgb(var(--accent-rgb, 97, 175, 239), 0.12);
+  color: var(--accent);
+}
+
+.modelCacheToggleTrack {
+  width: 28px;
+  height: 16px;
+  border-radius: 999px;
+  background: var(--border-light);
+  padding: 2px;
+  display: inline-flex;
+  align-items: center;
+  transition: all 0.2s;
+}
+
+.modelCacheToggleThumb {
+  width: 12px;
+  height: 12px;
+  border-radius: 999px;
+  background: var(--text-muted);
+  transition: all 0.2s;
+}
+
+.modelCacheToggleOn .modelCacheToggleTrack {
+  background: var(--accent);
+}
+
+.modelCacheToggleOn .modelCacheToggleThumb {
+  background: #fff;
+  transform: translateX(12px);
+}
+
+.modelManagerStatus {
+  border: 1px solid rgb(var(--accent-rgb, 97, 175, 239), 0.25);
+  border-radius: 8px;
+  background: rgb(var(--accent-rgb, 97, 175, 239), 0.08);
+  color: var(--accent);
+  font-size: 12px;
+  line-height: 1.45;
+  padding: 10px 12px;
+}
+
+.modelManagerError {
+  border-color: rgb(244 67 54 / 24%);
+  background: rgb(244 67 54 / 10%);
+  color: var(--error, #f44336);
+}
+
 .form {
   display: flex;
   flex-direction: column;
@@ -464,6 +699,43 @@
     width: min(400px, 90vw) !important;
     display: flex; /* Override closed display: none if any */
   }
+
+  .modelDialog {
+    width: calc(100vw - 24px);
+    max-width: calc(100vw - 24px);
+    max-height: calc(100dvh - 24px);
+  }
+
+  .modelManager {
+    max-height: calc(100dvh - 180px);
+  }
+
+  .modelManagerTitleRow {
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .modelManagerBadges {
+    justify-content: flex-start;
+  }
+
+  .modelManagerDetails {
+    grid-template-columns: 1fr;
+  }
+
+  .modelManagerActions {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .modelManagerActions code {
+    white-space: normal;
+  }
+
+  .modelManagerButtonGroup {
+    justify-content: flex-end;
+  }
 }
 
 @media (width <= 380px) {
@@ -486,5 +758,19 @@
   .input {
     min-height: 96px;
     height: 96px;
+  }
+
+  .modelDialog {
+    width: calc(100vw - 16px);
+    max-width: calc(100vw - 16px);
+  }
+
+  .modelManagerItem {
+    padding: 9px 10px;
+  }
+
+  .modelCacheToggle {
+    width: 100%;
+    justify-content: center;
   }
 }

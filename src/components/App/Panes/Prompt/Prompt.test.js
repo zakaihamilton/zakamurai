@@ -57,6 +57,8 @@ vi.mock('@/components/AI/Processor', () => ({
 
 vi.mock('@/components/AI/WebLLMAPI', () => ({
   askWebLLM: vi.fn().mockResolvedValue('Mock response'),
+  cacheWebLLMModel: vi.fn().mockResolvedValue(undefined),
+  deleteCachedWebLLMModel: vi.fn().mockResolvedValue(undefined),
   getCachedWebLLMModelIds: vi.fn().mockResolvedValue(['Phi-4-mini-instruct-q4f16_1-MLC']),
   interruptWebLLM: vi.fn(),
 }));
@@ -103,7 +105,7 @@ describe('Prompt', () => {
     render(<Prompt />);
     expect(screen.getByPlaceholderText('Enter the AI prompt here...')).toBeDefined();
     expect(screen.getByTitle('Execute prompt')).toBeDefined();
-    const modelDropdown = screen.getByRole('button', { name: /model/i });
+    const modelDropdown = screen.getByRole('button', { name: /^model /i });
     expect(modelDropdown).toBeDefined();
     await act(async () => {
       fireEvent.pointerDown(modelDropdown);
@@ -116,6 +118,43 @@ describe('Prompt', () => {
       fireEvent.click(screen.getByText('Qwen3 4B'));
     });
     expect(Settings.setAIPromptModel).toHaveBeenCalledWith('Qwen3-4B-q4f16_1-MLC');
+  });
+
+  it('opens the model manager and caches models', async () => {
+    const webLLMAPI = await import('@/components/AI/WebLLMAPI');
+    SidebarState.useState.mockReturnValue({
+      showAIInput: true,
+    });
+    const mockLogState = { isAIProcessing: false, isSystemProcessing: false, reasoning: '' };
+    LogState.useState.mockReturnValue(mockLogState);
+    LogState.usePassiveState.mockReturnValue(mockLogState);
+    const tabUpdate = vi.fn();
+    TabState.useState.mockReturnValue(
+      Object.assign(tabUpdate, {
+        openTabs: [],
+        activeTabId: null,
+      }),
+    );
+    const mockAppState = { fs: {}, isMobile: false };
+    AppState.useState.mockReturnValue(mockAppState);
+    AppState.usePassiveState.mockReturnValue(mockAppState);
+    EditorState.useState.mockReturnValue(vi.fn());
+
+    render(<Prompt />);
+
+    await act(async () => {
+      fireEvent.click(screen.getByLabelText('Manage AI models'));
+    });
+
+    expect(screen.getByRole('heading', { name: 'AI Models' })).toBeDefined();
+    expect(screen.getByText('Qwen2.5 Coder 7B')).toBeDefined();
+    expect(screen.getByText(/Best code quality/)).toBeDefined();
+
+    await act(async () => {
+      fireEvent.click(screen.getAllByText('Cache')[0]);
+    });
+
+    expect(webLLMAPI.cacheWebLLMModel).toHaveBeenCalled();
   });
 
   it('renders collapsed when showAIInput is false', async () => {

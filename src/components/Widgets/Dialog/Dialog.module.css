@@ -21,6 +21,10 @@
   border-radius: 12px;
   width: 90%;
   max-width: 400px;
+  max-height: calc(100vh - 32px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   box-shadow: 0 20px 40px rgb(0 0 0 / 40%);
   animation: modal-in 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
@@ -40,6 +44,11 @@
 .header {
   padding: 20px 24px;
   border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-shrink: 0;
 }
 
 .header h3 {
@@ -48,8 +57,37 @@
   color: var(--text-main);
 }
 
+.closeBtn {
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--border-light);
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: inherit;
+  font-size: 18px;
+  line-height: 0;
+  padding: 0;
+  transition: all 0.2s;
+}
+
+.closeBtn:hover {
+  background: var(--bg-surface);
+  color: var(--text-main);
+}
+
 .content {
   padding: 20px 24px;
+  min-height: 0;
+  overflow: auto;
+}
+
+.customContent {
+  overflow: hidden;
 }
 
 .message {

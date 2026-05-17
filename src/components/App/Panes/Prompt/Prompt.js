@@ -9,6 +9,7 @@ import { LogState } from '@/components/App/Views/LogArea';
 import { Icons } from '@/components/Core/Base/Icons';
 import { createState } from '@/components/Core/Base/State';
 import Settings from '@/components/Storage/Settings';
+import Dialog from '@/components/Widgets/Dialog/Dialog';
 import Select from '@/components/Widgets/Select';
 import Tooltip from '@/components/Widgets/Tooltip/Tooltip';
 import { formatShortcut } from '@/utils/os';
@@ -29,6 +30,7 @@ export default function Prompt() {
     draftVal: '',
     isReasoningVisible: true,
     selectedModel: getInitialSelectedModel(),
+    isModelManagerOpen: false,
   });
   const {
     val = '',
@@ -36,9 +38,13 @@ export default function Prompt() {
     draftVal = '',
     isReasoningVisible = true,
     selectedModel = RECOMMENDED_WEB_LLM_MODEL.id,
+    isModelManagerOpen = false,
   } = promptUiState || {};
   const [isCopied, setIsCopied] = React.useState(false);
   const [cachedModelIds, setCachedModelIds] = React.useState([]);
+  const [modelCacheWork, setModelCacheWork] = React.useState(null);
+  const [modelCacheProgress, setModelCacheProgress] = React.useState('');
+  const [modelCacheError, setModelCacheError] = React.useState('');
   const hasLoadedModelCacheRef = useRef(false);
   const reasoningRef = useRef(null);
 
@@ -65,13 +71,56 @@ export default function Prompt() {
     if (hasLoadedModelCacheRef.current) return;
     hasLoadedModelCacheRef.current = true;
 
-    import('@/components/AI/WebLLMAPI')
+    refreshCachedModelIds();
+  };
+
+  const refreshCachedModelIds = () => {
+    return import('@/components/AI/WebLLMAPI')
       .then(({ getCachedWebLLMModelIds }) => getCachedWebLLMModelIds())
       .then(setCachedModelIds)
       .catch((error) => {
         hasLoadedModelCacheRef.current = false;
         console.warn('[Prompt] Failed to load cached model metadata:', error);
       });
+  };
+
+  const openModelManager = () => {
+    promptUiState((draft) => {
+      draft.isModelManagerOpen = true;
+    });
+    loadCachedModelIds();
+  };
+
+  const closeModelManager = () => {
+    promptUiState((draft) => {
+      draft.isModelManagerOpen = false;
+    });
+    setModelCacheError('');
+    setModelCacheProgress('');
+  };
+
+  const handleModelCacheAction = async (model, action) => {
+    const key = `${action}:${model.id}`;
+    setModelCacheWork(key);
+    setModelCacheError('');
+    setModelCacheProgress(action === 'cache' ? 'Preparing download...' : 'Removing cache...');
+
+    try {
+      if (action === 'cache') {
+        const { cacheWebLLMModel } = await import('@/components/AI/WebLLMAPI');
+        await cacheWebLLMModel(model.id, setModelCacheProgress);
+      } else {
+        const { deleteCachedWebLLMModel } = await import('@/components/AI/WebLLMAPI');
+        await deleteCachedWebLLMModel(model.id);
+      }
+      hasLoadedModelCacheRef.current = true;
+      await refreshCachedModelIds();
+      setModelCacheProgress(action === 'cache' ? 'Cached and ready.' : 'Cache removed.');
+    } catch (error) {
+      setModelCacheError(error.message || String(error));
+    } finally {
+      setModelCacheWork(null);
+    }
   };
 
   const handleStop = (e) => {
@@ -351,21 +400,107 @@ export default function Prompt() {
           onFocusCapture={loadCachedModelIds}
           onPointerDown={loadCachedModelIds}
         >
-          <Select
-            id="ai-model-select"
-            label="Model"
-            value={selectedModelInfo.id}
-            options={modelOptions}
-            onChange={(nextModel) =>
-              promptUiState((draft) => {
-                draft.selectedModel = nextModel;
-                Settings.setAIPromptModel(nextModel);
-              })
-            }
-            disabled={isAIProcessing || !isOpen}
-            tabIndex={isOpen ? undefined : -1}
-          />
+          <div className={styles.modelControlRow}>
+            <Select
+              id="ai-model-select"
+              label="Model"
+              value={selectedModelInfo.id}
+              options={modelOptions}
+              onChange={(nextModel) =>
+                promptUiState((draft) => {
+                  draft.selectedModel = nextModel;
+                  Settings.setAIPromptModel(nextModel);
+                })
+              }
+              disabled={isAIProcessing || !isOpen}
+              tabIndex={isOpen ? undefined : -1}
+              className={styles.modelSelect}
+            />
+            <Tooltip content="Manage AI models">
+              <button
+                type="button"
+                className={styles.modelManagerButton}
+                onClick={openModelManager}
+                disabled={!isOpen}
+                aria-label="Manage AI models"
+                tabIndex={isOpen ? undefined : -1}
+              >
+                <Icons.Info size={16} />
+              </button>
+            </Tooltip>
+          </div>
         </div>
+        <Dialog
+          isOpen={isModelManagerOpen}
+          title="AI Models"
+          onCancel={closeModelManager}
+          footer={null}
+          className={styles.modelDialog}
+        >
+          <div className={styles.modelManager}>
+            {WEB_LLM_MODELS.map((model) => {
+              const isCached = cachedModelIds.includes(model.id);
+              const cacheKey = `${isCached ? 'uncache' : 'cache'}:${model.id}`;
+              const isBusy =
+                modelCacheWork === cacheKey || modelCacheWork?.endsWith(`:${model.id}`);
+              const isSelected = model.id === selectedModelInfo.id;
+
+              return (
+                <section key={model.id} className={styles.modelManagerItem}>
+                  <div className={styles.modelManagerInfo}>
+                    <div className={styles.modelManagerTitleRow}>
+                      <h4>{model.name}</h4>
+                      <div className={styles.modelManagerBadges}>
+                        {model.recommended && <span>Recommended</span>}
+                        {isSelected && <span>Selected</span>}
+                        {isCached && <span>Cached</span>}
+                      </div>
+                    </div>
+                    <p>{model.requirement}</p>
+                    <dl className={styles.modelManagerDetails}>
+                      {model.details?.map(([label, value]) => (
+                        <div key={label} className={styles.modelManagerDetail}>
+                          <dt>{label}</dt>
+                          <dd>{value}</dd>
+                        </div>
+                      ))}
+                    </dl>
+                  </div>
+                  <div className={styles.modelManagerActions}>
+                    <code>{model.id}</code>
+                    <div className={styles.modelManagerButtonGroup}>
+                      <button
+                        type="button"
+                        className={`${styles.modelCacheToggle} ${
+                          isCached ? styles.modelCacheToggleOn : ''
+                        }`}
+                        aria-pressed={isCached}
+                        onClick={() =>
+                          handleModelCacheAction(model, isCached ? 'uncache' : 'cache')
+                        }
+                        disabled={Boolean(modelCacheWork)}
+                      >
+                        <span className={styles.modelCacheToggleTrack}>
+                          <span className={styles.modelCacheToggleThumb} />
+                        </span>
+                        <span>{isBusy ? 'Working...' : isCached ? 'Cached' : 'Cache'}</span>
+                      </button>
+                    </div>
+                  </div>
+                </section>
+              );
+            })}
+            {(modelCacheProgress || modelCacheError) && (
+              <div
+                className={`${styles.modelManagerStatus} ${
+                  modelCacheError ? styles.modelManagerError : ''
+                }`}
+              >
+                {modelCacheError || modelCacheProgress}
+              </div>
+            )}
+          </div>
+        </Dialog>
         <div
           className={`${styles.reasoningWrapper} ${
             logState.reasoning && isReasoningVisible ? styles.reasoningVisible : ''
