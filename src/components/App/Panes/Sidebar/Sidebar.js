@@ -21,7 +21,7 @@ const treeSorter = (a, b) => {
 
 // Filter the folder tree recursively based on the search input
 const filterTree = (nodes, query) => {
-  if (!query) return nodes.sort(treeSorter);
+  if (!query) return [...nodes].sort(treeSorter);
   const q = query.toLowerCase();
   return nodes
     .map((node) => {
