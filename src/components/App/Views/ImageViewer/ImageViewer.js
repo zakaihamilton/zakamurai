@@ -1,21 +1,21 @@
 import React, { useEffect, useState } from 'react';
 import styles from './ImageViewer.module.css';
 
-export default function ImageViewer({ file }) {
+export default function ImageViewer({ tab }) {
   const [imageUrl, setImageUrl] = useState(null);
 
   useEffect(() => {
     let isActive = true;
     let urlToRevoke = null;
 
-    if (file?.fsHandle) {
-      file.fsHandle.getFile().then((f) => {
+    if (tab?.fsHandle) {
+      tab.fsHandle.getFile().then((f) => {
         if (!isActive) return;
         const url = URL.createObjectURL(f);
         urlToRevoke = url;
         setImageUrl(url);
       });
-    } else if (file?.content) {
+    } else if (tab?.file?.content) {
       // For when file content is loaded differently
     }
 
@@ -26,7 +26,7 @@ export default function ImageViewer({ file }) {
       }
       setImageUrl(null);
     };
-  }, [file]);
+  }, [tab]);
 
   if (!imageUrl) {
     return (
@@ -41,11 +41,11 @@ export default function ImageViewer({ file }) {
 
   return (
     <div className={styles.container}>
-      {file?.name?.match(/\.(webm|mp4|ogg)$/i) ? (
+      {tab?.file?.name?.match(/\.(webm|mp4|ogg)$/i) ? (
         // biome-ignore lint/a11y/useMediaCaption: we don't have captions for these raw files
         <video src={imageUrl} controls className={styles.image} />
       ) : (
-        <img src={imageUrl} alt={file?.name || 'Image'} className={styles.image} />
+        <img src={imageUrl} alt={tab?.file?.name || 'Image'} className={styles.image} />
       )}
     </div>
   );
