@@ -73,7 +73,7 @@ export const highlightCode = (
   };
 
   // 1. Strings (highest priority to avoid // in urls being parsed as comments)
-  escaped = escaped.replace(/(".*?"|'.*?'|`.*?`)/g, (m) => pushToken(m, 'hlStr'));
+  escaped = escaped.replace(/("(?:[^"\\\\]|\\\\.)*"|'(?:[^'\\\\]|\\\\.)*'|`(?:[^`\\\\]|\\\\.)*?`)/g, (m) => pushToken(m, 'hlStr'));
 
   // 2. Comments
   escaped = escaped.replace(/(\/\/.+)/g, (m) => pushToken(m, 'hlComment'));
