@@ -1,5 +1,9 @@
 const highlightCache = new Map();
 const MAX_CACHE_SIZE = 50;
+const MAX_HIGHLIGHT_CHARS = 250000;
+
+const escapeHtml = (value) =>
+  value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
 export const highlightCode = (
   code,
@@ -13,6 +17,7 @@ export const highlightCode = (
   cursorPos,
 ) => {
   if (!code) return '';
+  if (code.length > MAX_HIGHLIGHT_CHARS) return escapeHtml(code);
 
   const cacheKey = JSON.stringify([
     code,
@@ -35,8 +40,6 @@ export const highlightCode = (
   const selectedLines = state.selectedLines?.[filePath] || [];
 
   const sortedDiffs = [...diffs].sort((a, b) => b.start - a.start);
-  const escapeHtml = (value) =>
-    value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
   let escaped = code;
 

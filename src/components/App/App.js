@@ -107,7 +107,12 @@ export default function App() {
   // Sync fs when it changes
   useEffect(() => {
     appState((draft) => {
-      draft.fs = fs;
+      if (draft.fs !== fs) {
+        draft.fs = fs;
+      }
+      if (fs.rootHandle?.name && draft.projectName !== fs.rootHandle.name) {
+        draft.projectName = fs.rootHandle.name;
+      }
     });
   }, [fs, appState]);
 

@@ -3,6 +3,20 @@ import styles from './EditorArea.module.css';
 
 import useEditorShortcuts from './EditorShortcuts';
 
+const getCursorPosition = (content, index) => {
+  let line = 1;
+  let lineStart = 0;
+
+  for (let cursor = 0; cursor < index; cursor++) {
+    if (content.charCodeAt(cursor) === 10) {
+      line++;
+      lineStart = cursor + 1;
+    }
+  }
+
+  return { line, col: index - lineStart + 1, index };
+};
+
 export default function CodeEditor({
   localContent,
   handleChange,
@@ -25,13 +39,9 @@ export default function CodeEditor({
       if (!onCursorUpdate) return;
       const textarea = e.target;
       const start = textarea.selectionStart;
-      const textBefore = localContent.substring(0, start);
-      const lines = textBefore.split('\n');
-      const line = lines.length;
-      const col = lines[lines.length - 1].length + 1;
 
       lastReportedIndex.current = start;
-      onCursorUpdate({ line, col, index: start });
+      onCursorUpdate(getCursorPosition(localContent, start));
     },
     [onCursorUpdate, localContent],
   );

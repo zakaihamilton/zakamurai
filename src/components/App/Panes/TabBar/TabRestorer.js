@@ -32,14 +32,10 @@ export function useTabRestorer() {
                 const content = isMediaFile(tab.label) ? null : await fs.readFile(handle);
                 restoredTabs.push({
                   ...tab,
-                  file: { name: tab.label, path: tab.id.split('/') },
+                  file: { name: tab.label, path: tab.id.split('/'), content },
                   fsHandle: handle,
                 });
-                if (
-                  content !== null &&
-                  content !== undefined &&
-                  !editorState.fileContents?.[tab.id]
-                ) {
+                if (content !== null && content !== undefined) {
                   newContents[tab.id] = content;
                 }
               }

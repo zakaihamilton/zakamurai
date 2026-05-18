@@ -172,6 +172,8 @@
   cursor: pointer;
   transition: all 0.1s;
   min-height: 1.6em;
+  left: 0;
+  right: 0;
 }
 
 .gutterLine:hover {

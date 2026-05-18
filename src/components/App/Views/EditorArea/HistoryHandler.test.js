@@ -4,7 +4,6 @@ import HistoryHandler from './HistoryHandler';
 
 describe('HistoryHandler', () => {
   let state;
-  let setLocalContent;
   const filePath = 'test.js';
 
   beforeEach(() => {
@@ -25,7 +24,6 @@ describe('HistoryHandler', () => {
     state.fileContents = {};
     state.cursorPos = {};
     state.history = {};
-    setLocalContent = vi.fn();
   });
 
   afterEach(() => {
@@ -33,22 +31,13 @@ describe('HistoryHandler', () => {
     vi.useRealTimers();
   });
 
-  it('initializes local content from global state', () => {
+  it('does not update local content from history bookkeeping', () => {
     state.fileContents[filePath] = 'initial content';
     state.cursorPos[filePath] = { line: 1, col: 1, index: 0 };
 
-    render(
-      <HistoryHandler
-        filePath={filePath}
-        localContent=""
-        setLocalContent={setLocalContent}
-        state={state}
-      />,
-    );
+    render(<HistoryHandler filePath={filePath} localContent="" state={state} />);
 
-    expect(setLocalContent).toHaveBeenCalledWith('initial content');
-    // Check if state was called to initialize history
-    expect(state).toHaveBeenCalled();
+    expect(state).not.toHaveBeenCalled();
   });
 
   it('debounces history snapshots when local content changes', () => {
@@ -56,63 +45,35 @@ describe('HistoryHandler', () => {
     let localContent = 'initial';
 
     const { rerender } = render(
-      <HistoryHandler
-        filePath={filePath}
-        localContent={localContent}
-        setLocalContent={setLocalContent}
-        state={state}
-      />,
+      <HistoryHandler filePath={filePath} localContent={localContent} state={state} />,
     );
 
     // Change local content
     localContent = 'changed';
-    rerender(
-      <HistoryHandler
-        filePath={filePath}
-        localContent={localContent}
-        setLocalContent={setLocalContent}
-        state={state}
-      />,
-    );
+    state.fileContents[filePath] = localContent;
+    rerender(<HistoryHandler filePath={filePath} localContent={localContent} state={state} />);
 
     // Should not have updated state yet (debounced)
-    expect(state).toHaveBeenCalledTimes(1); // Only initial call
+    expect(state).not.toHaveBeenCalled();
 
     // Fast forward time
     vi.advanceTimersByTime(300);
 
     // Now it should have been called to push to history
-    expect(state).toHaveBeenCalledTimes(2);
+    expect(state).toHaveBeenCalledTimes(1);
   });
 
-  it('resets local content when switching files', () => {
+  it('updates history refs without writing state when switching files', () => {
     state.fileContents['file1.js'] = 'content 1';
     state.fileContents['file2.js'] = 'content 2';
 
-    // Initial render with matching content shouldn't call setLocalContent
     const { rerender } = render(
-      <HistoryHandler
-        filePath="file1.js"
-        localContent="content 1"
-        setLocalContent={setLocalContent}
-        state={state}
-      />,
+      <HistoryHandler filePath="file1.js" localContent="content 1" state={state} />,
     );
 
-    expect(setLocalContent).not.toHaveBeenCalled();
+    rerender(<HistoryHandler filePath="file2.js" localContent="content 1" state={state} />);
 
-    // Rerender with a different filePath
-    rerender(
-      <HistoryHandler
-        filePath="file2.js"
-        localContent="content 1"
-        setLocalContent={setLocalContent}
-        state={state}
-      />,
-    );
-
-    // Should be called because fileSwitched is true
-    expect(setLocalContent).toHaveBeenCalledWith('content 2');
+    expect(state).not.toHaveBeenCalled();
   });
 
   it('correctly captures the cursor position for the last snapshot', () => {
@@ -120,29 +81,17 @@ describe('HistoryHandler', () => {
     state.cursorPos[filePath] = { line: 1, col: 1, index: 0 };
 
     const { rerender } = render(
-      <HistoryHandler
-        filePath={filePath}
-        localContent=""
-        setLocalContent={setLocalContent}
-        state={state}
-      />,
+      <HistoryHandler filePath={filePath} localContent="" state={state} />,
     );
 
-    // Initial snapshot happens on mount because localContent ("") !== globalContent ("initial")
+    // Opening a file syncs local state without writing global history.
     vi.runAllTimers();
-    expect(state.history[filePath]).toBeDefined();
-    expect(state.history[filePath].lastSnapshotCursor.index).toBe(0);
+    expect(state.history[filePath]).toBeUndefined();
 
     // User types "abc", cursor moves to 3
     state.cursorPos[filePath] = { line: 1, col: 4, index: 3 };
-    rerender(
-      <HistoryHandler
-        filePath={filePath}
-        localContent="abc"
-        setLocalContent={setLocalContent}
-        state={state}
-      />,
-    );
+    state.fileContents[filePath] = 'abc';
+    rerender(<HistoryHandler filePath={filePath} localContent="abc" state={state} />);
 
     // Snapshot triggers after 300ms
     vi.advanceTimersByTime(300);

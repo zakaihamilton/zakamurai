@@ -64,7 +64,7 @@ export default function WorkspaceArea() {
             (isMediaFile(activeTab.file?.name) ? (
               <ImageViewer tab={activeTab} />
             ) : (
-              <EditorArea file={activeTab.file} />
+              <EditorArea key={activeTab.id} file={activeTab.file} fsHandle={activeTab.fsHandle} />
             ))}
           {activeTab?.type === 'logs' && <LogArea />}
           {activeTab?.type === 'preview' && (

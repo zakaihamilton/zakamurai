@@ -84,6 +84,13 @@
   padding: 2px 0;
 }
 
+.nameMatch {
+  background: color-mix(in srgb, var(--accent) 28%, transparent);
+  color: var(--text-main);
+  border-radius: 3px;
+  padding: 0 1px;
+}
+
 .editInput {
   flex: 1;
   min-width: 100px;

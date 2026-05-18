@@ -112,9 +112,36 @@ describe('Sidebar', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByText('Icons.jsx')).toBeDefined();
+      expect(screen.getByText('Icons').closest('span')?.textContent).toBe('Icons.jsx');
       expect(screen.queryByText('AnimatedCard.jsx')).toBeNull();
       expect(screen.queryByText('package.json')).toBeNull();
+    });
+  });
+
+  it('highlights the matching letters in visible file names', async () => {
+    vi.spyOn(SidebarState, 'useState').mockReturnValue({
+      isSidebarOpen: true,
+      folderTree,
+      showAIInput: true,
+      expandedFolders: {},
+    });
+    vi.spyOn(AppState, 'useState').mockReturnValue({
+      projectName: 'Test Project',
+      fs: { mode: null, mountLocal: vi.fn() },
+    });
+    vi.spyOn(TabState, 'useState').mockReturnValue({
+      activeTabId: null,
+    });
+    vi.spyOn(EditorState, 'useState').mockReturnValue({});
+
+    render(<Sidebar />);
+    fireEvent.change(screen.getByPlaceholderText(/Search files/i), {
+      target: { value: 'icons' },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText('Icons')).toBeDefined();
+      expect(screen.getByText('Icons').tagName).toBe('MARK');
     });
   });
 

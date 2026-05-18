@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 
 export default function DiffHandler({
   filePath,
@@ -8,6 +8,8 @@ export default function DiffHandler({
   fs,
   onStateChange,
 }) {
+  const lastPublishedActions = useRef(null);
+
   const handleApprove = useCallback(async () => {
     state((draft) => {
       if (draft.pendingDiffs) {
@@ -83,6 +85,16 @@ export default function DiffHandler({
   const handleCursorUpdate = useCallback(
     (pos) => {
       state((draft) => {
+        const current = draft.cursorPos?.[filePath];
+        if (
+          current &&
+          current.line === pos.line &&
+          current.col === pos.col &&
+          current.index === pos.index
+        ) {
+          return;
+        }
+
         draft.cursorPos = {
           ...draft.cursorPos,
           [filePath]: pos,
@@ -94,12 +106,24 @@ export default function DiffHandler({
 
   // Provide methods to parent
   useEffect(() => {
-    onStateChange({
+    const nextActions = {
       handleApprove,
       handleUndo,
       toggleLine,
       handleCursorUpdate,
-    });
+    };
+    const current = lastPublishedActions.current;
+    if (
+      current?.handleApprove === nextActions.handleApprove &&
+      current?.handleUndo === nextActions.handleUndo &&
+      current?.toggleLine === nextActions.toggleLine &&
+      current?.handleCursorUpdate === nextActions.handleCursorUpdate
+    ) {
+      return;
+    }
+
+    lastPublishedActions.current = nextActions;
+    onStateChange(nextActions);
   }, [handleApprove, handleUndo, toggleLine, handleCursorUpdate, onStateChange]);
 
   return null;

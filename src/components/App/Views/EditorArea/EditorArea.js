@@ -5,6 +5,8 @@ import { createState } from '@/components/Core/Base/State';
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import styles from './EditorArea.module.css';
 
+import { DEFAULT_CONTENTS, SCRATCH_CONTENTS } from '@/components/Storage/InitialData';
+import Settings from '@/components/Storage/Settings';
 import { formatCode } from '@/utils/formatter';
 import CodeEditor from './CodeEditor';
 import useCompletion from './CompletionHandler';
@@ -18,23 +20,75 @@ import { highlightCode } from './highlighter';
 
 export const EditorState = createState('EditorState');
 
-export default function EditorArea({ file }) {
+const countLines = (value) => {
+  if (!value) return 1;
+  let count = 1;
+  for (let index = 0; index < value.length; index++) {
+    if (value.charCodeAt(index) === 10) count++;
+  }
+  return count;
+};
+
+const getTemplateContents = () =>
+  Settings.getTemplate() === 'scratch' ? SCRATCH_CONTENTS : DEFAULT_CONTENTS;
+
+export default function EditorArea({ file, fsHandle }) {
   const appState = AppState.useState();
   const tabState = TabState.useState();
   const { fs } = appState;
   const state = EditorState.useState();
   const filePath = file?.path?.join('/') || file?.name;
+  const fallbackContent = getTemplateContents()[filePath] ?? file?.content ?? '';
 
-  const [localContent, setLocalContent] = useState(() => state.fileContents?.[filePath] || '');
+  const [localContent, setLocalContent] = useState(
+    () => state.fileContents?.[filePath] ?? fallbackContent,
+  );
+  const localContentRef = useRef(localContent);
+  const loadedLocalFileRef = useRef(null);
+
+  useEffect(() => {
+    localContentRef.current = localContent;
+  }, [localContent]);
   const [showFind, setShowFind] = useState(false);
 
   // Sync localContent when state.fileContents changes externally (e.g. from AI)
   useEffect(() => {
-    const externalContent = state.fileContents?.[filePath] || '';
+    const externalContent = state.fileContents?.[filePath] ?? fallbackContent;
     if (externalContent !== localContent) {
       setLocalContent(externalContent);
     }
-  }, [state.fileContents?.[filePath], filePath, localContent, state]);
+  }, [state.fileContents?.[filePath], filePath, fallbackContent, localContent]);
+
+  useEffect(() => {
+    if ((fs.mode !== 'local' && fs.mode !== 'opfs') || !filePath || !fs.readFile) return;
+    if (loadedLocalFileRef.current === filePath) return;
+
+    let cancelled = false;
+    const startingContent = localContentRef.current;
+    const loadContent = async () => {
+      const handle = fsHandle || (await fs.getFileHandleAtPath?.(filePath));
+      if (!handle || cancelled) return;
+
+      const content = await fs.readFile(handle);
+      if (cancelled) return;
+
+      loadedLocalFileRef.current = filePath;
+      setLocalContent((current) => (current === startingContent ? content : current));
+      state((draft) => {
+        if (localContentRef.current === startingContent) {
+          draft.fileContents = { ...draft.fileContents, [filePath]: content };
+        }
+      });
+    };
+
+    loadContent().catch((err) => {
+      console.error(`Failed to load editor content for ${filePath}`, err);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [filePath, fs, fsHandle, state]);
 
   const [findQuery, setFindQuery] = useState('');
   const [replaceQuery, setReplaceQuery] = useState('');
@@ -58,9 +112,7 @@ export default function EditorArea({ file }) {
     }
   };
 
-  // Generate line numbers array based on line breaks
-  const linesCount = localContent.split('\n').length;
-  const linesArr = Array.from({ length: linesCount }, (_, i) => i + 1);
+  const linesCount = useMemo(() => countLines(localContent), [localContent]);
 
   const handleChange = (e) => {
     const newVal = e.target.value;
@@ -198,12 +250,7 @@ export default function EditorArea({ file }) {
 
   return (
     <div className={styles.editorArea}>
-      <HistoryHandler
-        filePath={filePath}
-        localContent={localContent}
-        setLocalContent={setLocalContent}
-        state={state}
-      />
+      <HistoryHandler filePath={filePath} localContent={localContent} state={state} />
       <EditorHeader
         filePath={filePath}
         showFind={showFind}
@@ -260,7 +307,7 @@ export default function EditorArea({ file }) {
               onScroll={() => handleScroll(leftScrollRef, rightScrollRef)}
               className={`${styles.sideBySideScroll} scrollHide`}
             >
-              <Gutter linesArr={diffData.originalContent.split('\n').map((_, i) => i + 1)} />
+              <Gutter linesCount={countLines(diffData.originalContent)} scrollRef={leftScrollRef} />
               <CodeEditor
                 localContent={diffData.originalContent}
                 highlightedCode={originalHighlightedCode}
@@ -281,9 +328,10 @@ export default function EditorArea({ file }) {
               className={`${styles.sideBySideScroll} scrollHide`}
             >
               <Gutter
-                linesArr={linesArr}
+                linesCount={linesCount}
                 selectedLines={selectedLines}
                 toggleLine={diffActions.toggleLine}
+                scrollRef={rightScrollRef}
               />
               <CodeEditor
                 localContent={localContent}
@@ -300,9 +348,10 @@ export default function EditorArea({ file }) {
       ) : (
         <div ref={scrollContainerRef} className={`${styles.scrollContainer} scrollHide`}>
           <Gutter
-            linesArr={linesArr}
+            linesCount={linesCount}
             selectedLines={selectedLines}
             toggleLine={diffActions.toggleLine}
+            scrollRef={scrollContainerRef}
           />
 
           <CodeEditor
