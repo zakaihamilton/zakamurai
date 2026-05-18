@@ -2,6 +2,7 @@ import { AppState } from '@/components/App/AppState';
 import { TabState } from '@/components/App/Panes/TabBar';
 import { EditorState } from '@/components/App/Views/EditorArea';
 import Settings from '@/components/Storage/Settings';
+import { isMediaFile } from '@/utils/file';
 import { useEffect, useRef } from 'react';
 
 export function useTabRestorer() {
@@ -28,13 +29,17 @@ export function useTabRestorer() {
             try {
               const handle = await fs.getFileHandleAtPath(tab.id);
               if (handle) {
-                const content = await fs.readFile(handle);
+                const content = isMediaFile(tab.label) ? null : await fs.readFile(handle);
                 restoredTabs.push({
                   ...tab,
                   file: { name: tab.label, path: tab.id.split('/') },
                   fsHandle: handle,
                 });
-                if (content !== undefined && !editorState.fileContents?.[tab.id]) {
+                if (
+                  content !== null &&
+                  content !== undefined &&
+                  !editorState.fileContents?.[tab.id]
+                ) {
                   newContents[tab.id] = content;
                 }
               }

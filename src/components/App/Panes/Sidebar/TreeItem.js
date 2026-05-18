@@ -7,6 +7,7 @@ import ContextMenu from '@/components/Widgets/ContextMenu/ContextMenu';
 import Dialog from '@/components/Widgets/Dialog/Dialog';
 import { useNotification } from '@/components/Widgets/Notification/Notification';
 import Tooltip from '@/components/Widgets/Tooltip/Tooltip';
+import { isMediaFile } from '@/utils/file';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import styles from './TreeItem.module.css';
 
@@ -135,7 +136,7 @@ export default function TreeItem({
     } else {
       const openFile = async () => {
         let content = '';
-        if (fs.mode === 'local' && fsHandle) {
+        if (fs.mode === 'local' && fsHandle && !isMediaFile(item.name)) {
           content = await fs.readFile(fsHandle);
         }
 
@@ -150,7 +151,7 @@ export default function TreeItem({
           draft.activeTabId = currentPathStr;
         });
 
-        if (content) {
+        if (content && !isMediaFile(item.name)) {
           editorState((draft) => {
             if (!draft.fileContents) draft.fileContents = {};
             draft.fileContents[currentPathStr] = content;
@@ -654,6 +655,8 @@ export default function TreeItem({
             <div className={styles.spinner} />
           ) : item.type === 'folder' ? (
             <Icons.Folder open={isExpanded} />
+          ) : isMediaFile(item.name) ? (
+            <Icons.Image />
           ) : (
             <Icons.File />
           )}
