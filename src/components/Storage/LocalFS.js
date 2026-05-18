@@ -105,10 +105,12 @@ export function useFileSystem() {
       setMode('local');
       await saveHandle(handle);
       await refreshDirectory(handle);
+      return handle;
     } catch (err) {
       if (err.name !== 'AbortError') {
         setError(`Failed to mount local FS: ${err.message}`);
       }
+      return null;
     }
   }, [refreshDirectory]);
 

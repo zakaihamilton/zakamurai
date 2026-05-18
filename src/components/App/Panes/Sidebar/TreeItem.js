@@ -10,7 +10,7 @@ import Tooltip from '@/components/Widgets/Tooltip/Tooltip';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import styles from './TreeItem.module.css';
 
-const treeSorter = (a, b) => {
+const _treeSorter = (a, b) => {
   const aType = a.type || (a.kind === 'directory' ? 'folder' : 'file');
   const bType = b.type || (b.kind === 'directory' ? 'folder' : 'file');
 
@@ -47,20 +47,21 @@ export default function TreeItem({
   const { addNotification } = useNotification();
 
   const currentPathStr = item.path.join('/');
-  // Force expansion if we are actively filtering, otherwise use standard state
-  const isExpanded = filterText ? true : expandedFolders[currentPathStr] !== false;
+
+  // Default expansion state rules:
+  // If we are actively filtering, always force expansion.
+  // Otherwise, use stored state.
+  // If no state is stored (undefined), default to false if path contains "node_modules", else true.
+  const storedExpanded = expandedFolders[currentPathStr];
+  const isExpanded = filterText
+    ? true
+    : storedExpanded !== undefined
+      ? storedExpanded
+      : !currentPathStr.includes('node_modules');
+
   const isActive = activeTabId === currentPathStr;
 
-  const [children, setChildren] = useState(() => {
-    if (item.children) {
-      return [...item.children].sort(treeSorter).map((child) => ({
-        ...child,
-        path: [...item.path, child.name],
-      }));
-    }
-    return [];
-  });
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, _setIsLoading] = useState(false);
   const [showSpinner, setShowSpinner] = useState(false);
 
   // Delay spinner to prevent flashing on fast loads
@@ -74,62 +75,13 @@ export default function TreeItem({
     return () => clearTimeout(timeout);
   }, [isLoading]);
 
-  // Sync children state from props for mock mode
-  useEffect(() => {
-    if (item.children && fs.mode !== 'local') {
-      setChildren(
-        [...item.children].sort(treeSorter).map((child) => ({
-          ...child,
-          path: [...item.path, child.name],
-        })),
-      );
-    }
-  }, [item.children, item.path, fs.mode]);
-
-  const loadLocalChildren = useCallback(
-    async (force = false) => {
-      if (!fsHandle || item.type !== 'folder') return;
-      if (!force && children.length > 0) return;
-      setIsLoading(true);
-      try {
-        const entries = [];
-        for await (const [name, handle] of fsHandle.entries()) {
-          entries.push({
-            name,
-            kind: handle.kind,
-            handle,
-            type: handle.kind === 'directory' ? 'folder' : 'file',
-            path: [...item.path, name],
-          });
-        }
-        entries.sort(treeSorter);
-        setChildren(entries);
-      } catch (err) {
-        console.error('Failed to load sub-directory:', err);
-      } finally {
-        setIsLoading(false);
-      }
-    },
-    [fsHandle, item.type, item.path, children.length],
-  );
-
-  useEffect(() => {
-    if (isExpanded && fs.mode === 'local' && fsHandle) {
-      loadLocalChildren(true);
-    }
-  }, [isExpanded, fs.mode, fsHandle, loadLocalChildren]);
-
   const handleToggle = () => {
     if (isEditing) return; // Prevent toggle when clicking to edit
     if (item.type === 'folder') {
-      if (!isExpanded && fs.mode === 'local') {
-        loadLocalChildren();
-      }
       sidebarState((draft) => {
-        const current = draft.expandedFolders[currentPathStr] !== false;
         draft.expandedFolders = {
           ...draft.expandedFolders,
-          [currentPathStr]: !current,
+          [currentPathStr]: !isExpanded,
         };
       });
     } else {
@@ -336,7 +288,6 @@ export default function TreeItem({
         } else {
           await fsHandle.getDirectoryHandle(createValue, { create: true });
         }
-        await loadLocalChildren(true);
         if (!isExpanded) handleToggle();
         fs.triggerRefresh();
       } catch (err) {
@@ -822,22 +773,6 @@ export default function TreeItem({
         onConfirm={confirmDelete}
         onCancel={() => setShowDeleteDialog(false)}
       />
-
-      {item.type === 'folder' &&
-        isExpanded &&
-        children.map((child) => {
-          const childPath = [...item.path, child.name].join('/');
-          return (
-            <TreeItem
-              key={childPath}
-              item={child}
-              level={level + 1}
-              filterText={filterText}
-              fsHandle={child.handle}
-              parentHandle={fsHandle}
-            />
-          );
-        })}
     </div>
   );
 }
