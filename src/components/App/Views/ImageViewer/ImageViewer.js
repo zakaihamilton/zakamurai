@@ -1,4 +1,3 @@
-import { isVideoFile } from '@/utils/file';
 import React, { useEffect, useState } from 'react';
 import styles from './ImageViewer.module.css';
 
@@ -6,27 +5,28 @@ export default function ImageViewer({ file }) {
   const [imageUrl, setImageUrl] = useState(null);
 
   useEffect(() => {
+    let isActive = true;
+    let urlToRevoke = null;
+
     if (file?.fsHandle) {
       file.fsHandle.getFile().then((f) => {
+        if (!isActive) return;
         const url = URL.createObjectURL(f);
+        urlToRevoke = url;
         setImageUrl(url);
       });
     } else if (file?.content) {
-      // For when file content is loaded differently but it should be handled through fsHandle mostly
+      // For when file content is loaded differently
     }
 
     return () => {
-      // Cleanup url later when unmounting, wait for a new effect
+      isActive = false;
+      if (urlToRevoke) {
+        URL.revokeObjectURL(urlToRevoke);
+      }
+      setImageUrl(null);
     };
   }, [file]);
-
-  useEffect(() => {
-    return () => {
-      if (imageUrl) {
-        URL.revokeObjectURL(imageUrl);
-      }
-    };
-  }, [imageUrl]);
 
   if (!imageUrl) {
     return (
@@ -41,7 +41,7 @@ export default function ImageViewer({ file }) {
 
   return (
     <div className={styles.container}>
-      {isVideoFile(file?.name) ? (
+      {file?.name?.match(/\.(webm|mp4|ogg)$/i) ? (
         // biome-ignore lint/a11y/useMediaCaption: we don't have captions for these raw files
         <video src={imageUrl} controls className={styles.image} />
       ) : (
