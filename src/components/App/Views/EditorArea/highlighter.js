@@ -72,12 +72,12 @@ export const highlightCode = (
     return `${T_PRE}${idx}${T_POST}`;
   };
 
-  // 1. Comments (highest priority)
+  // 1. Strings (highest priority to avoid // in urls being parsed as comments)
+  escaped = escaped.replace(/(".*?"|'.*?'|`.*?`)/g, (m) => pushToken(m, 'hlStr'));
+
+  // 2. Comments
   escaped = escaped.replace(/(\/\/.+)/g, (m) => pushToken(m, 'hlComment'));
   escaped = escaped.replace(/(\/\*[\s\S]*?\*\/)/g, (m) => pushToken(m, 'hlComment'));
-
-  // 2. Strings
-  escaped = escaped.replace(/(".*?"|'.*?'|`.*?`)/g, (m) => pushToken(m, 'hlStr'));
 
   // 3. Language specific (CSS or JSX/HTML)
   if (filePath?.endsWith('.css')) {
