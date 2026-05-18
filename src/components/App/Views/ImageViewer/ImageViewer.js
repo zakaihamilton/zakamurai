@@ -41,7 +41,7 @@ export default function ImageViewer({ file }) {
 
   return (
     <div className={styles.container}>
-      {file?.name?.match(/\.(webm|mp4|ogg)$/i) ? (
+      {isVideoFile(file?.name) ? (
         // biome-ignore lint/a11y/useMediaCaption: we don't have captions for these raw files
         <video src={imageUrl} controls className={styles.image} />
       ) : (
