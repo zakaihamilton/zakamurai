@@ -1,4 +1,5 @@
 import Resizer from '@/components/Widgets/Resizer/Resizer';
+import { isMediaFile } from '@/utils/file';
 import React from 'react';
 import Node from '../../Core/Base/Node';
 import styles from '../App.module.css';
@@ -6,6 +7,7 @@ import { AppState } from '../AppState';
 import { Prompt, PromptState, SidebarState, TabBar, TabState } from '../Panes';
 import { PreviewState } from '../PreviewState';
 import EditorArea from '../Views/EditorArea';
+import ImageViewer from '../Views/ImageViewer';
 import Instructions from '../Views/Instructions';
 import LogArea from '../Views/LogArea';
 import PreviewArea from '../Views/PreviewArea';
@@ -58,7 +60,12 @@ export default function WorkspaceArea() {
       <div className={styles.workspaceMain}>
         <TabBar />
         <div className={styles.editorContainer}>
-          {activeTab?.type === 'file' && <EditorArea file={activeTab.file} />}
+          {activeTab?.type === 'file' &&
+            (isMediaFile(activeTab.file?.name) ? (
+              <ImageViewer file={activeTab.file} />
+            ) : (
+              <EditorArea file={activeTab.file} />
+            ))}
           {activeTab?.type === 'logs' && <LogArea />}
           {activeTab?.type === 'preview' && (
             <PreviewArea htmlContent={htmlContent} isCompilerReady={isCompilerReady} />

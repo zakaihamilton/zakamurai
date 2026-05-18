@@ -3,6 +3,7 @@ import { Icons } from '@/components/Core/Base/Icons';
 import { createState } from '@/components/Core/Base/State';
 import Settings from '@/components/Storage/Settings';
 import Tooltip from '@/components/Widgets/Tooltip/Tooltip';
+import { isMediaFile } from '@/utils/file';
 import React, { useEffect } from 'react';
 import styles from './TabBar.module.css';
 
@@ -202,6 +203,8 @@ export default function TabBar() {
                     <Icons.Globe />
                   ) : tab.type === 'project-info' ? (
                     <Icons.Info />
+                  ) : isMediaFile(tab.file?.name) ? (
+                    <Icons.Image />
                   ) : (
                     <Icons.File />
                   )}
