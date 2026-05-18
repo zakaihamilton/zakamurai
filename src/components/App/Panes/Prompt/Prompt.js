@@ -9,13 +9,13 @@ import { LogState } from '@/components/App/Views/LogArea';
 import { Icons } from '@/components/Core/Base/Icons';
 import { createState } from '@/components/Core/Base/State';
 import Settings from '@/components/Storage/Settings';
-import Dialog from '@/components/Widgets/Dialog/Dialog';
 import Select from '@/components/Widgets/Select';
 import Tooltip from '@/components/Widgets/Tooltip/Tooltip';
 import { formatShortcut } from '@/utils/os';
 import React, { useEffect, useRef, useState } from 'react';
-import ReactMarkdown from 'react-markdown';
 import styles from './Prompt.module.css';
+import ModelManager from './subcomponents/ModelManager';
+import ReasoningPanel from './subcomponents/ReasoningPanel';
 
 export const PromptState = createState('PromptState');
 const PromptUiState = createState('PromptUiState');
@@ -40,19 +40,16 @@ export default function Prompt() {
     selectedModel = RECOMMENDED_WEB_LLM_MODEL.id,
     isModelManagerOpen = false,
   } = promptUiState || {};
-  const [isCopied, setIsCopied] = React.useState(false);
   const [cachedModelIds, setCachedModelIds] = React.useState([]);
   const [modelCacheWork, setModelCacheWork] = React.useState(null);
   const [modelCacheProgress, setModelCacheProgress] = React.useState('');
   const [modelCacheError, setModelCacheError] = React.useState('');
   const hasLoadedModelCacheRef = useRef(false);
-  const reasoningRef = useRef(null);
 
   const logState = LogState.usePassiveState();
-  const { isSystemProcessing, isAIProcessing, reasoning } = LogState.useState([
+  const { isSystemProcessing, isAIProcessing } = LogState.useState([
     'isSystemProcessing',
     'isAIProcessing',
-    'reasoning',
   ]);
   const sidebarState = SidebarState.useState();
   const { showAIInput } = sidebarState;
@@ -60,12 +57,6 @@ export default function Prompt() {
   const editorState = EditorState.useState();
   const promptState = PromptState.useState();
   const { promptWidth } = promptState;
-
-  useEffect(() => {
-    if (reasoning && reasoningRef.current) {
-      reasoningRef.current.scrollTop = reasoningRef.current.scrollHeight;
-    }
-  }, [reasoning]);
 
   const loadCachedModelIds = () => {
     if (hasLoadedModelCacheRef.current) return;
@@ -430,134 +421,22 @@ export default function Prompt() {
             </Tooltip>
           </div>
         </div>
-        <Dialog
+        <ModelManager
           isOpen={isModelManagerOpen}
-          title="AI Models"
+          selectedModelId={selectedModelInfo.id}
+          cachedModelIds={cachedModelIds}
           onCancel={closeModelManager}
-          footer={null}
-          className={styles.modelDialog}
-        >
-          <div className={styles.modelManager}>
-            {WEB_LLM_MODELS.map((model) => {
-              const isCached = cachedModelIds.includes(model.id);
-              const cacheKey = `${isCached ? 'uncache' : 'cache'}:${model.id}`;
-              const isBusy =
-                modelCacheWork === cacheKey || modelCacheWork?.endsWith(`:${model.id}`);
-              const isSelected = model.id === selectedModelInfo.id;
-
-              return (
-                <section key={model.id} className={styles.modelManagerItem}>
-                  <div className={styles.modelManagerInfo}>
-                    <div className={styles.modelManagerTitleRow}>
-                      <h4>{model.name}</h4>
-                      <div className={styles.modelManagerBadges}>
-                        {model.recommended && <span>Recommended</span>}
-                        {isSelected && <span>Selected</span>}
-                        {isCached && <span>Cached</span>}
-                      </div>
-                    </div>
-                    <p>{model.requirement}</p>
-                    <dl className={styles.modelManagerDetails}>
-                      {model.details?.map(([label, value]) => (
-                        <div key={label} className={styles.modelManagerDetail}>
-                          <dt>{label}</dt>
-                          <dd>{value}</dd>
-                        </div>
-                      ))}
-                    </dl>
-                  </div>
-                  <div className={styles.modelManagerActions}>
-                    <code>{model.id}</code>
-                    <div className={styles.modelManagerButtonGroup}>
-                      <button
-                        type="button"
-                        className={`${styles.modelCacheToggle} ${
-                          isCached ? styles.modelCacheToggleOn : ''
-                        }`}
-                        aria-pressed={isCached}
-                        onClick={() =>
-                          handleModelCacheAction(model, isCached ? 'uncache' : 'cache')
-                        }
-                        disabled={Boolean(modelCacheWork)}
-                      >
-                        <span className={styles.modelCacheToggleTrack}>
-                          <span className={styles.modelCacheToggleThumb} />
-                        </span>
-                        <span>{isBusy ? 'Working...' : isCached ? 'Cached' : 'Cache'}</span>
-                      </button>
-                    </div>
-                  </div>
-                </section>
-              );
-            })}
-            {(modelCacheProgress || modelCacheError) && (
-              <div
-                className={`${styles.modelManagerStatus} ${
-                  modelCacheError ? styles.modelManagerError : ''
-                }`}
-              >
-                {modelCacheError || modelCacheProgress}
-              </div>
-            )}
-          </div>
-        </Dialog>
-        <div
-          className={`${styles.reasoningWrapper} ${
-            logState.reasoning && isReasoningVisible ? styles.reasoningVisible : ''
-          }`}
-        >
-          <div className={styles.reasoningContainer}>
-            <div className={styles.reasoningHeader}>
-              <div className={styles.reasoningTitle}>
-                <Icons.Brain size={14} />
-                <span>Progress & Reasoning</span>
-              </div>
-              <div className={styles.reasoningActions}>
-                <Tooltip content={isCopied ? 'Copied!' : 'Copy Reasoning'}>
-                  <button
-                    type="button"
-                    className={`${styles.iconButton} ${isCopied ? styles.copySuccess : ''}`}
-                    onClick={() => {
-                      navigator.clipboard.writeText(logState.reasoning);
-                      setIsCopied(true);
-                      setTimeout(() => setIsCopied(false), 2000);
-                    }}
-                  >
-                    {isCopied ? <Icons.Check size={14} /> : <Icons.Copy size={14} />}
-                  </button>
-                </Tooltip>
-              </div>
-            </div>
-            <div ref={reasoningRef} className={`${styles.reasoningContent} scrollHide`}>
-              <ReactMarkdown
-                components={{
-                  a: ({ node, ...props }) => <a className={styles.reasoningLink} {...props} />,
-                  blockquote: ({ node, ...props }) => (
-                    <blockquote className={styles.reasoningBlockquote} {...props} />
-                  ),
-                  code: ({ node, ...props }) => (
-                    <code className={styles.reasoningCode} {...props} />
-                  ),
-                  h1: ({ node, ...props }) => <h1 className={styles.reasoningHeading} {...props} />,
-                  h2: ({ node, ...props }) => <h2 className={styles.reasoningHeading} {...props} />,
-                  h3: ({ node, ...props }) => <h3 className={styles.reasoningHeading} {...props} />,
-                  h4: ({ node, ...props }) => <h4 className={styles.reasoningHeading} {...props} />,
-                  h5: ({ node, ...props }) => <h5 className={styles.reasoningHeading} {...props} />,
-                  h6: ({ node, ...props }) => <h6 className={styles.reasoningHeading} {...props} />,
-                  li: ({ node, ...props }) => (
-                    <li className={styles.reasoningListItem} {...props} />
-                  ),
-                  ol: ({ node, ...props }) => <ol className={styles.reasoningList} {...props} />,
-                  p: ({ node, ...props }) => <p className={styles.reasoningParagraph} {...props} />,
-                  pre: ({ node, ...props }) => <pre className={styles.reasoningPre} {...props} />,
-                  ul: ({ node, ...props }) => <ul className={styles.reasoningList} {...props} />,
-                }}
-              >
-                {logState.reasoning}
-              </ReactMarkdown>
-            </div>
-          </div>
-        </div>
+          onModelCacheAction={handleModelCacheAction}
+          modelCacheWork={modelCacheWork}
+          modelCacheProgress={modelCacheProgress}
+          modelCacheError={modelCacheError}
+          styles={styles}
+        />
+        <ReasoningPanel
+          reasoning={logState.reasoning}
+          isReasoningVisible={isReasoningVisible}
+          styles={styles}
+        />
         <form onSubmit={send} className={styles.form}>
           <textarea
             value={val}

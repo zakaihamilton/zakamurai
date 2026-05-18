@@ -3,8 +3,6 @@ import { TabState } from '@/components/App/Panes/TabBar';
 import { EditorState } from '@/components/App/Views/EditorArea';
 import { Icons } from '@/components/Core/Base/Icons';
 import { createState } from '@/components/Core/Base/State';
-import { DEFAULT_CONTENTS, SCRATCH_CONTENTS } from '@/components/Storage/InitialData';
-import Settings from '@/components/Storage/Settings';
 import { useNotification } from '@/components/Widgets/Notification/Notification';
 import Tooltip from '@/components/Widgets/Tooltip/Tooltip';
 import { isMediaFile } from '@/utils/file';
@@ -12,102 +10,24 @@ import { formatShortcut } from '@/utils/os';
 import React, { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import styles from './Sidebar.module.css';
 import TreeItem from './TreeItem';
+import {
+  addNodeAtPath,
+  findNodeAtPath,
+  flattenTree,
+  getInitialFileContents,
+  getPathStr,
+  isNodeModulesPath,
+  normalizeChildren,
+  removeNodeAtPath,
+  renameNodeAtPath,
+  setChildrenAtPath,
+} from './TreeUtils';
 import VirtualList from './VirtualList';
 
 export const SidebarState = createState('SidebarState');
 const SidebarUiState = createState('SidebarUiState');
 
 const ROW_HEIGHT = 34;
-
-const getNodeType = (node) => node.type || (node.kind === 'directory' ? 'folder' : 'file');
-const getPathStr = (path) => path.join('/');
-const isNodeModulesPath = (path) => path.includes('node_modules');
-const getInitialFileContents = () =>
-  Settings.getTemplate() === 'scratch' ? SCRATCH_CONTENTS : DEFAULT_CONTENTS;
-
-const treeSorter = (a, b) => {
-  const aType = getNodeType(a);
-  const bType = getNodeType(b);
-  if (aType === bType) return a.name.localeCompare(b.name, undefined, { numeric: true });
-  return aType === 'folder' ? -1 : 1;
-};
-
-const normalizeChildren = (nodes = [], parentPath = []) =>
-  [...nodes].sort(treeSorter).map((node) => {
-    const type = getNodeType(node);
-    const path = node.path || [...parentPath, node.name];
-    return {
-      ...node,
-      type,
-      path,
-      children: node.children ? normalizeChildren(node.children, path) : node.children,
-    };
-  });
-
-const setChildrenAtPath = (nodes, path, children) => {
-  if (path.length === 0) return children;
-  return nodes.map((node) => {
-    if (node.name !== path[0]) return node;
-    const nextChildren = setChildrenAtPath(node.children || [], path.slice(1), children);
-    return { ...node, children: nextChildren };
-  });
-};
-
-const renameNodeAtPath = (nodes, path, name) =>
-  nodes.map((node) => {
-    if (node.name !== path[0]) return node;
-    if (path.length === 1) return { ...node, name, path: [...node.path.slice(0, -1), name] };
-    return { ...node, children: renameNodeAtPath(node.children || [], path.slice(1), name) };
-  });
-
-const addNodeAtPath = (nodes, path, node) => {
-  if (path.length === 0) return normalizeChildren([...nodes, node]);
-  return nodes.map((current) => {
-    if (current.name !== path[0]) return current;
-    return { ...current, children: addNodeAtPath(current.children || [], path.slice(1), node) };
-  });
-};
-
-const removeNodeAtPath = (nodes, path) => {
-  if (path.length === 1) return nodes.filter((node) => node.name !== path[0]);
-  return nodes.map((node) => {
-    if (node.name !== path[0]) return node;
-    return { ...node, children: removeNodeAtPath(node.children || [], path.slice(1)) };
-  });
-};
-
-const findNodeAtPath = (nodes, path) => {
-  let level = nodes;
-  let found = null;
-  for (const segment of path) {
-    found = level?.find((node) => node.name === segment);
-    if (!found) return null;
-    level = found.children;
-  }
-  return found;
-};
-
-const flattenTree = (nodes, expandedFolders, filterText, parentPath = [], level = 1) => {
-  const query = filterText.trim().toLowerCase();
-  const rows = [];
-
-  for (const node of nodes) {
-    const path = node.path || [...parentPath, node.name];
-    const pathStr = getPathStr(path);
-    const pathMatches = pathStr.toLowerCase().includes(query);
-    const childrenRows =
-      node.children && (query || expandedFolders[pathStr] !== false)
-        ? flattenTree(node.children, expandedFolders, filterText, path, level + 1)
-        : [];
-
-    if (!query || pathMatches || childrenRows.length > 0) {
-      rows.push({ key: pathStr, item: node, level, path, pathStr });
-      rows.push(...childrenRows);
-    }
-  }
-
-  return rows;
-};
 
 export default function Sidebar() {
   const sidebarState = SidebarState.useState();
