@@ -674,7 +674,7 @@ export default function TreeItem({
             className={styles.editInput}
           />
         ) : (
-          <Tooltip content={item.name} className={styles.nameTooltip}>
+          <Tooltip content={`/${currentPathStr}`} className={styles.nameTooltip}>
             <span className={styles.name} onDoubleClick={handleDoubleClick}>
               {item.name}
             </span>
