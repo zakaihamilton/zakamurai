@@ -32,9 +32,7 @@ export default function TabBar() {
   // Persist open tabs and active tab to localStorage
   useEffect(() => {
     Settings.setOpenTabs(openTabs);
-    if (activeTabId) {
-      Settings.setActiveTabId(activeTabId);
-    }
+    Settings.setActiveTabId(activeTabId);
   }, [openTabs, activeTabId]);
 
   const handleTabClick = (tabId) => {

@@ -45,7 +45,11 @@ const Settings = {
   set(key, value) {
     const storage = getStorage();
     if (storage) {
-      storage.setItem(key, value);
+      if (value === null || value === undefined) {
+        storage.removeItem(key);
+      } else {
+        storage.setItem(key, value);
+      }
     }
   },
 

@@ -47,17 +47,18 @@ export function useTabRestorer() {
           }
         }
 
-        if (restoredTabs.length > 0) {
-          editorState((draft) => {
-            draft.fileContents = { ...draft.fileContents, ...newContents };
-          });
-          tabState((draft) => {
-            draft.openTabs = restoredTabs;
-            if (savedActiveTabId && restoredTabs.some((t) => t.id === savedActiveTabId)) {
-              draft.activeTabId = savedActiveTabId;
-            }
-          });
-        }
+        editorState((draft) => {
+          draft.fileContents = { ...draft.fileContents, ...newContents };
+        });
+        tabState((draft) => {
+          draft.openTabs = restoredTabs;
+          if (savedActiveTabId && restoredTabs.some((t) => t.id === savedActiveTabId)) {
+            draft.activeTabId = savedActiveTabId;
+          } else {
+            draft.activeTabId =
+              restoredTabs.length > 0 ? restoredTabs[restoredTabs.length - 1].id : null;
+          }
+        });
       }
     };
 
