@@ -62,7 +62,7 @@ export default function WorkspaceArea() {
         <div className={styles.editorContainer}>
           {activeTab?.type === 'file' &&
             (isMediaFile(activeTab.file?.name) ? (
-              <ImageViewer file={activeTab.file} />
+              <ImageViewer tab={activeTab} />
             ) : (
               <EditorArea file={activeTab.file} />
             ))}
