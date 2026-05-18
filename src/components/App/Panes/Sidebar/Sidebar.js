@@ -12,30 +12,22 @@ import TreeItem from './TreeItem';
 export const SidebarState = createState('SidebarState');
 const SidebarUiState = createState('SidebarUiState');
 
-const treeSorter = (a, b) => {
-  if (a.type === b.type) {
-    return a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' });
-  }
-  return a.type === 'folder' ? -1 : 1;
-};
-
 // Filter the folder tree recursively based on the search input
 const filterTree = (nodes, query) => {
-  if (!query) return [...nodes].sort(treeSorter);
+  if (!query) return nodes;
   const q = query.toLowerCase();
   return nodes
     .map((node) => {
       if (node.type === 'folder') {
         const filteredChildren = filterTree(node.children || [], query);
         if (node.name.toLowerCase().includes(q) || filteredChildren.length > 0) {
-          return { ...node, children: filteredChildren.sort(treeSorter) };
+          return { ...node, children: filteredChildren };
         }
         return null;
       }
       return node.name.toLowerCase().includes(q) ? node : null;
     })
-    .filter(Boolean)
-    .sort(treeSorter);
+    .filter(Boolean);
 };
 
 export default function Sidebar() {
