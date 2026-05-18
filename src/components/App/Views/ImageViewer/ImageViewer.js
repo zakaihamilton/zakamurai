@@ -28,7 +28,7 @@ export default function ImageViewer({ tab }) {
       }
       setImageUrl(null);
     };
-  }, [tab]);
+  }, [tab?.fsHandle, tab?.file?.content]);
 
   if (!imageUrl) {
     return (
