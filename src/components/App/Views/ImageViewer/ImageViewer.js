@@ -1,3 +1,4 @@
+import { isVideoFile } from '@/utils/file';
 import React, { useEffect, useState } from 'react';
 import styles from './ImageViewer.module.css';
 
