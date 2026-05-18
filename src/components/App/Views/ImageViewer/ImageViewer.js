@@ -9,14 +9,17 @@ export default function ImageViewer({ tab }) {
     let urlToRevoke = null;
 
     if (tab?.fsHandle) {
-      tab.fsHandle.getFile().then((f) => {
-        if (!isActive) return;
-        const url = URL.createObjectURL(f);
-        urlToRevoke = url;
-        setImageUrl(url);
-      }).catch((err) => {
-        console.error('Failed to get file from handle:', err);
-      });
+      tab.fsHandle
+        .getFile()
+        .then((f) => {
+          if (!isActive) return;
+          const url = URL.createObjectURL(f);
+          urlToRevoke = url;
+          setImageUrl(url);
+        })
+        .catch((err) => {
+          console.error('Failed to get file from handle:', err);
+        });
     } else if (tab?.file?.content) {
       // For when file content is loaded differently
     }

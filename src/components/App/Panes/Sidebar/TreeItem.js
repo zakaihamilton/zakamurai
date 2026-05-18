@@ -831,19 +831,26 @@ export default function TreeItem({
 
       {item.type === 'folder' &&
         isExpanded &&
-        children.map((child) => {
-          const childPath = [...item.path, child.name].join('/');
-          return (
-            <TreeItem
-              key={childPath}
-              item={child}
-              level={level + 1}
-              filterText={filterText}
-              fsHandle={child.handle}
-              parentHandle={fsHandle}
-            />
-          );
-        })}
+        children
+          .filter((child) => {
+            if (!filterText) return true;
+            const q = filterText.toLowerCase();
+            if (child.type === 'folder') return true;
+            return child.name.toLowerCase().includes(q);
+          })
+          .map((child) => {
+            const childPath = [...item.path, child.name].join('/');
+            return (
+              <TreeItem
+                key={childPath}
+                item={child}
+                level={level + 1}
+                filterText={filterText}
+                fsHandle={child.handle}
+                parentHandle={fsHandle}
+              />
+            );
+          })}
     </div>
   );
 }
