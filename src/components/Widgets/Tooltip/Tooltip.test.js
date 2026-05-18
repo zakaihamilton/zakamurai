@@ -26,6 +26,15 @@ describe('Tooltip', () => {
     vi.restoreAllMocks();
   });
 
+  const showTooltip = async (trigger) => {
+    fireEvent.mouseEnter(trigger);
+    await act(async () => {
+      vi.advanceTimersByTime(400);
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+  };
+
   it('renders children', () => {
     render(
       <Tooltip content="Helper text">
@@ -35,7 +44,7 @@ describe('Tooltip', () => {
     expect(screen.getByText('Hover me')).toBeDefined();
   });
 
-  it('shows tooltip after delay on mouse enter', () => {
+  it('shows tooltip after delay on mouse enter', async () => {
     render(
       <Tooltip content="Helper text" shortcut="⌘S">
         <button type="button">Hover me</button>
@@ -44,12 +53,12 @@ describe('Tooltip', () => {
 
     const trigger = screen.getByText('Hover me').parentElement;
     fireEvent.mouseEnter(trigger);
-
-    // Should not be visible yet
     expect(screen.queryByRole('tooltip')).toBeNull();
 
-    act(() => {
+    await act(async () => {
       vi.advanceTimersByTime(400);
+      await Promise.resolve();
+      await Promise.resolve();
     });
 
     expect(screen.getByRole('tooltip')).toBeDefined();
@@ -57,7 +66,25 @@ describe('Tooltip', () => {
     expect(screen.getByText('⌘S')).toBeDefined();
   });
 
-  it('hides shortcut labels when keyboard shortcuts should not be shown', () => {
+  it('keeps visibility isolated per instance', async () => {
+    render(
+      <>
+        <Tooltip content="First helper">
+          <button type="button">First</button>
+        </Tooltip>
+        <Tooltip content="Second helper">
+          <button type="button">Second</button>
+        </Tooltip>
+      </>,
+    );
+
+    await showTooltip(screen.getByText('First').parentElement);
+
+    expect(screen.getByText('First helper')).toBeDefined();
+    expect(screen.queryByText('Second helper')).toBeNull();
+  });
+
+  it('hides shortcut labels when keyboard shortcuts should not be shown', async () => {
     useShouldShowKeyboardShortcuts.mockReturnValue(false);
 
     render(
@@ -66,18 +93,14 @@ describe('Tooltip', () => {
       </Tooltip>,
     );
 
-    const trigger = screen.getByText('Hover me').parentElement;
-    fireEvent.mouseEnter(trigger);
-    act(() => {
-      vi.advanceTimersByTime(400);
-    });
+    await showTooltip(screen.getByText('Hover me').parentElement);
 
     expect(screen.getByRole('tooltip')).toBeDefined();
     expect(screen.getByText('Helper text')).toBeDefined();
     expect(screen.queryByText('⌘S')).toBeNull();
   });
 
-  it('hides tooltip on mouse leave', () => {
+  it('hides tooltip on mouse leave', async () => {
     render(
       <Tooltip content="Helper text">
         <button type="button">Hover me</button>
@@ -85,13 +108,14 @@ describe('Tooltip', () => {
     );
 
     const trigger = screen.getByText('Hover me').parentElement;
-    fireEvent.mouseEnter(trigger);
-    act(() => {
-      vi.advanceTimersByTime(400);
-    });
+    await showTooltip(trigger);
     expect(screen.getByRole('tooltip')).toBeDefined();
 
-    fireEvent.mouseLeave(trigger);
+    await act(async () => {
+      fireEvent.mouseLeave(trigger);
+      await Promise.resolve();
+      await Promise.resolve();
+    });
     expect(screen.queryByRole('tooltip')).toBeNull();
   });
 
@@ -115,7 +139,7 @@ describe('Tooltip', () => {
     expect(screen.queryByRole('tooltip')).toBeNull();
   });
 
-  it('keeps tooltip inside viewport bounds near window edges', () => {
+  it('keeps tooltip inside viewport bounds near window edges', async () => {
     Object.defineProperty(window, 'innerWidth', { configurable: true, value: 140 });
     Object.defineProperty(window, 'innerHeight', { configurable: true, value: 100 });
 
@@ -155,10 +179,7 @@ describe('Tooltip', () => {
       return triggerRect;
     });
 
-    fireEvent.mouseEnter(trigger);
-    act(() => {
-      vi.advanceTimersByTime(400);
-    });
+    await showTooltip(trigger);
 
     const tooltip = screen.getByRole('tooltip');
 

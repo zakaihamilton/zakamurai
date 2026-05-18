@@ -12,7 +12,7 @@ import Settings from '@/components/Storage/Settings';
 import Select from '@/components/Widgets/Select';
 import Tooltip from '@/components/Widgets/Tooltip/Tooltip';
 import { formatShortcut } from '@/utils/os';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef } from 'react';
 import styles from './Prompt.module.css';
 import ModelManager from './subcomponents/ModelManager';
 import ReasoningPanel from './subcomponents/ReasoningPanel';
@@ -24,6 +24,8 @@ const getInitialSelectedModel = () =>
 
 export default function Prompt() {
   const { fs, isMobile } = AppState.useState(['fs', 'isMobile']);
+  const promptState = PromptState.useState();
+  const { promptWidth } = promptState;
   const promptUiState = PromptUiState.useState(null, {
     val: '',
     historyIndex: -1,
@@ -31,6 +33,11 @@ export default function Prompt() {
     isReasoningVisible: true,
     selectedModel: getInitialSelectedModel(),
     isModelManagerOpen: false,
+    cachedModelIds: [],
+    modelCacheWork: null,
+    modelCacheProgress: '',
+    modelCacheError: '',
+    animatedWidth: promptState?.promptWidth ?? 0,
   });
   const {
     val = '',
@@ -39,11 +46,40 @@ export default function Prompt() {
     isReasoningVisible = true,
     selectedModel = RECOMMENDED_WEB_LLM_MODEL.id,
     isModelManagerOpen = false,
+    cachedModelIds = [],
+    modelCacheWork = null,
+    modelCacheProgress = '',
+    modelCacheError = '',
+    animatedWidth = promptState?.promptWidth ?? 0,
   } = promptUiState || {};
-  const [cachedModelIds, setCachedModelIds] = React.useState([]);
-  const [modelCacheWork, setModelCacheWork] = React.useState(null);
-  const [modelCacheProgress, setModelCacheProgress] = React.useState('');
-  const [modelCacheError, setModelCacheError] = React.useState('');
+  const setPromptUiValue = useCallback(
+    (key, nextValue) => {
+      promptUiState((draft) => {
+        draft[key] = typeof nextValue === 'function' ? nextValue(draft[key]) : nextValue;
+      });
+    },
+    [promptUiState],
+  );
+  const setCachedModelIds = useCallback(
+    (nextValue) => setPromptUiValue('cachedModelIds', nextValue),
+    [setPromptUiValue],
+  );
+  const setModelCacheWork = useCallback(
+    (nextValue) => setPromptUiValue('modelCacheWork', nextValue),
+    [setPromptUiValue],
+  );
+  const setModelCacheProgress = useCallback(
+    (nextValue) => setPromptUiValue('modelCacheProgress', nextValue),
+    [setPromptUiValue],
+  );
+  const setModelCacheError = useCallback(
+    (nextValue) => setPromptUiValue('modelCacheError', nextValue),
+    [setPromptUiValue],
+  );
+  const setAnimatedWidth = useCallback(
+    (nextValue) => setPromptUiValue('animatedWidth', nextValue),
+    [setPromptUiValue],
+  );
   const hasLoadedModelCacheRef = useRef(false);
 
   const logState = LogState.usePassiveState();
@@ -55,8 +91,6 @@ export default function Prompt() {
   const { showAIInput } = sidebarState;
   const tabState = TabState.useState();
   const editorState = EditorState.useState();
-  const promptState = PromptState.useState();
-  const { promptWidth } = promptState;
 
   const loadCachedModelIds = () => {
     if (hasLoadedModelCacheRef.current) return;
@@ -317,7 +351,6 @@ export default function Prompt() {
   }));
 
   const isOpen = isMobile ? sidebarState.isAIInputPopupOpen : showAIInput;
-  const [animatedWidth, setAnimatedWidth] = useState(isOpen ? promptWidth : 0);
 
   useEffect(() => {
     if (isMobile) return undefined;
@@ -330,7 +363,7 @@ export default function Prompt() {
     setAnimatedWidth(promptWidth);
     const frame = window.requestAnimationFrame(() => setAnimatedWidth(0));
     return () => window.cancelAnimationFrame(frame);
-  }, [isMobile, isOpen, promptWidth]);
+  }, [isMobile, isOpen, promptWidth, setAnimatedWidth]);
 
   const desktopWidth = `${animatedWidth}px`;
 

@@ -1,20 +1,42 @@
 import { AppState } from '@/components/App/AppState';
+import Node from '@/components/Core/Base/Node';
+import { createState } from '@/components/Core/Base/State';
 import { useShouldShowKeyboardShortcuts } from '@/utils/keyboard';
-import React, { useState, useRef, useEffect, useLayoutEffect } from 'react';
+import React, { useRef, useEffect, useLayoutEffect } from 'react';
 import { createPortal } from 'react-dom';
 import styles from './Tooltip.module.css';
+
+const TooltipState = createState('TooltipState');
 
 /**
  * Tooltip component to replace native title tooltips.
  * Uses a portal to avoid clipping and adds a smooth delay for premium feel.
  */
 export default function Tooltip({ content, shortcut, children, className = '' }) {
+  return (
+    <Node id="Tooltip">
+      <TooltipInner content={content} shortcut={shortcut} className={className}>
+        {children}
+      </TooltipInner>
+    </Node>
+  );
+}
+
+function TooltipInner({ content, shortcut, children, className = '' }) {
   const { theme } = AppState.useState();
   const showShortcut = useShouldShowKeyboardShortcuts();
-  const [isVisible, setIsVisible] = useState(false);
-  const [coords, setCoords] = useState({ top: 0, left: 0 });
-  const [placement, setPlacement] = useState('top'); // 'top' or 'bottom'
-  const [arrowOffset, setArrowOffset] = useState(0);
+  const tooltipState = TooltipState.useState(null, {
+    isVisible: false,
+    coords: { top: 0, left: 0 },
+    placement: 'top',
+    arrowOffset: 0,
+  });
+  const {
+    isVisible = false,
+    coords = { top: 0, left: 0 },
+    placement = 'top',
+    arrowOffset = 0,
+  } = tooltipState || {};
   const triggerRef = useRef(null);
   const tooltipRef = useRef(null);
   const timeoutRef = useRef(null);
@@ -31,23 +53,27 @@ export default function Tooltip({ content, shortcut, children, className = '' })
 
         // Preliminary placement, will be refined in useLayoutEffect
         const newPlacement = topSpace < 100 && bottomSpace > topSpace ? 'bottom' : 'top';
-        setPlacement(newPlacement);
 
         const triggerCenter = rect.left + rect.width / 2 + window.scrollX;
 
-        setCoords({
-          top: newPlacement === 'top' ? rect.top + window.scrollY : rect.bottom + window.scrollY,
-          left: triggerCenter,
+        tooltipState((draft) => {
+          draft.placement = newPlacement;
+          draft.coords = {
+            top: newPlacement === 'top' ? rect.top + window.scrollY : rect.bottom + window.scrollY,
+            left: triggerCenter,
+          };
+          draft.arrowOffset = 0;
+          draft.isVisible = true;
         });
-        setArrowOffset(0);
-        setIsVisible(true);
       }
     }, 400);
   };
 
   const hideTooltip = () => {
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
-    setIsVisible(false);
+    tooltipState((draft) => {
+      draft.isVisible = false;
+    });
   };
 
   useLayoutEffect(() => {
@@ -69,7 +95,9 @@ export default function Tooltip({ content, shortcut, children, className = '' })
       }
 
       if (newPlacement !== placement) {
-        setPlacement(newPlacement);
+        tooltipState((draft) => {
+          draft.placement = newPlacement;
+        });
         return;
       }
 
@@ -107,14 +135,15 @@ export default function Tooltip({ content, shortcut, children, className = '' })
         top = Math.min(top, maxBottomAnchor);
       }
 
-      setCoords({ top, left });
-
       // Clamp arrow offset to stay within tooltip boundaries (considering border radius)
       const maxArrowOffset = Math.max(0, halfWidth - 15);
       const rawArrowOffset = triggerCenter - left;
-      setArrowOffset(Math.max(-maxArrowOffset, Math.min(maxArrowOffset, rawArrowOffset)));
+      tooltipState((draft) => {
+        draft.coords = { top, left };
+        draft.arrowOffset = Math.max(-maxArrowOffset, Math.min(maxArrowOffset, rawArrowOffset));
+      });
     }
-  }, [isVisible, placement]);
+  }, [isVisible, placement, tooltipState]);
 
   useEffect(() => {
     return () => {

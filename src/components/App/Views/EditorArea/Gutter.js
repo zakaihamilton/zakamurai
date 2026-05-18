@@ -1,9 +1,12 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import Node from '@/components/Core/Base/Node';
+import { createState } from '@/components/Core/Base/State';
+import React, { useEffect, useMemo } from 'react';
 import styles from './EditorArea.module.css';
 
 const LINE_HEIGHT = 22.4;
 const VIRTUALIZE_AFTER = 2000;
 const OVERSCAN = 40;
+const GutterState = createState('GutterState');
 
 export default function Gutter({
   linesCount,
@@ -12,8 +15,23 @@ export default function Gutter({
   toggleLine,
   scrollRef,
 }) {
+  return (
+    <Node id="Gutter">
+      <GutterInner
+        linesCount={linesCount}
+        linesArr={linesArr}
+        selectedLines={selectedLines}
+        toggleLine={toggleLine}
+        scrollRef={scrollRef}
+      />
+    </Node>
+  );
+}
+
+function GutterInner({ linesCount, linesArr, selectedLines = [], toggleLine, scrollRef }) {
   const totalLines = linesCount ?? linesArr?.length ?? 1;
-  const [viewport, setViewport] = useState({ scrollTop: 0, height: 0 });
+  const gutterState = GutterState.useState(null, { viewport: { scrollTop: 0, height: 0 } });
+  const { viewport = { scrollTop: 0, height: 0 } } = gutterState || {};
   const selectedSet = useMemo(
     () => new Set(selectedLines.map((line) => Number(line))),
     [selectedLines],
@@ -27,9 +45,11 @@ export default function Gutter({
     const update = () => {
       window.cancelAnimationFrame(frame);
       frame = window.requestAnimationFrame(() => {
-        setViewport({
-          scrollTop: element.scrollTop,
-          height: element.clientHeight,
+        gutterState((draft) => {
+          draft.viewport = {
+            scrollTop: element.scrollTop,
+            height: element.clientHeight,
+          };
         });
       });
     };
@@ -51,7 +71,7 @@ export default function Gutter({
       if (resizeObserver) resizeObserver.disconnect();
       else window.removeEventListener('resize', update);
     };
-  }, [scrollRef, totalLines]);
+  }, [scrollRef, totalLines, gutterState]);
 
   const visibleLines = useMemo(() => {
     if (totalLines <= VIRTUALIZE_AFTER) {

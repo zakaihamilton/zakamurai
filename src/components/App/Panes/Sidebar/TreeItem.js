@@ -1,10 +1,14 @@
 import { Icons } from '@/components/Core/Base/Icons';
+import Node from '@/components/Core/Base/Node';
+import { createState } from '@/components/Core/Base/State';
 import ContextMenu from '@/components/Widgets/ContextMenu/ContextMenu';
 import Dialog from '@/components/Widgets/Dialog/Dialog';
 import Tooltip from '@/components/Widgets/Tooltip/Tooltip';
 import { isMediaFile } from '@/utils/file';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef } from 'react';
 import styles from './TreeItem.module.css';
+
+const TreeItemState = createState('TreeItemState');
 
 const getNameHighlightRanges = (name, pathStr, filterText) => {
   const query = filterText.trim().toLowerCase();
@@ -62,19 +66,77 @@ export default function TreeItem({
   onDrop,
   onDragEnd,
 }) {
+  return (
+    <Node id={row?.pathStr || row?.item?.name || 'TreeItem'}>
+      <TreeItemInner
+        row={row}
+        filterText={filterText}
+        isActive={isActive}
+        isExpanded={isExpanded}
+        isLoading={isLoading}
+        isDragged={isDragged}
+        isDropTarget={isDropTarget}
+        onToggle={onToggle}
+        onOpenFile={onOpenFile}
+        onRename={onRename}
+        onCreate={onCreate}
+        onDelete={onDelete}
+        onDragStart={onDragStart}
+        onDragOver={onDragOver}
+        onDragEnter={onDragEnter}
+        onDragLeave={onDragLeave}
+        onDrop={onDrop}
+        onDragEnd={onDragEnd}
+      />
+    </Node>
+  );
+}
+
+function TreeItemInner({
+  row,
+  filterText = '',
+  isActive,
+  isExpanded,
+  isLoading,
+  isDragged,
+  isDropTarget,
+  onToggle,
+  onOpenFile,
+  onRename,
+  onCreate,
+  onDelete,
+  onDragStart,
+  onDragOver,
+  onDragEnter,
+  onDragLeave,
+  onDrop,
+  onDragEnd,
+}) {
   const { item, level, pathStr } = row;
-  const [isEditing, setIsEditing] = useState(false);
-  const [editValue, setEditValue] = useState(item.name);
-  const [isCreating, setIsCreating] = useState(null);
-  const [createValue, setCreateValue] = useState('');
-  const [contextMenu, setContextMenu] = useState(null);
-  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const treeItemState = TreeItemState.useState(null, {
+    isEditing: false,
+    editValue: item.name,
+    isCreating: null,
+    createValue: '',
+    contextMenu: null,
+    showDeleteDialog: false,
+  });
+  const {
+    isEditing = false,
+    editValue = item.name,
+    isCreating = null,
+    createValue = '',
+    contextMenu = null,
+    showDeleteDialog = false,
+  } = treeItemState || {};
   const editInputRef = useRef(null);
   const createInputRef = useRef(null);
 
   useEffect(() => {
-    setEditValue(item.name);
-  }, [item.name]);
+    treeItemState((draft) => {
+      draft.editValue = item.name;
+    });
+  }, [item.name, treeItemState]);
 
   useEffect(() => {
     if (isEditing) editInputRef.current?.focus();
@@ -85,10 +147,14 @@ export default function TreeItem({
   }, [isCreating]);
 
   useEffect(() => {
-    const handleClick = () => setContextMenu(null);
+    const handleClick = () => {
+      treeItemState((draft) => {
+        draft.contextMenu = null;
+      });
+    };
     window.addEventListener('click', handleClick);
     return () => window.removeEventListener('click', handleClick);
-  }, []);
+  }, [treeItemState]);
 
   const submitRename = async () => {
     const nextName = editValue.trim();
@@ -96,7 +162,9 @@ export default function TreeItem({
       const renamed = await onRename(row, nextName);
       if (!renamed) return;
     }
-    setIsEditing(false);
+    treeItemState((draft) => {
+      draft.isEditing = false;
+    });
   };
 
   const submitCreate = async () => {
@@ -105,8 +173,10 @@ export default function TreeItem({
       const created = await onCreate(row, isCreating, nextName);
       if (!created) return;
     }
-    setIsCreating(null);
-    setCreateValue('');
+    treeItemState((draft) => {
+      draft.isCreating = null;
+      draft.createValue = '';
+    });
   };
 
   const handleClick = () => {
@@ -119,8 +189,10 @@ export default function TreeItem({
   };
 
   const startCreate = (type) => {
-    setIsCreating(type);
-    setContextMenu(null);
+    treeItemState((draft) => {
+      draft.isCreating = type;
+      draft.contextMenu = null;
+    });
     if (item.type === 'folder' && !isExpanded) {
       onToggle(row, { expandOnly: true });
     }
@@ -133,7 +205,9 @@ export default function TreeItem({
         onContextMenu={(event) => {
           if (isEditing) return;
           event.preventDefault();
-          setContextMenu({ x: event.pageX, y: event.pageY });
+          treeItemState((draft) => {
+            draft.contextMenu = { x: event.pageX, y: event.pageY };
+          });
         }}
         onKeyDown={(event) => (event.key === 'Enter' || event.key === ' ') && handleClick()}
         draggable={!item.isRoot}
@@ -179,11 +253,19 @@ export default function TreeItem({
           <input
             ref={editInputRef}
             value={editValue}
-            onChange={(event) => setEditValue(event.target.value)}
+            onChange={(event) =>
+              treeItemState((draft) => {
+                draft.editValue = event.target.value;
+              })
+            }
             onBlur={submitRename}
             onKeyDown={(event) => {
               if (event.key === 'Enter') submitRename();
-              if (event.key === 'Escape') setIsEditing(false);
+              if (event.key === 'Escape') {
+                treeItemState((draft) => {
+                  draft.isEditing = false;
+                });
+              }
             }}
             onClick={(event) => event.stopPropagation()}
             onDoubleClick={(event) => event.stopPropagation()}
@@ -194,7 +276,11 @@ export default function TreeItem({
             <span
               className={styles.name}
               onDoubleClick={() => {
-                if (!item.isRoot) setIsEditing(true);
+                if (!item.isRoot) {
+                  treeItemState((draft) => {
+                    draft.isEditing = true;
+                  });
+                }
               }}
             >
               {renderHighlightedName(item.name, pathStr, filterText)}
@@ -249,18 +335,33 @@ export default function TreeItem({
           <input
             ref={createInputRef}
             value={createValue}
-            onChange={(event) => setCreateValue(event.target.value)}
+            onChange={(event) =>
+              treeItemState((draft) => {
+                draft.createValue = event.target.value;
+              })
+            }
             onBlur={submitCreate}
             onKeyDown={(event) => {
               if (event.key === 'Enter') submitCreate();
-              if (event.key === 'Escape') setIsCreating(null);
+              if (event.key === 'Escape') {
+                treeItemState((draft) => {
+                  draft.isCreating = null;
+                });
+              }
             }}
             className={styles.editInput}
           />
         </div>
       )}
 
-      <ContextMenu position={contextMenu} onClose={() => setContextMenu(null)}>
+      <ContextMenu
+        position={contextMenu}
+        onClose={() =>
+          treeItemState((draft) => {
+            draft.contextMenu = null;
+          })
+        }
+      >
         {item.type === 'folder' && (
           <>
             <button
@@ -286,8 +387,10 @@ export default function TreeItem({
           <button
             type="button"
             onClick={() => {
-              setIsEditing(true);
-              setContextMenu(null);
+              treeItemState((draft) => {
+                draft.isEditing = true;
+                draft.contextMenu = null;
+              });
             }}
             className={styles.contextMenuOption}
           >
@@ -299,8 +402,10 @@ export default function TreeItem({
           <button
             type="button"
             onClick={() => {
-              setShowDeleteDialog(true);
-              setContextMenu(null);
+              treeItemState((draft) => {
+                draft.showDeleteDialog = true;
+                draft.contextMenu = null;
+              });
             }}
             className={`${styles.deleteOption} ${styles.contextMenuOption}`}
           >
@@ -338,9 +443,15 @@ export default function TreeItem({
         type="danger"
         onConfirm={async () => {
           await onDelete(row);
-          setShowDeleteDialog(false);
+          treeItemState((draft) => {
+            draft.showDeleteDialog = false;
+          });
         }}
-        onCancel={() => setShowDeleteDialog(false)}
+        onCancel={() =>
+          treeItemState((draft) => {
+            draft.showDeleteDialog = false;
+          })
+        }
       />
     </>
   );

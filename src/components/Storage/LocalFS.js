@@ -1,7 +1,9 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { createState } from '@/components/Core/Base/State';
+import { useCallback, useEffect, useMemo } from 'react';
 
 const DB_NAME = 'ZakamuraiFS';
 const STORE_NAME = 'handles';
+const FileSystemState = createState('FileSystemState');
 
 async function getDB() {
   if (typeof indexedDB === 'undefined') return null;
@@ -47,70 +49,101 @@ async function clearHandle() {
 }
 
 export function useFileSystem() {
-  const [rootHandle, setRootHandle] = useState(null);
-  const [currentDirHandle, setCurrentDirHandle] = useState(null);
-  const [files, setFiles] = useState([]);
-  const [mode, setMode] = useState(null);
-  const [error, setError] = useState(null);
-  const [version, setVersion] = useState(0);
-  const [refreshTrigger, setRefreshTrigger] = useState(0);
-  const [isReady, setIsReady] = useState(false);
+  const fileSystemState = FileSystemState.useState(null, {
+    rootHandle: null,
+    currentDirHandle: null,
+    files: [],
+    mode: null,
+    error: null,
+    version: 0,
+    refreshTrigger: 0,
+    isReady: false,
+  });
+  const {
+    rootHandle = null,
+    currentDirHandle = null,
+    files = [],
+    mode = null,
+    error = null,
+    version = 0,
+    refreshTrigger = 0,
+    isReady = false,
+  } = fileSystemState || {};
+  const setFileSystemValue = useCallback(
+    (key, nextValue) => {
+      fileSystemState((draft) => {
+        draft[key] = typeof nextValue === 'function' ? nextValue(draft[key]) : nextValue;
+      });
+    },
+    [fileSystemState],
+  );
 
   const triggerRefresh = useCallback(() => {
-    setRefreshTrigger((v) => v + 1);
-  }, []);
+    setFileSystemValue('refreshTrigger', (v = 0) => v + 1);
+  }, [setFileSystemValue]);
 
   // 1. Wrapped in useCallback so it can be safely used as a dependency
-  const refreshDirectory = useCallback(async (dirHandle, updateSidebar = true) => {
-    try {
-      const entries = [];
-      for await (const [name, handle] of dirHandle.entries()) {
-        entries.push({ name, kind: handle.kind, handle });
-      }
+  const refreshDirectory = useCallback(
+    async (dirHandle, updateSidebar = true) => {
+      try {
+        const entries = [];
+        for await (const [name, handle] of dirHandle.entries()) {
+          entries.push({ name, kind: handle.kind, handle });
+        }
 
-      entries.sort((a, b) => {
-        if (a.kind === b.kind) return a.name.localeCompare(b.name);
-        return a.kind === 'directory' ? -1 : 1;
-      });
+        entries.sort((a, b) => {
+          if (a.kind === b.kind) return a.name.localeCompare(b.name);
+          return a.kind === 'directory' ? -1 : 1;
+        });
 
-      // Only update global files list if we are refreshing the root
-      // or if we are in a mode where currentDirHandle tracks the sidebar root
-      if (updateSidebar) {
-        setFiles(entries);
-        setCurrentDirHandle(dirHandle);
+        // Only update global files list if we are refreshing the root
+        // or if we are in a mode where currentDirHandle tracks the sidebar root
+        if (updateSidebar) {
+          fileSystemState((draft) => {
+            draft.files = entries;
+            draft.currentDirHandle = dirHandle;
+          });
+        }
+        fileSystemState((draft) => {
+          draft.version = (draft.version || 0) + 1;
+          draft.error = null;
+        });
+        return entries;
+      } catch (err) {
+        setFileSystemValue('error', `Failed to read directory: ${err.message}`);
       }
-      setVersion((v) => v + 1);
-      setError(null);
-      return entries;
-    } catch (err) {
-      setError(`Failed to read directory: ${err.message}`);
-    }
-  }, []);
+    },
+    [fileSystemState, setFileSystemValue],
+  );
 
   const mountOPFS = useCallback(async () => {
     try {
       const handle = await navigator.storage.getDirectory();
-      setRootHandle(handle);
-      setMode('opfs');
+      fileSystemState((draft) => {
+        draft.rootHandle = handle;
+        draft.mode = 'opfs';
+      });
       await refreshDirectory(handle);
     } catch (err) {
-      setError(`Failed to mount OPFS: ${err.message}`);
+      setFileSystemValue('error', `Failed to mount OPFS: ${err.message}`);
     }
-  }, [refreshDirectory]); // Added missing dependency
+  }, [fileSystemState, refreshDirectory, setFileSystemValue]); // Added missing dependency
 
   const mountLocal = useCallback(async () => {
     try {
       const handle = await window.showDirectoryPicker({ mode: 'readwrite' });
-      setRootHandle(handle);
-      setMode('local');
+      fileSystemState((draft) => {
+        draft.rootHandle = handle;
+        draft.mode = 'local';
+      });
       await saveHandle(handle);
       await refreshDirectory(handle);
     } catch (err) {
       if (err.name !== 'AbortError') {
-        setError(`Failed to mount local FS: ${err.message}`);
+        setFileSystemValue('error', `Failed to mount local FS: ${err.message}`);
       }
     }
-  }, [refreshDirectory]);
+  }, [fileSystemState, refreshDirectory, setFileSystemValue]);
 
   useEffect(() => {
     const init = async () => {
@@ -120,19 +153,21 @@ export function useFileSystem() {
           // Verify permission
           const status = await handle.queryPermission({ mode: 'readwrite' });
           if (status === 'granted') {
-            setRootHandle(handle);
-            setMode('local');
+            fileSystemState((draft) => {
+              draft.rootHandle = handle;
+              draft.mode = 'local';
+            });
             await refreshDirectory(handle);
           }
         }
       } catch (err) {
         console.error('Failed to restore FS handle:', err);
       } finally {
-        setIsReady(true);
+        setFileSystemValue('isReady', true);
       }
     };
     init();
-  }, [refreshDirectory]);
+  }, [fileSystemState, refreshDirectory, setFileSystemValue]);
 
   // Handle manual refreshes via trigger
   useEffect(() => {
@@ -157,10 +192,10 @@ export function useFileSystem() {
         await writable.close();
         await refreshDirectory(dirHandle);
       } catch (err) {
-        setError(`Failed to write file: ${err.message}`);
+        setFileSystemValue('error', `Failed to write file: ${err.message}`);
       }
     },
-    [currentDirHandle, refreshDirectory],
+    [currentDirHandle, refreshDirectory, setFileSystemValue],
   );
 
   const writeFileAtPath = useCallback(
@@ -180,10 +215,10 @@ export function useFileSystem() {
         await writable.close();
         await refreshDirectory(root); // Refresh from root to see changes everywhere
       } catch (err) {
-        setError(`Failed to write file at path: ${err.message}`);
+        setFileSystemValue('error', `Failed to write file at path: ${err.message}`);
       }
     },
-    [rootHandle, refreshDirectory],
+    [rootHandle, refreshDirectory, setFileSystemValue],
   );
 
   const getFileHandleAtPath = useCallback(
@@ -211,10 +246,10 @@ export function useFileSystem() {
         await dirHandle.getDirectoryHandle(folderName, { create: true });
         await refreshDirectory(dirHandle);
       } catch (err) {
-        setError(`Failed to create folder: ${err.message}`);
+        setFileSystemValue('error', `Failed to create folder: ${err.message}`);
       }
     },
-    [currentDirHandle, refreshDirectory],
+    [currentDirHandle, refreshDirectory, setFileSystemValue],
   );
 
   const deleteEntry = useCallback(
@@ -224,10 +259,10 @@ export function useFileSystem() {
         await dirHandle.removeEntry(name, { recursive: true });
         await refreshDirectory(dirHandle);
       } catch (err) {
-        setError(`Failed to delete entry: ${err.message}`);
+        setFileSystemValue('error', `Failed to delete entry: ${err.message}`);
       }
     },
-    [currentDirHandle, refreshDirectory],
+    [currentDirHandle, refreshDirectory, setFileSystemValue],
   );
 
   const moveEntry = useCallback(
@@ -241,25 +276,27 @@ export function useFileSystem() {
           throw new Error('FileSystemHandle.move is not supported in this environment');
         }
         await refreshDirectory(destinationDirHandle);
-        setRefreshTrigger((v) => v + 1);
+        setFileSystemValue('refreshTrigger', (v = 0) => v + 1);
       } catch (err) {
-        setError(`Failed to move entry: ${err.message}`);
+        setFileSystemValue('error', `Failed to move entry: ${err.message}`);
       }
     },
-    [refreshDirectory],
+    [refreshDirectory, setFileSystemValue],
   );
 
   const unlinkProject = useCallback(async () => {
     try {
       await clearHandle();
-      setRootHandle(null);
-      setMode(null);
-      setFiles([]);
-      setError(null);
+      fileSystemState((draft) => {
+        draft.rootHandle = null;
+        draft.mode = null;
+        draft.files = [];
+        draft.error = null;
+      });
     } catch (err) {
-      setError(`Failed to unlink project: ${err.message}`);
+      setFileSystemValue('error', `Failed to unlink project: ${err.message}`);
     }
-  }, []);
+  }, [fileSystemState, setFileSystemValue]);
 
   return useMemo(
     () => ({

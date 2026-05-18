@@ -1,8 +1,21 @@
-import React, { useEffect, useState } from 'react';
+import Node from '@/components/Core/Base/Node';
+import { createState } from '@/components/Core/Base/State';
+import React, { useEffect } from 'react';
 import styles from './ImageViewer.module.css';
 
+const ImageViewerState = createState('ImageViewerState');
+
 export default function ImageViewer({ tab }) {
-  const [imageUrl, setImageUrl] = useState(null);
+  return (
+    <Node id={tab?.id || tab?.file?.name || 'ImageViewer'}>
+      <ImageViewerInner tab={tab} />
+    </Node>
+  );
+}
+
+function ImageViewerInner({ tab }) {
+  const imageViewerState = ImageViewerState.useState(null, { imageUrl: null });
+  const { imageUrl = null } = imageViewerState || {};
 
   useEffect(() => {
     let isActive = true;
@@ -15,7 +28,9 @@ export default function ImageViewer({ tab }) {
           if (!isActive) return;
           const url = URL.createObjectURL(f);
           urlToRevoke = url;
-          setImageUrl(url);
+          imageViewerState((draft) => {
+            draft.imageUrl = url;
+          });
         })
         .catch((err) => {
           console.error('Failed to get file from handle:', err);
@@ -29,9 +44,11 @@ export default function ImageViewer({ tab }) {
       if (urlToRevoke) {
         URL.revokeObjectURL(urlToRevoke);
       }
-      setImageUrl(null);
+      imageViewerState((draft) => {
+        draft.imageUrl = null;
+      });
     };
-  }, [tab?.fsHandle, tab?.file?.content]);
+  }, [tab?.fsHandle, tab?.file?.content, imageViewerState]);
 
   if (!imageUrl) {
     return (

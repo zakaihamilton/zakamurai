@@ -1,6 +1,10 @@
 import { Icons } from '@/components/Core/Base/Icons';
-import React, { useEffect, useRef, useState } from 'react';
+import Node from '@/components/Core/Base/Node';
+import { createState } from '@/components/Core/Base/State';
+import React, { useEffect, useRef } from 'react';
 import styles from './Select.module.css';
+
+const SelectState = createState('SelectState');
 
 export default function Select({
   id,
@@ -12,7 +16,34 @@ export default function Select({
   tabIndex,
   className = '',
 }) {
-  const [isOpen, setIsOpen] = useState(false);
+  return (
+    <Node id={id || 'Select'}>
+      <SelectInner
+        id={id}
+        label={label}
+        value={value}
+        options={options}
+        onChange={onChange}
+        disabled={disabled}
+        tabIndex={tabIndex}
+        className={className}
+      />
+    </Node>
+  );
+}
+
+function SelectInner({
+  id,
+  label,
+  value,
+  options = [],
+  onChange,
+  disabled = false,
+  tabIndex,
+  className = '',
+}) {
+  const selectState = SelectState.useState(null, { isOpen: false });
+  const { isOpen = false } = selectState || {};
   const wrapperRef = useRef(null);
   const selectedOption = options.find((option) => option.value === value) || options[0];
 
@@ -21,17 +52,21 @@ export default function Select({
 
     const handlePointerDown = (event) => {
       if (!wrapperRef.current?.contains(event.target)) {
-        setIsOpen(false);
+        selectState((draft) => {
+          draft.isOpen = false;
+        });
       }
     };
 
     document.addEventListener('pointerdown', handlePointerDown);
     return () => document.removeEventListener('pointerdown', handlePointerDown);
-  }, [isOpen]);
+  }, [isOpen, selectState]);
 
   const selectOption = (nextValue) => {
     onChange?.(nextValue);
-    setIsOpen(false);
+    selectState((draft) => {
+      draft.isOpen = false;
+    });
   };
 
   return (
@@ -50,10 +85,16 @@ export default function Select({
           aria-labelledby={id && label ? `${id}-label ${id}` : undefined}
           disabled={disabled}
           className={styles.trigger}
-          onClick={() => setIsOpen((current) => !current)}
+          onClick={() =>
+            selectState((draft) => {
+              draft.isOpen = !draft.isOpen;
+            })
+          }
           onKeyDown={(e) => {
             if (e.key === 'Escape') {
-              setIsOpen(false);
+              selectState((draft) => {
+                draft.isOpen = false;
+              });
             }
           }}
           tabIndex={tabIndex}

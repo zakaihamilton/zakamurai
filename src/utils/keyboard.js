@@ -1,4 +1,7 @@
-import { useEffect, useState } from 'react';
+import { createState } from '@/components/Core/Base/State';
+import { useEffect } from 'react';
+
+const KeyboardShortcutState = createState('KeyboardShortcutState');
 
 const hasWindow = () => typeof window !== 'undefined';
 
@@ -36,17 +39,24 @@ export const shouldShowKeyboardShortcuts = () => {
 };
 
 export const useShouldShowKeyboardShortcuts = () => {
-  const [shouldShow, setShouldShow] = useState(shouldShowKeyboardShortcuts);
+  const keyboardShortcutState = KeyboardShortcutState.useState(null, {
+    shouldShow: shouldShowKeyboardShortcuts(),
+  });
+  const { shouldShow = shouldShowKeyboardShortcuts() } = keyboardShortcutState || {};
 
   useEffect(() => {
     const handleKeyDown = (event) => {
       if (event.isComposing) return;
       markKeyboardActivity();
-      setShouldShow(true);
+      keyboardShortcutState((draft) => {
+        draft.shouldShow = true;
+      });
     };
 
     const handleResize = () => {
-      setShouldShow(shouldShowKeyboardShortcuts());
+      keyboardShortcutState((draft) => {
+        draft.shouldShow = shouldShowKeyboardShortcuts();
+      });
     };
 
     window.addEventListener('keydown', handleKeyDown);
@@ -56,7 +66,7 @@ export const useShouldShowKeyboardShortcuts = () => {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('resize', handleResize);
     };
-  }, []);
+  }, [keyboardShortcutState]);
 
   return shouldShow;
 };

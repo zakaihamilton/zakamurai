@@ -1,9 +1,11 @@
 import { COMPLETION_SYSTEM_PROMPT } from '@/components/AI/Prompts';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { createState } from '@/components/Core/Base/State';
+import { useCallback, useEffect, useRef } from 'react';
 
 export const COMPLETION_DEBOUNCE_MS = 1000;
 const MAX_COMPLETION_LINES = 8;
 const MAX_COMPLETION_CHARS = 500;
+const CompletionState = createState('CompletionState');
 
 const stripCompletionNoise = (text) => {
   let cleaned = text.replace(/\r\n/g, '\n');
@@ -221,8 +223,24 @@ export default function useCompletion({
   enabled = true,
   onDebugUpdate,
 }) {
-  const [suggestion, setSuggestion] = useState('');
-  const [loading, setLoading] = useState(false);
+  const completionState = CompletionState.useState(null, { suggestion: '', loading: false });
+  const { suggestion = '', loading = false } = completionState || {};
+  const setSuggestion = useCallback(
+    (nextSuggestion) => {
+      completionState((draft) => {
+        draft.suggestion = nextSuggestion;
+      });
+    },
+    [completionState],
+  );
+  const setLoading = useCallback(
+    (nextLoading) => {
+      completionState((draft) => {
+        draft.loading = nextLoading;
+      });
+    },
+    [completionState],
+  );
   const timeoutRef = useRef(null);
   const lastRequestRef = useRef(0);
   const requestCounterRef = useRef(0);
@@ -378,21 +396,24 @@ export default function useCompletion({
     );
 
     return undefined;
-  }, [localContent, cursorPos, filePath, enabled]);
+  }, [localContent, cursorPos, filePath, enabled, setLoading, setSuggestion]);
 
-  const cancelSuggestion = useCallback((options = {}) => {
-    if (options.pauseUntilEdit) {
-      pausedContentRef.current = lastContentRef.current;
-    }
-    lastRequestRef.current = ++requestCounterRef.current;
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
-      timeoutRef.current = null;
-    }
-    pendingContentRef.current = null;
-    setSuggestion('');
-    setLoading(false);
-  }, []);
+  const cancelSuggestion = useCallback(
+    (options = {}) => {
+      if (options.pauseUntilEdit) {
+        pausedContentRef.current = lastContentRef.current;
+      }
+      lastRequestRef.current = ++requestCounterRef.current;
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
+      pendingContentRef.current = null;
+      setSuggestion('');
+      setLoading(false);
+    },
+    [setLoading, setSuggestion],
+  );
 
   return { suggestion, setSuggestion, cancelSuggestion, loading };
 }

@@ -1,8 +1,9 @@
 import { AppState } from '@/components/App/AppState';
 import { TabState } from '@/components/App/Panes/TabBar';
 import { Icons } from '@/components/Core/Base/Icons';
+import Node from '@/components/Core/Base/Node';
 import { createState } from '@/components/Core/Base/State';
-import React, { useState, useRef, useEffect, useMemo } from 'react';
+import React, { useCallback, useRef, useEffect, useMemo } from 'react';
 import styles from './EditorArea.module.css';
 
 import { DEFAULT_CONTENTS, SCRATCH_CONTENTS } from '@/components/Storage/InitialData';
@@ -19,6 +20,7 @@ import SyncHandler from './SyncHandler';
 import { highlightCode } from './highlighter';
 
 export const EditorState = createState('EditorState');
+const EditorAreaUiState = createState('EditorAreaUiState');
 
 const countLines = (value) => {
   if (!value) return 1;
@@ -33,6 +35,14 @@ const getTemplateContents = () =>
   Settings.getTemplate() === 'scratch' ? SCRATCH_CONTENTS : DEFAULT_CONTENTS;
 
 export default function EditorArea({ file, fsHandle }) {
+  return (
+    <Node id={file?.path?.join('/') || file?.name || 'EditorArea'}>
+      <EditorAreaInner file={file} fsHandle={fsHandle} />
+    </Node>
+  );
+}
+
+function EditorAreaInner({ file, fsHandle }) {
   const appState = AppState.useState();
   const tabState = TabState.useState();
   const { fs } = appState;
@@ -40,8 +50,65 @@ export default function EditorArea({ file, fsHandle }) {
   const filePath = file?.path?.join('/') || file?.name;
   const fallbackContent = getTemplateContents()[filePath] ?? file?.content ?? '';
 
-  const [localContent, setLocalContent] = useState(
-    () => state.fileContents?.[filePath] ?? fallbackContent,
+  const editorAreaUiState = EditorAreaUiState.useState(null, {
+    localContent: state.fileContents?.[filePath] ?? fallbackContent,
+    showFind: false,
+    findQuery: '',
+    replaceQuery: '',
+    matchIndex: -1,
+    matches: [],
+    showSideBySide: false,
+    diffActions: {},
+  });
+  const {
+    localContent = state.fileContents?.[filePath] ?? fallbackContent,
+    showFind = false,
+    findQuery = '',
+    replaceQuery = '',
+    matchIndex = -1,
+    matches = [],
+    showSideBySide = false,
+    diffActions = {},
+  } = editorAreaUiState || {};
+  const setEditorAreaValue = useCallback(
+    (key, nextValue) => {
+      editorAreaUiState((draft) => {
+        draft[key] = typeof nextValue === 'function' ? nextValue(draft[key]) : nextValue;
+      });
+    },
+    [editorAreaUiState],
+  );
+  const setLocalContent = useCallback(
+    (nextValue) => setEditorAreaValue('localContent', nextValue),
+    [setEditorAreaValue],
+  );
+  const setShowFind = useCallback(
+    (nextValue) => setEditorAreaValue('showFind', nextValue),
+    [setEditorAreaValue],
+  );
+  const setFindQuery = useCallback(
+    (nextValue) => setEditorAreaValue('findQuery', nextValue),
+    [setEditorAreaValue],
+  );
+  const setReplaceQuery = useCallback(
+    (nextValue) => setEditorAreaValue('replaceQuery', nextValue),
+    [setEditorAreaValue],
+  );
+  const setMatchIndex = useCallback(
+    (nextValue) => setEditorAreaValue('matchIndex', nextValue),
+    [setEditorAreaValue],
+  );
+  const setMatches = useCallback(
+    (nextValue) => setEditorAreaValue('matches', nextValue),
+    [setEditorAreaValue],
+  );
+  const setShowSideBySide = useCallback(
+    (nextValue) => setEditorAreaValue('showSideBySide', nextValue),
+    [setEditorAreaValue],
+  );
+  const setDiffActions = useCallback(
+    (nextValue) => setEditorAreaValue('diffActions', nextValue),
+    [setEditorAreaValue],
   );
   const localContentRef = useRef(localContent);
   const loadedLocalFileRef = useRef(null);
@@ -49,15 +116,13 @@ export default function EditorArea({ file, fsHandle }) {
   useEffect(() => {
     localContentRef.current = localContent;
   }, [localContent]);
-  const [showFind, setShowFind] = useState(false);
-
   // Sync localContent when state.fileContents changes externally (e.g. from AI)
   useEffect(() => {
     const externalContent = state.fileContents?.[filePath] ?? fallbackContent;
     if (externalContent !== localContent) {
       setLocalContent(externalContent);
     }
-  }, [state.fileContents?.[filePath], filePath, fallbackContent, localContent]);
+  }, [state.fileContents?.[filePath], filePath, fallbackContent, localContent, setLocalContent]);
 
   useEffect(() => {
     if ((fs.mode !== 'local' && fs.mode !== 'opfs') || !filePath || !fs.readFile) return;
@@ -88,14 +153,7 @@ export default function EditorArea({ file, fsHandle }) {
     return () => {
       cancelled = true;
     };
-  }, [filePath, fs, fsHandle, state]);
-
-  const [findQuery, setFindQuery] = useState('');
-  const [replaceQuery, setReplaceQuery] = useState('');
-  const [matchIndex, setMatchIndex] = useState(-1);
-  const [matches, setMatches] = useState([]);
-  const [showSideBySide, setShowSideBySide] = useState(false);
-  const [diffActions, setDiffActions] = useState({});
+  }, [filePath, fs, fsHandle, state, setLocalContent]);
 
   const leftScrollRef = useRef(null);
   const rightScrollRef = useRef(null);

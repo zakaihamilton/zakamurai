@@ -1,10 +1,27 @@
 import { Icons } from '@/components/Core/Base/Icons';
+import Node from '@/components/Core/Base/Node';
+import { createState } from '@/components/Core/Base/State';
 import Tooltip from '@/components/Widgets/Tooltip/Tooltip';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
 
+const ReasoningPanelState = createState('ReasoningPanelState');
+
 export default function ReasoningPanel({ reasoning, isReasoningVisible, styles = {} }) {
-  const [isCopied, setIsCopied] = useState(false);
+  return (
+    <Node id="ReasoningPanel">
+      <ReasoningPanelInner
+        reasoning={reasoning}
+        isReasoningVisible={isReasoningVisible}
+        styles={styles}
+      />
+    </Node>
+  );
+}
+
+function ReasoningPanelInner({ reasoning, isReasoningVisible, styles = {} }) {
+  const reasoningPanelState = ReasoningPanelState.useState(null, { isCopied: false });
+  const { isCopied = false } = reasoningPanelState || {};
   const reasoningRef = useRef(null);
 
   useEffect(() => {
@@ -15,8 +32,14 @@ export default function ReasoningPanel({ reasoning, isReasoningVisible, styles =
 
   const handleCopy = () => {
     navigator.clipboard.writeText(reasoning);
-    setIsCopied(true);
-    setTimeout(() => setIsCopied(false), 2000);
+    reasoningPanelState((draft) => {
+      draft.isCopied = true;
+    });
+    setTimeout(() => {
+      reasoningPanelState((draft) => {
+        draft.isCopied = false;
+      });
+    }, 2000);
   };
 
   return (

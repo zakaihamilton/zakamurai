@@ -1,8 +1,11 @@
 import { EditorState } from '@/components/App/Views/EditorArea';
 import { Icons } from '@/components/Core/Base/Icons';
+import { createState } from '@/components/Core/Base/State';
 import React from 'react';
 import { createPortal } from 'react-dom';
 import styles from './CompletionDebug.module.css';
+
+const CompletionDebugState = createState('CompletionDebugState');
 
 const EMPTY_DEBUG = {
   status: 'idle',
@@ -41,7 +44,8 @@ const formatDebugPayload = (debug) =>
 export default function CompletionDebug({ isOpen, onClose }) {
   const editorState = EditorState.useState();
   const debug = editorState.aiCompletionDebug || EMPTY_DEBUG;
-  const [copied, setCopied] = React.useState(false);
+  const completionDebugState = CompletionDebugState.useState(null, { copied: false });
+  const { copied = false } = completionDebugState || {};
 
   React.useEffect(() => {
     if (!isOpen) return;
@@ -71,8 +75,14 @@ export default function CompletionDebug({ isOpen, onClose }) {
       document.execCommand('copy');
       document.body.removeChild(textarea);
     }
-    setCopied(true);
-    window.setTimeout(() => setCopied(false), 1200);
+    completionDebugState((draft) => {
+      draft.copied = true;
+    });
+    window.setTimeout(() => {
+      completionDebugState((draft) => {
+        draft.copied = false;
+      });
+    }, 1200);
   };
 
   return createPortal(

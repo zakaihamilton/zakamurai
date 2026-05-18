@@ -140,6 +140,10 @@ describe('useCompletion', () => {
       filePath: 'test.js',
     });
 
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
     expect(result.current.loading).toBe(true);
     expect(askWebLLM).not.toHaveBeenCalled();
   });

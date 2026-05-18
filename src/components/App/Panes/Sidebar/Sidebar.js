@@ -7,7 +7,7 @@ import { useNotification } from '@/components/Widgets/Notification/Notification'
 import Tooltip from '@/components/Widgets/Tooltip/Tooltip';
 import { isMediaFile } from '@/utils/file';
 import { formatShortcut } from '@/utils/os';
-import React, { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useDeferredValue, useEffect, useMemo, useRef } from 'react';
 import styles from './Sidebar.module.css';
 import TreeItem from './TreeItem';
 import {
@@ -36,11 +36,39 @@ export default function Sidebar() {
   const { projectName, isMobile, fs } = appState;
   const tabState = TabState.useState();
   const editorState = EditorState.useState();
-  const sidebarUiState = SidebarUiState.useState(null, { filterText: '' });
-  const { filterText = '' } = sidebarUiState || {};
+  const sidebarUiState = SidebarUiState.useState(null, {
+    filterText: '',
+    loadingPaths: {},
+    dropTargetPath: null,
+    animatedWidth: sidebarWidth ?? 0,
+  });
+  const {
+    filterText = '',
+    loadingPaths = {},
+    dropTargetPath = null,
+    animatedWidth = sidebarWidth ?? 0,
+  } = sidebarUiState || {};
+  const setSidebarUiValue = useCallback(
+    (key, nextValue) => {
+      sidebarUiState((draft) => {
+        draft[key] = typeof nextValue === 'function' ? nextValue(draft[key]) : nextValue;
+      });
+    },
+    [sidebarUiState],
+  );
+  const setLoadingPaths = useCallback(
+    (nextValue) => setSidebarUiValue('loadingPaths', nextValue),
+    [setSidebarUiValue],
+  );
+  const setDropTargetPath = useCallback(
+    (nextValue) => setSidebarUiValue('dropTargetPath', nextValue),
+    [setSidebarUiValue],
+  );
+  const setAnimatedWidth = useCallback(
+    (nextValue) => setSidebarUiValue('animatedWidth', nextValue),
+    [setSidebarUiValue],
+  );
   const deferredFilterText = useDeferredValue(filterText);
-  const [loadingPaths, setLoadingPaths] = useState({});
-  const [dropTargetPath, setDropTargetPath] = useState(null);
   const searchInputRef = useRef(null);
   const syncedFsRef = useRef({ files: null, mode: null, version: null });
   const { addNotification } = useNotification();
@@ -132,7 +160,7 @@ export default function Sidebar() {
         });
       }
     },
-    [fs.mode, sidebarState],
+    [fs.mode, sidebarState, setLoadingPaths],
   );
 
   const rows = useMemo(
@@ -396,7 +424,7 @@ export default function Sidebar() {
         setDropTargetPath(row.pathStr);
       }
     },
-    [sidebarState.draggedItem],
+    [sidebarState.draggedItem, setDropTargetPath],
   );
 
   const handleDrop = useCallback(
@@ -426,11 +454,10 @@ export default function Sidebar() {
         draft.expandedFolders = nextExpanded;
       });
     },
-    [fs, sidebarState],
+    [fs, sidebarState, setDropTargetPath],
   );
 
   const isOpen = isMobile ? sidebarState.isSidebarPopupOpen : isSidebarOpen;
-  const [animatedWidth, setAnimatedWidth] = useState(isOpen ? sidebarWidth : 0);
 
   useEffect(() => {
     if (isMobile) return undefined;
@@ -441,7 +468,7 @@ export default function Sidebar() {
     setAnimatedWidth(sidebarWidth);
     const frame = window.requestAnimationFrame(() => setAnimatedWidth(0));
     return () => window.cancelAnimationFrame(frame);
-  }, [isMobile, isOpen, sidebarWidth]);
+  }, [isMobile, isOpen, sidebarWidth, setAnimatedWidth]);
 
   const desktopWidth = `${animatedWidth}px`;
 
