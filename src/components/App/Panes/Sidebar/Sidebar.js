@@ -12,20 +12,27 @@ import TreeItem from './TreeItem';
 export const SidebarState = createState('SidebarState');
 const SidebarUiState = createState('SidebarUiState');
 
-// Filter the folder tree recursively based on the search input
-const filterTree = (nodes, query) => {
-  if (!query) return nodes;
-  const q = query.toLowerCase();
+// Filter the folder tree recursively based on the search input.
+// Match against the full relative path so queries like "src/App" work.
+const filterTree = (nodes, query, parentPath = '') => {
+  const q = query.trim().toLowerCase();
+  if (!q) return nodes;
   return nodes
     .map((node) => {
+      const nodePath = parentPath ? `${parentPath}/${node.name}` : node.name;
+      const matches = nodePath.toLowerCase().includes(q);
+
       if (node.type === 'folder') {
-        const filteredChildren = filterTree(node.children || [], query);
-        if (node.name.toLowerCase().includes(q) || filteredChildren.length > 0) {
+        const filteredChildren = filterTree(node.children || [], query, nodePath);
+        if (matches) {
+          return node;
+        }
+        if (filteredChildren.length > 0) {
           return { ...node, children: filteredChildren };
         }
         return null;
       }
-      return node.name.toLowerCase().includes(q) ? node : null;
+      return matches ? node : null;
     })
     .filter(Boolean);
 };
