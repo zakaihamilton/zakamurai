@@ -72,7 +72,7 @@ export default function ActionButtons({ onCompile, onOpenLog, onOpenPreview, onT
             aria-label={isAIInputActive ? 'Hide AI Prompt' : 'Show AI Prompt'}
             data-testid="ai-prompt-toggle"
           >
-            <Icons.BotSmall />
+            <Icons.AIPrompt />
           </button>
         </Tooltip>
       </div>

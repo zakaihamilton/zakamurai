@@ -1,5 +1,6 @@
 import { getShortcutsByGroup } from '@/components/App/Manager/Shortcuts';
 import { Icons } from '@/components/Core/Base/Icons';
+import Tooltip from '@/components/Widgets/Tooltip/Tooltip';
 import { useShouldShowKeyboardShortcuts } from '@/utils/keyboard';
 import { formatShortcut, isMac } from '@/utils/os';
 import React from 'react';
@@ -28,9 +29,16 @@ export default function ShortcutsHelp({ isOpen, onClose }) {
       <div className={styles.modal}>
         <div className={styles.header}>
           <h2>Keyboard Shortcuts</h2>
-          <button type="button" className={styles.closeBtn} onClick={onClose}>
-            <Icons.Close />
-          </button>
+          <Tooltip content="Close">
+            <button
+              type="button"
+              className={styles.closeBtn}
+              onClick={onClose}
+              aria-label="Close shortcuts"
+            >
+              <Icons.Close />
+            </button>
+          </Tooltip>
         </div>
         <div className={styles.content}>
           {SHORTCUTS.map((group) => (
