@@ -14,6 +14,8 @@ export default function EditorHeader({
   showSideBySide,
   setShowSideBySide,
   handleFormat,
+  associatedPath,
+  onNavigateToAssociated,
 }) {
   return (
     <div className={styles.editorHeader}>
@@ -22,6 +24,7 @@ export default function EditorHeader({
         <span className={styles.filePath}>{filePath}</span>
       </div>
       <div className={styles.headerActions}>
+
         <Tooltip content="Find/Replace" shortcut={formatShortcut('⌘F')}>
           <button type="button" className={styles.actionBtn} onClick={() => setShowFind(!showFind)}>
             <Icons.Search />

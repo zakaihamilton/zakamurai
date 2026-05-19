@@ -1,4 +1,10 @@
 import { isMac } from '@/utils/os';
+import {
+  getStyleAtCursor,
+  getAssociatedFilePath,
+  findClassInCss,
+  findClassReferenceInJs,
+} from '@/utils/navigation';
 
 export const SHORTCUT_GROUPS = {
   NAVIGATION: 'Navigation',
@@ -9,7 +15,121 @@ export const SHORTCUT_GROUPS = {
   GENERAL: 'General',
 };
 
+const toggleCssJsAction = ({ editorState, tabState, sidebarState }) => {
+  const filePath = tabState.activeTabId;
+  if (!filePath) {
+    sidebarState((draft) => {
+      draft.isSidebarOpen = !draft.isSidebarOpen;
+    });
+    return;
+  }
+
+  const isCss = filePath.endsWith('.css');
+  const isJs =
+    filePath.endsWith('.js') ||
+    filePath.endsWith('.jsx') ||
+    filePath.endsWith('.ts') ||
+    filePath.endsWith('.tsx');
+
+  if (!isCss && !isJs) {
+    sidebarState((draft) => {
+      draft.isSidebarOpen = !draft.isSidebarOpen;
+    });
+    return;
+  }
+
+  const code = editorState.fileContents?.[filePath] || '';
+  const cursorPos = editorState.cursorPos?.[filePath] || { index: 0 };
+  const index = cursorPos.index ?? 0;
+
+  const styleResult = getStyleAtCursor(code, index, isCss);
+  const className = styleResult ? (typeof styleResult === 'string' ? styleResult : styleResult.className) : null;
+  const identifier = styleResult && typeof styleResult === 'object' ? styleResult.identifier : null;
+
+  let targetPath = null;
+  if (isCss) {
+    targetPath = getAssociatedFilePath(filePath, editorState.fileContents || {});
+  } else {
+    targetPath = getAssociatedFilePath(filePath, editorState.fileContents || {}, identifier);
+  }
+
+  if (!targetPath) {
+    sidebarState((draft) => {
+      draft.isSidebarOpen = !draft.isSidebarOpen;
+    });
+    return;
+  }
+
+  const targetContent = editorState.fileContents?.[targetPath] ?? '';
+  let targetLoc = null;
+
+  if (className) {
+    if (isCss) {
+      targetLoc = findClassReferenceInJs(targetContent, className, targetPath, filePath);
+    } else {
+      targetLoc = findClassInCss(targetContent, className);
+    }
+  }
+
+  if (!targetLoc) {
+    targetLoc = { line: 1, col: 1, index: 0 };
+  }
+
+  const fileName = targetPath.substring(targetPath.lastIndexOf('/') + 1);
+  const fileObj = {
+    name: fileName,
+    path: targetPath.split('/'),
+    content: targetContent,
+  };
+  const newTab = {
+    id: targetPath,
+    type: 'file',
+    label: fileName,
+    file: fileObj,
+  };
+
+  tabState((draft) => {
+    const existingTab = draft.openTabs.find((t) => t.id === targetPath);
+    if (!existingTab) {
+      draft.openTabs = [...draft.openTabs, newTab];
+    }
+    draft.activeTabId = targetPath;
+  });
+
+  editorState((draft) => {
+    if (!draft.cursorPos) {
+      draft.cursorPos = {};
+    }
+    draft.cursorPos[targetPath] = targetLoc;
+    draft.shouldScrollTo = {
+      filePath: targetPath,
+      line: targetLoc.line,
+      timestamp: Date.now(),
+    };
+  });
+};
+
 export const SHORTCUTS = [
+  {
+    id: 'toggle-css-js',
+    group: SHORTCUT_GROUPS.NAVIGATION,
+    desc: 'Toggle between Component and CSS Module',
+    key: 'b',
+    displayKey: '⌘B',
+    modifier: 'cmd',
+    isGlobal: true,
+    action: toggleCssJsAction,
+  },
+  {
+    id: 'toggle-css-js-ctrl',
+    group: SHORTCUT_GROUPS.NAVIGATION,
+    desc: 'Toggle between Component and CSS Module (Control)',
+    key: 'b',
+    displayKey: '⌃B',
+    modifier: 'ctrl',
+    isGlobal: true,
+    action: toggleCssJsAction,
+  },
   {
     id: 'toggle-sidebar',
     group: SHORTCUT_GROUPS.NAVIGATION,
