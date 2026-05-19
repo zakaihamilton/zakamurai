@@ -337,7 +337,14 @@ export default function Prompt() {
   const isBtnActive = val.trim() && !isAIProcessing;
 
   const currentActiveTabId = tabState.activeTabId;
+  const currentActiveTab = tabState.openTabs.find((t) => t.id === currentActiveTabId);
   const selectedLines = editorState.selectedLines?.[currentActiveTabId] || [];
+  const selectedLineText =
+    selectedLines.length > 0 ? [...selectedLines].sort((a, b) => a - b).join(', ') : 'None';
+  const activeFileName =
+    currentActiveTab?.type === 'file' ? currentActiveTabId.split('/').pop() : 'No file selected';
+  const activeFilePath = currentActiveTab?.type === 'file' ? currentActiveTabId : 'Open a file';
+  const runState = isAIProcessing ? 'AI working' : isSystemProcessing ? 'Compiling' : 'Ready';
   const selectedModelInfo =
     WEB_LLM_MODELS.find((model) => model.id === selectedModel) || RECOMMENDED_WEB_LLM_MODEL;
   const modelOptions = WEB_LLM_MODELS.map((model) => ({
@@ -403,22 +410,29 @@ export default function Prompt() {
             )}
           </div>
         </div>
-        {(currentActiveTabId || selectedLines.length > 0) && (
-          <div className={styles.tagsContainer}>
-            {currentActiveTabId && (
-              <div className={styles.tag}>
-                <Icons.File size={12} />
-                <span>{currentActiveTabId.split('/').pop()}</span>
-              </div>
-            )}
-            {selectedLines.length > 0 && (
-              <div className={styles.tag}>
-                <Icons.Check size={12} />
-                <span>Lines: {selectedLines.sort((a, b) => a - b).join(', ')}</span>
-              </div>
-            )}
+        <div className={styles.contextPanel} aria-label="AI context">
+          <div className={styles.contextRow}>
+            <span className={styles.contextLabel}>File</span>
+            <span className={styles.contextValue} title={activeFilePath}>
+              <Icons.File size={12} />
+              {activeFileName}
+            </span>
           </div>
-        )}
+          <div className={styles.contextRow}>
+            <span className={styles.contextLabel}>Selection</span>
+            <span className={styles.contextValue}>
+              <Icons.Check size={12} />
+              {selectedLines.length > 0 ? `Lines ${selectedLineText}` : selectedLineText}
+            </span>
+          </div>
+          <div className={styles.contextRow}>
+            <span className={styles.contextLabel}>State</span>
+            <span className={styles.contextValue}>
+              <span className={styles.contextDot} />
+              {runState}
+            </span>
+          </div>
+        </div>
         <div
           className={styles.modelPanel}
           onFocusCapture={loadCachedModelIds}

@@ -2,7 +2,7 @@
   display: flex;
   background: var(--bg-tab-inactive);
   border-bottom: 1px solid var(--border);
-  min-height: 44px;
+  min-height: 36px;
   position: sticky;
   top: 0;
   z-index: 500;
@@ -12,19 +12,19 @@
   display: flex;
   flex: 1;
   overflow-x: auto;
-  padding: 4px 4px 0 4px;
-  gap: 2px;
+  padding: 3px 3px 0;
+  gap: 1px;
 }
 
 .tab {
-  padding: 0 16px;
-  height: 40px;
+  padding: 0 12px;
+  height: 33px;
   display: flex;
   align-items: center;
   gap: 8px;
   background: none;
   border: none;
-  border-radius: 8px 8px 0 0;
+  border-radius: 5px 5px 0 0;
   cursor: pointer;
   font-size: 13px;
   font-weight: 500;
@@ -37,14 +37,14 @@
 }
 
 .tab:hover:not(.activeTab) {
-  background: var(--bg-surface);
+  background: var(--bg-hover);
   color: var(--text-main);
 }
 
 .activeTab {
-  background: var(--bg-base);
+  background: var(--bg-panel);
   color: var(--text-main);
-  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.2);
+  box-shadow: none;
 }
 
 .activeTab::after {
@@ -55,7 +55,7 @@
   right: 0;
   height: 2px;
   background: var(--accent);
-  box-shadow: 0 -2px 8px var(--accent);
+  box-shadow: none;
 }
 
 .inactiveTab {
@@ -75,15 +75,15 @@
   border: none;
   color: inherit;
   display: flex;
-  margin-left: 8px;
-  padding: 4px;
-  border-radius: 4px;
+  margin-left: 6px;
+  padding: 3px;
+  border-radius: 3px;
   transition: background 0.2s;
   cursor: pointer;
 }
 
 .closeButton:hover {
-  background: var(--bg-surface);
+  background: var(--bg-hover);
 }
 
 .tabLabelTooltip {
@@ -145,5 +145,5 @@
 }
 
 .barDropTarget {
-  background: rgba(var(--accent-rgb, 129, 140, 248), 0.05) !important;
+  background: rgb(var(--accent-rgb, 129, 140, 248), 0.05) !important;
 }

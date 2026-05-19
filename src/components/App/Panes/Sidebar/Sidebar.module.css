@@ -15,7 +15,7 @@
 }
 
 .sidebar::after {
-  content: "";
+  content: none;
   position: absolute;
   top: 0;
   right: 0;
@@ -26,8 +26,8 @@
 }
 
 .header {
-  min-height: 60px;
-  padding: 12px 18px;
+  min-height: 52px;
+  padding: 10px 14px;
   display: flex;
   align-items: center;
   border-bottom: 1px solid var(--border);
@@ -71,7 +71,7 @@
   flex-shrink: 0;
   border: none;
   cursor: pointer;
-  box-shadow: 0 4px 12px var(--accent-glow);
+  box-shadow: none;
   transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
   border-radius: 8px;
   overflow: hidden;
@@ -82,7 +82,7 @@
 }
 
 .projectNameContainer {
-  margin-left: 12px;
+  margin-left: 10px;
   display: flex;
   flex-direction: column;
   flex: 1;
@@ -91,33 +91,30 @@
 }
 
 .tagline {
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 700;
-  letter-spacing: 1.5px;
+  letter-spacing: 0.08em;
   color: var(--text-main);
   text-transform: uppercase;
 }
 
 .aiHighlight {
   color: var(--accent);
-  background: linear-gradient(135deg, var(--accent) 0%, #4f46e5 100%);
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  filter: drop-shadow(0 0 4px var(--accent-glow));
+  filter: none;
 }
 
 .mountSection {
-  padding: 12px 18px;
+  padding: 10px 14px;
   border-bottom: 1px solid var(--border);
 }
 
 .mountButton,
 .relinkButton {
   width: 100%;
-  padding: 10px 14px;
+  padding: 8px 10px;
   background: var(--bg-surface);
   border: 1px dashed var(--border-light);
-  border-radius: 8px;
+  border-radius: 6px;
   color: var(--text-muted);
   font-size: 13px;
   font-weight: 500;
@@ -128,7 +125,7 @@
   cursor: pointer;
   transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   font-family: inherit;
-  box-shadow: 0 1px 2px rgb(0 0 0 / 5%);
+  box-shadow: none;
   white-space: nowrap;
 }
 
@@ -152,17 +149,17 @@
   color: var(--accent);
   border-style: solid;
   transform: translateY(-1.5px);
-  box-shadow: 0 6px 16px rgb(99 102 241 / 12%);
+  box-shadow: none;
 }
 
 .mountButton:active,
 .relinkButton:active {
   transform: translateY(0);
-  box-shadow: 0 2px 4px rgb(99 102 241 / 10%);
+  box-shadow: none;
 }
 
 .filterSection {
-  padding: 12px 18px;
+  padding: 10px 14px;
   border-bottom: 1px solid var(--border);
 }
 
@@ -183,23 +180,23 @@
   width: 100%;
   background: var(--bg-input);
   border: 1px solid var(--border-light);
-  border-radius: 8px;
-  padding: 10px 12px 10px 34px;
+  border-radius: 6px;
+  padding: 8px 10px 8px 32px;
   color: var(--text-main);
   font-size: 13px;
   outline: none;
   transition: all 0.2s;
-  box-shadow: inset 0 2px 4px rgb(0 0 0 / 5%);
+  box-shadow: none;
 }
 
 .searchInput:focus {
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px var(--accent-glow), inset 0 2px 4px rgb(0 0 0 / 5%);
+  box-shadow: 0 0 0 2px var(--accent-glow);
 }
 
 .treeArea {
   flex: 1;
-  padding: 12px 0;
+  padding: 8px 0;
   overflow-y: auto;
   transition: opacity 0.2s;
 }
@@ -212,13 +209,13 @@
 }
 
 .footerToggle {
-  height: 60px;
+  height: 48px;
   background: none;
   border: none;
   border-top: 1px solid var(--border);
   display: flex;
   align-items: center;
-  padding: 0 22px;
+  padding: 0 16px;
   cursor: pointer;
   font-size: 12px;
   font-weight: bold;
