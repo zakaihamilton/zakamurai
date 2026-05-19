@@ -12,7 +12,6 @@
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   -webkit-touch-callout: none;
   user-select: none;
-  user-select: none;
 }
 
 .itemButton {
@@ -156,6 +155,54 @@
   background: var(--border);
   margin: 4px 8px;
   opacity: 0.5;
+}
+
+.contextMenuHeader {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: var(--bg-surface);
+  border-radius: 11px 11px 0 0;
+  margin: -6px -6px 6px;
+  border-bottom: 1px solid var(--border);
+  min-width: 0;
+}
+
+.headerTypeIcon {
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.headerTextContainer {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+
+.headerName {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-main);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.3;
+}
+
+.headerPath {
+  font-size: 10px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.2;
+  margin-top: 1px;
 }
 
 .deleteOption:hover {

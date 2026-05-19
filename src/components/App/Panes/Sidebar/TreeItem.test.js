@@ -150,4 +150,29 @@ describe('TreeItem', () => {
 
     vi.useRealTimers();
   });
+
+  it('displays a header showing file/folder name and path in context menu', async () => {
+    const customRow = {
+      item: { name: 'app.js', type: 'file' },
+      level: 2,
+      path: ['sub', 'dir', 'app.js'],
+      pathStr: 'sub/dir/app.js',
+    };
+    render(<TreeItem row={customRow} {...baseHandlers} />);
+
+    const itemElement = screen.getByText('app.js').closest('[draggable="true"]');
+
+    // Right click to open context menu wrapped in act
+    act(() => {
+      fireEvent.contextMenu(itemElement);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByRole('menu')).toBeDefined();
+      // Name of file
+      expect(screen.getByTitle('app.js')).toBeDefined();
+      // Path of file
+      expect(screen.getByTitle('/sub/dir/app.js')).toBeDefined();
+    });
+  });
 });

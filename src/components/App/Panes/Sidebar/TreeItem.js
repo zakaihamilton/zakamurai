@@ -142,7 +142,7 @@ function TreeItemInner({
         draft.contextMenu = { x: pageX, y: pageY };
       });
     },
-    { disabled: isEditing }
+    { disabled: isEditing },
   );
 
   useEffect(() => {
@@ -355,6 +355,32 @@ function TreeItemInner({
           })
         }
       >
+        <div className={styles.contextMenuHeader}>
+          <span
+            className={styles.headerTypeIcon}
+            style={{ color: item.type === 'folder' ? 'var(--accent)' : 'var(--text-muted)' }}
+          >
+            {isLoading ? (
+              <div className={styles.spinner} />
+            ) : item.type === 'folder' ? (
+              <Icons.Folder open={isExpanded} />
+            ) : isMediaFile(item.name) ? (
+              <Icons.Image />
+            ) : (
+              <Icons.File />
+            )}
+          </span>
+          <div className={styles.headerTextContainer}>
+            <span className={styles.headerName} title={item.name}>
+              {item.name}
+            </span>
+            <span className={styles.headerPath} title={item.isRoot ? item.name : `/${pathStr}`}>
+              {item.isRoot ? 'Root' : `/${pathStr}`}
+            </span>
+          </div>
+        </div>
+        <div className={styles.divider} />
+
         {item.type === 'folder' && (
           <>
             <button
