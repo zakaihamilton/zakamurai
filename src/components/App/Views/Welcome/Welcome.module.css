@@ -54,12 +54,16 @@
 
 .eyebrow {
   margin: 0 0 12px;
-  color: var(--accent);
+  color: #a78bfa;
   font-size: 12px;
   font-weight: 750;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   animation: rise-in 0.48s ease 0.52s both;
+}
+
+:global(.light) .eyebrow {
+  color: var(--accent);
 }
 
 .title {

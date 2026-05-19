@@ -99,8 +99,12 @@
 }
 
 .aiHighlight {
-  color: var(--accent);
+  color: #a78bfa;
   filter: none;
+}
+
+:global(.light) .aiHighlight {
+  color: var(--accent);
 }
 
 .mountSection {
@@ -242,10 +246,10 @@
 @media (width <= 768px) {
   .sidebar {
     position: fixed;
-    top: 0;
+    top: 56px;
     bottom: 0;
     left: 0;
-    z-index: 2000;
+    z-index: 900;
     width: min(280px, 88vw) !important;
     max-width: calc(100vw - 24px);
     box-shadow: 20px 0 50px rgb(0 0 0 / 50%);
@@ -294,24 +298,17 @@
 
 @media (width > 768px) {
   .sidebar:not(.isOpen) {
-    border-right: 1px solid var(--border);
+    border-right: none;
   }
 
   .sidebar:not(.isOpen) .contentWrapper {
-    min-width: 68px;
-    opacity: 1;
+    min-width: 0;
+    opacity: 0;
     transform: none;
-    visibility: visible;
-    pointer-events: auto;
+    visibility: hidden;
+    pointer-events: none;
   }
 
-  .sidebar:not(.isOpen) .header {
-    justify-content: center;
-    padding: 12px;
-    border-bottom: none;
-  }
-
-  .sidebar:not(.isOpen) .projectNameContainer,
   .sidebar:not(.isOpen) .mountSection,
   .sidebar:not(.isOpen) .filterSection,
   .sidebar:not(.isOpen) .treeArea,

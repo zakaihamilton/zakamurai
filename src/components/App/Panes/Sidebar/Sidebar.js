@@ -4,7 +4,6 @@ import { EditorState } from '@/components/App/Views/EditorArea';
 import { Icons } from '@/components/Core/Base/Icons';
 import { createState } from '@/components/Core/Base/State';
 import { useNotification } from '@/components/Widgets/Notification/Notification';
-import Tooltip from '@/components/Widgets/Tooltip/Tooltip';
 import { isMediaFile } from '@/utils/file';
 import { formatShortcut } from '@/utils/os';
 import React, { useCallback, useDeferredValue, useEffect, useMemo, useRef } from 'react';
@@ -28,7 +27,7 @@ export const SidebarState = createState('SidebarState');
 const SidebarUiState = createState('SidebarUiState');
 
 const ROW_HEIGHT = 34;
-const COLLAPSED_DESKTOP_WIDTH = 68;
+const COLLAPSED_DESKTOP_WIDTH = 0;
 
 export default function Sidebar() {
   const sidebarState = SidebarState.useState();
@@ -99,17 +98,6 @@ export default function Sidebar() {
       draft.expandedFolders = nextExpanded;
     });
   }, [fs.files, fs.mode, fs.version, sidebarState]);
-
-  const toggleSidebar = () => {
-    sidebarState((draft) => {
-      if (isMobile) {
-        draft.isSidebarPopupOpen = !draft.isSidebarPopupOpen;
-        draft.isAIInputPopupOpen = false;
-      } else {
-        draft.isSidebarOpen = !draft.isSidebarOpen;
-      }
-    });
-  };
 
   useEffect(() => {
     const handleFocusSearch = () => {
@@ -491,29 +479,6 @@ export default function Sidebar() {
       }}
     >
       <div className={styles.contentWrapper}>
-        <div className={styles.header}>
-          <Tooltip
-            content={isOpen ? 'Collapse Sidebar' : 'Expand Sidebar'}
-            shortcut={formatShortcut('⌃B')}
-          >
-            <button
-              type="button"
-              onClick={toggleSidebar}
-              onKeyDown={(event) => event.key === 'Enter' && toggleSidebar()}
-              className={styles.logo}
-              aria-label={isOpen ? 'Collapse Sidebar' : 'Expand Sidebar'}
-              data-testid="sidebar-toggle"
-            >
-              <Icons.ZLogo size={32} />
-            </button>
-          </Tooltip>
-          <div className={styles.projectNameContainer} style={{ opacity: isOpen ? 1 : 0 }}>
-            <span className={styles.tagline}>
-              ZAKAMUR<span className={styles.aiHighlight}>AI</span>
-            </span>
-          </div>
-        </div>
-
         <div className={styles.mountSection}>
           {!fs.mode ? (
             <button type="button" onClick={fs.mountLocal} className={styles.mountButton}>

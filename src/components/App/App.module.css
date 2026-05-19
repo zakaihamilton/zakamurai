@@ -46,11 +46,19 @@
 
 .appWrapper {
   display: flex;
+  flex-direction: column;
   height: 100vh;
   height: 100dvh;
   width: 100vw;
   background: var(--bg-base);
   position: relative;
+}
+
+.appBody {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .isResizing {
@@ -71,6 +79,7 @@
   flex: 1;
   display: flex;
   flex-direction: column;
+  min-width: 0;
   overflow: hidden;
 }
 
@@ -121,6 +130,7 @@
   }
 
   .mainContent,
+  .appBody,
   .workspaceContent,
   .workspaceMain,
   .editorContainer {
@@ -130,9 +140,9 @@
   .mobileOverlay {
     display: block;
     position: fixed;
-    inset: 0;
+    inset: 56px 0 0;
     background: rgb(0 0 0 / 40%);
-    z-index: 1050;
+    z-index: 800;
     backdrop-filter: blur(4px);
     animation: fade-in-overlay 0.4s var(--ease-premium);
   }

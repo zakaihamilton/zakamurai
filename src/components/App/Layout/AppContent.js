@@ -70,22 +70,24 @@ export default function AppContent() {
           aria-label="Close overlays"
         />
       )}
-      <Sidebar />
-      {!isMobile && (
-        <Node>
-          <Resizer
-            onResize={handleSidebarResize}
-            onResizeStart={handleResizeStart}
-            onResizeEnd={handleResizeEnd}
-            onDoubleClick={handleSidebarReset}
-            className={!isSidebarOpen ? styles.hidden : ''}
-          />
-        </Node>
-      )}
-      <div className={styles.mainContent}>
-        <TopBar />
-        <WorkspaceArea />
-        <StatusBar />
+      <TopBar />
+      <div className={styles.appBody}>
+        <Sidebar />
+        {!isMobile && (
+          <Node>
+            <Resizer
+              onResize={handleSidebarResize}
+              onResizeStart={handleResizeStart}
+              onResizeEnd={handleResizeEnd}
+              onDoubleClick={handleSidebarReset}
+              className={!isSidebarOpen ? styles.hidden : ''}
+            />
+          </Node>
+        )}
+        <div className={styles.mainContent}>
+          <WorkspaceArea />
+          <StatusBar />
+        </div>
       </div>
       <ShortcutsHelp
         isOpen={showShortcuts}

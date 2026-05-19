@@ -42,9 +42,13 @@
 }
 
 .aiHighlight {
-  color: var(--accent);
+  color: #a78bfa;
   font-weight: 680;
   filter: none;
+}
+
+:global(.light) .aiHighlight {
+  color: var(--accent);
 }
 
 .brandContainer {
@@ -140,18 +144,27 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: none;
-  border: none;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 8px;
   color: var(--text-main);
-  padding: 0;
+  padding: 3px 7px 3px 3px;
   cursor: pointer;
   margin-right: 18px;
   flex-shrink: 0;
-  transition: transform 0.2s var(--ease-premium);
+  transition: transform 0.18s var(--ease-premium), background 0.18s var(--ease-premium),
+    border-color 0.18s var(--ease-premium), color 0.18s var(--ease-premium);
 }
 
 .menuToggle:hover {
-  transform: scale(1.05) rotate(-5deg);
+  background: var(--bg-surface);
+  border-color: var(--border-light);
+  color: var(--text-main);
+  transform: translateY(-1px);
+}
+
+.menuToggle:active {
+  transform: translateY(0);
 }
 
 .menuToggle button {
@@ -160,13 +173,19 @@
   padding: 0;
   cursor: pointer;
   display: flex;
+  align-items: center;
+  gap: 10px;
   color: inherit;
+  font-family: inherit;
 }
 
-@media (width >= 769px) {
-  .sidebarOpen .menuToggle {
-    display: none;
-  }
+.brandTitle {
+  color: var(--text-main);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
 }
 
 @media (width <= 768px) {

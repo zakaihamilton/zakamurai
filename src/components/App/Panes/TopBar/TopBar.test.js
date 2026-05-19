@@ -118,6 +118,33 @@ describe('TopBar', () => {
     expect(screen.getByText('Welcome')).toBeDefined();
   });
 
+  it('renders the brand and toggles the sidebar from the top bar', () => {
+    const stateUpdate = vi.fn();
+    TabState.useState.mockReturnValue({
+      openTabs: [],
+      activeTabId: null,
+    });
+    AppState.useState.mockReturnValue({
+      theme: 'dark',
+      fs: { mode: null },
+      projectName: 'Zakamurai',
+    });
+    SidebarState.useState.mockReturnValue(
+      Object.assign(stateUpdate, {
+        folderTree: [],
+        isSidebarOpen: true,
+        isSidebarPopupOpen: false,
+      }),
+    );
+    EditorState.useState.mockReturnValue({ fileContents: {} });
+
+    render(<TopBar />);
+    expect(screen.getByText(/ZAKAMUR/i)).toBeDefined();
+
+    fireEvent.click(screen.getByTestId('sidebar-toggle'));
+    expect(stateUpdate).toHaveBeenCalled();
+  });
+
   it('renders export button and handles click', async () => {
     TabState.useState.mockReturnValue({
       openTabs: [],

@@ -62,32 +62,6 @@ describe('Sidebar', () => {
 
     render(<Sidebar />);
     expect(screen.getByText('Test Project')).toBeDefined();
-    expect(screen.getByText(/ZAKAMUR/i)).toBeDefined();
-    expect(screen.getByText(/AI/i)).toBeDefined();
-  });
-
-  it('toggles the sidebar when the logo is clicked', () => {
-    const stateUpdate = vi.fn();
-    vi.spyOn(SidebarState, 'useState').mockReturnValue(
-      Object.assign(stateUpdate, {
-        isSidebarOpen: true,
-        folderTree: [],
-        showAIInput: true,
-      }),
-    );
-    vi.spyOn(AppState, 'useState').mockReturnValue({
-      projectName: 'Test Project',
-      fs: { mode: null, mountLocal: vi.fn() },
-    });
-    vi.spyOn(TabState, 'useState').mockReturnValue({
-      activeTabId: null,
-    });
-    vi.spyOn(EditorState, 'useState').mockReturnValue({});
-
-    render(<Sidebar />);
-    const logo = screen.getByText('Z');
-    fireEvent.click(logo);
-    expect(stateUpdate).toHaveBeenCalled();
   });
 
   it('filters files by their full relative path', async () => {

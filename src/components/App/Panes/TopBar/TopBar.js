@@ -415,6 +415,9 @@ export default function TopBar() {
           data-testid="sidebar-toggle"
         >
           <Icons.ZLogo size={32} />
+          <span className={styles.brandTitle}>
+            ZAKAMUR<span className={styles.aiHighlight}>AI</span>
+          </span>
         </button>
       </Tooltip>
 
