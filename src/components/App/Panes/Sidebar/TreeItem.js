@@ -5,6 +5,7 @@ import ContextMenu from '@/components/Widgets/ContextMenu/ContextMenu';
 import Dialog from '@/components/Widgets/Dialog/Dialog';
 import Tooltip from '@/components/Widgets/Tooltip/Tooltip';
 import { isMediaFile } from '@/utils/file';
+import { useLongPress } from '@/utils/touch';
 import React, { useEffect, useRef } from 'react';
 import styles from './TreeItem.module.css';
 
@@ -131,6 +132,18 @@ function TreeItemInner({
   } = treeItemState || {};
   const editInputRef = useRef(null);
   const createInputRef = useRef(null);
+  const longPressHandlers = useLongPress(
+    (event) => {
+      const touch = event.touches[0];
+      const pageX = touch.pageX;
+      const pageY = touch.pageY;
+
+      treeItemState((draft) => {
+        draft.contextMenu = { x: pageX, y: pageY };
+      });
+    },
+    { disabled: isEditing }
+  );
 
   useEffect(() => {
     treeItemState((draft) => {
@@ -201,6 +214,7 @@ function TreeItemInner({
   return (
     <>
       <div
+        {...longPressHandlers}
         onContextMenu={(event) => {
           if (isEditing) return;
           event.preventDefault();

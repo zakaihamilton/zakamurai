@@ -1,5 +1,5 @@
 import { AppState } from '@/components/App/AppState';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import TreeItem from './TreeItem';
 
@@ -37,6 +37,9 @@ const makeRow = (name) => ({
 describe('TreeItem', () => {
   beforeEach(() => {
     vi.spyOn(AppState, 'useState').mockReturnValue({ theme: 'dark' });
+    if (typeof window !== 'undefined') {
+      window.ontouchstart = () => {};
+    }
   });
 
   it('keeps editing state isolated per row', async () => {
@@ -80,5 +83,71 @@ describe('TreeItem', () => {
     fireEvent.click(screen.getByRole('button', { name: /src/i }));
 
     expect(onToggle).toHaveBeenCalledWith(folderRow);
+  });
+
+  it('opens context menu on long touch press', async () => {
+    vi.useFakeTimers();
+    render(<TreeItem row={makeRow('app.js')} {...baseHandlers} />);
+
+    const itemElement = screen.getByText('app.js').closest('[draggable="true"]');
+
+    fireEvent.touchStart(itemElement, {
+      touches: [{ clientX: 10, clientY: 20, pageX: 10, pageY: 20 }],
+    });
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(300);
+    });
+    expect(screen.queryByRole('menu')).toBeNull();
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(300);
+    });
+
+    expect(screen.getByRole('menu')).toBeDefined();
+
+    vi.useRealTimers();
+  });
+
+  it('cancels context menu on touch move', async () => {
+    vi.useFakeTimers();
+    render(<TreeItem row={makeRow('app.js')} {...baseHandlers} />);
+
+    const itemElement = screen.getByText('app.js').closest('[draggable="true"]');
+
+    fireEvent.touchStart(itemElement, {
+      touches: [{ clientX: 10, clientY: 20, pageX: 10, pageY: 20 }],
+    });
+
+    fireEvent.touchMove(itemElement, {
+      touches: [{ clientX: 25, clientY: 20, pageX: 25, pageY: 20 }],
+    });
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(600);
+    });
+    expect(screen.queryByRole('menu')).toBeNull();
+
+    vi.useRealTimers();
+  });
+
+  it('cancels context menu on rapid touch end', async () => {
+    vi.useFakeTimers();
+    render(<TreeItem row={makeRow('app.js')} {...baseHandlers} />);
+
+    const itemElement = screen.getByText('app.js').closest('[draggable="true"]');
+
+    fireEvent.touchStart(itemElement, {
+      touches: [{ clientX: 10, clientY: 20, pageX: 10, pageY: 20 }],
+    });
+
+    fireEvent.touchEnd(itemElement);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(600);
+    });
+    expect(screen.queryByRole('menu')).toBeNull();
+
+    vi.useRealTimers();
   });
 });

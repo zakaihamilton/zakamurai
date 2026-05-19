@@ -10,6 +10,9 @@
   border-radius: 6px;
   position: relative;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  -webkit-touch-callout: none;
+  user-select: none;
+  user-select: none;
 }
 
 .itemButton {
