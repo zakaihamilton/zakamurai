@@ -588,16 +588,17 @@ export const Icons = {
       <line x1="12" y1="8" x2="12.01" y2="8" />
     </svg>
   ),
-  Code: ({ size = 16 }) => (
+  Code: (props) => (
     <svg
-      width={size}
-      height={size}
+      width={props.size || 16}
+      height={props.size || 16}
       viewBox="0 0 24 24"
       fill="none"
-      stroke="#fff"
+      stroke={props.stroke || 'currentColor'}
       strokeWidth="2"
       strokeLinecap="round"
       strokeLinejoin="round"
+      {...props}
     >
       <polyline points="16 18 22 12 16 6" />
       <polyline points="8 6 2 12 8 18" />

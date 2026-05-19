@@ -4,8 +4,9 @@ import { createState } from '@/components/Core/Base/State';
 import Settings from '@/components/Storage/Settings';
 import Tooltip from '@/components/Widgets/Tooltip/Tooltip';
 import { isMediaFile } from '@/utils/file';
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import styles from './TabBar.module.css';
+import TabContextMenu from './TabContextMenu';
 
 export const TabState = createState('TabState');
 const TabBarUiState = createState('TabBarUiState');
@@ -14,6 +15,7 @@ export default function TabBar() {
   const tabState = TabState.useState();
   const { openTabs = [], activeTabId } = tabState;
   const sidebarState = SidebarState.useState();
+  const [contextMenu, setContextMenu] = useState(null);
   const tabBarUiState = TabBarUiState.useState(null, {
     draggedTabId: null,
     dropTargetId: null,
@@ -57,7 +59,7 @@ export default function TabBar() {
   };
 
   const closeTab = (e, tabId) => {
-    e.stopPropagation();
+    if (e) e.stopPropagation();
     tabState((draft) => {
       const filtered = draft.openTabs.filter((t) => t.id !== tabId);
       draft.openTabs = filtered;
@@ -66,6 +68,58 @@ export default function TabBar() {
         draft.activeTabId = newActiveTabId;
 
         const tab = filtered.find((t) => t.id === newActiveTabId);
+        if (tab && tab.type === 'file' && tab.file?.path) {
+          sidebarState((draft) => {
+            const newExpanded = { ...draft.expandedFolders };
+            let runningPath = '';
+            for (const seg of tab.file.path.slice(0, -1)) {
+              runningPath = runningPath ? `${runningPath}/${seg}` : seg;
+              newExpanded[runningPath] = true;
+            }
+            draft.expandedFolders = newExpanded;
+          });
+        }
+      }
+    });
+  };
+
+  const closeOtherTabs = (tabId) => {
+    tabState((draft) => {
+      const clickedTab = draft.openTabs.find((t) => t.id === tabId);
+      if (!clickedTab) return;
+
+      draft.openTabs = [clickedTab];
+      draft.activeTabId = tabId;
+
+      if (clickedTab.type === 'file' && clickedTab.file?.path) {
+        sidebarState((draft) => {
+          const newExpanded = { ...draft.expandedFolders };
+          let runningPath = '';
+          for (const seg of clickedTab.file.path.slice(0, -1)) {
+            runningPath = runningPath ? `${runningPath}/${seg}` : seg;
+            newExpanded[runningPath] = true;
+          }
+          draft.expandedFolders = newExpanded;
+        });
+      }
+    });
+  };
+
+  const closeTabsToRight = (tabId) => {
+    tabState((draft) => {
+      const clickedIndex = draft.openTabs.findIndex((t) => t.id === tabId);
+      if (clickedIndex === -1) return;
+
+      const keepTabs = draft.openTabs.slice(0, clickedIndex + 1);
+      const closedTabs = draft.openTabs.slice(clickedIndex + 1);
+
+      draft.openTabs = keepTabs;
+
+      const wasActiveClosed = closedTabs.some((t) => t.id === draft.activeTabId);
+      if (wasActiveClosed) {
+        draft.activeTabId = tabId;
+
+        const tab = keepTabs[keepTabs.length - 1];
         if (tab && tab.type === 'file' && tab.file?.path) {
           sidebarState((draft) => {
             const newExpanded = { ...draft.expandedFolders };
@@ -190,6 +244,14 @@ export default function TabBar() {
                 onDrop={(e) => handleDrop(e, tab.id)}
                 onClick={() => handleTabClick(tab.id)}
                 onKeyDown={(e) => e.key === 'Enter' && handleTabClick(tab.id)}
+                onContextMenu={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setContextMenu({
+                    tab,
+                    position: { x: e.clientX, y: e.clientY },
+                  });
+                }}
                 className={`${styles.tab} ${isActive ? styles.activeTab : styles.inactiveTab} ${
                   isDragging ? styles.tabDragging : ''
                 } ${isDropTarget ? styles.dropTarget : ''}`}
@@ -242,6 +304,17 @@ export default function TabBar() {
             </button>
           </Tooltip>
         </div>
+      )}
+      {contextMenu && (
+        <TabContextMenu
+          tab={contextMenu.tab}
+          position={contextMenu.position}
+          onClose={() => setContextMenu(null)}
+          onCloseTab={(id) => closeTab(null, id)}
+          onCloseOthers={closeOtherTabs}
+          onCloseToRight={closeTabsToRight}
+          onCloseAll={handleClearAll}
+        />
       )}
     </div>
   );
