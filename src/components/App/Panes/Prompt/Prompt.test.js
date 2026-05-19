@@ -79,6 +79,8 @@ vi.mock('@/components/Storage/Settings', () => ({
     getAILogs: vi.fn().mockReturnValue([]),
     getAIPromptModel: vi.fn((defaultValue) => defaultValue),
     setAIPromptModel: vi.fn(),
+    getAIModelExpanded: vi.fn().mockReturnValue({}),
+    setAIModelExpanded: vi.fn(),
   },
 }));
 

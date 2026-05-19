@@ -19,6 +19,11 @@ vi.mock('@/components/Widgets/Dialog/Dialog', () => ({
   },
 }));
 
+vi.mock('@/components/Widgets/Tooltip/Tooltip', () => ({
+  __esModule: true,
+  default: ({ children }) => <div>{children}</div>,
+}));
+
 describe('ModelManager', () => {
   const styles = {
     modelDialog: 'modelDialog',

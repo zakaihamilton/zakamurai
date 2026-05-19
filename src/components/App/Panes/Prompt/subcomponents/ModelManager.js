@@ -2,6 +2,7 @@ import { WEB_LLM_MODELS } from '@/components/AI/WebLLMModels';
 import { Icons } from '@/components/Core/Base/Icons';
 import Settings from '@/components/Storage/Settings';
 import Dialog from '@/components/Widgets/Dialog/Dialog';
+import Tooltip from '@/components/Widgets/Tooltip/Tooltip';
 import React, { useState } from 'react';
 
 const detailValue = (model, label) => model.details?.find(([key]) => key === label)?.[1] || '';
@@ -65,15 +66,17 @@ export default function ModelManager({
               </div>
               <div className={styles.modelManagerInfo}>
                 <div className={styles.modelManagerTitleRow}>
-                  <button
-                    type="button"
-                    className={styles.modelManagerDisclosure}
-                    aria-expanded={isExpanded}
-                    aria-label={`${isExpanded ? 'Collapse' : 'Expand'} ${model.name}`}
-                    onClick={() => toggleExpanded(model.id)}
-                  >
-                    {isExpanded ? <Icons.ChevronUp /> : <Icons.ChevronDown />}
-                  </button>
+                  <Tooltip content={isExpanded ? 'Collapse' : 'Expand'}>
+                    <button
+                      type="button"
+                      className={styles.modelManagerDisclosure}
+                      aria-expanded={isExpanded}
+                      aria-label={`${isExpanded ? 'Collapse' : 'Expand'} ${model.name}`}
+                      onClick={() => toggleExpanded(model.id)}
+                    >
+                      {isExpanded ? <Icons.ChevronUp /> : <Icons.ChevronDown />}
+                    </button>
+                  </Tooltip>
                   <div className={styles.modelManagerTitleBlock}>
                     <h4>{model.name}</h4>
                     <code>{model.id}</code>
