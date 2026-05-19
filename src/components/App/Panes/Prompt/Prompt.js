@@ -467,6 +467,10 @@ export default function Prompt() {
               </button>
             </Tooltip>
           </div>
+          <div className={styles.modelSummary}>
+            <span>{selectedModelInfo.requirement}</span>
+            <code>{selectedModelInfo.id}</code>
+          </div>
         </div>
         <ModelManager
           isOpen={isModelManagerOpen}

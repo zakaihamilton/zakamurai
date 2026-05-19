@@ -1,6 +1,10 @@
 import { WEB_LLM_MODELS } from '@/components/AI/WebLLMModels';
+import { Icons } from '@/components/Core/Base/Icons';
+import Settings from '@/components/Storage/Settings';
 import Dialog from '@/components/Widgets/Dialog/Dialog';
-import React from 'react';
+import React, { useState } from 'react';
+
+const detailValue = (model, label) => model.details?.find(([key]) => key === label)?.[1] || '';
 
 export default function ModelManager({
   isOpen,
@@ -13,6 +17,19 @@ export default function ModelManager({
   modelCacheError,
   styles = {},
 }) {
+  const [expandedByModelId, setExpandedByModelId] = useState(() => Settings.getAIModelExpanded());
+
+  const toggleExpanded = (modelId) => {
+    setExpandedByModelId((current) => {
+      const next = {
+        ...current,
+        [modelId]: current[modelId] === false,
+      };
+      Settings.setAIModelExpanded(next);
+      return next;
+    });
+  };
+
   return (
     <Dialog
       isOpen={isOpen}
@@ -22,35 +39,73 @@ export default function ModelManager({
       className={styles.modelDialog}
     >
       <div className={styles.modelManager}>
+        <div className={styles.modelManagerIntro}>
+          <p>Choose the local browser model that matches this device and the kind of edit.</p>
+        </div>
         {WEB_LLM_MODELS.map((model) => {
           const isCached = cachedModelIds.includes(model.id);
           const cacheKey = `${isCached ? 'uncache' : 'cache'}:${model.id}`;
           const isBusy = modelCacheWork === cacheKey || modelCacheWork?.endsWith(`:${model.id}`);
           const isSelected = model.id === selectedModelId;
+          const bestFor = detailValue(model, 'Best for');
+          const system = detailValue(model, 'System');
+          const storage = detailValue(model, 'Storage');
+          const speed = detailValue(model, 'Speed');
+          const isExpanded = expandedByModelId[model.id] !== false;
 
           return (
-            <section key={model.id} className={styles.modelManagerItem}>
+            <section
+              key={model.id}
+              className={`${styles.modelManagerItem} ${isSelected ? styles.modelManagerItemSelected : ''} ${
+                isExpanded ? '' : styles.modelManagerItemCollapsed
+              }`}
+            >
+              <div className={styles.modelManagerRail} aria-hidden="true">
+                <span />
+              </div>
               <div className={styles.modelManagerInfo}>
                 <div className={styles.modelManagerTitleRow}>
-                  <h4>{model.name}</h4>
+                  <button
+                    type="button"
+                    className={styles.modelManagerDisclosure}
+                    aria-expanded={isExpanded}
+                    aria-label={`${isExpanded ? 'Collapse' : 'Expand'} ${model.name}`}
+                    onClick={() => toggleExpanded(model.id)}
+                  >
+                    {isExpanded ? <Icons.ChevronUp /> : <Icons.ChevronDown />}
+                  </button>
+                  <div className={styles.modelManagerTitleBlock}>
+                    <h4>{model.name}</h4>
+                    <code>{model.id}</code>
+                  </div>
                   <div className={styles.modelManagerBadges}>
+                    {isSelected && <span className={styles.modelBadgeSelected}>Selected</span>}
                     {model.recommended && <span>Recommended</span>}
-                    {isSelected && <span>Selected</span>}
-                    {isCached && <span>Cached</span>}
+                    {isCached && <span className={styles.modelBadgeCached}>Cached</span>}
                   </div>
                 </div>
-                <p>{model.requirement}</p>
-                <dl className={styles.modelManagerDetails}>
-                  {model.details?.map(([label, value]) => (
-                    <div key={label} className={styles.modelManagerDetail}>
-                      <dt>{label}</dt>
-                      <dd>{value}</dd>
-                    </div>
-                  ))}
-                </dl>
+                {isExpanded && (
+                  <>
+                    <p className={styles.modelManagerRequirement}>{model.requirement}</p>
+                    {bestFor && <p className={styles.modelManagerBestFor}>{bestFor}</p>}
+                    <dl className={styles.modelManagerDetails}>
+                      <div className={styles.modelManagerDetail}>
+                        <dt>System</dt>
+                        <dd>{system}</dd>
+                      </div>
+                      <div className={styles.modelManagerDetail}>
+                        <dt>Storage</dt>
+                        <dd>{storage}</dd>
+                      </div>
+                      <div className={styles.modelManagerDetail}>
+                        <dt>Speed</dt>
+                        <dd>{speed}</dd>
+                      </div>
+                    </dl>
+                  </>
+                )}
               </div>
               <div className={styles.modelManagerActions}>
-                <code>{model.id}</code>
                 <div className={styles.modelManagerButtonGroup}>
                   <button
                     type="button"

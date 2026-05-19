@@ -280,32 +280,99 @@
   transform: translateY(-1px);
 }
 
+.modelSummary {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 4px;
+  padding: 8px 9px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg-input);
+}
+
+.modelSummary span {
+  color: var(--text-muted);
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.modelSummary code {
+  min-width: 0;
+  color: var(--text-main);
+  font-size: 10px;
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .modelDialog {
-  max-width: min(720px, calc(100vw - 32px));
+  width: min(860px, calc(100vw - 32px));
+  max-width: min(860px, calc(100vw - 32px));
   max-height: min(86vh, 760px);
 }
 
 .modelManager {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
   max-height: min(68vh, 620px);
   overflow-y: auto;
   padding: 0 2px 12px 0;
 }
 
+.modelManagerIntro {
+  display: block;
+  padding: 0 0 4px;
+}
+
+.modelManagerIntro p {
+  margin: 0;
+  max-width: 440px;
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
 .modelManagerItem {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+  display: grid;
+  grid-template-columns: 8px minmax(0, 1fr);
+  gap: 12px;
   border: 1px solid var(--border-light);
   border-radius: 6px;
   background: var(--bg-surface);
-  padding: 9px 10px;
+  padding: 0 12px 12px 0;
+  overflow: visible;
+}
+
+.modelManagerItemCollapsed {
+  align-items: center;
+  padding-bottom: 0;
+}
+
+.modelManagerItemSelected {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--bg-surface) 88%, var(--accent));
+}
+
+.modelManagerRail {
+  width: 8px;
+  background: var(--bg-input);
+  border-right: 1px solid var(--border);
+}
+
+.modelManagerItemSelected .modelManagerRail {
+  background: var(--accent);
+  border-right-color: var(--accent);
 }
 
 .modelManagerInfo {
   min-width: 0;
+  padding: 12px 0 0;
+}
+
+.modelManagerItemCollapsed .modelManagerInfo {
+  padding: 8px 0;
 }
 
 .modelManagerTitleRow {
@@ -313,85 +380,174 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: 10px;
+  min-width: 0;
+}
+
+.modelManagerItemCollapsed .modelManagerTitleRow {
+  align-items: center;
+}
+
+.modelManagerTitleBlock {
+  min-width: 0;
+  flex: 1 1 auto;
 }
 
 .modelManagerTitleRow h4 {
   margin: 0;
   color: var(--text-main);
-  font-size: 14px;
+  font-size: 15px;
   line-height: 1.3;
 }
 
-.modelManagerInfo p {
-  margin: 5px 0 0;
+.modelManagerTitleBlock code {
+  display: block;
+  margin-top: 2px;
   color: var(--text-muted);
+  font-size: 10px;
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.modelManagerItemCollapsed .modelManagerTitleBlock {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  align-items: baseline;
+  gap: 10px;
+}
+
+.modelManagerItemCollapsed .modelManagerTitleBlock code {
+  margin-top: 0;
+}
+
+.modelManagerRequirement {
+  margin: 8px 0 0;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.modelManagerDisclosure {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  margin: -2px 0 0;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: var(--bg-input);
+  color: var(--text-muted);
+  cursor: pointer;
+  font: inherit;
+}
+
+.modelManagerDisclosure:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: var(--bg-hover);
+}
+
+.modelManagerDisclosure svg {
+  width: 14px;
+  height: 14px;
+}
+
+.modelManagerItemCollapsed .modelManagerDisclosure {
+  margin-top: 0;
+}
+
+.modelManagerBestFor {
+  margin: 8px 0 0;
+  color: var(--text-main);
   font-size: 12px;
   line-height: 1.35;
 }
 
 .modelManagerDetails {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 6px;
-  margin: 8px 0 0;
+  grid-template-columns: 1fr;
+  gap: 0;
+  margin: 12px 0 0;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg-input);
+  overflow: hidden;
 }
 
 .modelManagerDetail {
   min-width: 0;
-  border: 1px solid var(--border-light);
-  border-radius: 5px;
-  background: var(--bg-input);
-  padding: 6px 8px;
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
+  gap: 12px;
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.modelManagerDetail:last-child {
+  border-bottom: 0;
 }
 
 .modelManagerDetail dt {
-  margin: 0 0 2px;
-  color: var(--accent);
+  margin: 0;
+  color: var(--text-muted);
   font-size: 10px;
   font-weight: 800;
-  line-height: 1.2;
+  line-height: 1.35;
+  text-transform: uppercase;
 }
 
 .modelManagerDetail dd {
   margin: 0;
-  color: var(--text-muted);
-  font-size: 11px;
-  line-height: 1.3;
+  color: var(--text-main);
+  font-size: 12px;
+  line-height: 1.4;
+  overflow-wrap: break-word;
 }
 
 .modelManagerBadges {
   display: flex;
+  flex: 0 1 auto;
   flex-wrap: wrap;
   justify-content: flex-end;
   gap: 6px;
+  min-width: 0;
 }
 
 .modelManagerBadges span {
-  border: 1px solid rgb(var(--accent-rgb, 97, 175, 239), 0.25);
-  border-radius: 5px;
-  background: rgb(var(--accent-rgb, 97, 175, 239), 0.1);
-  color: var(--accent);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg-input);
+  color: var(--text-muted);
   font-size: 10px;
   font-weight: 700;
   line-height: 1;
   padding: 4px 6px;
 }
 
+.modelManagerBadges .modelBadgeSelected {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.modelManagerBadges .modelBadgeCached {
+  color: var(--text-main);
+}
+
 .modelManagerActions {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 12px;
+  grid-column: 2;
+  padding: 0;
 }
 
-.modelManagerActions code {
-  color: var(--text-muted);
-  font-size: 10px;
-  line-height: 1.35;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.modelManagerItemCollapsed .modelManagerActions {
+  display: none;
 }
 
 .modelManagerButtonGroup {
@@ -411,10 +567,10 @@
   color: var(--text-muted);
   cursor: pointer;
   font-family: inherit;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 700;
-  min-height: 30px;
-  padding: 6px 10px;
+  min-height: 32px;
+  padding: 6px 9px;
   transition: all 0.2s;
 }
 
@@ -470,6 +626,27 @@
   font-size: 12px;
   line-height: 1.45;
   padding: 10px 12px;
+}
+
+@media (width <= 760px) {
+  .modelManagerItem {
+    grid-template-columns: 6px minmax(0, 1fr);
+    padding-right: 10px;
+  }
+
+  .modelManagerActions {
+    grid-column: 2;
+    padding-top: 0;
+  }
+
+  .modelManagerDetails {
+    grid-template-columns: 1fr;
+  }
+
+  .modelManagerDetail {
+    grid-template-columns: 1fr;
+    gap: 3px;
+  }
 }
 
 .modelManagerError {

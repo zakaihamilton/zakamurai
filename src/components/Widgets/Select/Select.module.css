@@ -1,7 +1,7 @@
 .field {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
   min-width: 0;
   width: 100%;
 }
@@ -10,6 +10,7 @@
   color: var(--text-muted);
   font-size: 10px;
   font-weight: 800;
+  letter-spacing: 0.02em;
   text-transform: uppercase;
 }
 
@@ -24,7 +25,7 @@
   min-height: 36px;
   background: var(--bg-input);
   border: 1px solid var(--border-light);
-  border-radius: 8px;
+  border-radius: 6px;
   color: var(--text-main);
   cursor: pointer;
   display: flex;
@@ -33,7 +34,7 @@
   gap: 8px;
   font: inherit;
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 650;
   outline: none;
   padding: 8px 10px;
   text-align: left;
@@ -55,12 +56,17 @@
 
 .trigger:focus {
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px var(--accent-glow);
+  box-shadow: 0 0 0 2px var(--accent-glow);
 }
 
 .trigger:disabled {
   cursor: not-allowed;
   opacity: 0.7;
+}
+
+.trigger:hover:not(:disabled) {
+  background: var(--bg-hover);
+  border-color: var(--border);
 }
 
 .menu {
@@ -72,14 +78,14 @@
   z-index: 50;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
   max-height: min(320px, 60vh);
   overflow: hidden auto;
-  background: var(--bg-surface);
+  background: var(--bg-panel);
   border: 1px solid var(--border-light);
-  border-radius: 8px;
-  box-shadow: 0 12px 28px rgb(0 0 0 / 22%);
-  padding: 6px;
+  border-radius: 6px;
+  box-shadow: var(--shadow-lg);
+  padding: 4px;
 }
 
 .option {
@@ -87,27 +93,27 @@
   min-width: 0;
   background: transparent;
   border: 1px solid transparent;
-  border-radius: 6px;
+  border-radius: 4px;
   color: var(--text-main);
   cursor: pointer;
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: 4px;
   font: inherit;
-  padding: 8px;
+  padding: 8px 9px;
   text-align: left;
 }
 
 .option:hover,
 .option:focus {
-  background: rgb(var(--accent-rgb, 97, 175, 239), 0.1);
-  border-color: rgb(var(--accent-rgb, 97, 175, 239), 0.18);
+  background: var(--bg-hover);
+  border-color: var(--border);
   outline: none;
 }
 
 .optionSelected {
-  background: rgb(var(--accent-rgb, 97, 175, 239), 0.14);
-  border-color: rgb(var(--accent-rgb, 97, 175, 239), 0.24);
+  background: var(--accent-light);
+  border-color: var(--accent);
 }
 
 .optionHeader {
@@ -123,7 +129,7 @@
   flex: 1 1 120px;
   min-width: 0;
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 700;
   line-height: 1.25;
   overflow-wrap: anywhere;
 }
@@ -140,10 +146,10 @@
 
 .optionBadge {
   flex-shrink: 0;
-  background: rgb(var(--accent-rgb, 97, 175, 239), 0.12);
-  border: 1px solid rgb(var(--accent-rgb, 97, 175, 239), 0.24);
-  border-radius: 6px;
-  color: var(--accent);
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text-muted);
   font-size: 10px;
   font-weight: 800;
   line-height: 1;

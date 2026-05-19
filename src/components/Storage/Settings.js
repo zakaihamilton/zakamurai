@@ -14,6 +14,7 @@ const KEYS = {
   EXPANDED_FOLDERS: 'zakamurai_expanded_folders',
   AI_COMPLETION_ENABLED: 'zakamurai_ai_completion_enabled',
   AI_PROMPT_MODEL: 'zakamurai_ai_prompt_model',
+  AI_MODEL_EXPANDED: 'zakamurai_ai_model_expanded',
   TEMPLATE: 'zakamurai_template',
 };
 
@@ -233,6 +234,21 @@ const Settings = {
 
   setAIPromptModel(modelId) {
     this.set(KEYS.AI_PROMPT_MODEL, modelId);
+  },
+
+  getAIModelExpanded() {
+    const val = this.get(KEYS.AI_MODEL_EXPANDED);
+    if (!val) return {};
+    try {
+      return JSON.parse(val);
+    } catch (e) {
+      console.error('Failed to parse AI model expanded state from localStorage', e);
+      return {};
+    }
+  },
+
+  setAIModelExpanded(expanded) {
+    this.set(KEYS.AI_MODEL_EXPANDED, JSON.stringify(expanded));
   },
 
   getTemplate(defaultValue = 'default') {
