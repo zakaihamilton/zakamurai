@@ -1,11 +1,7 @@
+import { findDefiningCssFiles, findReferencingJsFiles, getStyleAtCursor } from '@/utils/navigation';
+import { isMac } from '@/utils/os';
 import React, { useLayoutEffect, useRef, useCallback, useState } from 'react';
 import styles from './EditorArea.module.css';
-import { isMac } from '@/utils/os';
-import {
-  getStyleAtCursor,
-  findReferencingJsFiles,
-  findDefiningCssFiles,
-} from '@/utils/navigation';
 
 import useEditorShortcuts from './EditorShortcuts';
 
@@ -82,6 +78,21 @@ export default function CodeEditor({
       showTimeoutRef.current = null;
     }
   }, []);
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: filePath reset is required to reset popup on tab switches
+  useLayoutEffect(() => {
+    setPopup({
+      visible: false,
+      x: 0,
+      y: 0,
+      className: '',
+      targets: [],
+      isCss: false,
+    });
+    pendingClassNameRef.current = null;
+    cancelShowTimer();
+    cancelHideTimer();
+  }, [filePath, cancelShowTimer, cancelHideTimer]);
 
   const handleMouseMove = useCallback(
     (e) => {
@@ -167,6 +178,11 @@ export default function CodeEditor({
           return;
         }
 
+        // If the popup is visible but showing a different class, close it immediately!
+        if (popup.visible && popup.className !== className) {
+          setPopup((prev) => ({ ...prev, visible: false }));
+        }
+
         // If a show timer is already running for the exact same class, just preserve it
         if (showTimeoutRef.current && pendingClassNameRef.current === className) {
           cancelHideTimer();
@@ -230,6 +246,11 @@ export default function CodeEditor({
 
   const handleSelectionChange = useCallback(
     (e) => {
+      // Close hover popup immediately when user moves the text cursor or interacts with the editor
+      setPopup((prev) => (prev.visible ? { ...prev, visible: false } : prev));
+      cancelShowTimer();
+      cancelHideTimer();
+
       if (!onCursorUpdate) return;
       const textarea = e.target;
       const start = textarea.selectionStart;
@@ -237,7 +258,7 @@ export default function CodeEditor({
       lastReportedIndex.current = start;
       onCursorUpdate(getCursorPosition(localContent, start));
     },
-    [onCursorUpdate, localContent],
+    [onCursorUpdate, localContent, cancelShowTimer, cancelHideTimer],
   );
 
   const localHandleChange = useCallback(
@@ -342,6 +363,7 @@ export default function CodeEditor({
           </div>
           <ul className={styles.popupList}>
             {popup.targets.map((target) => (
+              // biome-ignore lint/a11y/useKeyWithClickEvents: onClick is sufficient for navigation in this popover
               <li
                 key={target.filePath}
                 className={styles.popupItem}
@@ -360,4 +382,3 @@ export default function CodeEditor({
     </div>
   );
 }
-
