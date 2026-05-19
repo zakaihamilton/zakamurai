@@ -1,12 +1,12 @@
 import { Icons } from '@/components/Core/Base/Icons';
 import Node from '@/components/Core/Base/Node';
 import { createState } from '@/components/Core/Base/State';
-import ContextMenu from '@/components/Widgets/ContextMenu/ContextMenu';
 import Dialog from '@/components/Widgets/Dialog/Dialog';
 import Tooltip from '@/components/Widgets/Tooltip/Tooltip';
 import { isMediaFile } from '@/utils/file';
 import { useLongPress } from '@/utils/touch';
 import React, { useEffect, useRef } from 'react';
+import SidebarContextMenu from './SidebarContextMenu';
 import styles from './TreeItem.module.css';
 
 const TreeItemState = createState('TreeItemState');
@@ -347,92 +347,31 @@ function TreeItemInner({
         </div>
       )}
 
-      <ContextMenu
+      <SidebarContextMenu
+        item={item}
+        pathStr={pathStr}
+        isLoading={isLoading}
+        isExpanded={isExpanded}
         position={contextMenu}
         onClose={() =>
           treeItemState((draft) => {
             draft.contextMenu = null;
           })
         }
-      >
-        <div className={styles.contextMenuHeader}>
-          <span
-            className={styles.headerTypeIcon}
-            style={{ color: item.type === 'folder' ? 'var(--accent)' : 'var(--text-muted)' }}
-          >
-            {isLoading ? (
-              <div className={styles.spinner} />
-            ) : item.type === 'folder' ? (
-              <Icons.Folder open={isExpanded} />
-            ) : isMediaFile(item.name) ? (
-              <Icons.Image />
-            ) : (
-              <Icons.File />
-            )}
-          </span>
-          <div className={styles.headerTextContainer}>
-            <span className={styles.headerName} title={item.name}>
-              {item.name}
-            </span>
-            <span className={styles.headerPath} title={item.isRoot ? item.name : `/${pathStr}`}>
-              {item.isRoot ? 'Root' : `/${pathStr}`}
-            </span>
-          </div>
-        </div>
-        <div className={styles.divider} />
-
-        {item.type === 'folder' && (
-          <>
-            <button
-              type="button"
-              onClick={() => startCreate('file')}
-              className={styles.contextMenuOption}
-            >
-              <Icons.FilePlus />
-              New File
-            </button>
-            <button
-              type="button"
-              onClick={() => startCreate('folder')}
-              className={styles.contextMenuOption}
-            >
-              <Icons.FolderPlus />
-              New Folder
-            </button>
-            <div className={styles.divider} />
-          </>
-        )}
-        {!item.isRoot && (
-          <button
-            type="button"
-            onClick={() => {
-              treeItemState((draft) => {
-                draft.isEditing = true;
-                draft.contextMenu = null;
-              });
-            }}
-            className={styles.contextMenuOption}
-          >
-            <Icons.Edit />
-            Rename
-          </button>
-        )}
-        {!item.isRoot && (
-          <button
-            type="button"
-            onClick={() => {
-              treeItemState((draft) => {
-                draft.showDeleteDialog = true;
-                draft.contextMenu = null;
-              });
-            }}
-            className={`${styles.deleteOption} ${styles.contextMenuOption}`}
-          >
-            <Icons.Trash />
-            Delete
-          </button>
-        )}
-      </ContextMenu>
+        onStartCreate={startCreate}
+        onStartRename={() => {
+          treeItemState((draft) => {
+            draft.isEditing = true;
+            draft.contextMenu = null;
+          });
+        }}
+        onStartDelete={() => {
+          treeItemState((draft) => {
+            draft.showDeleteDialog = true;
+            draft.contextMenu = null;
+          });
+        }}
+      />
 
       <Dialog
         isOpen={showDeleteDialog}
