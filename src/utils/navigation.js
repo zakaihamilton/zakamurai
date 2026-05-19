@@ -653,6 +653,116 @@ export function findNavigationTargets(code, isCss, fileContents, filePath) {
       }
     }
   }
+  // 3. Exports in JS/TS files
+  if (!isCss) {
+    const exportRanges = getExportRanges(code);
+    for (const range of exportRanges) {
+      const referencing = findReferencingExportJsFiles(
+        filePath,
+        range.name,
+        range.isDefault,
+        fileContents || {},
+      );
+      if (referencing.length > 0) {
+        targets.push({
+          type: 'export',
+          name: range.name,
+          start: range.start,
+          end: range.end,
+          targets: referencing,
+        });
+      }
+    }
+  }
 
   return targets;
+}
+
+/**
+ * Extracts ranges (start and end indexes) of export statements in JS/TS code.
+ */
+export function getExportRanges(code) {
+  const ranges = [];
+  if (!code) return ranges;
+
+  // Named exports: export const name, export function name, export class name
+  const namedExportRegex = /\bexport\s+(?:const|let|var|function|class)\s+([a-zA-Z0-9_$]+)\b/g;
+  let match;
+  // biome-ignore lint/suspicious/noAssignInExpressions: regex exec loop
+  while ((match = namedExportRegex.exec(code)) !== null) {
+    const name = match[1];
+    const start = match.index;
+    const end = start + match[0].length;
+    ranges.push({
+      type: 'export',
+      name,
+      isDefault: false,
+      start,
+      end,
+    });
+  }
+
+  // Default exports: export default name or export default function name
+  const defaultExportRegex = /\bexport\s+default\s+(?:function\s+|class\s+|const\s+|let\s+|var\s+)?([a-zA-Z0-9_$]+)\b/g;
+  // biome-ignore lint/suspicious/noAssignInExpressions: regex exec loop
+  while ((match = defaultExportRegex.exec(code)) !== null) {
+    const name = match[1];
+    const start = match.index;
+    const end = start + match[0].length;
+    ranges.push({
+      type: 'export',
+      name,
+      isDefault: true,
+      start,
+      end,
+    });
+  }
+
+  return ranges;
+}
+
+/**
+ * Finds all JS/TS files referencing a specific export from a JS file.
+ * Returns an array of { filePath, fileName, loc } objects.
+ */
+export function findReferencingExportJsFiles(exportedFilePath, exportName, isDefault, allFileContents) {
+  const results = [];
+  if (!exportedFilePath || !allFileContents) return results;
+
+  for (const [filePath, content] of Object.entries(allFileContents)) {
+    if (filePath === exportedFilePath) continue;
+    if (
+      !filePath.endsWith('.js') &&
+      !filePath.endsWith('.jsx') &&
+      !filePath.endsWith('.ts') &&
+      !filePath.endsWith('.tsx')
+    ) {
+      continue;
+    }
+
+    const importRanges = getImportRanges(content, false);
+    for (const range of importRanges) {
+      const resolved = resolveImportPath(filePath, range.path, allFileContents);
+      if (resolved === exportedFilePath) {
+        // If it's a named export, verify that the symbol is imported or referenced in the file
+        if (!isDefault && !content.includes(exportName)) {
+          continue;
+        }
+
+        const before = content.substring(0, range.start);
+        const lines = before.split('\n');
+        results.push({
+          filePath,
+          fileName: filePath.substring(filePath.lastIndexOf('/') + 1),
+          loc: {
+            line: lines.length,
+            col: range.start - before.lastIndexOf('\n'),
+            index: range.start,
+          },
+        });
+        break;
+      }
+    }
+  }
+  return results;
 }

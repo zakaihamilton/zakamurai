@@ -210,16 +210,18 @@ export default function CodeEditor({
             <span>
               {popup.isImport ? 'Open Import' : popup.isCss ? 'Referenced in JS' : 'Defined in CSS'}
             </span>
-            <button
-              type="button"
-              className={styles.popupCloseBtn}
-              onClick={() => {
-                setPopup((prev) => ({ ...prev, visible: false }));
-              }}
-              aria-label="Close popup"
-            >
-              &times;
-            </button>
+            <Tooltip content="Close">
+              <button
+                type="button"
+                className={styles.popupCloseBtn}
+                onClick={() => {
+                  setPopup((prev) => ({ ...prev, visible: false }));
+                }}
+                aria-label="Close popup"
+              >
+                &times;
+              </button>
+            </Tooltip>
           </div>
           <ul className={styles.popupList}>
             {popup.targets.map((target) => (

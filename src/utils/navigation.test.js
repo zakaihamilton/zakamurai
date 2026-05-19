@@ -10,6 +10,9 @@ import {
   getStyleAtCursor,
   resolveImportPath,
   resolveRelativePath,
+  findNavigationTargets,
+  getExportRanges,
+  findReferencingExportJsFiles,
 } from './navigation';
 
 describe('navigation utils', () => {
@@ -379,6 +382,83 @@ describe('navigation utils', () => {
         fileContents,
       );
       expect(resolved).toBeNull();
+    });
+  });
+
+  describe('getExportRanges', () => {
+    it('extracts named and default exports correctly', () => {
+      const code = `
+        export const MyComponent = () => {};
+        export function calculate() {}
+        export class Card {}
+        export default function Main() {}
+      `;
+      const ranges = getExportRanges(code);
+      expect(ranges.length).toBe(4);
+
+      expect(ranges[0].name).toBe('MyComponent');
+      expect(ranges[0].isDefault).toBe(false);
+
+      expect(ranges[1].name).toBe('calculate');
+      expect(ranges[1].isDefault).toBe(false);
+
+      expect(ranges[2].name).toBe('Card');
+      expect(ranges[2].isDefault).toBe(false);
+
+      expect(ranges[3].name).toBe('Main');
+      expect(ranges[3].isDefault).toBe(true);
+    });
+  });
+
+  describe('findReferencingExportJsFiles', () => {
+    it('finds referencing files for exports', () => {
+      const fileContents = {
+        'src/components/Button.js': `
+          export const Button = () => {};
+          export default function ButtonDefault() {}
+        `,
+        'src/components/Card.js': `
+          import { Button } from './Button';
+          import ButtonDefault from './Button';
+        `,
+      };
+
+      const resultsNamed = findReferencingExportJsFiles(
+        'src/components/Button.js',
+        'Button',
+        false,
+        fileContents,
+      );
+      expect(resultsNamed.length).toBe(1);
+      expect(resultsNamed[0].filePath).toBe('src/components/Card.js');
+
+      const resultsDefault = findReferencingExportJsFiles(
+        'src/components/Button.js',
+        'ButtonDefault',
+        true,
+        fileContents,
+      );
+      expect(resultsDefault.length).toBe(1);
+      expect(resultsDefault[0].filePath).toBe('src/components/Card.js');
+    });
+  });
+
+  describe('findNavigationTargets with exports', () => {
+    it('returns export navigation targets for JS files', () => {
+      const fileContents = {
+        'src/components/Button.js': 'export const Button = () => {};',
+        'src/components/Card.js': "import { Button } from './Button';",
+      };
+      const targets = findNavigationTargets(
+        'export const Button = () => {};',
+        false,
+        fileContents,
+        'src/components/Button.js',
+      );
+      const exportTargets = targets.filter((t) => t.type === 'export');
+      expect(exportTargets.length).toBe(1);
+      expect(exportTargets[0].name).toBe('Button');
+      expect(exportTargets[0].targets[0].filePath).toBe('src/components/Card.js');
     });
   });
 });
