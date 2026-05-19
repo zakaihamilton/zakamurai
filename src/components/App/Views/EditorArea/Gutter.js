@@ -59,6 +59,7 @@ function GutterInner({
   }, [lineItems, linesArr?.length, linesCount]);
   const totalLines = sourceLines.length || 1;
   const reservedLinesCount = linesCount ?? totalLines;
+  const reservedDigits = Math.max(3, String(reservedLinesCount).length);
   const gutterState = GutterState.useState(null, { viewport: { scrollTop: 0, height: 0 } });
   const { viewport = { scrollTop: 0, height: 0 } } = gutterState || {};
   const selectedSet = useMemo(
@@ -132,11 +133,11 @@ function GutterInner({
         style={
           totalLines > VIRTUALIZE_AFTER
             ? {
-                '--gutter-digits': String(reservedLinesCount).length,
+                '--gutter-digits': reservedDigits,
                 height: `${totalLines * LINE_HEIGHT}px`,
                 position: 'relative',
               }
-            : { '--gutter-digits': String(reservedLinesCount).length }
+            : { '--gutter-digits': reservedDigits }
         }
       >
         {visibleLines.map(({ line, top, index }) => {
