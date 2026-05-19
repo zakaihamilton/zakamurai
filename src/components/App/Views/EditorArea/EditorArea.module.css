@@ -218,8 +218,13 @@
   cursor: pointer;
   transition: all 0.1s;
   min-height: 1.6em;
+  min-width: calc((var(--gutter-digits, 1) * 1ch) + 24px);
   left: 0;
   right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
 }
 
 .gutterLine:hover {
@@ -231,6 +236,32 @@
   background: var(--editor-line-selected-bg);
   color: var(--editor-line-selected-border);
   font-weight: bold;
+}
+
+.foldToggle {
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border: 1px solid var(--editor-gutter-border);
+  border-radius: 3px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+}
+
+.foldToggle:hover {
+  color: var(--text-main);
+  border-color: var(--editor-syntax-function);
+}
+
+.foldSpacer {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
 }
 
 .editorWrapper {

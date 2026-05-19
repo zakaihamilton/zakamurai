@@ -11,11 +11,14 @@ import Settings from '@/components/Storage/Settings';
 import { formatCode } from '@/utils/formatter';
 import CodeEditor from './CodeEditor';
 import useCompletion from './CompletionHandler';
+import { getCssBlockFolds, isCssPath } from './CssFolding';
 import DiffHandler from './DiffHandler';
 import EditorHeader from './EditorHeader';
 import FindHandler from './FindHandler';
+import { getFoldStarts, getVisibleFoldedContent } from './Folding';
 import Gutter from './Gutter';
 import HistoryHandler from './HistoryHandler';
+import { getJsonObjectFolds, isJsonPath } from './JsonFolding';
 import SyncHandler from './SyncHandler';
 import { highlightCode } from './highlighter';
 
@@ -59,6 +62,7 @@ function EditorAreaInner({ file, fsHandle }) {
     matches: [],
     showSideBySide: false,
     diffActions: {},
+    collapsedFolds: {},
   });
   const {
     localContent = state.fileContents?.[filePath] ?? fallbackContent,
@@ -69,6 +73,7 @@ function EditorAreaInner({ file, fsHandle }) {
     matches = [],
     showSideBySide = false,
     diffActions = {},
+    collapsedFolds = {},
   } = editorAreaUiState || {};
   const setEditorAreaValue = useCallback(
     (key, nextValue) => {
@@ -108,6 +113,10 @@ function EditorAreaInner({ file, fsHandle }) {
   );
   const setDiffActions = useCallback(
     (nextValue) => setEditorAreaValue('diffActions', nextValue),
+    [setEditorAreaValue],
+  );
+  const setCollapsedFolds = useCallback(
+    (nextValue) => setEditorAreaValue('collapsedFolds', nextValue),
     [setEditorAreaValue],
   );
   const localContentRef = useRef(localContent);
@@ -171,6 +180,40 @@ function EditorAreaInner({ file, fsHandle }) {
   };
 
   const linesCount = useMemo(() => countLines(localContent), [localContent]);
+  const folds = useMemo(
+    () =>
+      isJsonPath(filePath)
+        ? getJsonObjectFolds(localContent, filePath)
+        : getCssBlockFolds(localContent, filePath),
+    [localContent, filePath],
+  );
+  const foldStarts = useMemo(() => getFoldStarts(folds), [folds]);
+  const collapsedFoldIds = collapsedFolds[filePath] || [];
+  const visibleFoldedContent = useMemo(
+    () => getVisibleFoldedContent(localContent, folds, collapsedFoldIds),
+    [localContent, folds, collapsedFoldIds],
+  );
+  const editorContent = visibleFoldedContent.content;
+  const editorLineItems = visibleFoldedContent.lineItems;
+  const hasCollapsedFolds = visibleFoldedContent.hasCollapsedFolds;
+  const foldLabel = isCssPath(filePath) ? 'CSS block' : 'JSON object';
+
+  const toggleFold = useCallback(
+    (foldId) => {
+      setCollapsedFolds((current = {}) => {
+        const currentIds = current[filePath] || [];
+        const nextIds = currentIds.includes(foldId)
+          ? currentIds.filter((id) => id !== foldId)
+          : [...currentIds, foldId];
+
+        return {
+          ...current,
+          [filePath]: nextIds,
+        };
+      });
+    },
+    [filePath, setCollapsedFolds],
+  );
 
   const handleChange = (e) => {
     const newVal = e.target.value;
@@ -209,7 +252,7 @@ function EditorAreaInner({ file, fsHandle }) {
     localContent,
     cursorPos,
     filePath,
-    enabled: !hasDiff && aiCompletionEnabled,
+    enabled: !hasDiff && !hasCollapsedFolds && aiCompletionEnabled,
     onDebugUpdate: (debug) => {
       state((draft) => {
         draft.aiCompletionDebug = debug;
@@ -258,7 +301,7 @@ function EditorAreaInner({ file, fsHandle }) {
   // biome-ignore lint/correctness/useExhaustiveDependencies: state is intentionally omitted to prevent re-highlighting on every state change
   const highlightedCode = useMemo(() => {
     return highlightCode(
-      localContent,
+      showSideBySide && hasDiff ? localContent : editorContent,
       filePath,
       state,
       styles,
@@ -269,7 +312,10 @@ function EditorAreaInner({ file, fsHandle }) {
       cursorPos,
     );
   }, [
+    editorContent,
+    hasDiff,
     localContent,
+    showSideBySide,
     filePath,
     state.pendingDiffs?.[filePath],
     state.selectedLines?.[filePath],
@@ -407,22 +453,28 @@ function EditorAreaInner({ file, fsHandle }) {
         <div ref={scrollContainerRef} className={`${styles.scrollContainer} scrollHide`}>
           <Gutter
             linesCount={linesCount}
+            lineItems={editorLineItems}
             selectedLines={selectedLines}
             toggleLine={diffActions.toggleLine}
+            foldStarts={foldStarts}
+            collapsedFoldIds={collapsedFoldIds}
+            toggleFold={toggleFold}
+            foldLabel={foldLabel}
             scrollRef={scrollContainerRef}
           />
 
           <CodeEditor
-            localContent={localContent}
+            localContent={editorContent}
             handleChange={handleChange}
             highlightedCode={highlightedCode}
-            onCursorUpdate={diffActions.handleCursorUpdate}
-            cursorPos={cursorPos}
+            onCursorUpdate={hasCollapsedFolds ? undefined : diffActions.handleCursorUpdate}
+            cursorPos={hasCollapsedFolds ? undefined : cursorPos}
             scrollContainerRef={scrollContainerRef}
             suggestion={suggestion}
             onAcceptSuggestion={handleAcceptSuggestion}
             onCancelSuggestion={cancelSuggestion}
             filePath={filePath}
+            readOnly={hasCollapsedFolds}
           />
         </div>
       )}

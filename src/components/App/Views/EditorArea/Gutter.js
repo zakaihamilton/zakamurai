@@ -1,5 +1,7 @@
+import { Icons } from '@/components/Core/Base/Icons';
 import Node from '@/components/Core/Base/Node';
 import { createState } from '@/components/Core/Base/State';
+import Tooltip from '@/components/Widgets/Tooltip/Tooltip';
 import React, { useEffect, useMemo } from 'react';
 import styles from './EditorArea.module.css';
 
@@ -11,8 +13,13 @@ const GutterState = createState('GutterState');
 export default function Gutter({
   linesCount,
   linesArr,
+  lineItems,
   selectedLines = [],
   toggleLine,
+  foldStarts = {},
+  collapsedFoldIds = [],
+  toggleFold,
+  foldLabel = 'fold',
   scrollRef,
 }) {
   return (
@@ -20,22 +27,45 @@ export default function Gutter({
       <GutterInner
         linesCount={linesCount}
         linesArr={linesArr}
+        lineItems={lineItems}
         selectedLines={selectedLines}
         toggleLine={toggleLine}
+        foldStarts={foldStarts}
+        collapsedFoldIds={collapsedFoldIds}
+        toggleFold={toggleFold}
+        foldLabel={foldLabel}
         scrollRef={scrollRef}
       />
     </Node>
   );
 }
 
-function GutterInner({ linesCount, linesArr, selectedLines = [], toggleLine, scrollRef }) {
-  const totalLines = linesCount ?? linesArr?.length ?? 1;
+function GutterInner({
+  linesCount,
+  linesArr,
+  lineItems,
+  selectedLines = [],
+  toggleLine,
+  foldStarts = {},
+  collapsedFoldIds = [],
+  toggleFold,
+  foldLabel = 'fold',
+  scrollRef,
+}) {
+  const sourceLines = useMemo(() => {
+    if (lineItems?.length) return lineItems;
+    const total = linesCount ?? linesArr?.length ?? 1;
+    return Array.from({ length: total }, (_, index) => ({ line: index + 1 }));
+  }, [lineItems, linesArr?.length, linesCount]);
+  const totalLines = sourceLines.length || 1;
+  const reservedLinesCount = linesCount ?? totalLines;
   const gutterState = GutterState.useState(null, { viewport: { scrollTop: 0, height: 0 } });
   const { viewport = { scrollTop: 0, height: 0 } } = gutterState || {};
   const selectedSet = useMemo(
     () => new Set(selectedLines.map((line) => Number(line))),
     [selectedLines],
   );
+  const collapsedSet = useMemo(() => new Set(collapsedFoldIds), [collapsedFoldIds]);
 
   useEffect(() => {
     const element = scrollRef?.current;
@@ -75,46 +105,76 @@ function GutterInner({ linesCount, linesArr, selectedLines = [], toggleLine, scr
 
   const visibleLines = useMemo(() => {
     if (totalLines <= VIRTUALIZE_AFTER) {
-      return Array.from({ length: totalLines }, (_, index) => ({
-        line: index + 1,
+      return sourceLines.map((item, index) => ({
+        line: item.line,
         top: null,
+        index,
       }));
     }
 
-    const start = Math.max(1, Math.floor(viewport.scrollTop / LINE_HEIGHT) - OVERSCAN);
+    const start = Math.max(0, Math.floor(viewport.scrollTop / LINE_HEIGHT) - OVERSCAN);
     const visibleCount = Math.ceil(viewport.height / LINE_HEIGHT) + OVERSCAN * 2;
-    const end = Math.min(totalLines, start + visibleCount);
+    const end = Math.min(totalLines - 1, start + visibleCount);
     return Array.from({ length: end - start + 1 }, (_, index) => {
-      const line = start + index;
+      const visibleIndex = start + index;
       return {
-        line,
-        top: (line - 1) * LINE_HEIGHT,
+        line: sourceLines[visibleIndex]?.line ?? visibleIndex + 1,
+        index: visibleIndex,
+        top: visibleIndex * LINE_HEIGHT,
       };
     });
-  }, [totalLines, viewport.height, viewport.scrollTop]);
-
-  const contentStyle =
-    totalLines > VIRTUALIZE_AFTER
-      ? { height: `${totalLines * LINE_HEIGHT}px`, position: 'relative' }
-      : undefined;
+  }, [sourceLines, totalLines, viewport.height, viewport.scrollTop]);
 
   return (
     <div className={styles.gutter}>
-      <div className={styles.gutterContent} style={contentStyle}>
-        {visibleLines.map(({ line, top }) => (
-          // biome-ignore lint/a11y/useKeyWithClickEvents: gutter lines are clickable for selection
-          <div
-            key={line}
-            style={top == null ? undefined : { position: 'absolute', top: `${top}px` }}
-            onClick={(e) => {
-              e.stopPropagation();
-              if (toggleLine) toggleLine(line);
-            }}
-            className={`${styles.gutterLine} ${selectedSet.has(line) ? styles.selectedGutterLine : ''}`}
-          >
-            {line}
-          </div>
-        ))}
+      <div
+        className={styles.gutterContent}
+        style={
+          totalLines > VIRTUALIZE_AFTER
+            ? {
+                '--gutter-digits': String(reservedLinesCount).length,
+                height: `${totalLines * LINE_HEIGHT}px`,
+                position: 'relative',
+              }
+            : { '--gutter-digits': String(reservedLinesCount).length }
+        }
+      >
+        {visibleLines.map(({ line, top, index }) => {
+          const fold = foldStarts[line];
+          const isCollapsed = fold && collapsedSet.has(fold.id);
+
+          return (
+            // biome-ignore lint/a11y/useKeyWithClickEvents: gutter lines are clickable for selection
+            <div
+              key={`${line}:${index}`}
+              style={top == null ? undefined : { position: 'absolute', top: `${top}px` }}
+              onClick={(e) => {
+                e.stopPropagation();
+                if (toggleLine) toggleLine(line);
+              }}
+              className={`${styles.gutterLine} ${selectedSet.has(line) ? styles.selectedGutterLine : ''}`}
+            >
+              {fold ? (
+                <Tooltip content={`${isCollapsed ? 'Expand' : 'Collapse'} ${foldLabel}`}>
+                  <button
+                    type="button"
+                    aria-label={`${isCollapsed ? 'Expand' : 'Collapse'} ${foldLabel} at line ${line}`}
+                    className={styles.foldToggle}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleFold?.(fold.id);
+                    }}
+                  >
+                    {isCollapsed ? <Icons.ChevronRight /> : <Icons.ChevronDown />}
+                  </button>
+                </Tooltip>
+              ) : (
+                <span className={styles.foldSpacer} />
+              )}
+              <span>{line}</span>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
