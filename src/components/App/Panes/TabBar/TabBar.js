@@ -105,6 +105,36 @@ export default function TabBar() {
     });
   };
 
+  const closeTabsToLeft = (tabId) => {
+    tabState((draft) => {
+      const clickedIndex = draft.openTabs.findIndex((t) => t.id === tabId);
+      if (clickedIndex === -1) return;
+
+      const keepTabs = draft.openTabs.slice(clickedIndex);
+      const closedTabs = draft.openTabs.slice(0, clickedIndex);
+
+      draft.openTabs = keepTabs;
+
+      const wasActiveClosed = closedTabs.some((t) => t.id === draft.activeTabId);
+      if (wasActiveClosed) {
+        draft.activeTabId = tabId;
+
+        const tab = keepTabs[keepTabs.length - 1];
+        if (tab && tab.type === 'file' && tab.file?.path) {
+          sidebarState((draft) => {
+            const newExpanded = { ...draft.expandedFolders };
+            let runningPath = '';
+            for (const seg of tab.file.path.slice(0, -1)) {
+              runningPath = runningPath ? `${runningPath}/${seg}` : seg;
+              newExpanded[runningPath] = true;
+            }
+            draft.expandedFolders = newExpanded;
+          });
+        }
+      }
+    });
+  };
+
   const closeTabsToRight = (tabId) => {
     tabState((draft) => {
       const clickedIndex = draft.openTabs.findIndex((t) => t.id === tabId);
@@ -252,9 +282,8 @@ export default function TabBar() {
                     position: { x: e.clientX, y: e.clientY },
                   });
                 }}
-                className={`${styles.tab} ${isActive ? styles.activeTab : styles.inactiveTab} ${
-                  isDragging ? styles.tabDragging : ''
-                } ${isDropTarget ? styles.dropTarget : ''}`}
+                className={`${styles.tab} ${isActive ? styles.activeTab : styles.inactiveTab} ${isDragging ? styles.tabDragging : ''
+                  } ${isDropTarget ? styles.dropTarget : ''}`}
               >
                 <span className={`${styles.tabIcon} ${isActive ? styles.tabIconActive : ''}`}>
                   {tab.type === 'logs' ? (
@@ -312,6 +341,7 @@ export default function TabBar() {
           onClose={() => setContextMenu(null)}
           onCloseTab={(id) => closeTab(null, id)}
           onCloseOthers={closeOtherTabs}
+          onCloseToLeft={closeTabsToLeft}
           onCloseToRight={closeTabsToRight}
           onCloseAll={handleClearAll}
         />
