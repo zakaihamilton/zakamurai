@@ -46,6 +46,13 @@ function isCacheableAppRequest(request, url) {
     return false;
   }
 
+  // In development, do not intercept/cache static assets to avoid HMR and caching issues.
+  // This allows the dev server to reload and serve new chunks seamlessly.
+  const isDev = self.location.hostname === 'localhost' || self.location.hostname === '127.0.0.1';
+  if (isDev && request.mode !== 'navigate') {
+    return false;
+  }
+
   return request.mode === 'navigate' || STATIC_CACHE_PATTERNS.some((pattern) => pattern.test(url.pathname));
 }
 
@@ -61,8 +68,13 @@ async function cacheResponse(cacheName, request, response) {
 async function networkFirstAppRequest(request) {
   const cache = await caches.open(APP_CACHE_NAME);
 
+  if (request.cache === 'only-if-cached' && request.mode !== 'same-origin') {
+    const cached = await cache.match(request);
+    return cached || new Response('', { status: 504, statusText: 'Gateway Timeout' });
+  }
+
   try {
-    const response = await fetch(request);
+    const response = await fetch(request.clone());
     await cacheResponse(APP_CACHE_NAME, request, response);
     return response;
   } catch (error) {
@@ -81,14 +93,27 @@ async function networkFirstAppRequest(request) {
 async function staleWhileRevalidateAppRequest(request) {
   const runtimeCache = await caches.open(RUNTIME_CACHE_NAME);
   const cached = await runtimeCache.match(request);
-  const fetchPromise = fetch(request)
-    .then(async (response) => {
-      await cacheResponse(RUNTIME_CACHE_NAME, request, response);
-      return response;
-    })
-    .catch(() => null);
 
-  return cached || (await fetchPromise) || Response.error();
+  if (request.cache === 'only-if-cached' && request.mode !== 'same-origin') {
+    return cached || new Response('', { status: 504, statusText: 'Gateway Timeout' });
+  }
+
+  if (cached) {
+    // Return cached immediately, and update cache in background
+    fetch(request.clone())
+      .then(async (response) => {
+        await cacheResponse(RUNTIME_CACHE_NAME, request, response);
+      })
+      .catch(() => {
+        // Ignore background fetch errors to prevent console noise/unhandled rejections
+      });
+    return cached;
+  }
+
+  // Not in cache, fetch and cache
+  const response = await fetch(request.clone());
+  await cacheResponse(RUNTIME_CACHE_NAME, request, response);
+  return response;
 }
 
 function handleAppRequest(request) {
