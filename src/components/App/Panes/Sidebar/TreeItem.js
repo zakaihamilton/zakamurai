@@ -295,35 +295,6 @@ function TreeItemInner({
             </Tooltip>
           )}
         </button>
-
-        {!isEditing && item.type === 'folder' && (
-          <div className={styles.itemActions}>
-            <Tooltip content="New File">
-              <button
-                type="button"
-                className={styles.miniActionBtn}
-                onClick={(event) => {
-                  event.stopPropagation();
-                  startCreate('file');
-                }}
-              >
-                <Icons.FilePlus />
-              </button>
-            </Tooltip>
-            <Tooltip content="New Folder">
-              <button
-                type="button"
-                className={styles.miniActionBtn}
-                onClick={(event) => {
-                  event.stopPropagation();
-                  startCreate('folder');
-                }}
-              >
-                <Icons.FolderPlus />
-              </button>
-            </Tooltip>
-          </div>
-        )}
       </div>
 
       {isCreating && (

@@ -122,37 +122,6 @@
   overflow: hidden;
 }
 
-.itemActions {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  opacity: 0;
-  transition: opacity 0.2s;
-  margin-left: auto;
-}
-
-.item:hover .itemActions {
-  opacity: 1;
-}
-
-.miniActionBtn {
-  background: none;
-  border: none;
-  color: var(--text-muted);
-  cursor: pointer;
-  padding: 4px;
-  border-radius: 4px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s;
-}
-
-.miniActionBtn:hover {
-  background: var(--bg-panel);
-  color: var(--accent);
-}
-
 .createInputContainer {
   display: flex;
   align-items: center;
