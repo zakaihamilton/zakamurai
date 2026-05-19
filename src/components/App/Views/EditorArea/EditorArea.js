@@ -18,6 +18,7 @@ import FindHandler from './FindHandler';
 import { getFoldStarts, getVisibleFoldedContent } from './Folding';
 import Gutter from './Gutter';
 import HistoryHandler from './HistoryHandler';
+import { getJavaScriptBlockFolds, isJavaScriptPath } from './JavaScriptFolding';
 import { getJsonObjectFolds, isJsonPath } from './JsonFolding';
 import SyncHandler from './SyncHandler';
 import { highlightCode } from './highlighter';
@@ -180,13 +181,11 @@ function EditorAreaInner({ file, fsHandle }) {
   };
 
   const linesCount = useMemo(() => countLines(localContent), [localContent]);
-  const folds = useMemo(
-    () =>
-      isJsonPath(filePath)
-        ? getJsonObjectFolds(localContent, filePath)
-        : getCssBlockFolds(localContent, filePath),
-    [localContent, filePath],
-  );
+  const folds = useMemo(() => {
+    if (isJsonPath(filePath)) return getJsonObjectFolds(localContent, filePath);
+    if (isCssPath(filePath)) return getCssBlockFolds(localContent, filePath);
+    return getJavaScriptBlockFolds(localContent, filePath);
+  }, [localContent, filePath]);
   const foldStarts = useMemo(() => getFoldStarts(folds), [folds]);
   const collapsedFoldIds = collapsedFolds[filePath] || [];
   const visibleFoldedContent = useMemo(
@@ -196,7 +195,13 @@ function EditorAreaInner({ file, fsHandle }) {
   const editorContent = visibleFoldedContent.content;
   const editorLineItems = visibleFoldedContent.lineItems;
   const hasCollapsedFolds = visibleFoldedContent.hasCollapsedFolds;
-  const foldLabel = isCssPath(filePath) ? 'CSS block' : 'JSON object';
+  const foldLabel = isJsonPath(filePath)
+    ? 'JSON object'
+    : isCssPath(filePath)
+      ? 'CSS block'
+      : isJavaScriptPath(filePath)
+        ? 'code block'
+        : 'fold';
 
   const toggleFold = useCallback(
     (foldId) => {
