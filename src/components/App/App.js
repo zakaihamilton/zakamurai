@@ -8,7 +8,7 @@ import {
   SCRATCH_FILES,
 } from '@/components/Storage/InitialData';
 import Settings from '@/components/Storage/Settings';
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import styles from './App.module.css';
 import { PromptState, SidebarState, TabState } from './Panes';
 import { PreviewState } from './PreviewState';
@@ -27,6 +27,7 @@ import { useWindowResize } from './WindowResize';
 
 export default function App() {
   const fs = useFileSystem();
+  const syncedRootHandleRef = useRef(null);
 
   // Memoized initial values from Settings
   const initialValues = useMemo(() => {
@@ -110,9 +111,14 @@ export default function App() {
       if (draft.fs !== fs) {
         draft.fs = fs;
       }
-      if (fs.rootHandle?.name && draft.projectName !== fs.rootHandle.name) {
+      if (
+        fs.rootHandle?.name &&
+        syncedRootHandleRef.current !== fs.rootHandle &&
+        draft.projectName !== fs.rootHandle.name
+      ) {
         draft.projectName = fs.rootHandle.name;
       }
+      syncedRootHandleRef.current = fs.rootHandle || null;
     });
   }, [fs, appState]);
 

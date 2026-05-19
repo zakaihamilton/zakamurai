@@ -4,6 +4,11 @@ import { highlightCode } from './highlighter';
 describe('highlighter', () => {
   const styles = {
     hlKw: 'hlKw',
+    hlStr: 'hlStr',
+    hlNum: 'hlNum',
+    hlJsonKey: 'hlJsonKey',
+    hlJsonBool: 'hlJsonBool',
+    hlJsonPunc: 'hlJsonPunc',
     hlGhost: 'hlGhost',
     tabHint: 'tabHint',
   };
@@ -59,5 +64,16 @@ describe('highlighter', () => {
     const result2 = highlightCode(code, 'script.js', state, styles, false, '', -1, '');
 
     expect(result1).not.toBe(result2);
+  });
+
+  it('uses JSON-specific classes for keys, literals, numbers, and punctuation', () => {
+    const code = '{ "enabled": true, "count": -12.5, "name": "Zaka" }';
+    const result = highlightCode(code, 'settings.json', {}, styles, false, '', -1, '');
+
+    expect(result).toContain('class="hlJsonKey"');
+    expect(result).toContain('class="hlJsonBool"');
+    expect(result).toContain('class="hlNum"');
+    expect(result).toContain('class="hlStr"');
+    expect(result).toContain('class="hlJsonPunc"');
   });
 });

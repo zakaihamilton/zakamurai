@@ -1,4 +1,8 @@
 .header {
+  --topbar-control-height: 34px;
+  --topbar-control-radius: 6px;
+  --topbar-control-padding-x: 11px;
+
   height: 52px;
   border-bottom: 1px solid var(--border);
   display: flex;
@@ -200,30 +204,46 @@
   align-items: center;
 }
 
-.actionBtn {
+:where(.actionBtn, .compileBtn, .tabBtn, .sidebarBtn, .themeToggle) {
   background: var(--bg-surface);
   border: 1px solid var(--border);
-  color: var(--text-main);
+  color: var(--text-muted);
   cursor: pointer;
-  padding: 7px 11px;
-  border-radius: 6px;
+  border-radius: var(--topbar-control-radius);
+  transition: all 0.2s var(--ease-premium);
+  box-shadow: none;
+  height: var(--topbar-control-height);
+  min-height: var(--topbar-control-height);
+  box-sizing: border-box;
+  font-family: inherit;
+}
+
+:where(.actionBtn, .compileBtn, .tabBtn, .sidebarBtn, .themeToggle):hover {
+  background: var(--bg-hover);
+  border-color: var(--accent);
+  color: var(--text-main);
+  box-shadow: none;
+}
+
+:where(.actionBtn, .compileBtn, .tabBtn, .sidebarBtn, .themeToggle):active {
+  transform: translateY(0) scale(0.95);
+}
+
+.actionBtn {
+  min-width: var(--topbar-control-height);
+  padding: 0 var(--topbar-control-padding-x);
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
   font-size: 13px;
   font-weight: 500;
-  transition: all 0.2s var(--ease-premium);
-  font-family: inherit;
-  box-shadow: none;
   position: relative;
   overflow: hidden;
 }
 
 .actionBtn:hover {
-  background: var(--bg-hover);
-  border-color: var(--accent);
   transform: translateY(-1px);
-  box-shadow: none;
 }
 
 .actionBtn:active {
@@ -231,17 +251,12 @@
 }
 
 .compileBtn {
-  background: var(--bg-surface);
-  color: var(--text-main);
-  border: 1px solid var(--border);
   font-weight: 500;
-  padding: 7px 11px;
-  border-radius: 6px;
-  box-shadow: none;
-  cursor: pointer;
-  transition: all 0.2s var(--ease-premium);
+  min-width: var(--topbar-control-height);
+  padding: 0 var(--topbar-control-padding-x);
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
 }
 
@@ -252,31 +267,20 @@
 }
 
 .compileBtn:hover:not(:disabled) {
-  color: var(--accent);
-  background: var(--bg-hover);
-  border-color: var(--accent);
+  color: var(--text-main);
   transform: translateY(-1px);
-  box-shadow: none;
 }
 
 .compileBtn:active:not(:disabled) {
   transform: translateY(0) scale(0.95);
-  background: var(--bg-surface);
 }
 
 .tabBtn {
-  background: transparent;
-  border: 1px solid transparent;
-  color: var(--text-muted);
-  padding: 5px 10px;
-  border-radius: 5px;
-  cursor: pointer;
+  padding: 0 10px;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.2s var(--ease-premium);
   min-width: 40px;
-  height: 30px;
 }
 
 .tabBtn:hover {
@@ -292,25 +296,15 @@
 }
 
 .sidebarBtn {
-  width: 34px;
-  height: 34px;
-  border-radius: 6px;
+  width: var(--topbar-control-height);
+  min-width: var(--topbar-control-height);
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--bg-surface);
-  border: 1px solid var(--border);
-  color: var(--text-muted);
-  cursor: pointer;
-  transition: all 0.2s var(--ease-premium);
-  box-shadow: none;
 }
 
 .sidebarBtn:hover {
-  border-color: var(--accent);
-  color: var(--text-main);
   transform: scale(1.05);
-  box-shadow: none;
 }
 
 .activeSidebar {
@@ -321,24 +315,21 @@
 }
 
 .themeToggle {
-  background: var(--bg-surface);
-  border: 1px solid var(--border);
-  color: var(--text-muted);
-  cursor: pointer;
-  width: 34px;
-  height: 34px;
-  border-radius: 6px;
+  width: var(--topbar-control-height);
+  min-width: var(--topbar-control-height);
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.2s var(--ease-premium);
 }
 
 .themeToggle:hover {
-  background: var(--bg-input);
-  color: var(--text-main);
-  border-color: var(--accent);
-  transform: rotate(15deg);
+  transform: scale(1.05);
+}
+
+.activeAction {
+  background: var(--accent-light) !important;
+  color: var(--accent) !important;
+  border-color: var(--accent) !important;
 }
 
 .centerSection {
@@ -479,9 +470,9 @@
   }
 
   .tabBtn {
-    width: 34px;
-    min-width: 34px;
-    height: 34px;
+    width: 36px;
+    min-width: 36px;
+    height: 36px;
     padding: 6px;
   }
 
@@ -493,7 +484,7 @@
     min-width: 36px;
     height: 36px;
     padding: 7px;
-    border-radius: 9px;
+    border-radius: 6px;
   }
 }
 

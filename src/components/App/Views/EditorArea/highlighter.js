@@ -5,6 +5,12 @@ const MAX_HIGHLIGHT_CHARS = 250000;
 const escapeHtml = (value) =>
   value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
+const isJsonPath = (filePath = '') =>
+  filePath.endsWith('.json') ||
+  filePath.endsWith('.jsonc') ||
+  filePath.endsWith('.webmanifest') ||
+  filePath === 'json';
+
 export const highlightCode = (
   code,
   filePath,
@@ -75,15 +81,44 @@ export const highlightCode = (
     return `${T_PRE}${idx}${T_POST}`;
   };
 
-  // 1. Strings (highest priority to avoid // in urls being parsed as comments)
-  escaped = escaped.replace(
-    /("(?:[^"\\\\]|\\\\.)*"|'(?:[^'\\\\]|\\\\.)*'|`(?:[^`\\\\]|\\\\.)*?`)/g,
-    (m) => pushToken(m, 'hlStr'),
-  );
+  const jsonPath = isJsonPath(filePath);
 
-  // 2. Comments
-  escaped = escaped.replace(/(\/\/.+)/g, (m) => pushToken(m, 'hlComment'));
-  escaped = escaped.replace(/(\/\*[\s\S]*?\*\/)/g, (m) => pushToken(m, 'hlComment'));
+  if (jsonPath) {
+    // JSON keys and strings need different contrast, especially in light mode.
+    escaped = escaped.replace(/("(?:[^"\\\\]|\\\\.)*")(?=\s*:)/g, (m) =>
+      pushToken(m, 'hlJsonKey'),
+    );
+    escaped = escaped.replace(
+      // biome-ignore lint/suspicious/noControlCharactersInRegex: markers
+      /(\x01\d+\x02)|("(?:[^"\\\\]|\\\\.)*")/g,
+      (_m, p1, p2) => (p1 ? p1 : pushToken(p2, 'hlStr')),
+    );
+    escaped = escaped.replace(
+      // biome-ignore lint/suspicious/noControlCharactersInRegex: markers
+      /(\x01\d+\x02)|\b(true|false|null)\b/g,
+      (_m, p1, p2) => (p1 ? p1 : pushToken(p2, 'hlJsonBool')),
+    );
+    escaped = escaped.replace(
+      // biome-ignore lint/suspicious/noControlCharactersInRegex: markers
+      /(\x01\d+\x02)|\b(-?\d+(?:\.\d+)?(?:e[+-]?\d+)?)\b/gi,
+      (_m, p1, p2) => (p1 ? p1 : pushToken(p2, 'hlNum')),
+    );
+    escaped = escaped.replace(
+      // biome-ignore lint/suspicious/noControlCharactersInRegex: markers
+      /(\x01\d+\x02)|([{}[\],:])/g,
+      (_m, p1, p2) => (p1 ? p1 : pushToken(p2, 'hlJsonPunc')),
+    );
+  } else {
+    // 1. Strings (highest priority to avoid // in urls being parsed as comments)
+    escaped = escaped.replace(
+      /("(?:[^"\\\\]|\\\\.)*"|'(?:[^'\\\\]|\\\\.)*'|`(?:[^`\\\\]|\\\\.)*?`)/g,
+      (m) => pushToken(m, 'hlStr'),
+    );
+
+    // 2. Comments
+    escaped = escaped.replace(/(\/\/.+)/g, (m) => pushToken(m, 'hlComment'));
+    escaped = escaped.replace(/(\/\*[\s\S]*?\*\/)/g, (m) => pushToken(m, 'hlComment'));
+  }
 
   // 3. Language specific (CSS or JSX/HTML)
   if (filePath?.endsWith('.css')) {
@@ -108,7 +143,7 @@ export const highlightCode = (
     });
     // Variables
     escaped = escaped.replace(/(var\(--[a-zA-Z0-9\-]+\))/g, (m) => pushToken(m, 'hlFunc'));
-  } else {
+  } else if (!jsonPath) {
     // JSX/HTML Tags
     escaped = escaped.replace(
       /(&lt;\/?)([a-zA-Z0-9]+)/g,
@@ -121,18 +156,22 @@ export const highlightCode = (
   }
 
   // 4. Keywords
-  escaped = escaped.replace(
-    // biome-ignore lint/suspicious/noControlCharactersInRegex: markers
-    /(\x01\d+\x02|\u0003\d+\u0003|\u0004|\u0005)|\b(export|default|function|return|import|from|const|let|var|if|else|for|while|class|extends|new|true|false|null|undefined|async|await|try|catch|finally|throw|break|continue|case|switch|type|interface|enum|public|private|protected|static|readonly)\b/g,
-    (_m, p1, p2) => (p1 ? p1 : pushToken(p2, 'hlKw')),
-  );
+  if (!jsonPath) {
+    escaped = escaped.replace(
+      // biome-ignore lint/suspicious/noControlCharactersInRegex: markers
+      /(\x01\d+\x02|\u0003\d+\u0003|\u0004|\u0005)|\b(export|default|function|return|import|from|const|let|var|if|else|for|while|class|extends|new|true|false|null|undefined|async|await|try|catch|finally|throw|break|continue|case|switch|type|interface|enum|public|private|protected|static|readonly)\b/g,
+      (_m, p1, p2) => (p1 ? p1 : pushToken(p2, 'hlKw')),
+    );
+  }
 
   // 5. Numbers
-  escaped = escaped.replace(
-    // biome-ignore lint/suspicious/noControlCharactersInRegex: markers
-    /(\x01\d+\x02|\u0003\d+\u0003|\u0004|\u0005)|\b(\d+)\b/g,
-    (_m, p1, p2) => (p1 ? p1 : pushToken(p2, 'hlNum')),
-  );
+  if (!jsonPath) {
+    escaped = escaped.replace(
+      // biome-ignore lint/suspicious/noControlCharactersInRegex: markers
+      /(\x01\d+\x02|\u0003\d+\u0003|\u0004|\u0005)|\b(\d+)\b/g,
+      (_m, p1, p2) => (p1 ? p1 : pushToken(p2, 'hlNum')),
+    );
+  }
 
   // Search highlights
   let matchCounter = 0;

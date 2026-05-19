@@ -297,11 +297,9 @@ function TreeItemInner({
                 className={styles.name}
                 onDoubleClick={(event) => {
                   event.stopPropagation();
-                  if (!item.isRoot) {
-                    treeItemState((draft) => {
-                      draft.isEditing = true;
-                    });
-                  }
+                  treeItemState((draft) => {
+                    draft.isEditing = true;
+                  });
                 }}
               >
                 {renderHighlightedName(item.name, pathStr, filterText)}

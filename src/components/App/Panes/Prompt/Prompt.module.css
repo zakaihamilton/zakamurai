@@ -109,7 +109,7 @@
 }
 
 .headerActionBtnActive {
-  background: rgb(var(--accent-rgb, 129, 140, 248), 0.15);
+  background: var(--accent-light);
   color: var(--accent);
   border-color: var(--accent);
   box-shadow: none;
@@ -117,8 +117,8 @@
 
 .status {
   color: var(--accent);
-  background: rgb(var(--accent-rgb, 97, 175, 239), 0.1);
-  border: 1px solid rgb(var(--accent-rgb, 97, 175, 239), 0.2);
+  background: var(--accent-light);
+  border: 1px solid var(--border-light);
   border-radius: 5px;
   padding: 4px 8px;
   font-size: 11px;
@@ -221,13 +221,13 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  background: rgb(var(--accent-rgb, 97, 175, 239), 0.1);
-  color: var(--accent, #61afef);
+  background: var(--accent-light);
+  color: var(--accent);
   padding: 4px 10px;
   border-radius: 5px;
   font-size: 11px;
   font-weight: 600;
-  border: 1px solid rgb(var(--accent-rgb, 97, 175, 239), 0.2);
+  border: 1px solid var(--border-light);
   transition: all 0.2s;
 }
 
@@ -585,8 +585,8 @@
 }
 
 .modelCacheToggleOn {
-  border-color: rgb(var(--accent-rgb, 97, 175, 239), 0.35);
-  background: rgb(var(--accent-rgb, 97, 175, 239), 0.12);
+  border-color: var(--accent);
+  background: var(--accent-light);
   color: var(--accent);
 }
 
@@ -614,14 +614,14 @@
 }
 
 .modelCacheToggleOn .modelCacheToggleThumb {
-  background: #fff;
+  background: var(--text-on-accent);
   transform: translateX(12px);
 }
 
 .modelManagerStatus {
-  border: 1px solid rgb(var(--accent-rgb, 97, 175, 239), 0.25);
+  border: 1px solid var(--border-light);
   border-radius: 6px;
-  background: rgb(var(--accent-rgb, 97, 175, 239), 0.08);
+  background: var(--accent-light);
   color: var(--accent);
   font-size: 12px;
   line-height: 1.45;
@@ -650,9 +650,9 @@
 }
 
 .modelManagerError {
-  border-color: rgb(244 67 54 / 24%);
-  background: rgb(244 67 54 / 10%);
-  color: var(--error, #f44336);
+  border-color: var(--danger);
+  background: var(--danger-light);
+  color: var(--danger);
 }
 
 .form {
@@ -717,7 +717,7 @@
 
 .buttonActive {
   background: var(--accent);
-  color: #fff;
+  color: var(--text-on-accent);
   cursor: pointer;
   box-shadow: none;
 }
@@ -735,13 +735,14 @@
 }
 
 .stopButton {
-  background: rgb(244 67 54 / 10%);
-  color: var(--error, #f44336);
+  background: var(--danger-light);
+  color: var(--danger);
   cursor: pointer;
 }
 
 .stopButton:hover {
-  background: rgb(244 67 54 / 16%);
+  background: var(--danger-light);
+  filter: brightness(1.06);
 }
 
 .reasoningWrapper {
@@ -832,7 +833,7 @@
 }
 
 .copySuccess {
-  color: #10b981 !important;
+  color: var(--success) !important;
 }
 
 .reasoningContent {

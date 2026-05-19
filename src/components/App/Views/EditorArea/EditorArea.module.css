@@ -1,12 +1,58 @@
 .editorArea {
+  --editor-bg: #0f1317;
+  --editor-gutter-bg: #121820;
+  --editor-gutter-border: rgb(120 143 157 / 22%);
+  --editor-line-selected-bg: rgb(80 156 214 / 16%);
+  --editor-line-selected-border: #6cb6f5;
+  --editor-search-bg: rgb(236 196 91 / 28%);
+  --editor-search-border: #ecc45b;
+  --editor-search-active-bg: rgb(239 139 77 / 50%);
+  --editor-search-active-border: #ef8b4d;
+  --editor-syntax-text: #d7dee7;
+  --editor-syntax-string: #8fd694;
+  --editor-syntax-keyword: #c891e9;
+  --editor-syntax-tag: #f07f86;
+  --editor-syntax-function: #6cb6f5;
+  --editor-syntax-attr: #d7a95f;
+  --editor-syntax-comment: #77818f;
+  --editor-syntax-number: #e2b86d;
+  --editor-syntax-property: #70c7d4;
+  --editor-syntax-json-key: #8ec6ff;
+  --editor-syntax-json-bool: #d79bea;
+  --editor-syntax-json-punc: #8d9aa8;
+
   flex: 1;
   display: flex;
   flex-direction: column;
-  background: var(--bg-base);
-  color: var(--text-main);
+  background: var(--editor-bg);
+  color: var(--editor-syntax-text);
   font-size: 14px;
   line-height: 1.6;
   overflow: hidden;
+}
+
+:global(.light) .editorArea {
+  --editor-bg: #fbfcfd;
+  --editor-gutter-bg: #f2f5f7;
+  --editor-gutter-border: rgb(159 174 184 / 58%);
+  --editor-line-selected-bg: rgb(14 116 144 / 11%);
+  --editor-line-selected-border: #0e7490;
+  --editor-search-bg: rgb(250 204 21 / 30%);
+  --editor-search-border: #ca8a04;
+  --editor-search-active-bg: rgb(249 115 22 / 27%);
+  --editor-search-active-border: #c2410c;
+  --editor-syntax-text: #26323b;
+  --editor-syntax-string: #1f7a4f;
+  --editor-syntax-keyword: #7c3aed;
+  --editor-syntax-tag: #c2415d;
+  --editor-syntax-function: #0969da;
+  --editor-syntax-attr: #9a5b13;
+  --editor-syntax-comment: #6b7886;
+  --editor-syntax-number: #a15c13;
+  --editor-syntax-property: #047481;
+  --editor-syntax-json-key: #0550ae;
+  --editor-syntax-json-bool: #8250df;
+  --editor-syntax-json-punc: #66717d;
 }
 
 .editorHeader {
@@ -148,9 +194,9 @@
   position: sticky;
   left: 0;
   z-index: 10;
-  background: var(--bg-card);
+  background: var(--editor-gutter-bg);
   padding: 20px 16px;
-  border-right: 1px solid var(--border);
+  border-right: 1px solid var(--editor-gutter-border);
   color: var(--text-muted);
   text-align: right;
   font-family: "JetBrains Mono", "Fira Code", monospace;
@@ -182,8 +228,8 @@
 }
 
 .selectedGutterLine {
-  background: rgb(var(--primary-rgb, 97, 175, 239), 0.1);
-  color: #61afef;
+  background: var(--editor-line-selected-bg);
+  color: var(--editor-line-selected-border);
   font-weight: bold;
 }
 
@@ -206,7 +252,7 @@
   resize: none;
   background: transparent;
   color: transparent;
-  caret-color: var(--text-main);
+  caret-color: var(--editor-syntax-text);
   font-family: "JetBrains Mono", "Fira Code", monospace;
   font-size: 14px;
   line-height: 1.6;
@@ -220,7 +266,7 @@
   font-family: "JetBrains Mono", "Fira Code", monospace;
   font-size: 14px;
   line-height: 1.6;
-  color: var(--text-main);
+  color: var(--editor-syntax-text);
   white-space: pre;
   pointer-events: none;
   min-height: 100%;
@@ -228,53 +274,66 @@
 
 /* Syntax Highlighting Tokens */
 .hlStr {
-  color: #98c379;
+  color: var(--editor-syntax-string);
 }
 
 .hlKw {
-  color: #c678dd;
+  color: var(--editor-syntax-keyword);
   font-weight: 500;
 }
 
 .hlTag {
-  color: #e06c75;
+  color: var(--editor-syntax-tag);
 }
 
 .hlFunc {
-  color: #61afef;
+  color: var(--editor-syntax-function);
 }
 
 .hlAttr {
-  color: #d19a66;
+  color: var(--editor-syntax-attr);
 }
 
 .hlComment {
-  color: #5c6370;
+  color: var(--editor-syntax-comment);
   font-style: italic;
 }
 
 .hlNum {
-  color: #d19a66;
+  color: var(--editor-syntax-number);
 }
 
 .hlProp {
-  color: #56b6c2;
+  color: var(--editor-syntax-property);
 }
 
 .hlVal {
-  color: #98c379;
+  color: var(--editor-syntax-string);
+}
+
+.hlJsonKey {
+  color: var(--editor-syntax-json-key);
+}
+
+.hlJsonBool {
+  color: var(--editor-syntax-json-bool);
+  font-weight: 500;
+}
+
+.hlJsonPunc {
+  color: var(--editor-syntax-json-punc);
 }
 
 .hlMatch {
-  background: rgb(255 255 0 / 30%);
-  border-bottom: 1px solid yellow;
+  background: var(--editor-search-bg);
+  border-bottom: 1px solid var(--editor-search-border);
 }
 
 .hlMatchActive {
-  background: rgb(255 165 0 / 60%);
-  border: 1px solid orange;
+  background: var(--editor-search-active-bg);
+  border: 1px solid var(--editor-search-active-border);
   border-radius: 2px;
-  box-shadow: 0 0 5px rgb(255 165 0 / 50%);
+  box-shadow: 0 0 5px color-mix(in srgb, var(--editor-search-active-border) 45%, transparent);
 }
 
 .hlGhost {
@@ -315,10 +374,10 @@
 }
 
 .selectedLineRow {
-  background: rgb(97 175 239 / 15%);
+  background: var(--editor-line-selected-bg);
   display: inline-block;
   min-width: 100%;
-  border-left: 3px solid #61afef;
+  border-left: 3px solid var(--editor-line-selected-border);
   margin-left: -30px;
   padding-left: 27px;
 }
@@ -406,7 +465,7 @@
 }
 
 .findInput:focus {
-  border-color: #61afef;
+  border-color: var(--editor-syntax-function);
 }
 
 .findStats {

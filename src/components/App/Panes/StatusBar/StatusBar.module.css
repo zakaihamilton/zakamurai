@@ -11,7 +11,6 @@
   user-select: none;
   z-index: 100;
   backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
 }
 
 .left,
@@ -46,18 +45,8 @@ button.item {
   background: transparent;
 }
 
-.left .item:first-child {
-  min-width: 140px;
-  justify-content: flex-start;
-  border-right: 1px solid var(--border-light);
-}
-
 .right .item {
   border-left: 1px solid var(--border-light);
-}
-
-.right .item:first-child {
-  min-width: 110px; /* Space for Ln XXX, Col XXX */
 }
 
 .item:hover {
@@ -65,24 +54,36 @@ button.item {
   color: var(--text-main);
 }
 
+.left .item:first-child {
+  min-width: 140px;
+  justify-content: flex-start;
+  border-right: 1px solid var(--border-light);
+}
+
+.right .item:first-child {
+  min-width: 110px; /* Space for Ln XXX, Col XXX */
+}
+
 .pulseDot {
   width: 6px;
   height: 6px;
-  background: #10b981;
+  background: var(--success);
   border-radius: 50%;
-  box-shadow: 0 0 0 rgba(16, 185, 129, 0.4);
+  box-shadow: 0 0 0 rgb(var(--success-rgb), 0.4);
   animation: pulse 2s infinite;
 }
 
 @keyframes pulse {
   0% {
-    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4);
+    box-shadow: 0 0 0 0 rgb(var(--success-rgb), 0.4);
   }
+
   70% {
-    box-shadow: 0 0 0 6px rgba(16, 185, 129, 0);
+    box-shadow: 0 0 0 6px rgb(var(--success-rgb), 0);
   }
+
   100% {
-    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+    box-shadow: 0 0 0 0 rgb(var(--success-rgb), 0);
   }
 }
 
@@ -97,16 +98,18 @@ button.item {
 
 .thinking {
   color: var(--accent) !important;
-  animation: thinkingPulse 1.5s infinite ease-in-out;
+  animation: thinking-pulse 1.5s infinite ease-in-out;
 }
 
-@keyframes thinkingPulse {
+@keyframes thinking-pulse {
   0% {
     opacity: 1;
   }
+
   50% {
     opacity: 0.5;
   }
+
   100% {
     opacity: 1;
   }
@@ -126,7 +129,7 @@ button.item {
   opacity: 0.6;
 }
 
-@media (max-width: 768px) {
+@media (width <= 768px) {
   .hideOnMobile {
     display: none;
   }

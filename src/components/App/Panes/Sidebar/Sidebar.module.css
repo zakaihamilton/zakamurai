@@ -137,8 +137,8 @@
 }
 
 .relinkButton {
-  background: rgb(99 102 241 / 4%);
-  border-color: rgb(99 102 241 / 15%);
+  background: var(--accent-light);
+  border-color: var(--accent);
   color: var(--accent);
 }
 

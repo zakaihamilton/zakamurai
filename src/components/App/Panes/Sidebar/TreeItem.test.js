@@ -59,6 +59,23 @@ describe('TreeItem', () => {
     });
   });
 
+  it('starts editing the project root on double click', async () => {
+    const rootRow = {
+      item: { name: 'Test Project', type: 'folder', isRoot: true, children: [] },
+      level: 0,
+      path: [],
+      pathStr: '',
+    };
+
+    render(<TreeItem row={rootRow} {...baseHandlers} />);
+
+    fireEvent.doubleClick(screen.getByText('Test Project'));
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('Test Project')).toBeDefined();
+    });
+  });
+
   it('opens a file when its row is clicked', () => {
     const onOpenFile = vi.fn();
 
@@ -173,6 +190,28 @@ describe('TreeItem', () => {
       expect(screen.getByTitle('app.js')).toBeDefined();
       // Path of file
       expect(screen.getByTitle('/sub/dir/app.js')).toBeDefined();
+    });
+  });
+
+  it('shows rename but not delete for the project root context menu', async () => {
+    const rootRow = {
+      item: { name: 'Test Project', type: 'folder', isRoot: true, children: [] },
+      level: 0,
+      path: [],
+      pathStr: '',
+    };
+    render(<TreeItem row={rootRow} {...baseHandlers} />);
+
+    const itemElement = screen.getByText('Test Project').closest('[draggable="false"]');
+
+    act(() => {
+      fireEvent.contextMenu(itemElement);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByRole('menu')).toBeDefined();
+      expect(screen.getByText('Rename')).toBeDefined();
+      expect(screen.queryByText('Delete')).toBeNull();
     });
   });
 });

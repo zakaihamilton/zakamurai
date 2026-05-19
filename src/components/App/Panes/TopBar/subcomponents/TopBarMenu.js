@@ -49,7 +49,7 @@ export default function TopBarMenu({
       <Tooltip content="More actions">
         <button
           type="button"
-          className={`${styles.actionBtn} ${menuPosition ? styles.active : ''}`}
+          className={`${styles.actionBtn} ${menuPosition ? styles.activeAction : ''}`}
           onClick={handleMenuOpen}
           aria-label="More actions"
           data-testid="more-actions-btn"

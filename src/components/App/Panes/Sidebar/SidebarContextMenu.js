@@ -64,12 +64,10 @@ export default function SidebarContextMenu({
           <div className={styles.divider} />
         </>
       )}
-      {!item.isRoot && (
-        <button type="button" onClick={onStartRename} className={styles.contextMenuOption}>
-          <Icons.Edit />
-          Rename
-        </button>
-      )}
+      <button type="button" onClick={onStartRename} className={styles.contextMenuOption}>
+        <Icons.Edit />
+        Rename
+      </button>
       {!item.isRoot && (
         <button
           type="button"

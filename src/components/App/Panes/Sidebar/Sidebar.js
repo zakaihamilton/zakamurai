@@ -249,6 +249,14 @@ export default function Sidebar() {
 
   const handleRename = useCallback(
     async (row, nextName) => {
+      if (row.item.isRoot) {
+        appState((draft) => {
+          draft.projectName = nextName;
+        });
+        addNotification(`Renamed project to "${nextName}"`, 'success');
+        return true;
+      }
+
       const oldPathStr = row.pathStr;
       const nextPath = [...row.path.slice(0, -1), nextName];
       const nextPathStr = getPathStr(nextPath);
@@ -306,7 +314,7 @@ export default function Sidebar() {
       addNotification(`Renamed to "${nextName}"`, 'success');
       return true;
     },
-    [addNotification, editorState, fs, sidebarState, tabState],
+    [addNotification, appState, editorState, fs, sidebarState, tabState],
   );
 
   const handleCreate = useCallback(
