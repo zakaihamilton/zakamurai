@@ -413,10 +413,12 @@ export default function Prompt() {
         <div className={styles.contextPanel} aria-label="AI context">
           <div className={styles.contextRow}>
             <span className={styles.contextLabel}>File</span>
-            <span className={styles.contextValue} title={activeFilePath}>
-              <Icons.File size={12} />
-              {activeFileName}
-            </span>
+            <Tooltip content={activeFilePath} className={styles.contextTooltip}>
+              <span className={styles.contextValue}>
+                <Icons.File size={12} />
+                {activeFileName}
+              </span>
+            </Tooltip>
           </div>
           <div className={styles.contextRow}>
             <span className={styles.contextLabel}>Selection</span>

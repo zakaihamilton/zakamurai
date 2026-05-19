@@ -190,6 +190,12 @@
   text-transform: uppercase;
 }
 
+.contextTooltip {
+  min-width: 0;
+  width: 100%;
+  display: flex;
+}
+
 .contextValue {
   min-width: 0;
   display: flex;
