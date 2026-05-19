@@ -70,15 +70,18 @@ export default function CodeEditor({
     if (textareaRef.current && cursorPos?.index !== undefined) {
       const textarea = textareaRef.current;
       const externalMove = cursorPos.index !== lastReportedIndex.current;
-      const browserReset =
-        (textarea.selectionStart !== cursorPos.index ||
-          textarea.selectionEnd !== cursorPos.index) &&
-        !isLocalEdit.current;
+
+      // If this is a local edit, the correct selection index is lastReportedIndex.current.
+      // Otherwise, the correct selection index is the external cursorPos.index.
+      const browserReset = isLocalEdit.current
+        ? textarea.selectionStart !== lastReportedIndex.current
+        : textarea.selectionStart !== cursorPos.index;
 
       if (externalMove || browserReset) {
-        textarea.selectionStart = cursorPos.index;
-        textarea.selectionEnd = cursorPos.index;
-        lastReportedIndex.current = cursorPos.index;
+        const targetIndex = isLocalEdit.current ? lastReportedIndex.current : cursorPos.index;
+        textarea.selectionStart = targetIndex;
+        textarea.selectionEnd = targetIndex;
+        lastReportedIndex.current = targetIndex;
       }
     }
     isLocalEdit.current = false;
