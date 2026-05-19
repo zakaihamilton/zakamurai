@@ -55,6 +55,14 @@ describe('Settings', () => {
     expect(Settings.getAIPromptModel()).toBe('Qwen2.5-Coder-7B-Instruct-q4f16_1-MLC');
   });
 
+  it('gets and sets editor read only mode', () => {
+    expect(Settings.getEditorReadOnly(false)).toBe(false);
+    Settings.setEditorReadOnly(true);
+    expect(Settings.getEditorReadOnly()).toBe(true);
+    Settings.setEditorReadOnly(false);
+    expect(Settings.getEditorReadOnly()).toBe(false);
+  });
+
   it('resets settings', () => {
     Settings.setProjectName('Test');
     Settings.reset();

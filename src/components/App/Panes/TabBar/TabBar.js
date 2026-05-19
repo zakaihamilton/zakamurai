@@ -282,8 +282,9 @@ export default function TabBar() {
                     position: { x: e.clientX, y: e.clientY },
                   });
                 }}
-                className={`${styles.tab} ${isActive ? styles.activeTab : styles.inactiveTab} ${isDragging ? styles.tabDragging : ''
-                  } ${isDropTarget ? styles.dropTarget : ''}`}
+                className={`${styles.tab} ${isActive ? styles.activeTab : styles.inactiveTab} ${
+                  isDragging ? styles.tabDragging : ''
+                } ${isDropTarget ? styles.dropTarget : ''}`}
               >
                 <span className={`${styles.tabIcon} ${isActive ? styles.tabIconActive : ''}`}>
                   {tab.type === 'logs' ? (

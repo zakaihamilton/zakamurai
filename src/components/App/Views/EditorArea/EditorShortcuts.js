@@ -10,7 +10,6 @@ export default function useEditorShortcuts({
   onAcceptSuggestion,
   onCancelSuggestion,
   filePath,
-  onNavigateToAssociated,
 }) {
   const handleKeyDown = useCallback(
     (e) => {
@@ -26,8 +25,6 @@ export default function useEditorShortcuts({
         onCancelSuggestion?.({ pauseUntilEdit: true });
         return;
       }
-
-
 
       // 0. Jump to Line (Ctrl+G)
       if (e.ctrlKey && e.key === 'g') {
@@ -272,7 +269,6 @@ export default function useEditorShortcuts({
       onAcceptSuggestion,
       onCancelSuggestion,
       filePath,
-      onNavigateToAssociated,
     ],
   );
 

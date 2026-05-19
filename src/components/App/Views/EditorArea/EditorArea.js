@@ -9,6 +9,14 @@ import styles from './EditorArea.module.css';
 import { DEFAULT_CONTENTS, SCRATCH_CONTENTS } from '@/components/Storage/InitialData';
 import Settings from '@/components/Storage/Settings';
 import { formatCode } from '@/utils/formatter';
+import {
+  findClassInCss,
+  findClassReferenceInJs,
+  getAssociatedFilePath,
+  getImportRanges,
+  getStyleAtCursor,
+  resolveRelativePath,
+} from '@/utils/navigation';
 import CodeEditor from './CodeEditor';
 import useCompletion from './CompletionHandler';
 import { getCssBlockFolds, isCssPath } from './CssFolding';
@@ -22,12 +30,6 @@ import { getJavaScriptBlockFolds, isJavaScriptPath } from './JavaScriptFolding';
 import { getJsonObjectFolds, isJsonPath } from './JsonFolding';
 import SyncHandler from './SyncHandler';
 import { highlightCode } from './highlighter';
-import {
-  getStyleAtCursor,
-  getAssociatedFilePath,
-  findClassInCss,
-  findClassReferenceInJs,
-} from '@/utils/navigation';
 
 export const EditorState = createState('EditorState');
 const EditorAreaUiState = createState('EditorAreaUiState');
@@ -82,6 +84,9 @@ function EditorAreaInner({ file, fsHandle }) {
     diffActions = {},
     collapsedFolds = {},
   } = editorAreaUiState || {};
+
+  const isReadOnly = state.isReadOnly ?? Settings.getEditorReadOnly(false);
+
   const setEditorAreaValue = useCallback(
     (key, nextValue) => {
       editorAreaUiState((draft) => {
@@ -125,6 +130,17 @@ function EditorAreaInner({ file, fsHandle }) {
   const setCollapsedFolds = useCallback(
     (nextValue) => setEditorAreaValue('collapsedFolds', nextValue),
     [setEditorAreaValue],
+  );
+  const setIsReadOnly = useCallback(
+    (nextValue) => {
+      state((draft) => {
+        const current = draft.isReadOnly ?? Settings.getEditorReadOnly(false);
+        const resolvedValue = typeof nextValue === 'function' ? nextValue(current) : nextValue;
+        draft.isReadOnly = resolvedValue;
+        Settings.setEditorReadOnly(resolvedValue);
+      });
+    },
+    [state],
   );
   const localContentRef = useRef(localContent);
   const loadedLocalFileRef = useRef(null);
@@ -170,6 +186,113 @@ function EditorAreaInner({ file, fsHandle }) {
       cancelled = true;
     };
   }, [filePath, fs, fsHandle, state, setLocalContent]);
+
+  // Background load referenced and sibling files to resolve navigation links
+  useEffect(() => {
+    if ((fs.mode !== 'local' && fs.mode !== 'opfs') || !filePath || !fs.readFile || !localContent)
+      return;
+
+    const isCss = filePath.endsWith('.css');
+    const importRanges = getImportRanges(localContent, isCss);
+
+    const loadReferencedFiles = async () => {
+      // 1. Load imported files
+      for (const range of importRanges) {
+        let resolved = range.path;
+        if (range.path.startsWith('@/')) {
+          resolved = range.path.replace(/^@\//, 'src/');
+        } else if (range.path.startsWith('.')) {
+          resolved = resolveRelativePath(filePath, range.path);
+        }
+
+        const candidates = [
+          resolved,
+          `${resolved}.js`,
+          `${resolved}.jsx`,
+          `${resolved}.ts`,
+          `${resolved}.tsx`,
+          `${resolved}.css`,
+          `${resolved}.json`,
+          `${resolved}.svg`,
+          `${resolved}.png`,
+          `${resolved}.jpg`,
+          `${resolved}.jpeg`,
+          `${resolved}/index.js`,
+          `${resolved}/index.jsx`,
+          `${resolved}/index.ts`,
+          `${resolved}/index.tsx`,
+        ];
+
+        for (const candidate of candidates) {
+          if (candidate === filePath) continue;
+          if (state.fileContents?.[candidate] !== undefined) {
+            break;
+          }
+
+          try {
+            const handle = await fs.getFileHandleAtPath?.(candidate);
+            if (handle) {
+              const content = await fs.readFile(handle);
+              state((draft) => {
+                draft.fileContents = {
+                  ...draft.fileContents,
+                  [candidate]: content,
+                };
+              });
+              break;
+            }
+          } catch (_e) {
+            // Sibling candidate doesn't exist, check next extension
+          }
+        }
+      }
+
+      // 2. Sibling JS/JSX/TS/TSX file discovery for CSS module targets
+      if (isCss) {
+        const lastSlash = filePath.lastIndexOf('/');
+        const dirPath = lastSlash !== -1 ? filePath.substring(0, lastSlash) : '';
+        const fileName = lastSlash !== -1 ? filePath.substring(lastSlash + 1) : filePath;
+        const baseName = fileName.replace(/\.module\.css$/, '').replace(/\.css$/, '');
+
+        if (dirPath && baseName) {
+          const siblingCandidates = [
+            `${dirPath}/${baseName}.js`,
+            `${dirPath}/${baseName}.jsx`,
+            `${dirPath}/${baseName}.ts`,
+            `${dirPath}/${baseName}.tsx`,
+            `${dirPath}/index.js`,
+            `${dirPath}/index.jsx`,
+            `${dirPath}/index.ts`,
+            `${dirPath}/index.tsx`,
+          ];
+
+          for (const candidate of siblingCandidates) {
+            if (candidate === filePath) continue;
+            if (state.fileContents?.[candidate] !== undefined) continue;
+
+            try {
+              const handle = await fs.getFileHandleAtPath?.(candidate);
+              if (handle) {
+                const content = await fs.readFile(handle);
+                state((draft) => {
+                  draft.fileContents = {
+                    ...draft.fileContents,
+                    [candidate]: content,
+                  };
+                });
+              }
+            } catch (_e) {
+              // Sibling candidate doesn't exist, skip
+            }
+          }
+        }
+      }
+    };
+
+    loadReferencedFiles().catch((err) => {
+      console.error('Error pre-loading referenced files:', err);
+    });
+  }, [filePath, localContent, fs, state]);
 
   const leftScrollRef = useRef(null);
   const rightScrollRef = useRef(null);
@@ -270,8 +393,13 @@ function EditorAreaInner({ file, fsHandle }) {
     const isCss = filePath.endsWith('.css');
 
     const styleResult = getStyleAtCursor(code, index, isCss);
-    const className = styleResult ? (typeof styleResult === 'string' ? styleResult : styleResult.className) : null;
-    const identifier = styleResult && typeof styleResult === 'object' ? styleResult.identifier : null;
+    const className = styleResult
+      ? typeof styleResult === 'string'
+        ? styleResult
+        : styleResult.className
+      : null;
+    const identifier =
+      styleResult && typeof styleResult === 'object' ? styleResult.identifier : null;
 
     // Dynamically resolve target path for multi-CSS file support
     let targetPath = associatedPath;
@@ -333,49 +461,56 @@ function EditorAreaInner({ file, fsHandle }) {
     };
   }, [associatedPath, filePath, cursorPos?.index, state, tabState]);
 
-  const handleJumpToTarget = useCallback((targetPath, targetLoc) => {
-    if (!targetPath || !targetLoc) return;
+  const handleJumpToTarget = useCallback(
+    (targetPath, targetLoc) => {
+      if (!targetPath || !targetLoc) return;
 
-    const targetContent = state.fileContents?.[targetPath] ?? '';
-    const fileName = targetPath.substring(targetPath.lastIndexOf('/') + 1);
-    const fileObj = {
-      name: fileName,
-      path: targetPath.split('/'),
-      content: targetContent,
-    };
-    const newTab = {
-      id: targetPath,
-      type: 'file',
-      label: fileName,
-      file: fileObj,
-    };
+      const targetContent = state.fileContents?.[targetPath] ?? '';
+      const fileName = targetPath.substring(targetPath.lastIndexOf('/') + 1);
+      const fileObj = {
+        name: fileName,
+        path: targetPath.split('/'),
+        content: targetContent,
+      };
+      const newTab = {
+        id: targetPath,
+        type: 'file',
+        label: fileName,
+        file: fileObj,
+      };
 
-    tabState((draft) => {
-      const existingTab = draft.openTabs.find((t) => t.id === targetPath);
-      if (!existingTab) {
-        draft.openTabs = [...draft.openTabs, newTab];
-      }
-      draft.activeTabId = targetPath;
-    });
+      tabState((draft) => {
+        const existingTab = draft.openTabs.find((t) => t.id === targetPath);
+        if (!existingTab) {
+          draft.openTabs = [...draft.openTabs, newTab];
+        }
+        draft.activeTabId = targetPath;
+      });
 
-    state((draft) => {
-      if (!draft.cursorPos) {
-        draft.cursorPos = {};
-      }
-      draft.cursorPos[targetPath] = targetLoc;
-    });
+      state((draft) => {
+        if (!draft.cursorPos) {
+          draft.cursorPos = {};
+        }
+        draft.cursorPos[targetPath] = targetLoc;
+      });
 
-    shouldScrollRef.current = {
-      filePath: targetPath,
-      line: targetLoc.line,
-    };
-  }, [state, tabState]);
+      shouldScrollRef.current = {
+        filePath: targetPath,
+        line: targetLoc.line,
+      };
+    },
+    [state, tabState],
+  );
 
   const lastScrollTimestampRef = useRef(null);
 
   useEffect(() => {
-    const shouldScrollLocal = shouldScrollRef.current && shouldScrollRef.current.filePath === filePath;
-    const shouldScrollGlobal = state.shouldScrollTo && state.shouldScrollTo.filePath === filePath && state.shouldScrollTo.timestamp !== lastScrollTimestampRef.current;
+    const shouldScrollLocal =
+      shouldScrollRef.current && shouldScrollRef.current.filePath === filePath;
+    const shouldScrollGlobal =
+      state.shouldScrollTo &&
+      state.shouldScrollTo.filePath === filePath &&
+      state.shouldScrollTo.timestamp !== lastScrollTimestampRef.current;
 
     if (shouldScrollLocal || shouldScrollGlobal) {
       let line = 1;
@@ -400,9 +535,7 @@ function EditorAreaInner({ file, fsHandle }) {
         return () => clearTimeout(timer);
       }
     }
-  }, [filePath, cursorPos?.index, state.shouldScrollTo]);
-
-
+  }, [filePath, state.shouldScrollTo]);
 
   const { suggestion, cancelSuggestion, loading } = useCompletion({
     localContent,
@@ -466,6 +599,7 @@ function EditorAreaInner({ file, fsHandle }) {
       matchIndex,
       suggestion,
       cursorPos,
+      isReadOnly,
     );
   }, [
     editorContent,
@@ -480,6 +614,8 @@ function EditorAreaInner({ file, fsHandle }) {
     matchIndex,
     suggestion,
     cursorPos,
+    isReadOnly,
+    isReadOnly ? state.fileContents : null,
   ]);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: state is intentionally omitted to prevent re-highlighting on every state change
@@ -495,6 +631,7 @@ function EditorAreaInner({ file, fsHandle }) {
       matchIndex,
       undefined,
       state.cursorPos?.[filePath],
+      isReadOnly,
     );
   }, [
     showSideBySide,
@@ -506,6 +643,8 @@ function EditorAreaInner({ file, fsHandle }) {
     findQuery,
     matchIndex,
     state.cursorPos?.[filePath],
+    isReadOnly,
+    isReadOnly ? state.fileContents : null,
   ]);
 
   return (
@@ -523,6 +662,8 @@ function EditorAreaInner({ file, fsHandle }) {
         handleFormat={handleFormat}
         associatedPath={associatedPath}
         onNavigateToAssociated={handleNavigateToAssociated}
+        isReadOnly={isReadOnly}
+        setIsReadOnly={setIsReadOnly}
       />
 
       <FindHandler
@@ -574,6 +715,7 @@ function EditorAreaInner({ file, fsHandle }) {
                 localContent={diffData.originalContent}
                 highlightedCode={originalHighlightedCode}
                 readOnly={true}
+                isReadOnly={isReadOnly}
                 cursorPos={state.cursorPos?.[filePath]}
                 scrollContainerRef={leftScrollRef}
                 filePath={filePath}
@@ -609,6 +751,7 @@ function EditorAreaInner({ file, fsHandle }) {
                 onNavigateToAssociated={handleNavigateToAssociated}
                 fileContents={state.fileContents}
                 onJumpToTarget={handleJumpToTarget}
+                isReadOnly={isReadOnly}
               />
             </div>
           </div>
@@ -639,6 +782,7 @@ function EditorAreaInner({ file, fsHandle }) {
             onCancelSuggestion={cancelSuggestion}
             filePath={filePath}
             readOnly={hasCollapsedFolds}
+            isReadOnly={isReadOnly}
             onNavigateToAssociated={handleNavigateToAssociated}
             fileContents={state.fileContents}
             onJumpToTarget={handleJumpToTarget}

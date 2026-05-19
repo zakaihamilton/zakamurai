@@ -90,6 +90,7 @@ export default function App() {
   const editorState = EditorState.useState(null, {
     fileContents: initialValues.contents,
     aiCompletionEnabled: initialValues.aiCompletionEnabled,
+    isReadOnly: Settings.getEditorReadOnly(false),
   });
 
   const promptState = PromptState.useState(null, {

@@ -1,3 +1,8 @@
+import { findNavigationTargets } from '@/utils/navigation';
+
+const encodeIdx = (num) => String(num).replace(/\d/g, (d) => String.fromCharCode(97 + Number(d)));
+const decodeIdx = (str) => Number(str.replace(/[a-j]/g, (c) => String(c.charCodeAt(0) - 97)));
+
 const highlightCache = new Map();
 const MAX_CACHE_SIZE = 50;
 const MAX_HIGHLIGHT_CHARS = 250000;
@@ -21,6 +26,7 @@ export const highlightCode = (
   matchIndex,
   suggestion,
   cursorPos,
+  isReadOnly,
 ) => {
   if (!code) return '';
   if (code.length > MAX_HIGHLIGHT_CHARS) return escapeHtml(code);
@@ -35,6 +41,12 @@ export const highlightCode = (
     matchIndex,
     suggestion,
     cursorPos?.index,
+    isReadOnly,
+    isReadOnly
+      ? Object.entries(state?.fileContents || {})
+          .map(([k, v]) => `${k}:${v?.length || 0}`)
+          .join(',')
+      : '',
   ]);
 
   if (highlightCache.has(cacheKey)) {
@@ -49,24 +61,63 @@ export const highlightCode = (
 
   let escaped = code;
 
-  // Insert suggestion marker if present
+  // Track index mapping
+  const mapIndex = new Int32Array(code.length + 1);
+  for (let i = 0; i <= code.length; i++) {
+    mapIndex[i] = i;
+  }
+  const shiftIndices = (fromIdx, amount) => {
+    for (let i = fromIdx; i <= code.length; i++) {
+      mapIndex[i] += amount;
+    }
+  };
+
+  // 1. Insert target markers if in read-only mode
+  let targets = [];
+  if (isReadOnly) {
+    targets = findNavigationTargets(
+      code,
+      filePath?.endsWith('.css'),
+      state?.fileContents || {},
+      filePath,
+    );
+  }
+
+  // Sort targets in descending order of start index to insert without interference
+  const sortedTargets = [...targets].sort((a, b) => b.start - a.start);
+  for (let idx = 0; idx < sortedTargets.length; idx++) {
+    const target = sortedTargets[idx];
+    const targetIdx = targets.indexOf(target);
+
+    const endPos = mapIndex[target.end];
+    escaped = `${escaped.substring(0, endPos)}\u0007${escaped.substring(endPos)}`;
+    shiftIndices(target.end, 1);
+
+    const startMarker = `\u0006${encodeIdx(targetIdx)}\u0006`;
+    const startPos = mapIndex[target.start];
+    escaped = `${escaped.substring(0, startPos)}${startMarker}${escaped.substring(startPos)}`;
+    shiftIndices(target.start, startMarker.length);
+  }
+
+  // 2. Insert suggestion marker
   const hasSuggestion = suggestion && cursorPos && cursorPos.index !== undefined;
   if (hasSuggestion) {
     const idx = cursorPos.index;
-    escaped = `${escaped.substring(0, idx)}\u0005${escaped.substring(idx)}`;
+    const mappedIdx = mapIndex[idx];
+    escaped = `${escaped.substring(0, mappedIdx)}\u0005${escaped.substring(mappedIdx)}`;
   }
 
-  // Mark diffs with index for tracking original content
+  // 3. Insert diff markers
   for (let i = 0; i < sortedDiffs.length; i++) {
     const diff = sortedDiffs[i];
-    // Adjust diff indices if they are after the suggestion insertion
-    const start = hasSuggestion && diff.start >= cursorPos.index ? diff.start + 1 : diff.start;
-    const end = hasSuggestion && diff.end >= cursorPos.index ? diff.end + 1 : diff.end;
+    const startMapped =
+      mapIndex[diff.start] + (hasSuggestion && diff.start >= cursorPos.index ? 1 : 0);
+    const endMapped = mapIndex[diff.end] + (hasSuggestion && diff.end >= cursorPos.index ? 1 : 0);
 
-    escaped = `${escaped.substring(0, start)}\u0003${i}\u0003${escaped.substring(
-      start,
-      end,
-    )}\u0004${escaped.substring(end)}`;
+    escaped = `${escaped.substring(0, startMapped)}\u0003${i}\u0003${escaped.substring(
+      startMapped,
+      endMapped,
+    )}\u0004${escaped.substring(endMapped)}`;
   }
 
   escaped = escapeHtml(escaped);
@@ -85,9 +136,7 @@ export const highlightCode = (
 
   if (jsonPath) {
     // JSON keys and strings need different contrast, especially in light mode.
-    escaped = escaped.replace(/("(?:[^"\\\\]|\\\\.)*")(?=\s*:)/g, (m) =>
-      pushToken(m, 'hlJsonKey'),
-    );
+    escaped = escaped.replace(/("(?:[^"\\\\]|\\\\.)*")(?=\s*:)/g, (m) => pushToken(m, 'hlJsonKey'));
     escaped = escaped.replace(
       // biome-ignore lint/suspicious/noControlCharactersInRegex: markers
       /(\x01\d+\x02)|("(?:[^"\\\\]|\\\\.)*")/g,
@@ -159,7 +208,7 @@ export const highlightCode = (
   if (!jsonPath) {
     escaped = escaped.replace(
       // biome-ignore lint/suspicious/noControlCharactersInRegex: markers
-      /(\x01\d+\x02|\u0003\d+\u0003|\u0004|\u0005)|\b(export|default|function|return|import|from|const|let|var|if|else|for|while|class|extends|new|true|false|null|undefined|async|await|try|catch|finally|throw|break|continue|case|switch|type|interface|enum|public|private|protected|static|readonly)\b/g,
+      /(\x01\d+\x02|\u0003\d+\u0003|\u0004|\u0005|\u0006[a-j]+\u0006|\u0007)|\b(export|default|function|return|import|from|const|let|var|if|else|for|while|class|extends|new|true|false|null|undefined|async|await|try|catch|finally|throw|break|continue|case|switch|type|interface|enum|public|private|protected|static|readonly)\b/g,
       (_m, p1, p2) => (p1 ? p1 : pushToken(p2, 'hlKw')),
     );
   }
@@ -168,7 +217,7 @@ export const highlightCode = (
   if (!jsonPath) {
     escaped = escaped.replace(
       // biome-ignore lint/suspicious/noControlCharactersInRegex: markers
-      /(\x01\d+\x02|\u0003\d+\u0003|\u0004|\u0005)|\b(\d+)\b/g,
+      /(\x01\d+\x02|\u0003\d+\u0003|\u0004|\u0005|\u0006[a-j]+\u0006|\u0007)|\b(\d+)\b/g,
       (_m, p1, p2) => (p1 ? p1 : pushToken(p2, 'hlNum')),
     );
   }
@@ -248,6 +297,15 @@ export const highlightCode = (
       suggestion ? `<span class="${styles.tabHint}">Press <kbd>Tab</kbd></span>` : ''
     }</span>`,
   );
+
+  // Replace navigation target markers with styled links
+  // biome-ignore lint/suspicious/noControlCharactersInRegex: markers are intentional for tracking
+  escaped = escaped.replace(/\u0006([a-j]+)\u0006/g, (_m, idxStr) => {
+    const targetIdx = decodeIdx(idxStr);
+    return `<span class="${styles.navLink}" data-nav-target="true" data-nav-idx="${targetIdx}">`;
+  });
+  // biome-ignore lint/suspicious/noControlCharactersInRegex: markers are intentional for tracking
+  escaped = escaped.replace(/\u0007/g, '</span>');
 
   // Add line selection backgrounds
   const linesArr = escaped.split('\n');

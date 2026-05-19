@@ -655,6 +655,54 @@
   color: var(--text-muted);
   border-bottom: 1px solid var(--border);
   padding-bottom: 4px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.popupCloseBtn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 22px;
+  font-weight: bold;
+  cursor: pointer;
+  padding: 4px;
+  line-height: 1;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+  width: 24px;
+  height: 24px;
+}
+
+.popupCloseBtn:hover {
+  background: var(--bg-hover);
+  color: var(--text-main);
+}
+
+.navIcon {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--accent, #6cb6f5) 85%, transparent);
+  border: 1px solid var(--border, rgb(120 143 157 / 30%));
+  cursor: pointer;
+  z-index: 10;
+  transform: translate(4px, -50%);
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 20%);
+  padding: 0;
+}
+
+.navIcon:hover {
+  background: var(--accent, #6cb6f5);
+  transform: translate(4px, -50%) scale(1.2);
+  box-shadow: 0 0 6px var(--accent, #6cb6f5);
 }
 
 .popupList {
@@ -677,4 +725,36 @@
 .popupItem:hover {
   background: var(--accent);
   color: #fff;
+}
+
+.actionBtnActive {
+  background: color-mix(in srgb, var(--accent, #6cb6f5) 12%, transparent) !important;
+  color: var(--accent, #6cb6f5) !important;
+  box-shadow: 0 0 8px color-mix(in srgb, var(--accent, #6cb6f5) 25%, transparent);
+}
+
+.navLink {
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-decoration-color: var(--accent, #6cb6f5);
+  text-underline-offset: 4px;
+  cursor: pointer;
+  pointer-events: auto;
+  transition: all 0.2s ease;
+}
+
+.navLink:hover {
+  text-decoration-style: solid;
+  color: var(--accent, #6cb6f5);
+  background: color-mix(in srgb, var(--accent, #6cb6f5) 8%, transparent);
+  border-radius: 2px;
+}
+
+.readOnlyTextarea {
+  pointer-events: none !important;
+}
+
+.readOnlyPre {
+  pointer-events: auto !important;
+  user-select: text !important;
 }

@@ -10,6 +10,7 @@ export function getCssImports(jsCode) {
   // Pattern 1: import styles from './file.module.css'; or import * as styles from './file.module.css';
   const esmRegex = /import\s+(?:(\w+)|\*\s+as\s+(\w+))\s+from\s+['"](.+?\.module\.css)['"]/g;
   let match;
+  // biome-ignore lint/suspicious/noAssignInExpressions: standard regex execution loop
   while ((match = esmRegex.exec(jsCode)) !== null) {
     const identifier = match[1] || match[2];
     const importPath = match[3];
@@ -20,6 +21,7 @@ export function getCssImports(jsCode) {
 
   // Pattern 2: const styles = require('./file.module.css');
   const cjsRegex = /(?:const|let|var)\s+(\w+)\s*=\s*require\(\s*['"](.+?\.module\.css)['"]\s*\)/g;
+  // biome-ignore lint/suspicious/noAssignInExpressions: standard regex execution loop
   while ((match = cjsRegex.exec(jsCode)) !== null) {
     const identifier = match[1];
     const importPath = match[2];
@@ -30,6 +32,7 @@ export function getCssImports(jsCode) {
 
   // Pattern 3: anonymous import: import './file.module.css';
   const anonRegex = /import\s+['"](.+?\.module\.css)['"]/g;
+  // biome-ignore lint/suspicious/noAssignInExpressions: standard regex execution loop
   while ((match = anonRegex.exec(jsCode)) !== null) {
     const importPath = match[1];
     if (!imports.some((imp) => imp.importPath === importPath)) {
@@ -52,7 +55,11 @@ export function getStyleAtCursor(code, index, isCss) {
   if (isCss) {
     // If clicking on '.', adjust index to the first character of the word
     let wordIndex = index;
-    if (code[wordIndex] === '.' && wordIndex < code.length - 1 && /[a-zA-Z0-9_\-]/.test(code[wordIndex + 1])) {
+    if (
+      code[wordIndex] === '.' &&
+      wordIndex < code.length - 1 &&
+      /[a-zA-Z0-9_\-]/.test(code[wordIndex + 1])
+    ) {
       wordIndex++;
     }
 
@@ -99,7 +106,7 @@ export function getStyleAtCursor(code, index, isCss) {
 
   // Case 1: Dot notation - Cursor is on the className (e.g., word = "title" in "styles.title")
   if (start > 0 && code[start - 1] === '.') {
-    let idEnd = start - 1; // Index of '.'
+    const idEnd = start - 1; // Index of '.'
     let idStart = idEnd;
     while (idStart > 0 && /[a-zA-Z0-9_]/.test(code[idStart - 1])) {
       idStart--;
@@ -113,7 +120,7 @@ export function getStyleAtCursor(code, index, isCss) {
   // Case 2: Bracket notation - Cursor is on the className (e.g., word = "title" in "styles['title']")
   const beforeStr = code.slice(Math.max(0, start - 2), start);
   if (beforeStr === "['" || beforeStr === '["') {
-    let idEnd = start - 2;
+    const idEnd = start - 2;
     let idStart = idEnd;
     while (idStart > 0 && /[a-zA-Z0-9_]/.test(code[idStart - 1])) {
       idStart--;
@@ -126,7 +133,7 @@ export function getStyleAtCursor(code, index, isCss) {
 
   // Case 3: Cursor is on the identifier in dot notation (e.g., word = "styles" in "styles.title")
   if (end < code.length && code[end] === '.') {
-    let classStart = end + 1;
+    const classStart = end + 1;
     let classEnd = classStart;
     while (classEnd < code.length && /[a-zA-Z0-9_\-]/.test(code[classEnd])) {
       classEnd++;
@@ -140,7 +147,7 @@ export function getStyleAtCursor(code, index, isCss) {
   // Case 4: Cursor is on the identifier in bracket notation (e.g., word = "styles" in "styles['title']")
   const afterStr = code.slice(end, Math.min(code.length, end + 2));
   if (afterStr === "['" || afterStr === '["') {
-    let classStart = end + 2;
+    const classStart = end + 2;
     let classEnd = classStart;
     while (classEnd < code.length && /[a-zA-Z0-9_\-]/.test(code[classEnd])) {
       classEnd++;
@@ -201,8 +208,13 @@ export function getAssociatedFilePath(filePath, allFileContents, identifier = nu
     // Fall back to searching all files to see if any file imports this CSS module
     const fileName = filePath.substring(filePath.lastIndexOf('/') + 1);
     for (const [path, content] of Object.entries(allFileContents)) {
-      if (path.endsWith('.js') || path.endsWith('.jsx') || path.endsWith('.ts') || path.endsWith('.tsx')) {
-        if (content && content.includes(fileName)) {
+      if (
+        path.endsWith('.js') ||
+        path.endsWith('.jsx') ||
+        path.endsWith('.ts') ||
+        path.endsWith('.tsx')
+      ) {
+        if (content?.includes(fileName)) {
           return path;
         }
       }
@@ -222,7 +234,7 @@ export function getAssociatedFilePath(filePath, allFileContents, identifier = nu
           matchedImport = imports[0];
         }
 
-        if (matchedImport && matchedImport.importPath) {
+        if (matchedImport?.importPath) {
           const resolved = resolveRelativePath(filePath, matchedImport.importPath);
           if (allFileContents[resolved] !== undefined) {
             return resolved;
@@ -405,3 +417,242 @@ export function findDefiningCssFiles(jsFilePath, className, identifier, allFileC
   return results;
 }
 
+/**
+ * Resolves the absolute path of an imported file, checking for aliases,
+ * relative paths, common extensions, and directory index files.
+ */
+export function resolveImportPath(jsFilePath, importPath, allFileContents) {
+  if (!importPath || !allFileContents) return null;
+
+  let resolved = importPath;
+  if (importPath.startsWith('@/')) {
+    resolved = importPath.replace(/^@\//, 'src/');
+  } else if (importPath.startsWith('.')) {
+    resolved = resolveRelativePath(jsFilePath, importPath);
+  }
+
+  // List of possible resolutions in priority order:
+  const candidates = [
+    resolved, // As-is
+    `${resolved}.js`,
+    `${resolved}.jsx`,
+    `${resolved}.ts`,
+    `${resolved}.tsx`,
+    `${resolved}.css`,
+    `${resolved}.json`,
+    `${resolved}.svg`,
+    `${resolved}.png`,
+    `${resolved}.jpg`,
+    `${resolved}.jpeg`,
+    `${resolved}.gif`,
+    `${resolved}.webp`,
+    `${resolved}/index.js`,
+    `${resolved}/index.jsx`,
+    `${resolved}/index.ts`,
+    `${resolved}/index.tsx`,
+  ];
+
+  for (const candidate of candidates) {
+    if (candidate === jsFilePath) {
+      continue;
+    }
+    if (allFileContents[candidate] !== undefined) {
+      return candidate;
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Extracts ranges (start and end indexes) of import and require path strings in JS/TS or CSS code.
+ */
+export function getImportRanges(code, isCss = false) {
+  const ranges = [];
+  if (!code) return ranges;
+
+  if (isCss) {
+    // Pattern: @import './file.css'; or @import url('./file.css');
+    const cssImportRegex = /@import\s+(?:url\()?['"]([^'"]+)['"]\)?/g;
+    let match;
+    // biome-ignore lint/suspicious/noAssignInExpressions: standard regex execution loop
+    while ((match = cssImportRegex.exec(code)) !== null) {
+      const path = match[1];
+      const fullMatch = match[0];
+      const pathIndex = match.index + fullMatch.indexOf(path);
+      ranges.push({
+        path,
+        start: pathIndex,
+        end: pathIndex + path.length,
+      });
+    }
+    return ranges;
+  }
+
+  // Pattern 1: ES6 imports and exports
+  const es6Regex = /\b(import|export)\s+(?:[^'"]*?\bfrom\s+)?(['"])([^'"]+)\2/g;
+  let match;
+  // biome-ignore lint/suspicious/noAssignInExpressions: standard regex execution loop
+  while ((match = es6Regex.exec(code)) !== null) {
+    const quote = match[2];
+    const path = match[3];
+    const fullMatch = match[0];
+    const quoteIndex = fullMatch.indexOf(quote);
+    const pathIndex = match.index + quoteIndex + 1;
+    ranges.push({
+      path,
+      start: pathIndex,
+      end: pathIndex + path.length,
+    });
+  }
+
+  // Pattern 2: CommonJS require
+  const requireRegex = /\brequire\s*\(\s*(['"])([^'"]+)\1\s*\)/g;
+  // biome-ignore lint/suspicious/noAssignInExpressions: standard regex execution loop
+  while ((match = requireRegex.exec(code)) !== null) {
+    const quote = match[1];
+    const path = match[2];
+    const fullMatch = match[0];
+    const quoteIndex = fullMatch.indexOf(quote);
+    const pathIndex = match.index + quoteIndex + 1;
+    ranges.push({
+      path,
+      start: pathIndex,
+      end: pathIndex + path.length,
+    });
+  }
+
+  return ranges;
+}
+
+/**
+ * Finds all navigation targets in the code (imports and style references)
+ * that have valid resolved destinations.
+ */
+export function findNavigationTargets(code, isCss, fileContents, filePath) {
+  const targets = [];
+  if (!code) return targets;
+
+  // 1. Imports
+  const importRanges = getImportRanges(code, isCss);
+  for (const range of importRanges) {
+    const resolvedPath = resolveImportPath(filePath, range.path, fileContents);
+    if (resolvedPath) {
+      targets.push({
+        type: 'import',
+        name: range.path,
+        resolvedPath,
+        start: range.start,
+        end: range.end,
+        targets: [
+          {
+            filePath: resolvedPath,
+            fileName: resolvedPath.substring(resolvedPath.lastIndexOf('/') + 1),
+            loc: { line: 1, col: 1, index: 0 },
+          },
+        ],
+      });
+    }
+  }
+
+  // 2. Styles
+  if (isCss) {
+    // In CSS: find all selector definitions (e.g. .title)
+    const selectorRegex = /\.([a-zA-Z0-9_\-]+)\b/g;
+    let match;
+    // biome-ignore lint/suspicious/noAssignInExpressions: standard regex execution loop
+    while ((match = selectorRegex.exec(code)) !== null) {
+      const className = match[1];
+      const start = match.index;
+      const end = start + match[0].length;
+
+      // Filter: only classes that actually have referencing JS files
+      const referencing = findReferencingJsFiles(filePath, className, fileContents || {});
+      if (referencing.length > 0) {
+        // Avoid duplicate selector entries
+        if (
+          !targets.some((t) => t.type === 'style' && t.className === className && t.start === start)
+        ) {
+          targets.push({
+            type: 'style',
+            className,
+            start,
+            end,
+            targets: referencing,
+          });
+        }
+      }
+    }
+  } else {
+    // In JS: find all references `identifier.className` or `identifier['className']`
+    const cssImports = getCssImports(code);
+    if (cssImports.length > 0) {
+      for (const imp of cssImports) {
+        if (!imp.identifier) continue;
+
+        const resolvedPath = resolveRelativePath(filePath, imp.importPath);
+        const cssContent = fileContents?.[resolvedPath];
+        if (cssContent === undefined) continue;
+
+        const escapedId = imp.identifier.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+        // Pattern 1: identifier.className
+        const dotRegex = new RegExp(`\\b${escapedId}\\.([a-zA-Z0-9_\\-]+)\\b`, 'g');
+        let match;
+        // biome-ignore lint/suspicious/noAssignInExpressions: standard regex execution loop
+        while ((match = dotRegex.exec(code)) !== null) {
+          const className = match[1];
+          const start = match.index;
+          const end = start + match[0].length;
+
+          const loc = findClassInCss(cssContent, className);
+          if (loc) {
+            targets.push({
+              type: 'style',
+              className,
+              start,
+              end,
+              resolvedPath,
+              targets: [
+                {
+                  filePath: resolvedPath,
+                  fileName: resolvedPath.substring(resolvedPath.lastIndexOf('/') + 1),
+                  loc,
+                },
+              ],
+            });
+          }
+        }
+
+        // Pattern 2: identifier['className']
+        const bracketRegex = new RegExp(`\\b${escapedId}\\[['"]([a-zA-Z0-9_\\-]+)['"]\\]`, 'g');
+        // biome-ignore lint/suspicious/noAssignInExpressions: standard regex execution loop
+        while ((match = bracketRegex.exec(code)) !== null) {
+          const className = match[1];
+          const start = match.index;
+          const end = start + match[0].length;
+
+          const loc = findClassInCss(cssContent, className);
+          if (loc) {
+            targets.push({
+              type: 'style',
+              className,
+              start,
+              end,
+              resolvedPath,
+              targets: [
+                {
+                  filePath: resolvedPath,
+                  fileName: resolvedPath.substring(resolvedPath.lastIndexOf('/') + 1),
+                  loc,
+                },
+              ],
+            });
+          }
+        }
+      }
+    }
+  }
+
+  return targets;
+}

@@ -14,8 +14,8 @@ export default function EditorHeader({
   showSideBySide,
   setShowSideBySide,
   handleFormat,
-  associatedPath,
-  onNavigateToAssociated,
+  isReadOnly,
+  setIsReadOnly,
 }) {
   return (
     <div className={styles.editorHeader}>
@@ -24,7 +24,18 @@ export default function EditorHeader({
         <span className={styles.filePath}>{filePath}</span>
       </div>
       <div className={styles.headerActions}>
-
+        <Tooltip
+          content={isReadOnly ? 'Switch to Edit Mode' : 'Switch to Inspection Mode'}
+          shortcut={formatShortcut('⌃E')}
+        >
+          <button
+            type="button"
+            className={`${styles.actionBtn} ${isReadOnly ? styles.actionBtnActive : ''}`}
+            onClick={() => setIsReadOnly(!isReadOnly)}
+          >
+            {isReadOnly ? <Icons.Code size={14} /> : <Icons.Edit size={14} />}
+          </button>
+        </Tooltip>
         <Tooltip content="Find/Replace" shortcut={formatShortcut('⌘F')}>
           <button type="button" className={styles.actionBtn} onClick={() => setShowFind(!showFind)}>
             <Icons.Search />

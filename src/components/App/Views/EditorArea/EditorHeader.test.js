@@ -1,5 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
+import { formatShortcut } from '@/utils/os';
 import EditorHeader from './EditorHeader';
 
 vi.mock('@/components/Core/Base/Icons', () => ({
@@ -10,11 +11,17 @@ vi.mock('@/components/Core/Base/Icons', () => ({
     Undo: () => <div data-testid="icon-undo" />,
     Columns: () => <div data-testid="icon-columns" />,
     Layout: () => <div data-testid="icon-layout" />,
+    Code: () => <div data-testid="icon-code" />,
+    Edit: () => <div data-testid="icon-edit" />,
   },
 }));
 
 vi.mock('@/components/Widgets/Tooltip/Tooltip', () => ({
-  default: ({ children }) => <div data-testid="tooltip">{children}</div>,
+  default: ({ children, content, shortcut }) => (
+    <div data-testid="tooltip" data-content={content} data-shortcut={shortcut}>
+      {children}
+    </div>
+  ),
 }));
 
 describe('EditorHeader', () => {
@@ -27,6 +34,8 @@ describe('EditorHeader', () => {
     handleUndo: vi.fn(),
     showSideBySide: false,
     setShowSideBySide: vi.fn(),
+    isReadOnly: false,
+    setIsReadOnly: vi.fn(),
   };
 
   it('renders the file path', () => {
@@ -40,6 +49,34 @@ describe('EditorHeader', () => {
     const searchBtn = screen.getByTestId('icon-search').parentElement;
     fireEvent.click(searchBtn);
     expect(defaultProps.setShowFind).toHaveBeenCalledWith(true);
+  });
+
+  it('renders edit icon by default when isReadOnly is false', () => {
+    const setIsReadOnly = vi.fn();
+    render(<EditorHeader {...defaultProps} isReadOnly={false} setIsReadOnly={setIsReadOnly} />);
+    expect(screen.getByTestId('icon-edit')).toBeDefined();
+
+    const editBtn = screen.getByTestId('icon-edit').parentElement;
+    const tooltip = editBtn.closest('[data-testid="tooltip"]');
+    expect(tooltip.getAttribute('data-content')).toBe('Switch to Inspection Mode');
+    expect(tooltip.getAttribute('data-shortcut')).toBe(formatShortcut('⌃E'));
+
+    fireEvent.click(editBtn);
+    expect(setIsReadOnly).toHaveBeenCalledWith(true);
+  });
+
+  it('renders code icon when isReadOnly is true', () => {
+    const setIsReadOnly = vi.fn();
+    render(<EditorHeader {...defaultProps} isReadOnly={true} setIsReadOnly={setIsReadOnly} />);
+    expect(screen.getByTestId('icon-code')).toBeDefined();
+
+    const codeBtn = screen.getByTestId('icon-code').parentElement;
+    const tooltip = codeBtn.closest('[data-testid="tooltip"]');
+    expect(tooltip.getAttribute('data-content')).toBe('Switch to Edit Mode');
+    expect(tooltip.getAttribute('data-shortcut')).toBe(formatShortcut('⌃E'));
+
+    fireEvent.click(codeBtn);
+    expect(setIsReadOnly).toHaveBeenCalledWith(false);
   });
 
   it('renders diff actions when hasDiff is true', () => {

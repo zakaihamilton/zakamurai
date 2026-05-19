@@ -1,7 +1,16 @@
-import { describe, expect, it, vi } from 'vitest';
+import { findNavigationTargets } from '@/utils/navigation';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { highlightCode } from './highlighter';
 
+vi.mock('@/utils/navigation', () => ({
+  findNavigationTargets: vi.fn(() => []),
+}));
+
 describe('highlighter', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   const styles = {
     hlKw: 'hlKw',
     hlStr: 'hlStr',
@@ -11,7 +20,42 @@ describe('highlighter', () => {
     hlJsonPunc: 'hlJsonPunc',
     hlGhost: 'hlGhost',
     tabHint: 'tabHint',
+    navLink: 'navLink',
   };
+
+  it('wraps targets in navLink class in readOnly mode', () => {
+    const code = "import './styles.css';";
+    const state = { fileContents: {} };
+    const mockTargets = [
+      {
+        start: 7,
+        end: 21,
+        type: 'import',
+        name: './styles.css',
+        targets: [{ filePath: 'src/styles.css', fileName: 'styles.css', loc: { line: 1, col: 1 } }],
+      },
+    ];
+    vi.mocked(findNavigationTargets).mockReturnValue(mockTargets);
+
+    const result = highlightCode(
+      code,
+      'src/App.js',
+      state,
+      styles,
+      false,
+      '',
+      -1,
+      undefined,
+      undefined,
+      true, // isReadOnly
+    );
+
+    expect(findNavigationTargets).toHaveBeenCalledWith(code, false, {}, 'src/App.js');
+    expect(result).toContain('class="navLink"');
+    expect(result).toContain('data-nav-target="true"');
+    expect(result).toContain('data-nav-idx="0"');
+    expect(result).toContain('styles.css');
+  });
 
   it('injects ghost text at the suggestion marker', () => {
     // \u0005 is the suggestion marker

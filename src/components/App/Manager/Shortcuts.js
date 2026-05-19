@@ -1,10 +1,11 @@
-import { isMac } from '@/utils/os';
 import {
-  getStyleAtCursor,
-  getAssociatedFilePath,
   findClassInCss,
   findClassReferenceInJs,
+  getAssociatedFilePath,
+  getStyleAtCursor,
 } from '@/utils/navigation';
+import { isMac } from '@/utils/os';
+import Settings from '@/components/Storage/Settings';
 
 export const SHORTCUT_GROUPS = {
   NAVIGATION: 'Navigation',
@@ -43,7 +44,11 @@ const toggleCssJsAction = ({ editorState, tabState, sidebarState }) => {
   const index = cursorPos.index ?? 0;
 
   const styleResult = getStyleAtCursor(code, index, isCss);
-  const className = styleResult ? (typeof styleResult === 'string' ? styleResult : styleResult.className) : null;
+  const className = styleResult
+    ? typeof styleResult === 'string'
+      ? styleResult
+      : styleResult.className
+    : null;
   const identifier = styleResult && typeof styleResult === 'object' ? styleResult.identifier : null;
 
   let targetPath = null;
@@ -117,16 +122,18 @@ export const SHORTCUTS = [
     key: 'b',
     displayKey: '⌘B',
     modifier: 'cmd',
+    platform: 'mac',
     isGlobal: true,
     action: toggleCssJsAction,
   },
   {
-    id: 'toggle-css-js-ctrl',
+    id: 'toggle-css-js-win',
     group: SHORTCUT_GROUPS.NAVIGATION,
-    desc: 'Toggle between Component and CSS Module (Control)',
+    desc: 'Toggle between Component and CSS Module',
     key: 'b',
-    displayKey: '⌃B',
-    modifier: 'ctrl',
+    displayKey: 'Alt+B',
+    modifier: 'alt',
+    platform: 'win',
     isGlobal: true,
     action: toggleCssJsAction,
   },
@@ -201,6 +208,24 @@ export const SHORTCUTS = [
         });
       }
       window.dispatchEvent(new CustomEvent('focus-file-search'));
+    },
+  },
+  {
+    id: 'toggle-inspect-mode',
+    group: SHORTCUT_GROUPS.EDITOR,
+    desc: 'Toggle Inspect Mode (ReadOnly/Writable)',
+    key: 'e',
+    displayKey: '⌃E',
+    modifier: 'ctrl',
+    isGlobal: true,
+    action: ({ editorState, showNotification }) => {
+      editorState((draft) => {
+        const current = draft.isReadOnly ?? Settings.getEditorReadOnly(false);
+        const nextVal = !current;
+        draft.isReadOnly = nextVal;
+        Settings.setEditorReadOnly(nextVal);
+        showNotification(nextVal ? 'Inspection mode active' : 'Edit mode active', 'info');
+      });
     },
   },
   {
@@ -604,6 +629,9 @@ export const SHORTCUTS = [
 
 export const isMatch = (e, s) => {
   const mac = isMac();
+  if (s.platform === 'mac' && !mac) return false;
+  if (s.platform === 'win' && mac) return false;
+
   const meta = e.metaKey;
   const ctrl = e.ctrlKey;
   const shift = e.shiftKey;
@@ -622,6 +650,8 @@ export const isMatch = (e, s) => {
     match = ctrl && shift && !meta && !alt;
   } else if (mod === 'cmd-alt') {
     match = (mac ? meta : ctrl) && alt && !shift;
+  } else if (mod === 'alt') {
+    match = alt && !meta && !ctrl && !shift;
   } else if (mod === 'none') {
     match = !meta && !ctrl && !shift && !alt;
   }
@@ -634,7 +664,10 @@ export const isMatch = (e, s) => {
 
 export const getShortcutsByGroup = () => {
   const groups = {};
+  const mac = isMac();
   for (const s of SHORTCUTS) {
+    if (s.platform === 'mac' && !mac) continue;
+    if (s.platform === 'win' && mac) continue;
     if (!groups[s.group]) groups[s.group] = [];
     // Only add if desc is not already in the group to avoid showing multiple Redo bindings
     if (!groups[s.group].some((item) => item.desc === s.desc)) {

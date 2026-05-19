@@ -16,6 +16,7 @@ const KEYS = {
   AI_PROMPT_MODEL: 'zakamurai_ai_prompt_model',
   AI_MODEL_EXPANDED: 'zakamurai_ai_model_expanded',
   TEMPLATE: 'zakamurai_template',
+  EDITOR_READ_ONLY: 'zakamurai_editor_read_only',
 };
 
 const getStorage = () => {
@@ -257,6 +258,15 @@ const Settings = {
 
   setTemplate(template) {
     this.set(KEYS.TEMPLATE, template);
+  },
+
+  getEditorReadOnly(defaultValue = false) {
+    const val = this.get(KEYS.EDITOR_READ_ONLY, defaultValue.toString());
+    return val === 'true';
+  },
+
+  setEditorReadOnly(isReadOnly) {
+    this.set(KEYS.EDITOR_READ_ONLY, isReadOnly.toString());
   },
 
   reset(template = 'default') {
