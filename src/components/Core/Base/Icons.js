@@ -620,7 +620,7 @@ export const Icons = {
       style={{
         width: size,
         height: size,
-        background: 'linear-gradient(135deg, var(--accent) 0%, #4f46e5 100%)',
+        background: 'linear-gradient(135deg, #8b5cf6 0%, #5b4cc4 100%)',
         borderRadius: `${Math.max(2, Math.round(size * 0.25))}px`,
         display: 'flex',
         justifyContent: 'center',
