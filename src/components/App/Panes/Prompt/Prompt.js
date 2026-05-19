@@ -18,7 +18,7 @@ import ModelManager from './subcomponents/ModelManager';
 import ReasoningPanel from './subcomponents/ReasoningPanel';
 
 export const PromptState = createState('PromptState');
-const PromptUiState = createState('PromptUiState');
+export const PromptUiState = createState('PromptUiState');
 const getInitialSelectedModel = () =>
   Settings.getAIPromptModel(RECOMMENDED_WEB_LLM_MODEL.id) || RECOMMENDED_WEB_LLM_MODEL.id;
 
@@ -465,11 +465,7 @@ export default function Prompt() {
           modelCacheError={modelCacheError}
           styles={styles}
         />
-        <ReasoningPanel
-          reasoning={logState.reasoning}
-          isReasoningVisible={isReasoningVisible}
-          styles={styles}
-        />
+        <ReasoningPanel styles={styles} />
         <form onSubmit={send} className={styles.form}>
           <textarea
             value={val}

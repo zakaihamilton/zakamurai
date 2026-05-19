@@ -5,7 +5,6 @@ import Node from '../../Core/Base/Node';
 import styles from '../App.module.css';
 import { AppState } from '../AppState';
 import { Prompt, PromptState, SidebarState, TabBar, TabState } from '../Panes';
-import { PreviewState } from '../PreviewState';
 import EditorArea from '../Views/EditorArea';
 import ImageViewer from '../Views/ImageViewer';
 import Instructions from '../Views/Instructions';
@@ -17,13 +16,11 @@ import Welcome from '../Views/Welcome';
 export default function WorkspaceArea() {
   const appState = AppState.useState();
   const tabState = TabState.useState();
-  const previewState = PreviewState.useState();
   const sidebarState = SidebarState.useState();
   const promptState = PromptState.useState();
 
   const { isMobile } = appState;
   const { openTabs = [], activeTabId } = tabState;
-  const { htmlContent, isCompilerReady } = previewState;
   const { showAIInput } = sidebarState;
 
   const handlePromptResize = (clientX) => {
@@ -67,9 +64,7 @@ export default function WorkspaceArea() {
               <EditorArea key={activeTab.id} file={activeTab.file} fsHandle={activeTab.fsHandle} />
             ))}
           {activeTab?.type === 'logs' && <LogArea />}
-          {activeTab?.type === 'preview' && (
-            <PreviewArea htmlContent={htmlContent} isCompilerReady={isCompilerReady} />
-          )}
+          {activeTab?.type === 'preview' && <PreviewArea />}
           {activeTab?.type === 'project-info' && <ProjectInfo />}
           {activeTab?.type === 'instructions' && <Instructions />}
           {!activeTab && <Welcome />}

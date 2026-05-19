@@ -1,25 +1,25 @@
+import { LogState } from '@/components/App/Views/LogArea';
 import { Icons } from '@/components/Core/Base/Icons';
 import Node from '@/components/Core/Base/Node';
 import { createState } from '@/components/Core/Base/State';
 import Tooltip from '@/components/Widgets/Tooltip/Tooltip';
 import React, { useEffect, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
+import { PromptUiState } from '../Prompt';
 
 const ReasoningPanelState = createState('ReasoningPanelState');
 
-export default function ReasoningPanel({ reasoning, isReasoningVisible, styles = {} }) {
+export default function ReasoningPanel({ styles = {} }) {
   return (
     <Node id="ReasoningPanel">
-      <ReasoningPanelInner
-        reasoning={reasoning}
-        isReasoningVisible={isReasoningVisible}
-        styles={styles}
-      />
+      <ReasoningPanelInner styles={styles} />
     </Node>
   );
 }
 
-function ReasoningPanelInner({ reasoning, isReasoningVisible, styles = {} }) {
+function ReasoningPanelInner({ styles = {} }) {
+  const { reasoning = '' } = LogState.useState('reasoning') || {};
+  const { isReasoningVisible = true } = PromptUiState.useState('isReasoningVisible') || {};
   const reasoningPanelState = ReasoningPanelState.useState(null, { isCopied: false });
   const { isCopied = false } = reasoningPanelState || {};
   const reasoningRef = useRef(null);

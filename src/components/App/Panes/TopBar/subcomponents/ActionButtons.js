@@ -1,22 +1,27 @@
+import { AppState } from '@/components/App/AppState';
+import { SidebarState } from '@/components/App/Panes/Sidebar';
+import { TabState } from '@/components/App/Panes/TabBar';
+import { LogState } from '@/components/App/Views/LogArea';
 import { Icons } from '@/components/Core/Base/Icons';
 import Tooltip from '@/components/Widgets/Tooltip/Tooltip';
 import { formatShortcut } from '@/utils/os';
 import React from 'react';
 import styles from '../TopBar.module.css';
 
-export default function ActionButtons({
-  onCompile,
-  onOpenLog,
-  onOpenPreview,
-  isSystemProcessing,
-  activeTabId,
-  showAIInput,
-  onToggleAIInput,
-}) {
+export default function ActionButtons({ onCompile, onOpenLog, onOpenPreview, onToggleAIInput }) {
+  const { isSystemProcessing } = LogState.useState('isSystemProcessing');
+  const { activeTabId } = TabState.useState('activeTabId');
+  const { isMobile } = AppState.useState('isMobile');
+  const { showAIInput, isAIInputPopupOpen } = SidebarState.useState([
+    'showAIInput',
+    'isAIInputPopupOpen',
+  ]);
+  const isAIInputActive = isMobile ? isAIInputPopupOpen : showAIInput;
+
   return (
     <div className={styles.actionGroups}>
       <div className={styles.compileGroup}>
-        <Tooltip content="Compile Project" shortcut={formatShortcut('⌘↵')}>
+        <Tooltip content="Build Project" shortcut={formatShortcut('⌘↵')}>
           <button
             type="button"
             className={styles.compileBtn}
@@ -25,7 +30,7 @@ export default function ActionButtons({
             data-testid="compile-btn"
           >
             <Icons.Play />
-            <span className={styles.hideOnMobile}>Compile</span>
+            <span className={styles.hideOnMobile}>Build</span>
           </button>
         </Tooltip>
       </div>
@@ -57,14 +62,14 @@ export default function ActionButtons({
 
       <div className={styles.sidebarToggleGroup}>
         <Tooltip
-          content={showAIInput ? 'Hide AI Prompt' : 'Show AI Prompt'}
+          content={isAIInputActive ? 'Hide AI Prompt' : 'Show AI Prompt'}
           shortcut={formatShortcut('⌃J')}
         >
           <button
             type="button"
-            className={`${styles.sidebarBtn} ${showAIInput ? styles.activeSidebar : ''}`}
+            className={`${styles.sidebarBtn} ${isAIInputActive ? styles.activeSidebar : ''}`}
             onClick={onToggleAIInput}
-            aria-label={showAIInput ? 'Hide AI Prompt' : 'Show AI Prompt'}
+            aria-label={isAIInputActive ? 'Hide AI Prompt' : 'Show AI Prompt'}
             data-testid="ai-prompt-toggle"
           >
             <Icons.BotSmall />

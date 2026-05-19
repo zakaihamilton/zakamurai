@@ -201,7 +201,6 @@ function TreeItemInner({
   return (
     <>
       <div
-        onClick={handleClick}
         onContextMenu={(event) => {
           if (isEditing) return;
           event.preventDefault();
@@ -209,7 +208,6 @@ function TreeItemInner({
             draft.contextMenu = { x: event.pageX, y: event.pageY };
           });
         }}
-        onKeyDown={(event) => (event.key === 'Enter' || event.key === ' ') && handleClick()}
         draggable={!item.isRoot}
         onDragStart={(event) => onDragStart(event, row)}
         onDragOver={(event) => onDragOver(event, row)}
@@ -218,75 +216,85 @@ function TreeItemInner({
         onDrop={(event) => onDrop(event, row)}
         onDragEnd={onDragEnd}
         className={`${styles.item} ${isActive ? styles.active : ''} ${isDropTarget ? styles.dropTarget : ''} ${isDragged ? styles.dragging : ''}`}
-        style={{
-          paddingLeft: `${16 + level * 16}px`,
-          paddingRight: '16px',
-          paddingTop: '8px',
-          paddingBottom: '8px',
-        }}
       >
-        <span className={styles.iconContainer}>
-          {item.type === 'folder' ? (
-            isExpanded ? (
-              <Icons.ChevronDown />
-            ) : (
-              <Icons.ChevronRight />
-            )
-          ) : null}
-        </span>
-        <span
-          className={styles.typeIcon}
-          style={{ color: item.type === 'folder' ? 'var(--accent)' : 'var(--text-muted)' }}
+        <button
+          type="button"
+          onClick={handleClick}
+          className={styles.itemButton}
+          style={{
+            paddingLeft: `${16 + level * 16}px`,
+            paddingRight: '16px',
+            paddingTop: '8px',
+            paddingBottom: '8px',
+          }}
         >
-          {isLoading ? (
-            <div className={styles.spinner} />
-          ) : item.type === 'folder' ? (
-            <Icons.Folder open={isExpanded} />
-          ) : isMediaFile(item.name) ? (
-            <Icons.Image />
-          ) : (
-            <Icons.File />
-          )}
-        </span>
+          <span className={styles.iconContainer}>
+            {item.type === 'folder' ? (
+              isExpanded ? (
+                <Icons.ChevronDown />
+              ) : (
+                <Icons.ChevronRight />
+              )
+            ) : null}
+          </span>
+          <span
+            className={styles.typeIcon}
+            style={{ color: item.type === 'folder' ? 'var(--accent)' : 'var(--text-muted)' }}
+          >
+            {isLoading ? (
+              <div className={styles.spinner} />
+            ) : item.type === 'folder' ? (
+              <Icons.Folder open={isExpanded} />
+            ) : isMediaFile(item.name) ? (
+              <Icons.Image />
+            ) : (
+              <Icons.File />
+            )}
+          </span>
 
-        {isEditing ? (
-          <input
-            ref={editInputRef}
-            value={editValue}
-            onChange={(event) =>
-              treeItemState((draft) => {
-                draft.editValue = event.target.value;
-              })
-            }
-            onBlur={submitRename}
-            onKeyDown={(event) => {
-              if (event.key === 'Enter') submitRename();
-              if (event.key === 'Escape') {
+          {isEditing ? (
+            <input
+              ref={editInputRef}
+              value={editValue}
+              onChange={(event) =>
                 treeItemState((draft) => {
-                  draft.isEditing = false;
-                });
+                  draft.editValue = event.target.value;
+                })
               }
-            }}
-            onClick={(event) => event.stopPropagation()}
-            onDoubleClick={(event) => event.stopPropagation()}
-            className={styles.editInput}
-          />
-        ) : (
-          <Tooltip content={item.isRoot ? item.name : `/${pathStr}`} className={styles.nameTooltip}>
-            <span
-              className={styles.name}
-              onDoubleClick={() => {
-                if (!item.isRoot) {
+              onBlur={submitRename}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') submitRename();
+                if (event.key === 'Escape') {
                   treeItemState((draft) => {
-                    draft.isEditing = true;
+                    draft.isEditing = false;
                   });
                 }
               }}
+              onClick={(event) => event.stopPropagation()}
+              onDoubleClick={(event) => event.stopPropagation()}
+              className={styles.editInput}
+            />
+          ) : (
+            <Tooltip
+              content={item.isRoot ? item.name : `/${pathStr}`}
+              className={styles.nameTooltip}
             >
-              {renderHighlightedName(item.name, pathStr, filterText)}
-            </span>
-          </Tooltip>
-        )}
+              <span
+                className={styles.name}
+                onDoubleClick={(event) => {
+                  event.stopPropagation();
+                  if (!item.isRoot) {
+                    treeItemState((draft) => {
+                      draft.isEditing = true;
+                    });
+                  }
+                }}
+              >
+                {renderHighlightedName(item.name, pathStr, filterText)}
+              </span>
+            </Tooltip>
+          )}
+        </button>
 
         {!isEditing && item.type === 'folder' && (
           <div className={styles.itemActions}>

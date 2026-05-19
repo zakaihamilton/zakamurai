@@ -13,7 +13,7 @@ const technologies = [
   },
   {
     name: 'In-Browser Build',
-    desc: 'Compile and preview your web projects instantly without a backend.',
+    desc: 'Build and preview your web projects instantly without a backend.',
   },
   {
     name: 'AI-First Workflow',
@@ -33,7 +33,7 @@ const technologies = [
   },
   {
     name: 'WebAssembly (WASM)',
-    desc: 'Powering high-performance tasks like in-browser compilation and AI inference.',
+    desc: 'Powering high-performance tasks like in-browser building and AI inference.',
   },
   {
     name: 'WebLLM & AI Models',

@@ -28,6 +28,7 @@ export const SidebarState = createState('SidebarState');
 const SidebarUiState = createState('SidebarUiState');
 
 const ROW_HEIGHT = 34;
+const COLLAPSED_DESKTOP_WIDTH = 68;
 
 export default function Sidebar() {
   const sidebarState = SidebarState.useState();
@@ -470,7 +471,7 @@ export default function Sidebar() {
     return () => window.cancelAnimationFrame(frame);
   }, [isMobile, isOpen, sidebarWidth, setAnimatedWidth]);
 
-  const desktopWidth = `${animatedWidth}px`;
+  const desktopWidth = `${isOpen ? animatedWidth : COLLAPSED_DESKTOP_WIDTH}px`;
 
   return (
     <aside

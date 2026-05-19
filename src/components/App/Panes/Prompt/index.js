@@ -1,1 +1,1 @@
-export { default, PromptState } from './Prompt';
+export { default, PromptState, PromptUiState } from './Prompt';

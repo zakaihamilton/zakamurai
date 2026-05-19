@@ -1,14 +1,19 @@
 import { Icons } from '@/components/Core/Base/Icons';
 import { createState } from '@/components/Core/Base/State';
-import React, { useCallback } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import styles from './Notification.module.css';
 
 export const NotificationState = createState('NotificationState');
 
 export function Notification() {
+  const [isMounted, setIsMounted] = useState(false);
   const notificationState = NotificationState.useState();
   const { notifications = [] } = notificationState;
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   const removeNotification = useCallback(
     (id) => {
@@ -39,7 +44,7 @@ export function Notification() {
     </div>
   );
 
-  if (typeof document === 'undefined') return null;
+  if (!isMounted || typeof document === 'undefined') return null;
   return createPortal(content, document.body);
 }
 

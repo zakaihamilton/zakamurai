@@ -284,10 +284,6 @@
   }
 }
 
-.sidebar:not(.isOpen) {
-  border-right: none;
-}
-
 .contentWrapper {
   display: flex;
   flex-direction: column;
@@ -299,9 +295,30 @@
   transition: opacity 0.18s ease, transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.sidebar:not(.isOpen) .contentWrapper {
-  opacity: 0;
-  transform: translateX(-20px);
-  visibility: hidden;
-  pointer-events: none;
+@media (width > 768px) {
+  .sidebar:not(.isOpen) {
+    border-right: 1px solid var(--border);
+  }
+
+  .sidebar:not(.isOpen) .contentWrapper {
+    min-width: 68px;
+    opacity: 1;
+    transform: none;
+    visibility: visible;
+    pointer-events: auto;
+  }
+
+  .sidebar:not(.isOpen) .header {
+    justify-content: center;
+    padding: 12px;
+    border-bottom: none;
+  }
+
+  .sidebar:not(.isOpen) .projectNameContainer,
+  .sidebar:not(.isOpen) .mountSection,
+  .sidebar:not(.isOpen) .filterSection,
+  .sidebar:not(.isOpen) .treeArea,
+  .sidebar:not(.isOpen) .noFiles {
+    display: none;
+  }
 }

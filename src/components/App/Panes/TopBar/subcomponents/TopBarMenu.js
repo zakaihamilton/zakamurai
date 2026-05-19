@@ -1,3 +1,4 @@
+import { LogState } from '@/components/App/Views/LogArea';
 import { Icons } from '@/components/Core/Base/Icons';
 import { createState } from '@/components/Core/Base/State';
 import ContextMenu from '@/components/Widgets/ContextMenu/ContextMenu';
@@ -13,10 +14,12 @@ export default function TopBarMenu({
   onExportCompiledZip,
   onNewProject,
   onClearFS,
-  isSystemProcessing,
-  isAIProcessing,
   onToggleShortcuts,
 }) {
+  const { isSystemProcessing, isAIProcessing } = LogState.useState([
+    'isSystemProcessing',
+    'isAIProcessing',
+  ]);
   const topBarMenuState = TopBarMenuState.useState(null, {
     menuPosition: null,
     newProjectTemplate: null,

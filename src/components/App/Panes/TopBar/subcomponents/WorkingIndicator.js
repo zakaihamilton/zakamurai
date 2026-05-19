@@ -1,8 +1,14 @@
+import { LogState } from '@/components/App/Views/LogArea';
 import { Icons } from '@/components/Core/Base/Icons';
 import React from 'react';
 import styles from '../TopBar.module.css';
 
-export default function WorkingIndicator({ isSystemProcessing, isAIProcessing }) {
+export default function WorkingIndicator() {
+  const { isSystemProcessing, isAIProcessing } = LogState.useState([
+    'isSystemProcessing',
+    'isAIProcessing',
+  ]);
+
   if (!isSystemProcessing && !isAIProcessing) return null;
 
   return (

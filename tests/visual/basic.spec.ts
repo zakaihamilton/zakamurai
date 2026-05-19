@@ -10,8 +10,8 @@ test.describe('Zakamurai Basic Tests', () => {
   });
 
   test('should load the application and show key elements', async ({ page }) => {
-    // Check for the "Compile" button by text, which is visible in the screenshot
-    await expect(page.getByText('Compile')).toBeVisible({ timeout: 10000 });
+    // Check for the "Build" button by text, which is visible in the screenshot
+    await expect(page.getByText('Build')).toBeVisible({ timeout: 10000 });
 
     // Check for the Sidebar toggle (Z logo)
     // It's a button with the text "Z"
@@ -31,11 +31,11 @@ test.describe('Zakamurai Basic Tests', () => {
     await expect(sidebarToggle).toBeVisible();
   });
 
-  test('should open logs when compile is clicked', async ({ page }) => {
-    const compileBtn = page.getByText('Compile');
-    await compileBtn.click();
+  test('should open logs when build is clicked', async ({ page }) => {
+    const buildBtn = page.getByText('Build');
+    await buildBtn.click();
 
-    // Clicking compile should open the Logs tab
+    // Clicking build should open the Logs tab
     // We use exact match to avoid strict mode violations with other text containing "Logs"
     await expect(page.getByText('Logs', { exact: true })).toBeVisible({ timeout: 10000 });
   });

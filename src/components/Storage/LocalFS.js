@@ -3,7 +3,19 @@ import { useCallback, useEffect, useMemo } from 'react';
 
 const DB_NAME = 'ZakamuraiFS';
 const STORE_NAME = 'handles';
+const FS_INIT_TIMEOUT_MS = 3000;
 const FileSystemState = createState('FileSystemState');
+
+function withTimeout(promise, message, timeoutMs = FS_INIT_TIMEOUT_MS) {
+  let timeoutId;
+  const timeout = new Promise((_, reject) => {
+    timeoutId = setTimeout(() => reject(new Error(message)), timeoutMs);
+  });
+
+  return Promise.race([promise, timeout]).finally(() => {
+    clearTimeout(timeoutId);
+  });
+}
 
 async function getDB() {
   if (typeof indexedDB === 'undefined') return null;
@@ -148,16 +160,19 @@ export function useFileSystem() {
   useEffect(() => {
     const init = async () => {
       try {
-        const handle = await loadHandle();
+        const handle = await withTimeout(loadHandle(), 'Timed out restoring local file handle');
         if (handle) {
           // Verify permission
-          const status = await handle.queryPermission({ mode: 'readwrite' });
+          const status = await withTimeout(
+            handle.queryPermission({ mode: 'readwrite' }),
+            'Timed out checking local file permissions',
+          );
           if (status === 'granted') {
             fileSystemState((draft) => {
               draft.rootHandle = handle;
               draft.mode = 'local';
             });
-            await refreshDirectory(handle);
+            await withTimeout(refreshDirectory(handle), 'Timed out reading local project folder');
           }
         }
       } catch (err) {

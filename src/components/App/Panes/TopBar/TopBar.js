@@ -25,15 +25,11 @@ export default function TopBar() {
   const tabState = TabState.useState();
   const { openTabs = [], activeTabId } = tabState;
   const sidebarState = SidebarState.useState();
-  const { folderTree, showAIInput, isSidebarOpen, isSidebarPopupOpen, isAIInputPopupOpen } =
-    sidebarState;
+  const { folderTree, isSidebarOpen, isSidebarPopupOpen } = sidebarState;
   const editorState = EditorState.useState();
   const logState = LogState.usePassiveState();
   const previewState = PreviewState.usePassiveState();
-  const { isSystemProcessing, isAIProcessing } = LogState.useState([
-    'isSystemProcessing',
-    'isAIProcessing',
-  ]);
+  const { isSystemProcessing } = LogState.useState('isSystemProcessing');
   const { addNotification } = useNotification();
   const isCompilingRef = useRef(false);
   const lastCompileRequestRef = useRef(0);
@@ -396,8 +392,6 @@ export default function TopBar() {
   };
 
   const isSidebarActive = isMobile ? isSidebarPopupOpen : isSidebarOpen;
-  const isAIInputActive = isMobile ? isAIInputPopupOpen : showAIInput;
-
   return (
     <header className={`${styles.header} ${isSidebarActive ? styles.sidebarOpen : ''}`}>
       <Tooltip
@@ -427,15 +421,11 @@ export default function TopBar() {
       <Breadcrumb breadcrumb={breadcrumb} onBreadcrumbClick={handleBreadcrumbClick} />
       <div className={styles.centerSection} />
       <div className={styles.actions}>
-        <WorkingIndicator isSystemProcessing={isSystemProcessing} isAIProcessing={isAIProcessing} />
+        <WorkingIndicator />
         <ActionButtons
           onCompile={handleCompile}
           onOpenLog={handleOpenLog}
           onOpenPreview={handleOpenPreview}
-          isSystemProcessing={isSystemProcessing}
-          isAIProcessing={isAIProcessing}
-          activeTabId={activeTabId}
-          showAIInput={isAIInputActive}
           onToggleAIInput={() =>
             sidebarState((draft) => {
               if (isMobile) {
@@ -452,8 +442,6 @@ export default function TopBar() {
           onExportCompiledZip={handleExportCompiledZip}
           onNewProject={handleStartOver}
           onClearFS={handleClearFS}
-          isSystemProcessing={isSystemProcessing}
-          isAIProcessing={isAIProcessing}
           onToggleShortcuts={() => {
             appState((draft) => {
               draft.showShortcuts = !draft.showShortcuts;

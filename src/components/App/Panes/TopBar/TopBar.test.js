@@ -153,7 +153,7 @@ describe('TopBar', () => {
     EditorState.useState.mockReturnValue({ fileContents: {} });
 
     const { getByText } = render(<TopBar />);
-    const compileBtn = getByText('Compile');
+    const compileBtn = getByText('Build');
     expect(compileBtn).toBeDefined();
   });
 

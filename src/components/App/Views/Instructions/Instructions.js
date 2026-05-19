@@ -65,8 +65,8 @@ export default function Instructions() {
             </p>
             <ul>
               <li>
-                <strong>Compile:</strong> Press <kbd>⌘↵</kbd> (Cmd+Enter) or click the{' '}
-                <strong>Compile</strong> button in the top bar.
+                <strong>Build:</strong> Press <kbd>⌘↵</kbd> (Cmd+Enter) or click the{' '}
+                <strong>Build</strong> button in the top bar.
               </li>
               <li>
                 <strong>Preview:</strong> After a successful build, the <strong>Preview</strong> tab

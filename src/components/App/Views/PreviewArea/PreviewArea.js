@@ -5,11 +5,16 @@ import { createState } from '@/components/Core/Base/State';
 import Dialog from '@/components/Widgets/Dialog/Dialog';
 import Tooltip from '@/components/Widgets/Tooltip/Tooltip';
 import React, { useCallback, useEffect, useRef } from 'react';
+import { PreviewState } from '../../PreviewState';
 import styles from './PreviewArea.module.css';
 
 const PreviewAreaUiState = createState('PreviewAreaUiState');
 
-export default function PreviewArea({ htmlContent, isCompilerReady }) {
+export default function PreviewArea() {
+  const { htmlContent, isCompilerReady } = PreviewState.useState([
+    'htmlContent',
+    'isCompilerReady',
+  ]);
   const iframeRef = useRef(null);
   const previewAreaUiState = PreviewAreaUiState.useState(null, {
     isLoading: false,
@@ -151,7 +156,7 @@ export default function PreviewArea({ htmlContent, isCompilerReady }) {
         </div>
         <h2 className={styles.emptyTitle}>No Preview Available</h2>
         <p className={styles.emptyText}>
-          Compile your project first. The preview will load{' '}
+          Build your project first. The preview will load{' '}
           <code className={styles.code}>dist/index.html</code> from the build output.
         </p>
       </div>

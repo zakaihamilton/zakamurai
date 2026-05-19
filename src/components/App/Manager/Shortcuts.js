@@ -208,9 +208,9 @@ export const SHORTCUTS = [
     },
   },
   {
-    id: 'compile-project',
+    id: 'build-project',
     group: SHORTCUT_GROUPS.EDITOR,
-    desc: 'Compile Project',
+    desc: 'Build Project',
     key: 'Enter',
     displayKey: '⌘↵',
     modifier: 'cmd',
@@ -222,9 +222,9 @@ export const SHORTCUTS = [
     },
   },
   {
-    id: 'compile-project-silent',
+    id: 'build-project-silent',
     group: SHORTCUT_GROUPS.EDITOR,
-    desc: 'Compile Project (Stay on Page)',
+    desc: 'Build Project (Stay on Page)',
     key: 'Enter',
     displayKey: '⌘⇧↵',
     modifier: 'cmd-shift',

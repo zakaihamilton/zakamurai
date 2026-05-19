@@ -55,4 +55,30 @@ describe('TreeItem', () => {
       expect(screen.getByText('second.js')).toBeDefined();
     });
   });
+
+  it('opens a file when its row is clicked', () => {
+    const onOpenFile = vi.fn();
+
+    render(<TreeItem row={makeRow('app.js')} {...baseHandlers} onOpenFile={onOpenFile} />);
+
+    fireEvent.click(screen.getByRole('button', { name: /app\.js/i }));
+
+    expect(onOpenFile).toHaveBeenCalledWith(makeRow('app.js'));
+  });
+
+  it('toggles a folder when its row is clicked', () => {
+    const onToggle = vi.fn();
+    const folderRow = {
+      item: { name: 'src', type: 'folder', children: [] },
+      level: 0,
+      path: ['src'],
+      pathStr: 'src',
+    };
+
+    render(<TreeItem row={folderRow} {...baseHandlers} onToggle={onToggle} />);
+
+    fireEvent.click(screen.getByRole('button', { name: /src/i }));
+
+    expect(onToggle).toHaveBeenCalledWith(folderRow);
+  });
 });
