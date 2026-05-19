@@ -10,6 +10,7 @@ export default function TabContextMenu({
   onClose,
   onCloseTab,
   onCloseOthers,
+  onCloseToLeft,
   onCloseToRight,
   onCloseAll,
 }) {
@@ -95,6 +96,32 @@ export default function TabContextMenu({
           <line x1="12" y1="10" x2="8" y2="14" />
         </svg>
         Close Others
+      </button>
+
+      <button
+        type="button"
+        onClick={() => {
+          onCloseToLeft(tab.id);
+          onClose();
+        }}
+        className={styles.contextMenuOption}
+      >
+        {/* Custom SVG icon for "Close to the Left" */}
+        <svg
+          width="14"
+          height="14"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <line x1="20" y1="12" x2="8" y2="12" />
+          <polyline points="14 6 8 12 14 18" />
+          <line x1="4" y1="6" x2="4" y2="18" />
+        </svg>
+        Close to the Left
       </button>
 
       <button
