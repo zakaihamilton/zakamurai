@@ -11,10 +11,9 @@
   padding: 0 14px;
   background: var(--glass-bg);
   backdrop-filter: none;
-  backdrop-filter: none;
   position: sticky;
   top: 0;
-  z-index: 1000;
+  z-index: 2000;
   box-shadow: none;
 }
 
@@ -575,11 +574,10 @@
   transform: translateX(-50%);
   background: rgb(21 24 27 / 82%);
   backdrop-filter: blur(16px);
-  backdrop-filter: blur(16px);
   border: 1px solid var(--border);
   box-shadow: var(--shadow-lg);
   border-radius: 12px;
-  z-index: 1010;
+  z-index: 1510;
   min-width: 280px;
   max-width: 360px;
   padding: 8px;
@@ -722,8 +720,8 @@
 .dropdownOverlay {
   position: fixed;
   inset: 52px 0 0;
-  background: rgb(0 0 0 / 12%);
-  z-index: 1005;
+  background: transparent;
+  z-index: 1505;
   animation: overlay-fade-in 0.18s var(--ease-premium);
 }
 
