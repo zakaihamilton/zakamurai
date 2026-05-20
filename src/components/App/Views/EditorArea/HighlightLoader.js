@@ -14,7 +14,7 @@ export default function useHighlightLoader({
   matchIndex,
   suggestion,
   cursorPos,
-  isReadOnly,
+  navigationLinksEnabled,
   diffData,
 }) {
   // biome-ignore lint/correctness/useExhaustiveDependencies: state is intentionally omitted to prevent re-highlighting on every state change
@@ -29,7 +29,7 @@ export default function useHighlightLoader({
       matchIndex,
       suggestion,
       cursorPos,
-      isReadOnly,
+      navigationLinksEnabled,
     );
   }, [
     editorContent,
@@ -44,8 +44,8 @@ export default function useHighlightLoader({
     matchIndex,
     suggestion,
     cursorPos,
-    isReadOnly,
-    isReadOnly ? state.fileContents : null,
+    navigationLinksEnabled,
+    navigationLinksEnabled ? state.fileContents : null,
   ]);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: state is intentionally omitted to prevent re-highlighting on every state change
@@ -61,7 +61,7 @@ export default function useHighlightLoader({
       matchIndex,
       undefined,
       state.cursorPos?.[filePath],
-      isReadOnly,
+      navigationLinksEnabled,
     );
   }, [
     showSideBySide,
@@ -73,8 +73,8 @@ export default function useHighlightLoader({
     findQuery,
     matchIndex,
     state.cursorPos?.[filePath],
-    isReadOnly,
-    isReadOnly ? state.fileContents : null,
+    navigationLinksEnabled,
+    navigationLinksEnabled ? state.fileContents : null,
   ]);
 
   return {

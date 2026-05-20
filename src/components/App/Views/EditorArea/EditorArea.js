@@ -2,7 +2,7 @@ import { AppState } from '@/components/App/AppState';
 import { TabState } from '@/components/App/Panes/TabBar';
 import Node from '@/components/Core/Base/Node';
 import { createState } from '@/components/Core/Base/State';
-import React, { useCallback, useRef, useEffect, useMemo } from 'react';
+import React, { useCallback, useRef, useEffect, useMemo, useState } from 'react';
 import styles from './EditorArea.module.css';
 
 import { DEFAULT_CONTENTS, SCRATCH_CONTENTS } from '@/components/Storage/InitialData';
@@ -78,6 +78,8 @@ function EditorAreaInner({ file, fsHandle }) {
   } = editorAreaUiState || {};
 
   const isReadOnly = state.isReadOnly ?? Settings.getEditorReadOnly(false);
+  const [isCommandPressed, setIsCommandPressed] = useState(false);
+  const navigationLinksEnabled = isReadOnly || isCommandPressed;
 
   const setEditorAreaValue = useCallback(
     (key, nextValue) => {
@@ -264,6 +266,28 @@ function EditorAreaInner({ file, fsHandle }) {
     }
   };
 
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Meta') setIsCommandPressed(true);
+    };
+    const handleKeyUp = (e) => {
+      if (e.key === 'Meta') setIsCommandPressed(false);
+    };
+    const handleBlur = () => {
+      setIsCommandPressed(false);
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+    window.addEventListener('blur', handleBlur);
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+      window.removeEventListener('blur', handleBlur);
+    };
+  }, []);
+
   const { highlightedCode, originalHighlightedCode } = useHighlightLoader({
     showSideBySide,
     hasDiff,
@@ -277,7 +301,7 @@ function EditorAreaInner({ file, fsHandle }) {
     matchIndex,
     suggestion,
     cursorPos,
-    isReadOnly,
+    navigationLinksEnabled,
     diffData,
   });
 
@@ -338,6 +362,7 @@ function EditorAreaInner({ file, fsHandle }) {
           styles={styles}
           diffData={diffData}
           isReadOnly={isReadOnly}
+          navigationLinksEnabled={navigationLinksEnabled}
           filePath={filePath}
           handleNavigateToAssociated={handleNavigateToAssociated}
           fileContents={state.fileContents}
@@ -373,6 +398,7 @@ function EditorAreaInner({ file, fsHandle }) {
           cancelSuggestion={cancelSuggestion}
           filePath={filePath}
           isReadOnly={isReadOnly}
+          navigationLinksEnabled={navigationLinksEnabled}
           handleNavigateToAssociated={handleNavigateToAssociated}
           fileContents={state.fileContents}
           handleJumpToTarget={handleJumpToTarget}

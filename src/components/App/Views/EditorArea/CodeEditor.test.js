@@ -97,7 +97,7 @@ describe('CodeEditor', () => {
       height: 400,
     });
 
-    // Click the nav link
+    // Inspect mode activates nav links directly
     fireEvent.click(link);
 
     // Verify popup content
@@ -262,5 +262,72 @@ describe('CodeEditor', () => {
 
     // Verify it jumped immediately
     expect(onJumpToTarget).toHaveBeenCalledWith('src/components/Other.js', { line: 5, col: 2 });
+  });
+
+  it('activates nav links in edit mode when Command is held', () => {
+    const onJumpToTarget = vi.fn();
+    const mockTargets = [
+      {
+        type: 'export',
+        name: 'MyComponent',
+        start: 7,
+        end: 18,
+        targets: [
+          { filePath: 'src/components/Other.js', fileName: 'Other.js', loc: { line: 5, col: 2 } },
+        ],
+      },
+    ];
+    vi.mocked(findNavigationTargets).mockReturnValue(mockTargets);
+
+    const highlightedHtml =
+      'export <span class="navLink" data-nav-target="true" data-nav-idx="0">MyComponent</span>';
+
+    render(
+      <CodeEditor
+        {...defaultProps}
+        isReadOnly={false}
+        navigationLinksEnabled={true}
+        highlightedCode={highlightedHtml}
+        onJumpToTarget={onJumpToTarget}
+      />,
+    );
+
+    fireEvent.click(screen.getByText('MyComponent'), { metaKey: true });
+
+    expect(onJumpToTarget).toHaveBeenCalledWith('src/components/Other.js', { line: 5, col: 2 });
+  });
+
+  it('does not activate nav links in edit mode without the Command key', () => {
+    const onJumpToTarget = vi.fn();
+    const mockTargets = [
+      {
+        type: 'export',
+        name: 'MyComponent',
+        start: 7,
+        end: 18,
+        targets: [
+          { filePath: 'src/components/Other.js', fileName: 'Other.js', loc: { line: 5, col: 2 } },
+        ],
+      },
+    ];
+    vi.mocked(findNavigationTargets).mockReturnValue(mockTargets);
+
+    const highlightedHtml =
+      'export <span class="navLink" data-nav-target="true" data-nav-idx="0">MyComponent</span>';
+
+    render(
+      <CodeEditor
+        {...defaultProps}
+        isReadOnly={false}
+        navigationLinksEnabled={true}
+        highlightedCode={highlightedHtml}
+        onJumpToTarget={onJumpToTarget}
+      />,
+    );
+
+    fireEvent.click(screen.getByText('MyComponent'));
+
+    expect(onJumpToTarget).not.toHaveBeenCalled();
+    expect(screen.queryByText('Referenced in')).toBeNull();
   });
 });

@@ -23,6 +23,7 @@ export default function SingleEditorView({
   cancelSuggestion,
   filePath,
   isReadOnly,
+  navigationLinksEnabled,
   handleNavigateToAssociated,
   fileContents,
   handleJumpToTarget,
@@ -54,6 +55,7 @@ export default function SingleEditorView({
         filePath={filePath}
         readOnly={hasCollapsedFolds}
         isReadOnly={isReadOnly}
+        navigationLinksEnabled={navigationLinksEnabled}
         onNavigateToAssociated={handleNavigateToAssociated}
         fileContents={fileContents}
         onJumpToTarget={handleJumpToTarget}

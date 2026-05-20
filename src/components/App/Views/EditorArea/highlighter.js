@@ -26,7 +26,7 @@ export const highlightCode = (
   matchIndex,
   suggestion,
   cursorPos,
-  isReadOnly,
+  navigationLinksEnabled,
 ) => {
   if (!code) return '';
   if (code.length > MAX_HIGHLIGHT_CHARS) return escapeHtml(code);
@@ -41,8 +41,8 @@ export const highlightCode = (
     matchIndex,
     suggestion,
     cursorPos?.index,
-    isReadOnly,
-    isReadOnly
+    navigationLinksEnabled,
+    navigationLinksEnabled
       ? Object.entries(state?.fileContents || {})
           .map(([k, v]) => `${k}:${v?.length || 0}`)
           .join(',')
@@ -72,9 +72,9 @@ export const highlightCode = (
     }
   };
 
-  // 1. Insert target markers if in read-only mode
+  // 1. Insert target markers when navigation links are enabled
   let targets = [];
-  if (isReadOnly) {
+  if (navigationLinksEnabled) {
     targets = findNavigationTargets(
       code,
       filePath?.endsWith('.css'),

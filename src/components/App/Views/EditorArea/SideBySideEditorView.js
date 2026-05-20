@@ -16,6 +16,7 @@ export default function SideBySideEditorView({
   styles,
   diffData,
   isReadOnly,
+  navigationLinksEnabled,
   filePath,
   handleNavigateToAssociated,
   fileContents,
@@ -61,6 +62,7 @@ export default function SideBySideEditorView({
             highlightedCode={originalHighlightedCode}
             readOnly={true}
             isReadOnly={isReadOnly}
+            navigationLinksEnabled={navigationLinksEnabled}
             cursorPos={cursorPos}
             scrollContainerRef={leftScrollRef}
             filePath={filePath}
@@ -97,6 +99,7 @@ export default function SideBySideEditorView({
             fileContents={fileContents}
             onJumpToTarget={handleJumpToTarget}
             isReadOnly={isReadOnly}
+            navigationLinksEnabled={navigationLinksEnabled}
           />
         </div>
       </div>

@@ -1,6 +1,5 @@
 import Tooltip from '@/components/Widgets/Tooltip/Tooltip';
 import { findNavigationTargets } from '@/utils/navigation';
-import { isMac } from '@/utils/os';
 import React, { useLayoutEffect, useRef, useCallback, useState, useMemo } from 'react';
 import styles from './EditorArea.module.css';
 
@@ -34,6 +33,7 @@ export default function CodeEditor({
   onCancelSuggestion,
   filePath,
   isReadOnly,
+  navigationLinksEnabled = isReadOnly,
   onNavigateToAssociated,
   fileContents,
   onJumpToTarget,
@@ -136,10 +136,11 @@ export default function CodeEditor({
 
   const handlePreClick = useCallback(
     (e) => {
-      if (!isReadOnly) return;
+      if (!isReadOnly && !navigationLinksEnabled) return;
 
       const link = e.target.closest('[data-nav-target]');
       if (!link) return;
+      if (!isReadOnly && !e.metaKey) return;
 
       e.preventDefault();
       e.stopPropagation();
@@ -192,7 +193,7 @@ export default function CodeEditor({
         };
       });
     },
-    [isReadOnly, targets, isCssFile, onJumpToTarget],
+    [isReadOnly, navigationLinksEnabled, targets, isCssFile, onJumpToTarget],
   );
 
   return (
@@ -209,14 +210,16 @@ export default function CodeEditor({
         onFocus={handleSelectionChange}
         readOnly={readOnly || isReadOnly}
         spellCheck="false"
-        className={`${styles.textarea} ${isReadOnly ? styles.readOnlyTextarea : ''}`}
+        className={`${styles.textarea} ${isReadOnly ? styles.readOnlyTextarea : ''} ${
+          !isReadOnly && navigationLinksEnabled ? styles.navigationLinksTextarea : ''
+        }`}
       />
 
       {/* biome-ignore lint/a11y/useKeyWithClickEvents: onClick is sufficient for navigation in this read-only pre element */}
       <pre
         ref={preRef}
         aria-hidden="true"
-        className={`${styles.pre} ${isReadOnly ? styles.readOnlyPre : ''}`}
+        className={`${styles.pre} ${isReadOnly || navigationLinksEnabled ? styles.readOnlyPre : ''}`}
         onClick={handlePreClick}
         // biome-ignore lint/security/noDangerouslySetInnerHtml: used for code syntax highlighting
         dangerouslySetInnerHTML={{

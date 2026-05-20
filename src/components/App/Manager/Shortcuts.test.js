@@ -95,6 +95,37 @@ describe('Shortcuts isMatch', () => {
     expect(isMatch(eventMismatch, shortcut)).toBe(false);
   });
 
+  it('matches Ctrl+T and Ctrl+Shift+T', () => {
+    isMac.mockReturnValue(true);
+    const nextShortcut = { key: 't', modifier: 'ctrl' };
+    const previousShortcut = { key: 't', modifier: 'ctrl-shift' };
+
+    expect(
+      isMatch(
+        { key: 't', metaKey: false, ctrlKey: true, shiftKey: false, altKey: false },
+        nextShortcut,
+      ),
+    ).toBe(true);
+    expect(
+      isMatch(
+        { key: 't', metaKey: false, ctrlKey: true, shiftKey: true, altKey: false },
+        previousShortcut,
+      ),
+    ).toBe(true);
+  });
+
+  it('matches Ctrl+Alt+Tab', () => {
+    isMac.mockReturnValue(true);
+    const shortcut = { key: 'Tab', modifier: 'ctrl-alt' };
+
+    expect(
+      isMatch(
+        { key: 'Tab', metaKey: false, ctrlKey: true, shiftKey: false, altKey: true },
+        shortcut,
+      ),
+    ).toBe(true);
+  });
+
   it('triggers toggle-inspect-mode action and switches modes correctly', () => {
     const shortcut = SHORTCUTS.find((s) => s.id === 'toggle-inspect-mode');
     expect(shortcut).toBeDefined();
@@ -184,5 +215,41 @@ describe('Shortcuts isMatch', () => {
     expect(editorDraft.shouldScrollTo.filePath).toBe('src/utils.js');
     expect(editorDraft.shouldScrollTo.line).toBe(20);
     expect(tabDraft.activeTabId).toBe('src/utils.js');
+  });
+
+  it('switches tabs forward and backward with wraparound', () => {
+    const nextShortcut = SHORTCUTS.find((s) => s.id === 'next-tab');
+    const previousShortcut = SHORTCUTS.find((s) => s.id === 'previous-tab');
+
+    expect(nextShortcut).toBeDefined();
+    expect(previousShortcut).toBeDefined();
+
+    const tabDraft = {
+      openTabs: [
+        { id: 'src/App.js', type: 'file', label: 'App.js' },
+        { id: 'src/index.css', type: 'file', label: 'index.css' },
+        { id: 'preview', type: 'preview', label: 'Preview' },
+      ],
+      activeTabId: 'src/App.js',
+    };
+    const tabState = vi.fn((producer) => {
+      producer(tabDraft);
+      tabState.openTabs = tabDraft.openTabs;
+      tabState.activeTabId = tabDraft.activeTabId;
+    });
+    tabState.openTabs = tabDraft.openTabs;
+    tabState.activeTabId = tabDraft.activeTabId;
+
+    nextShortcut.action({ tabState });
+    expect(tabDraft.activeTabId).toBe('src/index.css');
+
+    nextShortcut.action({ tabState });
+    expect(tabDraft.activeTabId).toBe('preview');
+
+    nextShortcut.action({ tabState });
+    expect(tabDraft.activeTabId).toBe('src/App.js');
+
+    previousShortcut.action({ tabState });
+    expect(tabDraft.activeTabId).toBe('preview');
   });
 });

@@ -754,6 +754,10 @@
   pointer-events: none !important;
 }
 
+.navigationLinksTextarea {
+  pointer-events: none !important;
+}
+
 .readOnlyPre {
   pointer-events: auto !important;
   user-select: text !important;

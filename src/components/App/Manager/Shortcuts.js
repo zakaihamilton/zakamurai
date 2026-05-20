@@ -175,6 +175,22 @@ const navigateForwardAction = (states) => {
   navigateToHistoryItem(states, history.currentIndex + 1);
 };
 
+const switchTabAction = ({ tabState }, direction) => {
+  const { openTabs = [], activeTabId } = tabState;
+  if (openTabs.length < 2) return;
+
+  const activeIndex = openTabs.findIndex((tab) => tab.id === activeTabId);
+  const fallbackIndex = direction > 0 ? 0 : openTabs.length - 1;
+  const nextIndex =
+    activeIndex === -1
+      ? fallbackIndex
+      : (activeIndex + direction + openTabs.length) % openTabs.length;
+
+  tabState((draft) => {
+    draft.activeTabId = openTabs[nextIndex].id;
+  });
+};
+
 export const SHORTCUTS = [
   {
     id: 'navigate-back',
@@ -646,6 +662,26 @@ export const SHORTCUTS = [
     },
   },
   {
+    id: 'next-tab',
+    group: SHORTCUT_GROUPS.TABS,
+    desc: 'Next Tab',
+    key: 't',
+    displayKey: '⌃T',
+    modifier: 'ctrl',
+    isGlobal: true,
+    action: (states) => switchTabAction(states, 1),
+  },
+  {
+    id: 'previous-tab',
+    group: SHORTCUT_GROUPS.TABS,
+    desc: 'Previous Tab',
+    key: 't',
+    displayKey: '⌃⇧T',
+    modifier: 'ctrl-shift',
+    isGlobal: true,
+    action: (states) => switchTabAction(states, -1),
+  },
+  {
     id: 'close-all-tabs',
     group: SHORTCUT_GROUPS.TABS,
     desc: 'Close All Tabs',
@@ -721,9 +757,9 @@ export const SHORTCUTS = [
     id: 'toggle-theme',
     group: SHORTCUT_GROUPS.GENERAL,
     desc: 'Toggle Theme',
-    key: 't',
-    displayKey: '⌃⇧T',
-    modifier: 'ctrl-shift',
+    key: 'Tab',
+    displayKey: '⌃⌥Tab',
+    modifier: 'ctrl-alt',
     isGlobal: true,
     action: ({ appState }) => {
       appState((draft) => {
@@ -773,6 +809,8 @@ export const isMatch = (e, s) => {
     match = ctrl && !meta && !shift && !alt;
   } else if (mod === 'ctrl-shift') {
     match = ctrl && shift && !meta && !alt;
+  } else if (mod === 'ctrl-alt') {
+    match = ctrl && alt && !meta && !shift;
   } else if (mod === 'cmd-alt') {
     match = (mac ? meta : ctrl) && alt && !shift;
   } else if (mod === 'alt') {
