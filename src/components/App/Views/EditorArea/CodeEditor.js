@@ -151,6 +151,13 @@ export default function CodeEditor({
       const target = targets[targetIdx];
       if (!target) return;
 
+      if (target.targets && target.targets.length === 1) {
+        const singleTarget = target.targets[0];
+        onJumpToTarget?.(singleTarget.filePath, singleTarget.loc);
+        setPopup((prev) => ({ ...prev, visible: false }));
+        return;
+      }
+
       const textarea = textareaRef.current;
       if (!textarea) return;
 

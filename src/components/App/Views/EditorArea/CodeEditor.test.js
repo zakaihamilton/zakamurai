@@ -62,6 +62,7 @@ describe('CodeEditor', () => {
         end: 18,
         targets: [
           { filePath: 'src/components/Other.js', fileName: 'Other.js', loc: { line: 5, col: 1 } },
+          { filePath: 'src/components/Another.js', fileName: 'Another.js', loc: { line: 10, col: 1 } },
         ],
       },
     ];
@@ -99,6 +100,8 @@ describe('CodeEditor', () => {
     expect(screen.getByText('Referenced in')).toBeDefined();
     expect(screen.getByText('Other.js')).toBeDefined();
     expect(screen.getByText(':5')).toBeDefined();
+    expect(screen.getByText('Another.js')).toBeDefined();
+    expect(screen.getByText(':10')).toBeDefined();
   });
 
   it('shows correct popup header for import type targets on click', () => {
@@ -110,6 +113,7 @@ describe('CodeEditor', () => {
         end: 18,
         targets: [
           { filePath: 'src/components/Button.js', fileName: 'Button.js', loc: { line: 1, col: 1 } },
+          { filePath: 'src/components/Button.css', fileName: 'Button.css', loc: { line: 1, col: 1 } },
         ],
       },
     ];
@@ -131,6 +135,7 @@ describe('CodeEditor', () => {
 
     expect(screen.getByText('Open Import')).toBeDefined();
     expect(screen.getByText('Button.js')).toBeDefined();
+    expect(screen.getByText('Button.css')).toBeDefined();
   });
   
   it('shows correct popup header for component type targets on click', () => {
@@ -142,6 +147,7 @@ describe('CodeEditor', () => {
         end: 18,
         targets: [
           { filePath: 'src/components/Button.js', fileName: 'Button.js', loc: { line: 2, col: 1 } },
+          { filePath: 'src/components/Button.tsx', fileName: 'Button.tsx', loc: { line: 2, col: 1 } },
         ],
       },
     ];
@@ -163,9 +169,50 @@ describe('CodeEditor', () => {
 
     expect(screen.getByText('Component Definition')).toBeDefined();
     expect(screen.getByText('Button.js')).toBeDefined();
+    expect(screen.getByText('Button.tsx')).toBeDefined();
   });
 
   it('calls onJumpToTarget when popup target item is clicked', () => {
+    const onJumpToTarget = vi.fn();
+    const mockTargets = [
+      {
+        type: 'export',
+        name: 'MyComponent',
+        start: 7,
+        end: 18,
+        targets: [
+          { filePath: 'src/components/Other.js', fileName: 'Other.js', loc: { line: 5, col: 2 } },
+          { filePath: 'src/components/Extra.js', fileName: 'Extra.js', loc: { line: 15, col: 2 } },
+        ],
+      },
+    ];
+    vi.mocked(findNavigationTargets).mockReturnValue(mockTargets);
+
+    const highlightedHtml =
+      'export <span class="navLink" data-nav-target="true" data-nav-idx="0">MyComponent</span>';
+
+    const { container } = render(
+      <CodeEditor
+        {...defaultProps}
+        highlightedCode={highlightedHtml}
+        onJumpToTarget={onJumpToTarget}
+      />,
+    );
+
+    const link = screen.getByText('MyComponent');
+    link.getBoundingClientRect = () => ({ left: 100, top: 150, width: 80, height: 20 });
+    const textarea = container.querySelector('textarea');
+    textarea.getBoundingClientRect = () => ({ left: 50, top: 100, width: 500, height: 400 });
+
+    fireEvent.click(link);
+
+    const popupItem = screen.getByText('Other.js');
+    fireEvent.click(popupItem);
+
+    expect(onJumpToTarget).toHaveBeenCalledWith('src/components/Other.js', { line: 5, col: 2 });
+  });
+
+  it('jumps directly to target on click if there is only one target (bypassing popup)', () => {
     const onJumpToTarget = vi.fn();
     const mockTargets = [
       {
@@ -198,9 +245,10 @@ describe('CodeEditor', () => {
 
     fireEvent.click(link);
 
-    const popupItem = screen.getByText('Other.js');
-    fireEvent.click(popupItem);
+    // Verify popup is NOT visible
+    expect(screen.queryByText('Referenced in')).toBeNull();
 
+    // Verify it jumped immediately
     expect(onJumpToTarget).toHaveBeenCalledWith('src/components/Other.js', { line: 5, col: 2 });
   });
 });
