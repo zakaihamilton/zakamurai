@@ -129,6 +129,12 @@ describe('navigation utils', () => {
       ).toBe('src/components/Button/Button.module.css');
     });
 
+    it('resolves alias paths starting with @/', () => {
+      expect(
+        resolveRelativePath('src/components/Card/Card.js', '@/components/Button/Button.module.css'),
+      ).toBe('src/components/Button/Button.module.css');
+    });
+
     it('returns original path if not starting with dots', () => {
       expect(resolveRelativePath('src/components/Card.js', 'package-name')).toBe('package-name');
     });
@@ -223,6 +229,19 @@ describe('navigation utils', () => {
 
     it('returns null if reference does not exist', () => {
       expect(findClassReferenceInJs(jsCode, 'non-existent')).toBeNull();
+    });
+
+    it('finds standard class reference in JS string literal class list', () => {
+      const jsCode = `
+        import './global.css';
+        const el = <div className="btn primary-btn active">Hello</div>;
+      `;
+      const result = findClassReferenceInJs(jsCode, 'primary-btn');
+      expect(result).not.toBeNull();
+      expect(result.line).toBe(3);
+      expect(jsCode.substring(result.index, result.index + 'primary-btn'.length)).toBe(
+        'primary-btn',
+      );
     });
   });
 
@@ -690,6 +709,87 @@ describe('navigation utils', () => {
       const themeTarget = importTargets.find((t) => t.name === 'theme');
       expect(themeTarget).toBeDefined();
       expect(themeTarget.targets[0].filePath).toBe('src/theme.js');
+    });
+  });
+
+  describe('findNavigationTargets with standard CSS imports', () => {
+    it('returns style navigation targets for standard anonymous CSS imports', () => {
+      const fileContents = {
+        'src/App.js': `
+          import './global.css';
+          const el = <div className="btn primary-btn active">Hello</div>;
+        `,
+        'src/global.css': `
+          .btn { padding: 8px; }
+          .primary-btn { background: blue; }
+        `,
+      };
+
+      const targets = findNavigationTargets(
+        fileContents['src/App.js'],
+        false,
+        fileContents,
+        'src/App.js',
+      );
+
+      const importTargets = targets.filter((t) => t.type === 'import');
+      expect(importTargets.find((t) => t.name === './global.css')).toBeDefined();
+
+      const styleTargets = targets.filter((t) => t.type === 'style');
+      expect(styleTargets.length).toBe(2);
+
+      const btnTarget = styleTargets.find((t) => t.className === 'btn');
+      expect(btnTarget).toBeDefined();
+      expect(btnTarget.targets[0].filePath).toBe('src/global.css');
+      expect(btnTarget.targets[0].loc.line).toBe(2);
+
+      const primaryBtnTarget = styleTargets.find((t) => t.className === 'primary-btn');
+      expect(primaryBtnTarget).toBeDefined();
+      expect(primaryBtnTarget.targets[0].filePath).toBe('src/global.css');
+      expect(primaryBtnTarget.targets[0].loc.line).toBe(3);
+
+      expect(fileContents['src/App.js'].substring(btnTarget.start, btnTarget.end)).toBe('btn');
+      expect(
+        fileContents['src/App.js'].substring(primaryBtnTarget.start, primaryBtnTarget.end),
+      ).toBe('primary-btn');
+    });
+  });
+
+  describe('findNavigationTargets with CSS keyframes', () => {
+    it('resolves keyframe definitions and usages inside a CSS file', () => {
+      const cssCode = `
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+
+        .spinner {
+          animation: spin 2s linear infinite;
+        }
+
+        .fader {
+          animation-name: fade-in;
+        }
+      `;
+
+      const fileContents = {
+        'src/App.css': cssCode,
+      };
+
+      const targets = findNavigationTargets(cssCode, true, fileContents, 'src/App.css');
+
+      // 1. Definition check: '@keyframes spin' has definition range, which references usages (type 'export')
+      const spinDef = targets.find((t) => t.type === 'export' && t.name === 'spin');
+      expect(spinDef).toBeDefined();
+      expect(spinDef.targets.length).toBe(1);
+      expect(spinDef.targets[0].loc.line).toBe(8); // animation line in spinner class
+      expect(cssCode.substring(spinDef.start, spinDef.end)).toBe('spin');
+
+      // 2. Usage check: 'animation: spin ...' (type 'import' pointing to definition)
+      const spinUsage = targets.find((t) => t.type === 'import' && t.name === 'spin');
+      expect(spinUsage).toBeDefined();
+      expect(spinUsage.targets[0].loc.line).toBe(2); // definition line
+      expect(cssCode.substring(spinUsage.start, spinUsage.end)).toBe('spin');
     });
   });
 });

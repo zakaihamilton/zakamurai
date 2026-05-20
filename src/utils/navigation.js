@@ -187,6 +187,40 @@ function findSymbolLocation(targetContent, symbolName, isDefault = false) {
 }
 
 /**
+ * Helper to find all references to a keyframe in CSS code.
+ */
+function findKeyframeReferences(cssCode, keyframeName, filePath) {
+  const refs = [];
+  if (!cssCode || !keyframeName) return refs;
+  const animRegex = /\b(animation|animation-name)\s*:\s*([^;]+);/g;
+  let match;
+  // biome-ignore lint/suspicious/noAssignInExpressions: standard regex matching loop
+  while ((match = animRegex.exec(cssCode)) !== null) {
+    const value = match[2];
+    const valIndex = match.index + match[0].indexOf(value);
+
+    const keyframeRegex = new RegExp(`\\b${keyframeName}\\b`, 'g');
+    let keyframeMatch;
+    // biome-ignore lint/suspicious/noAssignInExpressions: standard regex matching loop
+    while ((keyframeMatch = keyframeRegex.exec(value)) !== null) {
+      const refIndex = valIndex + keyframeMatch.index;
+      const before = cssCode.substring(0, refIndex);
+      const lines = before.split('\n');
+      refs.push({
+        filePath,
+        fileName: filePath.substring(filePath.lastIndexOf('/') + 1),
+        loc: {
+          line: lines.length,
+          col: refIndex - before.lastIndexOf('\n'),
+          index: refIndex,
+        },
+      });
+    }
+  }
+  return refs;
+}
+
+/**
  * Finds all navigation targets in the code (imports and style references)
  * that have valid resolved destinations.
  */
@@ -378,16 +412,130 @@ export function findNavigationTargets(code, isCss, fileContents, filePath) {
         }
       }
     }
+
+    // CSS Keyframe definitions & usages
+    const definedKeyframes = new Map(); // name -> loc
+    const keyframeDefRegex = /@keyframes\s+([a-zA-Z0-9_\-]+)\b/g;
+    let defMatch;
+    // biome-ignore lint/suspicious/noAssignInExpressions: standard regex matching loop
+    while ((defMatch = keyframeDefRegex.exec(code)) !== null) {
+      const name = defMatch[1];
+      const idx = defMatch.index + defMatch[0].indexOf(name);
+      const before = code.substring(0, idx);
+      const lines = before.split('\n');
+      definedKeyframes.set(name, {
+        line: lines.length,
+        col: idx - before.lastIndexOf('\n'),
+        index: idx,
+      });
+    }
+
+    // Add targets for keyframe definitions pointing to their usages/references
+    for (const [keyframeName, loc] of definedKeyframes.entries()) {
+      const defStart = loc.index;
+      const defEnd = defStart + keyframeName.length;
+      const references = findKeyframeReferences(code, keyframeName, filePath);
+      if (references.length > 0) {
+        targets.push({
+          type: 'export',
+          name: keyframeName,
+          start: defStart,
+          end: defEnd,
+          targets: references,
+        });
+      }
+    }
+
+    // Add targets for animation keyframe usages pointing to the definition
+    const animRegex = /\b(animation|animation-name)\s*:\s*([^;]+);/g;
+    let useMatch;
+    // biome-ignore lint/suspicious/noAssignInExpressions: standard regex matching loop
+    while ((useMatch = animRegex.exec(code)) !== null) {
+      const value = useMatch[2];
+      const valIndex = useMatch.index + useMatch[0].indexOf(value);
+
+      for (const [keyframeName, loc] of definedKeyframes.entries()) {
+        const keyframeRegex = new RegExp(`\\b${keyframeName}\\b`, 'g');
+        let keyframeMatch;
+        // biome-ignore lint/suspicious/noAssignInExpressions: standard regex matching loop
+        while ((keyframeMatch = keyframeRegex.exec(value)) !== null) {
+          const start = valIndex + keyframeMatch.index;
+          const end = start + keyframeName.length;
+
+          targets.push({
+            type: 'import',
+            name: keyframeName,
+            resolvedPath: filePath,
+            start,
+            end,
+            targets: [
+              {
+                filePath,
+                fileName: filePath.substring(filePath.lastIndexOf('/') + 1),
+                loc,
+              },
+            ],
+          });
+        }
+      }
+    }
   } else {
-    // In JS: find all references `identifier.className` or `identifier['className']`
     const cssImports = getCssImports(code);
     if (cssImports.length > 0) {
       for (const imp of cssImports) {
-        if (!imp.identifier) continue;
-
         const resolvedPath = resolveRelativePath(filePath, imp.importPath);
         const cssContent = fileContents?.[resolvedPath];
         if (cssContent === undefined) continue;
+
+        if (!imp.identifier) {
+          // Standard CSS import (anonymous)
+          // Find all class selector definitions in the CSS content
+          const selectorRegex = /\.([a-zA-Z0-9_\-]+)\b/g;
+          let selMatch;
+          const classesInCss = new Set();
+          // biome-ignore lint/suspicious/noAssignInExpressions: standard regex loop
+          while ((selMatch = selectorRegex.exec(cssContent)) !== null) {
+            classesInCss.add(selMatch[1]);
+          }
+
+          for (const className of classesInCss) {
+            const escapedClassName = className.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const stringLiteralRegex = new RegExp(
+              `['"\\\`][^'"\\\`]*?(?<![a-zA-Z0-9_\\\\-])${escapedClassName}(?![a-zA-Z0-9_\\\\-])`,
+              'g',
+            );
+            let classMatch;
+            // biome-ignore lint/suspicious/noAssignInExpressions: standard regex loop
+            while ((classMatch = stringLiteralRegex.exec(code)) !== null) {
+              const fullMatchText = classMatch[0];
+              const matchIndex = classMatch.index;
+              const classIdxInMatch = fullMatchText.search(
+                new RegExp(`(?<![a-zA-Z0-9_\\\\-])${escapedClassName}(?![a-zA-Z0-9_\\\\-])`),
+              );
+              const start = matchIndex + (classIdxInMatch !== -1 ? classIdxInMatch : 0);
+              const end = start + className.length;
+
+              const loc = findClassInCss(cssContent, className);
+              if (loc) {
+                targets.push({
+                  type: 'style',
+                  className,
+                  start,
+                  end,
+                  resolvedPath,
+                  targets: [
+                    {
+                      filePath: resolvedPath,
+                      fileName: resolvedPath.substring(resolvedPath.lastIndexOf('/') + 1),
+                      loc,
+                    },
+                  ],
+                });
+              }
+            }
+          }
+          continue;
+        }
 
         const escapedId = imp.identifier.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 

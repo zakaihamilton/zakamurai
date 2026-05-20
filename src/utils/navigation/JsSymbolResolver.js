@@ -127,6 +127,29 @@ export function findClassReferenceInJs(jsCode, className, jsFilePath = null, css
     }
   }
 
+  // Fallback for standard CSS files (anonymous imports or class string literals)
+  // Search for the class name inside a string literal
+  const stringLiteralRegex = new RegExp(
+    `['"\`][^'"\`]*?(?<![a-zA-Z0-9_\\-])${escapedClassName}(?![a-zA-Z0-9_\\-])[^'"\`]*?['"\`]`,
+  );
+  const match = jsCode.match(stringLiteralRegex);
+  if (match) {
+    // Find the exact index of the class name inside the matched string literal
+    const matchIndex = match.index;
+    const fullMatchText = match[0];
+    const classIdxInMatch = fullMatchText.search(
+      new RegExp(`(?<![a-zA-Z0-9_\\-])${escapedClassName}(?![a-zA-Z0-9_\\-])`),
+    );
+    const index = matchIndex + (classIdxInMatch !== -1 ? classIdxInMatch : 0);
+    const before = jsCode.substring(0, index);
+    const lines = before.split('\n');
+    return {
+      line: lines.length,
+      col: index - before.lastIndexOf('\n'),
+      index,
+    };
+  }
+
   return null;
 }
 

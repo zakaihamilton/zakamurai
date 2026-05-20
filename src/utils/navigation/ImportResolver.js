@@ -8,7 +8,7 @@ export function getCssImports(jsCode) {
   if (!jsCode) return imports;
 
   // Pattern 1: import styles from './file.module.css'; or import * as styles from './file.module.css';
-  const esmRegex = /import\s+(?:(\w+)|\*\s+as\s+(\w+))\s+from\s+['"](.+?\.module\.css)['"]/g;
+  const esmRegex = /import\s+(?:(\w+)|\*\s+as\s+(\w+))\s+from\s+['"](.+?\.(?:module\.)?css)['"]/g;
   let match;
   // biome-ignore lint/suspicious/noAssignInExpressions: standard regex execution loop
   while ((match = esmRegex.exec(jsCode)) !== null) {
@@ -20,7 +20,8 @@ export function getCssImports(jsCode) {
   }
 
   // Pattern 2: const styles = require('./file.module.css');
-  const cjsRegex = /(?:const|let|var)\s+(\w+)\s*=\s*require\(\s*['"](.+?\.module\.css)['"]\s*\)/g;
+  const cjsRegex =
+    /(?:const|let|var)\s+(\w+)\s*=\s*require\(\s*['"](.+?\.(?:module\.)?css)['"]\s*\)/g;
   // biome-ignore lint/suspicious/noAssignInExpressions: standard regex execution loop
   while ((match = cjsRegex.exec(jsCode)) !== null) {
     const identifier = match[1];
@@ -31,7 +32,7 @@ export function getCssImports(jsCode) {
   }
 
   // Pattern 3: anonymous import: import './file.module.css';
-  const anonRegex = /import\s+['"](.+?\.module\.css)['"]/g;
+  const anonRegex = /import\s+['"](.+?\.(?:module\.)?css)['"]/g;
   // biome-ignore lint/suspicious/noAssignInExpressions: standard regex execution loop
   while ((match = anonRegex.exec(jsCode)) !== null) {
     const importPath = match[1];
@@ -47,6 +48,9 @@ export function getCssImports(jsCode) {
  * Resolves absolute path from relative path.
  */
 export function resolveRelativePath(basePath, relativePath) {
+  if (relativePath.startsWith('@/')) {
+    return relativePath.replace(/^@\//, 'src/');
+  }
   if (!relativePath.startsWith('.')) {
     return relativePath;
   }
@@ -77,7 +81,9 @@ export function getAssociatedFilePath(filePath, allFileContents, identifier = nu
   if (filePath.endsWith('.css')) {
     // Current is CSS. Find JS/JSX/TS/TSX.
     const baseDir = filePath.substring(0, filePath.lastIndexOf('/') + 1);
-    const baseName = filePath.substring(filePath.lastIndexOf('/') + 1).replace('.module.css', '');
+    const baseName = filePath
+      .substring(filePath.lastIndexOf('/') + 1)
+      .replace(/(\.module)?\.css$/, '');
 
     const extensions = ['.js', '.jsx', '.tsx', '.ts'];
     for (const ext of extensions) {
@@ -131,6 +137,10 @@ export function getAssociatedFilePath(filePath, allFileContents, identifier = nu
     const testPath = `${baseDir}${baseName}.module.css`;
     if (allFileContents[testPath] !== undefined) {
       return testPath;
+    }
+    const testPathCss = `${baseDir}${baseName}.css`;
+    if (allFileContents[testPathCss] !== undefined) {
+      return testPathCss;
     }
   }
 

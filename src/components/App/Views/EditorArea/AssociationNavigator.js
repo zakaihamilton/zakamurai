@@ -84,6 +84,11 @@ export default function useAssociationNavigator({
         draft.cursorPos = {};
       }
       draft.cursorPos[targetPath] = targetLoc;
+      draft.shouldScrollTo = {
+        filePath: targetPath,
+        line: targetLoc.line,
+        timestamp: Date.now(),
+      };
     });
 
     shouldScrollRef.current = {
@@ -131,6 +136,11 @@ export default function useAssociationNavigator({
           draft.cursorPos = {};
         }
         draft.cursorPos[targetPath] = targetLoc;
+        draft.shouldScrollTo = {
+          filePath: targetPath,
+          line: targetLoc.line,
+          timestamp: Date.now(),
+        };
       });
 
       shouldScrollRef.current = {
