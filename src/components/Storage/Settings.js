@@ -3,6 +3,7 @@ const KEYS = {
   THEME: 'zakamurai-theme',
   OPEN_TABS: 'zakamurai_open_tabs',
   ACTIVE_TAB_ID: 'zakamurai_active_tab_id',
+  LAST_CODE_TAB_ID: 'zakamurai_last_code_tab_id',
   PROMPT_HISTORY: 'zakamurai_prompt_history',
   FILE_CONTENTS: 'zakamurai_file_contents',
   AI_LOGS: 'zakamurai_ai_logs',
@@ -98,6 +99,14 @@ const Settings = {
 
   setActiveTabId(id) {
     this.set(KEYS.ACTIVE_TAB_ID, id);
+  },
+
+  getLastCodeTabId() {
+    return this.get(KEYS.LAST_CODE_TAB_ID);
+  },
+
+  setLastCodeTabId(id) {
+    this.set(KEYS.LAST_CODE_TAB_ID, id);
   },
 
   getPromptHistory() {

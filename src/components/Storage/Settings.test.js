@@ -27,6 +27,14 @@ describe('Settings', () => {
     expect(savedTabs[0].id).toBe('1');
   });
 
+  it('gets and sets the last code tab id', () => {
+    expect(Settings.getLastCodeTabId()).toBeUndefined();
+    Settings.setLastCodeTabId('src/App.js');
+    expect(Settings.getLastCodeTabId()).toBe('src/App.js');
+    Settings.setLastCodeTabId(null);
+    expect(Settings.getLastCodeTabId()).toBeUndefined();
+  });
+
   it('adds to prompt history', () => {
     Settings.addPromptHistory('hello');
     Settings.addPromptHistory('world');

@@ -307,6 +307,17 @@
   background: var(--bg-hover);
 }
 
+.tabBtn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.tabBtn:disabled:hover {
+  color: var(--text-muted);
+  background: var(--bg-surface);
+  border-color: var(--border);
+}
+
 .activeTab {
   background: var(--bg-panel) !important;
   color: var(--accent) !important;

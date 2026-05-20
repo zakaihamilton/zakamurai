@@ -3,20 +3,47 @@ import { SidebarState } from '@/components/App/Panes/Sidebar';
 import { TabState } from '@/components/App/Panes/TabBar';
 import { LogState } from '@/components/App/Views/LogArea';
 import { Icons } from '@/components/Core/Base/Icons';
+import Settings from '@/components/Storage/Settings';
 import Tooltip from '@/components/Widgets/Tooltip/Tooltip';
 import { formatShortcut } from '@/utils/os';
-import React from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import styles from '../TopBar.module.css';
+
+const isViewTab = (tabId) => tabId === 'ai-logs' || tabId === 'preview';
 
 export default function ActionButtons({ onCompile, onOpenLog, onOpenPreview, onToggleAIInput }) {
   const { isSystemProcessing } = LogState.useState('isSystemProcessing');
-  const { activeTabId } = TabState.useState('activeTabId');
+  const tabState = TabState.useState(['activeTabId', 'openTabs']);
+  const { activeTabId, openTabs = [] } = tabState;
   const { isMobile } = AppState.useState('isMobile');
   const { showAIInput, isAIInputPopupOpen } = SidebarState.useState([
     'showAIInput',
     'isAIInputPopupOpen',
   ]);
   const isAIInputActive = isMobile ? isAIInputPopupOpen : showAIInput;
+  const lastContentTabIdRef = useRef(Settings.getLastCodeTabId());
+  const lastContentTabId =
+    activeTabId && !isViewTab(activeTabId) ? activeTabId : lastContentTabIdRef.current;
+
+  const lastContentTab = useMemo(
+    () => openTabs.find((tab) => tab.id === lastContentTabId && !isViewTab(tab.id)),
+    [lastContentTabId, openTabs],
+  );
+
+  useEffect(() => {
+    if (activeTabId && !isViewTab(activeTabId)) {
+      lastContentTabIdRef.current = activeTabId;
+      Settings.setLastCodeTabId(activeTabId);
+    }
+  }, [activeTabId]);
+
+  const handleOpenLastContentTab = () => {
+    if (!lastContentTab) return;
+
+    tabState((draft) => {
+      draft.activeTabId = lastContentTab.id;
+    });
+  };
 
   return (
     <div className={styles.actionGroups}>
@@ -36,6 +63,18 @@ export default function ActionButtons({ onCompile, onOpenLog, onOpenPreview, onT
       </div>
 
       <div className={styles.viewTabs}>
+        <Tooltip content="Goto Code">
+          <button
+            type="button"
+            className={`${styles.tabBtn} ${activeTabId && !isViewTab(activeTabId) ? styles.activeTab : ''}`}
+            onClick={handleOpenLastContentTab}
+            aria-label="Goto Code"
+            data-testid="code-tab"
+            disabled={!lastContentTab}
+          >
+            <Icons.Code />
+          </button>
+        </Tooltip>
         <Tooltip content="Goto Logs" shortcut={formatShortcut('⌃U')}>
           <button
             type="button"

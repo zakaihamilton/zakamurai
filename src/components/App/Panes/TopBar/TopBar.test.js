@@ -64,6 +64,7 @@ vi.mock('@/components/App/Views/EditorArea', () => ({
 
 describe('TopBar', () => {
   beforeEach(() => {
+    localStorage.clear();
     vi.clearAllMocks();
     const mockLogState = { isProcessing: false, logs: [] };
     LogState.useState.mockReturnValue(mockLogState);
@@ -182,6 +183,99 @@ describe('TopBar', () => {
     const { getByText } = render(<TopBar />);
     const compileBtn = getByText('Build');
     expect(compileBtn).toBeDefined();
+  });
+
+  it('opens the last non-log and non-preview tab from the view group', () => {
+    const tabStateUpdate = vi.fn((producer) => {
+      producer(tabState);
+    });
+    const tabState = Object.assign(tabStateUpdate, {
+      openTabs: [
+        {
+          id: 'src/App.js',
+          type: 'file',
+          label: 'App.js',
+          file: { path: ['src', 'App.js'], name: 'App.js' },
+        },
+        { id: 'ai-logs', type: 'logs', label: 'Logs' },
+        { id: 'preview', type: 'preview', label: 'Preview' },
+      ],
+      activeTabId: 'src/App.js',
+    });
+
+    TabState.useState.mockReturnValue(tabState);
+    AppState.useState.mockReturnValue({
+      theme: 'dark',
+      fs: { mode: null },
+      projectName: 'Test Project',
+    });
+    SidebarState.useState.mockReturnValue({ folderTree: [] });
+    EditorState.useState.mockReturnValue({ fileContents: {} });
+
+    const { rerender } = render(<TopBar />);
+
+    tabState.activeTabId = 'ai-logs';
+    rerender(<TopBar />);
+
+    fireEvent.click(screen.getByTestId('code-tab'));
+
+    expect(tabStateUpdate).toHaveBeenCalled();
+    expect(tabState.activeTabId).toBe('src/App.js');
+  });
+
+  it('disables the code tab button when no content tab has been used', () => {
+    TabState.useState.mockReturnValue({
+      openTabs: [
+        { id: 'ai-logs', type: 'logs', label: 'Logs' },
+        { id: 'preview', type: 'preview', label: 'Preview' },
+      ],
+      activeTabId: 'preview',
+    });
+    AppState.useState.mockReturnValue({
+      theme: 'dark',
+      fs: { mode: null },
+      projectName: 'Test Project',
+    });
+    SidebarState.useState.mockReturnValue({ folderTree: [] });
+    EditorState.useState.mockReturnValue({ fileContents: {} });
+
+    render(<TopBar />);
+
+    expect(screen.getByTestId('code-tab')).toBeDisabled();
+  });
+
+  it('uses the saved last code tab after a reload', () => {
+    localStorage.setItem('zakamurai_last_code_tab_id', 'src/App.js');
+    const tabStateUpdate = vi.fn((producer) => {
+      producer(tabState);
+    });
+    const tabState = Object.assign(tabStateUpdate, {
+      openTabs: [
+        {
+          id: 'src/App.js',
+          type: 'file',
+          label: 'App.js',
+          file: { path: ['src', 'App.js'], name: 'App.js' },
+        },
+        { id: 'preview', type: 'preview', label: 'Preview' },
+      ],
+      activeTabId: 'preview',
+    });
+
+    TabState.useState.mockReturnValue(tabState);
+    AppState.useState.mockReturnValue({
+      theme: 'dark',
+      fs: { mode: null },
+      projectName: 'Test Project',
+    });
+    SidebarState.useState.mockReturnValue({ folderTree: [] });
+    EditorState.useState.mockReturnValue({ fileContents: {} });
+
+    render(<TopBar />);
+
+    fireEvent.click(screen.getByTestId('code-tab'));
+
+    expect(tabState.activeTabId).toBe('src/App.js');
   });
 
   it('renders new project button and handles click', async () => {

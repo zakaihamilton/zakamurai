@@ -19,9 +19,23 @@ export default function LogArea() {
   const logState = LogState.useState();
   const { logs = [], isSystemProcessing, isAIProcessing } = logState;
   const isProcessing = isSystemProcessing || isAIProcessing;
-  const logAreaUiState = LogAreaUiState.useState(null, { copied: false, autoScroll: true });
-  const { copied = false, autoScroll = true } = logAreaUiState || {};
+  const logAreaUiState = LogAreaUiState.useState(null, {
+    copied: false,
+    autoScroll: true,
+    filterText: '',
+  });
+  const { copied = false, autoScroll = true, filterText = '' } = logAreaUiState || {};
   const containerRef = useRef();
+  const normalizedFilter = filterText.trim().toLowerCase();
+  const visibleLogs = logs
+    .map((log, index) => ({ log, displayIndex: index }))
+    .filter(({ log }) => {
+      if (!normalizedFilter) return true;
+      return [log.role, log.timestamp, log.text]
+        .filter(Boolean)
+        .some((value) => String(value).toLowerCase().includes(normalizedFilter));
+    })
+    .slice(-200);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -96,6 +110,37 @@ export default function LogArea() {
         {logs.length > 0 && (
           <div className={styles.header}>
             <div className={styles.headerActions}>
+              <div className={styles.filterBox}>
+                <Icons.Search />
+                <input
+                  type="search"
+                  value={filterText}
+                  onChange={(event) =>
+                    logAreaUiState((draft) => {
+                      draft.filterText = event.target.value;
+                    })
+                  }
+                  placeholder="Filter logs"
+                  className={styles.filterInput}
+                  aria-label="Filter logs"
+                />
+                {filterText && (
+                  <Tooltip content="Clear filter">
+                    <button
+                      type="button"
+                      className={styles.filterClearBtn}
+                      onClick={() =>
+                        logAreaUiState((draft) => {
+                          draft.filterText = '';
+                        })
+                      }
+                      aria-label="Clear log filter"
+                    >
+                      <Icons.Close />
+                    </button>
+                  </Tooltip>
+                )}
+              </div>
               <Tooltip content={copied ? 'Copied!' : 'Copy all logs'}>
                 <button
                   type="button"
@@ -120,8 +165,7 @@ export default function LogArea() {
           </div>
         )}
         <div className={styles.logContainer}>
-          {logs.slice(-200).map((log, index) => {
-            const displayIndex = logs.length > 200 ? logs.length - 200 + index : index;
+          {visibleLogs.map(({ log, displayIndex }) => {
             return (
               <div
                 key={log.id}
@@ -146,9 +190,13 @@ export default function LogArea() {
               </div>
             );
           })}
+          {logs.length > 0 && visibleLogs.length === 0 && (
+            <div className={styles.emptyState}>No logs match "{filterText}"</div>
+          )}
           {isProcessing && (
             <div className={styles.logItem}>
               <span className={styles.lineNumber}>{logs.length + 1}</span>
+              <span className={styles.timestamp}>--:--:--</span>
               <span className={styles.prompt}>&gt;</span>
               <div className={`${styles.logContent} ${styles.processing}`}>
                 {isAIProcessing && isSystemProcessing
