@@ -38,6 +38,8 @@ const countLines = (value) => {
 const getTemplateContents = () =>
   Settings.getTemplate() === 'scratch' ? SCRATCH_CONTENTS : DEFAULT_CONTENTS;
 
+let commandKeyPressed = false;
+
 export default function EditorArea({ file, fsHandle }) {
   return (
     <Node id={file?.path?.join('/') || file?.name || 'EditorArea'}>
@@ -78,7 +80,7 @@ function EditorAreaInner({ file, fsHandle }) {
   } = editorAreaUiState || {};
 
   const isReadOnly = state.isReadOnly ?? Settings.getEditorReadOnly(false);
-  const [isCommandPressed, setIsCommandPressed] = useState(false);
+  const [isCommandPressed, setIsCommandPressed] = useState(() => commandKeyPressed);
   const navigationLinksEnabled = isReadOnly || isCommandPressed;
 
   const setEditorAreaValue = useCallback(
@@ -267,23 +269,34 @@ function EditorAreaInner({ file, fsHandle }) {
   };
 
   useEffect(() => {
+    const updateCommandPressed = (nextValue) => {
+      commandKeyPressed = nextValue;
+      setIsCommandPressed(nextValue);
+    };
     const handleKeyDown = (e) => {
-      if (e.key === 'Meta') setIsCommandPressed(true);
+      if (e.key === 'Meta') updateCommandPressed(true);
     };
     const handleKeyUp = (e) => {
-      if (e.key === 'Meta') setIsCommandPressed(false);
+      if (e.key === 'Meta') updateCommandPressed(false);
+    };
+    const handleMouseModifier = (e) => {
+      updateCommandPressed(e.metaKey);
     };
     const handleBlur = () => {
-      setIsCommandPressed(false);
+      updateCommandPressed(false);
     };
 
     window.addEventListener('keydown', handleKeyDown);
     window.addEventListener('keyup', handleKeyUp);
+    window.addEventListener('mousedown', handleMouseModifier);
+    window.addEventListener('mousemove', handleMouseModifier);
     window.addEventListener('blur', handleBlur);
 
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
+      window.removeEventListener('mousedown', handleMouseModifier);
+      window.removeEventListener('mousemove', handleMouseModifier);
       window.removeEventListener('blur', handleBlur);
     };
   }, []);

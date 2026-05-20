@@ -1,6 +1,6 @@
 import { AppState } from '@/components/App/AppState';
 import { TabState } from '@/components/App/Panes/TabBar';
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { EditorState } from './EditorArea';
 import EditorArea from './EditorArea';
@@ -173,5 +173,38 @@ describe('EditorArea', () => {
     stateHook.mockReturnValue({ ...mockState, unrelated: 'change' });
     rerender(<EditorArea file={{ path: ['test.js'], name: 'test.js' }} />);
     expect(highlightCode).toHaveBeenCalledTimes(callCount);
+  });
+
+  it('keeps navigation highlighting enabled after switching files while Command is held', async () => {
+    const mockState = {
+      fileContents: { 'test.js': 'content', 'next.js': 'next content' },
+      cursorPos: {},
+      isCompleting: {},
+      isReadOnly: false,
+    };
+    const stateHook = vi.fn(() => mockState);
+    Object.assign(stateHook, mockState);
+
+    vi.spyOn(EditorState, 'useState').mockReturnValue(stateHook);
+    vi.spyOn(AppState, 'useState').mockReturnValue({ fs: { mode: null } });
+    vi.spyOn(TabState, 'useState').mockReturnValue({ openTabs: [] });
+
+    render(<EditorArea file={{ path: ['test.js'], name: 'test.js' }} />);
+
+    expect(vi.mocked(highlightCode).mock.calls.at(-1)?.[9]).toBe(false);
+
+    fireEvent.keyDown(window, { key: 'Meta' });
+
+    await waitFor(() => {
+      expect(vi.mocked(highlightCode).mock.calls.at(-1)?.[9]).toBe(true);
+    });
+
+    vi.mocked(highlightCode).mockClear();
+
+    render(<EditorArea file={{ path: ['next.js'], name: 'next.js' }} />);
+
+    expect(vi.mocked(highlightCode).mock.calls.at(-1)?.[9]).toBe(true);
+
+    fireEvent.keyUp(window, { key: 'Meta' });
   });
 });
