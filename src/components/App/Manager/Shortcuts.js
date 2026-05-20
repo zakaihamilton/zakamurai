@@ -757,9 +757,9 @@ export const SHORTCUTS = [
     id: 'toggle-theme',
     group: SHORTCUT_GROUPS.GENERAL,
     desc: 'Toggle Theme',
-    key: 'Tab',
-    displayKey: '⌃⌥Tab',
-    modifier: 'ctrl-alt',
+    key: 'l',
+    displayKey: '⌃L',
+    modifier: 'ctrl',
     isGlobal: true,
     action: ({ appState }) => {
       appState((draft) => {
