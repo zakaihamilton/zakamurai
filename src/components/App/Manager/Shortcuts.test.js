@@ -95,6 +95,18 @@ describe('Shortcuts isMatch', () => {
     expect(isMatch(eventMismatch, shortcut)).toBe(false);
   });
 
+  it('matches Shift+Tab', () => {
+    isMac.mockReturnValue(true);
+    const shortcut = { key: 'Tab', modifier: 'shift' };
+
+    expect(
+      isMatch(
+        { key: 'Tab', metaKey: false, ctrlKey: false, shiftKey: true, altKey: false },
+        shortcut,
+      ),
+    ).toBe(true);
+  });
+
   it('matches Ctrl+T and Ctrl+Shift+T', () => {
     isMac.mockReturnValue(true);
     const nextShortcut = { key: 't', modifier: 'ctrl' };

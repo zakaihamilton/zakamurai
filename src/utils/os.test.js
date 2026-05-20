@@ -33,6 +33,13 @@ describe('os utils', () => {
       expect(formatShortcut('⌘⇧K')).toBe('⌘⇧K');
     });
 
+    it('formats Alt shortcuts as Option shortcuts for Mac', () => {
+      vi.stubGlobal('navigator', { platform: 'MacIntel' });
+      expect(formatShortcut('Alt+B')).toBe('⌥B');
+      expect(formatShortcut('Alt+ArrowLeft')).toBe('⌥←');
+      expect(formatShortcut('Alt+→')).toBe('⌥→');
+    });
+
     it('formats shortcuts correctly for Windows/Linux', () => {
       vi.stubGlobal('navigator', { platform: 'Win32' });
       expect(formatShortcut('⌘S')).toBe('Ctrl + S');

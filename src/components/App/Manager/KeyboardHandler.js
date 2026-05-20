@@ -6,7 +6,7 @@ import { LogState } from '@/components/App/Views/LogArea';
 import { useNotification } from '@/components/Widgets/Notification/Notification';
 import { markKeyboardActivity } from '@/utils/keyboard';
 import { useEffect } from 'react';
-import { SHORTCUTS, isMatch } from './Shortcuts';
+import { SHORTCUTS, SHORTCUT_HIGHLIGHT_EVENT, isMatch } from './Shortcuts';
 
 export function useKeyboardHandler() {
   const sidebarState = SidebarState.useState();
@@ -29,6 +29,23 @@ export function useKeyboardHandler() {
         editorState,
         showNotification,
       };
+
+      if (appState.showShortcuts) {
+        const matchingShortcut = SHORTCUTS.find((shortcut) => isMatch(e, shortcut));
+        if (matchingShortcut) {
+          e.preventDefault();
+          if (matchingShortcut.id === 'close-modal') {
+            matchingShortcut.action(states);
+            return;
+          }
+          window.dispatchEvent(
+            new CustomEvent(SHORTCUT_HIGHLIGHT_EVENT, {
+              detail: { shortcutId: matchingShortcut.id },
+            }),
+          );
+        }
+        return;
+      }
 
       for (const shortcut of SHORTCUTS) {
         if (shortcut.isGlobal && shortcut.action && isMatch(e, shortcut)) {

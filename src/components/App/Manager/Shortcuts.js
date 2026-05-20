@@ -16,6 +16,8 @@ export const SHORTCUT_GROUPS = {
   GENERAL: 'General',
 };
 
+export const SHORTCUT_HIGHLIGHT_EVENT = 'zakamurai:shortcut-highlight';
+
 const toggleCssJsAction = ({ editorState, tabState, sidebarState }) => {
   const filePath = tabState.activeTabId;
   if (!filePath) {
@@ -815,6 +817,8 @@ export const isMatch = (e, s) => {
     match = (mac ? meta : ctrl) && alt && !shift;
   } else if (mod === 'alt') {
     match = alt && !meta && !ctrl && !shift;
+  } else if (mod === 'shift') {
+    match = shift && !meta && !ctrl && !alt;
   } else if (mod === 'none') {
     match = !meta && !ctrl && !shift && !alt;
   }
@@ -835,6 +839,7 @@ export const getShortcutsByGroup = () => {
     // Only add if desc is not already in the group to avoid showing multiple Redo bindings
     if (!groups[s.group].some((item) => item.desc === s.desc)) {
       groups[s.group].push({
+        id: s.id,
         key: s.displayKey,
         desc: s.desc,
       });

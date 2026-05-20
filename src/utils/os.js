@@ -25,7 +25,14 @@ export const getEnterKey = () => {
  * @returns {string} - The formatted shortcut string
  */
 export const formatShortcut = (shortcut) => {
-  if (isMac()) return shortcut;
+  if (isMac()) {
+    return shortcut
+      .replace(/Alt\+/g, '⌥')
+      .replace(/ArrowLeft/g, '←')
+      .replace(/ArrowRight/g, '→')
+      .replace(/ArrowUp/g, '↑')
+      .replace(/ArrowDown/g, '↓');
+  }
 
   return shortcut
     .replace(/⌘/g, 'Ctrl+')

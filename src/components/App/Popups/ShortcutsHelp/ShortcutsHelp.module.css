@@ -117,6 +117,12 @@
   border-color: var(--accent);
 }
 
+.highlightedItem {
+  background: color-mix(in srgb, var(--accent) 16%, var(--bg-panel));
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 28%, transparent);
+}
+
 .desc {
   font-size: 14px;
   color: var(--text-muted);
@@ -137,8 +143,17 @@
   letter-spacing: 0.05em;
 }
 
+.highlightedItem .desc {
+  color: var(--text-main);
+}
+
 .item:hover .desc {
   color: var(--text-main);
+}
+
+.highlightedItem .key {
+  border-color: var(--accent);
+  color: var(--accent);
 }
 
 .item:hover .key {

@@ -1,9 +1,9 @@
-import { getShortcutsByGroup } from '@/components/App/Manager/Shortcuts';
+import { SHORTCUT_HIGHLIGHT_EVENT, getShortcutsByGroup } from '@/components/App/Manager/Shortcuts';
 import { Icons } from '@/components/Core/Base/Icons';
 import Tooltip from '@/components/Widgets/Tooltip/Tooltip';
 import { useShouldShowKeyboardShortcuts } from '@/utils/keyboard';
 import { formatShortcut, isMac } from '@/utils/os';
-import React from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import styles from './ShortcutsHelp.module.css';
 
@@ -11,6 +11,33 @@ const SHORTCUTS = getShortcutsByGroup();
 
 export default function ShortcutsHelp({ isOpen, onClose }) {
   const showShortcuts = useShouldShowKeyboardShortcuts();
+  const itemRefs = useRef({});
+  const [highlightedShortcutId, setHighlightedShortcutId] = useState(null);
+
+  useEffect(() => {
+    if (!isOpen || !showShortcuts) return undefined;
+
+    const handleShortcutHighlight = (event) => {
+      const shortcutId = event.detail?.shortcutId;
+      if (!shortcutId) return;
+
+      setHighlightedShortcutId(shortcutId);
+      window.requestAnimationFrame(() => {
+        itemRefs.current[shortcutId]?.scrollIntoView({
+          behavior: 'smooth',
+          block: 'center',
+          inline: 'nearest',
+        });
+      });
+    };
+
+    window.addEventListener(SHORTCUT_HIGHLIGHT_EVENT, handleShortcutHighlight);
+    return () => window.removeEventListener(SHORTCUT_HIGHLIGHT_EVENT, handleShortcutHighlight);
+  }, [isOpen, showShortcuts]);
+
+  useEffect(() => {
+    if (!isOpen) setHighlightedShortcutId(null);
+  }, [isOpen]);
 
   if (!isOpen || !showShortcuts) return null;
 
@@ -46,7 +73,19 @@ export default function ShortcutsHelp({ isOpen, onClose }) {
               <h3 className={styles.groupTitle}>{group.group}</h3>
               <div className={styles.items}>
                 {group.items.map((item) => (
-                  <div key={item.desc} className={styles.item}>
+                  <div
+                    key={item.id}
+                    ref={(element) => {
+                      if (element) {
+                        itemRefs.current[item.id] = element;
+                      } else {
+                        delete itemRefs.current[item.id];
+                      }
+                    }}
+                    className={`${styles.item} ${
+                      highlightedShortcutId === item.id ? styles.highlightedItem : ''
+                    }`}
+                  >
                     <span className={styles.desc}>{item.desc}</span>
                     <span className={styles.key}>{formatShortcut(item.key)}</span>
                   </div>

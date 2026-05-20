@@ -7,6 +7,7 @@ import { useNotification } from '@/components/Widgets/Notification/Notification'
 import { fireEvent, render } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useKeyboardHandler } from './KeyboardHandler';
+import { SHORTCUT_HIGHLIGHT_EVENT } from './Shortcuts';
 
 function TestComponent() {
   useKeyboardHandler();
@@ -52,6 +53,7 @@ describe('KeyboardHandler', () => {
 
     appState = vi.fn();
     appState.fs = { mode: 'local' };
+    appState.showShortcuts = false;
 
     logState = vi.fn();
     editorState = vi.fn();
@@ -107,5 +109,52 @@ describe('KeyboardHandler', () => {
     fireEvent.keyDown(window, { key: 'b', ctrlKey: true, repeat: true });
 
     expect(sidebarState).not.toHaveBeenCalled();
+  });
+
+  it('highlights matching shortcut instead of triggering actions while shortcuts help is visible', () => {
+    appState.showShortcuts = true;
+    const highlightHandler = vi.fn();
+    window.addEventListener(SHORTCUT_HIGHLIGHT_EVENT, highlightHandler);
+    render(<TestComponent />);
+
+    fireEvent.keyDown(window, { key: 'b', ctrlKey: true });
+
+    expect(sidebarState).not.toHaveBeenCalled();
+    expect(highlightHandler).toHaveBeenCalledTimes(1);
+    expect(highlightHandler.mock.calls[0][0].detail).toEqual({ shortcutId: 'toggle-sidebar' });
+
+    window.removeEventListener(SHORTCUT_HIGHLIGHT_EVENT, highlightHandler);
+  });
+
+  it('highlights Shift+Tab while shortcuts help is visible', () => {
+    appState.showShortcuts = true;
+    const highlightHandler = vi.fn();
+    window.addEventListener(SHORTCUT_HIGHLIGHT_EVENT, highlightHandler);
+    render(<TestComponent />);
+
+    fireEvent.keyDown(window, { key: 'Tab', shiftKey: true });
+
+    expect(highlightHandler).toHaveBeenCalledTimes(1);
+    expect(highlightHandler.mock.calls[0][0].detail).toEqual({ shortcutId: 'outdent' });
+
+    window.removeEventListener(SHORTCUT_HIGHLIGHT_EVENT, highlightHandler);
+  });
+
+  it('closes shortcuts help on Escape instead of highlighting the close shortcut', () => {
+    appState.showShortcuts = true;
+    const highlightHandler = vi.fn();
+    window.addEventListener(SHORTCUT_HIGHLIGHT_EVENT, highlightHandler);
+    render(<TestComponent />);
+
+    fireEvent.keyDown(window, { key: 'Escape' });
+
+    expect(highlightHandler).not.toHaveBeenCalled();
+    expect(appState).toHaveBeenCalled();
+    const updateFn = appState.mock.calls[0][0];
+    const draft = { showShortcuts: true };
+    updateFn(draft);
+    expect(draft.showShortcuts).toBe(false);
+
+    window.removeEventListener(SHORTCUT_HIGHLIGHT_EVENT, highlightHandler);
   });
 });
