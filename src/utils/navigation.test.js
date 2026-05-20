@@ -573,4 +573,123 @@ describe('navigation utils', () => {
       expect(componentTargets[1].targets[0].filePath).toBe('src/Button.js');
     });
   });
+
+  describe('findNavigationTargets with import symbols', () => {
+    it('returns targets for destructured named symbols inside imports', () => {
+      const fileContents = {
+        'src/App.js': 'import { SparklesIcon, CheckIcon } from "./Icons";',
+        'src/Icons.js': `
+          export const SparklesIcon = () => {};
+          export const CheckIcon = () => {};
+        `,
+      };
+
+      const targets = findNavigationTargets(
+        fileContents['src/App.js'],
+        false,
+        fileContents,
+        'src/App.js',
+      );
+
+      // We expect 3 targets: 1 for the import path string, and 2 for the individual symbols
+      const importTargets = targets.filter((t) => t.type === 'import');
+      expect(importTargets.length).toBe(3);
+
+      // Check path target
+      const pathTarget = importTargets.find((t) => t.name === './Icons');
+      expect(pathTarget).toBeDefined();
+      expect(pathTarget.targets[0].filePath).toBe('src/Icons.js');
+      expect(pathTarget.targets[0].loc.line).toBe(1);
+
+      // Check SparklesIcon target
+      const sparklesTarget = importTargets.find((t) => t.name === 'SparklesIcon');
+      expect(sparklesTarget).toBeDefined();
+      expect(sparklesTarget.targets[0].filePath).toBe('src/Icons.js');
+      expect(sparklesTarget.targets[0].loc.line).toBe(2);
+      expect(fileContents['src/App.js'].substring(sparklesTarget.start, sparklesTarget.end)).toBe(
+        'SparklesIcon',
+      );
+
+      // Check CheckIcon target
+      const checkTarget = importTargets.find((t) => t.name === 'CheckIcon');
+      expect(checkTarget).toBeDefined();
+      expect(checkTarget.targets[0].filePath).toBe('src/Icons.js');
+      expect(checkTarget.targets[0].loc.line).toBe(3);
+      expect(fileContents['src/App.js'].substring(checkTarget.start, checkTarget.end)).toBe(
+        'CheckIcon',
+      );
+    });
+
+    it('returns targets for named imports with aliases', () => {
+      const fileContents = {
+        'src/App.js': 'import { SparklesIcon as SI } from "./Icons";',
+        'src/Icons.js': 'export const SparklesIcon = () => {};',
+      };
+
+      const targets = findNavigationTargets(
+        fileContents['src/App.js'],
+        false,
+        fileContents,
+        'src/App.js',
+      );
+
+      const importTargets = targets.filter((t) => t.type === 'import');
+      expect(importTargets.length).toBe(3); // './Icons', 'SparklesIcon', 'SI'
+
+      // Check SparklesIcon
+      const origTarget = importTargets.find((t) => t.name === 'SparklesIcon');
+      expect(origTarget).toBeDefined();
+      expect(origTarget.targets[0].filePath).toBe('src/Icons.js');
+      expect(origTarget.targets[0].loc.line).toBe(1);
+
+      // Check SI
+      const aliasTarget = importTargets.find((t) => t.name === 'SI');
+      expect(aliasTarget).toBeDefined();
+      expect(aliasTarget.targets[0].filePath).toBe('src/Icons.js');
+      expect(aliasTarget.targets[0].loc.line).toBe(1);
+    });
+
+    it('returns targets for default imports in import statements', () => {
+      const fileContents = {
+        'src/App.js': 'import Button from "./Button";',
+        'src/Button.js': 'export default function Button() {}',
+      };
+
+      const targets = findNavigationTargets(
+        fileContents['src/App.js'],
+        false,
+        fileContents,
+        'src/App.js',
+      );
+
+      const importTargets = targets.filter((t) => t.type === 'import');
+      expect(importTargets.length).toBe(2); // './Button', 'Button'
+
+      const buttonTarget = importTargets.find((t) => t.name === 'Button');
+      expect(buttonTarget).toBeDefined();
+      expect(buttonTarget.targets[0].filePath).toBe('src/Button.js');
+      expect(buttonTarget.targets[0].loc.line).toBe(1);
+    });
+
+    it('returns targets for namespace imports in import statements', () => {
+      const fileContents = {
+        'src/App.js': 'import * as theme from "./theme";',
+        'src/theme.js': 'export const color = "red";',
+      };
+
+      const targets = findNavigationTargets(
+        fileContents['src/App.js'],
+        false,
+        fileContents,
+        'src/App.js',
+      );
+
+      const importTargets = targets.filter((t) => t.type === 'import');
+      expect(importTargets.length).toBe(2); // './theme', 'theme'
+
+      const themeTarget = importTargets.find((t) => t.name === 'theme');
+      expect(themeTarget).toBeDefined();
+      expect(themeTarget.targets[0].filePath).toBe('src/theme.js');
+    });
+  });
 });

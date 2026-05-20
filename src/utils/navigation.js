@@ -157,6 +157,36 @@ export function getStyleAtCursor(code, index, isCss) {
 }
 
 /**
+ * Helper to find the location of a symbol's definition in the target file content.
+ */
+function findSymbolLocation(targetContent, symbolName, isDefault = false) {
+  if (!targetContent) return { line: 1, col: 1, index: 0 };
+
+  const exportRanges = getExportRanges(targetContent);
+
+  if (isDefault) {
+    const defExport = exportRanges.find((r) => r.isDefault);
+    if (defExport) {
+      return getLocFromIndex(targetContent, defExport.start);
+    }
+  } else {
+    const namedExport = exportRanges.find((r) => !r.isDefault && r.name === symbolName);
+    if (namedExport) {
+      return getLocFromIndex(targetContent, namedExport.start);
+    }
+  }
+
+  // Fallback to local definition regex
+  const localDefRegex = new RegExp(`\\b(const|let|var|function|class)\\s+${symbolName}\\b`);
+  const match = targetContent.match(localDefRegex);
+  if (match) {
+    return getLocFromIndex(targetContent, match.index);
+  }
+
+  return { line: 1, col: 1, index: 0 };
+}
+
+/**
  * Finds all navigation targets in the code (imports and style references)
  * that have valid resolved destinations.
  */
@@ -164,7 +194,7 @@ export function findNavigationTargets(code, isCss, fileContents, filePath) {
   const targets = [];
   if (!code) return targets;
 
-  // 1. Imports
+  // 1. Imports and Import Symbols
   const importRanges = getImportRanges(code, isCss);
   for (const range of importRanges) {
     const resolvedPath = resolveImportPath(filePath, range.path, fileContents);
@@ -183,6 +213,140 @@ export function findNavigationTargets(code, isCss, fileContents, filePath) {
           },
         ],
       });
+    }
+  }
+
+  // Symbol-level click navigation in ES6 imports
+  if (!isCss) {
+    const esmImportRegex = /import\s+([\s\S]*?)\s+from\s+['"]([^'"]+)['"]/g;
+    let match;
+    // biome-ignore lint/suspicious/noAssignInExpressions: standard regex matching loop
+    while ((match = esmImportRegex.exec(code)) !== null) {
+      const importClause = match[1].trim();
+      const importPath = match[2];
+      const startOfImport = match.index;
+      const importStatementText = match[0];
+
+      const resolvedPath = resolveImportPath(filePath, importPath, fileContents);
+      if (resolvedPath) {
+        const targetContent = fileContents[resolvedPath];
+        const clauseIndex = importStatementText.indexOf(importClause);
+
+        if (clauseIndex !== -1) {
+          // Process default import if any
+          let defaultImport = null;
+          const commaIdx = importClause.indexOf(',');
+          if (commaIdx !== -1) {
+            defaultImport = importClause.substring(0, commaIdx).trim();
+          } else if (!importClause.includes('{') && !importClause.includes('* as')) {
+            defaultImport = importClause.trim();
+          }
+
+          if (defaultImport) {
+            const defaultRegex = new RegExp(`\\b${defaultImport}\\b`, 'g');
+            let defMatch;
+            // biome-ignore lint/suspicious/noAssignInExpressions: standard regex matching loop
+            while ((defMatch = defaultRegex.exec(importClause)) !== null) {
+              const start = startOfImport + clauseIndex + defMatch.index;
+              const end = start + defaultImport.length;
+              const loc = findSymbolLocation(targetContent, defaultImport, true);
+
+              targets.push({
+                type: 'import',
+                name: defaultImport,
+                resolvedPath,
+                start,
+                end,
+                targets: [
+                  {
+                    filePath: resolvedPath,
+                    fileName: resolvedPath.substring(resolvedPath.lastIndexOf('/') + 1),
+                    loc,
+                  },
+                ],
+              });
+            }
+          }
+
+          // Process namespace import if any
+          const namespaceMatch = importClause.match(/\*\s+as\s+(\w+)/);
+          if (namespaceMatch) {
+            const namespaceName = namespaceMatch[1];
+            const nsRegex = new RegExp(`\\b${namespaceName}\\b`, 'g');
+            let nsMatch;
+            // biome-ignore lint/suspicious/noAssignInExpressions: standard regex matching loop
+            while ((nsMatch = nsRegex.exec(importClause)) !== null) {
+              const start = startOfImport + clauseIndex + nsMatch.index;
+              const end = start + namespaceName.length;
+
+              targets.push({
+                type: 'import',
+                name: namespaceName,
+                resolvedPath,
+                start,
+                end,
+                targets: [
+                  {
+                    filePath: resolvedPath,
+                    fileName: resolvedPath.substring(resolvedPath.lastIndexOf('/') + 1),
+                    loc: { line: 1, col: 1, index: 0 },
+                  },
+                ],
+              });
+            }
+          }
+
+          // Process named imports inside `{ ... }`
+          const bracesMatch = importClause.match(/\{([\s\S]*?)\}/);
+          if (bracesMatch) {
+            const namedImports = bracesMatch[1].split(',');
+            for (let item of namedImports) {
+              item = item.trim();
+              if (!item) continue;
+
+              let orig = item;
+              let alias = null;
+
+              if (item.includes(' as ')) {
+                const parts = item.split(/\s+as\s+/);
+                orig = parts[0].trim();
+                alias = parts[1].trim();
+              }
+
+              // Resolve both the original and the alias names as clickable targets
+              const symbolsToResolve = alias ? [orig, alias] : [orig];
+
+              for (const sym of symbolsToResolve) {
+                const symRegex = new RegExp(`\\b${sym}\\b`, 'g');
+                let symMatch;
+                // biome-ignore lint/suspicious/noAssignInExpressions: standard regex matching loop
+                while ((symMatch = symRegex.exec(importClause)) !== null) {
+                  const start = startOfImport + clauseIndex + symMatch.index;
+                  const end = start + sym.length;
+
+                  // For both orig and alias, definition location in target file is the original exported name
+                  const loc = findSymbolLocation(targetContent, orig, false);
+
+                  targets.push({
+                    type: 'import',
+                    name: sym,
+                    resolvedPath,
+                    start,
+                    end,
+                    targets: [
+                      {
+                        filePath: resolvedPath,
+                        fileName: resolvedPath.substring(resolvedPath.lastIndexOf('/') + 1),
+                        loc,
+                      },
+                    ],
+                  });
+                }
+              }
+            }
+          }
+        }
+      }
     }
   }
 
@@ -284,6 +448,7 @@ export function findNavigationTargets(code, isCss, fileContents, filePath) {
       }
     }
   }
+
   // 3. Exports in JS/TS files
   if (!isCss) {
     const exportRanges = getExportRanges(code);
