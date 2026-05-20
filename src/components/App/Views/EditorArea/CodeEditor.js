@@ -51,6 +51,7 @@ export default function CodeEditor({
     targets: [],
     isCss: false,
     isImport: false,
+    isExport: false,
   });
 
   const targets = useMemo(() => {
@@ -68,6 +69,7 @@ export default function CodeEditor({
       targets: [],
       isCss: false,
       isImport: false,
+      isExport: false,
     });
     lastReportedIndex.current = -1;
   }, [filePath]);
@@ -155,7 +157,11 @@ export default function CodeEditor({
       const x = rect.left - textareaRect.left;
       const y = rect.top - textareaRect.top + rect.height / 2;
 
-      const className = target.type === 'import' ? `import:${target.name}` : target.className;
+      const className = target.type === 'import'
+        ? `import:${target.name}`
+        : target.type === 'export'
+        ? `export:${target.name}`
+        : target.className;
 
       setPopup((prev) => {
         if (prev.visible && prev.className === className) {
@@ -169,6 +175,7 @@ export default function CodeEditor({
           targets: target.targets,
           isCss: isCssFile,
           isImport: target.type === 'import',
+          isExport: target.type === 'export',
         };
       });
     },
@@ -208,7 +215,13 @@ export default function CodeEditor({
         <div className={styles.hoverPopup} style={{ left: `${popup.x}px`, top: `${popup.y}px` }}>
           <div className={styles.popupHeader}>
             <span>
-              {popup.isImport ? 'Open Import' : popup.isCss ? 'Referenced in JS' : 'Defined in CSS'}
+              {popup.isImport
+                ? 'Open Import'
+                : popup.isExport
+                ? 'Referenced in'
+                : popup.isCss
+                ? 'Referenced in JS'
+                : 'Defined in CSS'}
             </span>
             <Tooltip content="Close">
               <button

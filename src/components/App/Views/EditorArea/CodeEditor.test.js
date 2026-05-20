@@ -1,0 +1,174 @@
+import { fireEvent, render, screen } from '@testing-library/react';
+import { describe, expect, it, vi } from 'vitest';
+import CodeEditor from './CodeEditor';
+import { findNavigationTargets } from '@/utils/navigation';
+
+vi.mock('@/utils/navigation', () => ({
+  findNavigationTargets: vi.fn(() => []),
+}));
+
+vi.mock('@/components/Widgets/Tooltip/Tooltip', () => ({
+  default: ({ children, content }) => (
+    <div data-testid="tooltip" data-content={content}>
+      {children}
+    </div>
+  ),
+}));
+
+describe('CodeEditor', () => {
+  const defaultProps = {
+    localContent: 'const a = 1;',
+    handleChange: vi.fn(),
+    highlightedCode: 'const a = 1;',
+    readOnly: false,
+    onCursorUpdate: vi.fn(),
+    cursorPos: {},
+    scrollContainerRef: { current: null },
+    filePath: 'src/App.js',
+    isReadOnly: true,
+    fileContents: {},
+    onJumpToTarget: vi.fn(),
+  };
+
+  it('renders pre element with code and links when in readOnly mode', () => {
+    const mockTargets = [
+      {
+        type: 'export',
+        name: 'MyComponent',
+        start: 7,
+        end: 18,
+        targets: [{ filePath: 'src/App.js', fileName: 'App.js', loc: { line: 1, col: 1 } }],
+      },
+    ];
+    vi.mocked(findNavigationTargets).mockReturnValue(mockTargets);
+
+    const highlightedHtml =
+      'export <span class="navLink" data-nav-target="true" data-nav-idx="0">MyComponent</span>';
+
+    render(<CodeEditor {...defaultProps} highlightedCode={highlightedHtml} />);
+
+    const link = screen.getByText('MyComponent');
+    expect(link).toBeDefined();
+    expect(link.getAttribute('data-nav-target')).toBe('true');
+    expect(link.getAttribute('data-nav-idx')).toBe('0');
+  });
+
+  it('shows correct popup header for export type targets on click', () => {
+    const mockTargets = [
+      {
+        type: 'export',
+        name: 'MyComponent',
+        start: 7,
+        end: 18,
+        targets: [
+          { filePath: 'src/components/Other.js', fileName: 'Other.js', loc: { line: 5, col: 1 } },
+        ],
+      },
+    ];
+    vi.mocked(findNavigationTargets).mockReturnValue(mockTargets);
+
+    const highlightedHtml =
+      'export <span class="navLink" data-nav-target="true" data-nav-idx="0">MyComponent</span>';
+
+    const { container } = render(
+      <CodeEditor {...defaultProps} highlightedCode={highlightedHtml} />,
+    );
+
+    const link = screen.getByText('MyComponent');
+
+    // Mock client rect functions for positioning calculation
+    link.getBoundingClientRect = () => ({
+      left: 100,
+      top: 150,
+      width: 80,
+      height: 20,
+    });
+
+    const textarea = container.querySelector('textarea');
+    textarea.getBoundingClientRect = () => ({
+      left: 50,
+      top: 100,
+      width: 500,
+      height: 400,
+    });
+
+    // Click the nav link
+    fireEvent.click(link);
+
+    // Verify popup content
+    expect(screen.getByText('Referenced in')).toBeDefined();
+    expect(screen.getByText('Other.js')).toBeDefined();
+    expect(screen.getByText(':5')).toBeDefined();
+  });
+
+  it('shows correct popup header for import type targets on click', () => {
+    const mockTargets = [
+      {
+        type: 'import',
+        name: './Button',
+        start: 7,
+        end: 18,
+        targets: [
+          { filePath: 'src/components/Button.js', fileName: 'Button.js', loc: { line: 1, col: 1 } },
+        ],
+      },
+    ];
+    vi.mocked(findNavigationTargets).mockReturnValue(mockTargets);
+
+    const highlightedHtml =
+      'import <span class="navLink" data-nav-target="true" data-nav-idx="0">./Button</span>';
+
+    const { container } = render(
+      <CodeEditor {...defaultProps} highlightedCode={highlightedHtml} />,
+    );
+
+    const link = screen.getByText('./Button');
+    link.getBoundingClientRect = () => ({ left: 100, top: 150, width: 80, height: 20 });
+    const textarea = container.querySelector('textarea');
+    textarea.getBoundingClientRect = () => ({ left: 50, top: 100, width: 500, height: 400 });
+
+    fireEvent.click(link);
+
+    expect(screen.getByText('Open Import')).toBeDefined();
+    expect(screen.getByText('Button.js')).toBeDefined();
+  });
+
+  it('calls onJumpToTarget when popup target item is clicked', () => {
+    const onJumpToTarget = vi.fn();
+    const mockTargets = [
+      {
+        type: 'export',
+        name: 'MyComponent',
+        start: 7,
+        end: 18,
+        targets: [
+          { filePath: 'src/components/Other.js', fileName: 'Other.js', loc: { line: 5, col: 2 } },
+        ],
+      },
+    ];
+    vi.mocked(findNavigationTargets).mockReturnValue(mockTargets);
+
+    const highlightedHtml =
+      'export <span class="navLink" data-nav-target="true" data-nav-idx="0">MyComponent</span>';
+
+    const { container } = render(
+      <CodeEditor
+        {...defaultProps}
+        highlightedCode={highlightedHtml}
+        onJumpToTarget={onJumpToTarget}
+      />,
+    );
+
+    const link = screen.getByText('MyComponent');
+    link.getBoundingClientRect = () => ({ left: 100, top: 150, width: 80, height: 20 });
+    const textarea = container.querySelector('textarea');
+    textarea.getBoundingClientRect = () => ({ left: 50, top: 100, width: 500, height: 400 });
+
+    fireEvent.click(link);
+
+    const popupItem = screen.getByText('Other.js');
+    fireEvent.click(popupItem);
+
+    expect(onJumpToTarget).toHaveBeenCalledWith('src/components/Other.js', { line: 5, col: 2 });
+  });
+});
