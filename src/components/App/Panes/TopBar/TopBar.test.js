@@ -225,4 +225,77 @@ describe('TopBar', () => {
     const scratchBtn = await screen.findByText('New Project from Scratch');
     expect(scratchBtn).toBeDefined();
   });
+
+  it('handles dynamic tooltips, history dropdown toggle, reverse order list, and clearing history', async () => {
+    const editorStateUpdate = vi.fn();
+    const editorStateMock = Object.assign(editorStateUpdate, {
+      fileContents: {},
+      navigationHistory: {
+        stack: [
+          { filePath: 'src/App.js', loc: { line: 10, col: 1 }, label: 'App.js' },
+          { filePath: 'src/index.css', loc: { line: 20, col: 1 }, label: 'index.css' },
+          { filePath: 'src/utils.js', loc: { line: 30, col: 1 }, label: 'utils.js' },
+        ],
+        currentIndex: 1,
+      },
+    });
+
+    TabState.useState.mockReturnValue({
+      openTabs: [],
+      activeTabId: null,
+    });
+    AppState.useState.mockReturnValue({
+      theme: 'dark',
+      fs: { mode: null },
+      projectName: 'Test Project',
+    });
+    SidebarState.useState.mockReturnValue({ folderTree: [] });
+    EditorState.useState.mockReturnValue(editorStateMock);
+
+    render(<TopBar />);
+
+    // 1. Verify dynamic tooltips
+    const backBtn = screen.getByTestId('go-back-button');
+    const forwardBtn = screen.getByTestId('go-forward-button');
+    expect(backBtn.getAttribute('title')).toBe('Go Back to App.js:10');
+    expect(forwardBtn.getAttribute('title')).toBe('Go Forward to utils.js:30');
+
+    // 2. Open History dropdown
+    const historyBtn = screen.getByTestId('history-dropdown-button');
+    expect(historyBtn).toBeDefined();
+    fireEvent.click(historyBtn);
+
+    // 3. Verify dropdown content rendered in reverse chronological order and overlay presence
+    const dropdown = screen.getByTestId('history-dropdown');
+    const overlay = screen.getByTestId('history-dropdown-overlay');
+    expect(dropdown).toBeDefined();
+    expect(overlay).toBeDefined();
+
+    const items = screen.getAllByRole('menuitem');
+    expect(items.length).toBe(3);
+    // Index 2 (utils.js) is first in reverse order
+    expect(items[0].textContent).toContain('utils.js');
+    expect(items[0].textContent).toContain('L30');
+    // Index 1 (index.css) is second
+    expect(items[1].textContent).toContain('index.css');
+    expect(items[1].textContent).toContain('L20');
+    // Index 0 (App.js) is third
+    expect(items[2].textContent).toContain('App.js');
+    expect(items[2].textContent).toContain('L10');
+
+    // Verify overlay click closes the dropdown
+    fireEvent.click(overlay);
+    expect(screen.queryByTestId('history-dropdown')).toBeNull();
+
+    // Re-open dropdown to test clear history
+    fireEvent.click(historyBtn);
+    expect(screen.getByTestId('history-dropdown')).toBeDefined();
+
+    // 4. Verify clearing history
+    const clearBtn = screen.getByTestId('clear-history-button');
+    expect(clearBtn).toBeDefined();
+    fireEvent.click(clearBtn);
+
+    expect(editorStateUpdate).toHaveBeenCalled();
+  });
 });

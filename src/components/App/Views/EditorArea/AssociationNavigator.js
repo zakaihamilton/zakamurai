@@ -6,6 +6,55 @@ import {
 } from '@/utils/navigation';
 import { useCallback, useMemo } from 'react';
 
+const recordJump = (draft, originPath, originLoc, targetPath, targetLoc) => {
+  const history = draft.navigationHistory || { stack: [], currentIndex: -1 };
+  let stack = [...(history.stack || [])];
+  let currentIndex = history.currentIndex;
+
+  const origin = {
+    filePath: originPath,
+    loc: originLoc
+      ? { line: originLoc.line, col: originLoc.col ?? 1, index: originLoc.index ?? 0 }
+      : { line: 1, col: 1, index: 0 },
+    label: originPath.substring(originPath.lastIndexOf('/') + 1),
+  };
+
+  const target = {
+    filePath: targetPath,
+    loc: targetLoc
+      ? { line: targetLoc.line, col: targetLoc.col ?? 1, index: targetLoc.index ?? 0 }
+      : { line: 1, col: 1, index: 0 },
+    label: targetPath.substring(targetPath.lastIndexOf('/') + 1),
+  };
+
+  if (currentIndex >= 0 && currentIndex < stack.length - 1) {
+    stack = stack.slice(0, currentIndex + 1);
+  }
+
+  const lastItem = stack[stack.length - 1];
+  const isDifferentFromLast =
+    !lastItem ||
+    lastItem.filePath !== origin.filePath ||
+    Math.abs(lastItem.loc.line - origin.loc.line) > 1;
+
+  if (isDifferentFromLast) {
+    stack.push(origin);
+  }
+
+  stack.push(target);
+
+  if (stack.length > 50) {
+    stack = stack.slice(stack.length - 50);
+  }
+
+  currentIndex = stack.length - 1;
+
+  draft.navigationHistory = {
+    stack,
+    currentIndex,
+  };
+};
+
 export default function useAssociationNavigator({
   filePath,
   cursorPos,
@@ -89,21 +138,14 @@ export default function useAssociationNavigator({
         line: targetLoc.line,
         timestamp: Date.now(),
       };
+      recordJump(draft, filePath, cursorPos, targetPath, targetLoc);
     });
 
     shouldScrollRef.current = {
       filePath: targetPath,
       line: targetLoc.line,
     };
-  }, [
-    associatedPath,
-    filePath,
-    cursorPos?.index,
-    state,
-    tabState,
-    localContentRef,
-    shouldScrollRef,
-  ]);
+  }, [associatedPath, filePath, cursorPos, state, tabState, localContentRef, shouldScrollRef]);
 
   const handleJumpToTarget = useCallback(
     (targetPath, targetLoc) => {
@@ -141,6 +183,7 @@ export default function useAssociationNavigator({
           line: targetLoc.line,
           timestamp: Date.now(),
         };
+        recordJump(draft, filePath, cursorPos, targetPath, targetLoc);
       });
 
       shouldScrollRef.current = {
@@ -148,7 +191,7 @@ export default function useAssociationNavigator({
         line: targetLoc.line,
       };
     },
-    [state, tabState, shouldScrollRef],
+    [state, tabState, shouldScrollRef, filePath, cursorPos],
   );
 
   return {

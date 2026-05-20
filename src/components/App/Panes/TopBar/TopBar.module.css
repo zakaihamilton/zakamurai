@@ -10,7 +10,8 @@
   justify-content: space-between;
   padding: 0 14px;
   background: var(--glass-bg);
-  backdrop-filter: var(--glass-blur);
+  backdrop-filter: none;
+  backdrop-filter: none;
   position: sticky;
   top: 0;
   z-index: 1000;
@@ -512,4 +513,226 @@
   background: var(--border);
   margin: 4px 8px;
   opacity: 0.5;
+}
+
+.navigationControls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-right: 18px;
+  flex-shrink: 0;
+}
+
+.navButton {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg-surface);
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s var(--ease-premium);
+  padding: 0;
+}
+
+.navButton:hover:not(.disabled) {
+  background: var(--bg-hover);
+  border-color: var(--accent);
+  color: var(--text-main);
+  transform: translateY(-1px);
+}
+
+.navButton:active:not(.disabled) {
+  transform: translateY(0) scale(0.95);
+}
+
+.navButton.disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  background: transparent;
+  border-color: var(--border-light);
+  color: var(--text-muted);
+}
+
+@media (width <= 768px) {
+  .navigationControls {
+    display: none;
+  }
+}
+
+.historyWrapper {
+  position: relative;
+  display: inline-flex;
+}
+
+.historyDropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgb(21 24 27 / 82%);
+  backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-lg);
+  border-radius: 12px;
+  z-index: 1010;
+  min-width: 280px;
+  max-width: 360px;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  animation: dropdown-fade-in 0.18s var(--ease-premium);
+}
+
+:global(.light) .historyDropdown {
+  background: rgb(255 255 255 / 82%);
+}
+
+@keyframes dropdown-fade-in {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-6px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+.historyHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 8px 8px;
+  border-bottom: 1px solid var(--border-light);
+  margin-bottom: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  user-select: none;
+}
+
+.clearHistoryBtn {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 4px 10px;
+  border-radius: 6px;
+  transition: all 0.2s var(--ease-premium);
+}
+
+.clearHistoryBtn:hover {
+  background: var(--bg-hover);
+  color: var(--text-main);
+  border-color: var(--accent);
+}
+
+.clearHistoryBtn:active {
+  transform: scale(0.95);
+}
+
+.historyList {
+  display: flex;
+  flex-direction: column;
+  max-height: 240px;
+  overflow-y: auto;
+  gap: 2px;
+
+  /* Scrollbar styling */
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+.historyList::-webkit-scrollbar {
+  width: 4px;
+}
+
+.historyList::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.historyList::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 2px;
+}
+
+.historyItem {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  padding: 8px 10px;
+  text-align: left;
+  font-size: 13px;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: all 0.2s var(--ease-premium);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: inherit;
+  width: 100%;
+  gap: 12px;
+}
+
+.historyItem:hover {
+  background: var(--bg-hover);
+  color: var(--text-main);
+}
+
+.historyLabel {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+
+.historyLoc {
+  font-size: 11px;
+  color: var(--text-muted);
+  opacity: 0.6;
+  font-family: var(--font-mono);
+  flex-shrink: 0;
+}
+
+.activeHistoryItem {
+  background: var(--accent-light) !important;
+  color: var(--accent) !important;
+  font-weight: 600;
+}
+
+.activeHistoryItem .historyLoc {
+  color: var(--accent);
+  opacity: 0.8;
+}
+
+.activeNav {
+  background: var(--bg-hover) !important;
+  border-color: var(--accent) !important;
+  color: var(--text-main) !important;
+}
+
+.dropdownOverlay {
+  position: fixed;
+  inset: 52px 0 0;
+  background: rgb(0 0 0 / 12%);
+  z-index: 1005;
+  animation: overlay-fade-in 0.18s var(--ease-premium);
+}
+
+@keyframes overlay-fade-in {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
 }

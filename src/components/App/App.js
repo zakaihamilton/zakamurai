@@ -91,6 +91,10 @@ export default function App() {
     fileContents: initialValues.contents,
     aiCompletionEnabled: initialValues.aiCompletionEnabled,
     isReadOnly: Settings.getEditorReadOnly(false),
+    navigationHistory: {
+      stack: [],
+      currentIndex: -1,
+    },
   });
 
   const promptState = PromptState.useState(null, {

@@ -121,4 +121,68 @@ describe('Shortcuts isMatch', () => {
     expect(Settings.setEditorReadOnly).toHaveBeenCalledWith(false);
     expect(showNotification).toHaveBeenCalledWith('Edit mode active', 'info');
   });
+
+  it('navigates back and forward correctly', () => {
+    const backShortcut = SHORTCUTS.find((s) => s.id === 'navigate-back');
+    const forwardShortcut = SHORTCUTS.find((s) => s.id === 'navigate-forward');
+
+    expect(backShortcut).toBeDefined();
+    expect(forwardShortcut).toBeDefined();
+
+    const mockStack = [
+      { filePath: 'src/App.js', loc: { line: 10, col: 5, index: 120 } },
+      { filePath: 'src/index.css', loc: { line: 5, col: 1, index: 40 } },
+      { filePath: 'src/utils.js', loc: { line: 20, col: 10, index: 310 } },
+    ];
+
+    const editorDraft = {
+      fileContents: {
+        'src/App.js': 'App content',
+        'src/index.css': 'CSS content',
+        'src/utils.js': 'Utils content',
+      },
+      navigationHistory: {
+        stack: mockStack,
+        currentIndex: 2,
+      },
+      cursorPos: {},
+      shouldScrollTo: null,
+    };
+
+    const editorState = vi.fn((producer) => {
+      producer(editorDraft);
+    });
+    editorState.navigationHistory = editorDraft.navigationHistory;
+    editorState.fileContents = editorDraft.fileContents;
+
+    const tabDraft = {
+      openTabs: [{ id: 'src/App.js', type: 'file', label: 'App.js' }],
+      activeTabId: 'src/utils.js',
+    };
+
+    const tabState = vi.fn((producer) => {
+      producer(tabDraft);
+    });
+
+    // Action: navigate back
+    backShortcut.action({ editorState, tabState });
+
+    // Expecting to jump to index 1 (src/index.css:5)
+    expect(editorDraft.navigationHistory.currentIndex).toBe(1);
+    expect(editorDraft.cursorPos['src/index.css']).toEqual({ line: 5, col: 1, index: 40 });
+    expect(editorDraft.shouldScrollTo.filePath).toBe('src/index.css');
+    expect(editorDraft.shouldScrollTo.line).toBe(5);
+    expect(tabDraft.activeTabId).toBe('src/index.css');
+    expect(tabDraft.openTabs.some((t) => t.id === 'src/index.css')).toBe(true);
+
+    // Action: navigate forward
+    forwardShortcut.action({ editorState, tabState });
+
+    // Expecting to jump back to index 2 (src/utils.js:20)
+    expect(editorDraft.navigationHistory.currentIndex).toBe(2);
+    expect(editorDraft.cursorPos['src/utils.js']).toEqual({ line: 20, col: 10, index: 310 });
+    expect(editorDraft.shouldScrollTo.filePath).toBe('src/utils.js');
+    expect(editorDraft.shouldScrollTo.line).toBe(20);
+    expect(tabDraft.activeTabId).toBe('src/utils.js');
+  });
 });

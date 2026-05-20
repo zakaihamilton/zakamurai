@@ -14,6 +14,7 @@ import styles from './TopBar.module.css';
 import useZipExporter from './ZipExporter';
 import ActionButtons from './subcomponents/ActionButtons';
 import Breadcrumb from './subcomponents/Breadcrumb';
+import NavigationControls from './subcomponents/NavigationControls';
 import ThemeToggle from './subcomponents/ThemeToggle';
 import TopBarMenu from './subcomponents/TopBarMenu';
 import WorkingIndicator from './subcomponents/WorkingIndicator';
@@ -110,6 +111,8 @@ export default function TopBar() {
           </span>
         </button>
       </Tooltip>
+
+      <NavigationControls />
 
       <Breadcrumb breadcrumb={breadcrumb} onBreadcrumbClick={handleBreadcrumbClick} />
       <div className={styles.centerSection} />

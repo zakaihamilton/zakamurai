@@ -32,6 +32,13 @@ export function useKeyboardHandler() {
 
       for (const shortcut of SHORTCUTS) {
         if (shortcut.isGlobal && shortcut.action && isMatch(e, shortcut)) {
+          if (
+            (shortcut.id === 'navigate-back' || shortcut.id === 'navigate-forward') &&
+            (e.target.tagName?.toLowerCase() === 'input' ||
+              e.target.tagName?.toLowerCase() === 'textarea')
+          ) {
+            continue;
+          }
           e.preventDefault();
           shortcut.action(states);
           return;

@@ -114,7 +114,132 @@ const toggleCssJsAction = ({ editorState, tabState, sidebarState }) => {
   });
 };
 
+const navigateToHistoryItem = ({ editorState, tabState }, nextIndex) => {
+  const history = editorState.navigationHistory;
+  if (!history || !history.stack) return;
+  const item = history.stack[nextIndex];
+  if (!item) return;
+
+  const targetPath = item.filePath;
+  const targetLoc = item.loc;
+  const targetContent = editorState.fileContents?.[targetPath] ?? '';
+
+  const fileName = targetPath.substring(targetPath.lastIndexOf('/') + 1);
+  const fileObj = {
+    name: fileName,
+    path: targetPath.split('/'),
+    content: targetContent,
+  };
+  const newTab = {
+    id: targetPath,
+    type: 'file',
+    label: fileName,
+    file: fileObj,
+  };
+
+  tabState((draft) => {
+    const existingTab = draft.openTabs.find((t) => t.id === targetPath);
+    if (!existingTab) {
+      draft.openTabs = [...draft.openTabs, newTab];
+    }
+    draft.activeTabId = targetPath;
+  });
+
+  editorState((draft) => {
+    if (!draft.cursorPos) {
+      draft.cursorPos = {};
+    }
+    draft.cursorPos[targetPath] = targetLoc;
+    draft.shouldScrollTo = {
+      filePath: targetPath,
+      line: targetLoc.line,
+      timestamp: Date.now(),
+    };
+    if (draft.navigationHistory) {
+      draft.navigationHistory.currentIndex = nextIndex;
+    }
+  });
+};
+
+const navigateBackAction = (states) => {
+  const { editorState } = states;
+  const history = editorState.navigationHistory;
+  if (!history || history.currentIndex <= 0) return;
+  navigateToHistoryItem(states, history.currentIndex - 1);
+};
+
+const navigateForwardAction = (states) => {
+  const { editorState } = states;
+  const history = editorState.navigationHistory;
+  if (!history || history.currentIndex >= history.stack.length - 1) return;
+  navigateToHistoryItem(states, history.currentIndex + 1);
+};
+
 export const SHORTCUTS = [
+  {
+    id: 'navigate-back',
+    group: SHORTCUT_GROUPS.NAVIGATION,
+    desc: 'Navigate Back',
+    key: 'ArrowLeft',
+    displayKey: 'Alt+←',
+    modifier: 'alt',
+    isGlobal: true,
+    action: navigateBackAction,
+  },
+  {
+    id: 'navigate-forward',
+    group: SHORTCUT_GROUPS.NAVIGATION,
+    desc: 'Navigate Forward',
+    key: 'ArrowRight',
+    displayKey: 'Alt+→',
+    modifier: 'alt',
+    isGlobal: true,
+    action: navigateForwardAction,
+  },
+  {
+    id: 'navigate-back-cmd',
+    group: SHORTCUT_GROUPS.NAVIGATION,
+    desc: 'Navigate Back',
+    key: '[',
+    displayKey: '⌘[',
+    modifier: 'cmd',
+    platform: 'mac',
+    isGlobal: true,
+    action: navigateBackAction,
+  },
+  {
+    id: 'navigate-forward-cmd',
+    group: SHORTCUT_GROUPS.NAVIGATION,
+    desc: 'Navigate Forward',
+    key: ']',
+    displayKey: '⌘]',
+    modifier: 'cmd',
+    platform: 'mac',
+    isGlobal: true,
+    action: navigateForwardAction,
+  },
+  {
+    id: 'navigate-back-ctrl-win',
+    group: SHORTCUT_GROUPS.NAVIGATION,
+    desc: 'Navigate Back',
+    key: '[',
+    displayKey: 'Ctrl+[',
+    modifier: 'ctrl',
+    platform: 'win',
+    isGlobal: true,
+    action: navigateBackAction,
+  },
+  {
+    id: 'navigate-forward-ctrl-win',
+    group: SHORTCUT_GROUPS.NAVIGATION,
+    desc: 'Navigate Forward',
+    key: ']',
+    displayKey: 'Ctrl+]',
+    modifier: 'ctrl',
+    platform: 'win',
+    isGlobal: true,
+    action: navigateForwardAction,
+  },
   {
     id: 'toggle-css-js',
     group: SHORTCUT_GROUPS.NAVIGATION,
