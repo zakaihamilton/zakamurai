@@ -1,10 +1,10 @@
-import { useMemo, useCallback } from 'react';
 import {
   findClassInCss,
   findClassReferenceInJs,
   getAssociatedFilePath,
   getStyleAtCursor,
 } from '@/utils/navigation';
+import { useCallback, useMemo } from 'react';
 
 export default function useAssociationNavigator({
   filePath,
@@ -90,7 +90,15 @@ export default function useAssociationNavigator({
       filePath: targetPath,
       line: targetLoc.line,
     };
-  }, [associatedPath, filePath, cursorPos?.index, state, tabState, localContentRef, shouldScrollRef]);
+  }, [
+    associatedPath,
+    filePath,
+    cursorPos?.index,
+    state,
+    tabState,
+    localContentRef,
+    shouldScrollRef,
+  ]);
 
   const handleJumpToTarget = useCallback(
     (targetPath, targetLoc) => {

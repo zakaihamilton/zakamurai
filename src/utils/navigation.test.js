@@ -2,19 +2,19 @@ import { describe, expect, it } from 'vitest';
 import {
   findClassInCss,
   findClassReferenceInJs,
+  findComponentDefinition,
   findDefiningCssFiles,
+  findImportSource,
+  findNavigationTargets,
+  findReferencingExportJsFiles,
   findReferencingJsFiles,
   getAssociatedFilePath,
   getCssImports,
+  getExportRanges,
   getImportRanges,
   getStyleAtCursor,
   resolveImportPath,
   resolveRelativePath,
-  findNavigationTargets,
-  getExportRanges,
-  findReferencingExportJsFiles,
-  findImportSource,
-  findComponentDefinition,
 } from './navigation';
 
 describe('navigation utils', () => {
@@ -555,7 +555,8 @@ describe('navigation utils', () => {
   describe('findNavigationTargets with components', () => {
     it('returns component targets for capitalized JSX tags', () => {
       const fileContents = {
-        'src/App.js': "import Button from './Button';\n<Button onClick={click}><Card.Item>Text</Card.Item></Button>",
+        'src/App.js':
+          "import Button from './Button';\n<Button onClick={click}><Card.Item>Text</Card.Item></Button>",
         'src/Button.js': 'export default function Button() {}',
       };
       const targets = findNavigationTargets(

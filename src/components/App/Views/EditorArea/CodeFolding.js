@@ -1,7 +1,7 @@
-import { useMemo, useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
+import { getCssBlockFolds, isCssPath } from './CssFolding';
 import { getFoldStarts, getVisibleFoldedContent } from './Folding';
 import { getJavaScriptBlockFolds, isJavaScriptPath } from './JavaScriptFolding';
-import { getCssBlockFolds, isCssPath } from './CssFolding';
 import { getJsonObjectFolds, isJsonPath } from './JsonFolding';
 
 export default function useCodeFolding({

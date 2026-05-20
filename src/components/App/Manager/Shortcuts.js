@@ -1,3 +1,4 @@
+import Settings from '@/components/Storage/Settings';
 import {
   findClassInCss,
   findClassReferenceInJs,
@@ -5,7 +6,6 @@ import {
   getStyleAtCursor,
 } from '@/utils/navigation';
 import { isMac } from '@/utils/os';
-import Settings from '@/components/Storage/Settings';
 
 export const SHORTCUT_GROUPS = {
   NAVIGATION: 'Navigation',

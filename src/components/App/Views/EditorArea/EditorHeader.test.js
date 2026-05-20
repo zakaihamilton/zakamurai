@@ -1,6 +1,6 @@
+import { formatShortcut } from '@/utils/os';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import { formatShortcut } from '@/utils/os';
 import EditorHeader from './EditorHeader';
 
 vi.mock('@/components/Core/Base/Icons', () => ({

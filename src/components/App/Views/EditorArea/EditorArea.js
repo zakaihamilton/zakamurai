@@ -15,13 +15,13 @@ import FindHandler from './FindHandler';
 import HistoryHandler from './HistoryHandler';
 import SyncHandler from './SyncHandler';
 
-import useFileLoader from './FileLoader';
+import useAssociationNavigator from './AssociationNavigator';
 import useCodeFolding from './CodeFolding';
+import useFileLoader from './FileLoader';
+import useHighlightLoader from './HighlightLoader';
+import useScrollHandler from './ScrollHandler';
 import SideBySideEditorView from './SideBySideEditorView';
 import SingleEditorView from './SingleEditorView';
-import useAssociationNavigator from './AssociationNavigator';
-import useScrollHandler from './ScrollHandler';
-import useHighlightLoader from './HighlightLoader';
 
 export const EditorState = createState('EditorState');
 const EditorAreaUiState = createState('EditorAreaUiState');
@@ -135,7 +135,6 @@ function EditorAreaInner({ file, fsHandle }) {
     [state],
   );
   const localContentRef = useRef(localContent);
-  const loadedLocalFileRef = useRef(null);
 
   useEffect(() => {
     localContentRef.current = localContent;
@@ -151,18 +150,13 @@ function EditorAreaInner({ file, fsHandle }) {
     state,
   });
 
-  const {
-    foldStarts,
-    collapsedFoldIds,
-    visibleFoldedContent,
-    toggleFold,
-    foldLabel,
-  } = useCodeFolding({
-    filePath,
-    localContent,
-    collapsedFolds,
-    setCollapsedFolds,
-  });
+  const { foldStarts, collapsedFoldIds, visibleFoldedContent, toggleFold, foldLabel } =
+    useCodeFolding({
+      filePath,
+      localContent,
+      collapsedFolds,
+      setCollapsedFolds,
+    });
 
   const linesCount = useMemo(() => countLines(localContent), [localContent]);
   const editorContent = visibleFoldedContent.content;
@@ -203,18 +197,15 @@ function EditorAreaInner({ file, fsHandle }) {
   const cursorPos = state.cursorPos?.[filePath];
   const aiCompletionEnabled = state.aiCompletionEnabled === true;
 
-  const {
-    associatedPath,
-    handleNavigateToAssociated,
-    handleJumpToTarget,
-  } = useAssociationNavigator({
-    filePath,
-    cursorPos,
-    localContentRef,
-    state,
-    tabState,
-    shouldScrollRef,
-  });
+  const { associatedPath, handleNavigateToAssociated, handleJumpToTarget } =
+    useAssociationNavigator({
+      filePath,
+      cursorPos,
+      localContentRef,
+      state,
+      tabState,
+      shouldScrollRef,
+    });
 
   useScrollHandler({
     filePath,
@@ -273,10 +264,7 @@ function EditorAreaInner({ file, fsHandle }) {
     }
   };
 
-  const {
-    highlightedCode,
-    originalHighlightedCode,
-  } = useHighlightLoader({
+  const { highlightedCode, originalHighlightedCode } = useHighlightLoader({
     showSideBySide,
     hasDiff,
     localContent,

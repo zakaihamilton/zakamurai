@@ -1,7 +1,7 @@
+import { findNavigationTargets } from '@/utils/navigation';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import CodeEditor from './CodeEditor';
-import { findNavigationTargets } from '@/utils/navigation';
 
 vi.mock('@/utils/navigation', () => ({
   findNavigationTargets: vi.fn(() => []),
@@ -62,7 +62,11 @@ describe('CodeEditor', () => {
         end: 18,
         targets: [
           { filePath: 'src/components/Other.js', fileName: 'Other.js', loc: { line: 5, col: 1 } },
-          { filePath: 'src/components/Another.js', fileName: 'Another.js', loc: { line: 10, col: 1 } },
+          {
+            filePath: 'src/components/Another.js',
+            fileName: 'Another.js',
+            loc: { line: 10, col: 1 },
+          },
         ],
       },
     ];
@@ -113,7 +117,11 @@ describe('CodeEditor', () => {
         end: 18,
         targets: [
           { filePath: 'src/components/Button.js', fileName: 'Button.js', loc: { line: 1, col: 1 } },
-          { filePath: 'src/components/Button.css', fileName: 'Button.css', loc: { line: 1, col: 1 } },
+          {
+            filePath: 'src/components/Button.css',
+            fileName: 'Button.css',
+            loc: { line: 1, col: 1 },
+          },
         ],
       },
     ];
@@ -137,7 +145,7 @@ describe('CodeEditor', () => {
     expect(screen.getByText('Button.js')).toBeDefined();
     expect(screen.getByText('Button.css')).toBeDefined();
   });
-  
+
   it('shows correct popup header for component type targets on click', () => {
     const mockTargets = [
       {
@@ -147,7 +155,11 @@ describe('CodeEditor', () => {
         end: 18,
         targets: [
           { filePath: 'src/components/Button.js', fileName: 'Button.js', loc: { line: 2, col: 1 } },
-          { filePath: 'src/components/Button.tsx', fileName: 'Button.tsx', loc: { line: 2, col: 1 } },
+          {
+            filePath: 'src/components/Button.tsx',
+            fileName: 'Button.tsx',
+            loc: { line: 2, col: 1 },
+          },
         ],
       },
     ];

@@ -12,9 +12,11 @@ import Settings from '@/components/Storage/Settings';
 import Select from '@/components/Widgets/Select';
 import Tooltip from '@/components/Widgets/Tooltip/Tooltip';
 import { formatShortcut } from '@/utils/os';
-import React, { useCallback, useEffect, useRef } from 'react';
+import React, { useCallback, useEffect } from 'react';
+import useModelDownloader from './ModelDownloader';
 import styles from './Prompt.module.css';
-import ModelManager from './subcomponents/ModelManager';
+import usePromptHistory from './PromptHistory';
+import ModelDownloader from './subcomponents/ModelManager';
 import ReasoningPanel from './subcomponents/ReasoningPanel';
 
 export const PromptState = createState('PromptState');
@@ -52,35 +54,16 @@ export default function Prompt() {
     modelCacheError = '',
     animatedWidth = promptState?.promptWidth ?? 0,
   } = promptUiState || {};
-  const setPromptUiValue = useCallback(
-    (key, nextValue) => {
+
+  const setAnimatedWidth = useCallback(
+    (nextValue) => {
       promptUiState((draft) => {
-        draft[key] = typeof nextValue === 'function' ? nextValue(draft[key]) : nextValue;
+        draft.animatedWidth =
+          typeof nextValue === 'function' ? nextValue(draft.animatedWidth) : nextValue;
       });
     },
     [promptUiState],
   );
-  const setCachedModelIds = useCallback(
-    (nextValue) => setPromptUiValue('cachedModelIds', nextValue),
-    [setPromptUiValue],
-  );
-  const setModelCacheWork = useCallback(
-    (nextValue) => setPromptUiValue('modelCacheWork', nextValue),
-    [setPromptUiValue],
-  );
-  const setModelCacheProgress = useCallback(
-    (nextValue) => setPromptUiValue('modelCacheProgress', nextValue),
-    [setPromptUiValue],
-  );
-  const setModelCacheError = useCallback(
-    (nextValue) => setPromptUiValue('modelCacheError', nextValue),
-    [setPromptUiValue],
-  );
-  const setAnimatedWidth = useCallback(
-    (nextValue) => setPromptUiValue('animatedWidth', nextValue),
-    [setPromptUiValue],
-  );
-  const hasLoadedModelCacheRef = useRef(false);
 
   const logState = LogState.usePassiveState();
   const { isSystemProcessing, isAIProcessing } = LogState.useState([
@@ -92,61 +75,15 @@ export default function Prompt() {
   const tabState = TabState.useState();
   const editorState = EditorState.useState();
 
-  const loadCachedModelIds = () => {
-    if (hasLoadedModelCacheRef.current) return;
-    hasLoadedModelCacheRef.current = true;
+  const { loadCachedModelIds, openModelManager, closeModelManager, handleModelCacheAction } =
+    useModelDownloader(promptUiState);
 
-    refreshCachedModelIds();
-  };
-
-  const refreshCachedModelIds = () => {
-    return import('@/components/AI/WebLLMAPI')
-      .then(({ getCachedWebLLMModelIds }) => getCachedWebLLMModelIds())
-      .then(setCachedModelIds)
-      .catch((error) => {
-        hasLoadedModelCacheRef.current = false;
-        console.warn('[Prompt] Failed to load cached model metadata:', error);
-      });
-  };
-
-  const openModelManager = () => {
-    promptUiState((draft) => {
-      draft.isModelManagerOpen = true;
-    });
-    loadCachedModelIds();
-  };
-
-  const closeModelManager = () => {
-    promptUiState((draft) => {
-      draft.isModelManagerOpen = false;
-    });
-    setModelCacheError('');
-    setModelCacheProgress('');
-  };
-
-  const handleModelCacheAction = async (model, action) => {
-    const key = `${action}:${model.id}`;
-    setModelCacheWork(key);
-    setModelCacheError('');
-    setModelCacheProgress(action === 'cache' ? 'Preparing download...' : 'Removing cache...');
-
-    try {
-      if (action === 'cache') {
-        const { cacheWebLLMModel } = await import('@/components/AI/WebLLMAPI');
-        await cacheWebLLMModel(model.id, setModelCacheProgress);
-      } else {
-        const { deleteCachedWebLLMModel } = await import('@/components/AI/WebLLMAPI');
-        await deleteCachedWebLLMModel(model.id);
-      }
-      hasLoadedModelCacheRef.current = true;
-      await refreshCachedModelIds();
-      setModelCacheProgress(action === 'cache' ? 'Cached and ready.' : 'Cache removed.');
-    } catch (error) {
-      setModelCacheError(error.message || String(error));
-    } finally {
-      setModelCacheWork(null);
-    }
-  };
+  const { handleArrowUp, handleArrowDown, addToHistory } = usePromptHistory(
+    val,
+    historyIndex,
+    draftVal,
+    promptUiState,
+  );
 
   const handleStop = (e) => {
     e.preventDefault();
@@ -173,12 +110,7 @@ export default function Prompt() {
     if (!val.trim() || isAIProcessing) return;
 
     const userMsg = val;
-    promptUiState((draft) => {
-      draft.val = '';
-      draft.historyIndex = -1;
-      draft.draftVal = '';
-    });
-    Settings.addPromptHistory(userMsg);
+    addToHistory(userMsg);
 
     const currentActiveTabId = tabState.activeTabId;
     const currentActiveTab = tabState.openTabs.find((t) => t.id === currentActiveTabId);
@@ -311,26 +243,9 @@ export default function Prompt() {
         send(e);
       }
     } else if (e.key === 'ArrowUp') {
-      const history = Settings.getPromptHistory();
-      if (historyIndex < history.length - 1) {
-        const newIndex = historyIndex + 1;
-        promptUiState((draft) => {
-          if (historyIndex === -1) {
-            draft.draftVal = val;
-          }
-          draft.historyIndex = newIndex;
-          draft.val = history[newIndex];
-        });
-      }
+      handleArrowUp();
     } else if (e.key === 'ArrowDown') {
-      const history = Settings.getPromptHistory();
-      if (historyIndex > -1) {
-        const newIndex = historyIndex - 1;
-        promptUiState((draft) => {
-          draft.historyIndex = newIndex;
-          draft.val = newIndex === -1 ? draftVal : history[newIndex];
-        });
-      }
+      handleArrowDown();
     }
   };
 
@@ -474,7 +389,7 @@ export default function Prompt() {
             <code>{selectedModelInfo.id}</code>
           </div>
         </div>
-        <ModelManager
+        <ModelDownloader
           isOpen={isModelManagerOpen}
           selectedModelId={selectedModelInfo.id}
           cachedModelIds={cachedModelIds}

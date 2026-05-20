@@ -12,8 +12,8 @@ vi.mock('@/components/Storage/Settings', () => ({
   },
 }));
 
-import { isMac } from '@/utils/os';
 import Settings from '@/components/Storage/Settings';
+import { isMac } from '@/utils/os';
 
 describe('Shortcuts isMatch', () => {
   it('matches Cmd+B on Mac', () => {
@@ -84,7 +84,13 @@ describe('Shortcuts isMatch', () => {
     isMac.mockReturnValue(true);
     const shortcut = { key: 'b', modifier: 'alt' };
     const eventMatch = { key: 'b', metaKey: false, ctrlKey: false, shiftKey: false, altKey: true };
-    const eventMismatch = { key: 'b', metaKey: false, ctrlKey: false, shiftKey: false, altKey: false };
+    const eventMismatch = {
+      key: 'b',
+      metaKey: false,
+      ctrlKey: false,
+      shiftKey: false,
+      altKey: false,
+    };
     expect(isMatch(eventMatch, shortcut)).toBe(true);
     expect(isMatch(eventMismatch, shortcut)).toBe(false);
   });
@@ -94,7 +100,7 @@ describe('Shortcuts isMatch', () => {
     expect(shortcut).toBeDefined();
 
     const showNotification = vi.fn();
-    let draftState = { isReadOnly: false };
+    const draftState = { isReadOnly: false };
     const editorState = vi.fn((producer) => {
       producer(draftState);
     });

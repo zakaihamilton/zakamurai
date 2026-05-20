@@ -166,13 +166,14 @@ export default function CodeEditor({
       const x = rect.left - textareaRect.left;
       const y = rect.top - textareaRect.top + rect.height / 2;
 
-      const className = target.type === 'import'
-        ? `import:${target.name}`
-        : target.type === 'export'
-        ? `export:${target.name}`
-        : target.type === 'component'
-        ? `component:${target.name}`
-        : target.className;
+      const className =
+        target.type === 'import'
+          ? `import:${target.name}`
+          : target.type === 'export'
+            ? `export:${target.name}`
+            : target.type === 'component'
+              ? `component:${target.name}`
+              : target.className;
 
       setPopup((prev) => {
         if (prev.visible && prev.className === className) {
@@ -191,7 +192,7 @@ export default function CodeEditor({
         };
       });
     },
-    [isReadOnly, targets, isCssFile],
+    [isReadOnly, targets, isCssFile, onJumpToTarget],
   );
 
   return (
@@ -230,12 +231,12 @@ export default function CodeEditor({
               {popup.isImport
                 ? 'Open Import'
                 : popup.isExport
-                ? 'Referenced in'
-                : popup.isComponent
-                ? 'Component Definition'
-                : popup.isCss
-                ? 'Referenced in JS'
-                : 'Defined in CSS'}
+                  ? 'Referenced in'
+                  : popup.isComponent
+                    ? 'Component Definition'
+                    : popup.isCss
+                      ? 'Referenced in JS'
+                      : 'Defined in CSS'}
             </span>
             <Tooltip content="Close">
               <button

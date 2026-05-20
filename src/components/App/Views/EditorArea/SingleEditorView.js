@@ -1,6 +1,6 @@
 import React from 'react';
-import Gutter from './Gutter';
 import CodeEditor from './CodeEditor';
+import Gutter from './Gutter';
 
 export default function SingleEditorView({
   styles,

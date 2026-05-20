@@ -1,5 +1,5 @@
-import { useEffect, useRef } from 'react';
 import { getImportRanges, resolveRelativePath } from '@/utils/navigation';
+import { useEffect, useRef } from 'react';
 
 export default function useFileLoader({
   filePath,

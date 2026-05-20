@@ -1,11 +1,6 @@
 import { useEffect, useRef } from 'react';
 
-export default function useScrollHandler({
-  filePath,
-  state,
-  scrollContainerRef,
-  shouldScrollRef,
-}) {
+export default function useScrollHandler({ filePath, state, scrollContainerRef, shouldScrollRef }) {
   const lastScrollTimestampRef = useRef(null);
 
   useEffect(() => {

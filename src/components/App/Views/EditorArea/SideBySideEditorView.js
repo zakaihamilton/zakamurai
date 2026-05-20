@@ -1,7 +1,7 @@
-import React, { useRef } from 'react';
 import { Icons } from '@/components/Core/Base/Icons';
-import Gutter from './Gutter';
+import React, { useRef } from 'react';
 import CodeEditor from './CodeEditor';
+import Gutter from './Gutter';
 
 const countLines = (value) => {
   if (!value) return 1;
