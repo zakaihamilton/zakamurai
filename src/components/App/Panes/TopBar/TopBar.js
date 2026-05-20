@@ -5,6 +5,12 @@ import { PreviewState } from '@/components/App/PreviewState';
 import { EditorState } from '@/components/App/Views/EditorArea';
 import { LogState } from '@/components/App/Views/LogArea';
 import { Icons } from '@/components/Core/Base/Icons';
+import {
+  DEFAULT_CONTENTS,
+  DEFAULT_FILES,
+  SCRATCH_CONTENTS,
+  SCRATCH_FILES,
+} from '@/components/Storage/InitialData';
 import Settings from '@/components/Storage/Settings';
 import Tooltip from '@/components/Widgets/Tooltip/Tooltip';
 import { formatShortcut } from '@/utils/os';
@@ -18,6 +24,39 @@ import NavigationControls from './subcomponents/NavigationControls';
 import ThemeToggle from './subcomponents/ThemeToggle';
 import TopBarMenu from './subcomponents/TopBarMenu';
 import WorkingIndicator from './subcomponents/WorkingIndicator';
+
+export function resetNewProjectState({
+  template = 'default',
+  appState,
+  sidebarState,
+  tabState,
+  editorState,
+  previewState,
+}) {
+  const isScratch = template === 'scratch';
+  const initialFiles = isScratch ? SCRATCH_FILES : DEFAULT_FILES;
+  const initialContents = isScratch ? SCRATCH_CONTENTS : DEFAULT_CONTENTS;
+
+  appState((draft) => {
+    draft.projectName = Settings.getProjectName();
+  });
+  sidebarState((draft) => {
+    draft.folderTree = initialFiles;
+    draft.expandedFolders = {};
+  });
+  tabState((draft) => {
+    draft.openTabs = [];
+    draft.activeTabId = null;
+  });
+  editorState((draft) => {
+    draft.fileContents = initialContents;
+    draft.pendingDiffs = {};
+  });
+  previewState((draft) => {
+    draft.htmlContent = null;
+  });
+  Settings.setFileContents(initialContents);
+}
 
 export default function TopBar() {
   const appState = AppState.useState();
@@ -53,6 +92,14 @@ export default function TopBar() {
   const handleStartOver = async (template = 'default') => {
     await fs.unlinkProject();
     Settings.reset(template);
+    resetNewProjectState({
+      template,
+      appState,
+      sidebarState,
+      tabState,
+      editorState,
+      previewState,
+    });
     window.location.reload();
   };
 

@@ -4,10 +4,12 @@ import { TabState } from '@/components/App/Panes/TabBar';
 import { PreviewState } from '@/components/App/PreviewState';
 import { EditorState } from '@/components/App/Views/EditorArea';
 import { LogState } from '@/components/App/Views/LogArea';
+import { DEFAULT_CONTENTS, DEFAULT_FILES } from '@/components/Storage/InitialData';
+import Settings from '@/components/Storage/Settings';
 import { fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import TopBar from './TopBar';
+import TopBar, { resetNewProjectState } from './TopBar';
 
 // Mock URL methods
 global.URL.createObjectURL = vi.fn();
@@ -318,6 +320,54 @@ describe('TopBar', () => {
 
     const scratchBtn = await screen.findByText('New Project from Scratch');
     expect(scratchBtn).toBeDefined();
+  });
+
+  it('resets live file state before reloading for a new project', () => {
+    const makeState = (initial) =>
+      Object.assign(
+        vi.fn((producer) => {
+          producer(initial);
+        }),
+        initial,
+        { state: initial },
+      );
+    const appState = makeState({
+      theme: 'dark',
+      fs: { mode: 'local' },
+      projectName: 'Old Project',
+    });
+    const sidebarState = makeState({
+      folderTree: [{ name: 'old.js', type: 'file' }],
+      isSidebarOpen: true,
+    });
+    const tabState = makeState({
+      openTabs: [{ id: 'old.js', type: 'file', label: 'old.js' }],
+      activeTabId: 'old.js',
+    });
+    const editorState = makeState({
+      fileContents: { 'old.js': 'old content' },
+      pendingDiffs: { 'old.js': { originalContent: 'older content' } },
+    });
+    const previewState = makeState({ htmlContent: '<p>old</p>' });
+
+    Settings.reset('default');
+    resetNewProjectState({
+      template: 'default',
+      appState,
+      sidebarState,
+      tabState,
+      editorState,
+      previewState,
+    });
+
+    expect(appState.state.projectName).toBe('My App');
+    expect(sidebarState.state.folderTree).toBe(DEFAULT_FILES);
+    expect(tabState.state.openTabs).toEqual([]);
+    expect(tabState.state.activeTabId).toBeNull();
+    expect(editorState.state.fileContents).toBe(DEFAULT_CONTENTS);
+    expect(editorState.state.pendingDiffs).toEqual({});
+    expect(previewState.state.htmlContent).toBeNull();
+    expect(Settings.getFileContents()).toEqual(DEFAULT_CONTENTS);
   });
 
   it('handles dynamic tooltips, history dropdown toggle, reverse order list, and clearing history', async () => {
