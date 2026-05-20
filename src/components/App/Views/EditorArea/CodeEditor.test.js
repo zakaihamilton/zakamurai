@@ -330,4 +330,28 @@ describe('CodeEditor', () => {
     expect(onJumpToTarget).not.toHaveBeenCalled();
     expect(screen.queryByText('Referenced in')).toBeNull();
   });
+
+  it('uses expanded text when copying from a folded projection', () => {
+    const onCopySelection = vi.fn(() => 'full folded text');
+    const setData = vi.fn();
+
+    render(
+      <CodeEditor
+        {...defaultProps}
+        isReadOnly={false}
+        localContent="visible folded text"
+        highlightedCode="visible folded text"
+        onCopySelection={onCopySelection}
+      />,
+    );
+
+    const textarea = screen.getByRole('textbox');
+    textarea.setSelectionRange(0, textarea.value.length);
+    fireEvent.copy(textarea, {
+      clipboardData: { setData },
+    });
+
+    expect(onCopySelection).toHaveBeenCalledWith('visible folded text', 0, 19);
+    expect(setData).toHaveBeenCalledWith('text/plain', 'full folded text');
+  });
 });

@@ -43,7 +43,12 @@ describe('JsonFolding', () => {
   "nested": { ... },
   "name": "Zaka"
 }`);
-    expect(result.lineItems).toEqual([{ line: 1 }, { line: 2 }, { line: 5 }, { line: 6 }]);
+    expect(result.lineItems).toEqual([
+      expect.objectContaining({ line: 1 }),
+      expect.objectContaining({ line: 2 }),
+      expect.objectContaining({ line: 5 }),
+      expect.objectContaining({ line: 6 }),
+    ]);
     expect(result.hasCollapsedFolds).toBe(true);
   });
 });

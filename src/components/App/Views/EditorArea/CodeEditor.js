@@ -33,6 +33,7 @@ export default function CodeEditor({
   onCancelSuggestion,
   filePath,
   isReadOnly,
+  onCopySelection,
   navigationLinksEnabled = isReadOnly,
   onNavigateToAssociated,
   fileContents,
@@ -96,6 +97,20 @@ export default function CodeEditor({
       handleSelectionChange(e);
     },
     [handleChange, handleSelectionChange],
+  );
+
+  const handleCopy = useCallback(
+    (e) => {
+      if (!onCopySelection) return;
+
+      const textarea = e.currentTarget;
+      const text = onCopySelection(textarea.value, textarea.selectionStart, textarea.selectionEnd);
+      if (!text) return;
+
+      e.preventDefault();
+      e.clipboardData?.setData('text/plain', text);
+    },
+    [onCopySelection],
   );
 
   const { handleKeyDown } = useEditorShortcuts({
@@ -208,6 +223,7 @@ export default function CodeEditor({
         onClick={handleSelectionChange}
         onSelect={handleSelectionChange}
         onFocus={handleSelectionChange}
+        onCopy={handleCopy}
         readOnly={readOnly || isReadOnly}
         spellCheck="false"
         className={`${styles.textarea} ${isReadOnly ? styles.readOnlyTextarea : ''} ${

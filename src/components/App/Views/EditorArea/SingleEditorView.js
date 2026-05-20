@@ -16,7 +16,7 @@ export default function SingleEditorView({
   editorContent,
   handleChange,
   highlightedCode,
-  hasCollapsedFolds,
+  onCopySelection,
   cursorPos,
   suggestion,
   onAcceptSuggestion,
@@ -46,15 +46,16 @@ export default function SingleEditorView({
         localContent={editorContent}
         handleChange={handleChange}
         highlightedCode={highlightedCode}
-        onCursorUpdate={hasCollapsedFolds ? undefined : diffActions.handleCursorUpdate}
-        cursorPos={hasCollapsedFolds ? undefined : cursorPos}
+        onCursorUpdate={diffActions.handleCursorUpdate}
+        cursorPos={cursorPos}
         scrollContainerRef={scrollContainerRef}
         suggestion={suggestion}
         onAcceptSuggestion={onAcceptSuggestion}
         onCancelSuggestion={cancelSuggestion}
         filePath={filePath}
-        readOnly={hasCollapsedFolds}
+        readOnly={false}
         isReadOnly={isReadOnly}
+        onCopySelection={onCopySelection}
         navigationLinksEnabled={navigationLinksEnabled}
         onNavigateToAssociated={handleNavigateToAssociated}
         fileContents={fileContents}

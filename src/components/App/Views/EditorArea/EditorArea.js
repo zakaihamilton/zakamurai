@@ -12,6 +12,7 @@ import useCompletion from './CompletionHandler';
 import DiffHandler from './DiffHandler';
 import EditorHeader from './EditorHeader';
 import FindHandler from './FindHandler';
+import { applyFoldedContentEdit, getExpandedFoldedSelection } from './Folding';
 import HistoryHandler from './HistoryHandler';
 import SyncHandler from './SyncHandler';
 
@@ -168,7 +169,9 @@ function EditorAreaInner({ file, fsHandle }) {
   const hasCollapsedFolds = visibleFoldedContent.hasCollapsedFolds;
 
   const handleChange = (e) => {
-    const newVal = e.target.value;
+    const newVal = hasCollapsedFolds
+      ? applyFoldedContentEdit(localContentRef.current, e.target.value, editorLineItems)
+      : e.target.value;
     setLocalContent(newVal); // Synchronous update for the typing experience
 
     // Asynchronous dispatch to your state engine
@@ -405,6 +408,18 @@ function EditorAreaInner({ file, fsHandle }) {
           handleChange={handleChange}
           highlightedCode={highlightedCode}
           hasCollapsedFolds={hasCollapsedFolds}
+          onCopySelection={
+            hasCollapsedFolds
+              ? (projectedContent, start, end) =>
+                  getExpandedFoldedSelection(
+                    localContentRef.current,
+                    projectedContent,
+                    editorLineItems,
+                    start,
+                    end,
+                  )
+              : undefined
+          }
           cursorPos={cursorPos}
           suggestion={suggestion}
           onAcceptSuggestion={handleAcceptSuggestion}

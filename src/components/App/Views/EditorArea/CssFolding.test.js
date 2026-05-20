@@ -48,7 +48,12 @@ describe('CssFolding', () => {
 .link {
   color: blue;
 }`);
-    expect(result.lineItems).toEqual([{ line: 1 }, { line: 4 }, { line: 5 }, { line: 6 }]);
+    expect(result.lineItems).toEqual([
+      expect.objectContaining({ line: 1 }),
+      expect.objectContaining({ line: 4 }),
+      expect.objectContaining({ line: 5 }),
+      expect.objectContaining({ line: 6 }),
+    ]);
     expect(result.hasCollapsedFolds).toBe(true);
   });
 });
