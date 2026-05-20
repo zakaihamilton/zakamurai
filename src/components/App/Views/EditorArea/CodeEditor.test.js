@@ -132,6 +132,38 @@ describe('CodeEditor', () => {
     expect(screen.getByText('Open Import')).toBeDefined();
     expect(screen.getByText('Button.js')).toBeDefined();
   });
+  
+  it('shows correct popup header for component type targets on click', () => {
+    const mockTargets = [
+      {
+        type: 'component',
+        name: 'Button',
+        start: 7,
+        end: 18,
+        targets: [
+          { filePath: 'src/components/Button.js', fileName: 'Button.js', loc: { line: 2, col: 1 } },
+        ],
+      },
+    ];
+    vi.mocked(findNavigationTargets).mockReturnValue(mockTargets);
+
+    const highlightedHtml =
+      '<span class="navLink" data-nav-target="true" data-nav-idx="0">Button</span>';
+
+    const { container } = render(
+      <CodeEditor {...defaultProps} highlightedCode={highlightedHtml} />,
+    );
+
+    const link = screen.getByText('Button');
+    link.getBoundingClientRect = () => ({ left: 100, top: 150, width: 80, height: 20 });
+    const textarea = container.querySelector('textarea');
+    textarea.getBoundingClientRect = () => ({ left: 50, top: 100, width: 500, height: 400 });
+
+    fireEvent.click(link);
+
+    expect(screen.getByText('Component Definition')).toBeDefined();
+    expect(screen.getByText('Button.js')).toBeDefined();
+  });
 
   it('calls onJumpToTarget when popup target item is clicked', () => {
     const onJumpToTarget = vi.fn();

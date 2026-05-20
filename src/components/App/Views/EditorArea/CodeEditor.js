@@ -52,6 +52,7 @@ export default function CodeEditor({
     isCss: false,
     isImport: false,
     isExport: false,
+    isComponent: false,
   });
 
   const targets = useMemo(() => {
@@ -70,6 +71,7 @@ export default function CodeEditor({
       isCss: false,
       isImport: false,
       isExport: false,
+      isComponent: false,
     });
     lastReportedIndex.current = -1;
   }, [filePath]);
@@ -161,6 +163,8 @@ export default function CodeEditor({
         ? `import:${target.name}`
         : target.type === 'export'
         ? `export:${target.name}`
+        : target.type === 'component'
+        ? `component:${target.name}`
         : target.className;
 
       setPopup((prev) => {
@@ -176,6 +180,7 @@ export default function CodeEditor({
           isCss: isCssFile,
           isImport: target.type === 'import',
           isExport: target.type === 'export',
+          isComponent: target.type === 'component',
         };
       });
     },
@@ -219,6 +224,8 @@ export default function CodeEditor({
                 ? 'Open Import'
                 : popup.isExport
                 ? 'Referenced in'
+                : popup.isComponent
+                ? 'Component Definition'
                 : popup.isCss
                 ? 'Referenced in JS'
                 : 'Defined in CSS'}

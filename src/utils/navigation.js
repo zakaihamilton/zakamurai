@@ -675,6 +675,31 @@ export function findNavigationTargets(code, isCss, fileContents, filePath) {
     }
   }
 
+  // 4. Components in JSX tags
+  if (!isCss) {
+    const jsxTagRegex = /(?:<|<\/)([A-Z][a-zA-Z0-9_$]*)\b/g;
+    let match;
+    while ((match = jsxTagRegex.exec(code)) !== null) {
+      const componentName = match[1];
+      const start = match.index + match[0].indexOf(componentName);
+      const end = start + componentName.length;
+
+      // Avoid duplicates
+      if (!targets.some((t) => t.start === start && t.end === end)) {
+        const def = findComponentDefinition(filePath, componentName, fileContents || {});
+        if (def) {
+          targets.push({
+            type: 'component',
+            name: componentName,
+            start,
+            end,
+            targets: [def],
+          });
+        }
+      }
+    }
+  }
+
   return targets;
 }
 
@@ -765,4 +790,161 @@ export function findReferencingExportJsFiles(exportedFilePath, exportName, isDef
     }
   }
   return results;
+}
+
+/**
+ * Helper to get line, column, and index from a character index.
+ */
+function getLocFromIndex(code, index) {
+  if (!code || index === undefined || index < 0) return { line: 1, col: 1, index: 0 };
+  const before = code.substring(0, index);
+  const lines = before.split('\n');
+  return {
+    line: lines.length,
+    col: index - before.lastIndexOf('\n'),
+    index,
+  };
+}
+
+/**
+ * Parses ESM and CommonJS imports to trace the source file and naming of an imported symbol.
+ */
+export function findImportSource(jsCode, identifier) {
+  if (!jsCode || !identifier) return null;
+
+  // ESM Imports
+  const esmImportRegex = /import\s+([\s\S]*?)\s+from\s+['"]([^'"]+)['"]/g;
+  let match;
+  while ((match = esmImportRegex.exec(jsCode)) !== null) {
+    const importClause = match[1].trim();
+    const importPath = match[2];
+
+    const defaultRegex = new RegExp(`^${identifier}\\b`);
+    if (defaultRegex.test(importClause)) {
+      return { importPath, isDefault: true, originalName: null };
+    }
+
+    const bracesMatch = importClause.match(/\{([\s\S]*?)\}/);
+    if (bracesMatch) {
+      const namedImports = bracesMatch[1].split(',');
+      for (let item of namedImports) {
+        item = item.trim();
+        if (item.includes(' as ')) {
+          const [orig, alias] = item.split(/\s+as\s+/);
+          if (alias.trim() === identifier) {
+            return { importPath, isDefault: false, originalName: orig.trim() };
+          }
+        } else if (item === identifier) {
+          return { importPath, isDefault: false, originalName: identifier };
+        }
+      }
+    }
+
+    const namespaceRegex = new RegExp(`\\*\\s+as\\s+${identifier}\\b`);
+    if (namespaceRegex.test(importClause)) {
+      return { importPath, isNamespace: true, originalName: null };
+    }
+  }
+
+  // CommonJS requires
+  const cjsDefaultRegex = new RegExp(`(?:const|let|var)\\s+${identifier}\\s*=\\s*require\\(\\s*['"]([^'"]+)['"]\\s*\\)`);
+  const cjsMatch = jsCode.match(cjsDefaultRegex);
+  if (cjsMatch) {
+    return { importPath: cjsMatch[1], isDefault: true, originalName: null };
+  }
+
+  const cjsDestructureRegex = /(?:const|let|var)\s*\{([\s\S]*?)\}\s*=\s*require\(\s*['"]([^'"]+)['"]\s*\)/g;
+  while ((match = cjsDestructureRegex.exec(jsCode)) !== null) {
+    const destructureClause = match[1];
+    const importPath = match[2];
+    const items = destructureClause.split(',');
+    for (let item of items) {
+      item = item.trim();
+      if (item.includes(':')) {
+        const [orig, alias] = item.split(':');
+        if (alias.trim() === identifier) {
+          return { importPath, isDefault: false, originalName: orig.trim() };
+        }
+      } else if (item === identifier) {
+        return { importPath, isDefault: false, originalName: identifier };
+      }
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Resolves the location of a component's definition.
+ */
+export function findComponentDefinition(filePath, componentName, allFileContents) {
+  if (!filePath || !componentName || !allFileContents) return null;
+
+  const currentContent = allFileContents[filePath];
+  if (!currentContent) return null;
+
+  // 1. Check if the component is imported from another file
+  const importSource = findImportSource(currentContent, componentName);
+  if (importSource) {
+    const resolvedPath = resolveImportPath(filePath, importSource.importPath, allFileContents);
+    if (resolvedPath) {
+      const targetContent = allFileContents[resolvedPath];
+      if (targetContent) {
+        const targetFileName = resolvedPath.substring(resolvedPath.lastIndexOf('/') + 1);
+
+        const exportRanges = getExportRanges(targetContent);
+        let targetLoc = null;
+
+        if (importSource.isDefault) {
+          const defExport = exportRanges.find((r) => r.isDefault);
+          if (defExport) {
+            targetLoc = getLocFromIndex(targetContent, defExport.start);
+          }
+        } else if (importSource.originalName) {
+          const namedExport = exportRanges.find(
+            (r) => !r.isDefault && r.name === importSource.originalName,
+          );
+          if (namedExport) {
+            targetLoc = getLocFromIndex(targetContent, namedExport.start);
+          }
+        }
+
+        if (!targetLoc) {
+          const localDefRegex = new RegExp(
+            `\\b(const|let|var|function|class)\\s+${componentName}\\b`,
+          );
+          const match = targetContent.match(localDefRegex);
+          if (match) {
+            targetLoc = getLocFromIndex(targetContent, match.index);
+          }
+        }
+
+        if (!targetLoc) {
+          targetLoc = { line: 1, col: 1, index: 0 };
+        }
+
+        return {
+          filePath: resolvedPath,
+          fileName: targetFileName,
+          loc: targetLoc,
+        };
+      }
+    }
+  }
+
+  // 2. Check if defined locally
+  const localDefRegex = new RegExp(
+    `\\b(const|let|var|function|class)\\s+${componentName}\\b`,
+  );
+  const match = currentContent.match(localDefRegex);
+  if (match) {
+    const targetLoc = getLocFromIndex(currentContent, match.index);
+    return {
+      filePath,
+      fileName: filePath.substring(filePath.lastIndexOf('/') + 1),
+      loc: targetLoc,
+    };
+  }
+
+  return null;
 }

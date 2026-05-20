@@ -13,6 +13,8 @@ import {
   findNavigationTargets,
   getExportRanges,
   findReferencingExportJsFiles,
+  findImportSource,
+  findComponentDefinition,
 } from './navigation';
 
 describe('navigation utils', () => {
@@ -459,6 +461,115 @@ describe('navigation utils', () => {
       expect(exportTargets.length).toBe(1);
       expect(exportTargets[0].name).toBe('Button');
       expect(exportTargets[0].targets[0].filePath).toBe('src/components/Card.js');
+    });
+  });
+
+  describe('findImportSource', () => {
+    it('resolves ESM default and named imports with aliases and namespaces', () => {
+      const code = `
+        import Button from './Button';
+        import { Card, Table as CustomTable } from '../layout';
+        import * as Theme from '@/styles/theme';
+      `;
+      expect(findImportSource(code, 'Button')).toEqual({
+        importPath: './Button',
+        isDefault: true,
+        originalName: null,
+      });
+      expect(findImportSource(code, 'Card')).toEqual({
+        importPath: '../layout',
+        isDefault: false,
+        originalName: 'Card',
+      });
+      expect(findImportSource(code, 'CustomTable')).toEqual({
+        importPath: '../layout',
+        isDefault: false,
+        originalName: 'Table',
+      });
+      expect(findImportSource(code, 'Theme')).toEqual({
+        importPath: '@/styles/theme',
+        isNamespace: true,
+        originalName: null,
+      });
+    });
+
+    it('resolves CommonJS require statements', () => {
+      const code = `
+        const List = require('./List');
+        const { Grid, Column: FlexColumn } = require('../grid');
+      `;
+      expect(findImportSource(code, 'List')).toEqual({
+        importPath: './List',
+        isDefault: true,
+        originalName: null,
+      });
+      expect(findImportSource(code, 'Grid')).toEqual({
+        importPath: '../grid',
+        isDefault: false,
+        originalName: 'Grid',
+      });
+      expect(findImportSource(code, 'FlexColumn')).toEqual({
+        importPath: '../grid',
+        isDefault: false,
+        originalName: 'Column',
+      });
+    });
+  });
+
+  describe('findComponentDefinition', () => {
+    const fileContents = {
+      'src/components/Main.js': `
+        import Button from './Button';
+        import { Grid } from './Grid';
+        
+        const LocalComp = () => <div />;
+      `,
+      'src/components/Button.js': `
+        export default function Button() {}
+      `,
+      'src/components/Grid.js': `
+        export const Grid = () => {};
+      `,
+    };
+
+    it('resolves imported components correctly', () => {
+      const defButton = findComponentDefinition('src/components/Main.js', 'Button', fileContents);
+      expect(defButton).not.toBeNull();
+      expect(defButton.filePath).toBe('src/components/Button.js');
+      expect(defButton.loc.line).toBe(2);
+
+      const defGrid = findComponentDefinition('src/components/Main.js', 'Grid', fileContents);
+      expect(defGrid).not.toBeNull();
+      expect(defGrid.filePath).toBe('src/components/Grid.js');
+      expect(defGrid.loc.line).toBe(2);
+    });
+
+    it('resolves locally defined components correctly', () => {
+      const defLocal = findComponentDefinition('src/components/Main.js', 'LocalComp', fileContents);
+      expect(defLocal).not.toBeNull();
+      expect(defLocal.filePath).toBe('src/components/Main.js');
+      expect(defLocal.loc.line).toBe(5);
+    });
+  });
+
+  describe('findNavigationTargets with components', () => {
+    it('returns component targets for capitalized JSX tags', () => {
+      const fileContents = {
+        'src/App.js': "import Button from './Button';\n<Button onClick={click}><Card.Item>Text</Card.Item></Button>",
+        'src/Button.js': 'export default function Button() {}',
+      };
+      const targets = findNavigationTargets(
+        "import Button from './Button';\n<Button onClick={click}><Card.Item>Text</Card.Item></Button>",
+        false,
+        fileContents,
+        'src/App.js',
+      );
+      const componentTargets = targets.filter((t) => t.type === 'component');
+      expect(componentTargets.length).toBe(2);
+      expect(componentTargets[0].name).toBe('Button');
+      expect(componentTargets[0].targets[0].filePath).toBe('src/Button.js');
+      expect(componentTargets[1].name).toBe('Button');
+      expect(componentTargets[1].targets[0].filePath).toBe('src/Button.js');
     });
   });
 });
