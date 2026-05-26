@@ -66,6 +66,19 @@ describe('Tooltip', () => {
     expect(screen.getByText('⌘S')).toBeDefined();
   });
 
+  it('renders multiline tooltip content with a styled header', async () => {
+    render(
+      <Tooltip content={'Token Breakdown\nsrc/test.js'}>
+        <button type="button">Hover me</button>
+      </Tooltip>,
+    );
+
+    await showTooltip(screen.getByText('Hover me').parentElement);
+
+    expect(screen.getByText('Token Breakdown')).toBeDefined();
+    expect(screen.getByText('src/test.js')).toBeDefined();
+  });
+
   it('keeps visibility isolated per instance', async () => {
     render(
       <>

@@ -89,6 +89,7 @@ const Settings = {
       type: t.type,
       label: t.label,
       ...(t.file ? { file: { name: t.file.name, path: t.file.path } } : {}),
+      ...(t.sourceFilePath ? { sourceFilePath: t.sourceFilePath } : {}),
     }));
     this.set(KEYS.OPEN_TABS, JSON.stringify(tabsToSave));
   },

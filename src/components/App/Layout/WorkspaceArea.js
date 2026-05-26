@@ -11,6 +11,7 @@ import Instructions from '../Views/Instructions';
 import LogArea from '../Views/LogArea';
 import PreviewArea from '../Views/PreviewArea';
 import ProjectInfo from '../Views/ProjectInfo';
+import TokenBreakdown from '../Views/TokenBreakdown';
 import Welcome from '../Views/Welcome';
 
 export default function WorkspaceArea() {
@@ -67,6 +68,7 @@ export default function WorkspaceArea() {
           {activeTab?.type === 'preview' && <PreviewArea />}
           {activeTab?.type === 'project-info' && <ProjectInfo />}
           {activeTab?.type === 'instructions' && <Instructions />}
+          {activeTab?.type === 'token-breakdown' && <TokenBreakdown tab={activeTab} />}
           {!activeTab && <Welcome />}
         </div>
       </div>

@@ -125,6 +125,23 @@
   flex: 1;
   min-width: 0;
   line-height: 1.4;
+  white-space: pre-line;
+}
+
+.contentHeader {
+  display: block;
+  color: var(--tooltip-text);
+  font-weight: 700;
+}
+
+.contentBody {
+  display: block;
+  color: color-mix(in srgb, var(--tooltip-text) 72%, transparent);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
+    "Courier New", monospace;
+  font-size: 11px;
+  font-weight: 500;
+  margin-top: 2px;
 }
 
 .shortcut {

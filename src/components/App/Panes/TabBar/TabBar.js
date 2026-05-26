@@ -11,6 +11,21 @@ import TabContextMenu from './TabContextMenu';
 export const TabState = createState('TabState');
 const TabBarUiState = createState('TabBarUiState');
 
+const getTabViewType = (tab) => {
+  if (tab.type === 'file') return 'Editor';
+  if (tab.type === 'token-breakdown') return 'Token Breakdown';
+  if (tab.type === 'logs') return 'Logs';
+  if (tab.type === 'preview') return 'Preview';
+  if (tab.type === 'project-info') return 'Project Info';
+  if (tab.type === 'instructions') return 'Instructions';
+  return tab.type || 'View';
+};
+
+const getTabTooltipContent = (tab) => {
+  const target = tab.type === 'file' ? tab.id : tab.sourceFilePath || tab.label;
+  return `${getTabViewType(tab)}\n${target}`;
+};
+
 export default function TabBar() {
   const tabState = TabState.useState();
   const { openTabs = [], activeTabId } = tabState;
@@ -293,16 +308,15 @@ export default function TabBar() {
                     <Icons.Globe />
                   ) : tab.type === 'project-info' ? (
                     <Icons.Info />
+                  ) : tab.type === 'token-breakdown' ? (
+                    <Icons.Code size={14} />
                   ) : isMediaFile(tab.file?.name) ? (
                     <Icons.Image />
                   ) : (
                     <Icons.File />
                   )}
                 </span>
-                <Tooltip
-                  content={tab.type === 'file' ? tab.id : tab.label}
-                  className={styles.tabLabelTooltip}
-                >
+                <Tooltip content={getTabTooltipContent(tab)} className={styles.tabLabelTooltip}>
                   <span className={styles.tabLabelText}>{tab.label}</span>
                 </Tooltip>
                 <Tooltip content="Close Tab" shortcut="⌃W">
@@ -312,6 +326,7 @@ export default function TabBar() {
                     onKeyDown={(e) => e.key === 'Enter' && closeTab(e, tab.id)}
                     className={styles.closeButton}
                     style={{ opacity: isActive ? 1 : 0.5 }}
+                    aria-label="Close Tab"
                   >
                     <Icons.Close />
                   </button>

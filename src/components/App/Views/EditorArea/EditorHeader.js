@@ -16,6 +16,7 @@ export default function EditorHeader({
   handleFormat,
   isReadOnly,
   setIsReadOnly,
+  onOpenTokenBreakdown,
 }) {
   return (
     <div className={styles.editorHeader}>
@@ -44,6 +45,16 @@ export default function EditorHeader({
         <Tooltip content="Format Code" shortcut={formatShortcut('⌃⇧F')}>
           <button type="button" className={styles.actionBtn} onClick={handleFormat}>
             <Icons.Layout />
+          </button>
+        </Tooltip>
+        <Tooltip content="Show token breakdown">
+          <button
+            type="button"
+            className={styles.actionBtn}
+            onClick={onOpenTokenBreakdown}
+            aria-label="Show token breakdown"
+          >
+            <Icons.Code size={14} />
           </button>
         </Tooltip>
         {hasDiff && (

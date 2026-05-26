@@ -16,22 +16,35 @@ const isJsonPath = (filePath = '') =>
   filePath.endsWith('.webmanifest') ||
   filePath === 'json';
 
-export const highlightCode = (
+const countLines = (value = '') => (value ? value.split('\n').length : 1);
+
+const getLineColumn = (code = '', index = 0) => {
+  const safeIndex = Math.max(0, Math.min(index, code.length));
+  let line = 1;
+  let column = 1;
+  for (let i = 0; i < safeIndex; i++) {
+    if (code.charCodeAt(i) === 10) {
+      line++;
+      column = 1;
+    } else {
+      column++;
+    }
+  }
+  return { line, column };
+};
+
+const buildCacheKey = ({
   code,
   filePath,
   state,
-  styles,
   showFind,
   findQuery,
   matchIndex,
   suggestion,
   cursorPos,
   navigationLinksEnabled,
-) => {
-  if (!code) return '';
-  if (code.length > MAX_HIGHLIGHT_CHARS) return escapeHtml(code);
-
-  const cacheKey = JSON.stringify([
+}) =>
+  JSON.stringify([
     code,
     filePath,
     !!state.pendingDiffs?.[filePath],
@@ -49,14 +62,60 @@ export const highlightCode = (
       : '',
   ]);
 
-  if (highlightCache.has(cacheKey)) {
-    return highlightCache.get(cacheKey);
+const createHighlightAnalysis = ({
+  code,
+  filePath,
+  state = {},
+  styles = {},
+  showFind = false,
+  findQuery = '',
+  matchIndex = -1,
+  suggestion,
+  cursorPos,
+  navigationLinksEnabled = false,
+}) => {
+  const jsonPath = isJsonPath(filePath);
+  const languageMode = jsonPath ? 'json' : filePath?.endsWith('.css') ? 'css' : 'javascript';
+  const debug = {
+    filePath,
+    languageMode,
+    sourceLength: code?.length || 0,
+    lineCount: countLines(code || ''),
+    maxHighlightChars: MAX_HIGHLIGHT_CHARS,
+    cacheable: !!code && code.length <= MAX_HIGHLIGHT_CHARS,
+    largeFileFallback: !!code && code.length > MAX_HIGHLIGHT_CHARS,
+    selectedLines: state.selectedLines?.[filePath] || [],
+    diffs: state.pendingDiffs?.[filePath]?.diffs || [],
+    suggestion: suggestion
+      ? {
+          text: suggestion,
+          cursorIndex: cursorPos?.index,
+          cursorPosition:
+            cursorPos?.index !== undefined ? getLineColumn(code || '', cursorPos.index) : null,
+        }
+      : null,
+    navigationLinksEnabled,
+    navigationTargets: [],
+    search: {
+      enabled: !!(showFind && findQuery),
+      query: findQuery || '',
+      activeMatchIndex: matchIndex,
+      matchCount: 0,
+    },
+    tokens: [],
+  };
+
+  if (!code) {
+    return { html: '', debug };
+  }
+
+  if (code.length > MAX_HIGHLIGHT_CHARS) {
+    return { html: escapeHtml(code), debug };
   }
 
   const fileDiff = state.pendingDiffs?.[filePath];
   const diffs = fileDiff?.diffs || [];
   const selectedLines = state.selectedLines?.[filePath] || [];
-
   const sortedDiffs = [...diffs].sort((a, b) => b.start - a.start);
 
   let escaped = code;
@@ -82,6 +141,10 @@ export const highlightCode = (
       filePath,
     );
   }
+  debug.navigationTargets = targets.map((target) => ({
+    ...target,
+    position: getLineColumn(code, target.start),
+  }));
 
   // Sort targets in descending order of start index to insert without interference
   const sortedTargets = [...targets].sort((a, b) => b.start - a.start);
@@ -129,10 +192,31 @@ export const highlightCode = (
   const pushToken = (val, type) => {
     const idx = tokens.length;
     tokens.push({ val, type });
+    const plainValue = val
+      // biome-ignore lint/suspicious/noControlCharactersInRegex: markers
+      .replace(/\u0003\d+\u0003|\u0004|\u0005|\u0006[a-j]+\u0006|\u0007/g, '')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&amp;/g, '&');
+    const rawIndex = plainValue ? code.indexOf(plainValue) : -1;
+    debug.tokens.push({
+      index: idx,
+      type,
+      className: styles[type] || type,
+      value: plainValue || val,
+      escapedValue: val,
+      range:
+        rawIndex >= 0
+          ? {
+              start: rawIndex,
+              end: rawIndex + plainValue.length,
+              startPosition: getLineColumn(code, rawIndex),
+              endPosition: getLineColumn(code, rawIndex + plainValue.length),
+            }
+          : null,
+    });
     return `${T_PRE}${idx}${T_POST}`;
   };
-
-  const jsonPath = isJsonPath(filePath);
 
   if (jsonPath) {
     // JSON keys and strings need different contrast, especially in light mode.
@@ -276,6 +360,8 @@ export const highlightCode = (
     })
     .join('');
 
+  debug.search.matchCount = matchCounter;
+
   // Replace diff markers with spans including original content
   // biome-ignore lint/suspicious/noControlCharactersInRegex: markers are intentional for tracking
   escaped = escaped.replace(/\u0003(\d+)\u0003/g, (_m, idx) => {
@@ -317,7 +403,77 @@ export const highlightCode = (
     return line;
   });
 
-  const result = finalLines.join('\n');
+  return { html: finalLines.join('\n'), debug };
+};
+
+export const getHighlightBreakdown = ({
+  code = '',
+  filePath = '',
+  state = {},
+  styles = {},
+  showFind = false,
+  findQuery = '',
+  matchIndex = -1,
+  suggestion,
+  cursorPos,
+  navigationLinksEnabled = false,
+}) =>
+  createHighlightAnalysis({
+    code,
+    filePath,
+    state,
+    styles,
+    showFind,
+    findQuery,
+    matchIndex,
+    suggestion,
+    cursorPos,
+    navigationLinksEnabled,
+  }).debug;
+
+export const highlightCode = (
+  code,
+  filePath,
+  state,
+  styles,
+  showFind,
+  findQuery,
+  matchIndex,
+  suggestion,
+  cursorPos,
+  navigationLinksEnabled,
+) => {
+  if (!code) return '';
+  if (code.length > MAX_HIGHLIGHT_CHARS) return escapeHtml(code);
+
+  const cacheKey = buildCacheKey({
+    code,
+    filePath,
+    state,
+    showFind,
+    findQuery,
+    matchIndex,
+    suggestion,
+    cursorPos,
+    navigationLinksEnabled,
+  });
+
+  if (highlightCache.has(cacheKey)) {
+    return highlightCache.get(cacheKey);
+  }
+
+  const result = createHighlightAnalysis({
+    code,
+    filePath,
+    state,
+    styles,
+    showFind,
+    findQuery,
+    matchIndex,
+    suggestion,
+    cursorPos,
+    navigationLinksEnabled,
+  }).html;
 
   // Store in cache
   highlightCache.set(cacheKey, result);

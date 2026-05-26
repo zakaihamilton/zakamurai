@@ -1,6 +1,6 @@
 import { findNavigationTargets } from '@/utils/navigation';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { highlightCode } from './highlighter';
+import { getHighlightBreakdown, highlightCode } from './highlighter';
 
 vi.mock('@/utils/navigation', () => ({
   findNavigationTargets: vi.fn(() => []),
@@ -21,6 +21,13 @@ describe('highlighter', () => {
     hlGhost: 'hlGhost',
     tabHint: 'tabHint',
     navLink: 'navLink',
+    hlComment: 'hlComment',
+    hlFunc: 'hlFunc',
+    hlTag: 'hlTag',
+    hlAttr: 'hlAttr',
+    hlProp: 'hlProp',
+    hlMatch: 'hlMatch',
+    hlMatchActive: 'hlMatchActive',
   };
 
   it('wraps targets in navLink class in readOnly mode', () => {
@@ -119,5 +126,57 @@ describe('highlighter', () => {
     expect(result).toContain('class="hlNum"');
     expect(result).toContain('class="hlStr"');
     expect(result).toContain('class="hlJsonPunc"');
+  });
+
+  it('reports JavaScript tokens that match rendered highlight classes', () => {
+    const code = 'export const answer = 42;';
+    const result = highlightCode(code, 'src/test.js', {}, styles, false, '', -1, '');
+    const breakdown = getHighlightBreakdown({ code, filePath: 'src/test.js', state: {}, styles });
+
+    expect(result).toContain('class="hlKw"');
+    expect(result).toContain('class="hlNum"');
+    expect(breakdown.languageMode).toBe('javascript');
+    expect(
+      breakdown.tokens.some((token) => token.type === 'hlKw' && token.value === 'export'),
+    ).toBe(true);
+    expect(breakdown.tokens.some((token) => token.type === 'hlNum' && token.value === '42')).toBe(
+      true,
+    );
+  });
+
+  it('reports CSS tokens that match rendered highlight classes', () => {
+    const code = '.card { color: #fff; margin: 12px; }';
+    const result = highlightCode(code, 'src/test.css', {}, styles, false, '', -1, '');
+    const breakdown = getHighlightBreakdown({ code, filePath: 'src/test.css', state: {}, styles });
+
+    expect(result).toContain('class="hlProp"');
+    expect(result).toContain('class="hlNum"');
+    expect(breakdown.languageMode).toBe('css');
+    expect(
+      breakdown.tokens.some((token) => token.type === 'hlProp' && token.value === 'color'),
+    ).toBe(true);
+  });
+
+  it('reports JSON tokens that match rendered highlight classes', () => {
+    const code = '{ "enabled": true }';
+    const result = highlightCode(code, 'settings.json', {}, styles, false, '', -1, '');
+    const breakdown = getHighlightBreakdown({ code, filePath: 'settings.json', state: {}, styles });
+
+    expect(result).toContain('class="hlJsonKey"');
+    expect(result).toContain('class="hlJsonBool"');
+    expect(breakdown.languageMode).toBe('json');
+    expect(
+      breakdown.tokens.some((token) => token.type === 'hlJsonKey' && token.value === '"enabled"'),
+    ).toBe(true);
+  });
+
+  it('reports template literal and HTML-like tokens from the same pipeline', () => {
+    const code = 'const html = `<section id="a">${value}</section>`;';
+    const result = highlightCode(code, 'src/test.jsx', {}, styles, false, '', -1, '');
+    const breakdown = getHighlightBreakdown({ code, filePath: 'src/test.jsx', state: {}, styles });
+
+    expect(result).toContain('class="hlStr"');
+    expect(breakdown.tokens.some((token) => token.type === 'hlStr')).toBe(true);
+    expect(breakdown.tokens.some((token) => token.value.includes('section'))).toBe(true);
   });
 });

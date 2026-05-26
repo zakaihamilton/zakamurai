@@ -271,6 +271,38 @@ function EditorAreaInner({ file, fsHandle }) {
     }
   };
 
+  const handleOpenTokenBreakdown = useCallback(() => {
+    const tokenTabId = `token-breakdown:${filePath}`;
+    tabState((draft) => {
+      const exists = draft.openTabs.some((tab) => tab.id === tokenTabId);
+      if (!exists) {
+        draft.openTabs = [
+          ...draft.openTabs,
+          {
+            id: tokenTabId,
+            type: 'token-breakdown',
+            label: filePath.split('/').pop() || filePath,
+            sourceFilePath: filePath,
+            content: localContentRef.current,
+            collapsedFoldIds,
+          },
+        ];
+      } else {
+        draft.openTabs = draft.openTabs.map((tab) =>
+          tab.id === tokenTabId
+            ? {
+                ...tab,
+                sourceFilePath: filePath,
+                content: localContentRef.current,
+                collapsedFoldIds,
+              }
+            : tab,
+        );
+      }
+      draft.activeTabId = tokenTabId;
+    });
+  }, [filePath, tabState, collapsedFoldIds]);
+
   useEffect(() => {
     const updateCommandPressed = (nextValue) => {
       commandKeyPressed = nextValue;
@@ -338,6 +370,7 @@ function EditorAreaInner({ file, fsHandle }) {
         onNavigateToAssociated={handleNavigateToAssociated}
         isReadOnly={isReadOnly}
         setIsReadOnly={setIsReadOnly}
+        onOpenTokenBreakdown={handleOpenTokenBreakdown}
       />
 
       <FindHandler

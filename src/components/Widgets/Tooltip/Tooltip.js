@@ -153,6 +153,11 @@ function TooltipInner({ content, shortcut, children, className = '' }) {
 
   if (!content) return children;
 
+  const contentLines =
+    typeof content === 'string' ? content.split('\n') : React.Children.toArray(content);
+  const hasContentHeader =
+    typeof content === 'string' && contentLines.length > 1 && contentLines[0]?.trim();
+
   return (
     <>
       <div
@@ -181,7 +186,14 @@ function TooltipInner({ content, shortcut, children, className = '' }) {
             }}
           >
             <div className={styles.inner}>
-              <span className={styles.content}>{content}</span>
+              {hasContentHeader ? (
+                <span className={styles.content}>
+                  <span className={styles.contentHeader}>{contentLines[0]}</span>
+                  <span className={styles.contentBody}>{contentLines.slice(1).join('\n')}</span>
+                </span>
+              ) : (
+                <span className={styles.content}>{content}</span>
+              )}
               {shortcut && showShortcut && <span className={styles.shortcut}>{shortcut}</span>}
             </div>
           </div>,

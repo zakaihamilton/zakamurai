@@ -34,8 +34,10 @@ describe('EditorHeader', () => {
     handleUndo: vi.fn(),
     showSideBySide: false,
     setShowSideBySide: vi.fn(),
+    handleFormat: vi.fn(),
     isReadOnly: false,
     setIsReadOnly: vi.fn(),
+    onOpenTokenBreakdown: vi.fn(),
   };
 
   it('renders the file path', () => {
@@ -68,15 +70,27 @@ describe('EditorHeader', () => {
   it('renders code icon when isReadOnly is true', () => {
     const setIsReadOnly = vi.fn();
     render(<EditorHeader {...defaultProps} isReadOnly={true} setIsReadOnly={setIsReadOnly} />);
-    expect(screen.getByTestId('icon-code')).toBeDefined();
+    expect(screen.getAllByTestId('icon-code').length).toBeGreaterThan(0);
 
-    const codeBtn = screen.getByTestId('icon-code').parentElement;
+    const codeBtn = screen.getAllByTestId('icon-code')[0].parentElement;
     const tooltip = codeBtn.closest('[data-testid="tooltip"]');
     expect(tooltip.getAttribute('data-content')).toBe('Switch to Edit Mode');
     expect(tooltip.getAttribute('data-shortcut')).toBe(formatShortcut('⌃E'));
 
     fireEvent.click(codeBtn);
     expect(setIsReadOnly).toHaveBeenCalledWith(false);
+  });
+
+  it('calls onOpenTokenBreakdown when the token button is clicked', () => {
+    const onOpenTokenBreakdown = vi.fn();
+    render(<EditorHeader {...defaultProps} onOpenTokenBreakdown={onOpenTokenBreakdown} />);
+
+    const tokenBtn = screen.getByLabelText('Show token breakdown');
+    const tooltip = tokenBtn.closest('[data-testid="tooltip"]');
+    expect(tooltip.getAttribute('data-content')).toBe('Show token breakdown');
+
+    fireEvent.click(tokenBtn);
+    expect(onOpenTokenBreakdown).toHaveBeenCalled();
   });
 
   it('renders diff actions when hasDiff is true', () => {
