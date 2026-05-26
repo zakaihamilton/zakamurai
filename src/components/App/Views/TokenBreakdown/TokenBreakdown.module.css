@@ -257,7 +257,7 @@
 .sectionTabActive {
   border-bottom-color: var(--border-focus);
   color: var(--text-primary);
-  font-weight: 600;
+  font-weight: 500;
 }
 
 .sectionTab strong {
