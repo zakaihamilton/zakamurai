@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useLayoutEffect } from 'react';
 import CodeEditor from './CodeEditor';
 import Gutter from './Gutter';
 
@@ -28,6 +28,37 @@ export default function SingleEditorView({
   fileContents,
   handleJumpToTarget,
 }) {
+  useLayoutEffect(() => {
+    const container = scrollContainerRef?.current;
+    if (!container) return undefined;
+
+    const syncHeights = () => {
+      const codeLines = container.querySelectorAll('[data-line]');
+      codeLines.forEach((codeLine) => {
+        const lineNum = codeLine.getAttribute('data-line');
+        const gutterLine = container.querySelector(`[data-gutter-line="${lineNum}"]`);
+        if (gutterLine) {
+          const rect = codeLine.getBoundingClientRect();
+          gutterLine.style.height = `${rect.height}px`;
+        }
+      });
+    };
+
+    syncHeights();
+    const timer = setTimeout(syncHeights, 50);
+
+    let observer;
+    if (typeof ResizeObserver !== 'undefined') {
+      observer = new ResizeObserver(syncHeights);
+      observer.observe(container);
+    }
+
+    return () => {
+      clearTimeout(timer);
+      if (observer) observer.disconnect();
+    };
+  }, [scrollContainerRef, highlightedCode]);
+
   return (
     <div ref={scrollContainerRef} className={`${styles.scrollContainer} scrollHide`}>
       <Gutter

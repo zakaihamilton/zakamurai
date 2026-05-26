@@ -148,6 +148,7 @@ function GutterInner({
             // biome-ignore lint/a11y/useKeyWithClickEvents: gutter lines are clickable for selection
             <div
               key={`${line}:${index}`}
+              data-gutter-line={line}
               style={top == null ? undefined : { position: 'absolute', top: `${top}px` }}
               onClick={(e) => {
                 e.stopPropagation();

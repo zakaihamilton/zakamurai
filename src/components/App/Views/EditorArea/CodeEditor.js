@@ -147,6 +147,63 @@ export default function CodeEditor({
     isLocalEdit.current = false;
   }, [cursorPos?.index, localContent]);
 
+  const [viewportWidth, setViewportWidth] = useState(0);
+
+  useLayoutEffect(() => {
+    const container = scrollContainerRef?.current;
+    if (!container) return;
+
+    const updateWidth = () => {
+      setViewportWidth(container.clientWidth);
+    };
+
+    updateWidth();
+    const observer = new ResizeObserver(updateWidth);
+    observer.observe(container);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [scrollContainerRef]);
+
+  useLayoutEffect(() => {
+    const container = scrollContainerRef?.current;
+    const textarea = textareaRef?.current;
+    if (!container || !textarea) return;
+
+    let isSyncingContainer = false;
+    let isSyncingTextarea = false;
+
+    const handleContainerScroll = () => {
+      if (isSyncingTextarea) {
+        isSyncingTextarea = false;
+        return;
+      }
+      isSyncingContainer = true;
+      textarea.scrollLeft = container.scrollLeft;
+    };
+
+    const handleTextareaScroll = () => {
+      if (isSyncingContainer) {
+        isSyncingContainer = false;
+        return;
+      }
+      isSyncingTextarea = true;
+      container.scrollLeft = textarea.scrollLeft;
+    };
+
+    container.addEventListener('scroll', handleContainerScroll, { passive: true });
+    textarea.addEventListener('scroll', handleTextareaScroll, { passive: true });
+
+    // Initial sync
+    textarea.scrollLeft = container.scrollLeft;
+
+    return () => {
+      container.removeEventListener('scroll', handleContainerScroll);
+      textarea.removeEventListener('scroll', handleTextareaScroll);
+    };
+  }, [scrollContainerRef, localContent]);
+
   const isCssFile = filePath?.endsWith('.css');
 
   const handlePreClick = useCallback(
@@ -226,6 +283,7 @@ export default function CodeEditor({
         onCopy={handleCopy}
         readOnly={readOnly || isReadOnly}
         spellCheck="false"
+        wrap="off"
         className={`${styles.textarea} ${isReadOnly ? styles.readOnlyTextarea : ''} ${
           !isReadOnly && navigationLinksEnabled ? styles.navigationLinksTextarea : ''
         }`}

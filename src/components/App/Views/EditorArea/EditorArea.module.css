@@ -222,7 +222,7 @@
   left: 0;
   right: 0;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: flex-end;
   gap: 6px;
 }
@@ -287,7 +287,8 @@
   font-family: "JetBrains Mono", "Fira Code", monospace;
   font-size: 14px;
   line-height: 1.6;
-  white-space: pre;
+  white-space: pre-wrap;
+  word-break: break-all;
   overflow: hidden;
 }
 
@@ -298,9 +299,15 @@
   font-size: 14px;
   line-height: 1.6;
   color: var(--editor-syntax-text);
-  white-space: pre;
+  white-space: pre-wrap;
+  word-break: break-all;
   pointer-events: none;
   min-height: 100%;
+}
+
+.lineRow {
+  display: block;
+  min-height: 22.4px;
 }
 
 /* Syntax Highlighting Tokens */

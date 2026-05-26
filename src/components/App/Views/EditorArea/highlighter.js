@@ -398,13 +398,11 @@ const createHighlightAnalysis = ({
   const linesArr = escaped.split('\n');
   const finalLines = linesArr.map((line, i) => {
     const isSelected = selectedLines.includes(i + 1);
-    if (isSelected) {
-      return `<span class="${styles.selectedLineRow}">${line || ' '}</span>`;
-    }
-    return line;
+    const lineClass = isSelected ? styles.selectedLineRow : '';
+    return `<span class="${styles.lineRow || 'lineRow'} ${lineClass}" data-line="${i + 1}" style="display: block;">${line || ' '}</span>`;
   });
 
-  return { html: finalLines.join('\n'), debug };
+  return { html: finalLines.join(''), debug };
 };
 
 export const getHighlightBreakdown = ({

@@ -24,6 +24,10 @@ export function formatCode(code, filePath) {
     }
   }
 
+  if (ext === 'svg') {
+    return formatSvg(code);
+  }
+
   if (
     ext === 'css' ||
     ext === 'js' ||
@@ -36,6 +40,75 @@ export function formatCode(code, filePath) {
   }
 
   return code;
+}
+
+/**
+ * A robust SVG/XML formatter that formats elements, comments, self-closing tags,
+ * and maintains clean indentation for multi-line tags.
+ */
+function formatSvg(code) {
+  // Normalize spacing between elements, ignoring spaces in text elements (heuristically)
+  const normalized = code.replace(/>\s+</g, '><').trim();
+  const tokens = normalized.split(/(<\/?[^>]+>)/g).filter((t) => t.trim() !== '');
+
+  let indentLevel = 0;
+  const indentStr = '  ';
+  const result = [];
+
+  for (let i = 0; i < tokens.length; i++) {
+    const token = tokens[i].trim();
+    if (!token) continue;
+
+    if (token.startsWith('<!--')) {
+      // Comment
+      result.push(indentStr.repeat(indentLevel) + token);
+    } else if (token.startsWith('</')) {
+      // Closing tag
+      indentLevel = Math.max(0, indentLevel - 1);
+      result.push(indentStr.repeat(indentLevel) + token);
+    } else if (
+      token.startsWith('<') &&
+      (token.endsWith('/>') || token.startsWith('<?') || token.startsWith('<!'))
+    ) {
+      // Self-closing, xml decl, or doctype
+      const lines = token.split('\n');
+      if (lines.length > 1) {
+        const formattedTagLines = lines.map((line, idx) => {
+          const trimmed = line.trim();
+          if (idx === 0) return indentStr.repeat(indentLevel) + trimmed;
+          if (idx === lines.length - 1 && (trimmed === '>' || trimmed === '/>')) {
+            return indentStr.repeat(indentLevel) + trimmed;
+          }
+          return indentStr.repeat(indentLevel + 1) + trimmed;
+        });
+        result.push(formattedTagLines.join('\n'));
+      } else {
+        result.push(indentStr.repeat(indentLevel) + token);
+      }
+    } else if (token.startsWith('<')) {
+      // Opening tag
+      const lines = token.split('\n');
+      if (lines.length > 1) {
+        const formattedTagLines = lines.map((line, idx) => {
+          const trimmed = line.trim();
+          if (idx === 0) return indentStr.repeat(indentLevel) + trimmed;
+          if (idx === lines.length - 1 && (trimmed === '>' || trimmed === '/>')) {
+            return indentStr.repeat(indentLevel) + trimmed;
+          }
+          return indentStr.repeat(indentLevel + 1) + trimmed;
+        });
+        result.push(formattedTagLines.join('\n'));
+      } else {
+        result.push(indentStr.repeat(indentLevel) + token);
+      }
+      indentLevel++;
+    } else {
+      // Text node
+      result.push(indentStr.repeat(indentLevel) + token);
+    }
+  }
+
+  return result.join('\n');
 }
 
 /**
