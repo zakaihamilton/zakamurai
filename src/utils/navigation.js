@@ -19,6 +19,8 @@ import {
   getLocFromIndex,
 } from './navigation/JsSymbolResolver';
 
+import { resolveVariables } from './navigation/VariableResolver';
+
 // Re-export all submodules functions to keep the API exactly the same
 export {
   getCssImports,
@@ -641,6 +643,19 @@ export function findNavigationTargets(code, isCss, fileContents, filePath) {
             targets: [def],
           });
         }
+      }
+    }
+  }
+
+  // 5. Variables in JS/JSX files
+  if (!isCss) {
+    const varTargets = resolveVariables(code, filePath);
+    for (const vt of varTargets) {
+      const isOverlapping = targets.some(
+        (t) => vt.start < t.end && t.start < vt.end
+      );
+      if (!isOverlapping) {
+        targets.push(vt);
       }
     }
   }

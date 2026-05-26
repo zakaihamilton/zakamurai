@@ -332,7 +332,7 @@ export default function CodeEditor({
             {popup.targets.map((target) => (
               // biome-ignore lint/a11y/useKeyWithClickEvents: onClick is sufficient for navigation in this popover
               <li
-                key={target.filePath}
+                key={`${target.filePath}:${target.loc.line}:${target.loc.col}:${target.loc.index || 0}`}
                 className={styles.popupItem}
                 onClick={() => {
                   onJumpToTarget?.(target.filePath, target.loc);
