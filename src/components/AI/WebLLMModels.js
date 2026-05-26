@@ -50,7 +50,8 @@ export const WEB_LLM_MODELS = [
   {
     id: 'Qwen3-1.7B-q4f16_1-MLC',
     name: 'Qwen3 1.7B',
-    requirement: 'Lightweight reasoning fallback. Better modern fallback than Llama 3.2 3B for many tasks.',
+    requirement:
+      'Lightweight reasoning fallback. Better modern fallback than Llama 3.2 3B for many tasks.',
     details: [
       ['System', 'Lower-memory WebGPU-capable devices'],
       ['Storage', 'Small browser cache footprint'],

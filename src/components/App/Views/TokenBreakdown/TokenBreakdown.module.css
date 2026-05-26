@@ -6,7 +6,8 @@
   --text-primary: var(--text-main);
   --text-secondary: var(--text-muted);
   --text-muted: color-mix(in srgb, var(--text-muted) 80%, transparent);
-  --font-mono: ui-monospace, sfmono-regular, menlo, monaco, consolas, "Liberation Mono", "Courier New", monospace;
+  --font-mono: ui-monospace, sfmono-regular, menlo, monaco, consolas, "Liberation Mono",
+    "Courier New", monospace;
 
   /* Subtle syntax colors - desaturated dark theme */
   --syntax-keyword: #d8b4fe;

@@ -59,7 +59,7 @@ vi.mock('@/components/AI/WebLLMAPI', () => ({
   askWebLLM: vi.fn().mockResolvedValue('Mock response'),
   cacheWebLLMModel: vi.fn().mockResolvedValue(undefined),
   deleteCachedWebLLMModel: vi.fn().mockResolvedValue(undefined),
-  getCachedWebLLMModelIds: vi.fn().mockResolvedValue(['Phi-4-mini-instruct-q4f16_1-MLC']),
+  getCachedWebLLMModelIds: vi.fn().mockResolvedValue(['Qwen3-4B-q4f16_1-MLC']),
   interruptWebLLM: vi.fn(),
 }));
 
@@ -113,13 +113,13 @@ describe('Prompt', () => {
       fireEvent.pointerDown(modelDropdown);
       fireEvent.click(modelDropdown);
     });
-    expect(screen.getByText(/Best code quality/)).toBeDefined();
+    expect(screen.getByText(/Best coding model/)).toBeDefined();
     expect(screen.getByText('Recommended')).toBeDefined();
     await waitFor(() => expect(screen.getByText('Cached')).toBeDefined());
     await act(async () => {
-      fireEvent.click(screen.getByText('Qwen3 4B'));
+      fireEvent.click(screen.getByText('Qwen2.5 Coder 3B'));
     });
-    expect(Settings.setAIPromptModel).toHaveBeenCalledWith('Qwen3-4B-q4f16_1-MLC');
+    expect(Settings.setAIPromptModel).toHaveBeenCalledWith('Qwen2.5-Coder-3B-Instruct-q4f16_1-MLC');
   });
 
   it('opens the model manager and caches models', async () => {
@@ -150,7 +150,7 @@ describe('Prompt', () => {
 
     expect(screen.getByRole('heading', { name: 'AI Models' })).toBeDefined();
     expect(screen.getByText('Qwen2.5 Coder 7B')).toBeDefined();
-    expect(screen.getByText(/Best code quality/)).toBeDefined();
+    expect(screen.getByText(/Best coding model/)).toBeDefined();
 
     await act(async () => {
       fireEvent.click(screen.getAllByText('Cache')[0]);

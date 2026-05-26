@@ -72,20 +72,56 @@ export const findNodeAtPath = (nodes, path) => {
   return found;
 };
 
-export const flattenTree = (nodes, expandedFolders, filterText, parentPath = [], level = 1) => {
+export const flattenTree = (
+  nodes,
+  expandedFolders,
+  filterText,
+  parentPath = [],
+  level = 1,
+  matcher = null,
+) => {
   const query = filterText.trim().toLowerCase();
   const rows = [];
+
+  if (!query) {
+    for (const node of nodes) {
+      const path = node.path || [...parentPath, node.name];
+      const pathStr = getPathStr(path);
+      const childrenRows =
+        node.children && expandedFolders[pathStr] !== false
+          ? flattenTree(node.children, expandedFolders, filterText, path, level + 1, null)
+          : [];
+      rows.push({ key: pathStr, item: node, level, path, pathStr });
+      rows.push(...childrenRows);
+    }
+    return rows;
+  }
+
+  let currentMatcher = matcher;
+  if (!currentMatcher) {
+    if (query.includes('*')) {
+      try {
+        const escaped = query.replace(/[.+^${}()|[\]\\]/g, '\\$&');
+        const regexStr = `^${escaped.replace(/\*/g, '.*')}$`;
+        const regex = new RegExp(regexStr, 'i');
+        currentMatcher = (pathStr) => regex.test(pathStr);
+      } catch (_e) {
+        currentMatcher = (pathStr) => pathStr.toLowerCase().includes(query);
+      }
+    } else {
+      currentMatcher = (pathStr) => pathStr.toLowerCase().includes(query);
+    }
+  }
 
   for (const node of nodes) {
     const path = node.path || [...parentPath, node.name];
     const pathStr = getPathStr(path);
-    const pathMatches = pathStr.toLowerCase().includes(query);
-    const childrenRows =
-      node.children && (query || expandedFolders[pathStr] !== false)
-        ? flattenTree(node.children, expandedFolders, filterText, path, level + 1)
-        : [];
+    const pathMatches = currentMatcher(pathStr);
+    const childrenRows = node.children
+      ? flattenTree(node.children, expandedFolders, filterText, path, level + 1, currentMatcher)
+      : [];
 
-    if (!query || pathMatches || childrenRows.length > 0) {
+    if (pathMatches || childrenRows.length > 0) {
       rows.push({ key: pathStr, item: node, level, path, pathStr });
       rows.push(...childrenRows);
     }

@@ -187,7 +187,7 @@ describe('highlighter', () => {
 
     // The comment itself should be highlighted as hlComment, not contain hlStr
     expect(result).toContain('class="hlComment"');
-    
+
     // There should only be one hlStr token (for 'real string') and none starting with "'t"
     const hlStrTokens = breakdown.tokens.filter((token) => token.type === 'hlStr');
     expect(hlStrTokens.length).toBe(1);

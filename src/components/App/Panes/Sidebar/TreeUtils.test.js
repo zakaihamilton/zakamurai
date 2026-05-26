@@ -220,5 +220,20 @@ describe('TreeUtils', () => {
       expect(flat.length).toBe(2); // 'src' matches because child matches or path matches
       expect(flat[1].key).toBe('src/App.js');
     });
+
+    it('filters rows based on wildcard extension matching (*.js)', () => {
+      const flat = flattenTree(tree, {}, '*.js');
+      expect(flat.length).toBe(2); // 'src' because of child, and 'src/App.js'
+      expect(flat[1].key).toBe('src/App.js');
+      // package.json shouldn't match
+      expect(flat.map((f) => f.key)).not.toContain('package.json');
+    });
+
+    it('filters rows based on wildcard folder matching (src/*)', () => {
+      const flat = flattenTree(tree, {}, 'src/*');
+      expect(flat.map((f) => f.key)).toContain('src/App.js');
+      expect(flat.map((f) => f.key)).toContain('src/components');
+      expect(flat.map((f) => f.key)).not.toContain('package.json');
+    });
   });
 });

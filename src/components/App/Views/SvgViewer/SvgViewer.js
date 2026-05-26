@@ -85,7 +85,7 @@ function SvgViewerInner({ tab }) {
     <div className={styles.svgViewer}>
       <div className={styles.header}>
         <div className={styles.headerTitle}>
-          <Icons.Image />
+          <Icons.Image size={16} />
           <span className={styles.filePath}>{filePath}</span>
         </div>
         <FileViewToolbar
