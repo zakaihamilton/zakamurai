@@ -179,4 +179,18 @@ describe('highlighter', () => {
     expect(breakdown.tokens.some((token) => token.type === 'hlStr')).toBe(true);
     expect(breakdown.tokens.some((token) => token.value.includes('section'))).toBe(true);
   });
+
+  it('does not treat single quotes inside comments as strings', () => {
+    const code = `// This hasn't been intercepted yet\nconst x = 'real string';`;
+    const result = highlightCode(code, 'src/test.js', {}, styles, false, '', -1, '');
+    const breakdown = getHighlightBreakdown({ code, filePath: 'src/test.js', state: {}, styles });
+
+    // The comment itself should be highlighted as hlComment, not contain hlStr
+    expect(result).toContain('class="hlComment"');
+    
+    // There should only be one hlStr token (for 'real string') and none starting with "'t"
+    const hlStrTokens = breakdown.tokens.filter((token) => token.type === 'hlStr');
+    expect(hlStrTokens.length).toBe(1);
+    expect(hlStrTokens[0].value).toBe("'real string'");
+  });
 });

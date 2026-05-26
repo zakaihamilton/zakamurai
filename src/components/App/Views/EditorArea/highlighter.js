@@ -242,15 +242,16 @@ const createHighlightAnalysis = ({
       (_m, p1, p2) => (p1 ? p1 : pushToken(p2, 'hlJsonPunc')),
     );
   } else {
-    // 1. Strings (highest priority to avoid // in urls being parsed as comments)
+    // 1. Strings and comments matched in a single pass to prevent single quotes/slashes inside one from interfering with the other
     escaped = escaped.replace(
-      /("(?:[^"\\\\]|\\\\.)*"|'(?:[^'\\\\]|\\\\.)*'|`(?:[^`\\\\]|\\\\.)*?`)/g,
-      (m) => pushToken(m, 'hlStr'),
+      /(\/\*[\s\S]*?\*\/|\/\/.+|"(?:[^"\\\\]|\\\\.)*"|'(?:[^'\\\\]|\\\\.)*'|`(?:[^`\\\\]|\\\\.)*?`)/g,
+      (m) => {
+        if (m.startsWith('//') || m.startsWith('/*')) {
+          return pushToken(m, 'hlComment');
+        }
+        return pushToken(m, 'hlStr');
+      },
     );
-
-    // 2. Comments
-    escaped = escaped.replace(/(\/\/.+)/g, (m) => pushToken(m, 'hlComment'));
-    escaped = escaped.replace(/(\/\*[\s\S]*?\*\/)/g, (m) => pushToken(m, 'hlComment'));
   }
 
   // 3. Language specific (CSS or JSX/HTML)
