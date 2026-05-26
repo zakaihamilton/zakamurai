@@ -6,17 +6,17 @@ import { SidebarState } from '@/components/App/Panes/Sidebar';
 import { TabState } from '@/components/App/Panes/TabBar';
 import { EditorState } from '@/components/App/Views/EditorArea';
 import { LogState } from '@/components/App/Views/LogArea';
-import { Icons } from '@/components/Core/Base/Icons';
 import { createState } from '@/components/Core/Base/State';
 import Settings from '@/components/Storage/Settings';
-import Select from '@/components/Widgets/Select';
-import Tooltip from '@/components/Widgets/Tooltip/Tooltip';
-import { formatShortcut } from '@/utils/os';
 import React, { useCallback, useEffect } from 'react';
 import useModelDownloader from './ModelDownloader';
 import styles from './Prompt.module.css';
 import usePromptHistory from './PromptHistory';
 import ModelDownloader from './subcomponents/ModelManager';
+import PromptComposer from './subcomponents/PromptComposer';
+import PromptContextPanel from './subcomponents/PromptContextPanel';
+import PromptHeader from './subcomponents/PromptHeader';
+import PromptModelPanel from './subcomponents/PromptModelPanel';
 import ReasoningPanel from './subcomponents/ReasoningPanel';
 
 export const PromptState = createState('PromptState');
@@ -299,96 +299,38 @@ export default function Prompt() {
       }}
     >
       <div className={styles.content}>
-        <div className={styles.header}>
-          <div>
-            <h2 className={styles.title}>AI Prompt</h2>
-          </div>
-          <div className={styles.headerActions}>
-            {isAIProcessing && <span className={styles.status}>AI Working</span>}
-            {isSystemProcessing && <span className={styles.status}>Compiling</span>}
-            {logState.reasoning && (
-              <Tooltip content={isReasoningVisible ? 'Hide Reasoning' : 'Show Reasoning'}>
-                <button
-                  type="button"
-                  className={`${styles.headerActionBtn} ${
-                    isReasoningVisible ? styles.headerActionBtnActive : ''
-                  }`}
-                  onClick={() =>
-                    promptUiState((draft) => {
-                      draft.isReasoningVisible = !draft.isReasoningVisible;
-                    })
-                  }
-                >
-                  <Icons.Brain />
-                </button>
-              </Tooltip>
-            )}
-          </div>
-        </div>
-        <div className={styles.contextPanel} aria-label="AI context">
-          <div className={styles.contextRow}>
-            <span className={styles.contextLabel}>File</span>
-            <Tooltip content={activeFilePath} className={styles.contextTooltip}>
-              <span className={styles.contextValue}>
-                <Icons.File size={12} />
-                {activeFileName}
-              </span>
-            </Tooltip>
-          </div>
-          <div className={styles.contextRow}>
-            <span className={styles.contextLabel}>Selection</span>
-            <span className={styles.contextValue}>
-              <Icons.Check size={12} />
-              {selectedLines.length > 0 ? `Lines ${selectedLineText}` : selectedLineText}
-            </span>
-          </div>
-          <div className={styles.contextRow}>
-            <span className={styles.contextLabel}>State</span>
-            <span className={styles.contextValue}>
-              <span className={styles.contextDot} />
-              {runState}
-            </span>
-          </div>
-        </div>
-        <div
-          className={styles.modelPanel}
-          onFocusCapture={loadCachedModelIds}
-          onPointerDown={loadCachedModelIds}
-        >
-          <div className={styles.modelControlRow}>
-            <Select
-              id="ai-model-select"
-              label="Model"
-              value={selectedModelInfo.id}
-              options={modelOptions}
-              onChange={(nextModel) =>
-                promptUiState((draft) => {
-                  draft.selectedModel = nextModel;
-                  Settings.setAIPromptModel(nextModel);
-                })
-              }
-              disabled={isAIProcessing || !isOpen}
-              tabIndex={isOpen ? undefined : -1}
-              className={styles.modelSelect}
-            />
-            <Tooltip content="Manage AI models">
-              <button
-                type="button"
-                className={styles.modelManagerButton}
-                onClick={openModelManager}
-                disabled={!isOpen}
-                aria-label="Manage AI models"
-                tabIndex={isOpen ? undefined : -1}
-              >
-                <Icons.Info size={16} />
-              </button>
-            </Tooltip>
-          </div>
-          <div className={styles.modelSummary}>
-            <span>{selectedModelInfo.requirement}</span>
-            <code>{selectedModelInfo.id}</code>
-          </div>
-        </div>
+        <PromptHeader
+          isAIProcessing={isAIProcessing}
+          isSystemProcessing={isSystemProcessing}
+          hasReasoning={Boolean(logState.reasoning)}
+          isReasoningVisible={isReasoningVisible}
+          onToggleReasoning={() =>
+            promptUiState((draft) => {
+              draft.isReasoningVisible = !draft.isReasoningVisible;
+            })
+          }
+        />
+        <PromptContextPanel
+          activeFileName={activeFileName}
+          activeFilePath={activeFilePath}
+          selectedLines={selectedLines}
+          selectedLineText={selectedLineText}
+          runState={runState}
+        />
+        <PromptModelPanel
+          selectedModelInfo={selectedModelInfo}
+          modelOptions={modelOptions}
+          onChangeModel={(nextModel) =>
+            promptUiState((draft) => {
+              draft.selectedModel = nextModel;
+              Settings.setAIPromptModel(nextModel);
+            })
+          }
+          onLoadCachedModelIds={loadCachedModelIds}
+          onOpenModelManager={openModelManager}
+          isAIProcessing={isAIProcessing}
+          isOpen={isOpen}
+        />
         <ModelDownloader
           isOpen={isModelManagerOpen}
           selectedModelId={selectedModelInfo.id}
@@ -401,50 +343,23 @@ export default function Prompt() {
           styles={styles}
         />
         <ReasoningPanel styles={styles} />
-        <form onSubmit={send} className={styles.form}>
-          <textarea
-            value={val}
-            onChange={(e) => {
-              promptUiState((draft) => {
-                draft.val = e.target.value;
-                if (historyIndex === -1) {
-                  draft.draftVal = e.target.value;
-                }
-              });
-            }}
-            onKeyDown={handleKeyDown}
-            disabled={isAIProcessing || !isOpen}
-            placeholder={
-              isAIProcessing ? 'AI is working... Please wait.' : 'Enter the AI prompt here...'
-            }
-            className={styles.input}
-            tabIndex={isOpen ? undefined : -1}
-          />
-          <div className={styles.actions}>
-            {isAIProcessing && (
-              <Tooltip content="Stop AI" shortcut={formatShortcut('⌘.')}>
-                <button
-                  type="button"
-                  onClick={handleStop}
-                  className={`${styles.button} ${styles.stopButton}`}
-                  tabIndex={isOpen ? undefined : -1}
-                >
-                  <Icons.Close />
-                </button>
-              </Tooltip>
-            )}
-            <Tooltip content="Execute prompt" shortcut="↵">
-              <button
-                type="submit"
-                disabled={!isBtnActive || !isOpen}
-                className={`${styles.button} ${isBtnActive ? styles.buttonActive : styles.buttonDisabled}`}
-                tabIndex={isOpen ? undefined : -1}
-              >
-                <Icons.Send />
-              </button>
-            </Tooltip>
-          </div>
-        </form>
+        <PromptComposer
+          value={val}
+          onChange={(e) => {
+            promptUiState((draft) => {
+              draft.val = e.target.value;
+              if (historyIndex === -1) {
+                draft.draftVal = e.target.value;
+              }
+            });
+          }}
+          onKeyDown={handleKeyDown}
+          onSubmit={send}
+          onStop={handleStop}
+          isAIProcessing={isAIProcessing}
+          isButtonActive={isBtnActive}
+          isOpen={isOpen}
+        />
       </div>
     </aside>
   );

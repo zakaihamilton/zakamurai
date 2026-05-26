@@ -1,28 +1,20 @@
 import { AppState } from '@/components/App/AppState';
 import { TabState } from '@/components/App/Panes/TabBar';
 import { EditorState } from '@/components/App/Views/EditorArea';
-import { Icons } from '@/components/Core/Base/Icons';
 import { createState } from '@/components/Core/Base/State';
 import { useNotification } from '@/components/Widgets/Notification/Notification';
-import { formatShortcut } from '@/utils/os';
 import React, { useCallback, useDeferredValue, useEffect, useMemo, useRef } from 'react';
 import styles from './Sidebar.module.css';
 import useSidebarDragAndDrop from './SidebarDragAndDrop';
 import useSidebarFileLoader from './SidebarFileLoader';
-import TreeItem from './TreeItem';
-import {
-  flattenTree,
-  getPathStr,
-  isNodeModulesPath,
-  normalizeChildren,
-  setChildrenAtPath,
-} from './TreeUtils';
-import VirtualList from './VirtualList';
+import { flattenTree, isNodeModulesPath, normalizeChildren } from './TreeUtils';
+import SidebarFilter from './subcomponents/SidebarFilter';
+import SidebarMountSection from './subcomponents/SidebarMountSection';
+import SidebarTree from './subcomponents/SidebarTree';
 
 export const SidebarState = createState('SidebarState');
 const SidebarUiState = createState('SidebarUiState');
 
-const ROW_HEIGHT = 34;
 const COLLAPSED_DESKTOP_WIDTH = 0;
 
 export default function Sidebar() {
@@ -237,81 +229,44 @@ export default function Sidebar() {
       }}
     >
       <div className={styles.contentWrapper}>
-        <div className={styles.mountSection}>
-          {!fs.mode ? (
-            <button type="button" onClick={fs.mountLocal} className={styles.mountButton}>
-              <Icons.FolderPlus />
-              <span>Open Folder</span>
-            </button>
-          ) : (
-            <button type="button" onClick={fs.mountLocal} className={styles.relinkButton}>
-              <Icons.FolderPlus />
-              <span>Relink Project</span>
-            </button>
-          )}
-        </div>
-
-        <div className={styles.filterSection}>
-          <div className={styles.searchContainer}>
-            <div className={styles.searchIcon}>
-              <Icons.Search />
-            </div>
-            <input
-              ref={searchInputRef}
-              value={filterText}
-              onChange={(event) =>
-                sidebarUiState((draft) => {
-                  draft.filterText = event.target.value;
-                })
-              }
-              placeholder={`Search files (${formatShortcut('⌃P')})`}
-              className={styles.searchInput}
-            />
-          </div>
-        </div>
-
-        <VirtualList
-          className={`${styles.treeArea} scrollHide`}
-          style={{ pointerEvents: isOpen ? 'auto' : 'none' }}
-          items={rows}
-          itemHeight={ROW_HEIGHT}
-          scrollKey={tabState.activeTabId}
-          scrollToIndex={activeIndex >= 0 ? activeIndex : null}
-          renderItem={(row) => (
-            <TreeItem
-              row={row}
-              filterText={deferredFilterText}
-              isActive={tabState.activeTabId === row.pathStr}
-              isExpanded={
-                row.item.isRoot ||
-                !!deferredFilterText ||
-                (!!row.item.children && expandedFolders[row.pathStr] !== false)
-              }
-              isLoading={!!loadingPaths[row.pathStr]}
-              isDragged={sidebarState.draggedItem?.path?.join('/') === row.pathStr}
-              isDropTarget={dropTargetPath === row.pathStr}
-              onToggle={handleToggle}
-              onOpenFile={handleOpenFile}
-              onRename={handleRename}
-              onCreate={handleCreate}
-              onDelete={handleDelete}
-              onDragStart={handleDragStart}
-              onDragOver={handleDragOver}
-              onDragEnter={handleDragEnter}
-              onDragLeave={() => setDropTargetPath(null)}
-              onDrop={handleDrop}
-              onDragEnd={() => {
-                setDropTargetPath(null);
-                sidebarState((draft) => {
-                  draft.draggedItem = null;
-                });
-              }}
-            />
-          )}
+        <SidebarMountSection hasFileSystem={Boolean(fs.mode)} onMountLocal={fs.mountLocal} />
+        <SidebarFilter
+          inputRef={searchInputRef}
+          value={filterText}
+          onChange={(event) =>
+            sidebarUiState((draft) => {
+              draft.filterText = event.target.value;
+            })
+          }
         />
-        {rows.length === 1 && !fs.mode && (
-          <div className={styles.noFiles}>No files found matching "{filterText}"</div>
-        )}
+        <SidebarTree
+          rows={rows}
+          activeTabId={tabState.activeTabId}
+          activeIndex={activeIndex}
+          filterText={deferredFilterText}
+          expandedFolders={expandedFolders}
+          loadingPaths={loadingPaths}
+          draggedPath={sidebarState.draggedItem?.path?.join('/')}
+          dropTargetPath={dropTargetPath}
+          isOpen={isOpen}
+          hasFileSystem={Boolean(fs.mode)}
+          onToggle={handleToggle}
+          onOpenFile={handleOpenFile}
+          onRename={handleRename}
+          onCreate={handleCreate}
+          onDelete={handleDelete}
+          onDragStart={handleDragStart}
+          onDragOver={handleDragOver}
+          onDragEnter={handleDragEnter}
+          onDragLeave={() => setDropTargetPath(null)}
+          onDrop={handleDrop}
+          onDragEnd={() => {
+            setDropTargetPath(null);
+            sidebarState((draft) => {
+              draft.draggedItem = null;
+            });
+          }}
+        />
       </div>
     </aside>
   );

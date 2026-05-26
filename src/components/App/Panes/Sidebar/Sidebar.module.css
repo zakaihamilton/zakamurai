@@ -107,111 +107,6 @@
   color: var(--accent);
 }
 
-.mountSection {
-  padding: 10px 14px;
-  border-bottom: 1px solid var(--border);
-}
-
-.mountButton,
-.relinkButton {
-  width: 100%;
-  padding: 8px 10px;
-  background: var(--bg-surface);
-  border: 1px dashed var(--border-light);
-  border-radius: 6px;
-  color: var(--text-muted);
-  font-size: 13px;
-  font-weight: 500;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  cursor: pointer;
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-  font-family: inherit;
-  box-shadow: none;
-  white-space: nowrap;
-}
-
-.mountButton svg,
-.relinkButton svg,
-.mountButton span,
-.relinkButton span {
-  flex-shrink: 0;
-}
-
-.relinkButton {
-  background: var(--accent-light);
-  border-color: var(--accent);
-  color: var(--accent);
-}
-
-.mountButton:hover,
-.relinkButton:hover {
-  background: var(--accent-light);
-  border-color: var(--accent);
-  color: var(--accent);
-  border-style: solid;
-  transform: translateY(-1.5px);
-  box-shadow: none;
-}
-
-.mountButton:active,
-.relinkButton:active {
-  transform: translateY(0);
-  box-shadow: none;
-}
-
-.filterSection {
-  padding: 10px 14px;
-  border-bottom: 1px solid var(--border);
-}
-
-.searchContainer {
-  position: relative;
-}
-
-.searchIcon {
-  position: absolute;
-  left: 10px;
-  top: 50%;
-  transform: translateY(-50%);
-  color: var(--text-muted);
-  display: flex;
-}
-
-.searchInput {
-  width: 100%;
-  background: var(--bg-input);
-  border: 1px solid var(--border-light);
-  border-radius: 6px;
-  padding: 8px 10px 8px 32px;
-  color: var(--text-main);
-  font-size: 13px;
-  outline: none;
-  transition: all 0.2s;
-  box-shadow: none;
-}
-
-.searchInput:focus {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 2px var(--accent-glow);
-}
-
-.treeArea {
-  flex: 1;
-  padding: 8px 0;
-  overflow-y: auto;
-  transition: opacity 0.2s;
-}
-
-.noFiles {
-  padding: 20px;
-  color: var(--text-muted);
-  font-size: 12px;
-  text-align: center;
-}
-
 .footerToggle {
   height: 48px;
   background: none;
@@ -277,9 +172,7 @@
     max-width: calc(100vw - 20px);
   }
 
-  .header,
-  .mountSection,
-  .filterSection {
+  .header {
     padding-right: 12px;
     padding-left: 12px;
   }
@@ -309,10 +202,4 @@
     pointer-events: none;
   }
 
-  .sidebar:not(.isOpen) .mountSection,
-  .sidebar:not(.isOpen) .filterSection,
-  .sidebar:not(.isOpen) .treeArea,
-  .sidebar:not(.isOpen) .noFiles {
-    display: none;
-  }
 }
