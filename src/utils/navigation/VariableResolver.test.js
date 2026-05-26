@@ -101,5 +101,91 @@ describe('VariableResolver', () => {
       expect(nextUse).toBeDefined();
       expect(nextUse.targets[0].loc.line).toBe(2);
     });
+
+    it('correctly resolves variables around regex literals', () => {
+      const code = [
+        'export function resolveFilePath(providedPath, existingPaths) {',
+        "  const normalized = providedPath.replace(/^\\.\\//,'').replace(/\\/+/g, '/');",
+        '  if (existingPaths.includes(normalized)) return normalized;',
+        '}',
+      ].join('\n');
+      const targets = resolveVariables(code, 'test.js');
+
+      // providedPath definition — should have usages in its list
+      const ppDef = targets.find(t => t.name === 'providedPath' && t.targets.length > 0 && t.targets[0].loc.line === 2);
+      expect(ppDef).toBeDefined();
+
+      // normalized definition — should have usages on line 3
+      const normDef = targets.find(t => t.name === 'normalized' && t.targets.some(u => u.loc.line === 3));
+      expect(normDef).toBeDefined();
+
+      // existingPaths definition — should have usages on line 3
+      const epDef = targets.find(t => t.name === 'existingPaths' && t.targets.some(u => u.loc.line === 3));
+      expect(epDef).toBeDefined();
+
+      // No target name should come from inside the regex pattern
+      const falseTarget = targets.find(t => t.name === 'g' || t.name === 's');
+      expect(falseTarget).toBeUndefined();
+    });
+
+    it('resolves variables declared in for-of loops', () => {
+      const code = [
+        'function f(items) {',
+        '  for (const item of items) {',
+        '    console.log(item);',
+        '  }',
+        '}',
+      ].join('\n');
+      const targets = resolveVariables(code, 'test.js');
+
+      // 'item' defined on line 2, used on line 3
+      const itemDef = targets.find(t => t.name === 'item' && t.targets.some(u => u.loc.line === 3));
+      expect(itemDef).toBeDefined();
+
+      // 'items' param defined on line 1, used on line 2 (iterable)
+      const itemsDef = targets.find(t => t.name === 'items' && t.targets.some(u => u.loc.line === 2));
+      expect(itemsDef).toBeDefined();
+    });
+
+    it('resolves variables declared in C-style for loops', () => {
+      const code = [
+        'function f(arr) {',
+        '  let total = 0;',
+        '  for (let i = 0; i < arr.length; i++) {',
+        '    total += arr[i];',
+        '  }',
+        '  return total;',
+        '}',
+      ].join('\n');
+      const targets = resolveVariables(code, 'test.js');
+
+      // 'i' defined on line 3, used as condition/update on line 3, and as index on line 4
+      const iDef = targets.find(t => t.name === 'i' && t.targets.length > 0);
+      expect(iDef).toBeDefined();
+
+      // 'total' defined on line 2, used on lines 4 and 6
+      const totalDef = targets.find(t => t.name === 'total' && t.targets.some(u => u.loc.line === 6));
+      expect(totalDef).toBeDefined();
+    });
+
+    it('does not swallow subsequent variables when a template literal contains ${...}', () => {
+      const code = [
+        'function f(fileName, existingPaths) {',
+        '  const matches = existingPaths.filter((p) => p.endsWith(`/${fileName}`));',
+        '  const afterTemplate = 42;',
+        '  return afterTemplate;',
+        '}',
+      ].join('\n');
+      const targets = resolveVariables(code, 'test.js');
+
+      // 'matches' defined on line 2, used nowhere — but should be registered
+      // 'afterTemplate' defined on line 3, used on line 4
+      const afterDef = targets.find(t => t.name === 'afterTemplate' && t.targets.some(u => u.loc.line === 4));
+      expect(afterDef).toBeDefined();
+
+      // 'fileName' param used inside the template expression on line 2
+      const fileNameDef = targets.find(t => t.name === 'fileName' && t.targets.some(u => u.loc.line === 2));
+      expect(fileNameDef).toBeDefined();
+    });
   });
 });

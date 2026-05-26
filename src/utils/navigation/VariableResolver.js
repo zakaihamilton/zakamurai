@@ -5,6 +5,41 @@ export function tokenizeJs(code) {
   let i = 0;
   const len = code.length;
 
+  // These token types/values can NOT be the left-hand side of division,
+  // so a following `/` must open a regex literal.
+  const regexPrecedingValues = new Set([
+    '=', '+=', '-=', '*=', '/=', '%=', '==', '===', '!=', '!==',
+    '<', '>', '<=', '>=', '&&', '||', '??', '!', '~', '&', '|', '^',
+    '+', '-', '*', '%', '**',
+    '(', '[', '{', ',', ';', ':', '?',
+    '=>', 'return', 'typeof', 'instanceof', 'in', 'void', 'delete', 'throw', 'new',
+    'case', 'yield', 'await',
+  ]);
+
+  function lastMeaningfulToken() {
+    for (let k = tokens.length - 1; k >= 0; k--) {
+      const t = tokens[k];
+      if (t.type !== 'string' && t.type !== 'regex' && t.type !== 'template_text') {
+        return t;
+      }
+      return t;
+    }
+    return null;
+  }
+
+  function canBeRegex() {
+    const last = lastMeaningfulToken();
+    if (!last) return true; // start of file
+    if (last.type === 'keyword') return regexPrecedingValues.has(last.value);
+    if (last.type === 'punctuator') return regexPrecedingValues.has(last.value);
+    return false;
+  }
+
+  // Template expression depth stack.
+  // Each entry is the brace depth WITHIN that ${...} expression.
+  // Pushed when we hit `${`, popped when we see the matching `}`.
+  const tmplStack = [];
+
   while (i < len) {
     const char = code[i];
 
@@ -33,6 +68,32 @@ export function tokenizeJs(code) {
       continue;
     }
 
+    // Regex literal — must come before the '/' punctuator check
+    if (char === '/' && canBeRegex()) {
+      const start = i;
+      i++; // consume opening '/'
+      let inClass = false;
+      while (i < len) {
+        const c = code[i];
+        if (c === '\\') {
+          i += 2; // skip escaped char
+          continue;
+        }
+        if (c === '[') { inClass = true; i++; continue; }
+        if (c === ']') { inClass = false; i++; continue; }
+        if (c === '/' && !inClass) {
+          i++; // consume closing '/'
+          // consume flags: g, i, m, s, u, v, y
+          while (i < len && /[gimsuy]/.test(code[i])) i++;
+          break;
+        }
+        if (c === '\n') break; // unterminated regex — bail
+        i++;
+      }
+      tokens.push({ type: 'regex', value: code.substring(start, i), start, end: i });
+      continue;
+    }
+
     // String literal
     if (char === '"' || char === "'") {
       const quote = char;
@@ -52,7 +113,7 @@ export function tokenizeJs(code) {
       continue;
     }
 
-    // Template literal
+    // Template literal — scan head (or a subsequent segment after a previous ${...})
     if (char === '`') {
       const start = i;
       i++;
@@ -61,14 +122,64 @@ export function tokenizeJs(code) {
           i += 2;
         } else if (code[i] === '`') {
           i++;
-          break;
+          break; // closing backtick
         } else if (code[i] === '$' && code[i + 1] === '{') {
-          break;
+          break; // template expression — stop without consuming
         } else {
           i++;
         }
       }
       tokens.push({ type: 'template_text', value: code.substring(start, i), start, end: i });
+      // If we stopped at ${, record it and push onto the template stack
+      if (i < len && code[i] === '$' && code[i + 1] === '{') {
+        tmplStack.push(0);
+        tokens.push({ type: 'punctuator', value: '${', start: i, end: i + 2 });
+        i += 2;
+      }
+      continue;
+    }
+
+    // `{` — also increment template-expression brace depth when inside one
+    if (char === '{') {
+      if (tmplStack.length > 0) tmplStack[tmplStack.length - 1]++;
+      tokens.push({ type: 'punctuator', value: '{', start: i, end: i + 1 });
+      i++;
+      continue;
+    }
+
+    // `}` — may close a template expression OR be a normal closing brace
+    if (char === '}') {
+      if (tmplStack.length > 0 && tmplStack[tmplStack.length - 1] === 0) {
+        // Closes the innermost template expression
+        tmplStack.pop();
+        tokens.push({ type: 'template_close', value: '}', start: i, end: i + 1 });
+        i++;
+        // Scan the template tail until closing ` or another ${
+        const tailStart = i;
+        while (i < len) {
+          if (code[i] === '\\') {
+            i += 2;
+          } else if (code[i] === '`') {
+            i++;
+            break;
+          } else if (code[i] === '$' && code[i + 1] === '{') {
+            break;
+          } else {
+            i++;
+          }
+        }
+        tokens.push({ type: 'template_text', value: code.substring(tailStart, i), start: tailStart, end: i });
+        if (i < len && code[i] === '$' && code[i + 1] === '{') {
+          tmplStack.push(0);
+          tokens.push({ type: 'punctuator', value: '${', start: i, end: i + 2 });
+          i += 2;
+        }
+        continue;
+      }
+      // Normal `}` (may be inside a template expression but with nested braces)
+      if (tmplStack.length > 0) tmplStack[tmplStack.length - 1]--;
+      tokens.push({ type: 'punctuator', value: '}', start: i, end: i + 1 });
+      i++;
       continue;
     }
 
@@ -106,11 +217,11 @@ export function tokenizeJs(code) {
       continue;
     }
 
-    // Punctuators
+    // Punctuators — `{`, `}`, `${` are handled above with template-stack awareness
     const punctuators = [
-      '=>', '${', '===', '!==', '==', '!=', '>=', '<=', '++', '--',
+      '=>', '===', '!==', '==', '!=', '>=', '<=', '++', '--',
       '+', '-', '*', '/', '%', '&', '|', '^', '!', '~', '?', ':',
-      '{', '}', '(', ')', '[', ']', '.', ',', ';', '='
+      '(', ')', '[', ']', '.', ',', ';', '='
     ];
     let matched = false;
     for (const p of punctuators) {
@@ -130,6 +241,7 @@ export function tokenizeJs(code) {
 
   return tokens;
 }
+
 
 class Scope {
   constructor(parent = null, isFunctionScope = false) {
@@ -191,6 +303,7 @@ export function resolveVariables(code, filePath) {
   let depthParen = 0;
   let depthBrace = 0;
   let depthBracket = 0;
+  const tmplExprStack = []; // brace depth within each ${...} expression
 
   function checkAndPopArrows() {
     while (activeArrows.length > 0) {
@@ -269,8 +382,8 @@ export function resolveVariables(code, filePath) {
             const t = tokens[idx];
             if (t.value === '(') depthParen++;
             else if (t.value === ')') depthParen--;
-            else if (t.value === '{') depthBrace++;
-            else if (t.value === '}') depthBrace--;
+            else if (t.value === '{' || t.value === '${') depthBrace++;
+            else if (t.value === '}' || t.type === 'template_close') depthBrace--;
             else if (t.value === '[') depthBracket++;
             else if (t.value === ']') depthBracket--;
 
@@ -312,8 +425,8 @@ export function resolveVariables(code, filePath) {
             const t = tokens[idx];
             if (t.value === '(') depthParen++;
             else if (t.value === ')') depthParen--;
-            else if (t.value === '{') depthBrace++;
-            else if (t.value === '}') depthBrace--;
+            else if (t.value === '{' || t.value === '${') depthBrace++;
+            else if (t.value === '}' || t.type === 'template_close') depthBrace--;
             else if (t.value === '[') depthBracket++;
             else if (t.value === ']') depthBracket--;
 
@@ -351,7 +464,22 @@ export function resolveVariables(code, filePath) {
     // Check expression-body arrow function completions
     checkAndPopArrows();
 
+    if (token.value === '${') {
+      tmplExprStack.push(0);
+      idx++;
+      continue;
+    }
+
+    if (token.type === 'template_close' || (token.value === '}' && tmplExprStack.length > 0 && tmplExprStack[tmplExprStack.length - 1] === 0)) {
+      if (tmplExprStack.length > 0) tmplExprStack.pop();
+      idx++;
+      continue;
+    }
+
     if (token.value === '{') {
+      if (tmplExprStack.length > 0) {
+        tmplExprStack[tmplExprStack.length - 1]++;
+      }
       depthBrace++;
       const prevToken = tokens[idx - 1];
       const isBlock = !prevToken || blockPredecessors.has(prevToken.value);
@@ -363,6 +491,9 @@ export function resolveVariables(code, filePath) {
     }
 
     if (token.value === '}') {
+      if (tmplExprStack.length > 0) {
+        tmplExprStack[tmplExprStack.length - 1]--;
+      }
       depthBrace--;
       objectBraceStack.pop();
       popScope();
@@ -389,8 +520,8 @@ export function resolveVariables(code, filePath) {
             const t = tokens[idx];
             if (t.value === '(') dP++;
             else if (t.value === ')') dP--;
-            else if (t.value === '{') dB++;
-            else if (t.value === '}') dB--;
+            else if (t.value === '{' || t.value === '${') dB++;
+            else if (t.value === '}' || t.type === 'template_close') dB--;
             else if (t.value === '[') dBr++;
             else if (t.value === ']') dBr--;
 
@@ -435,8 +566,8 @@ export function resolveVariables(code, filePath) {
               const t = tokens[idx];
               if (t.value === '(') dP++;
               else if (t.value === ')') dP--;
-              else if (t.value === '{') dB++;
-              else if (t.value === '}') dB--;
+              else if (t.value === '{' || t.value === '${') dB++;
+              else if (t.value === '}' || t.type === 'template_close') dB--;
               else if (t.value === '[') dBr++;
               else if (t.value === ']') dBr--;
 
@@ -458,6 +589,94 @@ export function resolveVariables(code, filePath) {
       if (tokens[idx]?.type === 'identifier') {
         registerVar(tokens[idx].value, tokens[idx], true);
         idx++;
+      }
+      continue;
+    }
+
+    if (token.value === 'for') {
+      idx++;
+      // Skip optional 'await' (for-await-of)
+      if (tokens[idx]?.value === 'await') idx++;
+
+      if (tokens[idx]?.value === '(') {
+        idx++; // consume '('
+        depthParen++;
+
+        // Check for `for (const/let/var binding of/in iterable)`
+        if (
+          tokens[idx]?.type === 'keyword' &&
+          (tokens[idx].value === 'const' || tokens[idx].value === 'let' || tokens[idx].value === 'var')
+        ) {
+          const isBlockScoped = tokens[idx].value !== 'var';
+          idx++; // consume const/let/var
+
+          // Parse the binding pattern
+          idx = parseBindingPattern(tokens, idx, isBlockScoped);
+
+          if (tokens[idx]?.value === 'of' || tokens[idx]?.value === 'in') {
+            // for-of / for-in: scan the iterable expression up to ')'
+            idx++; // consume 'of'/'in'
+            let dP = 0;
+            while (idx < tokens.length) {
+              const t = tokens[idx];
+              if (t.value === '(') dP++;
+              else if (t.value === ')') {
+                if (dP === 0) break;
+                dP--;
+              }
+              scanTokenForUsages(t, idx);
+              idx++;
+            }
+            // consume closing ')'
+            if (tokens[idx]?.value === ')') { idx++; depthParen--; }
+          } else {
+            // C-style for with const/let/var init: `for (let i = 0; i < n; i++)`
+            // Parse optional initializer
+            if (tokens[idx]?.value === '=') {
+              idx++; // consume '='
+              let dP = 0;
+              while (idx < tokens.length) {
+                const t = tokens[idx];
+                if (t.value === '(') dP++;
+                else if (t.value === ')') {
+                  if (dP === 0) break;
+                  dP--;
+                }
+                if (dP === 0 && t.value === ';') break;
+                scanTokenForUsages(t, idx);
+                idx++;
+              }
+            }
+            // Scan condition and update clauses (separated by ';'), until closing ')'
+            let dP2 = 0;
+            while (idx < tokens.length) {
+              const t = tokens[idx];
+              if (t.value === '(') dP2++;
+              else if (t.value === ')') {
+                if (dP2 === 0) break;
+                dP2--;
+              }
+              scanTokenForUsages(t, idx);
+              idx++;
+            }
+            if (tokens[idx]?.value === ')') { idx++; depthParen--; }
+          }
+        } else {
+          // No declaration — may be `for (expr; ...; ...)` or `for (;;)`
+          // Scan everything up to the matching ')'
+          let dP = 0;
+          while (idx < tokens.length) {
+            const t = tokens[idx];
+            if (t.value === '(') dP++;
+            else if (t.value === ')') {
+              if (dP === 0) break;
+              dP--;
+            }
+            scanTokenForUsages(t, idx);
+            idx++;
+          }
+          if (tokens[idx]?.value === ')') { idx++; depthParen--; }
+        }
       }
       continue;
     }
@@ -498,8 +717,8 @@ export function resolveVariables(code, filePath) {
                 const t = tokens[pIdx];
                 if (t.value === '(') dP++;
                 else if (t.value === ')') dP--;
-                else if (t.value === '{') dB++;
-                else if (t.value === '}') dB--;
+                else if (t.value === '{' || t.value === '${') dB++;
+                else if (t.value === '}' || t.type === 'template_close') dB--;
                 else if (t.value === '[') dBr++;
                 else if (t.value === ']') dBr--;
 

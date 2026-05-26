@@ -193,4 +193,17 @@ describe('highlighter', () => {
     expect(hlStrTokens.length).toBe(1);
     expect(hlStrTokens[0].value).toBe("'real string'");
   });
+
+  it('does not treat regex literals with internal slashes as comments', () => {
+    const code = `const normalized = providedPath.replace(/^\\.\\//,'').replace(/\\/+/g, '/');`;
+    const breakdown = getHighlightBreakdown({ code, filePath: 'src/test.js', state: {}, styles });
+
+    // No token should be an hlComment — there are no real comments on this line
+    const commentTokens = breakdown.tokens.filter((t) => t.type === 'hlComment');
+    expect(commentTokens).toHaveLength(0);
+
+    // The string '/' at the end should be present as hlStr
+    const strTokens = breakdown.tokens.filter((t) => t.type === 'hlStr');
+    expect(strTokens.some((t) => t.value === "'/'")).toBe(true);
+  });
 });

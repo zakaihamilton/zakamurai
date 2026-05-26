@@ -242,12 +242,21 @@ const createHighlightAnalysis = ({
       (_m, p1, p2) => (p1 ? p1 : pushToken(p2, 'hlJsonPunc')),
     );
   } else {
-    // 1. Strings and comments matched in a single pass to prevent single quotes/slashes inside one from interfering with the other
+    // 1. Strings, regex literals, and comments matched in a single pass to prevent
+    // slashes inside regex from being mis-identified as the // comment start.
+    //
+    // Regex literal arm: only matches when preceded by an operator/keyword/open-bracket
+    // (i.e. not after an identifier, number, closing bracket — where / would be division).
     escaped = escaped.replace(
-      /(\/\*[\s\S]*?\*\/|\/\/.+|"(?:[^"\\\\]|\\\\.)*"|'(?:[^'\\\\]|\\\\.)*'|`(?:[^`\\\\]|\\\\.)*?`)/g,
+      // biome-ignore lint/suspicious/noControlCharactersInRegex: markers
+      /(\/\*[\s\S]*?\*\/|\/\/.+|(?<=[=({[!&|?:,;+\-*%^~]|=>|\breturn\b|\btypeof\b|\binstanceof\b|\bin\b|\bvoid\b|\bdelete\b|\bnew\b|\bthrow\b|\bcase\b|^)\s*\/(?![/*])(?:[^\/\\\n\[]|\\[^\n]|\\[\n]|\[(?:[^\]\\\n]|\.)*\])*\/[gimsuy]*|"(?:[^"\\\n]|\.)*"|'(?:[^'\n\\\n]|\.)*'|`(?:[^`\\]|\\.)*?`)/gm,
       (m) => {
         if (m.startsWith('//') || m.startsWith('/*')) {
           return pushToken(m, 'hlComment');
+        }
+        // regex literals are treated as opaque (similar to strings)
+        if (m.startsWith('/')) {
+          return pushToken(m, 'hlStr');
         }
         return pushToken(m, 'hlStr');
       },
