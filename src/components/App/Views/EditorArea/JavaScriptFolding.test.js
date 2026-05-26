@@ -116,6 +116,50 @@ after();`;
     ]);
   });
 
+  it('anchors multiline function signatures at the declaration line instead of the brace line', () => {
+    const code = `import React from 'react';
+function Example(
+  props
+) {
+  return <div>{props.title}</div>;
+}`;
+
+    expect(getJavaScriptBlockFolds(code, 'Example.jsx')).toEqual([
+      { id: '2:6', startLine: 2, endLine: 6 },
+    ]);
+  });
+
+  it('anchors multiline conditions at the condition line and ignores template expressions', () => {
+    const code = `/**
+ * Tries to find the best existing file path that matches the provided path.
+ */
+export function resolveFilePath(providedPath, existingPaths) {
+  const fileName = 'App.js';
+  const filenameMatches = existingPaths.filter((p) => p.endsWith(\`/\${fileName}\`) || p === fileName);
+
+  for (const existing of existingPaths) {
+    for (let i = 1; i <= 3; i++) {
+      if (
+        providedPath ===
+        existing
+      ) {
+        return existing;
+      } else {
+        break;
+      }
+    }
+  }
+}`;
+
+    expect(getJavaScriptBlockFolds(code, 'PathResolver.js')).toEqual([
+      { id: '4:20', startLine: 4, endLine: 20 },
+      { id: '8:19', startLine: 8, endLine: 19 },
+      { id: '9:18', startLine: 9, endLine: 18 },
+      { id: '10:15', startLine: 10, endLine: 15 },
+      { id: '15:17', startLine: 15, endLine: 17 },
+    ]);
+  });
+
   it('uses the shared folded-content projection for JS blocks', () => {
     const code = `if (enabled) {
   run();

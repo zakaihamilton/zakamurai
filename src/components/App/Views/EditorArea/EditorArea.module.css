@@ -195,7 +195,7 @@
   left: 0;
   z-index: 10;
   background: var(--editor-gutter-bg);
-  padding: 20px 16px;
+  padding: 20px 4px;
   border-right: 1px solid var(--editor-gutter-border);
   color: var(--text-muted);
   text-align: right;
@@ -222,7 +222,7 @@
   left: 0;
   right: 0;
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: flex-end;
   gap: 6px;
 }
@@ -230,6 +230,15 @@
 .gutterLine:hover {
   background: var(--bg-hover);
   color: var(--text-main);
+}
+
+.gutterLine > span:last-child {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  min-height: 16px;
+  min-width: calc(var(--gutter-digits, 3) * 1ch);
+  line-height: 1;
 }
 
 .selectedGutterLine {

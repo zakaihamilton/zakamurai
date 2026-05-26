@@ -34,9 +34,9 @@ export default function SingleEditorView({
 
     const syncHeights = () => {
       const codeLines = container.querySelectorAll('[data-line]');
-      codeLines.forEach((codeLine) => {
-        const lineNum = codeLine.getAttribute('data-line');
-        const gutterLine = container.querySelector(`[data-gutter-line="${lineNum}"]`);
+      const gutterLines = container.querySelectorAll('[data-gutter-line]');
+      codeLines.forEach((codeLine, index) => {
+        const gutterLine = gutterLines[index];
         if (gutterLine) {
           const rect = codeLine.getBoundingClientRect();
           gutterLine.style.height = `${rect.height}px`;

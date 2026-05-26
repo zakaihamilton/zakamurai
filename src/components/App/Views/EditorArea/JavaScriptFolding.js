@@ -113,7 +113,9 @@ export function getJavaScriptBlockFolds(code = '', filePath = '') {
 
     if (char === '{') {
       if (inTemplate && templateExpressionDepth > 0) templateExpressionDepth++;
-      stack.push({ line, templateExpression: inTemplate && templateExpressionDepth > 0 });
+      const isTemplateExpression = inTemplate && templateExpressionDepth > 0;
+      const startLine = isTemplateExpression ? line : getBlockStartLine(code, index, line);
+      stack.push({ line: startLine, templateExpression: isTemplateExpression });
       continue;
     }
 
@@ -136,6 +138,78 @@ export function getJavaScriptBlockFolds(code = '', filePath = '') {
   return Array.from(new Map(folds.map((fold) => [fold.id, fold])).values()).sort(
     (a, b) => a.startLine - b.startLine || a.endLine - b.endLine,
   );
+}
+
+function getBlockStartLine(code, braceIndex, fallbackLine) {
+  const lineStart = code.lastIndexOf('\n', braceIndex - 1) + 1;
+  const beforeBraceOnLine = code.slice(lineStart, braceIndex);
+  const afterBraceLineEnd = code.indexOf('\n', braceIndex);
+  const afterBraceOnLine = code.slice(
+    braceIndex + 1,
+    afterBraceLineEnd === -1 ? code.length : afterBraceLineEnd,
+  );
+
+  if (!/^\s*(?:\)|=>)?\s*$/.test(beforeBraceOnLine) || /\S/.test(afterBraceOnLine)) {
+    return fallbackLine;
+  }
+
+  if (beforeBraceOnLine.trim().startsWith(')')) {
+    const openParenIndex = findMatchingOpenParen(code, braceIndex);
+    if (openParenIndex !== -1) return getLineForIndex(code, openParenIndex);
+  }
+
+  let cursor = lineStart - 2;
+  while (cursor >= 0 && /\s/.test(code[cursor])) cursor--;
+  if (cursor < 0) return fallbackLine;
+
+  let depth = 0;
+  for (; cursor >= 0; cursor--) {
+    const char = code[cursor];
+
+    if (char === ')' || char === ']' || char === '}') {
+      depth++;
+      continue;
+    }
+
+    if (char === '(' || char === '[' || char === '{') {
+      depth = Math.max(0, depth - 1);
+      continue;
+    }
+
+    if (depth === 0 && (char === ';' || char === '\n' || char === '{' || char === '}')) {
+      break;
+    }
+  }
+
+  const statementStart = cursor + 1;
+  return getLineForIndex(code, statementStart);
+}
+
+function findMatchingOpenParen(code, beforeIndex) {
+  let depth = 0;
+  for (let index = beforeIndex - 1; index >= 0; index--) {
+    const char = code[index];
+    if (char === ')') {
+      depth++;
+      continue;
+    }
+
+    if (char === '(') {
+      depth--;
+      if (depth === 0) return index;
+    }
+  }
+
+  return -1;
+}
+
+function getLineForIndex(code, targetIndex) {
+  let line = 1;
+  for (let index = 0; index < targetIndex; index++) {
+    if (code.charCodeAt(index) === 10) line++;
+  }
+
+  return line;
 }
 
 function parseJsxTag(code, startIndex) {

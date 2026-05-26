@@ -91,6 +91,20 @@ describe('highlighter', () => {
     expect(result).not.toContain('<div>');
   });
 
+  it('closes multiline token spans before line row boundaries', () => {
+    const result = highlightCode('/**\n * docs\n */\nconst value = 1;', 'src/test.js', {}, styles);
+
+    expect(result).toContain(
+      '<span class="lineRow " data-line="1" style="display: block;"><span class="hlComment">/**</span></span>',
+    );
+    expect(result).toContain(
+      '<span class="lineRow " data-line="2" style="display: block;"><span class="hlComment"> * docs</span></span>',
+    );
+    expect(result).toContain(
+      '<span class="lineRow " data-line="3" style="display: block;"><span class="hlComment"> */</span></span>',
+    );
+  });
+
   it('uses cache for identical content and parameters', () => {
     const code = 'const x = 10;';
     const state = { pendingDiffs: {}, selectedLines: {} };

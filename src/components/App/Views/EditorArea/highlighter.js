@@ -190,6 +190,13 @@ const createHighlightAnalysis = ({
   const T_POST = '\x02';
 
   const pushToken = (val, type) => {
+    if (val.includes('\n')) {
+      return val
+        .split('\n')
+        .map((part) => (part ? pushToken(part, type) : ''))
+        .join('\n');
+    }
+
     const idx = tokens.length;
     tokens.push({ val, type });
     const plainValue = val
