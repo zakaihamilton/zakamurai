@@ -64,6 +64,52 @@ describe('highlighter', () => {
     expect(result).toContain('styles.css');
   });
 
+  it('wraps variable targets inside object literal arguments', () => {
+    const code = [
+      'const messages = [];',
+      'const generationOptions = {};',
+      'const reply = await engine.chat.completions.create({',
+      '  messages,',
+      '  ...generationOptions,',
+      '});',
+    ].join('\n');
+    const mockTargets = [
+      {
+        start: 106,
+        end: 114,
+        type: 'variable',
+        name: 'messages',
+        targets: [{ filePath: 'src/test.js', fileName: 'test.js', loc: { line: 1, col: 7 } }],
+      },
+      {
+        start: 121,
+        end: 138,
+        type: 'variable',
+        name: 'generationOptions',
+        targets: [{ filePath: 'src/test.js', fileName: 'test.js', loc: { line: 2, col: 7 } }],
+      },
+    ];
+    vi.mocked(findNavigationTargets).mockReturnValue(mockTargets);
+
+    const result = highlightCode(
+      code,
+      'src/test.js',
+      {},
+      styles,
+      false,
+      '',
+      -1,
+      undefined,
+      undefined,
+      true,
+    );
+
+    expect(result).toContain('data-nav-idx="0">messages</span>');
+    expect(result).toContain(
+      '...<span class="navLink" data-nav-target="true" data-nav-idx="1">generationOptions</span>',
+    );
+  });
+
   it('injects ghost text at the suggestion marker', () => {
     // \u0005 is the suggestion marker
     const code = 'const x = \u0005;';
@@ -192,6 +238,49 @@ describe('highlighter', () => {
     expect(result).toContain('class="hlStr"');
     expect(breakdown.tokens.some((token) => token.type === 'hlStr')).toBe(true);
     expect(breakdown.tokens.some((token) => token.value.includes('section'))).toBe(true);
+  });
+
+  it('keeps template literal expressions available for JavaScript highlighting', () => {
+    const code = 'console.warn(`Failed to check WebLLM cache for ${model.id}:`, error);';
+    const result = highlightCode(code, 'src/test.js', {}, styles, false, '', -1, '');
+    const breakdown = getHighlightBreakdown({ code, filePath: 'src/test.js', state: {}, styles });
+    const strTokens = breakdown.tokens.filter((token) => token.type === 'hlStr');
+
+    expect(result).toContain('class="hlFunc">warn</span>');
+    expect(result).toContain('model.<span class="hlProp">id</span>');
+    expect(strTokens.some((token) => token.value.includes('Failed to check WebLLM cache'))).toBe(
+      true,
+    );
+    expect(strTokens.some((token) => token.value.includes('model.id'))).toBe(false);
+  });
+
+  it('highlights JavaScript object keys and member properties', () => {
+    const code = `const messages = [
+  { role: 'system', content: systemPrompt || defaultSystemPrompt },
+  { role: 'user', content: prompt },
+];
+generationOptions.max_tokens = options.max_tokens;`;
+    const result = highlightCode(code, 'src/test.js', {}, styles, false, '', -1, '');
+    const breakdown = getHighlightBreakdown({ code, filePath: 'src/test.js', state: {}, styles });
+    const propTokens = breakdown.tokens.filter((token) => token.type === 'hlProp');
+
+    expect(result).toContain('class="hlProp">role</span>');
+    expect(result).toContain('class="hlProp">content</span>');
+    expect(result).toContain('class="hlProp">max_tokens</span>');
+    expect(propTokens.some((token) => token.value === 'role')).toBe(true);
+    expect(propTokens.some((token) => token.value === 'content')).toBe(true);
+    expect(propTokens.some((token) => token.value === 'max_tokens')).toBe(true);
+  });
+
+  it('keeps called member names highlighted as functions', () => {
+    const code = "console.warn('Failed:', error);";
+    const result = highlightCode(code, 'src/test.js', {}, styles, false, '', -1, '');
+    const breakdown = getHighlightBreakdown({ code, filePath: 'src/test.js', state: {}, styles });
+
+    expect(result).toContain('class="hlFunc">warn</span>');
+    expect(
+      breakdown.tokens.some((token) => token.type === 'hlProp' && token.value === 'warn'),
+    ).toBe(false);
   });
 
   it('does not treat single quotes inside comments as strings', () => {

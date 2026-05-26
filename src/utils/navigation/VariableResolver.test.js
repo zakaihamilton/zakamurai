@@ -1,3 +1,4 @@
+import fs from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { resolveVariables, tokenizeJs } from './VariableResolver';
 
@@ -267,6 +268,91 @@ describe('VariableResolver', () => {
         (t) => t.name === 'error' && t.targets.some((u) => u.loc.line === 9),
       );
       expect(errorDef).toBeDefined();
+    });
+
+    it('resolves shorthand object properties and spread identifiers in call arguments', () => {
+      const code = [
+        'const messages = [];',
+        'const generationOptions = {};',
+        'const reply = await engine.chat.completions.create({',
+        '  messages,',
+        '  ...generationOptions,',
+        '});',
+      ].join('\n');
+      const targets = resolveVariables(code, 'test.js');
+
+      const messagesUse = targets.find((t) => t.name === 'messages' && t.start === 106);
+      expect(messagesUse).toBeDefined();
+      expect(messagesUse.targets[0].loc.line).toBe(1);
+
+      const generationOptionsUse = targets.find(
+        (t) => t.name === 'generationOptions' && t.start === 121,
+      );
+      expect(generationOptionsUse).toBeDefined();
+      expect(generationOptionsUse.targets[0].loc.line).toBe(2);
+    });
+
+    it('resolves object argument usages inside exported async arrow function blocks', () => {
+      const code = [
+        "export const askWebLLM = async (prompt, systemPrompt = '', onUpdate = null, options = {}) => {",
+        '  try {',
+        '    const engine = await getEngine(options.model, onUpdate, options);',
+        '    const messages = [',
+        "      { role: 'system', content: systemPrompt },",
+        "      { role: 'user', content: prompt },",
+        '    ];',
+        '    const generationOptions = {',
+        '      temperature: options.temperature ?? 0.7,',
+        '    };',
+        '    if (onUpdate) {',
+        '      const chunks = await engine.chat.completions.create({',
+        '        messages,',
+        '        ...generationOptions,',
+        '        stream: true,',
+        '      });',
+        '      return chunks;',
+        '    }',
+        '  } catch (error) {',
+        '    throw error;',
+        '  }',
+        '};',
+      ].join('\n');
+      const targets = resolveVariables(code, 'test.js');
+      const messagesUseIndex = code.indexOf('messages,');
+      const generationOptionsUseIndex = code.indexOf('generationOptions,');
+
+      const messagesUse = targets.find(
+        (t) => t.name === 'messages' && t.start === messagesUseIndex,
+      );
+      expect(messagesUse).toBeDefined();
+      expect(messagesUse.targets[0].loc.line).toBe(4);
+
+      const generationOptionsUse = targets.find(
+        (t) => t.name === 'generationOptions' && t.start === generationOptionsUseIndex,
+      );
+      expect(generationOptionsUse).toBeDefined();
+      expect(generationOptionsUse.targets[0].loc.line).toBe(8);
+    });
+
+    it('resolves object argument usages in WebLLMAPI', () => {
+      const code = fs.readFileSync('src/components/AI/WebLLMAPI.js', 'utf8');
+      const targets = resolveVariables(code, 'src/components/AI/WebLLMAPI.js');
+      const messagesUseIndex = code.indexOf('messages,', code.indexOf('completions.create'));
+      const generationOptionsUseIndex = code.indexOf(
+        'generationOptions,',
+        code.indexOf('completions.create'),
+      );
+      const messagesUse = targets.find(
+        (t) => t.name === 'messages' && t.start === messagesUseIndex,
+      );
+      expect(messagesUse).toBeDefined();
+      expect(messagesUse.targets[0].loc.line).toBe(97);
+
+      const generationOptionsUse = targets.find(
+        (t) => t.name === 'generationOptions' && t.start === generationOptionsUseIndex,
+      );
+      expect(generationOptionsUse).toBeDefined();
+      expect(generationOptionsUse.targets[0].loc.line).toBe(108);
     });
   });
 });

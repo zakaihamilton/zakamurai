@@ -225,6 +225,109 @@ const createHighlightAnalysis = ({
     return `${T_PRE}${idx}${T_POST}`;
   };
 
+  const findTemplateExpressionEnd = (value, expressionStart) => {
+    let depth = 1;
+    let i = expressionStart;
+    let quote = null;
+    let inLineComment = false;
+    let inBlockComment = false;
+
+    while (i < value.length) {
+      const char = value[i];
+      const next = value[i + 1];
+
+      if (inLineComment) {
+        if (char === '\n') inLineComment = false;
+        i++;
+        continue;
+      }
+
+      if (inBlockComment) {
+        if (char === '*' && next === '/') {
+          inBlockComment = false;
+          i += 2;
+        } else {
+          i++;
+        }
+        continue;
+      }
+
+      if (quote) {
+        if (char === '\\') {
+          i += 2;
+        } else {
+          if (char === quote) quote = null;
+          i++;
+        }
+        continue;
+      }
+
+      if (char === '/' && next === '/') {
+        inLineComment = true;
+        i += 2;
+        continue;
+      }
+
+      if (char === '/' && next === '*') {
+        inBlockComment = true;
+        i += 2;
+        continue;
+      }
+
+      if (char === '"' || char === "'" || char === '`') {
+        quote = char;
+        i++;
+        continue;
+      }
+
+      if (char === '{') {
+        depth++;
+      } else if (char === '}') {
+        depth--;
+        if (depth === 0) return i;
+      }
+      i++;
+    }
+
+    return -1;
+  };
+
+  const highlightTemplateLiteral = (value) => {
+    let result = '';
+    let segmentStart = 0;
+    let i = 1;
+
+    while (i < value.length - 1) {
+      if (value[i] === '\\') {
+        i += 2;
+        continue;
+      }
+
+      if (value[i] === '$' && value[i + 1] === '{') {
+        const expressionEnd = findTemplateExpressionEnd(value, i + 2);
+        if (expressionEnd === -1) break;
+
+        if (segmentStart < i) {
+          result += pushToken(value.slice(segmentStart, i), 'hlStr');
+        }
+        result += pushToken('${', 'hlStr');
+        result += value.slice(i + 2, expressionEnd);
+        result += pushToken('}', 'hlStr');
+        i = expressionEnd + 1;
+        segmentStart = i;
+        continue;
+      }
+
+      i++;
+    }
+
+    if (segmentStart < value.length) {
+      result += pushToken(value.slice(segmentStart), 'hlStr');
+    }
+
+    return result;
+  };
+
   if (jsonPath) {
     // JSON keys and strings need different contrast, especially in light mode.
     escaped = escaped.replace(/("(?:[^"\\\\]|\\\\.)*")(?=\s*:)/g, (m) => pushToken(m, 'hlJsonKey'));
@@ -255,11 +358,13 @@ const createHighlightAnalysis = ({
     // Regex literal arm: only matches when preceded by an operator/keyword/open-bracket
     // (i.e. not after an identifier, number, closing bracket — where / would be division).
     escaped = escaped.replace(
-      // biome-ignore lint/suspicious/noControlCharactersInRegex: markers
       /(\/\*[\s\S]*?\*\/|\/\/.+|(?<=[=({[!&|?:,;+\-*%^~]|=>|\breturn\b|\btypeof\b|\binstanceof\b|\bin\b|\bvoid\b|\bdelete\b|\bnew\b|\bthrow\b|\bcase\b|^)\s*\/(?![/*])(?:[^\/\\\n\[]|\\[^\n]|\\[\n]|\[(?:[^\]\\\n]|\.)*\])*\/[gimsuy]*|"(?:[^"\\\n]|\.)*"|'(?:[^'\n\\\n]|\.)*'|`(?:[^`\\]|\\.)*?`)/gm,
       (m) => {
         if (m.startsWith('//') || m.startsWith('/*')) {
           return pushToken(m, 'hlComment');
+        }
+        if (m.startsWith('`')) {
+          return highlightTemplateLiteral(m);
         }
         // regex literals are treated as opaque (similar to strings)
         if (m.startsWith('/')) {
@@ -298,6 +403,17 @@ const createHighlightAnalysis = ({
     escaped = escaped.replace(
       /(&lt;\/?)([a-zA-Z0-9]+)/g,
       (_m, p1, p2) => `${p1}${pushToken(p2, 'hlTag')}`,
+    );
+    // Object keys and member properties
+    escaped = escaped.replace(
+      // biome-ignore lint/suspicious/noControlCharactersInRegex: markers
+      /(\x01\d+\x02|\u0003\d+\u0003|\u0004|\u0005|\u0006[a-j]+\u0006|\u0007)|\b([a-zA-Z_$][a-zA-Z0-9_$]*)(?=\s*:)/g,
+      (_m, p1, p2) => (p1 ? p1 : pushToken(p2, 'hlProp')),
+    );
+    escaped = escaped.replace(
+      // biome-ignore lint/suspicious/noControlCharactersInRegex: markers
+      /(\x01\d+\x02|\u0003\d+\u0003|\u0004|\u0005|\u0006[a-j]+\u0006|\u0007)|(\?\.|\.)([a-zA-Z_$][a-zA-Z0-9_$]*)(?![a-zA-Z0-9_$])(?!\s*\()/g,
+      (_m, p1, p2, p3) => (p1 ? p1 : `${p2}${pushToken(p3, 'hlProp')}`),
     );
     // Functions
     escaped = escaped.replace(/\b([a-zA-Z0-9_]+)(?=\()/g, (m) => pushToken(m, 'hlFunc'));

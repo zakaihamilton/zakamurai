@@ -593,6 +593,33 @@ describe('navigation utils', () => {
     });
   });
 
+  describe('findNavigationTargets with object variable usages', () => {
+    it('returns variable targets for shorthand object properties and spread identifiers', () => {
+      const code = [
+        'const messages = [];',
+        'const generationOptions = {};',
+        'const reply = await engine.chat.completions.create({',
+        '  messages,',
+        '  ...generationOptions,',
+        '});',
+      ].join('\n');
+
+      const targets = findNavigationTargets(code, false, {}, 'src/test.js');
+
+      const messagesUse = targets.find(
+        (t) => t.type === 'variable' && t.name === 'messages' && t.start === 106,
+      );
+      expect(messagesUse).toBeDefined();
+      expect(messagesUse.targets[0].loc.line).toBe(1);
+
+      const generationOptionsUse = targets.find(
+        (t) => t.type === 'variable' && t.name === 'generationOptions' && t.start === 121,
+      );
+      expect(generationOptionsUse).toBeDefined();
+      expect(generationOptionsUse.targets[0].loc.line).toBe(2);
+    });
+  });
+
   describe('findNavigationTargets with import symbols', () => {
     it('returns targets for destructured named symbols inside imports', () => {
       const fileContents = {

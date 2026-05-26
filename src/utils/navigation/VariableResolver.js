@@ -47,7 +47,6 @@ export function resolveVariables(code, filePath) {
     const isObjectLiteral =
       objectBraceStack.length > 0 && !objectBraceStack[objectBraceStack.length - 1];
     const isObjectKey = isObjectLiteral && tokens[tIdx + 1]?.value === ':';
-
     if (!isMemberProperty && !isObjectKey) {
       scopeManager.registerUsage(tok);
     }
@@ -318,7 +317,11 @@ export function resolveVariables(code, filePath) {
       objectBraceStack.pop();
       scopeManager.popScope();
 
-      if (activeArrows.length > 0 && activeArrows[activeArrows.length - 1].hasBlock) {
+      if (
+        activeArrows.length > 0 &&
+        activeArrows[activeArrows.length - 1].hasBlock &&
+        depthBrace <= activeArrows[activeArrows.length - 1].depthBrace
+      ) {
         scopeManager.popScope();
         activeArrows.pop();
       }
@@ -558,7 +561,7 @@ export function resolveVariables(code, filePath) {
       // Record this arrow function scope to pop it when its expression body completes
       activeArrows.push({
         scope: arrowScope,
-        depthParen: token.value === ')' ? depthParen + 1 : depthParen,
+        depthParen,
         depthBrace,
         depthBracket,
         hasBlock: tokens[idx + 1]?.value === '{',
