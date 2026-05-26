@@ -104,7 +104,7 @@ export default function Sidebar() {
     return () => window.removeEventListener('focus-file-search', handleFocusSearch);
   }, []);
 
-  const { handleToggle, handleOpenFile, handleRename, handleCreate, handleDelete } =
+  const { loadChildren, handleToggle, handleOpenFile, handleRename, handleCreate, handleDelete } =
     useSidebarFileLoader({
       fs,
       appState,
@@ -114,6 +114,78 @@ export default function Sidebar() {
       setLoadingPaths,
       addNotification,
     });
+
+  // Auto-expand and load parent folders for active tab
+  useEffect(() => {
+    if (!tabState.activeTabId) return;
+
+    const activeTab = tabState.openTabs?.find((t) => t.id === tabState.activeTabId);
+    if (!activeTab || activeTab.type !== 'file') return;
+
+    const segments = tabState.activeTabId.split('/');
+    if (segments.length <= 1) return;
+
+    let cancelled = false;
+
+    const expandPath = async () => {
+      let currentTree = folderTree;
+      const currentPath = [];
+
+      for (let i = 0; i < segments.length - 1; i++) {
+        if (cancelled) return;
+        const segment = segments[i];
+        currentPath.push(segment);
+        const pathStr = currentPath.join('/');
+
+        // Find the node in the current tree level
+        const node = currentTree.find((n) => n.name === segment && n.type === 'folder');
+        if (!node) {
+          // Node not found yet, maybe folderTree hasn't updated or children are still loading
+          break;
+        }
+
+        // If not expanded, expand it
+        if (expandedFolders[pathStr] === false || !expandedFolders[pathStr]) {
+          sidebarState((draft) => {
+            draft.expandedFolders = {
+              ...draft.expandedFolders,
+              [pathStr]: true,
+            };
+          });
+        }
+
+        // If children are not loaded yet and we are in local mode, load them
+        if (!node.children) {
+          if (fs.mode === 'local') {
+            const row = {
+              item: node,
+              path: [...currentPath],
+              pathStr,
+            };
+            await loadChildren(row);
+          }
+          // Break to let the next render run with the updated tree
+          break;
+        }
+
+        currentTree = node.children;
+      }
+    };
+
+    expandPath();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    tabState.activeTabId,
+    tabState.openTabs,
+    folderTree,
+    expandedFolders,
+    fs.mode,
+    sidebarState,
+    loadChildren,
+  ]);
 
   const { handleDragStart, handleDragOver, handleDragEnter, handleDrop } = useSidebarDragAndDrop({
     fs,
@@ -134,6 +206,11 @@ export default function Sidebar() {
     ],
     [deferredFilterText, expandedFolders, folderTree, fs.rootHandle, projectName],
   );
+
+  const activeIndex = useMemo(() => {
+    if (!tabState.activeTabId) return -1;
+    return rows.findIndex((row) => row.pathStr === tabState.activeTabId);
+  }, [rows, tabState.activeTabId]);
 
   const isOpen = isMobile ? sidebarState.isSidebarPopupOpen : isSidebarOpen;
 
@@ -198,6 +275,8 @@ export default function Sidebar() {
           style={{ pointerEvents: isOpen ? 'auto' : 'none' }}
           items={rows}
           itemHeight={ROW_HEIGHT}
+          scrollKey={tabState.activeTabId}
+          scrollToIndex={activeIndex >= 0 ? activeIndex : null}
           renderItem={(row) => (
             <TreeItem
               row={row}

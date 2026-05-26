@@ -11,6 +11,8 @@ export default function VirtualList({
   renderItem,
   className = '',
   style,
+  scrollKey,
+  scrollToIndex,
 }) {
   return (
     <Node id="VirtualList">
@@ -21,12 +23,23 @@ export default function VirtualList({
         renderItem={renderItem}
         className={className}
         style={style}
+        scrollKey={scrollKey}
+        scrollToIndex={scrollToIndex}
       />
     </Node>
   );
 }
 
-function VirtualListInner({ items, itemHeight, overscan = 8, renderItem, className = '', style }) {
+function VirtualListInner({
+  items,
+  itemHeight,
+  overscan = 8,
+  renderItem,
+  className = '',
+  style,
+  scrollKey,
+  scrollToIndex,
+}) {
   const containerRef = useRef(null);
   const scrollFrameRef = useRef(0);
   const virtualListState = VirtualListState.useState(null, { scrollTop: 0, height: 0 });
@@ -72,6 +85,28 @@ function VirtualListInner({ items, itemHeight, overscan = 8, renderItem, classNa
     },
     [],
   );
+
+  React.useEffect(() => {
+    // Reference scrollKey to satisfy dependency array check
+    const _trigger = scrollKey;
+    if (scrollToIndex !== undefined && scrollToIndex !== null && scrollToIndex >= 0) {
+      const container = containerRef.current;
+      if (!container) return;
+
+      const itemTop = scrollToIndex * itemHeight;
+      const itemBottom = itemTop + itemHeight;
+      const currentScrollTop = container.scrollTop;
+      const containerHeight = container.clientHeight || height;
+
+      if (itemTop < currentScrollTop || itemBottom > currentScrollTop + containerHeight) {
+        if (itemTop < currentScrollTop) {
+          container.scrollTo({ top: itemTop, behavior: 'smooth' });
+        } else {
+          container.scrollTo({ top: itemBottom - containerHeight, behavior: 'smooth' });
+        }
+      }
+    }
+  }, [scrollKey, scrollToIndex, itemHeight, height]);
 
   const totalHeight = items.length * itemHeight;
   const range = useMemo(() => {
