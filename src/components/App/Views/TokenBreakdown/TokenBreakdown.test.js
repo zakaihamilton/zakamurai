@@ -144,6 +144,34 @@ describe('TokenBreakdown', () => {
     expect(tabState).toHaveBeenCalled();
   });
 
+  it('lists tokens in source order instead of highlight-pass order', () => {
+    vi.spyOn(EditorState, 'useState').mockReturnValue({
+      fileContents: {
+        'src/test.js': 'export const answer = 42;',
+      },
+      selectedLines: {},
+      pendingDiffs: {},
+    });
+
+    const { container } = render(
+      <TokenBreakdown
+        tab={{
+          id: 'token-breakdown:src/test.js',
+          sourceFilePath: 'src/test.js',
+          collapsedFoldIds: [],
+        }}
+      />,
+    );
+
+    const values = Array.from(container.querySelectorAll('tbody tr td:last-child code')).map(
+      (node) => node.textContent,
+    );
+
+    expect(values.indexOf('export')).toBeLessThan(values.indexOf('const'));
+    expect(values.indexOf('const')).toBeLessThan(values.indexOf('42'));
+    expect(values[0]).toBe('export');
+  });
+
   it('filters tokens when user types in the search field or clicks type pills', () => {
     vi.spyOn(EditorState, 'useState').mockReturnValue({
       fileContents: {

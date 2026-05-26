@@ -33,6 +33,82 @@ const getLineColumn = (code = '', index = 0) => {
   return { line, column };
 };
 
+const resolveDebugTokenRanges = (highlighted, code, debugTokens) => {
+  let highlightIdx = 0;
+  let codeIdx = 0;
+
+  const advanceHighlight = () => {
+    if (highlightIdx >= highlighted.length) return;
+
+    if (highlighted.startsWith('&amp;', highlightIdx)) {
+      highlightIdx += 5;
+      codeIdx += 1;
+      return;
+    }
+    if (highlighted.startsWith('&lt;', highlightIdx)) {
+      highlightIdx += 4;
+      codeIdx += 1;
+      return;
+    }
+    if (highlighted.startsWith('&gt;', highlightIdx)) {
+      highlightIdx += 4;
+      codeIdx += 1;
+      return;
+    }
+
+    // biome-ignore lint/suspicious/noControlCharactersInRegex: markers
+    const navStart = highlighted.slice(highlightIdx).match(/^\u0006[a-j]+\u0006/);
+    if (navStart) {
+      highlightIdx += navStart[0].length;
+      return;
+    }
+    // biome-ignore lint/suspicious/noControlCharactersInRegex: markers
+    if (highlighted[highlightIdx] === '\u0007') {
+      highlightIdx += 1;
+      return;
+    }
+    // biome-ignore lint/suspicious/noControlCharactersInRegex: markers
+    const diffStart = highlighted.slice(highlightIdx).match(/^\u0003\d+\u0003/);
+    if (diffStart) {
+      highlightIdx += diffStart[0].length;
+      return;
+    }
+    // biome-ignore lint/suspicious/noControlCharactersInRegex: markers
+    if (highlighted[highlightIdx] === '\u0004' || highlighted[highlightIdx] === '\u0005') {
+      highlightIdx += 1;
+      return;
+    }
+
+    highlightIdx += 1;
+    codeIdx += 1;
+  };
+
+  while (highlightIdx < highlighted.length) {
+    // biome-ignore lint/suspicious/noControlCharactersInRegex: markers
+    const markerMatch = highlighted.slice(highlightIdx).match(/^\x01(\d+)\x02/);
+    if (markerMatch) {
+      const tokenIndex = Number.parseInt(markerMatch[1], 10);
+      const debugToken = debugTokens[tokenIndex];
+      if (debugToken) {
+        const value = debugToken.value || '';
+        const start = codeIdx;
+        const end = codeIdx + value.length;
+        debugToken.range = {
+          start,
+          end,
+          startPosition: getLineColumn(code, start),
+          endPosition: getLineColumn(code, end),
+        };
+        codeIdx = end;
+      }
+      highlightIdx += markerMatch[0].length;
+      continue;
+    }
+
+    advanceHighlight();
+  }
+};
+
 const buildCacheKey = ({
   code,
   filePath,
@@ -205,22 +281,13 @@ const createHighlightAnalysis = ({
       .replace(/&lt;/g, '<')
       .replace(/&gt;/g, '>')
       .replace(/&amp;/g, '&');
-    const rawIndex = plainValue ? code.indexOf(plainValue) : -1;
     debug.tokens.push({
       index: idx,
       type,
       className: styles[type] || type,
       value: plainValue || val,
       escapedValue: val,
-      range:
-        rawIndex >= 0
-          ? {
-              start: rawIndex,
-              end: rawIndex + plainValue.length,
-              startPosition: getLineColumn(code, rawIndex),
-              endPosition: getLineColumn(code, rawIndex + plainValue.length),
-            }
-          : null,
+      range: null,
     });
     return `${T_PRE}${idx}${T_POST}`;
   };
@@ -416,7 +483,11 @@ const createHighlightAnalysis = ({
       (_m, p1, p2, p3) => (p1 ? p1 : `${p2}${pushToken(p3, 'hlProp')}`),
     );
     // Functions
-    escaped = escaped.replace(/\b([a-zA-Z0-9_]+)(?=\()/g, (m) => pushToken(m, 'hlFunc'));
+    escaped = escaped.replace(
+      // biome-ignore lint/suspicious/noControlCharactersInRegex: markers
+      /(\x01\d+\x02|\u0003\d+\u0003|\u0004|\u0005|\u0006[a-j]+\u0006|\u0007)|\b([a-zA-Z0-9_]+)(?=\()/g,
+      (_m, p1, p2) => (p1 ? p1 : pushToken(p2, 'hlFunc')),
+    );
     // Attributes
     escaped = escaped.replace(/\b([a-zA-Z\-]+)(?==)/g, (m) => pushToken(m, 'hlAttr'));
   }
@@ -438,6 +509,8 @@ const createHighlightAnalysis = ({
       (_m, p1, p2) => (p1 ? p1 : pushToken(p2, 'hlNum')),
     );
   }
+
+  resolveDebugTokenRanges(escaped, code, debug.tokens);
 
   // Search highlights
   let matchCounter = 0;

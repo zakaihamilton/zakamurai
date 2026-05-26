@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { findNavigationTargets } from '@/utils/navigation';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { getHighlightBreakdown, highlightCode } from './highlighter';
@@ -202,6 +204,73 @@ describe('highlighter', () => {
     expect(breakdown.tokens.some((token) => token.type === 'hlNum' && token.value === '42')).toBe(
       true,
     );
+  });
+
+  it('assigns source ranges to each token occurrence instead of using indexOf', () => {
+    const code = [
+      'const first = 1;',
+      'const second = 2;',
+      'function sample() {',
+      '  return first + second;',
+      '}',
+    ].join('\n');
+    const breakdown = getHighlightBreakdown({ code, filePath: 'src/test.js', state: {}, styles });
+    const constTokens = breakdown.tokens.filter((token) => token.type === 'hlKw' && token.value === 'const');
+
+    expect(constTokens).toHaveLength(2);
+    expect(constTokens.map((token) => token.range?.start)).toEqual([0, 17]);
+    expect(constTokens.every((token) => token.range?.startPosition?.line === token.range?.endPosition?.line)).toBe(
+      true,
+    );
+  });
+
+  it('orders SearchReplaceParser tokens by source position', () => {
+    const filePath = 'src/components/AI/Processor/utils/SearchReplaceParser.js';
+    const code = readFileSync(join(process.cwd(), filePath), 'utf8');
+    const breakdown = getHighlightBreakdown({
+      code,
+      filePath,
+      state: { fileContents: { [filePath]: code } },
+      styles,
+      navigationLinksEnabled: true,
+    });
+    const ordered = [...breakdown.tokens].sort((a, b) => {
+      const aStart = a.range?.start ?? Number.POSITIVE_INFINITY;
+      const bStart = b.range?.start ?? Number.POSITIVE_INFINITY;
+      if (aStart !== bStart) return aStart - bStart;
+      return a.index - b.index;
+    });
+
+    const importToken = ordered.find((token) => token.type === 'hlKw' && token.value === 'import');
+    const firstPlaceholder = ordered.find(
+      (token) => token.type === 'hlStr' && token.value === "'[exact existing lines]'",
+    );
+
+    expect(importToken?.range?.startPosition?.line).toBe(1);
+    expect(firstPlaceholder?.range?.startPosition?.line).toBe(6);
+    expect((importToken?.range?.start ?? 0) < (firstPlaceholder?.range?.start ?? 0)).toBe(true);
+
+    const constTokens = ordered.filter((token) => token.type === 'hlKw' && token.value === 'const');
+    expect(new Set(constTokens.map((token) => token.range?.start)).size).toBe(constTokens.length);
+  });
+
+  it('orders repeated tokens by their position in the file', () => {
+    const code = 'const first = 1;\nconst second = 2;';
+    const breakdown = getHighlightBreakdown({ code, filePath: 'src/test.js', state: {}, styles });
+    const ordered = [...breakdown.tokens].sort((a, b) => {
+      const aStart = a.range?.start ?? Number.POSITIVE_INFINITY;
+      const bStart = b.range?.start ?? Number.POSITIVE_INFINITY;
+      if (aStart !== bStart) return aStart - bStart;
+      return a.index - b.index;
+    });
+
+    const firstConst = ordered.findIndex((token) => token.value === 'const');
+    const secondConst = ordered.findIndex(
+      (token, index) => index > firstConst && token.value === 'const',
+    );
+    expect(firstConst).toBeGreaterThanOrEqual(0);
+    expect(secondConst).toBeGreaterThan(firstConst);
+    expect(ordered[firstConst].range?.start).toBeLessThan(ordered[secondConst].range?.start ?? 0);
   });
 
   it('reports CSS tokens that match rendered highlight classes', () => {

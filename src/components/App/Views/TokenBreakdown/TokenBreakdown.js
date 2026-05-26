@@ -62,6 +62,16 @@ const TOKEN_LABELS = {
 
 const getTokenLabel = (type = '') => TOKEN_LABELS[type] || type.replace(/^hl/, '') || 'Token';
 
+const compareTokensBySourceOrder = (a, b) => {
+  const aStart = a.range?.start ?? Number.POSITIVE_INFINITY;
+  const bStart = b.range?.start ?? Number.POSITIVE_INFINITY;
+  if (aStart !== bStart) return aStart - bStart;
+  const aEnd = a.range?.end ?? 0;
+  const bEnd = b.range?.end ?? 0;
+  if (aEnd !== bEnd) return aEnd - bEnd;
+  return a.index - b.index;
+};
+
 export default function TokenBreakdown({ tab }) {
   const editorState = EditorState.useState();
   const tabState = TabState.useState();
@@ -134,15 +144,20 @@ export default function TokenBreakdown({ tab }) {
     }
   };
 
+  const orderedTokens = useMemo(
+    () => [...report.tokens].sort(compareTokensBySourceOrder),
+    [report.tokens],
+  );
+
   // List of present token types to display as quick-filter pills
   const presentTypes = useMemo(() => {
-    const types = new Set(report.tokens.map((t) => t.type));
+    const types = new Set(orderedTokens.map((t) => t.type));
     return ['All', ...Array.from(types)];
-  }, [report.tokens]);
+  }, [orderedTokens]);
 
   // Filtered tokens based on search term & type filter
   const filteredTokens = useMemo(() => {
-    return report.tokens.filter((token) => {
+    return orderedTokens.filter((token) => {
       const matchesSearch =
         searchTerm === '' ||
         String(token.value).toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -151,7 +166,7 @@ export default function TokenBreakdown({ tab }) {
       const matchesType = typeFilter === 'All' || token.type === typeFilter;
       return matchesSearch && matchesType;
     });
-  }, [report.tokens, searchTerm, typeFilter]);
+  }, [orderedTokens, searchTerm, typeFilter]);
 
   if (!filePath) {
     return (
@@ -344,9 +359,9 @@ export default function TokenBreakdown({ tab }) {
                   </thead>
                   <tbody>
                     {filteredTokens.length > 0 ? (
-                      filteredTokens.map((token) => (
+                      filteredTokens.map((token, position) => (
                         <tr key={`${token.index}-${token.type}-${token.value}`}>
-                          <td>{token.index}</td>
+                          <td>{position + 1}</td>
                           <td>{getTokenLabel(token.type)}</td>
                           <td>
                             <span className={`${styles.tokenPill} ${getTokenTone(token.type)}`}>
