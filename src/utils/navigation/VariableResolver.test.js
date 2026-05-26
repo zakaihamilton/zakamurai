@@ -334,6 +334,50 @@ describe('VariableResolver', () => {
       expect(generationOptionsUse.targets[0].loc.line).toBe(8);
     });
 
+    it('does not leak catch parameter scope into later module declarations', () => {
+      const code = [
+        'export const deleteCached = async () => {',
+        '  await interruptWebLLM();',
+        '};',
+        'export const askWebLLM = async () => {',
+        '  try {',
+        '    console.log(1);',
+        '  } catch (error) {',
+        '    throw error;',
+        '  }',
+        '};',
+        'export const interruptWebLLM = async () => {};',
+      ].join('\n');
+      const targets = resolveVariables(code, 'test.js');
+      const useIndex = code.indexOf('interruptWebLLM()');
+      const useTarget = targets.find((t) => t.name === 'interruptWebLLM' && t.start === useIndex);
+      expect(useTarget).toBeDefined();
+      expect(useTarget.targets[0].loc.line).toBe(12);
+    });
+
+    it('resolves forward references to exported const arrow functions', () => {
+      const code = [
+        'export const deleteCached = async () => {',
+        '  await interruptWebLLM();',
+        '};',
+        'export const interruptWebLLM = async () => {};',
+      ].join('\n');
+      const targets = resolveVariables(code, 'test.js');
+      const useIndex = code.indexOf('interruptWebLLM()');
+      const useTarget = targets.find((t) => t.name === 'interruptWebLLM' && t.start === useIndex);
+      expect(useTarget).toBeDefined();
+      expect(useTarget.targets[0].loc.line).toBe(4);
+    });
+
+    it('resolves interruptWebLLM forward reference in WebLLMAPI', () => {
+      const code = fs.readFileSync('src/components/AI/WebLLMAPI.js', 'utf8');
+      const targets = resolveVariables(code, 'src/components/AI/WebLLMAPI.js');
+      const useIndex = code.indexOf('interruptWebLLM()');
+      const useTarget = targets.find((t) => t.name === 'interruptWebLLM' && t.start === useIndex);
+      expect(useTarget).toBeDefined();
+      expect(useTarget.targets[0].loc.line).toBe(150);
+    });
+
     it('resolves object argument usages in WebLLMAPI', () => {
       const code = fs.readFileSync('src/components/AI/WebLLMAPI.js', 'utf8');
       const targets = resolveVariables(code, 'src/components/AI/WebLLMAPI.js');

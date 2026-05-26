@@ -246,8 +246,7 @@ export function useFileSystem() {
           currentHandle = await currentHandle.getDirectoryHandle(parts[i]);
         }
         return await currentHandle.getFileHandle(parts[parts.length - 1]);
-      } catch (err) {
-        console.warn(`Failed to get file handle at path: ${path}`, err);
+      } catch (_err) {
         return null;
       }
     },

@@ -259,6 +259,7 @@ export function resolveVariables(code, filePath) {
   ]);
 
   const objectBraceStack = [];
+  let pendingCatchBindingStart = -1;
 
   let idx = 0;
   while (idx < tokens.length) {
@@ -305,6 +306,10 @@ export function resolveVariables(code, filePath) {
       objectBraceStack.push(isBlock);
 
       scopeManager.pushScope(false);
+      if (pendingCatchBindingStart >= 0) {
+        parseBindingPattern(tokens, pendingCatchBindingStart, true);
+        pendingCatchBindingStart = -1;
+      }
       idx++;
       continue;
     }
@@ -506,8 +511,13 @@ export function resolveVariables(code, filePath) {
       idx++;
       if (tokens[idx]?.value === '(') {
         idx++;
-        scopeManager.pushScope(false);
-        idx = parseBindingPattern(tokens, idx, true);
+        pendingCatchBindingStart = idx;
+        let parenDepth = 1;
+        while (idx < tokens.length && parenDepth > 0) {
+          if (tokens[idx].value === '(') parenDepth++;
+          else if (tokens[idx].value === ')') parenDepth--;
+          if (parenDepth > 0) idx++;
+        }
         if (tokens[idx]?.value === ')') idx++;
       }
       continue;

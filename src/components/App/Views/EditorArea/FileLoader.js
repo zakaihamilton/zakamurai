@@ -1,4 +1,4 @@
-import { getImportRanges, resolveRelativePath } from '@/utils/navigation';
+import { getImportPathCandidates, getImportRanges, resolveRelativePath } from '@/utils/navigation';
 import { useEffect, useRef } from 'react';
 
 export default function useFileLoader({
@@ -74,23 +74,7 @@ export default function useFileLoader({
           resolved = resolveRelativePath(filePath, range.path);
         }
 
-        const candidates = [
-          resolved,
-          `${resolved}.js`,
-          `${resolved}.jsx`,
-          `${resolved}.ts`,
-          `${resolved}.tsx`,
-          `${resolved}.css`,
-          `${resolved}.json`,
-          `${resolved}.svg`,
-          `${resolved}.png`,
-          `${resolved}.jpg`,
-          `${resolved}.jpeg`,
-          `${resolved}/index.js`,
-          `${resolved}/index.jsx`,
-          `${resolved}/index.ts`,
-          `${resolved}/index.tsx`,
-        ];
+        const candidates = getImportPathCandidates(resolved);
 
         for (const candidate of candidates) {
           if (candidate === filePath) continue;

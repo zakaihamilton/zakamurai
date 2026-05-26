@@ -11,6 +11,7 @@ import {
   getAssociatedFilePath,
   getCssImports,
   getExportRanges,
+  getImportPathCandidates,
   getImportRanges,
   getStyleAtCursor,
   resolveImportPath,
@@ -341,6 +342,22 @@ describe('navigation utils', () => {
 
       expect(result[1].path).toBe('./Theme.module.css');
       expect(code.substring(result[1].start, result[1].end)).toBe('./Theme.module.css');
+    });
+  });
+
+  describe('getImportPathCandidates', () => {
+    it('tries extensions before the bare path for extensionless imports', () => {
+      const candidates = getImportPathCandidates('src/components/AI/Prompts');
+      expect(candidates[0]).toBe('src/components/AI/Prompts.js');
+      expect(candidates).toContain('src/components/AI/Prompts');
+      expect(candidates.indexOf('src/components/AI/Prompts')).toBeGreaterThan(
+        candidates.indexOf('src/components/AI/Prompts.js'),
+      );
+    });
+
+    it('tries the exact path first when the import already has an extension', () => {
+      const candidates = getImportPathCandidates('src/components/Card/Card.module.css');
+      expect(candidates[0]).toBe('src/components/Card/Card.module.css');
     });
   });
 

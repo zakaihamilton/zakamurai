@@ -164,23 +164,15 @@ export function getIdentifierForCssFile(jsCode, jsFilePath, cssFilePath) {
   return null;
 }
 
+const KNOWN_IMPORT_EXTENSION = /\.(jsx?|mjs|cjs|tsx?|css|json|svg|png|jpe?g|gif|webp)$/i;
+
 /**
- * Resolves the absolute path of an imported file, checking for aliases,
- * relative paths, common extensions, and directory index files.
+ * Candidate paths for a resolved import (no extension), in probe order.
+ * Extensionless imports try `.js` etc. before the bare path so LocalFS does not
+ * treat the final segment as a filename (e.g. `Prompts` vs `Prompts.js`).
  */
-export function resolveImportPath(jsFilePath, importPath, allFileContents) {
-  if (!importPath || !allFileContents) return null;
-
-  let resolved = importPath;
-  if (importPath.startsWith('@/')) {
-    resolved = importPath.replace(/^@\//, 'src/');
-  } else if (importPath.startsWith('.')) {
-    resolved = resolveRelativePath(jsFilePath, importPath);
-  }
-
-  // List of possible resolutions in priority order:
-  const candidates = [
-    resolved, // As-is
+export function getImportPathCandidates(resolved) {
+  const withExtension = [
     `${resolved}.js`,
     `${resolved}.jsx`,
     `${resolved}.ts`,
@@ -198,6 +190,29 @@ export function resolveImportPath(jsFilePath, importPath, allFileContents) {
     `${resolved}/index.ts`,
     `${resolved}/index.tsx`,
   ];
+
+  if (KNOWN_IMPORT_EXTENSION.test(resolved)) {
+    return [resolved, ...withExtension];
+  }
+
+  return [...withExtension, resolved];
+}
+
+/**
+ * Resolves the absolute path of an imported file, checking for aliases,
+ * relative paths, common extensions, and directory index files.
+ */
+export function resolveImportPath(jsFilePath, importPath, allFileContents) {
+  if (!importPath || !allFileContents) return null;
+
+  let resolved = importPath;
+  if (importPath.startsWith('@/')) {
+    resolved = importPath.replace(/^@\//, 'src/');
+  } else if (importPath.startsWith('.')) {
+    resolved = resolveRelativePath(jsFilePath, importPath);
+  }
+
+  const candidates = getImportPathCandidates(resolved);
 
   for (const candidate of candidates) {
     if (candidate === jsFilePath) {
