@@ -311,7 +311,8 @@ export default function TabBar() {
                     <Icons.Info />
                   ) : tab.type === 'token-breakdown' ? (
                     <Icons.Tokens size={14} />
-                  ) : tab.viewType === FILE_VIEW_TYPES.IMAGE_VIEWER || isMediaFile(tab.file?.name) ? (
+                  ) : tab.viewType === FILE_VIEW_TYPES.IMAGE_VIEWER ||
+                    isMediaFile(tab.file?.name) ? (
                     <Icons.Image />
                   ) : tab.viewType === FILE_VIEW_TYPES.TOKEN_BREAKDOWN ? (
                     <Icons.Tokens size={14} />

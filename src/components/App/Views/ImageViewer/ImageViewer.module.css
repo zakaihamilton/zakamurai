@@ -38,6 +38,7 @@
 }
 
 .canvas {
+  position: relative;
   flex: 1;
   display: flex;
   align-items: center;
@@ -54,12 +55,34 @@
 }
 
 .image {
+  display: block;
   max-width: 100%;
-  max-height: 100%;
+  height: auto;
   object-fit: contain;
   box-shadow: 0 4px 12px rgb(0 0 0 / 15%);
   border-radius: 4px;
   background: transparent;
+}
+
+.imageContainer {
+  position: relative;
+  display: inline-block;
+  transition: transform 0.15s ease-out;
+}
+
+.showGridPattern::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: linear-gradient(to right, transparent 15px, #fff 1px),
+    linear-gradient(to bottom, transparent 15px, #fff 1px);
+  background-size: 16px 16px;
+  mix-blend-mode: difference;
+  opacity: 0.85;
+  z-index: 10;
+  border-radius: 4px;
+  border: 1px solid #fff;
 }
 
 .message,
@@ -86,8 +109,90 @@
   }
 }
 
+.zoomControls {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 2px;
+  margin-right: 8px;
+}
+
+.zoomBtn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border-radius: 4px;
+  font-size: 16px;
+  font-weight: 500;
+  transition: all 0.15s ease;
+}
+
+.zoomBtn:hover {
+  background: var(--bg-hover);
+  color: var(--text-normal);
+}
+
+.zoomBtn:active {
+  background: var(--bg-active);
+}
+
+.zoomBtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.zoomValue {
+  background: transparent;
+  border: none;
+  outline: none;
+  font-size: 12px;
+  font-family: "JetBrains Mono", monospace;
+  color: var(--text-normal);
+  padding: 0 6px;
+  min-width: 48px;
+  text-align: center;
+  cursor: pointer;
+  user-select: none;
+  font-weight: 500;
+  transition: color 0.15s ease;
+}
+
+.zoomValue:hover {
+  color: var(--accent);
+}
+
+.separator {
+  width: 1px;
+  height: 18px;
+  background: var(--border);
+  margin: 0 4px;
+}
+
+.activeBtn {
+  background: var(--bg-hover) !important;
+  color: var(--accent) !important;
+}
+
+.pixelated {
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
 @media (width <= 768px) {
   .header {
     padding: 12px 16px;
+  }
+
+  .zoomControls {
+    display: none;
   }
 }
