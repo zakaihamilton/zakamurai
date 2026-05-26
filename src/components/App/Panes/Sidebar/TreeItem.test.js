@@ -214,7 +214,7 @@ describe('TreeItem', () => {
     expect(onOpenFile).toHaveBeenCalledWith(row, { viewType: 'editor' });
   });
 
-  it('shows the SVG viewer in Open With for SVG files', async () => {
+  it('shows the Image viewer in Open With for SVG files', async () => {
     const onOpenFile = vi.fn();
     const row = makeRow('logo.svg');
     render(<TreeItem row={row} {...baseHandlers} onOpenFile={onOpenFile} />);
@@ -225,14 +225,14 @@ describe('TreeItem', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Editor')).toBeDefined();
-      expect(screen.getByText('SVG Viewer')).toBeDefined();
+      expect(screen.getByText('Image Viewer')).toBeDefined();
       expect(screen.getByText('Token Breakdown')).toBeDefined();
     });
 
     await act(async () => {
-      fireEvent.click(screen.getByText('SVG Viewer'));
+      fireEvent.click(screen.getByText('Image Viewer'));
     });
-    expect(onOpenFile).toHaveBeenCalledWith(row, { viewType: 'svg-viewer' });
+    expect(onOpenFile).toHaveBeenCalledWith(row, { viewType: 'image-viewer' });
   });
 
   it('shows rename but not delete for the project root context menu', async () => {

@@ -3,7 +3,6 @@ import { isMediaFile, isSvgFile } from './file';
 export const FILE_VIEW_TYPES = {
   EDITOR: 'editor',
   IMAGE_VIEWER: 'image-viewer',
-  SVG_VIEWER: 'svg-viewer',
   TOKEN_BREAKDOWN: 'token-breakdown',
 };
 
@@ -18,11 +17,6 @@ export const FILE_VIEWS = {
     label: 'Image Viewer',
     icon: 'Image',
   },
-  [FILE_VIEW_TYPES.SVG_VIEWER]: {
-    id: FILE_VIEW_TYPES.SVG_VIEWER,
-    label: 'SVG Viewer',
-    icon: 'Image',
-  },
   [FILE_VIEW_TYPES.TOKEN_BREAKDOWN]: {
     id: FILE_VIEW_TYPES.TOKEN_BREAKDOWN,
     label: 'Token Breakdown',
@@ -34,7 +28,7 @@ export const getFileViews = (filename) => {
   if (isSvgFile(filename)) {
     return [
       FILE_VIEWS[FILE_VIEW_TYPES.EDITOR],
-      FILE_VIEWS[FILE_VIEW_TYPES.SVG_VIEWER],
+      FILE_VIEWS[FILE_VIEW_TYPES.IMAGE_VIEWER],
       FILE_VIEWS[FILE_VIEW_TYPES.TOKEN_BREAKDOWN],
     ];
   }

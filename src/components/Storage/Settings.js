@@ -88,6 +88,7 @@ const Settings = {
       id: t.id,
       type: t.type,
       label: t.label,
+      ...(t.viewType ? { viewType: t.viewType } : {}),
       ...(t.file ? { file: { name: t.file.name, path: t.file.path } } : {}),
       ...(t.sourceFilePath ? { sourceFilePath: t.sourceFilePath } : {}),
     }));

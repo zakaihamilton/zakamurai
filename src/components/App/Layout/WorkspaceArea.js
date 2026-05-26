@@ -12,7 +12,6 @@ import Instructions from '../Views/Instructions';
 import LogArea from '../Views/LogArea';
 import PreviewArea from '../Views/PreviewArea';
 import ProjectInfo from '../Views/ProjectInfo';
-import SvgViewer from '../Views/SvgViewer';
 import TokenBreakdown from '../Views/TokenBreakdown';
 import Welcome from '../Views/Welcome';
 
@@ -65,9 +64,7 @@ export default function WorkspaceArea() {
         <TabBar />
         <div className={styles.editorContainer}>
           {activeTab?.type === 'file' &&
-            (activeFileViewType === FILE_VIEW_TYPES.SVG_VIEWER ? (
-              <SvgViewer tab={activeTab} />
-            ) : activeFileViewType === FILE_VIEW_TYPES.TOKEN_BREAKDOWN ? (
+            (activeFileViewType === FILE_VIEW_TYPES.TOKEN_BREAKDOWN ? (
               <TokenBreakdown tab={activeTab} />
             ) : activeFileViewType === FILE_VIEW_TYPES.IMAGE_VIEWER ||
               isMediaFile(activeTab.file?.name) ? (
