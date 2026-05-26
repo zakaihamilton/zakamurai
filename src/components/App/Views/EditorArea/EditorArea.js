@@ -7,6 +7,7 @@ import styles from './EditorArea.module.css';
 
 import { DEFAULT_CONTENTS, SCRATCH_CONTENTS } from '@/components/Storage/InitialData';
 import Settings from '@/components/Storage/Settings';
+import { FILE_VIEW_TYPES } from '@/utils/fileViews';
 import { formatCode } from '@/utils/formatter';
 import useCompletion from './CompletionHandler';
 import DiffHandler from './DiffHandler';
@@ -271,37 +272,16 @@ function EditorAreaInner({ file, fsHandle }) {
     }
   };
 
-  const handleOpenTokenBreakdown = useCallback(() => {
-    const tokenTabId = `token-breakdown:${filePath}`;
-    tabState((draft) => {
-      const exists = draft.openTabs.some((tab) => tab.id === tokenTabId);
-      if (!exists) {
-        draft.openTabs = [
-          ...draft.openTabs,
-          {
-            id: tokenTabId,
-            type: 'token-breakdown',
-            label: filePath.split('/').pop() || filePath,
-            sourceFilePath: filePath,
-            content: localContentRef.current,
-            collapsedFoldIds,
-          },
-        ];
-      } else {
+  const handleSelectView = useCallback(
+    (viewType) => {
+      tabState((draft) => {
         draft.openTabs = draft.openTabs.map((tab) =>
-          tab.id === tokenTabId
-            ? {
-                ...tab,
-                sourceFilePath: filePath,
-                content: localContentRef.current,
-                collapsedFoldIds,
-              }
-            : tab,
+          tab.id === filePath ? { ...tab, viewType } : tab,
         );
-      }
-      draft.activeTabId = tokenTabId;
-    });
-  }, [filePath, tabState, collapsedFoldIds]);
+      });
+    },
+    [filePath, tabState],
+  );
 
   useEffect(() => {
     const updateCommandPressed = (nextValue) => {
@@ -370,7 +350,9 @@ function EditorAreaInner({ file, fsHandle }) {
         onNavigateToAssociated={handleNavigateToAssociated}
         isReadOnly={isReadOnly}
         setIsReadOnly={setIsReadOnly}
-        onOpenTokenBreakdown={handleOpenTokenBreakdown}
+        fileName={file?.name}
+        viewType={FILE_VIEW_TYPES.EDITOR}
+        onSelectView={handleSelectView}
       />
 
       <FindHandler

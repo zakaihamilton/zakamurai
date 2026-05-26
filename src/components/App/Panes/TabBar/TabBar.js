@@ -4,6 +4,7 @@ import { createState } from '@/components/Core/Base/State';
 import Settings from '@/components/Storage/Settings';
 import Tooltip from '@/components/Widgets/Tooltip/Tooltip';
 import { isMediaFile } from '@/utils/file';
+import { FILE_VIEW_TYPES, getFileViewByType } from '@/utils/fileViews';
 import React, { useEffect, useState } from 'react';
 import styles from './TabBar.module.css';
 import TabContextMenu from './TabContextMenu';
@@ -12,7 +13,7 @@ export const TabState = createState('TabState');
 const TabBarUiState = createState('TabBarUiState');
 
 const getTabViewType = (tab) => {
-  if (tab.type === 'file') return 'Editor';
+  if (tab.type === 'file') return getFileViewByType(tab.file?.name, tab.viewType).label;
   if (tab.type === 'token-breakdown') return 'Token Breakdown';
   if (tab.type === 'logs') return 'Logs';
   if (tab.type === 'preview') return 'Preview';
@@ -309,9 +310,11 @@ export default function TabBar() {
                   ) : tab.type === 'project-info' ? (
                     <Icons.Info />
                   ) : tab.type === 'token-breakdown' ? (
-                    <Icons.Code size={14} />
-                  ) : isMediaFile(tab.file?.name) ? (
+                    <Icons.Tokens size={14} />
+                  ) : tab.viewType === FILE_VIEW_TYPES.SVG_VIEWER || isMediaFile(tab.file?.name) ? (
                     <Icons.Image />
+                  ) : tab.viewType === FILE_VIEW_TYPES.TOKEN_BREAKDOWN ? (
+                    <Icons.Tokens size={14} />
                   ) : (
                     <Icons.File />
                   )}

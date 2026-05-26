@@ -1,5 +1,7 @@
+import FileViewToolbar from '@/components/App/Views/FileViewToolbar';
 import { Icons } from '@/components/Core/Base/Icons';
 import Tooltip from '@/components/Widgets/Tooltip/Tooltip';
+import { FILE_VIEW_TYPES } from '@/utils/fileViews';
 import { formatShortcut } from '@/utils/os';
 import React from 'react';
 import styles from './EditorArea.module.css';
@@ -16,7 +18,9 @@ export default function EditorHeader({
   handleFormat,
   isReadOnly,
   setIsReadOnly,
-  onOpenTokenBreakdown,
+  fileName,
+  viewType = FILE_VIEW_TYPES.EDITOR,
+  onSelectView,
 }) {
   return (
     <div className={styles.editorHeader}>
@@ -45,16 +49,6 @@ export default function EditorHeader({
         <Tooltip content="Format Code" shortcut={formatShortcut('⌃⇧F')}>
           <button type="button" className={styles.actionBtn} onClick={handleFormat}>
             <Icons.Layout />
-          </button>
-        </Tooltip>
-        <Tooltip content="Show token breakdown">
-          <button
-            type="button"
-            className={styles.actionBtn}
-            onClick={onOpenTokenBreakdown}
-            aria-label="Show token breakdown"
-          >
-            <Icons.Code size={14} />
           </button>
         </Tooltip>
         {hasDiff && (
@@ -92,6 +86,11 @@ export default function EditorHeader({
             </Tooltip>
           </div>
         )}
+        <FileViewToolbar
+          fileName={fileName || filePath}
+          activeViewType={viewType}
+          onSelectView={onSelectView}
+        />
       </div>
     </div>
   );

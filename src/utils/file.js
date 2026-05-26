@@ -5,3 +5,8 @@ export const isMediaFile = (filename) => {
     ext,
   );
 };
+
+export const isSvgFile = (filename) => {
+  if (!filename) return false;
+  return filename.split('.').pop()?.toLowerCase() === 'svg';
+};

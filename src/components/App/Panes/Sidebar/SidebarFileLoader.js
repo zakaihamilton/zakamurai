@@ -1,4 +1,5 @@
 import { isMediaFile } from '@/utils/file';
+import { FILE_VIEW_TYPES, getDefaultFileViewType } from '@/utils/fileViews';
 import { useCallback } from 'react';
 import {
   addNodeAtPath,
@@ -87,19 +88,25 @@ export default function useSidebarFileLoader({
   );
 
   const handleOpenFile = useCallback(
-    async (row) => {
+    async (row, options = {}) => {
+      const viewType = options.viewType || getDefaultFileViewType(row.item.name);
       let content = '';
-      if (fs.mode === 'local' && row.item.handle && !isMediaFile(row.item.name)) {
+      const shouldLoadText =
+        !isMediaFile(row.item.name) ||
+        viewType === FILE_VIEW_TYPES.EDITOR ||
+        viewType === FILE_VIEW_TYPES.TOKEN_BREAKDOWN;
+
+      if (fs.mode === 'local' && row.item.handle && shouldLoadText) {
         content = await fs.readFile(row.item.handle);
       }
 
-      if (fs.mode !== 'local' && !isMediaFile(row.item.name)) {
+      if (fs.mode !== 'local' && shouldLoadText) {
         const fileContents = editorState.fileContents || {};
         const { getInitialFileContents } = require('./TreeUtils');
         content = fileContents[row.pathStr] ?? getInitialFileContents()[row.pathStr] ?? '';
       }
 
-      if (!isMediaFile(row.item.name)) {
+      if (shouldLoadText) {
         editorState((draft) => {
           draft.fileContents = { ...draft.fileContents, [row.pathStr]: content };
         });
@@ -114,12 +121,22 @@ export default function useSidebarFileLoader({
               id: row.pathStr,
               type: 'file',
               label: row.item.name,
+              viewType,
               file: { ...row.item, path: row.path, content },
               fsHandle: row.item.handle,
             },
           ];
-        } else if (!isMediaFile(row.item.name)) {
-          existingTab.file = { ...existingTab.file, path: row.path, content };
+        } else {
+          draft.openTabs = draft.openTabs.map((tab) =>
+            tab.id === row.pathStr ? { ...tab, viewType } : tab,
+          );
+        }
+        if (existingTab && shouldLoadText) {
+          draft.openTabs = draft.openTabs.map((tab) =>
+            tab.id === row.pathStr
+              ? { ...tab, file: { ...tab.file, path: row.path, content } }
+              : tab,
+          );
         }
         draft.activeTabId = row.pathStr;
       });

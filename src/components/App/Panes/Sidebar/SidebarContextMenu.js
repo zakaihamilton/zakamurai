@@ -1,6 +1,7 @@
 import { Icons } from '@/components/Core/Base/Icons';
 import ContextMenu from '@/components/Widgets/ContextMenu/ContextMenu';
 import { isMediaFile } from '@/utils/file';
+import { getFileViews } from '@/utils/fileViews';
 import React from 'react';
 import styles from './SidebarContextMenu.module.css';
 
@@ -14,7 +15,10 @@ export default function SidebarContextMenu({
   onStartCreate,
   onStartRename,
   onStartDelete,
+  onOpenWith,
 }) {
+  const openWithViews = item.type === 'file' ? getFileViews(item.name) : [];
+
   return (
     <ContextMenu position={position} onClose={onClose}>
       <div className={styles.contextMenuHeader}>
@@ -61,6 +65,26 @@ export default function SidebarContextMenu({
             <Icons.FolderPlus />
             New Folder
           </button>
+          <div className={styles.divider} />
+        </>
+      )}
+      {item.type === 'file' && (
+        <>
+          <div className={styles.sectionLabel}>Open With</div>
+          {openWithViews.map((view) => {
+            const Icon = Icons[view.icon] || Icons.File;
+            return (
+              <button
+                key={view.id}
+                type="button"
+                onClick={() => onOpenWith(view.id)}
+                className={styles.contextMenuOption}
+              >
+                <Icon />
+                {view.label}
+              </button>
+            );
+          })}
           <div className={styles.divider} />
         </>
       )}

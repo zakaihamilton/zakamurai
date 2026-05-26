@@ -193,6 +193,48 @@ describe('TreeItem', () => {
     });
   });
 
+  it('shows Open With for normal files', async () => {
+    const onOpenFile = vi.fn();
+    const row = makeRow('app.js');
+    render(<TreeItem row={row} {...baseHandlers} onOpenFile={onOpenFile} />);
+
+    await act(async () => {
+      fireEvent.contextMenu(screen.getByText('app.js').closest('[draggable="true"]'));
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText('Open With')).toBeDefined();
+      expect(screen.getByText('Editor')).toBeDefined();
+      expect(screen.getByText('Token Breakdown')).toBeDefined();
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('Editor'));
+    });
+    expect(onOpenFile).toHaveBeenCalledWith(row, { viewType: 'editor' });
+  });
+
+  it('shows the SVG viewer in Open With for SVG files', async () => {
+    const onOpenFile = vi.fn();
+    const row = makeRow('logo.svg');
+    render(<TreeItem row={row} {...baseHandlers} onOpenFile={onOpenFile} />);
+
+    await act(async () => {
+      fireEvent.contextMenu(screen.getByText('logo.svg').closest('[draggable="true"]'));
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText('Editor')).toBeDefined();
+      expect(screen.getByText('SVG Viewer')).toBeDefined();
+      expect(screen.getByText('Token Breakdown')).toBeDefined();
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('SVG Viewer'));
+    });
+    expect(onOpenFile).toHaveBeenCalledWith(row, { viewType: 'svg-viewer' });
+  });
+
   it('shows rename but not delete for the project root context menu', async () => {
     const rootRow = {
       item: { name: 'Test Project', type: 'folder', isRoot: true, children: [] },

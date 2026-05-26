@@ -1,0 +1,83 @@
+.svgViewer {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  background: var(--bg-primary);
+  overflow: hidden;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-secondary);
+  min-height: 45px;
+  flex-shrink: 0;
+}
+
+.headerTitle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  color: var(--text-muted);
+}
+
+.filePath {
+  font-size: 12px;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.canvas {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: auto;
+  padding: 24px;
+  background-color: var(--bg-primary);
+  background-image: linear-gradient(45deg, var(--bg-secondary) 25%, transparent 25%),
+    linear-gradient(-45deg, var(--bg-secondary) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, var(--bg-secondary) 75%),
+    linear-gradient(-45deg, transparent 75%, var(--bg-secondary) 75%);
+  background-size: 24px 24px;
+  background-position: 0 0, 0 12px, 12px -12px, -12px 0;
+}
+
+.svgImage {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  background: transparent;
+}
+
+.message,
+.loadingContainer {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

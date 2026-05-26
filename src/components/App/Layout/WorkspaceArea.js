@@ -1,5 +1,6 @@
 import Resizer from '@/components/Widgets/Resizer/Resizer';
 import { isMediaFile } from '@/utils/file';
+import { FILE_VIEW_TYPES, getDefaultFileViewType } from '@/utils/fileViews';
 import React from 'react';
 import Node from '../../Core/Base/Node';
 import styles from '../App.module.css';
@@ -11,6 +12,7 @@ import Instructions from '../Views/Instructions';
 import LogArea from '../Views/LogArea';
 import PreviewArea from '../Views/PreviewArea';
 import ProjectInfo from '../Views/ProjectInfo';
+import SvgViewer from '../Views/SvgViewer';
 import TokenBreakdown from '../Views/TokenBreakdown';
 import Welcome from '../Views/Welcome';
 
@@ -52,6 +54,10 @@ export default function WorkspaceArea() {
   };
 
   const activeTab = openTabs.find((t) => t.id === activeTabId);
+  const activeFileViewType =
+    activeTab?.type === 'file'
+      ? activeTab.viewType || getDefaultFileViewType(activeTab.file?.name)
+      : null;
 
   return (
     <div className={styles.workspaceContent}>
@@ -59,7 +65,12 @@ export default function WorkspaceArea() {
         <TabBar />
         <div className={styles.editorContainer}>
           {activeTab?.type === 'file' &&
-            (isMediaFile(activeTab.file?.name) ? (
+            (activeFileViewType === FILE_VIEW_TYPES.SVG_VIEWER ? (
+              <SvgViewer tab={activeTab} />
+            ) : activeFileViewType === FILE_VIEW_TYPES.TOKEN_BREAKDOWN ? (
+              <TokenBreakdown tab={activeTab} />
+            ) : activeFileViewType === FILE_VIEW_TYPES.IMAGE_VIEWER ||
+              isMediaFile(activeTab.file?.name) ? (
               <ImageViewer tab={activeTab} />
             ) : (
               <EditorArea key={activeTab.id} file={activeTab.file} fsHandle={activeTab.fsHandle} />

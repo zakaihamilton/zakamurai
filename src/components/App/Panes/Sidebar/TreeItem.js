@@ -369,6 +369,12 @@ function TreeItemInner({
             draft.contextMenu = null;
           });
         }}
+        onOpenWith={(viewType) => {
+          onOpenFile(row, { viewType });
+          treeItemState((draft) => {
+            draft.contextMenu = null;
+          });
+        }}
       />
 
       <Dialog

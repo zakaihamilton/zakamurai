@@ -12,6 +12,7 @@ vi.mock('@/components/Core/Base/Icons', () => ({
     Columns: () => <div data-testid="icon-columns" />,
     Layout: () => <div data-testid="icon-layout" />,
     Code: () => <div data-testid="icon-code" />,
+    Tokens: () => <div data-testid="icon-tokens" />,
     Edit: () => <div data-testid="icon-edit" />,
   },
 }));
@@ -37,13 +38,12 @@ describe('EditorHeader', () => {
     handleFormat: vi.fn(),
     isReadOnly: false,
     setIsReadOnly: vi.fn(),
-    onOpenTokenBreakdown: vi.fn(),
   };
 
   it('renders the file path', () => {
     render(<EditorHeader {...defaultProps} />);
     expect(screen.getByText('src/test.js')).toBeDefined();
-    expect(screen.getByTestId('icon-file')).toBeDefined();
+    expect(screen.getAllByTestId('icon-file').length).toBeGreaterThan(0);
   });
 
   it('calls setShowFind when search button is clicked', () => {
@@ -72,25 +72,17 @@ describe('EditorHeader', () => {
     render(<EditorHeader {...defaultProps} isReadOnly={true} setIsReadOnly={setIsReadOnly} />);
     expect(screen.getAllByTestId('icon-code').length).toBeGreaterThan(0);
 
-    const codeBtn = screen.getAllByTestId('icon-code')[0].parentElement;
+    const codeBtn = screen
+      .getAllByTestId('icon-code')
+      .find((icon) =>
+        icon.closest('[data-testid="tooltip"]')?.getAttribute('data-shortcut'),
+      ).parentElement;
     const tooltip = codeBtn.closest('[data-testid="tooltip"]');
     expect(tooltip.getAttribute('data-content')).toBe('Switch to Edit Mode');
     expect(tooltip.getAttribute('data-shortcut')).toBe(formatShortcut('⌃E'));
 
     fireEvent.click(codeBtn);
     expect(setIsReadOnly).toHaveBeenCalledWith(false);
-  });
-
-  it('calls onOpenTokenBreakdown when the token button is clicked', () => {
-    const onOpenTokenBreakdown = vi.fn();
-    render(<EditorHeader {...defaultProps} onOpenTokenBreakdown={onOpenTokenBreakdown} />);
-
-    const tokenBtn = screen.getByLabelText('Show token breakdown');
-    const tooltip = tokenBtn.closest('[data-testid="tooltip"]');
-    expect(tooltip.getAttribute('data-content')).toBe('Show token breakdown');
-
-    fireEvent.click(tokenBtn);
-    expect(onOpenTokenBreakdown).toHaveBeenCalled();
   });
 
   it('renders diff actions when hasDiff is true', () => {

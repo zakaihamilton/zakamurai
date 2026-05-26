@@ -1,0 +1,37 @@
+.viewSwitch {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg-surface);
+}
+
+.viewButton {
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 4px;
+  color: var(--text-muted);
+  background: transparent;
+  cursor: pointer;
+}
+
+.viewButton:hover {
+  color: var(--text-main);
+  background: var(--bg-hover);
+}
+
+.active {
+  color: var(--accent);
+  background: var(--accent-light);
+}
+
+.active:hover {
+  color: var(--accent);
+  background: var(--accent-light);
+}
