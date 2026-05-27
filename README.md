@@ -1,36 +1,93 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Zakamurai
+
+Your AI coding workspace in the browser.
+
+Zakamurai is a browser-based IDE built for editing, AI-assisted changes, in-browser builds, logs, and live preview. Open it, start coding, and skip the local setup.
+
+## Features
+
+- **File explorer & editor** — Manage HTML, CSS, JavaScript, and JSON files with syntax highlighting, smart formatting, and automatic saves to browser local storage.
+- **AI collaboration** — Prompt an integrated AI that understands your project context. Review suggested changes in a side-by-side diff before applying them. Models run locally in the browser via WebLLM for a private, fast experience.
+- **Build & preview** — Compile projects directly in the browser using [almostnode](https://www.npmjs.com/package/almostnode), a virtual Node.js-like environment. Preview the result and inspect build or runtime output in the logs panel.
+- **Focused workflow** — Tabbed workspace, light/dark themes, keyboard shortcuts, CSS/JS navigation, and project export as a ZIP.
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
+
+- [Node.js](https://nodejs.org/) (LTS recommended)
+- npm
+
+### Run locally
 
 ```bash
+git clone https://github.com/zakaihamilton/zakamurai.git
+cd zakamurai
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
+The `postinstall`, `predev`, and `prebuild` scripts copy almostnode and ONNX Runtime Web assets into `public/` automatically.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### Production build
 
-## Learn More
+```bash
+npm run build
+npm start
+```
 
-To learn more about Next.js, take a look at the following resources:
+## Usage
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+1. **Explore** — Use the file explorer on the left to create, rename, and open files.
+2. **Prompt** — Toggle the AI sidebar with `Ctrl+J` (or the top bar button) to ask questions or request changes.
+3. **Build** — Press `Cmd+Enter` (Mac) or click **Build** in the top bar.
+4. **Preview** — After a successful build, the Preview tab opens with your running app.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Press `?` in the app to view the full keyboard shortcut reference.
 
-## Deploy on Vercel
+## Tech Stack
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+| Layer | Technologies |
+| --- | --- |
+| App framework | [Next.js](https://nextjs.org/) 16, [React](https://react.dev/) 19 |
+| Styling | CSS Modules |
+| In-browser build | [almostnode](https://www.npmjs.com/package/almostnode) |
+| Local AI | [WebLLM](https://webllm.mlc.ai/) (`@mlc-ai/web-llm`), WebAssembly |
+| State | Custom hierarchical proxy-based state (see [ARCHITECTURE.md](./ARCHITECTURE.md)) |
+| Tooling | [Biome](https://biomejs.dev/), [Vitest](https://vitest.dev/), [Playwright](https://playwright.dev/) |
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Development
+
+```bash
+npm run lint          # Biome check
+npm run format        # Biome format
+npm run test          # Unit tests (Vitest)
+npm run test:watch    # Vitest in watch mode
+npm run test:visual   # Visual regression tests (Playwright)
+npm run verify        # Lint + unit tests
+```
+
+Contributors working on React components should read [ARCHITECTURE.md](./ARCHITECTURE.md) before making changes. This project uses a custom proxy-based state system—not Redux, Zustand, or React Context for shared state.
+
+## Project Structure
+
+```
+src/
+├── app/              # Next.js app router (layout, page, preview routes)
+├── components/
+│   ├── AI/           # WebLLM integration, prompts, diff processor
+│   ├── App/          # IDE shell: editor, sidebar, preview, top bar
+│   ├── Core/         # Proxy state primitives (Node, Object, State)
+│   ├── Storage/      # Settings and initial project data
+│   └── Widgets/      # Shared UI components
+└── utils/            # Compiler, navigation, formatting, RAG helpers
+```
+
+## Author
+
+**Zakai Hamilton**
+
+- GitHub: [@zakaihamilton](https://github.com/zakaihamilton/zakamurai)
+- LinkedIn: [zakai-hamilton](https://www.linkedin.com/in/zakai-hamilton)
