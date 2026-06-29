@@ -16,7 +16,7 @@ vi.mock('@/components/App/Views/LogArea', () => ({
   },
 }));
 
-vi.mock('@/components/Widgets/Tooltip/Tooltip', () => ({
+vi.mock('@/components/ui/Tooltip/Tooltip', () => ({
   __esModule: true,
   default: ({ children, content }) => {
     return React.cloneElement(children, { title: content });

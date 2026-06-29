@@ -62,7 +62,6 @@ const resolveDebugTokenRanges = (highlighted, code, debugTokens) => {
       highlightIdx += navStart[0].length;
       return;
     }
-    // biome-ignore lint/suspicious/noControlCharactersInRegex: markers
     if (highlighted[highlightIdx] === '\u0007') {
       highlightIdx += 1;
       return;
@@ -73,7 +72,6 @@ const resolveDebugTokenRanges = (highlighted, code, debugTokens) => {
       highlightIdx += diffStart[0].length;
       return;
     }
-    // biome-ignore lint/suspicious/noControlCharactersInRegex: markers
     if (highlighted[highlightIdx] === '\u0004' || highlighted[highlightIdx] === '\u0005') {
       highlightIdx += 1;
       return;

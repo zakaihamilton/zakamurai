@@ -10,7 +10,7 @@ vi.mock('@/components/App/AppState', () => ({
   },
 }));
 
-vi.mock('@/components/Widgets/Tooltip/Tooltip', () => ({
+vi.mock('@/components/ui/Tooltip/Tooltip', () => ({
   __esModule: true,
   default: ({ children }) => <div>{children}</div>,
 }));
@@ -49,7 +49,7 @@ describe('ThemeToggle', () => {
   });
 });
 
-vi.mock('@/components/Core/Base/Icons', () => ({
+vi.mock('@/components/ui/Icons', () => ({
   Icons: {
     Sun: () => <div data-testid="sun-icon" />,
     Moon: () => <div data-testid="moon-icon" />,

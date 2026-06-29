@@ -1,8 +1,8 @@
 import { AppState } from '@/components/App/AppState';
 import { TabState } from '@/components/App/Panes/TabBar';
 import { EditorState } from '@/components/App/Views/EditorArea';
-import { createState } from '@/components/Core/Base/State';
-import { useNotification } from '@/components/Widgets/Notification/Notification';
+import { createState } from '@/components/state/State';
+import { useNotification } from '@/components/ui/Notification/Notification';
 import React, { useCallback, useDeferredValue, useEffect, useMemo, useRef } from 'react';
 import styles from './Sidebar.module.css';
 import useSidebarDragAndDrop from './SidebarDragAndDrop';

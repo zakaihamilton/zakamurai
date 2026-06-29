@@ -29,7 +29,7 @@ vi.mock('@/components/App/PreviewState', () => ({
   },
 }));
 
-vi.mock('@/components/Widgets/Tooltip/Tooltip', () => ({
+vi.mock('@/components/ui/Tooltip/Tooltip', () => ({
   __esModule: true,
   default: ({ children, content }) => {
     return React.cloneElement(children, { title: content });

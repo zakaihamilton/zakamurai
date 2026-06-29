@@ -3,7 +3,7 @@ import React from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import Breadcrumb from './Breadcrumb';
 
-vi.mock('@/components/Core/Base/Icons', () => ({
+vi.mock('@/components/ui/Icons', () => ({
   Icons: {
     ChevronRight: () => <div data-testid="chevron-right" />,
   },

@@ -1,4 +1,4 @@
-import { Icons } from '@/components/Core/Base/Icons';
+import { Icons } from '@/components/ui/Icons';
 import { formatShortcut } from '@/utils/os';
 import React from 'react';
 import styles from './SidebarFilter.module.css';

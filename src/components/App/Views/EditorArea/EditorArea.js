@@ -1,7 +1,7 @@
 import { AppState } from '@/components/App/AppState';
 import { TabState } from '@/components/App/Panes/TabBar';
-import Node from '@/components/Core/Base/Node';
-import { createState } from '@/components/Core/Base/State';
+import Node from '@/components/state/Node';
+import { createState } from '@/components/state/State';
 import React, { useCallback, useRef, useEffect, useMemo, useState } from 'react';
 import styles from './EditorArea.module.css';
 

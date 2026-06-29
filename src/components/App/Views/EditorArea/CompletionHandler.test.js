@@ -1,6 +1,7 @@
 import { act, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import useCompletion, { COMPLETION_DEBOUNCE_MS, normalizeCompletion } from './CompletionHandler';
+import useCompletion from './CompletionHandler';
+import { COMPLETION_DEBOUNCE_MS, normalizeCompletion } from './completionUtils';
 
 vi.mock('@/components/AI/WebLLMAPI', () => ({
   askWebLLM: vi.fn().mockResolvedValue('<completion>Done</completion>'),

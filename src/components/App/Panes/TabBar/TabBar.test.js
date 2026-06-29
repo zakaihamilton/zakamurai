@@ -11,7 +11,7 @@ vi.mock('../Sidebar', () => ({
   },
 }));
 
-vi.mock('@/components/Widgets/Tooltip/Tooltip', () => ({
+vi.mock('@/components/ui/Tooltip/Tooltip', () => ({
   default: ({ children, content }) => <span data-content={content}>{children}</span>,
 }));
 

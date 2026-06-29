@@ -76,16 +76,21 @@ describe('formatter', () => {
     const output = formatCode(input, 'test.js');
     expect(output).toBe('const url = "https://google.com"; if (true) {\n  console.log(url);\n}');
   });
-  
+
   it('formats SVG correctly', () => {
-    const input = '<svg width="100" height="100"><g><circle cx="50" cy="50" r="40" stroke="green" stroke-width="4" fill="yellow" /><path d="M150 0 L75 200 L225 200 Z" /></g></svg>';
+    const input =
+      '<svg width="100" height="100"><g><circle cx="50" cy="50" r="40" stroke="green" stroke-width="4" fill="yellow" /><path d="M150 0 L75 200 L225 200 Z" /></g></svg>';
     const output = formatCode(input, 'image.svg');
-    expect(output).toBe('<svg width="100" height="100">\n  <g>\n    <circle cx="50" cy="50" r="40" stroke="green" stroke-width="4" fill="yellow" />\n    <path d="M150 0 L75 200 L225 200 Z" />\n  </g>\n</svg>');
+    expect(output).toBe(
+      '<svg width="100" height="100">\n  <g>\n    <circle cx="50" cy="50" r="40" stroke="green" stroke-width="4" fill="yellow" />\n    <path d="M150 0 L75 200 L225 200 Z" />\n  </g>\n</svg>',
+    );
   });
 
   it('formats multi-line SVG tags correctly', () => {
     const input = '<svg\nwidth="100"\nheight="100"\n>\n<path\nd="M10 10"\nfill="none"\n/>\n</svg>';
     const output = formatCode(input, 'image.svg');
-    expect(output).toBe('<svg\n  width="100"\n  height="100"\n>\n  <path\n    d="M10 10"\n    fill="none"\n  />\n</svg>');
+    expect(output).toBe(
+      '<svg\n  width="100"\n  height="100"\n>\n  <path\n    d="M10 10"\n    fill="none"\n  />\n</svg>',
+    );
   });
 });

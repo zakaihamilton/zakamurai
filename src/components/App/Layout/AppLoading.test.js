@@ -3,7 +3,7 @@ import React from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import AppLoading from './AppLoading';
 
-vi.mock('@/components/Core/Base/Icons', () => ({
+vi.mock('@/components/ui/Icons', () => ({
   Icons: {
     ZLogo: () => <div data-testid="zlogo-icon" />,
   },

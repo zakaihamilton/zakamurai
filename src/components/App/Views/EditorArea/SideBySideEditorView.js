@@ -1,4 +1,4 @@
-import { Icons } from '@/components/Core/Base/Icons';
+import { Icons } from '@/components/ui/Icons';
 import React, { useRef } from 'react';
 import CodeEditor from './CodeEditor';
 import Gutter from './Gutter';

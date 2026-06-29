@@ -1,7 +1,7 @@
 import { TabState } from '@/components/App/Panes/TabBar';
 import { EditorState } from '@/components/App/Views/EditorArea';
-import { Icons } from '@/components/Core/Base/Icons';
-import Tooltip from '@/components/Widgets/Tooltip/Tooltip';
+import { Icons } from '@/components/ui/Icons';
+import Tooltip from '@/components/ui/Tooltip/Tooltip';
 import { formatShortcut } from '@/utils/os';
 import React, { useState, useRef, useEffect } from 'react';
 import styles from '../TopBar.module.css';

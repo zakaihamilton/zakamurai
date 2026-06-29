@@ -1,5 +1,5 @@
-import { Icons } from '@/components/Core/Base/Icons';
-import ContextMenu from '@/components/Widgets/ContextMenu/ContextMenu';
+import ContextMenu from '@/components/ui/ContextMenu/ContextMenu';
+import { Icons } from '@/components/ui/Icons';
 import { isMediaFile } from '@/utils/file';
 import React from 'react';
 import styles from './TabContextMenu.module.css';

@@ -64,7 +64,7 @@ vi.mock('./PreviewState', () => {
 
 // Mock background services and sync hooks
 vi.mock('@/components/AI/RagIndexer', () => ({ useRagIndexer: vi.fn() }));
-vi.mock('@/components/App/Manager/KeyboardHandler', () => ({ useKeyboardHandler: vi.fn() }));
+vi.mock('@/components/App/keyboard/KeyboardHandler', () => ({ useKeyboardHandler: vi.fn() }));
 vi.mock('@/components/App/Panes/TabBar/TabRestorer', () => ({ useTabRestorer: vi.fn() }));
 vi.mock('@/components/App/Views/PreviewArea/PreviewRestorer', () => ({
   usePreviewRestorer: vi.fn(),
@@ -81,7 +81,7 @@ vi.mock('@/components/Storage', () => ({
     mountLocal: vi.fn(),
   })),
 }));
-vi.mock('@/components/Widgets/Notification/Notification', () => ({
+vi.mock('@/components/ui/Notification/Notification', () => ({
   Notification: () => <div data-testid="notification" />,
   NotificationProvider: ({ children }) => children,
   useNotification: vi.fn(() => ({

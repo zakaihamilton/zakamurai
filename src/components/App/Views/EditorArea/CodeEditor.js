@@ -1,9 +1,10 @@
-import Tooltip from '@/components/Widgets/Tooltip/Tooltip';
 import { findNavigationTargets } from '@/utils/navigation';
 import React, { useLayoutEffect, useRef, useCallback, useState, useMemo } from 'react';
 import styles from './EditorArea.module.css';
 
 import useEditorShortcuts from './EditorShortcuts';
+import NavigationPopup from './NavigationPopup';
+import useScrollSync from './useScrollSync';
 
 const getCursorPosition = (content, index) => {
   let line = 1;
@@ -147,7 +148,7 @@ export default function CodeEditor({
     isLocalEdit.current = false;
   }, [cursorPos?.index, localContent]);
 
-  const [viewportWidth, setViewportWidth] = useState(0);
+  const [, setViewportWidth] = useState(0);
 
   useLayoutEffect(() => {
     const container = scrollContainerRef?.current;
@@ -166,43 +167,7 @@ export default function CodeEditor({
     };
   }, [scrollContainerRef]);
 
-  useLayoutEffect(() => {
-    const container = scrollContainerRef?.current;
-    const textarea = textareaRef?.current;
-    if (!container || !textarea) return;
-
-    let isSyncingContainer = false;
-    let isSyncingTextarea = false;
-
-    const handleContainerScroll = () => {
-      if (isSyncingTextarea) {
-        isSyncingTextarea = false;
-        return;
-      }
-      isSyncingContainer = true;
-      textarea.scrollLeft = container.scrollLeft;
-    };
-
-    const handleTextareaScroll = () => {
-      if (isSyncingContainer) {
-        isSyncingContainer = false;
-        return;
-      }
-      isSyncingTextarea = true;
-      container.scrollLeft = textarea.scrollLeft;
-    };
-
-    container.addEventListener('scroll', handleContainerScroll, { passive: true });
-    textarea.addEventListener('scroll', handleTextareaScroll, { passive: true });
-
-    // Initial sync
-    textarea.scrollLeft = container.scrollLeft;
-
-    return () => {
-      container.removeEventListener('scroll', handleContainerScroll);
-      textarea.removeEventListener('scroll', handleTextareaScroll);
-    };
-  }, [scrollContainerRef, localContent]);
+  useScrollSync(scrollContainerRef, textareaRef, localContent);
 
   const isCssFile = filePath?.endsWith('.css');
 
@@ -301,51 +266,11 @@ export default function CodeEditor({
         }}
       />
 
-      {popup.visible && (
-        <div className={styles.hoverPopup} style={{ left: `${popup.x}px`, top: `${popup.y}px` }}>
-          <div className={styles.popupHeader}>
-            <span>
-              {popup.isImport
-                ? 'Open Import'
-                : popup.isExport
-                  ? 'Referenced in'
-                  : popup.isComponent
-                    ? 'Component Definition'
-                    : popup.isCss
-                      ? 'Referenced in JS'
-                      : 'Defined in CSS'}
-            </span>
-            <Tooltip content="Close">
-              <button
-                type="button"
-                className={styles.popupCloseBtn}
-                onClick={() => {
-                  setPopup((prev) => ({ ...prev, visible: false }));
-                }}
-                aria-label="Close popup"
-              >
-                &times;
-              </button>
-            </Tooltip>
-          </div>
-          <ul className={styles.popupList}>
-            {popup.targets.map((target) => (
-              // biome-ignore lint/a11y/useKeyWithClickEvents: onClick is sufficient for navigation in this popover
-              <li
-                key={`${target.filePath}:${target.loc.line}:${target.loc.col}:${target.loc.index || 0}`}
-                className={styles.popupItem}
-                onClick={() => {
-                  onJumpToTarget?.(target.filePath, target.loc);
-                  setPopup((prev) => ({ ...prev, visible: false }));
-                }}
-              >
-                <span>{target.fileName}</span>
-                <span style={{ opacity: 0.6, fontSize: '11px' }}>:{target.loc.line}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
+      <NavigationPopup
+        popup={popup}
+        onClose={() => setPopup((prev) => ({ ...prev, visible: false }))}
+        onJumpToTarget={onJumpToTarget}
+      />
     </div>
   );
 }

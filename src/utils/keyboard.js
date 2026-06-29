@@ -1,4 +1,4 @@
-import { createState } from '@/components/Core/Base/State';
+import { createState } from '@/components/state/State';
 import { useEffect } from 'react';
 
 const KeyboardShortcutState = createState('KeyboardShortcutState');

@@ -1,5 +1,5 @@
 import { LogState } from '@/components/App/Views/LogArea';
-import { Icons } from '@/components/Core/Base/Icons';
+import { Icons } from '@/components/ui/Icons';
 import React from 'react';
 import styles from '../TopBar.module.css';
 

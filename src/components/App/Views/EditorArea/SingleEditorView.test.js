@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import styles from './EditorArea.module.css';
 import SingleEditorView from './SingleEditorView';
 
-vi.mock('@/components/Widgets/Tooltip/Tooltip', () => ({
+vi.mock('@/components/ui/Tooltip/Tooltip', () => ({
   default: ({ children }) => <>{children}</>,
 }));
 

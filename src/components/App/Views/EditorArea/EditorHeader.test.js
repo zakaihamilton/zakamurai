@@ -3,7 +3,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import EditorHeader from './EditorHeader';
 
-vi.mock('@/components/Core/Base/Icons', () => ({
+vi.mock('@/components/ui/Icons', () => ({
   Icons: {
     File: () => <div data-testid="icon-file" />,
     Search: () => <div data-testid="icon-search" />,
@@ -17,7 +17,7 @@ vi.mock('@/components/Core/Base/Icons', () => ({
   },
 }));
 
-vi.mock('@/components/Widgets/Tooltip/Tooltip', () => ({
+vi.mock('@/components/ui/Tooltip/Tooltip', () => ({
   default: ({ children, content, shortcut }) => (
     <div data-testid="tooltip" data-content={content} data-shortcut={shortcut}>
       {children}

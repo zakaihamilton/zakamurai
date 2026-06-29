@@ -9,41 +9,16 @@ import {
 import { getJsonObjectFolds, isJsonPath } from '@/components/App/Views/EditorArea/JsonFolding';
 import { getHighlightBreakdown } from '@/components/App/Views/EditorArea/highlighter';
 import FileViewToolbar from '@/components/App/Views/FileViewToolbar';
-import { Icons } from '@/components/Core/Base/Icons';
-import Tooltip from '@/components/Widgets/Tooltip/Tooltip';
+import { Icons } from '@/components/ui/Icons';
+import Tooltip from '@/components/ui/Tooltip/Tooltip';
 import { FILE_VIEW_TYPES } from '@/utils/fileViews';
 import { useMemo, useState } from 'react';
 import styles from './TokenBreakdown.module.css';
-
-const getFolds = (code, filePath) => {
-  if (isJsonPath(filePath)) return getJsonObjectFolds(code, filePath);
-  if (isCssPath(filePath)) return getCssBlockFolds(code, filePath);
-  return getJavaScriptBlockFolds(code, filePath);
-};
-
-const getFoldLabel = (filePath) => {
-  if (isJsonPath(filePath)) return 'JSON object';
-  if (isCssPath(filePath)) return 'CSS block';
-  if (isJavaScriptPath(filePath)) return 'code block';
-  return 'fold';
-};
-
-const previewValue = (value = '') => {
-  const normalized = String(value).replace(/\n/g, '\\n').replace(/\t/g, '\\t');
-  return normalized.length > 120 ? `${normalized.slice(0, 117)}...` : normalized;
-};
-
-const getTokenTone = (type = '') => {
-  if (type.includes('Json')) return styles.toneJson;
-  if (type.includes('Str')) return styles.toneString;
-  if (type.includes('Kw')) return styles.toneKeyword;
-  if (type.includes('Comment')) return styles.toneComment;
-  if (type.includes('Num')) return styles.toneNumber;
-  if (type.includes('Tag')) return styles.toneTag;
-  if (type.includes('Func')) return styles.toneFunction;
-  if (type.includes('Attr') || type.includes('Prop')) return styles.toneProperty;
-  return styles.toneDefault;
-};
+import TokenFoldsSection from './TokenFoldsSection';
+import TokenJsonSection from './TokenJsonSection';
+import TokenNavigationSection from './TokenNavigationSection';
+import TokenSummaryCards from './TokenSummaryCards';
+import TokenTableSection from './TokenTableSection';
 
 const TOKEN_LABELS = {
   hlAttr: 'Attribute',
@@ -61,6 +36,19 @@ const TOKEN_LABELS = {
 };
 
 const getTokenLabel = (type = '') => TOKEN_LABELS[type] || type.replace(/^hl/, '') || 'Token';
+
+const getFolds = (code, filePath) => {
+  if (isJsonPath(filePath)) return getJsonObjectFolds(code, filePath);
+  if (isCssPath(filePath)) return getCssBlockFolds(code, filePath);
+  return getJavaScriptBlockFolds(code, filePath);
+};
+
+const getFoldLabel = (filePath) => {
+  if (isJsonPath(filePath)) return 'JSON object';
+  if (isCssPath(filePath)) return 'CSS block';
+  if (isJavaScriptPath(filePath)) return 'code block';
+  return 'fold';
+};
 
 const compareTokensBySourceOrder = (a, b) => {
   const aStart = a.range?.start ?? Number.POSITIVE_INFINITY;
@@ -149,13 +137,11 @@ export default function TokenBreakdown({ tab }) {
     [report.tokens],
   );
 
-  // List of present token types to display as quick-filter pills
   const presentTypes = useMemo(() => {
     const types = new Set(orderedTokens.map((t) => t.type));
     return ['All', ...Array.from(types)];
   }, [orderedTokens]);
 
-  // Filtered tokens based on search term & type filter
   const filteredTokens = useMemo(() => {
     return orderedTokens.filter((token) => {
       const matchesSearch =
@@ -205,62 +191,7 @@ export default function TokenBreakdown({ tab }) {
         </div>
       </div>
       <div className={styles.shell}>
-        <section className={styles.summaryGrid} aria-label="Token breakdown summary">
-          <div className={`${styles.summaryCard} ${styles.summaryMode}`}>
-            <div className={styles.summaryCardHeader}>
-              <span className={styles.summaryCardTitle}>Mode</span>
-              <span className={styles.summaryCardIcon}>
-                <Icons.Code size={14} />
-              </span>
-            </div>
-            <strong className={styles.summaryCardValue}>{report.languageMode}</strong>
-          </div>
-          <div className={`${styles.summaryCard} ${styles.summaryTokens}`}>
-            <div className={styles.summaryCardHeader}>
-              <span className={styles.summaryCardTitle}>Tokens</span>
-              <span className={styles.summaryCardIcon}>
-                <Icons.Tokens size={14} />
-              </span>
-            </div>
-            <strong className={styles.summaryCardValue}>{report.tokens.length}</strong>
-          </div>
-          <div className={`${styles.summaryCard} ${styles.summaryLines}`}>
-            <div className={styles.summaryCardHeader}>
-              <span className={styles.summaryCardTitle}>Lines</span>
-              <span className={styles.summaryCardIcon}>
-                <Icons.Terminal size={14} />
-              </span>
-            </div>
-            <strong className={styles.summaryCardValue}>{report.lineCount}</strong>
-          </div>
-          <div className={`${styles.summaryCard} ${styles.summaryFolds}`}>
-            <div className={styles.summaryCardHeader}>
-              <span className={styles.summaryCardTitle}>Folds</span>
-              <span className={styles.summaryCardIcon}>
-                <Icons.ChevronDown />
-              </span>
-            </div>
-            <strong className={styles.summaryCardValue}>{report.folds.length}</strong>
-          </div>
-          <div className={`${styles.summaryCard} ${styles.summaryNav}`}>
-            <div className={styles.summaryCardHeader}>
-              <span className={styles.summaryCardTitle}>Nav Targets</span>
-              <span className={styles.summaryCardIcon}>
-                <Icons.Globe size={14} />
-              </span>
-            </div>
-            <strong className={styles.summaryCardValue}>{report.navigationTargets.length}</strong>
-          </div>
-          <div className={`${styles.summaryCard} ${styles.summarySearch}`}>
-            <div className={styles.summaryCardHeader}>
-              <span className={styles.summaryCardTitle}>Search Matches</span>
-              <span className={styles.summaryCardIcon}>
-                <Icons.Search size={14} />
-              </span>
-            </div>
-            <strong className={styles.summaryCardValue}>{report.search.matchCount}</strong>
-          </div>
-        </section>
+        <TokenSummaryCards report={report} />
 
         {report.largeFileFallback && (
           <div className={styles.notice}>
@@ -293,159 +224,33 @@ export default function TokenBreakdown({ tab }) {
 
         <section className={styles.section}>
           {activeSection === 'tokens' && (
-            <>
-              <div className={styles.sectionHeader}>
-                <h3>Tokens</h3>
-                <span>
-                  {filteredTokens.length === report.tokens.length
-                    ? `${report.tokens.length} highlighted spans`
-                    : `Showing ${filteredTokens.length} of ${report.tokens.length} spans`}
-                </span>
-              </div>
-
-              <div className={styles.toolbar}>
-                <div className={styles.searchWrapper}>
-                  <span className={styles.searchIcon}>
-                    <Icons.Search size={14} />
-                  </span>
-                  <input
-                    type="text"
-                    placeholder="Filter tokens by value, label, or type..."
-                    className={styles.searchInput}
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    aria-label="Filter tokens"
-                  />
-                  {searchTerm && (
-                    <button
-                      type="button"
-                      className={styles.clearButton}
-                      onClick={() => setSearchTerm('')}
-                      aria-label="Clear filter text"
-                    >
-                      <Icons.Close />
-                    </button>
-                  )}
-                </div>
-
-                {presentTypes.length > 2 && (
-                  <div className={styles.filterPills}>
-                    <span className={styles.filterLabel}>Type:</span>
-                    {presentTypes.map((type) => (
-                      <button
-                        key={type}
-                        type="button"
-                        className={`${styles.filterPill} ${typeFilter === type ? styles.filterPillActive : ''}`}
-                        onClick={() => setTypeFilter(type)}
-                      >
-                        {type === 'All' ? 'All Types' : getTokenLabel(type)}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              <div className={styles.tableWrap}>
-                <table className={styles.table}>
-                  <thead>
-                    <tr>
-                      <th>#</th>
-                      <th>Name</th>
-                      <th>Type</th>
-                      <th>Line</th>
-                      <th>Col</th>
-                      <th>Value</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredTokens.length > 0 ? (
-                      filteredTokens.map((token, position) => (
-                        <tr key={`${token.index}-${token.type}-${token.value}`}>
-                          <td>{position + 1}</td>
-                          <td>{getTokenLabel(token.type)}</td>
-                          <td>
-                            <span className={`${styles.tokenPill} ${getTokenTone(token.type)}`}>
-                              {token.type}
-                            </span>
-                          </td>
-                          <td>{token.range?.startPosition?.line || '-'}</td>
-                          <td>{token.range?.startPosition?.column || '-'}</td>
-                          <td className={styles.valueCell}>
-                            <code className={styles.valueCode}>{previewValue(token.value)}</code>
-                          </td>
-                        </tr>
-                      ))
-                    ) : (
-                      <tr>
-                        <td colSpan={6} className={styles.emptyState}>
-                          No tokens match your search criteria.
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </>
+            <TokenTableSection
+              tokens={report.tokens}
+              filteredTokens={filteredTokens}
+              searchTerm={searchTerm}
+              setSearchTerm={setSearchTerm}
+              typeFilter={typeFilter}
+              setTypeFilter={setTypeFilter}
+              presentTypes={presentTypes}
+            />
           )}
 
           {activeSection === 'folds' && (
-            <>
-              <div className={styles.sectionHeader}>
-                <h3>Folds</h3>
-                <span>{report.foldLabel}</span>
-              </div>
-              {report.folds.length > 0 ? (
-                <ul className={styles.detailList}>
-                  {report.folds.map((fold) => (
-                    <li key={fold.id}>
-                      <code>{fold.id}</code>
-                      <span>
-                        {report.foldLabel}: {fold.startLine}-{fold.endLine}
-                        {collapsedFoldIds.includes(fold.id) ? ' collapsed' : ''}
-                        {fold.placeholder ? ` ${fold.placeholder}` : ''}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className={styles.muted}>No folds detected.</p>
-              )}
-            </>
+            <TokenFoldsSection
+              folds={report.folds}
+              foldLabel={report.foldLabel}
+              collapsedFoldIds={collapsedFoldIds}
+            />
           )}
 
           {activeSection === 'navigation' && (
-            <>
-              <div className={styles.sectionHeader}>
-                <h3>Navigation Targets</h3>
-                <span>{report.navigationLinksEnabled ? 'enabled' : 'disabled'}</span>
-              </div>
-              {report.navigationTargets.length > 0 ? (
-                <ul className={styles.detailList}>
-                  {report.navigationTargets.map((target, index) => (
-                    <li key={`${target.start}-${target.end}-${target.name || index}`}>
-                      <code>{target.type || 'target'}</code>
-                      <span>
-                        {target.name || target.text || 'unnamed'} at {target.position?.line || '-'}:
-                        {target.position?.column || '-'}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className={styles.muted}>No navigation targets detected.</p>
-              )}
-            </>
+            <TokenNavigationSection
+              navigationTargets={report.navigationTargets}
+              navigationLinksEnabled={report.navigationLinksEnabled}
+            />
           )}
 
-          {activeSection === 'json' && (
-            <>
-              <div className={styles.sectionHeader}>
-                <h3>Raw JSON</h3>
-                <span>full report</span>
-              </div>
-              <pre className={styles.jsonBlock}>{JSON.stringify(report, null, 2)}</pre>
-            </>
-          )}
+          {activeSection === 'json' && <TokenJsonSection report={report} />}
         </section>
       </div>
     </div>

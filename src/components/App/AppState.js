@@ -1,3 +1,3 @@
-import { createState } from '@/components/Core/Base/State';
+import { createState } from '@/components/state/State';
 
 export const AppState = createState('AppState');

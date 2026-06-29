@@ -1,7 +1,7 @@
-import { Icons } from '@/components/Core/Base/Icons';
-import { createState } from '@/components/Core/Base/State';
 import Settings from '@/components/Storage/Settings';
-import Tooltip from '@/components/Widgets/Tooltip/Tooltip';
+import { createState } from '@/components/state/State';
+import { Icons } from '@/components/ui/Icons';
+import Tooltip from '@/components/ui/Tooltip/Tooltip';
 import { formatShortcut } from '@/utils/os';
 import React, { useEffect, useRef } from 'react';
 import styles from './LogArea.module.css';

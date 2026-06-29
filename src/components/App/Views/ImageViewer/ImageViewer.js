@@ -1,9 +1,9 @@
 import { TabState } from '@/components/App/Panes/TabBar';
 import FileViewToolbar from '@/components/App/Views/FileViewToolbar';
-import { Icons } from '@/components/Core/Base/Icons';
-import Node from '@/components/Core/Base/Node';
-import { createState } from '@/components/Core/Base/State';
-import Tooltip from '@/components/Widgets/Tooltip/Tooltip';
+import Node from '@/components/state/Node';
+import { createState } from '@/components/state/State';
+import { Icons } from '@/components/ui/Icons';
+import Tooltip from '@/components/ui/Tooltip/Tooltip';
 import { FILE_VIEW_TYPES } from '@/utils/fileViews';
 import React, { useEffect } from 'react';
 import styles from './ImageViewer.module.css';

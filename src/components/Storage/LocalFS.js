@@ -1,4 +1,4 @@
-import { createState } from '@/components/Core/Base/State';
+import { createState } from '@/components/state/State';
 import { useCallback, useEffect, useMemo } from 'react';
 
 const DB_NAME = 'ZakamuraiFS';

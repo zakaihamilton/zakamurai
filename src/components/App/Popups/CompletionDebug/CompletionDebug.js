@@ -1,6 +1,6 @@
 import { EditorState } from '@/components/App/Views/EditorArea';
-import { Icons } from '@/components/Core/Base/Icons';
-import { createState } from '@/components/Core/Base/State';
+import { createState } from '@/components/state/State';
+import { Icons } from '@/components/ui/Icons';
 import React from 'react';
 import { createPortal } from 'react-dom';
 import styles from './CompletionDebug.module.css';

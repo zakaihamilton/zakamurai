@@ -1,9 +1,9 @@
 'use client';
 
-import { Icons } from '@/components/Core/Base/Icons';
-import { createState } from '@/components/Core/Base/State';
-import Dialog from '@/components/Widgets/Dialog/Dialog';
-import Tooltip from '@/components/Widgets/Tooltip/Tooltip';
+import { createState } from '@/components/state/State';
+import Dialog from '@/components/ui/Dialog/Dialog';
+import { Icons } from '@/components/ui/Icons';
+import Tooltip from '@/components/ui/Tooltip/Tooltip';
 import React, { useCallback, useEffect, useRef } from 'react';
 import { PreviewState } from '../../PreviewState';
 import styles from './PreviewArea.module.css';

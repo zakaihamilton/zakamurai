@@ -215,13 +215,17 @@ describe('highlighter', () => {
       '}',
     ].join('\n');
     const breakdown = getHighlightBreakdown({ code, filePath: 'src/test.js', state: {}, styles });
-    const constTokens = breakdown.tokens.filter((token) => token.type === 'hlKw' && token.value === 'const');
+    const constTokens = breakdown.tokens.filter(
+      (token) => token.type === 'hlKw' && token.value === 'const',
+    );
 
     expect(constTokens).toHaveLength(2);
     expect(constTokens.map((token) => token.range?.start)).toEqual([0, 17]);
-    expect(constTokens.every((token) => token.range?.startPosition?.line === token.range?.endPosition?.line)).toBe(
-      true,
-    );
+    expect(
+      constTokens.every(
+        (token) => token.range?.startPosition?.line === token.range?.endPosition?.line,
+      ),
+    ).toBe(true);
   });
 
   it('orders SearchReplaceParser tokens by source position', () => {

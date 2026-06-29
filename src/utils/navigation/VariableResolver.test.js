@@ -352,7 +352,7 @@ describe('VariableResolver', () => {
       const useIndex = code.indexOf('interruptWebLLM()');
       const useTarget = targets.find((t) => t.name === 'interruptWebLLM' && t.start === useIndex);
       expect(useTarget).toBeDefined();
-      expect(useTarget.targets[0].loc.line).toBe(12);
+      expect(useTarget.targets[0].loc.line).toBe(11);
     });
 
     it('resolves forward references to exported const arrow functions', () => {

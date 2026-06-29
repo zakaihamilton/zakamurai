@@ -1,0 +1,53 @@
+import Tooltip from '@/components/ui/Tooltip/Tooltip';
+import styles from './EditorArea.module.css';
+
+export default function NavigationPopup({ popup, onClose, onJumpToTarget }) {
+  if (!popup.visible) return null;
+
+  return (
+    <div className={styles.hoverPopup} style={{ left: `${popup.x}px`, top: `${popup.y}px` }}>
+      <div className={styles.popupHeader}>
+        <span>
+          {popup.isImport
+            ? 'Open Import'
+            : popup.isExport
+              ? 'Referenced in'
+              : popup.isComponent
+                ? 'Component Definition'
+                : popup.isCss
+                  ? 'Referenced in JS'
+                  : 'Defined in CSS'}
+        </span>
+        <Tooltip content="Close">
+          <button
+            type="button"
+            className={styles.popupCloseBtn}
+            onClick={onClose}
+            aria-label="Close popup"
+          >
+            &times;
+          </button>
+        </Tooltip>
+      </div>
+      <ul className={styles.popupList}>
+        {popup.targets.map((target) => (
+          <li
+            key={`${target.filePath}:${target.loc.line}:${target.loc.col}:${target.loc.index || 0}`}
+          >
+            <button
+              type="button"
+              className={styles.popupItem}
+              onClick={() => {
+                onJumpToTarget(target.filePath, target.loc);
+                onClose();
+              }}
+            >
+              <span>{target.fileName}</span>
+              <span style={{ opacity: 0.6, fontSize: '11px' }}>:{target.loc.line}</span>
+            </button>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}

@@ -1,6 +1,6 @@
-import { SHORTCUT_HIGHLIGHT_EVENT, getShortcutsByGroup } from '@/components/App/Manager/Shortcuts';
-import { Icons } from '@/components/Core/Base/Icons';
-import Tooltip from '@/components/Widgets/Tooltip/Tooltip';
+import { SHORTCUT_HIGHLIGHT_EVENT, getShortcutsByGroup } from '@/components/App/keyboard/Shortcuts';
+import { Icons } from '@/components/ui/Icons';
+import Tooltip from '@/components/ui/Tooltip/Tooltip';
 import { useShouldShowKeyboardShortcuts } from '@/utils/keyboard';
 import { formatShortcut, isMac } from '@/utils/os';
 import React, { useEffect, useRef, useState } from 'react';

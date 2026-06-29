@@ -28,6 +28,7 @@ export default function SingleEditorView({
   fileContents,
   handleJumpToTarget,
 }) {
+  // biome-ignore lint/correctness/useExhaustiveDependencies: re-sync gutter heights when editor content changes
   useLayoutEffect(() => {
     const container = scrollContainerRef?.current;
     if (!container) return undefined;

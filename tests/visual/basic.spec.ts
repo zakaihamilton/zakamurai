@@ -10,11 +10,10 @@ test.describe('Zakamurai Basic Tests', () => {
   });
 
   test('should load the application and show key elements', async ({ page }) => {
-    // Check for the "Build" button by text, which is visible in the screenshot
-    await expect(page.getByText('Build')).toBeVisible({ timeout: 10000 });
+    await expect(page.getByTestId('compile-btn').filter({ visible: true })).toBeVisible({
+      timeout: 10000,
+    });
 
-    // Check for the Sidebar toggle (Z logo)
-    // It's a button with the text "Z"
     await expect(page.getByTestId('sidebar-toggle').filter({ visible: true })).toBeVisible();
   });
 
@@ -32,7 +31,7 @@ test.describe('Zakamurai Basic Tests', () => {
   });
 
   test('should open logs when build is clicked', async ({ page }) => {
-    const buildBtn = page.getByText('Build');
+    const buildBtn = page.getByTestId('compile-btn').filter({ visible: true });
     await buildBtn.click();
 
     // Clicking build should open the Logs tab

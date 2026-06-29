@@ -1,8 +1,8 @@
-import Resizer from '@/components/Widgets/Resizer/Resizer';
+import Resizer from '@/components/ui/Resizer/Resizer';
 import { isMediaFile } from '@/utils/file';
 import { FILE_VIEW_TYPES, getDefaultFileViewType } from '@/utils/fileViews';
 import React from 'react';
-import Node from '../../Core/Base/Node';
+import Node from '../../state/Node';
 import styles from '../App.module.css';
 import { AppState } from '../AppState';
 import { Prompt, PromptState, SidebarState, TabBar, TabState } from '../Panes';

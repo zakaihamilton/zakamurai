@@ -4,7 +4,6 @@ import { TabState } from '@/components/App/Panes/TabBar';
 import { PreviewState } from '@/components/App/PreviewState';
 import { EditorState } from '@/components/App/Views/EditorArea';
 import { LogState } from '@/components/App/Views/LogArea';
-import { Icons } from '@/components/Core/Base/Icons';
 import {
   DEFAULT_CONTENTS,
   DEFAULT_FILES,
@@ -12,7 +11,8 @@ import {
   SCRATCH_FILES,
 } from '@/components/Storage/InitialData';
 import Settings from '@/components/Storage/Settings';
-import Tooltip from '@/components/Widgets/Tooltip/Tooltip';
+import { Icons } from '@/components/ui/Icons';
+import Tooltip from '@/components/ui/Tooltip/Tooltip';
 import { formatShortcut } from '@/utils/os';
 import React from 'react';
 import useProjectCompiler from './ProjectCompiler';

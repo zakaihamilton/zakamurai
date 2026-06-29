@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 import ModelManager from './ModelManager';
 
 // Mock Dialog widget to keep tests focused
-vi.mock('@/components/Widgets/Dialog/Dialog', () => ({
+vi.mock('@/components/ui/Dialog/Dialog', () => ({
   default: ({ children, isOpen, title, onCancel }) => {
     if (!isOpen) return null;
     return (
@@ -19,7 +19,7 @@ vi.mock('@/components/Widgets/Dialog/Dialog', () => ({
   },
 }));
 
-vi.mock('@/components/Widgets/Tooltip/Tooltip', () => ({
+vi.mock('@/components/ui/Tooltip/Tooltip', () => ({
   __esModule: true,
   default: ({ children }) => <div>{children}</div>,
 }));

@@ -1,8 +1,8 @@
 import { WEB_LLM_MODELS } from '@/components/AI/WebLLMModels';
-import { Icons } from '@/components/Core/Base/Icons';
 import Settings from '@/components/Storage/Settings';
-import Dialog from '@/components/Widgets/Dialog/Dialog';
-import Tooltip from '@/components/Widgets/Tooltip/Tooltip';
+import Dialog from '@/components/ui/Dialog/Dialog';
+import { Icons } from '@/components/ui/Icons';
+import Tooltip from '@/components/ui/Tooltip/Tooltip';
 import React, { useState } from 'react';
 
 const detailValue = (model, label) => model.details?.find(([key]) => key === label)?.[1] || '';

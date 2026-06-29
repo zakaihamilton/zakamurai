@@ -1,0 +1,175 @@
+# =============================================================================
+# Zakamurai — .cursorignore
+# Reduces Composer indexing and token usage by excluding generated artifacts,
+# dependencies, binaries, and other files that are not useful for AI context.
+# Syntax matches .gitignore (see https://cursor.com/docs/reference/ignore-file).
+# =============================================================================
+
+
+# -----------------------------------------------------------------------------
+# Dependencies
+# Installed packages; never useful for code understanding or edits.
+# -----------------------------------------------------------------------------
+node_modules/
+.pnp/
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
+
+# -----------------------------------------------------------------------------
+# Build output & framework caches
+# Next.js build artifacts and common frontend output directories.
+# -----------------------------------------------------------------------------
+.next/
+out/
+build/
+dist/
+.nuxt/
+.cache/
+.parcel-cache/
+.eslintcache/
+.sass-cache/
+*.tsbuildinfo
+next-env.d.ts
+
+
+# -----------------------------------------------------------------------------
+# Lockfiles
+# Large, auto-generated dependency trees; rarely needed for day-to-day edits.
+# -----------------------------------------------------------------------------
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+bun.lockb
+composer.lock
+Gemfile.lock
+*.lock
+
+
+# -----------------------------------------------------------------------------
+# Environment & secrets
+# Local configuration and credentials — excluded for security and noise.
+# -----------------------------------------------------------------------------
+.env
+.env.*
+!.env.example
+!.env.template
+credentials.json
+*.pem
+*.key
+
+
+# -----------------------------------------------------------------------------
+# System & OS files
+# -----------------------------------------------------------------------------
+.DS_Store
+Thumbs.db
+Desktop.ini
+*.swp
+*.swo
+*~
+
+
+# -----------------------------------------------------------------------------
+# Logs & debug output
+# -----------------------------------------------------------------------------
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+logs/
+**/logs/
+
+
+# -----------------------------------------------------------------------------
+# Test artifacts & coverage
+# Generated reports, caches, and binary snapshot images from Playwright/Vitest.
+# -----------------------------------------------------------------------------
+coverage/
+playwright-report/
+test-results/
+blob-report/
+playwright/.cache/
+**/*-snapshots/
+**/__snapshots__/
+
+
+# -----------------------------------------------------------------------------
+# Version control
+# Git object database and metadata; not application source.
+# -----------------------------------------------------------------------------
+.git/
+
+
+# -----------------------------------------------------------------------------
+# Package manager & local temp directories
+# -----------------------------------------------------------------------------
+.npm-cache/
+.npm-tmp/
+.tmp_home/
+.tmp_config/
+.vercel/
+.scratch/
+scratch/
+
+
+# -----------------------------------------------------------------------------
+# Project-specific: generated runtime assets (~149 MB under public/)
+# Copied from node_modules by postinstall (setup:almostnode, setup:wasm).
+# Source of truth lives in dependencies, not these vendored copies.
+# -----------------------------------------------------------------------------
+public/wasm/
+public/lib/almostnode/
+public/assets/runtime-worker-*
+public/vite-sw.js
+
+
+# -----------------------------------------------------------------------------
+# Project-specific: binaries & large non-source files
+# -----------------------------------------------------------------------------
+lucidshark
+
+
+# -----------------------------------------------------------------------------
+# Media, archives & binary assets
+# Icons and visual regression PNGs add tokens without aiding code edits.
+# Keep small SVGs in public/ indexable if needed for UI work.
+# -----------------------------------------------------------------------------
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.bmp
+*.tif
+*.tiff
+*.webp
+*.ico
+*.mp3
+*.wav
+*.mp4
+*.mov
+*.avi
+*.webm
+*.wasm
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+*.gz
+*.7z
+*.rar
+*.dmg
+*.iso
+*.exe
+*.dll
+*.so
+*.dylib
+*.bin
+*.pdf
+*.csv
+*.parquet

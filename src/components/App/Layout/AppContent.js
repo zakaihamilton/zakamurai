@@ -1,6 +1,6 @@
-import Resizer from '@/components/Widgets/Resizer/Resizer';
+import Resizer from '@/components/ui/Resizer/Resizer';
 import React from 'react';
-import Node from '../../Core/Base/Node';
+import Node from '../../state/Node';
 import styles from '../App.module.css';
 import { AppState } from '../AppState';
 import { Sidebar, SidebarState, StatusBar, TopBar } from '../Panes';

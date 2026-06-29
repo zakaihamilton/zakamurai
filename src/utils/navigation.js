@@ -653,9 +653,7 @@ export function findNavigationTargets(code, isCss, fileContents, filePath) {
   if (!isCss) {
     const varTargets = resolveVariables(code, filePath);
     for (const vt of varTargets) {
-      const isOverlapping = targets.some(
-        (t) => vt.start < t.end && t.start < vt.end
-      );
+      const isOverlapping = targets.some((t) => vt.start < t.end && t.start < vt.end);
       if (!isOverlapping) {
         targets.push(vt);
       }

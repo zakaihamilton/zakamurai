@@ -1,6 +1,6 @@
 import FileViewToolbar from '@/components/App/Views/FileViewToolbar';
-import { Icons } from '@/components/Core/Base/Icons';
-import Tooltip from '@/components/Widgets/Tooltip/Tooltip';
+import { Icons } from '@/components/ui/Icons';
+import Tooltip from '@/components/ui/Tooltip/Tooltip';
 import { FILE_VIEW_TYPES } from '@/utils/fileViews';
 import { formatShortcut } from '@/utils/os';
 import React from 'react';

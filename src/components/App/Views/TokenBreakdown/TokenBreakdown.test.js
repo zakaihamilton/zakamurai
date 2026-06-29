@@ -4,11 +4,11 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import TokenBreakdown from './TokenBreakdown';
 
-vi.mock('@/components/Widgets/Tooltip/Tooltip', () => ({
+vi.mock('@/components/ui/Tooltip/Tooltip', () => ({
   default: ({ children }) => <div>{children}</div>,
 }));
 
-vi.mock('@/components/Core/Base/Icons', () => ({
+vi.mock('@/components/ui/Icons', () => ({
   Icons: {
     Code: () => <span data-testid="icon-code" />,
     Tokens: () => <span data-testid="icon-tokens" />,
