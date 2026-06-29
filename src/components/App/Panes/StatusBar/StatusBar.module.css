@@ -129,6 +129,10 @@ button.item {
   opacity: 0.6;
 }
 
+.aiItemError {
+  color: var(--status-error, #e06c75);
+}
+
 @media (width <= 768px) {
   .hideOnMobile {
     display: none;

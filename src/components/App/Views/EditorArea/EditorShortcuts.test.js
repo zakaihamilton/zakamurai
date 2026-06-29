@@ -127,6 +127,56 @@ describe('useEditorShortcuts', () => {
     expect(handleChange).not.toHaveBeenCalled();
   });
 
+  it('accepts the next word of an AI suggestion with Cmd+ArrowRight', () => {
+    const onAcceptSuggestion = vi.fn();
+    const { result } = renderHook(() =>
+      useEditorShortcuts({
+        handleChange,
+        textareaRef,
+        suggestion: 'foo bar',
+        onAcceptSuggestion,
+      }),
+    );
+
+    const event = {
+      key: 'ArrowRight',
+      metaKey: true,
+      ctrlKey: false,
+      altKey: false,
+      shiftKey: false,
+      preventDefault: vi.fn(),
+    };
+
+    result.current.handleKeyDown(event);
+
+    expect(event.preventDefault).toHaveBeenCalled();
+    expect(onAcceptSuggestion).toHaveBeenCalledWith('foo ');
+    expect(handleChange).not.toHaveBeenCalled();
+  });
+
+  it('stops in-flight completion when Escape is pressed during thinking', () => {
+    const onCancelSuggestion = vi.fn();
+    const { result } = renderHook(() =>
+      useEditorShortcuts({
+        handleChange,
+        textareaRef,
+        isCompleting: true,
+        onCancelSuggestion,
+      }),
+    );
+
+    const event = {
+      key: 'Escape',
+      preventDefault: vi.fn(),
+    };
+
+    result.current.handleKeyDown(event);
+
+    expect(event.preventDefault).toHaveBeenCalled();
+    expect(onCancelSuggestion).toHaveBeenCalledWith({ pauseUntilEdit: true });
+    expect(handleChange).not.toHaveBeenCalled();
+  });
+
   it('cancels AI suggestion with Escape', () => {
     const onCancelSuggestion = vi.fn();
     const { result } = renderHook(() =>

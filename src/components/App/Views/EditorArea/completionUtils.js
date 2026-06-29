@@ -1,4 +1,38 @@
-export const COMPLETION_DEBOUNCE_MS = 1000;
+export const COMPLETION_DEBOUNCE_MS = 500;
+export const COMPLETION_PHASES = {
+  DEBOUNCING: 'debouncing',
+  RETRIEVING_CONTEXT: 'retrieving-context',
+  RESOLVING_MODEL: 'resolving-model',
+  GENERATING: 'generating',
+};
+
+export const getCompletionActivityMessage = (debug) => {
+  if (!debug?.phase) return null;
+
+  switch (debug.phase) {
+    case COMPLETION_PHASES.DEBOUNCING:
+      return 'Waiting for you to pause typing…';
+    case COMPLETION_PHASES.RETRIEVING_CONTEXT:
+      return 'Searching project context…';
+    case COMPLETION_PHASES.RESOLVING_MODEL:
+      return debug.model ? `Loading ${debug.model}…` : 'Loading completion model…';
+    case COMPLETION_PHASES.GENERATING:
+      return debug.model ? `Generating completion with ${debug.model}…` : 'Generating code completion…';
+    default:
+      return null;
+  }
+};
+
+export const getCompletionStatusMessage = (activity, isCompleting) => {
+  if (!isCompleting) return null;
+  return (
+    getCompletionActivityMessage(activity) ||
+    getCompletionActivityMessage({ phase: COMPLETION_PHASES.DEBOUNCING })
+  );
+};
+
+export const COMPLETION_REQUEST_TIMEOUT_MS = 90000;
+
 const MAX_COMPLETION_LINES = 8;
 const MAX_COMPLETION_CHARS = 500;
 
@@ -141,10 +175,21 @@ const getLanguage = (filePath) => {
   return 'Plain text';
 };
 
-const getCurrentToken = (before) => {
+export const getCurrentToken = (before) => {
   const lineBeforeCursor = before.split('\n').pop() || '';
   const match = lineBeforeCursor.match(/[A-Za-z0-9_$.[\]'"`-]*$/);
   return match?.[0] || '';
+};
+
+export const buildCompletionRagQuery = (before) => {
+  const lines = before.split('\n').slice(-3);
+  const token = getCurrentToken(before);
+  return [...lines, token].filter(Boolean).join('\n').trim();
+};
+
+const getRecentLines = (before) => {
+  const lines = before.split('\n');
+  return lines.slice(Math.max(0, lines.length - 3)).join('\n');
 };
 
 export const buildCompletionPrompt = ({ filePath, before, after, ragContext = '' }) => {
@@ -156,6 +201,9 @@ ${ragContext}
 File: ${filePath}
 Language: ${getLanguage(filePath)}
 Cursor is marked with ▮.
+
+Recent lines:
+${getRecentLines(before) || '(none)'}
 
 Current line:
 ${getCursorLine(before, after)}
@@ -182,9 +230,19 @@ const limitCompletionScope = (completion) => {
   return completion;
 };
 
-export const normalizeCompletion = (rawCompletion, before, after) => {
-  let cleaned = stripCompletionNoise(rawCompletion);
+const extractStreamingCompletionText = (raw) => {
+  const closedTag = raw.match(/<completion>([\s\S]*?)<\/completion>/i);
+  if (closedTag) return closedTag[1];
 
+  const openTag = raw.match(/<completion>([\s\S]*)$/i);
+  if (openTag) return openTag[1];
+
+  if (/<\/?comp(?:letion)?>?$/i.test(raw.trim())) return '';
+
+  return '';
+};
+
+const polishCompletionText = (cleaned, before, after, { limitScope = true } = {}) => {
   if (!cleaned.trim()) return '';
 
   const beforeTrimmed = before.trimEnd();
@@ -202,5 +260,31 @@ export const normalizeCompletion = (rawCompletion, before, after) => {
   cleaned = fixJsxClassNameCompletion(cleaned, before);
   cleaned = fixJsxOpeningTagCompletion(cleaned, before);
 
-  return limitCompletionScope(trimSharedBoundary(cleaned, before, after));
+  const trimmed = trimSharedBoundary(cleaned, before, after);
+  return limitScope ? limitCompletionScope(trimmed) : trimmed;
+};
+
+export const normalizeStreamingCompletion = (rawCompletion, before, after) => {
+  if (!/<completion>/i.test(rawCompletion)) {
+    if (/<\/?comp(?:letion)?>?$/i.test(rawCompletion.trim())) return '';
+    return '';
+  }
+
+  let extracted = extractStreamingCompletionText(rawCompletion);
+  if (!extracted) return '';
+
+  extracted = extracted.replace(/<\/?completion>/gi, '');
+
+  return polishCompletionText(extracted, before, after, { limitScope: false });
+};
+
+export const normalizeCompletion = (rawCompletion, before, after) => {
+  const cleaned = stripCompletionNoise(rawCompletion);
+  return polishCompletionText(cleaned, before, after, { limitScope: true });
+};
+
+export const getNextSuggestionWord = (suggestion) => {
+  if (!suggestion) return '';
+  const match = suggestion.match(/^(\s*\S+\s*)/);
+  return match ? match[1] : suggestion;
 };

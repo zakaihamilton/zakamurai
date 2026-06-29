@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { buildCompletionPrompt, normalizeCompletion } from './completionUtils';
+import {
+  buildCompletionPrompt,
+  buildCompletionRagQuery,
+  getCompletionActivityMessage,
+  getCompletionStatusMessage,
+  getNextSuggestionWord,
+  normalizeCompletion,
+  normalizeStreamingCompletion,
+} from './completionUtils';
 
 describe('completionUtils', () => {
   describe('normalizeCompletion', () => {
@@ -47,6 +55,7 @@ describe('completionUtils', () => {
       expect(prompt).toContain('Language: JavaScript');
       expect(prompt).toContain('▮');
       expect(prompt).toContain('const ▮ = 1;');
+      expect(prompt).toContain('Recent lines:');
       expect(prompt).toContain('<completion>');
     });
 
@@ -58,6 +67,66 @@ describe('completionUtils', () => {
         ragContext: 'Related: foo',
       });
       expect(prompt).toContain('Related: foo');
+    });
+  });
+
+  describe('buildCompletionRagQuery', () => {
+    it('combines recent lines and the current partial token', () => {
+      const before = 'function run() {\n  const value = get';
+      expect(buildCompletionRagQuery(before)).toBe('function run() {\n  const value = get\nget');
+    });
+  });
+
+  describe('normalizeStreamingCompletion', () => {
+    it('returns empty text until the completion tag opens', () => {
+      expect(normalizeStreamingCompletion('<comp', 'const ', '')).toBe('');
+    });
+
+    it('returns partial text from an unclosed completion tag', () => {
+      expect(normalizeStreamingCompletion('<completion>value', 'foo.', '')).toBe('value');
+    });
+
+    it('strips mid-stream noise before showing code', () => {
+      expect(
+        normalizeStreamingCompletion(
+          '<think>hidden</think>\n<completion>log(',
+          'console.',
+          '',
+        ),
+      ).toBe('log(');
+    });
+  });
+
+  describe('getNextSuggestionWord', () => {
+    it('accepts the first word including trailing whitespace', () => {
+      expect(getNextSuggestionWord('foo bar')).toBe('foo ');
+    });
+
+    it('includes leading whitespace on the first chunk', () => {
+      expect(getNextSuggestionWord('  foo bar')).toBe('  foo ');
+    });
+  });
+
+  describe('getCompletionActivityMessage', () => {
+    it('describes each completion phase', () => {
+      expect(getCompletionActivityMessage({ phase: 'debouncing' })).toBe(
+        'Waiting for you to pause typing…',
+      );
+      expect(getCompletionActivityMessage({ phase: 'retrieving-context' })).toBe(
+        'Searching project context…',
+      );
+      expect(
+        getCompletionActivityMessage({
+          phase: 'generating',
+          model: 'Qwen2.5-Coder-3B-Instruct-q4f16_1-MLC',
+        }),
+      ).toBe('Generating completion with Qwen2.5-Coder-3B-Instruct-q4f16_1-MLC…');
+    });
+  });
+
+  describe('getCompletionStatusMessage', () => {
+    it('falls back to debouncing when thinking without a recorded phase', () => {
+      expect(getCompletionStatusMessage({}, true)).toBe('Waiting for you to pause typing…');
     });
   });
 });

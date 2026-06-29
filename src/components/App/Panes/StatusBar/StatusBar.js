@@ -1,6 +1,7 @@
 import { AppState } from '@/components/App/AppState';
 import { TabState } from '@/components/App/Panes/TabBar';
 import { EditorState } from '@/components/App/Views/EditorArea';
+import { getCompletionStatusMessage } from '@/components/App/Views/EditorArea/completionUtils';
 import { Icons } from '@/components/ui/Icons';
 import Tooltip from '@/components/ui/Tooltip/Tooltip';
 import React from 'react';
@@ -18,6 +19,27 @@ export default function StatusBar() {
   const { line, col } = currentCursor;
   const isCompleting = editorState.isCompleting?.[activeTabId];
   const aiCompletionEnabled = editorState.aiCompletionEnabled === true;
+  const completionDebug = editorState.aiCompletionDebug;
+  const completionActivityState = editorState.completionActivity?.[activeTabId];
+  const completionError =
+    completionDebug?.status === 'error' && completionDebug?.filePath === activeTabId
+      ? completionDebug.error
+      : '';
+  const completionActivity = getCompletionStatusMessage(completionActivityState, isCompleting);
+  const aiStatusLabel = !aiCompletionEnabled
+    ? 'AI Off'
+    : isCompleting
+      ? 'Thinking...'
+      : completionError
+        ? 'AI Error'
+        : 'AI Ready';
+  const aiTooltip = !aiCompletionEnabled
+    ? 'AI completion is off. Tap to turn it on.'
+    : isCompleting
+      ? `${completionActivity} Press Esc to cancel.`
+      : completionError
+        ? completionError
+        : 'AI completion is on. Tap to turn it off.';
 
   const toggleAICompletion = () => {
     editorState((draft) => {
@@ -82,20 +104,14 @@ export default function StatusBar() {
             <div className={`${styles.item} ${styles.hideOnMobile}`}>
               <span>{encoding}</span>
             </div>
-            <Tooltip
-              content={
-                aiCompletionEnabled
-                  ? isCompleting
-                    ? 'AI is thinking. Tap to turn completion off.'
-                    : 'AI completion is on. Tap to turn it off.'
-                  : 'AI completion is off. Tap to turn it on.'
-              }
-            >
+            <Tooltip content={aiTooltip}>
               <button
                 type="button"
                 className={`${styles.item} ${styles.aiItem} ${
                   aiCompletionEnabled ? styles.aiItemActive : styles.aiItemDisabled
-                } ${isCompleting ? styles.thinking : ''}`}
+                } ${isCompleting ? styles.thinking : ''} ${
+                  completionError ? styles.aiItemError : ''
+                }`}
                 onClick={toggleAICompletion}
                 aria-pressed={aiCompletionEnabled}
                 aria-label={
@@ -103,9 +119,7 @@ export default function StatusBar() {
                 }
               >
                 <Icons.BotSmall />
-                <span>
-                  {aiCompletionEnabled ? (isCompleting ? 'Thinking...' : 'AI Ready') : 'AI Off'}
-                </span>
+                <span>{aiStatusLabel}</span>
               </button>
             </Tooltip>
             <div className={styles.item}>

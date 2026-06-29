@@ -1,10 +1,15 @@
 import { act, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { RECOMMENDED_COMPLETION_MODEL } from '@/components/AI/WebLLMModels';
 import useCompletion from './CompletionHandler';
 import { COMPLETION_DEBOUNCE_MS, normalizeCompletion } from './completionUtils';
 
 vi.mock('@/components/AI/WebLLMAPI', () => ({
   askWebLLM: vi.fn().mockResolvedValue('<completion>Done</completion>'),
+}));
+
+vi.mock('@mlc-ai/web-llm', () => ({
+  hasModelInCache: vi.fn().mockResolvedValue(true),
 }));
 
 vi.mock('@/utils/rag/search-utility', () => ({
@@ -180,7 +185,145 @@ describe('useCompletion', () => {
     expect(askWebLLM.mock.calls[0][0]).not.toContain('const ab▮');
   });
 
-  it('uses a one second debounce outside tests', async () => {
+  it('schedules completion when cursor arrives after the first content edit', async () => {
+    const { rerender } = renderHook((props) => useCompletion(props), {
+      initialProps: {
+        localContent: '',
+        cursorPos: undefined,
+        filePath: 'test.js',
+      },
+    });
+
+    rerender({
+      localContent: 'const a',
+      cursorPos: undefined,
+      filePath: 'test.js',
+    });
+
+    rerender({
+      localContent: 'const a',
+      cursorPos: { line: 1, col: 8, index: 7 },
+      filePath: 'test.js',
+    });
+
+    await flushCompletionDelay();
+
+    expect(askWebLLM).toHaveBeenCalledTimes(1);
+  });
+
+  it('uses the completion coding model and multi-line RAG query', async () => {
+    const { ragSearch } = await import('@/utils/rag/search-utility');
+    const { rerender } = renderHook((props) => useCompletion(props), {
+      initialProps: {
+        localContent: 'const val',
+        cursorPos: { line: 1, col: 10, index: 9 },
+        filePath: 'test.js',
+      },
+    });
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    rerender({
+      localContent: 'const valu',
+      cursorPos: { line: 1, col: 11, index: 10 },
+      filePath: 'test.js',
+    });
+
+    await flushCompletionDelay();
+
+    expect(askWebLLM).toHaveBeenCalledTimes(1);
+    expect(askWebLLM.mock.calls[0][3].model).toBe(RECOMMENDED_COMPLETION_MODEL.id);
+    expect(askWebLLM.mock.calls[0][3].max_tokens).toBe(128);
+    expect(ragSearch.retrieveContext).toHaveBeenCalledWith('const valu\nvalu', 3);
+  });
+
+  it('shows suggestion only after the final completion is ready', async () => {
+    let resolveCompletion;
+    const completionPromise = new Promise((resolve) => {
+      resolveCompletion = resolve;
+    });
+
+    askWebLLM.mockImplementation(() => completionPromise);
+
+    const onDebugUpdate = vi.fn();
+    const { result, rerender } = renderHook((props) => useCompletion(props), {
+      initialProps: {
+        localContent: 'const val',
+        cursorPos: { line: 1, col: 10, index: 9 },
+        filePath: 'test.js',
+        onDebugUpdate,
+      },
+    });
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    rerender({
+      localContent: 'const valu',
+      cursorPos: { line: 1, col: 11, index: 10 },
+      filePath: 'test.js',
+      onDebugUpdate,
+    });
+
+    await flushCompletionDelay();
+
+    expect(result.current.suggestion).toBe('');
+    expect(result.current.loading).toBe(true);
+
+    await act(async () => {
+      resolveCompletion('<completion>Done</completion>');
+      await completionPromise;
+      await Promise.resolve();
+    });
+
+    expect(result.current.suggestion).toBe('Done');
+    expect(result.current.loading).toBe(false);
+  });
+
+  it('clears thinking state when a suggestion accept skips the next edit', async () => {
+    const { result, rerender } = renderHook((props) => useCompletion(props), {
+      initialProps: {
+        localContent: 'const val',
+        cursorPos: { line: 1, col: 10, index: 9 },
+        filePath: 'test.js',
+      },
+    });
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    rerender({
+      localContent: 'const valu',
+      cursorPos: { line: 1, col: 11, index: 10 },
+      filePath: 'test.js',
+    });
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(result.current.loading).toBe(true);
+
+    act(() => {
+      result.current.markSuggestionAccepted();
+    });
+
+    await act(async () => {
+      rerender({
+        localContent: 'const value',
+        cursorPos: { line: 1, col: 12, index: 11 },
+        filePath: 'test.js',
+      });
+    });
+
+    expect(result.current.loading).toBe(false);
+  });
+
+  it('uses a 500ms debounce outside tests', async () => {
     const originalNodeEnv = process.env.NODE_ENV;
     process.env.NODE_ENV = 'development';
 

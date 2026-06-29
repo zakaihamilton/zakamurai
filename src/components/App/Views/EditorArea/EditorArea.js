@@ -1,5 +1,6 @@
 import { AppState } from '@/components/App/AppState';
 import { TabState } from '@/components/App/Panes/TabBar';
+import { LogState } from '@/components/App/Views/LogArea';
 import Node from '@/components/state/Node';
 import { createState } from '@/components/state/State';
 import React, { useCallback, useRef, useEffect, useMemo, useState } from 'react';
@@ -204,6 +205,7 @@ function EditorAreaInner({ file, fsHandle }) {
   const selectedLines = state.selectedLines?.[filePath] || [];
   const cursorPos = state.cursorPos?.[filePath];
   const aiCompletionEnabled = state.aiCompletionEnabled === true;
+  const { isAIProcessing } = LogState.useState(['isAIProcessing']);
 
   const { associatedPath, handleNavigateToAssociated, handleJumpToTarget } =
     useAssociationNavigator({
@@ -222,25 +224,43 @@ function EditorAreaInner({ file, fsHandle }) {
     shouldScrollRef,
   });
 
-  const { suggestion, cancelSuggestion, loading } = useCompletion({
+  const { suggestion, setSuggestion, cancelSuggestion, loading, markSuggestionAccepted } =
+    useCompletion({
     localContent,
     cursorPos,
     filePath,
-    enabled: !hasDiff && !hasCollapsedFolds && aiCompletionEnabled,
+    enabled: !hasDiff && !hasCollapsedFolds && aiCompletionEnabled && !isAIProcessing,
     onDebugUpdate: (debug) => {
       state((draft) => {
         draft.aiCompletionDebug = debug;
+        if (!draft.completionActivity) draft.completionActivity = {};
+        if (!draft.isCompleting) draft.isCompleting = {};
+        if (debug.filePath) {
+          draft.completionActivity[debug.filePath] = {
+            phase: debug.phase || '',
+            model: debug.model || '',
+            status: debug.status || 'idle',
+          };
+          draft.isCompleting[debug.filePath] = debug.status === 'thinking';
+        }
       });
     },
   });
 
-  // Sync loading state to global EditorState
   useEffect(() => {
-    state((draft) => {
-      if (!draft.isCompleting) draft.isCompleting = {};
-      draft.isCompleting[filePath] = loading;
-    });
-  }, [loading, filePath, state]);
+    return () => {
+      state((draft) => {
+        if (!draft.isCompleting) draft.isCompleting = {};
+        if (!draft.completionActivity) draft.completionActivity = {};
+        draft.isCompleting[filePath] = false;
+        draft.completionActivity[filePath] = {
+          phase: '',
+          model: '',
+          status: 'idle',
+        };
+      });
+    };
+  }, [filePath, state]);
 
   useEffect(() => {
     if (!aiCompletionEnabled) {
@@ -255,9 +275,20 @@ function EditorAreaInner({ file, fsHandle }) {
     const nextIndex = index + text.length;
     const textBeforeCursor = newVal.substring(0, nextIndex);
     const linesBeforeCursor = textBeforeCursor.split('\n');
+    const isPartialAccept = suggestion && text.length < suggestion.length && suggestion.startsWith(text);
+
+    if (isPartialAccept) {
+      markSuggestionAccepted();
+    }
 
     handleChange({ target: { value: newVal } });
-    cancelSuggestion();
+
+    if (isPartialAccept) {
+      setSuggestion(suggestion.slice(text.length));
+    } else {
+      cancelSuggestion();
+    }
+
     diffActions.handleCursorUpdate?.({
       line: linesBeforeCursor.length,
       col: linesBeforeCursor[linesBeforeCursor.length - 1].length + 1,
@@ -439,6 +470,7 @@ function EditorAreaInner({ file, fsHandle }) {
           suggestion={suggestion}
           onAcceptSuggestion={handleAcceptSuggestion}
           cancelSuggestion={cancelSuggestion}
+          isCompleting={loading}
           filePath={filePath}
           isReadOnly={isReadOnly}
           navigationLinksEnabled={navigationLinksEnabled}

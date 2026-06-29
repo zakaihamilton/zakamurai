@@ -1,13 +1,48 @@
 import { COMPLETION_SYSTEM_PROMPT } from '@/components/AI/Prompts';
+import { RECOMMENDED_COMPLETION_MODEL, resolveCompletionModelId } from '@/components/AI/WebLLMModels';
 import { createState } from '@/components/state/State';
 import { useCallback, useEffect, useRef } from 'react';
 import {
   COMPLETION_DEBOUNCE_MS,
+  COMPLETION_PHASES,
+  COMPLETION_REQUEST_TIMEOUT_MS,
   buildCompletionPrompt,
+  buildCompletionRagQuery,
   normalizeCompletion,
 } from './completionUtils';
 
 const CompletionState = createState('CompletionState');
+
+const getCursorIndex = (cursorPos, content) => {
+  if (cursorPos?.index !== undefined) return cursorPos.index;
+  return content.length;
+};
+
+const createDebugPayload = ({
+  status,
+  phase,
+  filePath,
+  prompt = '',
+  rawResult = '',
+  completion = '',
+  error = '',
+  cursor,
+  model = '',
+  requestedAt,
+  completedAt,
+}) => ({
+  status,
+  phase: phase || '',
+  filePath,
+  prompt,
+  rawResult,
+  completion,
+  error,
+  cursor,
+  model,
+  requestedAt: requestedAt || '',
+  completedAt: completedAt || '',
+});
 
 export default function useCompletion({
   localContent,
@@ -35,12 +70,74 @@ export default function useCompletion({
     [completionState],
   );
   const timeoutRef = useRef(null);
+  const requestTimeoutRef = useRef(null);
   const lastRequestRef = useRef(0);
   const requestCounterRef = useRef(0);
   const lastContentRef = useRef(localContent);
   const pendingContentRef = useRef(null);
   const pausedContentRef = useRef(null);
+  const skipNextEditRef = useRef(false);
+  const deferredEditRef = useRef(null);
+  const cursorPosRef = useRef(cursorPos);
+  const activeCompletionModelRef = useRef(null);
   const onDebugUpdateRef = useRef(onDebugUpdate);
+
+  const reportDebug = useCallback((payload) => {
+    onDebugUpdateRef.current?.(payload);
+  }, []);
+
+  const clearRequestTimeout = useCallback(() => {
+    if (requestTimeoutRef.current) {
+      clearTimeout(requestTimeoutRef.current);
+      requestTimeoutRef.current = null;
+    }
+  }, []);
+
+  const invalidateActiveRequest = useCallback(() => {
+    lastRequestRef.current = ++requestCounterRef.current;
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
+    clearRequestTimeout();
+    pendingContentRef.current = null;
+  }, [clearRequestTimeout]);
+
+  const stopThinking = useCallback(
+    (options = {}) => {
+      const modelToInterrupt = activeCompletionModelRef.current;
+      if (modelToInterrupt && options.interrupt !== false) {
+        activeCompletionModelRef.current = null;
+        import('@/components/AI/WebLLMAPI').then(({ interruptWebLLMModel }) => {
+          interruptWebLLMModel(modelToInterrupt);
+        });
+      }
+
+      invalidateActiveRequest();
+
+      if (!options.keepSuggestion) {
+        setSuggestion('');
+      }
+      setLoading(false);
+
+      if (options.report !== false) {
+        reportDebug(
+          createDebugPayload({
+            status: 'idle',
+            phase: '',
+            filePath,
+            error: options.error || '',
+            completedAt: new Date().toISOString(),
+          }),
+        );
+      }
+    },
+    [filePath, invalidateActiveRequest, reportDebug, setLoading, setSuggestion],
+  );
+
+  useEffect(() => {
+    cursorPosRef.current = cursorPos;
+  }, [cursorPos]);
 
   useEffect(() => {
     onDebugUpdateRef.current = onDebugUpdate;
@@ -49,38 +146,75 @@ export default function useCompletion({
   useEffect(() => {
     return () => {
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      clearRequestTimeout();
+      lastRequestRef.current = ++requestCounterRef.current;
+
+      const modelToInterrupt = activeCompletionModelRef.current;
+      if (modelToInterrupt) {
+        activeCompletionModelRef.current = null;
+        import('@/components/AI/WebLLMAPI').then(({ interruptWebLLMModel }) => {
+          interruptWebLLMModel(modelToInterrupt);
+        });
+      }
+
+      setLoading(false);
     };
-  }, []);
+  }, [clearRequestTimeout, setLoading]);
 
   useEffect(() => {
-    if (!enabled || !cursorPos || cursorPos.index === undefined) {
-      lastRequestRef.current = ++requestCounterRef.current;
-      setSuggestion('');
-      setLoading(false);
+    if (!enabled) {
+      deferredEditRef.current = null;
+      stopThinking({ interrupt: true, report: true });
       return;
     }
 
     const contentChanged = lastContentRef.current !== localContent;
     lastContentRef.current = localContent;
 
-    if (!contentChanged) {
+    if (skipNextEditRef.current) {
+      skipNextEditRef.current = false;
+      invalidateActiveRequest();
+      setLoading(false);
+      reportDebug(
+        createDebugPayload({
+          status: 'idle',
+          phase: '',
+          filePath,
+          completedAt: new Date().toISOString(),
+        }),
+      );
+      return;
+    }
+
+    const hasCursor = cursorPos?.index !== undefined;
+
+    if (!hasCursor) {
+      if (contentChanged) {
+        deferredEditRef.current = { content: localContent, filePath };
+      }
+      stopThinking({ interrupt: false, report: true });
+      return;
+    }
+
+    const isDeferredCatchUp =
+      !contentChanged &&
+      deferredEditRef.current?.content === localContent &&
+      deferredEditRef.current?.filePath === filePath;
+
+    if (!contentChanged && !isDeferredCatchUp) {
       if (pendingContentRef.current !== localContent) {
-        lastRequestRef.current = ++requestCounterRef.current;
-        if (timeoutRef.current) {
-          clearTimeout(timeoutRef.current);
-          timeoutRef.current = null;
-        }
-        setLoading(false);
+        stopThinking({ interrupt: true, report: true });
       }
       setSuggestion('');
       return;
     }
 
+    if (isDeferredCatchUp) {
+      deferredEditRef.current = null;
+    }
+
     if (pausedContentRef.current === localContent) {
-      lastRequestRef.current = ++requestCounterRef.current;
-      setSuggestion('');
-      setLoading(false);
-      pendingContentRef.current = null;
+      stopThinking({ interrupt: true, report: true });
       return;
     }
 
@@ -88,39 +222,88 @@ export default function useCompletion({
 
     const scheduledRequestId = ++requestCounterRef.current;
     const scheduledContent = localContent;
-    const scheduledCursor = cursorPos;
-    const scheduledBefore = scheduledContent.substring(0, scheduledCursor.index);
-    const scheduledAfter = scheduledContent.substring(scheduledCursor.index);
+    const scheduledCursor = cursorPosRef.current || cursorPos;
+    const scheduledIndex = getCursorIndex(scheduledCursor, scheduledContent);
+    const scheduledBefore = scheduledContent.substring(0, scheduledIndex);
+    const scheduledAfter = scheduledContent.substring(scheduledIndex);
 
-    // Clear previous suggestion immediately on type
     lastRequestRef.current = scheduledRequestId;
     setSuggestion('');
     setLoading(true);
+    reportDebug(
+      createDebugPayload({
+        status: 'thinking',
+        phase: COMPLETION_PHASES.DEBOUNCING,
+        filePath,
+        cursor: { ...scheduledCursor, index: scheduledIndex },
+        requestedAt: new Date().toISOString(),
+      }),
+    );
 
     if (timeoutRef.current) {
       clearTimeout(timeoutRef.current);
     }
     pendingContentRef.current = localContent;
 
-    // Debounce AI requests
     timeoutRef.current = setTimeout(
       async () => {
-        const { index } = scheduledCursor;
+        const activeCursor = cursorPosRef.current || scheduledCursor;
+        const index = getCursorIndex(activeCursor, scheduledContent);
         const before = scheduledContent.substring(0, index);
         const after = scheduledContent.substring(index);
 
-        if (before.trim().length === 0 && after.trim().length === 0) return;
+        const finishRequest = () => {
+          clearRequestTimeout();
+          if (lastRequestRef.current === scheduledRequestId) {
+            setLoading(false);
+            pendingContentRef.current = null;
+          }
+        };
 
-        // Retrieve RAG context using the current line as query
-        const currentLine = before.split('\n').pop() || '';
+        if (before.trim().length === 0 && after.trim().length === 0) {
+          reportDebug(
+            createDebugPayload({
+              status: 'idle',
+              phase: '',
+              filePath,
+              cursor: { ...activeCursor, index },
+              completedAt: new Date().toISOString(),
+            }),
+          );
+          finishRequest();
+          return;
+        }
+
+        requestTimeoutRef.current = setTimeout(() => {
+          if (lastRequestRef.current !== scheduledRequestId) return;
+          stopThinking({
+            interrupt: true,
+            report: true,
+            error: 'Completion timed out. Press Esc to cancel or keep typing to retry.',
+          });
+        }, COMPLETION_REQUEST_TIMEOUT_MS);
+
+        reportDebug(
+          createDebugPayload({
+            status: 'thinking',
+            phase: COMPLETION_PHASES.RETRIEVING_CONTEXT,
+            filePath,
+            cursor: { ...activeCursor, index },
+            requestedAt: new Date().toISOString(),
+          }),
+        );
+
+        const ragQuery = buildCompletionRagQuery(before);
         let ragContext = '';
         try {
           const { ragSearch } = await import('@/utils/rag/search-utility');
-          const ragResults = await ragSearch.retrieveContext(currentLine, 3);
+          const ragResults = await ragSearch.retrieveContext(ragQuery, 3);
           ragContext = ragSearch.formatPromptContext(ragResults);
         } catch (ragErr) {
           console.error('[Completion] RAG retrieval failed:', ragErr);
         }
+
+        if (lastRequestRef.current !== scheduledRequestId) return;
 
         const scheduledPrompt = buildCompletionPrompt({
           filePath,
@@ -129,84 +312,127 @@ export default function useCompletion({
           ragContext,
         });
 
-        onDebugUpdateRef.current?.({
-          status: 'thinking',
-          filePath,
-          prompt: scheduledPrompt,
-          rawResult: '',
-          completion: '',
-          error: '',
-          cursor: scheduledCursor,
-          requestedAt: new Date().toISOString(),
-        });
+        reportDebug(
+          createDebugPayload({
+            status: 'thinking',
+            phase: COMPLETION_PHASES.RESOLVING_MODEL,
+            filePath,
+            prompt: scheduledPrompt,
+            cursor: { ...activeCursor, index },
+            requestedAt: new Date().toISOString(),
+          }),
+        );
+
+        const scheduledPromptForError = scheduledPrompt;
 
         try {
+          const completionModelId = await resolveCompletionModelId();
+          if (lastRequestRef.current !== scheduledRequestId) return;
+
+          activeCompletionModelRef.current = completionModelId;
+
+          reportDebug(
+            createDebugPayload({
+              status: 'thinking',
+              phase: COMPLETION_PHASES.GENERATING,
+              filePath,
+              prompt: scheduledPrompt,
+              cursor: { ...activeCursor, index },
+              model: completionModelId,
+              requestedAt: new Date().toISOString(),
+            }),
+          );
+
           const { askWebLLM } = await import('@/components/AI/WebLLMAPI');
           const result = await askWebLLM(scheduledPrompt, COMPLETION_SYSTEM_PROMPT, null, {
-            temperature: 0.15,
-            top_p: 0.75,
+            model: completionModelId,
+            temperature: 0.1,
+            top_p: 0.7,
             presence_penalty: 0,
             frequency_penalty: 0.2,
-            max_tokens: 96,
+            max_tokens: 128,
           });
 
-          // Only update if this is still the latest request
           if (lastRequestRef.current === scheduledRequestId) {
             const cleaned = normalizeCompletion(result, before, after);
 
-            onDebugUpdateRef.current?.({
-              status: 'completed',
-              filePath,
-              prompt: scheduledPrompt,
-              rawResult: result,
-              completion: cleaned,
-              error: '',
-              cursor: scheduledCursor,
-              completedAt: new Date().toISOString(),
-            });
-            setSuggestion(cleaned);
+            reportDebug(
+              createDebugPayload({
+                status: cleaned ? 'completed' : 'idle',
+                phase: '',
+                filePath,
+                prompt: scheduledPrompt,
+                rawResult: result,
+                completion: cleaned,
+                error: cleaned ? '' : 'Model returned an empty completion.',
+                cursor: { ...activeCursor, index },
+                model: completionModelId,
+                completedAt: new Date().toISOString(),
+              }),
+            );
+
+            if (cleaned) {
+              setSuggestion(cleaned);
+            }
           }
         } catch (err) {
+          if (lastRequestRef.current !== scheduledRequestId) return;
+
           console.error('Completion error:', err);
-          onDebugUpdateRef.current?.({
-            status: 'error',
-            filePath,
-            prompt: scheduledPrompt,
-            rawResult: '',
-            completion: '',
-            error: err.message || String(err),
-            cursor: scheduledCursor,
-            completedAt: new Date().toISOString(),
-          });
+          const errorMessage = err.message || String(err);
+          const modelHint = errorMessage.includes('model')
+            ? errorMessage
+            : `${errorMessage} (completion model: ${RECOMMENDED_COMPLETION_MODEL.id} — download it from the Prompt panel model manager if needed)`;
+          reportDebug(
+            createDebugPayload({
+              status: 'error',
+              phase: '',
+              filePath,
+              prompt: scheduledPromptForError,
+              rawResult: '',
+              completion: '',
+              error: modelHint,
+              cursor: { ...activeCursor, index },
+              completedAt: new Date().toISOString(),
+            }),
+          );
         } finally {
           if (lastRequestRef.current === scheduledRequestId) {
-            setLoading(false);
-            pendingContentRef.current = null;
+            activeCompletionModelRef.current = null;
           }
+          finishRequest();
         }
       },
       process.env.NODE_ENV === 'test' ? 10 : COMPLETION_DEBOUNCE_MS,
     );
 
     return undefined;
-  }, [localContent, cursorPos, filePath, enabled, setLoading, setSuggestion]);
+  }, [
+    localContent,
+    cursorPos,
+    filePath,
+    enabled,
+    clearRequestTimeout,
+    reportDebug,
+    setLoading,
+    setSuggestion,
+    stopThinking,
+  ]);
 
   const cancelSuggestion = useCallback(
     (options = {}) => {
       if (options.pauseUntilEdit) {
         pausedContentRef.current = lastContentRef.current;
       }
-      lastRequestRef.current = ++requestCounterRef.current;
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-        timeoutRef.current = null;
-      }
-      pendingContentRef.current = null;
-      setSuggestion('');
-      setLoading(false);
+      deferredEditRef.current = null;
+      stopThinking({ interrupt: true, report: true });
     },
-    [setLoading, setSuggestion],
+    [stopThinking],
   );
 
-  return { suggestion, setSuggestion, cancelSuggestion, loading };
+  const markSuggestionAccepted = useCallback(() => {
+    skipNextEditRef.current = true;
+  }, []);
+
+  return { suggestion, setSuggestion, cancelSuggestion, loading, markSuggestionAccepted };
 }

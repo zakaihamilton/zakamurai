@@ -70,6 +70,11 @@ export const LEGACY_WEB_LLM_MODEL_IDS = {
 export const RECOMMENDED_WEB_LLM_MODEL =
   WEB_LLM_MODELS.find((model) => model.recommended) || WEB_LLM_MODELS[0];
 
+export const RECOMMENDED_COMPLETION_MODEL =
+  WEB_LLM_MODELS.find((model) => model.id === 'Qwen2.5-Coder-3B-Instruct-q4f16_1-MLC') ||
+  WEB_LLM_MODELS.find((model) => model.id.includes('Coder-3B')) ||
+  RECOMMENDED_WEB_LLM_MODEL;
+
 const VALID_WEB_LLM_MODEL_IDS = new Set(WEB_LLM_MODELS.map((model) => model.id));
 
 export const resolveWebLLMModelId = (savedId) => {
@@ -78,4 +83,28 @@ export const resolveWebLLMModelId = (savedId) => {
     return migratedId;
   }
   return RECOMMENDED_WEB_LLM_MODEL.id;
+};
+
+export const resolveCompletionModelId = async () => {
+  try {
+    const { hasModelInCache } = await import('@mlc-ai/web-llm');
+    if (await hasModelInCache(RECOMMENDED_COMPLETION_MODEL.id)) {
+      return RECOMMENDED_COMPLETION_MODEL.id;
+    }
+
+    const Settings = (await import('@/components/Storage/Settings')).default;
+    const promptModel = resolveWebLLMModelId(
+      Settings.getAIPromptModel(RECOMMENDED_WEB_LLM_MODEL.id),
+    );
+    if (
+      promptModel !== RECOMMENDED_COMPLETION_MODEL.id &&
+      (await hasModelInCache(promptModel))
+    ) {
+      return promptModel;
+    }
+  } catch (error) {
+    console.warn('[Completion] Failed to resolve cached completion model:', error);
+  }
+
+  return RECOMMENDED_COMPLETION_MODEL.id;
 };

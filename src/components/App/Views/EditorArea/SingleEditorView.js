@@ -21,6 +21,7 @@ export default function SingleEditorView({
   suggestion,
   onAcceptSuggestion,
   cancelSuggestion,
+  isCompleting = false,
   filePath,
   isReadOnly,
   navigationLinksEnabled,
@@ -84,6 +85,7 @@ export default function SingleEditorView({
         suggestion={suggestion}
         onAcceptSuggestion={onAcceptSuggestion}
         onCancelSuggestion={cancelSuggestion}
+        isCompleting={isCompleting}
         filePath={filePath}
         readOnly={false}
         isReadOnly={isReadOnly}

@@ -1,12 +1,14 @@
 import { formatCode } from '@/utils/formatter';
 import { isMac } from '@/utils/os';
 import { useCallback } from 'react';
+import { getNextSuggestionWord } from './completionUtils';
 
 export default function useEditorShortcuts({
   handleChange,
   textareaRef,
   scrollContainerRef,
   suggestion,
+  isCompleting = false,
   onAcceptSuggestion,
   onCancelSuggestion,
   filePath,
@@ -20,10 +22,25 @@ export default function useEditorShortcuts({
       const mac = isMac();
       const cmdKey = mac ? e.metaKey : e.ctrlKey;
 
-      if (e.key === 'Escape' && suggestion) {
+      if (e.key === 'Escape' && (suggestion || isCompleting)) {
         e.preventDefault();
         onCancelSuggestion?.({ pauseUntilEdit: true });
         return;
+      }
+
+      if (
+        suggestion &&
+        e.key === 'ArrowRight' &&
+        (mac ? e.metaKey : e.ctrlKey) &&
+        !e.altKey &&
+        !e.shiftKey
+      ) {
+        const partial = getNextSuggestionWord(suggestion);
+        if (partial) {
+          e.preventDefault();
+          onAcceptSuggestion?.(partial);
+          return;
+        }
       }
 
       // 0. Jump to Line (Ctrl+G)
@@ -266,6 +283,7 @@ export default function useEditorShortcuts({
       textareaRef,
       scrollContainerRef,
       suggestion,
+      isCompleting,
       onAcceptSuggestion,
       onCancelSuggestion,
       filePath,

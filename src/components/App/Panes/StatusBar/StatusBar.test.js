@@ -26,7 +26,9 @@ vi.mock('@/components/App/Views/EditorArea', () => ({
 
 vi.mock('@/components/ui/Tooltip/Tooltip', () => ({
   __esModule: true,
-  default: ({ children }) => <div>{children}</div>,
+  default: ({ children, content }) => (
+    <div data-tooltip={content}>{children}</div>
+  ),
 }));
 
 describe('StatusBar', () => {
@@ -89,5 +91,72 @@ describe('StatusBar', () => {
     fireEvent.click(aiButton);
 
     expect(editorStateUpdater).toHaveBeenCalled();
+  });
+
+  it('shows AI error state when completion fails for the active file', () => {
+    AppState.useState.mockReturnValue({
+      theme: 'dark',
+      projectName: 'Test Project',
+      fs: { mode: 'local' },
+    });
+    EditorState.useState.mockReturnValue({
+      cursorPos: { 'file.js': { line: 1, col: 1 } },
+      aiCompletionEnabled: true,
+      isCompleting: {},
+      aiCompletionDebug: {
+        status: 'error',
+        filePath: 'file.js',
+        error: 'Model missing',
+      },
+    });
+    TabState.useState.mockReturnValue({
+      activeTabId: 'file.js',
+      openTabs: [{ id: 'file.js', type: 'file' }],
+    });
+
+    render(<StatusBar />);
+
+    expect(screen.getByText('AI Error')).toBeDefined();
+  });
+
+  it('shows what AI completion is doing while thinking', () => {
+    AppState.useState.mockReturnValue({
+      theme: 'dark',
+      projectName: 'Test Project',
+      fs: { mode: 'local' },
+    });
+    EditorState.useState.mockReturnValue({
+      cursorPos: { 'file.js': { line: 1, col: 1 } },
+      aiCompletionEnabled: true,
+      isCompleting: { 'file.js': true },
+      completionActivity: {
+        'file.js': {
+          status: 'thinking',
+          phase: 'generating',
+          model: 'Qwen2.5-Coder-3B-Instruct-q4f16_1-MLC',
+        },
+      },
+      aiCompletionDebug: {
+        status: 'thinking',
+        phase: 'generating',
+        filePath: 'file.js',
+        model: 'Qwen2.5-Coder-3B-Instruct-q4f16_1-MLC',
+      },
+    });
+    TabState.useState.mockReturnValue({
+      activeTabId: 'file.js',
+      openTabs: [{ id: 'file.js', type: 'file' }],
+    });
+
+    const { container } = render(<StatusBar />);
+
+    expect(screen.getByText('Thinking...')).toBeDefined();
+    const tooltips = [...container.querySelectorAll('[data-tooltip]')].map((node) =>
+      node.getAttribute('data-tooltip'),
+    );
+    expect(tooltips.some((tooltip) => tooltip?.includes('Generating completion with Qwen2.5-Coder-3B'))).toBe(
+      true,
+    );
+    expect(tooltips.some((tooltip) => tooltip?.includes('Press Esc to cancel.'))).toBe(true);
   });
 });

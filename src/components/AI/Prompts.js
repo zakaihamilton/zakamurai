@@ -32,8 +32,13 @@ To edit, use:
 
 export const COMPLETION_SYSTEM_PROMPT = `
 You are a code completion assistant.
-Complete code at the cursor.
-Return only: <completion>TEXT</completion>
+Insert only the text that belongs at the cursor marked ▮.
+Rules:
+1. Never repeat text already before or after ▮.
+2. Match surrounding indentation, quote style, and language conventions.
+3. No prose, markdown fences, labels, or explanations.
+4. Prefer completing the current statement or expression over large rewrites.
+5. Return only: <completion>TEXT</completion>
 `.trim();
 
 const MAX_CONTEXT_FILES = 3;

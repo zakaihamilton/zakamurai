@@ -89,7 +89,7 @@ const getEngine = (modelId = DEFAULT_WEB_LLM_MODEL_ID, onProgress = null, option
 export const askWebLLM = async (prompt, systemPrompt = '', onUpdate = null, options = {}) => {
   try {
     console.info('[WebLLM] Retrieving engine...');
-    const engine = await getEngine(options.model, onUpdate, options);
+    const engine = await getEngine(options.model, options.onInitProgress ?? null, options);
     console.info('[WebLLM] Engine retrieved. Starting completion...');
 
     const modelId = options.model || DEFAULT_WEB_LLM_MODEL_ID;
@@ -143,6 +143,23 @@ export const askWebLLM = async (prompt, systemPrompt = '', onUpdate = null, opti
   } catch (error) {
     console.error('Error in askWebLLM:', error);
     throw new Error(`Local AI failed: ${error.message || error}`);
+  }
+};
+
+/**
+ * Halts generation for a single loaded WebLLM model.
+ */
+export const interruptWebLLMModel = async (modelId) => {
+  if (!modelId) return;
+
+  const enginePromise = enginePromises.get(modelId);
+  if (!enginePromise) return;
+
+  try {
+    const engine = await enginePromise;
+    await engine.interruptGenerate();
+  } catch (e) {
+    console.warn(`Failed to interrupt WebLLM model ${modelId}:`, e);
   }
 };
 
