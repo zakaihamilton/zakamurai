@@ -12,7 +12,7 @@
   position: absolute;
   inset: 0;
   border: 0;
-  background: rgba(0, 0, 0, 0.68);
+  background: rgb(0 0 0 / 68%);
   backdrop-filter: blur(4px);
   cursor: default;
 }
@@ -27,7 +27,7 @@
   background: var(--bg-surface);
   border: 1px solid var(--border);
   border-radius: 12px;
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 20px 50px rgb(0 0 0 / 50%);
 }
 
 .header {
@@ -37,7 +37,7 @@
   gap: 16px;
   padding: 18px 22px;
   border-bottom: 1px solid var(--border);
-  background: rgba(0, 0, 0, 0.12);
+  background: var(--bg-surface);
 }
 
 .header h2 {
@@ -144,7 +144,7 @@
   min-height: 180px;
 }
 
-@media (max-width: 640px) {
+@media (width <= 640px) {
   .header {
     align-items: flex-start;
     flex-direction: column;

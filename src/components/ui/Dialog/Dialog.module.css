@@ -97,12 +97,25 @@
   font-size: 14px;
 }
 
+.detailBox {
+  margin-top: 12px;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg-surface);
+  color: var(--text-main);
+  font-family: "JetBrains Mono", "Fira Code", monospace;
+  font-size: 12px;
+  line-height: 1.4;
+  word-break: break-all;
+}
+
 .footer {
   padding: 16px 24px;
   display: flex;
   justify-content: flex-end;
   gap: 12px;
-  background: rgb(0 0 0 / 10%);
+  background: var(--bg-surface);
   border-bottom-left-radius: 12px;
   border-bottom-right-radius: 12px;
 }

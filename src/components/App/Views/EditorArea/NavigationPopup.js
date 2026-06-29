@@ -43,7 +43,7 @@ export default function NavigationPopup({ popup, onClose, onJumpToTarget }) {
               }}
             >
               <span>{target.fileName}</span>
-              <span style={{ opacity: 0.6, fontSize: '11px' }}>:{target.loc.line}</span>
+              <span className={styles.popupLineNumber}>:{target.loc.line}</span>
             </button>
           </li>
         ))}

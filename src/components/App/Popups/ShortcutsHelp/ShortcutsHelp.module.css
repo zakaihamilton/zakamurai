@@ -37,7 +37,7 @@
   justify-content: space-between;
   padding: 24px 32px;
   border-bottom: 1px solid var(--border);
-  background: rgb(0 0 0 / 10%);
+  background: var(--bg-surface);
 }
 
 .header h2 {
@@ -164,7 +164,7 @@
 .footer {
   padding: 16px 32px;
   border-top: 1px solid var(--border);
-  background: rgb(0 0 0 / 10%);
+  background: var(--bg-surface);
   text-align: center;
 }
 

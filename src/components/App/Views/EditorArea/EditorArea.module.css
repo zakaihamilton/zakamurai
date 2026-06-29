@@ -738,6 +738,11 @@
   color: var(--text-main);
 }
 
+.popupLineNumber {
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
 .popupItem:hover {
   background: var(--accent);
   color: #fff;

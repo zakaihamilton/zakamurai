@@ -235,6 +235,34 @@ describe('TreeItem', () => {
     expect(onOpenFile).toHaveBeenCalledWith(row, { viewType: 'image-viewer' });
   });
 
+  it('shows the delete dialog with a readable path preview', async () => {
+    const row = {
+      item: { name: 'components', type: 'folder', children: [] },
+      level: 1,
+      path: ['src', 'components'],
+      pathStr: 'src/components',
+    };
+    render(<TreeItem row={row} {...baseHandlers} />);
+
+    await act(async () => {
+      fireEvent.contextMenu(screen.getByText('components').closest('[draggable="true"]'));
+    });
+
+    await waitFor(() => {
+      expect(screen.getByRole('menu')).toBeDefined();
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('Delete'));
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText('Delete Item')).toBeDefined();
+      expect(screen.getByText('src/components')).toBeDefined();
+      expect(screen.getByText('src/components').className).toContain('detailBox');
+    });
+  });
+
   it('shows rename but not delete for the project root context menu', async () => {
     const rootRow = {
       item: { name: 'Test Project', type: 'folder', isRoot: true, children: [] },
