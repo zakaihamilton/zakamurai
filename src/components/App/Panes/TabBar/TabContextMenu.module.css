@@ -19,6 +19,10 @@
   flex-shrink: 0;
 }
 
+.headerTypeIconAccent {
+  color: var(--accent);
+}
+
 .headerTextContainer {
   display: flex;
   flex-direction: column;

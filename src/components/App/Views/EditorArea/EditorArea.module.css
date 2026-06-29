@@ -213,6 +213,16 @@
   flex-direction: column;
 }
 
+.gutterContentVirtualized {
+  position: relative;
+  height: var(--gutter-height);
+}
+
+.gutterLineAbsolute {
+  position: absolute;
+  top: var(--line-top);
+}
+
 .gutterLine {
   padding: 0 4px;
   cursor: pointer;
@@ -638,6 +648,8 @@
 
 .hoverPopup {
   position: absolute;
+  top: var(--popup-top);
+  left: var(--popup-left);
   background: var(--bg-card);
   backdrop-filter: blur(12px);
   border: 1px solid var(--border);

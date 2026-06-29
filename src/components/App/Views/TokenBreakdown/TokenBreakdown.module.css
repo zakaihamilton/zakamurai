@@ -408,6 +408,27 @@
   min-width: 780px;
   border-collapse: collapse;
   font-size: 12px;
+  table-layout: fixed;
+}
+
+.colIndex {
+  width: 44px;
+}
+
+.colName {
+  width: 15%;
+}
+
+.colType {
+  width: 13%;
+}
+
+.colLine {
+  width: 52px;
+}
+
+.colCol {
+  width: 52px;
 }
 
 .table th,
@@ -442,8 +463,9 @@
   font-size: 11px;
 }
 
+.nameCell,
+.typeCell,
 .valueCell {
-  max-width: 380px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -462,7 +484,9 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 70px;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
   border: 1px solid rgb(148 163 184 / 25%);
   border-radius: 3px;
   padding: 1px 6px;

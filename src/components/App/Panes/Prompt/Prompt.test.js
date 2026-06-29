@@ -59,7 +59,7 @@ vi.mock('@/components/AI/WebLLMAPI', () => ({
   askWebLLM: vi.fn().mockResolvedValue('Mock response'),
   cacheWebLLMModel: vi.fn().mockResolvedValue(undefined),
   deleteCachedWebLLMModel: vi.fn().mockResolvedValue(undefined),
-  getCachedWebLLMModelIds: vi.fn().mockResolvedValue(['Qwen3-4B-q4f16_1-MLC']),
+  getCachedWebLLMModelIds: vi.fn().mockResolvedValue(['Qwen3.5-4B-q4f16_1-MLC']),
   interruptWebLLM: vi.fn(),
 }));
 

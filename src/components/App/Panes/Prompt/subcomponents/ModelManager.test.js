@@ -59,8 +59,8 @@ describe('ModelManager', () => {
     render(
       <ModelManager
         isOpen={true}
-        selectedModelId="Qwen3-4B-q4f16_1-MLC"
-        cachedModelIds={['Qwen3-4B-q4f16_1-MLC']}
+        selectedModelId="Qwen3.5-4B-q4f16_1-MLC"
+        cachedModelIds={['Qwen3.5-4B-q4f16_1-MLC']}
         onCancel={vi.fn()}
         styles={styles}
       />,
@@ -77,7 +77,7 @@ describe('ModelManager', () => {
     render(
       <ModelManager
         isOpen={true}
-        selectedModelId="Qwen3-4B-q4f16_1-MLC"
+        selectedModelId="Qwen3.5-4B-q4f16_1-MLC"
         cachedModelIds={[]}
         onModelCacheAction={onModelCacheAction}
         onCancel={vi.fn()}
@@ -94,7 +94,7 @@ describe('ModelManager', () => {
     render(
       <ModelManager
         isOpen={true}
-        selectedModelId="Qwen3-4B-q4f16_1-MLC"
+        selectedModelId="Qwen3.5-4B-q4f16_1-MLC"
         cachedModelIds={[]}
         onCancel={vi.fn()}
         modelCacheProgress="Downloading: 50%"

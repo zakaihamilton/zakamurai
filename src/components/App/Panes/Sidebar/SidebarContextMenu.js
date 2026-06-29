@@ -23,8 +23,9 @@ export default function SidebarContextMenu({
     <ContextMenu position={position} onClose={onClose}>
       <div className={styles.contextMenuHeader}>
         <span
-          className={styles.headerTypeIcon}
-          style={{ color: item.type === 'folder' ? 'var(--accent)' : 'var(--text-muted)' }}
+          className={`${styles.headerTypeIcon} ${
+            item.type === 'folder' ? styles.headerTypeIconFolder : styles.headerTypeIconFile
+          }`}
         >
           {isLoading ? (
             <div className={styles.spinner} />

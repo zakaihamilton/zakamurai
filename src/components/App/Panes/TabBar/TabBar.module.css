@@ -86,6 +86,10 @@
   background: var(--bg-hover);
 }
 
+.closeButtonDimmed {
+  opacity: 0.5;
+}
+
 .tabLabelTooltip {
   max-width: 150px;
   display: inline-flex;

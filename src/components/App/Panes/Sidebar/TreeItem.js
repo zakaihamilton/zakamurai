@@ -236,12 +236,7 @@ function TreeItemInner({
           type="button"
           onClick={handleClick}
           className={styles.itemButton}
-          style={{
-            paddingLeft: `${16 + level * 16}px`,
-            paddingRight: '16px',
-            paddingTop: '8px',
-            paddingBottom: '8px',
-          }}
+          style={{ '--tree-indent': `${16 + level * 16}px` }}
         >
           <span className={styles.iconContainer}>
             {item.type === 'folder' ? (
@@ -253,8 +248,9 @@ function TreeItemInner({
             ) : null}
           </span>
           <span
-            className={styles.typeIcon}
-            style={{ color: item.type === 'folder' ? 'var(--accent)' : 'var(--text-muted)' }}
+            className={`${styles.typeIcon} ${
+              item.type === 'folder' ? styles.typeIconFolder : styles.typeIconFile
+            }`}
           >
             {isLoading ? (
               <div className={styles.spinner} />
@@ -312,12 +308,7 @@ function TreeItemInner({
 
       {isCreating && (
         <div
-          style={{
-            paddingLeft: `${16 + (level + 1) * 16}px`,
-            paddingRight: '16px',
-            paddingTop: '8px',
-            paddingBottom: '8px',
-          }}
+          style={{ '--tree-indent': `${16 + (level + 1) * 16}px` }}
           className={styles.createInputContainer}
         >
           <span className={styles.iconContainer} />
@@ -385,7 +376,7 @@ function TreeItemInner({
           <>
             Are you sure you want to delete <strong>{item.name}</strong>?
             <div className={dialogStyles.detailBox}>{pathStr}</div>
-            <div style={{ marginTop: '12px' }}>This action cannot be undone.</div>
+            <div className={dialogStyles.deleteWarning}>This action cannot be undone.</div>
           </>
         }
         confirmText="Delete"

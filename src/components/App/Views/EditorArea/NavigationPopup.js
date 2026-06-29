@@ -5,7 +5,10 @@ export default function NavigationPopup({ popup, onClose, onJumpToTarget }) {
   if (!popup.visible) return null;
 
   return (
-    <div className={styles.hoverPopup} style={{ left: `${popup.x}px`, top: `${popup.y}px` }}>
+    <div
+      className={styles.hoverPopup}
+      style={{ '--popup-left': `${popup.x}px`, '--popup-top': `${popup.y}px` }}
+    >
       <div className={styles.popupHeader}>
         <span>
           {popup.isImport

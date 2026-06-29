@@ -1,6 +1,7 @@
 import Node from '@/components/state/Node';
 import { createState } from '@/components/state/State';
 import React, { useCallback, useLayoutEffect, useMemo, useRef } from 'react';
+import styles from './VirtualList.module.css';
 
 const VirtualListState = createState('VirtualListState');
 
@@ -118,18 +119,16 @@ function VirtualListInner({
 
   return (
     <div ref={containerRef} className={className} style={style} onScroll={handleScroll}>
-      <div style={{ height: totalHeight, position: 'relative' }}>
+      <div className={styles.spacer} style={{ '--virtual-total-height': `${totalHeight}px` }}>
         {items.slice(range.start, range.end).map((item, offset) => {
           const index = range.start + offset;
           return (
             <div
               key={item.key || item.pathStr || index}
+              className={styles.row}
               style={{
-                position: 'absolute',
-                top: index * itemHeight,
-                left: 0,
-                right: 0,
-                height: itemHeight,
+                '--row-height': `${itemHeight}px`,
+                '--row-top': `${index * itemHeight}px`,
               }}
             >
               {renderItem(item, index)}

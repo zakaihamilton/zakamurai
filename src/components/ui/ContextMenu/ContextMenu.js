@@ -23,7 +23,7 @@ export default function ContextMenu({ position, onClose, children }) {
         role="menu"
         tabIndex={-1}
         className={styles.contextMenu}
-        style={{ top: position.y, left: position.x }}
+        style={{ '--menu-top': `${position.y}px`, '--menu-left': `${position.x}px` }}
         onClick={(e) => e.stopPropagation()}
         onKeyDown={(e) => e.stopPropagation()}
       >

@@ -1,6 +1,10 @@
 import { processAIResponse } from '@/components/AI/Processor';
 import { DEFAULT_SYSTEM_PROMPT, buildEditPrompt } from '@/components/AI/Prompts';
-import { RECOMMENDED_WEB_LLM_MODEL, WEB_LLM_MODELS } from '@/components/AI/WebLLMModels';
+import {
+  RECOMMENDED_WEB_LLM_MODEL,
+  WEB_LLM_MODELS,
+  resolveWebLLMModelId,
+} from '@/components/AI/WebLLMModels';
 import { AppState } from '@/components/App/AppState';
 import { SidebarState } from '@/components/App/Panes/Sidebar';
 import { TabState } from '@/components/App/Panes/TabBar';
@@ -22,7 +26,9 @@ import ReasoningPanel from './subcomponents/ReasoningPanel';
 export const PromptState = createState('PromptState');
 export const PromptUiState = createState('PromptUiState');
 const getInitialSelectedModel = () =>
-  Settings.getAIPromptModel(RECOMMENDED_WEB_LLM_MODEL.id) || RECOMMENDED_WEB_LLM_MODEL.id;
+  resolveWebLLMModelId(
+    Settings.getAIPromptModel(RECOMMENDED_WEB_LLM_MODEL.id) || RECOMMENDED_WEB_LLM_MODEL.id,
+  );
 
 export default function Prompt() {
   const { fs, isMobile } = AppState.useState(['fs', 'isMobile']);
@@ -293,10 +299,7 @@ export default function Prompt() {
     <aside
       className={`${styles.prompt} ${isOpen ? '' : styles.closed}`}
       aria-hidden={!isOpen}
-      style={{
-        width: isMobile ? undefined : desktopWidth,
-        flexBasis: isMobile ? undefined : desktopWidth,
-      }}
+      style={isMobile ? undefined : { '--panel-width': desktopWidth }}
     >
       <div className={styles.content}>
         <PromptHeader

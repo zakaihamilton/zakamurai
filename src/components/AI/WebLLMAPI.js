@@ -92,6 +92,7 @@ export const askWebLLM = async (prompt, systemPrompt = '', onUpdate = null, opti
     const engine = await getEngine(options.model, onUpdate, options);
     console.info('[WebLLM] Engine retrieved. Starting completion...');
 
+    const modelId = options.model || DEFAULT_WEB_LLM_MODEL_ID;
     const defaultSystemPrompt = DEFAULT_SYSTEM_PROMPT;
 
     const messages = [
@@ -110,6 +111,7 @@ export const askWebLLM = async (prompt, systemPrompt = '', onUpdate = null, opti
       top_p: options.top_p ?? 0.95,
       presence_penalty: options.presence_penalty ?? 0.1,
       frequency_penalty: options.frequency_penalty ?? 0.1,
+      ...(modelId.startsWith('Qwen3') ? { extra_body: { enable_thinking: false } } : {}),
     };
 
     if (options.max_tokens !== undefined) {

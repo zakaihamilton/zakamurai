@@ -1,0 +1,12 @@
+.spacer {
+  position: relative;
+  height: var(--virtual-total-height);
+}
+
+.row {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: var(--row-height);
+  top: var(--row-top);
+}

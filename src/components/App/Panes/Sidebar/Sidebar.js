@@ -223,10 +223,7 @@ export default function Sidebar() {
     <aside
       className={`${styles.sidebar} ${isOpen ? styles.isOpen : ''}`}
       aria-hidden={!isOpen}
-      style={{
-        width: isMobile ? undefined : desktopWidth,
-        flexBasis: isMobile ? undefined : desktopWidth,
-      }}
+      style={isMobile ? undefined : { '--panel-width': desktopWidth }}
     >
       <div className={styles.contentWrapper}>
         <SidebarMountSection hasFileSystem={Boolean(fs.mode)} onMountLocal={fs.mountLocal} />

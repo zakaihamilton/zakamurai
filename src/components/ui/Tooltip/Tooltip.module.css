@@ -8,6 +8,11 @@
   --tooltip-text: #fff;
   --tooltip-shadow: 0 4px 12px rgb(0 0 0 / 50%);
 
+  position: absolute;
+  top: var(--tooltip-top);
+  left: var(--tooltip-left);
+  max-width: var(--tooltip-max-width, 280px);
+  max-height: var(--tooltip-max-height);
   pointer-events: none;
   box-sizing: border-box;
   z-index: 120000;
@@ -20,7 +25,6 @@
   border-radius: 8px;
   white-space: normal;
   overflow-wrap: break-word;
-  max-width: 280px;
   width: max-content;
   box-shadow: var(--tooltip-shadow);
   border: 1px solid var(--tooltip-border);

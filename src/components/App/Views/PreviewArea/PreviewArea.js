@@ -222,10 +222,7 @@ export default function PreviewArea() {
             </p>
           </div>
         )}
-        <div
-          className={styles.scaleWrapper}
-          style={{ transform: `scale(${scale})`, transformOrigin: 'top left' }}
-        >
+        <div className={styles.scaleWrapper} style={{ '--preview-scale': scale }}>
           {/* 
               CRITICAL: We point src to /index.html. 
               The almostnode Service Worker MUST be active to intercept this. 
@@ -239,10 +236,7 @@ export default function PreviewArea() {
               className={styles.iframe}
               onLoad={handleLoad}
               sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
-              style={{
-                width: scale !== 1 ? `${100 / scale}%` : '100%',
-                height: scale !== 1 ? `${100 / scale}%` : '100%',
-              }}
+              style={{ '--iframe-size': scale !== 1 ? `${100 / scale}%` : '100%' }}
             />
           )}
         </div>

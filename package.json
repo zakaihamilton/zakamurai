@@ -23,7 +23,7 @@
   },
   "dependencies": {
     "@huggingface/transformers": "^4.2.0",
-    "@mlc-ai/web-llm": "^0.2.83",
+    "@mlc-ai/web-llm": "^0.2.84",
     "@testing-library/dom": "^10.4.1",
     "almostnode": "latest",
     "apache-arrow": "^18.1.0",
@@ -36,23 +36,29 @@
   "devDependencies": {
     "@biomejs/biome": "1.9.4",
     "@next/bundle-analyzer": "latest",
+    "@playwright/test": "latest",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.2.0",
     "@vitejs/plugin-react": "^4.3.4",
     "eslint": "^9",
     "eslint-config-next": "16.2.4",
-    "jsdom": "^26.0.0",
-    "vitest": "^3.0.4",
-    "husky": "^9.0.0",
-    "lint-staged": "^15.0.0",
     "fast-check": "^3.0.0",
+    "husky": "^9.0.0",
+    "jsdom": "^26.0.0",
+    "lint-staged": "^15.0.0",
     "promptfoo": "latest",
     "stylelint": "^17.0.0",
     "stylelint-config-standard": "latest",
-    "@playwright/test": "latest"
+    "vitest": "^3.0.4"
   },
   "lint-staged": {
-    "src/**/*.{ts,tsx}": ["biome check --write", "vitest related --run", "npx playwright test"],
-    "src/**/*.module.css": ["stylelint --fix"]
+    "src/**/*.{ts,tsx}": [
+      "biome check --write",
+      "vitest related --run",
+      "npx playwright test"
+    ],
+    "src/**/*.module.css": [
+      "stylelint --fix"
+    ]
   }
 }

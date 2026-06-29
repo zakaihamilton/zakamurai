@@ -97,6 +97,10 @@
   font-size: 14px;
 }
 
+.deleteWarning {
+  margin-top: 12px;
+}
+
 .detailBox {
   margin-top: 12px;
   padding: 8px;

@@ -1,0 +1,16 @@
+.zLogo {
+  width: var(--logo-size);
+  height: var(--logo-size);
+  background: linear-gradient(135deg, #8b5cf6 0%, #5b4cc4 100%);
+  border-radius: var(--logo-radius);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-weight: 800;
+  color: #fff;
+  font-size: var(--logo-font-size);
+  user-select: none;
+  flex-shrink: 0;
+  line-height: 1;
+  font-family: inherit;
+}

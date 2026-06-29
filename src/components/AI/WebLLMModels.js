@@ -12,11 +12,11 @@ export const WEB_LLM_MODELS = [
     recommended: false,
   },
   {
-    id: 'Qwen3-8B-q4f16_1-MLC',
-    name: 'Qwen3 8B',
-    requirement: 'Strongest general reasoning option. Heavier than Qwen3 4B.',
+    id: 'Qwen3.5-9B-q4f16_1-MLC',
+    name: 'Qwen3.5 9B',
+    requirement: 'Strongest general reasoning option. Heavier than Qwen3.5 4B.',
     details: [
-      ['System', 'High-end WebGPU device'],
+      ['System', 'High-end WebGPU device with ~6.4 GB VRAM'],
       ['Storage', 'Large browser cache footprint'],
       ['Speed', 'Slower than 4B models'],
       ['Best for', 'Harder reasoning, planning, code review, architecture questions'],
@@ -24,11 +24,11 @@ export const WEB_LLM_MODELS = [
     recommended: false,
   },
   {
-    id: 'Qwen3-4B-q4f16_1-MLC',
-    name: 'Qwen3 4B',
+    id: 'Qwen3.5-4B-q4f16_1-MLC',
+    name: 'Qwen3.5 4B',
     requirement: 'Best default balance of quality, reasoning, and browser practicality.',
     details: [
-      ['System', 'Modern WebGPU-capable laptop or desktop'],
+      ['System', 'Modern WebGPU-capable laptop or desktop with ~3.9 GB VRAM'],
       ['Storage', 'Medium browser cache footprint'],
       ['Speed', 'Balanced startup and generation'],
       ['Best for', 'Everyday coding help, app changes, explanations'],
@@ -48,12 +48,11 @@ export const WEB_LLM_MODELS = [
     recommended: false,
   },
   {
-    id: 'Qwen3-1.7B-q4f16_1-MLC',
-    name: 'Qwen3 1.7B',
-    requirement:
-      'Lightweight reasoning fallback. Better modern fallback than Llama 3.2 3B for many tasks.',
+    id: 'Qwen3.5-2B-q4f16_1-MLC',
+    name: 'Qwen3.5 2B',
+    requirement: 'Lightweight reasoning fallback for lower-memory devices.',
     details: [
-      ['System', 'Lower-memory WebGPU-capable devices'],
+      ['System', 'Lower-memory WebGPU-capable devices with ~2.2 GB VRAM'],
       ['Storage', 'Small browser cache footprint'],
       ['Speed', 'Fast startup and responsive generation'],
       ['Best for', 'Simple edits, explanations, short prompts'],
@@ -62,5 +61,21 @@ export const WEB_LLM_MODELS = [
   },
 ];
 
+export const LEGACY_WEB_LLM_MODEL_IDS = {
+  'Qwen3-8B-q4f16_1-MLC': 'Qwen3.5-9B-q4f16_1-MLC',
+  'Qwen3-4B-q4f16_1-MLC': 'Qwen3.5-4B-q4f16_1-MLC',
+  'Qwen3-1.7B-q4f16_1-MLC': 'Qwen3.5-2B-q4f16_1-MLC',
+};
+
 export const RECOMMENDED_WEB_LLM_MODEL =
   WEB_LLM_MODELS.find((model) => model.recommended) || WEB_LLM_MODELS[0];
+
+const VALID_WEB_LLM_MODEL_IDS = new Set(WEB_LLM_MODELS.map((model) => model.id));
+
+export const resolveWebLLMModelId = (savedId) => {
+  const migratedId = LEGACY_WEB_LLM_MODEL_IDS[savedId] || savedId;
+  if (VALID_WEB_LLM_MODEL_IDS.has(migratedId)) {
+    return migratedId;
+  }
+  return RECOMMENDED_WEB_LLM_MODEL.id;
+};

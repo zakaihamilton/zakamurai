@@ -19,6 +19,14 @@
   flex-shrink: 0;
 }
 
+.headerTypeIconFolder {
+  color: var(--accent);
+}
+
+.headerTypeIconFile {
+  color: var(--text-muted);
+}
+
 .headerTextContainer {
   display: flex;
   flex-direction: column;

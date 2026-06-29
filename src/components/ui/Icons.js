@@ -1,4 +1,5 @@
 import React from 'react';
+import logoStyles from './Icons.module.css';
 
 export const Icons = {
   Image: ({ size = 14 }) => (
@@ -650,22 +651,11 @@ export const Icons = {
   ),
   ZLogo: ({ size = 32, className = '', style = {} }) => (
     <div
-      className={className}
+      className={`${logoStyles.zLogo} ${className}`}
       style={{
-        width: size,
-        height: size,
-        background: 'linear-gradient(135deg, #8b5cf6 0%, #5b4cc4 100%)',
-        borderRadius: `${Math.max(2, Math.round(size * 0.25))}px`,
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        fontWeight: 800,
-        color: '#fff',
-        fontSize: `${Math.round(size * 0.56)}px`,
-        userSelect: 'none',
-        flexShrink: 0,
-        lineHeight: 1,
-        fontFamily: 'inherit',
+        '--logo-size': `${size}px`,
+        '--logo-radius': `${Math.max(2, Math.round(size * 0.25))}px`,
+        '--logo-font-size': `${Math.round(size * 0.56)}px`,
         ...style,
       }}
     >

@@ -30,6 +30,7 @@
   font-family: inherit;
   text-align: left;
   border-radius: 6px;
+  padding: 8px 16px 8px var(--tree-indent, 16px);
 }
 
 .active .itemButton {
@@ -42,7 +43,6 @@
 .item:hover:not(.active) .itemButton {
   background-color: var(--accent-light);
   color: var(--text-main);
-  padding-left: 4px;
 }
 
 .active::before {
@@ -72,6 +72,14 @@
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+.typeIconFolder {
+  color: var(--accent);
+}
+
+.typeIconFile {
+  color: var(--text-muted);
 }
 
 .spinner {
@@ -131,6 +139,7 @@
   margin: 0 8px;
   min-height: 34px;
   box-sizing: border-box;
+  padding: 8px 16px 8px var(--tree-indent, 16px);
 }
 
 .dragging {

@@ -5,6 +5,14 @@
   transition: opacity 0.2s;
 }
 
+.treeAreaInteractive {
+  pointer-events: auto;
+}
+
+.treeAreaInactive {
+  pointer-events: none;
+}
+
 .noFiles {
   padding: 20px;
   color: var(--text-muted);

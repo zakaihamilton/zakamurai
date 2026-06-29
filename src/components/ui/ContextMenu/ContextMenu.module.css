@@ -1,5 +1,7 @@
 .contextMenu {
   position: fixed;
+  top: var(--menu-top);
+  left: var(--menu-left);
   background: var(--glass-bg);
   backdrop-filter: var(--glass-blur);
   border: 1px solid var(--border);

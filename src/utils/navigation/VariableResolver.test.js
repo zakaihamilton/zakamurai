@@ -375,7 +375,7 @@ describe('VariableResolver', () => {
       const useIndex = code.indexOf('interruptWebLLM()');
       const useTarget = targets.find((t) => t.name === 'interruptWebLLM' && t.start === useIndex);
       expect(useTarget).toBeDefined();
-      expect(useTarget.targets[0].loc.line).toBe(150);
+      expect(useTarget.targets[0].loc.line).toBe(152);
     });
 
     it('resolves object argument usages in WebLLMAPI', () => {
@@ -390,13 +390,13 @@ describe('VariableResolver', () => {
         (t) => t.name === 'messages' && t.start === messagesUseIndex,
       );
       expect(messagesUse).toBeDefined();
-      expect(messagesUse.targets[0].loc.line).toBe(97);
+      expect(messagesUse.targets[0].loc.line).toBe(98);
 
       const generationOptionsUse = targets.find(
         (t) => t.name === 'generationOptions' && t.start === generationOptionsUseIndex,
       );
       expect(generationOptionsUse).toBeDefined();
-      expect(generationOptionsUse.targets[0].loc.line).toBe(108);
+      expect(generationOptionsUse.targets[0].loc.line).toBe(109);
     });
   });
 });

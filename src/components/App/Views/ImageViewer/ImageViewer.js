@@ -174,7 +174,7 @@ function ImageViewerInner({ tab }) {
         ) : imageUrl ? (
           <div
             className={`${styles.imageContainer} ${showGrid ? styles.showGridPattern : ''}`}
-            style={{ transform: `scale(${scale})` }}
+            style={{ '--image-scale': scale }}
           >
             {isVideo ? (
               // biome-ignore lint/a11y/useMediaCaption: we don't have captions for these raw files
@@ -187,19 +187,16 @@ function ImageViewerInner({ tab }) {
               <img
                 src={imageUrl}
                 alt={fileName || 'Image'}
-                className={`${styles.image} ${showGrid ? styles.pixelated : ''}`}
-                style={
-                  isSvg
-                    ? { width: '512px', height: '512px', maxWidth: '100%', maxHeight: '100%' }
-                    : {}
-                }
+                className={`${styles.image} ${showGrid ? styles.pixelated : ''} ${
+                  isSvg ? styles.svgImage : ''
+                }`}
               />
             )}
           </div>
         ) : (
           <div className={styles.loadingContainer}>
             <div className={styles.spinner} />
-            <div style={{ marginLeft: '10px' }}>Loading media...</div>
+            <div>Loading media...</div>
           </div>
         )}
       </div>

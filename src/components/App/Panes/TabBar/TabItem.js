@@ -74,8 +74,7 @@ export default function TabItem({
           type="button"
           onClick={(e) => onCloseTab(e, tab.id)}
           onKeyDown={(e) => e.key === 'Enter' && onCloseTab(e, tab.id)}
-          className={styles.closeButton}
-          style={{ opacity: isActive ? 1 : 0.5 }}
+          className={`${styles.closeButton} ${isActive ? '' : styles.closeButtonDimmed}`}
           aria-label="Close Tab"
         >
           <Icons.Close />

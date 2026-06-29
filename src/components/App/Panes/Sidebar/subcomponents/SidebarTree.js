@@ -31,8 +31,9 @@ export default function SidebarTree({
   return (
     <>
       <VirtualList
-        className={`${styles.treeArea} scrollHide`}
-        style={{ pointerEvents: isOpen ? 'auto' : 'none' }}
+        className={`${styles.treeArea} scrollHide ${
+          isOpen ? styles.treeAreaInteractive : styles.treeAreaInactive
+        }`}
         items={rows}
         itemHeight={ROW_HEIGHT}
         scrollKey={activeTabId}

@@ -1,6 +1,8 @@
 .prompt {
   flex: 0 0 auto;
   height: 100%;
+  width: var(--panel-width, auto);
+  flex-basis: var(--panel-width, auto);
   padding: 14px;
   background: var(--bg-panel);
   border-left: 1px solid var(--border);

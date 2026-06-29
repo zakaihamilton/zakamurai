@@ -129,13 +129,14 @@ function GutterInner({
   return (
     <div className={styles.gutter}>
       <div
-        className={styles.gutterContent}
+        className={`${styles.gutterContent} ${
+          totalLines > VIRTUALIZE_AFTER ? styles.gutterContentVirtualized : ''
+        }`}
         style={
           totalLines > VIRTUALIZE_AFTER
             ? {
                 '--gutter-digits': reservedDigits,
-                height: `${totalLines * LINE_HEIGHT}px`,
-                position: 'relative',
+                '--gutter-height': `${totalLines * LINE_HEIGHT}px`,
               }
             : { '--gutter-digits': reservedDigits }
         }
@@ -149,12 +150,14 @@ function GutterInner({
             <div
               key={`${line}:${index}`}
               data-gutter-line={line}
-              style={top == null ? undefined : { position: 'absolute', top: `${top}px` }}
+              style={top == null ? undefined : { '--line-top': `${top}px` }}
               onClick={(e) => {
                 e.stopPropagation();
                 if (toggleLine) toggleLine(line);
               }}
-              className={`${styles.gutterLine} ${selectedSet.has(line) ? styles.selectedGutterLine : ''}`}
+              className={`${styles.gutterLine} ${
+                top == null ? '' : styles.gutterLineAbsolute
+              } ${selectedSet.has(line) ? styles.selectedGutterLine : ''}`}
             >
               {fold ? (
                 <Tooltip content={`${isCollapsed ? 'Expand' : 'Collapse'} ${foldLabel}`}>

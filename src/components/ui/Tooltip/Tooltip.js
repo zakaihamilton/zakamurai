@@ -177,12 +177,11 @@ function TooltipInner({ content, shortcut, children, className = '' }) {
             className={`${styles.tooltip} ${styles[placement]} ${theme === 'light' ? styles.light : ''}`}
             role="tooltip"
             style={{
-              top: `${coords.top}px`,
-              left: `${coords.left}px`,
-              position: 'absolute',
+              '--tooltip-top': `${coords.top}px`,
+              '--tooltip-left': `${coords.left}px`,
               '--arrow-offset': `${arrowOffset}px`,
-              maxWidth: `${Math.max(0, window.innerWidth - viewportMargin * 2)}px`,
-              maxHeight: `${Math.max(0, window.innerHeight - viewportMargin * 2 - arrowHeight)}px`,
+              '--tooltip-max-width': `${Math.max(0, window.innerWidth - viewportMargin * 2)}px`,
+              '--tooltip-max-height': `${Math.max(0, window.innerHeight - viewportMargin * 2 - arrowHeight)}px`,
             }}
           >
             <div className={styles.inner}>

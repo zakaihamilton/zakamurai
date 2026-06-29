@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import useModelDownloader from './ModelDownloader';
 
 vi.mock('@/components/AI/WebLLMAPI', () => ({
-  getCachedWebLLMModelIds: vi.fn().mockResolvedValue(['Phi-4']),
+  getCachedWebLLMModelIds: vi.fn().mockResolvedValue(['Qwen3.5-4B-q4f16_1-MLC']),
   cacheWebLLMModel: vi.fn().mockResolvedValue(undefined),
   deleteCachedWebLLMModel: vi.fn().mockResolvedValue(undefined),
 }));

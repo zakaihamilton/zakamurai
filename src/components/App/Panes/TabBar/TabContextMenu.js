@@ -35,7 +35,7 @@ export default function TabContextMenu({
   return (
     <ContextMenu position={position} onClose={onClose}>
       <div className={styles.contextMenuHeader}>
-        <span className={styles.headerTypeIcon} style={{ color: 'var(--accent)' }}>
+        <span className={`${styles.headerTypeIcon} ${styles.headerTypeIconAccent}`}>
           {tab.type === 'logs' ? (
             <Icons.BotSmall />
           ) : tab.type === 'preview' ? (

@@ -99,6 +99,14 @@ export default function TokenTableSection({
 
       <div className={styles.tableWrap}>
         <table className={styles.table}>
+          <colgroup>
+            <col className={styles.colIndex} />
+            <col className={styles.colName} />
+            <col className={styles.colType} />
+            <col className={styles.colLine} />
+            <col className={styles.colCol} />
+            <col className={styles.colValue} />
+          </colgroup>
           <thead>
             <tr>
               <th>#</th>
@@ -114,8 +122,8 @@ export default function TokenTableSection({
               filteredTokens.map((token, position) => (
                 <tr key={`${token.index}-${token.type}-${token.value}`}>
                   <td>{position + 1}</td>
-                  <td>{getTokenLabel(token.type)}</td>
-                  <td>
+                  <td className={styles.nameCell}>{getTokenLabel(token.type)}</td>
+                  <td className={styles.typeCell}>
                     <span className={`${styles.tokenPill} ${getTokenTone(token.type)}`}>
                       {token.type}
                     </span>
