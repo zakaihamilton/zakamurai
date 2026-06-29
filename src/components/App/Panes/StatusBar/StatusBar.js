@@ -3,7 +3,7 @@ import { TabState } from '@/components/App/Panes/TabBar';
 import { EditorState } from '@/components/App/Views/EditorArea';
 import { getCompletionStatusMessage } from '@/components/App/Views/EditorArea/completionUtils';
 import { Icons } from '@/components/ui/Icons';
-import Tooltip from '@/components/ui/Tooltip/Tooltip';
+import Tooltip from '@/components/ui/Tooltip';
 import React from 'react';
 import styles from './StatusBar.module.css';
 

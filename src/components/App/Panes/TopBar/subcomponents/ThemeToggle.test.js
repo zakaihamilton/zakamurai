@@ -10,7 +10,7 @@ vi.mock('@/components/App/AppState', () => ({
   },
 }));
 
-vi.mock('@/components/ui/Tooltip/Tooltip', () => ({
+vi.mock('@/components/ui/Tooltip', () => ({
   __esModule: true,
   default: ({ children }) => <div>{children}</div>,
 }));

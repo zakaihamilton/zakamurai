@@ -2,7 +2,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import TabContextMenu from './TabContextMenu';
 
-vi.mock('@/components/ui/ContextMenu/ContextMenu', () => ({
+vi.mock('@/components/ui/ContextMenu', () => ({
   default: ({ children, onClose }) => (
     <div data-testid="context-menu">
       {children}

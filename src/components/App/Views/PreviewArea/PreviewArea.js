@@ -2,7 +2,7 @@
 
 import { createState } from '@/components/state/State';
 import { Icons } from '@/components/ui/Icons';
-import Tooltip from '@/components/ui/Tooltip/Tooltip';
+import Tooltip from '@/components/ui/Tooltip';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { PreviewState } from '../../PreviewState';
 import styles from './PreviewArea.module.css';

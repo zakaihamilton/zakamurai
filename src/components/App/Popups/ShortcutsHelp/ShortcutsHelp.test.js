@@ -10,7 +10,7 @@ vi.mock('@/utils/os', () => ({
   formatShortcut: (s) => s,
   isMac: () => true,
 }));
-vi.mock('@/components/ui/Tooltip/Tooltip', () => ({
+vi.mock('@/components/ui/Tooltip', () => ({
   default: ({ children }) => <div>{children}</div>,
 }));
 vi.mock('@/components/ui/Icons', () => ({

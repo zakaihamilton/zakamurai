@@ -4,7 +4,7 @@ import { TabState } from '@/components/App/Panes/TabBar';
 import { LogState } from '@/components/App/Views/LogArea';
 import Settings from '@/components/Storage/Settings';
 import { Icons } from '@/components/ui/Icons';
-import Tooltip from '@/components/ui/Tooltip/Tooltip';
+import Tooltip from '@/components/ui/Tooltip';
 import { formatShortcut } from '@/utils/os';
 import React, { useEffect, useMemo, useRef } from 'react';
 import styles from '../TopBar.module.css';

@@ -2,7 +2,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import TabItem from './TabItem';
 
-vi.mock('@/components/ui/Tooltip/Tooltip', () => ({
+vi.mock('@/components/ui/Tooltip', () => ({
   default: ({ children, content }) => <span data-content={content}>{children}</span>,
 }));
 

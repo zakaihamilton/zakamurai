@@ -1,6 +1,6 @@
 import { Icons } from '@/components/ui/Icons';
 import Select from '@/components/ui/Select';
-import Tooltip from '@/components/ui/Tooltip/Tooltip';
+import Tooltip from '@/components/ui/Tooltip';
 import React from 'react';
 import styles from './PromptModelPanel.module.css';
 

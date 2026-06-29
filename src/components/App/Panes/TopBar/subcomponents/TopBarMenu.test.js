@@ -4,10 +4,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import TopBarMenu from './TopBarMenu';
 
 vi.mock('@/components/App/Views/LogArea', () => ({ LogState: { useState: vi.fn() } }));
-vi.mock('@/components/ui/Tooltip/Tooltip', () => ({
+vi.mock('@/components/ui/Tooltip', () => ({
   default: ({ children }) => <div>{children}</div>,
 }));
-vi.mock('@/components/ui/ContextMenu/ContextMenu', () => ({
+vi.mock('@/components/ui/ContextMenu', () => ({
   default: ({ children, position, onClose }) =>
     position ? (
       <div data-testid="context-menu">
@@ -18,7 +18,7 @@ vi.mock('@/components/ui/ContextMenu/ContextMenu', () => ({
       </div>
     ) : null,
 }));
-vi.mock('@/components/ui/Dialog/Dialog', () => ({
+vi.mock('@/components/ui/Dialog', () => ({
   default: ({ isOpen, title, message, onCancel }) =>
     isOpen ? (
       <div data-testid="dialog">

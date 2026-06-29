@@ -3,7 +3,7 @@ import { SidebarState } from '@/components/App/Panes/Sidebar';
 import { TabState } from '@/components/App/Panes/TabBar';
 import { EditorState } from '@/components/App/Views/EditorArea';
 import { LogState } from '@/components/App/Views/LogArea';
-import { useNotification } from '@/components/ui/Notification/Notification';
+import { useNotification } from '@/components/ui/Notification';
 import { fireEvent, render } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useKeyboardHandler } from './KeyboardHandler';
@@ -29,7 +29,7 @@ vi.mock('@/components/App/Views/EditorArea', () => ({
 vi.mock('@/components/App/Views/LogArea', () => ({
   LogState: { useState: vi.fn() },
 }));
-vi.mock('@/components/ui/Notification/Notification', () => ({
+vi.mock('@/components/ui/Notification', () => ({
   useNotification: vi.fn(),
 }));
 vi.mock('@/utils/os', () => ({

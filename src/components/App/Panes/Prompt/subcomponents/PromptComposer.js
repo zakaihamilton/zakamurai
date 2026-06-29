@@ -1,5 +1,5 @@
 import { Icons } from '@/components/ui/Icons';
-import Tooltip from '@/components/ui/Tooltip/Tooltip';
+import Tooltip from '@/components/ui/Tooltip';
 import { formatShortcut } from '@/utils/os';
 import React from 'react';
 import styles from './PromptComposer.module.css';

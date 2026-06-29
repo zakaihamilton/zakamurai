@@ -1,5 +1,5 @@
 import { Icons } from '@/components/ui/Icons';
-import Tooltip from '@/components/ui/Tooltip/Tooltip';
+import Tooltip from '@/components/ui/Tooltip';
 import { getFileViews } from '@/utils/fileViews';
 import React from 'react';
 import styles from './FileViewToolbar.module.css';

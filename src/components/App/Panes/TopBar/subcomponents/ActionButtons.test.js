@@ -11,7 +11,7 @@ vi.mock('@/components/App/AppState', () => ({ AppState: { useState: vi.fn() } })
 vi.mock('@/components/App/Panes/Sidebar', () => ({ SidebarState: { useState: vi.fn() } }));
 vi.mock('@/components/App/Panes/TabBar', () => ({ TabState: { useState: vi.fn() } }));
 vi.mock('@/components/App/Views/LogArea', () => ({ LogState: { useState: vi.fn() } }));
-vi.mock('@/components/ui/Tooltip/Tooltip', () => ({
+vi.mock('@/components/ui/Tooltip', () => ({
   default: ({ children }) => <div>{children}</div>,
 }));
 vi.mock('@/components/ui/Icons', () => ({

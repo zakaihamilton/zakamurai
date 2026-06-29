@@ -12,7 +12,7 @@ import {
 } from '@/components/Storage/InitialData';
 import Settings from '@/components/Storage/Settings';
 import { Icons } from '@/components/ui/Icons';
-import Tooltip from '@/components/ui/Tooltip/Tooltip';
+import Tooltip from '@/components/ui/Tooltip';
 import { formatShortcut } from '@/utils/os';
 import React from 'react';
 import useProjectCompiler from './ProjectCompiler';

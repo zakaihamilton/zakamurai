@@ -19,7 +19,7 @@
     "postinstall": "\"$npm_execpath\" run setup:almostnode && \"$npm_execpath\" run setup:wasm && \"$npm_execpath\" run setup:playwright",
     "predev": "\"$npm_execpath\" run setup:almostnode && \"$npm_execpath\" run setup:wasm",
     "prebuild": "\"$npm_execpath\" run setup:almostnode && \"$npm_execpath\" run setup:wasm",
-    "verify": "biome check . && vitest run && npm run test:visual",
+    "verify": "stylelint \"src/**/*.css\" --fix && biome check . && knip && vitest run && npm run test:visual",
     "prepare": "husky"
   },
   "dependencies": {
@@ -46,6 +46,7 @@
     "fast-check": "^3.0.0",
     "husky": "^9.0.0",
     "jsdom": "^26.0.0",
+    "knip": "^6.23.0",
     "lint-staged": "^15.0.0",
     "promptfoo": "latest",
     "stylelint": "^17.0.0",

@@ -2,7 +2,7 @@ import { LogState } from '@/components/App/Views/LogArea';
 import Node from '@/components/state/Node';
 import { createState } from '@/components/state/State';
 import { Icons } from '@/components/ui/Icons';
-import Tooltip from '@/components/ui/Tooltip/Tooltip';
+import Tooltip from '@/components/ui/Tooltip';
 import React, { useEffect, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { PromptUiState } from '../Prompt';

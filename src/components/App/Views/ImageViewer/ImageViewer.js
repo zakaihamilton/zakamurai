@@ -3,7 +3,7 @@ import FileViewToolbar from '@/components/App/Views/FileViewToolbar';
 import Node from '@/components/state/Node';
 import { createState } from '@/components/state/State';
 import { Icons } from '@/components/ui/Icons';
-import Tooltip from '@/components/ui/Tooltip/Tooltip';
+import Tooltip from '@/components/ui/Tooltip';
 import { FILE_VIEW_TYPES } from '@/utils/fileViews';
 import React, { useEffect } from 'react';
 import styles from './ImageViewer.module.css';

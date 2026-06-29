@@ -1,4 +1,4 @@
-import ContextMenu from '@/components/ui/ContextMenu/ContextMenu';
+import ContextMenu from '@/components/ui/ContextMenu';
 import { Icons } from '@/components/ui/Icons';
 import { isMediaFile } from '@/utils/file';
 import React from 'react';

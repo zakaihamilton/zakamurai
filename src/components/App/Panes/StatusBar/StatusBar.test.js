@@ -24,7 +24,7 @@ vi.mock('@/components/App/Views/EditorArea', () => ({
   },
 }));
 
-vi.mock('@/components/ui/Tooltip/Tooltip', () => ({
+vi.mock('@/components/ui/Tooltip', () => ({
   __esModule: true,
   default: ({ children, content }) => <div data-tooltip={content}>{children}</div>,
 }));

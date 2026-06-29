@@ -14,7 +14,7 @@ vi.mock('../Panes', () => ({
 vi.mock('./WorkspaceArea', () => ({
   default: () => <div data-testid="workspace-area" />,
 }));
-vi.mock('@/components/ui/Resizer/Resizer', () => ({
+vi.mock('@/components/ui/Resizer', () => ({
   default: () => <div data-testid="resizer" />,
 }));
 vi.mock('../Popups', () => ({

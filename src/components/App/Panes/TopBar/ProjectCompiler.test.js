@@ -2,7 +2,7 @@ import { act, renderHook } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import useProjectCompiler from './ProjectCompiler';
 
-vi.mock('@/components/ui/Notification/Notification', () => ({
+vi.mock('@/components/ui/Notification', () => ({
   useNotification: () => ({
     addNotification: vi.fn(),
   }),

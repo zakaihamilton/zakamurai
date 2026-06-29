@@ -12,7 +12,7 @@ vi.mock('@/components/App/Panes', () => ({
   TabBar: () => <div data-testid="tab-bar" />,
   Prompt: () => <div data-testid="prompt" />,
 }));
-vi.mock('@/components/ui/Resizer/Resizer', () => ({
+vi.mock('@/components/ui/Resizer', () => ({
   default: () => <div data-testid="resizer" />,
 }));
 vi.mock('../Views/EditorArea', () => ({

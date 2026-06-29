@@ -1,5 +1,5 @@
 import Settings from '@/components/Storage/Settings';
-import { useNotification } from '@/components/ui/Notification/Notification';
+import { useNotification } from '@/components/ui/Notification';
 import { Compiler } from '@/utils/compiler';
 import { useCallback, useEffect, useRef } from 'react';
 

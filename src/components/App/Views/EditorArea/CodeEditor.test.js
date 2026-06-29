@@ -7,7 +7,7 @@ vi.mock('@/utils/navigation', () => ({
   findNavigationTargets: vi.fn(() => []),
 }));
 
-vi.mock('@/components/ui/Tooltip/Tooltip', () => ({
+vi.mock('@/components/ui/Tooltip', () => ({
   default: ({ children, content }) => (
     <div data-testid="tooltip" data-content={content}>
       {children}

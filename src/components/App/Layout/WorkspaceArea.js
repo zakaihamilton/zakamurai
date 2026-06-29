@@ -1,4 +1,4 @@
-import Resizer from '@/components/ui/Resizer/Resizer';
+import Resizer from '@/components/ui/Resizer';
 import { isMediaFile } from '@/utils/file';
 import { FILE_VIEW_TYPES, getDefaultFileViewType } from '@/utils/fileViews';
 import React from 'react';

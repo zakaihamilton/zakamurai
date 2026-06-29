@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import PromptContextPanel from './PromptContextPanel';
 
-vi.mock('@/components/ui/Tooltip/Tooltip', () => ({
+vi.mock('@/components/ui/Tooltip', () => ({
   default: ({ children }) => <div>{children}</div>,
 }));
 vi.mock('@/components/ui/Icons', () => ({

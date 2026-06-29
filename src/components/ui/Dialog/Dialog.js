@@ -1,4 +1,4 @@
-import Tooltip from '@/components/ui/Tooltip/Tooltip';
+import Tooltip from '@/components/ui/Tooltip';
 import React from 'react';
 import { createPortal } from 'react-dom';
 import styles from './Dialog.module.css';

@@ -1,9 +1,9 @@
 import { LogState } from '@/components/App/Views/LogArea';
 import { createState } from '@/components/state/State';
-import ContextMenu from '@/components/ui/ContextMenu/ContextMenu';
-import Dialog from '@/components/ui/Dialog/Dialog';
+import ContextMenu from '@/components/ui/ContextMenu';
+import Dialog from '@/components/ui/Dialog';
 import { Icons } from '@/components/ui/Icons';
-import Tooltip from '@/components/ui/Tooltip/Tooltip';
+import Tooltip from '@/components/ui/Tooltip';
 import { formatShortcut } from '@/utils/os';
 import styles from '../TopBar.module.css';
 

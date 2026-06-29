@@ -10,7 +10,7 @@ import { getJsonObjectFolds, isJsonPath } from '@/components/App/Views/EditorAre
 import { getHighlightBreakdown } from '@/components/App/Views/EditorArea/highlighter';
 import FileViewToolbar from '@/components/App/Views/FileViewToolbar';
 import { Icons } from '@/components/ui/Icons';
-import Tooltip from '@/components/ui/Tooltip/Tooltip';
+import Tooltip from '@/components/ui/Tooltip';
 import { FILE_VIEW_TYPES } from '@/utils/fileViews';
 import { useMemo, useState } from 'react';
 import styles from './TokenBreakdown.module.css';

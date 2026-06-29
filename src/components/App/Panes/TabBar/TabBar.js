@@ -2,7 +2,7 @@ import { SidebarState } from '@/components/App/Panes/Sidebar';
 import Settings from '@/components/Storage/Settings';
 import { createState } from '@/components/state/State';
 import { Icons } from '@/components/ui/Icons';
-import Tooltip from '@/components/ui/Tooltip/Tooltip';
+import Tooltip from '@/components/ui/Tooltip';
 import React, { useEffect, useState } from 'react';
 import styles from './TabBar.module.css';
 import TabContextMenu from './TabContextMenu';

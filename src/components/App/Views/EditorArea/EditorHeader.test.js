@@ -17,7 +17,7 @@ vi.mock('@/components/ui/Icons', () => ({
   },
 }));
 
-vi.mock('@/components/ui/Tooltip/Tooltip', () => ({
+vi.mock('@/components/ui/Tooltip', () => ({
   default: ({ children, content, shortcut }) => (
     <div data-testid="tooltip" data-content={content} data-shortcut={shortcut}>
       {children}

@@ -1,6 +1,6 @@
 import { TabState } from '@/components/App/Panes';
 import { Icons } from '@/components/ui/Icons';
-import Tooltip from '@/components/ui/Tooltip/Tooltip';
+import Tooltip from '@/components/ui/Tooltip';
 import styles from './Welcome.module.css';
 
 export default function Welcome() {

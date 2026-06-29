@@ -1,4 +1,4 @@
-import Resizer from '@/components/ui/Resizer/Resizer';
+import Resizer from '@/components/ui/Resizer';
 import React from 'react';
 import Node from '../../state/Node';
 import styles from '../App.module.css';

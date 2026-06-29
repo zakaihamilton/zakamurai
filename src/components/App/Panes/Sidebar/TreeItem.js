@@ -1,9 +1,9 @@
 import Node from '@/components/state/Node';
 import { createState } from '@/components/state/State';
-import Dialog from '@/components/ui/Dialog/Dialog';
+import Dialog from '@/components/ui/Dialog';
 import dialogStyles from '@/components/ui/Dialog/Dialog.module.css';
 import { Icons } from '@/components/ui/Icons';
-import Tooltip from '@/components/ui/Tooltip/Tooltip';
+import Tooltip from '@/components/ui/Tooltip';
 import { isMediaFile } from '@/utils/file';
 import { useLongPress } from '@/utils/touch';
 import React, { useEffect, useRef } from 'react';

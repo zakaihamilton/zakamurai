@@ -81,7 +81,7 @@ vi.mock('@/components/Storage', () => ({
     mountLocal: vi.fn(),
   })),
 }));
-vi.mock('@/components/ui/Notification/Notification', () => ({
+vi.mock('@/components/ui/Notification', () => ({
   Notification: () => <div data-testid="notification" />,
   NotificationProvider: ({ children }) => children,
   useNotification: vi.fn(() => ({

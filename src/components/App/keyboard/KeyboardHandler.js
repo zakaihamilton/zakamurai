@@ -3,7 +3,7 @@ import { SidebarState } from '@/components/App/Panes/Sidebar';
 import { TabState } from '@/components/App/Panes/TabBar';
 import { EditorState } from '@/components/App/Views/EditorArea';
 import { LogState } from '@/components/App/Views/LogArea';
-import { useNotification } from '@/components/ui/Notification/Notification';
+import { useNotification } from '@/components/ui/Notification';
 import { markKeyboardActivity } from '@/utils/keyboard';
 import { useEffect } from 'react';
 import { SHORTCUTS, SHORTCUT_HIGHLIGHT_EVENT, isMatch } from './Shortcuts';
