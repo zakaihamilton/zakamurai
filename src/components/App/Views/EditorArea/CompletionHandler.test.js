@@ -1,6 +1,6 @@
+import { RECOMMENDED_COMPLETION_MODEL } from '@/components/AI/WebLLMModels';
 import { act, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { RECOMMENDED_COMPLETION_MODEL } from '@/components/AI/WebLLMModels';
 import useCompletion from './CompletionHandler';
 import { COMPLETION_DEBOUNCE_MS, normalizeCompletion } from './completionUtils';
 

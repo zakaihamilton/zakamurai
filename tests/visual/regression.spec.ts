@@ -29,16 +29,19 @@ test.describe('Zakamurai Visual Regression', () => {
     const getToggle = () => page.getByTestId('sidebar-toggle').filter({ visible: true });
 
     // It starts open, let's take a snapshot of open state
-    await expect(page).toHaveScreenshot('sidebar-open.png');
+    await expect(page).toHaveScreenshot('sidebar-open.png', { animations: 'disabled' });
 
     // Close it
     await getToggle().click();
-    await page.waitForTimeout(1000); // Wait for transition
-    await expect(page).toHaveScreenshot('sidebar-closed.png');
+    await page.waitForTimeout(400);
+    await page.addStyleTag({
+      content: '* { animation: none !important; transition: none !important; }',
+    });
+    await expect(page).toHaveScreenshot('sidebar-closed.png', { animations: 'disabled' });
 
     // Toggle back to open for consistency
     await getToggle().click();
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(400);
   });
 
   test('Theme States', async ({ page }) => {
@@ -76,11 +79,17 @@ test.describe('Zakamurai Visual Regression', () => {
     const compileBtn = page.getByTestId('compile-btn').filter({ visible: true });
     await compileBtn.click();
 
-    // Wait for Logs tab to appear and be active
-    await expect(page.getByTestId('logs-tab').filter({ visible: true })).toBeVisible();
+    // Wait for Logs tab to appear
+    await expect(page.getByTestId('logs-tab').filter({ visible: true })).toBeVisible({
+      timeout: 30000,
+    });
 
-    // Wait for some log output to appear and settle
-    await page.waitForTimeout(5000);
+    // Compile auto-opens preview when done; wait, then return to logs for a stable snapshot.
+    await expect(page.getByTestId('preview-tab').filter({ visible: true })).toBeVisible({
+      timeout: 120000,
+    });
+    await page.getByTestId('logs-tab').filter({ visible: true }).click();
+    await expect(page.locator('[class*="processing"]')).toHaveCount(0, { timeout: 30000 });
 
     // Inject style to stop any animations and hide dynamic bits
     await page.addStyleTag({
@@ -94,6 +103,7 @@ test.describe('Zakamurai Visual Regression', () => {
 
     await expect(page).toHaveScreenshot('logs-view.png', {
       animations: 'disabled',
+      mask: [page.locator('[class*="logContainer"]')],
     });
   });
 

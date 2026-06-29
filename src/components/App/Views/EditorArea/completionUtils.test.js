@@ -88,11 +88,7 @@ describe('completionUtils', () => {
 
     it('strips mid-stream noise before showing code', () => {
       expect(
-        normalizeStreamingCompletion(
-          '<think>hidden</think>\n<completion>log(',
-          'console.',
-          '',
-        ),
+        normalizeStreamingCompletion('<think>hidden</think>\n<completion>log(', 'console.', ''),
       ).toBe('log(');
     });
   });

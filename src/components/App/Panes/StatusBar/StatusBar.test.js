@@ -26,9 +26,7 @@ vi.mock('@/components/App/Views/EditorArea', () => ({
 
 vi.mock('@/components/ui/Tooltip/Tooltip', () => ({
   __esModule: true,
-  default: ({ children, content }) => (
-    <div data-tooltip={content}>{children}</div>
-  ),
+  default: ({ children, content }) => <div data-tooltip={content}>{children}</div>,
 }));
 
 describe('StatusBar', () => {
@@ -154,9 +152,9 @@ describe('StatusBar', () => {
     const tooltips = [...container.querySelectorAll('[data-tooltip]')].map((node) =>
       node.getAttribute('data-tooltip'),
     );
-    expect(tooltips.some((tooltip) => tooltip?.includes('Generating completion with Qwen2.5-Coder-3B'))).toBe(
-      true,
-    );
+    expect(
+      tooltips.some((tooltip) => tooltip?.includes('Generating completion with Qwen2.5-Coder-3B')),
+    ).toBe(true);
     expect(tooltips.some((tooltip) => tooltip?.includes('Press Esc to cancel.'))).toBe(true);
   });
 });

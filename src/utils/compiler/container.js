@@ -1,6 +1,7 @@
-/**
- * Container management for almostnode.
- */
+import {
+  reportPreviewError,
+  shouldReportPreviewError,
+} from '@/components/App/Views/PreviewArea/previewErrorBridge';
 
 let _sharedContainer = null;
 let _initPromise = null;
@@ -64,7 +65,11 @@ export async function initContainer(onLog, setupDevServer) {
 
       const container = await createContainer({
         onConsole: (level, ...args) => {
-          onLog(`[${level.toUpperCase()}] ${args.join(' ')}`);
+          const msg = args.join(' ');
+          onLog(`[${level.toUpperCase()}] ${msg}`);
+          if (shouldReportPreviewError(level, msg)) {
+            reportPreviewError(msg);
+          }
         },
       });
 

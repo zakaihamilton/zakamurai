@@ -31,7 +31,9 @@ export function usePreviewRestorer() {
           // Also sync files so that imports in index.html work
           await compiler.syncFiles(fs, sidebarState.folderTree, editorState.fileContents);
         } catch (e) {
-          console.error('Failed to restore preview filesystem', e);
+          previewState((draft) => {
+            draft.restoreError = e?.message || String(e);
+          });
         } finally {
           // Mark as ready even on error so we don't stay stuck
           previewState((draft) => {

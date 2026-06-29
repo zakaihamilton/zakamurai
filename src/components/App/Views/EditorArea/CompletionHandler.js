@@ -1,5 +1,8 @@
 import { COMPLETION_SYSTEM_PROMPT } from '@/components/AI/Prompts';
-import { RECOMMENDED_COMPLETION_MODEL, resolveCompletionModelId } from '@/components/AI/WebLLMModels';
+import {
+  RECOMMENDED_COMPLETION_MODEL,
+  resolveCompletionModelId,
+} from '@/components/AI/WebLLMModels';
 import { createState } from '@/components/state/State';
 import { useCallback, useEffect, useRef } from 'react';
 import {
@@ -413,6 +416,7 @@ export default function useCompletion({
     filePath,
     enabled,
     clearRequestTimeout,
+    invalidateActiveRequest,
     reportDebug,
     setLoading,
     setSuggestion,

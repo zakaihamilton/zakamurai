@@ -375,7 +375,10 @@ describe('VariableResolver', () => {
       const useIndex = code.indexOf('interruptWebLLM()');
       const useTarget = targets.find((t) => t.name === 'interruptWebLLM' && t.start === useIndex);
       expect(useTarget).toBeDefined();
-      expect(useTarget.targets[0].loc.line).toBe(152);
+      const declLine = code
+        .slice(0, code.search(/export const interruptWebLLM\s*=\s*async/))
+        .split('\n').length;
+      expect(useTarget.targets[0].loc.line).toBe(declLine);
     });
 
     it('resolves object argument usages in WebLLMAPI', () => {

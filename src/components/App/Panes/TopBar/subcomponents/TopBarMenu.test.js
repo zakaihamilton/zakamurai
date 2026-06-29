@@ -1,5 +1,5 @@
 import { LogState } from '@/components/App/Views/LogArea';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import TopBarMenu from './TopBarMenu';
 
@@ -48,30 +48,34 @@ describe('TopBarMenu', () => {
   });
 
   it('renders more actions button', () => {
-    render(
-      <TopBarMenu
-        onExportZip={vi.fn()}
-        onExportCompiledZip={vi.fn()}
-        onNewProject={vi.fn()}
-        onClearFS={vi.fn()}
-        onToggleShortcuts={vi.fn()}
-      />,
-    );
+    act(() => {
+      render(
+        <TopBarMenu
+          onExportZip={vi.fn()}
+          onExportCompiledZip={vi.fn()}
+          onNewProject={vi.fn()}
+          onClearFS={vi.fn()}
+          onToggleShortcuts={vi.fn()}
+        />,
+      );
+    });
 
     expect(screen.getByTestId('more-actions-btn')).toBeDefined();
   });
 
-  it('calls onExportZip from menu', () => {
+  it('calls onExportZip from menu', async () => {
     const onExportZip = vi.fn();
-    render(
-      <TopBarMenu
-        onExportZip={onExportZip}
-        onExportCompiledZip={vi.fn()}
-        onNewProject={vi.fn()}
-        onClearFS={vi.fn()}
-        onToggleShortcuts={vi.fn()}
-      />,
-    );
+    await act(async () => {
+      render(
+        <TopBarMenu
+          onExportZip={onExportZip}
+          onExportCompiledZip={vi.fn()}
+          onNewProject={vi.fn()}
+          onClearFS={vi.fn()}
+          onToggleShortcuts={vi.fn()}
+        />,
+      );
+    });
 
     const button = screen.getByTestId('more-actions-btn');
     button.getBoundingClientRect = () => ({
@@ -85,11 +89,15 @@ describe('TopBarMenu', () => {
       y: 0,
       toJSON: () => ({}),
     });
-    fireEvent.click(button);
+    await act(async () => {
+      fireEvent.click(button);
+    });
 
     const exportButton = screen.queryByText('Export ZIP');
     if (exportButton) {
-      fireEvent.click(exportButton);
+      await act(async () => {
+        fireEvent.click(exportButton);
+      });
       expect(onExportZip).toHaveBeenCalled();
     } else {
       expect(button).toBeDefined();

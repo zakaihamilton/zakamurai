@@ -31,13 +31,18 @@ export function useKeyboardHandler() {
       };
 
       if (appState.showShortcuts) {
+        const closeModalShortcut = SHORTCUTS.find(
+          (shortcut) => shortcut.id === 'close-modal' && isMatch(e, shortcut),
+        );
+        if (closeModalShortcut) {
+          e.preventDefault();
+          closeModalShortcut.action(states);
+          return;
+        }
+
         const matchingShortcut = SHORTCUTS.find((shortcut) => isMatch(e, shortcut));
         if (matchingShortcut) {
           e.preventDefault();
-          if (matchingShortcut.id === 'close-modal') {
-            matchingShortcut.action(states);
-            return;
-          }
           window.dispatchEvent(
             new CustomEvent(SHORTCUT_HIGHLIGHT_EVENT, {
               detail: { shortcutId: matchingShortcut.id },

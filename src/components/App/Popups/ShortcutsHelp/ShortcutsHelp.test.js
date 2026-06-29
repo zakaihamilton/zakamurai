@@ -1,5 +1,5 @@
 import { SHORTCUT_HIGHLIGHT_EVENT } from '@/components/App/keyboard/Shortcuts';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import ShortcutsHelp from './ShortcutsHelp';
 
@@ -43,9 +43,11 @@ describe('ShortcutsHelp', () => {
 
   it('highlights shortcut on custom event', () => {
     render(<ShortcutsHelp isOpen={true} onClose={vi.fn()} />);
-    window.dispatchEvent(
-      new CustomEvent(SHORTCUT_HIGHLIGHT_EVENT, { detail: { shortcutId: 'toggle-sidebar' } }),
-    );
+    act(() => {
+      window.dispatchEvent(
+        new CustomEvent(SHORTCUT_HIGHLIGHT_EVENT, { detail: { shortcutId: 'toggle-sidebar' } }),
+      );
+    });
     expect(document.querySelector('[data-shortcut-id="toggle-sidebar"]') || true).toBeDefined();
   });
 });

@@ -226,26 +226,26 @@ function EditorAreaInner({ file, fsHandle }) {
 
   const { suggestion, setSuggestion, cancelSuggestion, loading, markSuggestionAccepted } =
     useCompletion({
-    localContent,
-    cursorPos,
-    filePath,
-    enabled: !hasDiff && !hasCollapsedFolds && aiCompletionEnabled && !isAIProcessing,
-    onDebugUpdate: (debug) => {
-      state((draft) => {
-        draft.aiCompletionDebug = debug;
-        if (!draft.completionActivity) draft.completionActivity = {};
-        if (!draft.isCompleting) draft.isCompleting = {};
-        if (debug.filePath) {
-          draft.completionActivity[debug.filePath] = {
-            phase: debug.phase || '',
-            model: debug.model || '',
-            status: debug.status || 'idle',
-          };
-          draft.isCompleting[debug.filePath] = debug.status === 'thinking';
-        }
-      });
-    },
-  });
+      localContent,
+      cursorPos,
+      filePath,
+      enabled: !hasDiff && !hasCollapsedFolds && aiCompletionEnabled && !isAIProcessing,
+      onDebugUpdate: (debug) => {
+        state((draft) => {
+          draft.aiCompletionDebug = debug;
+          if (!draft.completionActivity) draft.completionActivity = {};
+          if (!draft.isCompleting) draft.isCompleting = {};
+          if (debug.filePath) {
+            draft.completionActivity[debug.filePath] = {
+              phase: debug.phase || '',
+              model: debug.model || '',
+              status: debug.status || 'idle',
+            };
+            draft.isCompleting[debug.filePath] = debug.status === 'thinking';
+          }
+        });
+      },
+    });
 
   useEffect(() => {
     return () => {
@@ -275,7 +275,8 @@ function EditorAreaInner({ file, fsHandle }) {
     const nextIndex = index + text.length;
     const textBeforeCursor = newVal.substring(0, nextIndex);
     const linesBeforeCursor = textBeforeCursor.split('\n');
-    const isPartialAccept = suggestion && text.length < suggestion.length && suggestion.startsWith(text);
+    const isPartialAccept =
+      suggestion && text.length < suggestion.length && suggestion.startsWith(text);
 
     if (isPartialAccept) {
       markSuggestionAccepted();

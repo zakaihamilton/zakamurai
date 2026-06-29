@@ -101,6 +101,9 @@ export default function useProjectCompiler(
             if (html) {
               previewState((draft) => {
                 draft.htmlContent = html;
+                draft.restoreError = null;
+                draft.compileError = null;
+                draft.serverError = null;
               });
               Settings.setPreviewHtml(html);
               tabState((draft) => {
@@ -124,7 +127,11 @@ export default function useProjectCompiler(
       } catch (err) {
         const errorMsg = err?.message || String(err);
         onLog(`Unexpected error: ${errorMsg}`);
+        previewState((draft) => {
+          draft.compileError = errorMsg;
+        });
         addNotification(`Compilation failed: ${errorMsg}`, 'error');
+        handleOpenPreview();
         handleOpenLog();
       } finally {
         logState((draft) => {
@@ -133,7 +140,17 @@ export default function useProjectCompiler(
         isCompilingRef.current = false;
       }
     },
-    [fs, folderTree, editorState, logState, previewState, tabState, addNotification, handleOpenLog],
+    [
+      fs,
+      folderTree,
+      editorState,
+      logState,
+      previewState,
+      tabState,
+      addNotification,
+      handleOpenLog,
+      handleOpenPreview,
+    ],
   );
 
   useEffect(() => {

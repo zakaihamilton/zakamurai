@@ -1,21 +1,67 @@
 'use client';
 
 import { createState } from '@/components/state/State';
-import Dialog from '@/components/ui/Dialog/Dialog';
 import { Icons } from '@/components/ui/Icons';
 import Tooltip from '@/components/ui/Tooltip/Tooltip';
-import React, { useCallback, useEffect, useRef } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { PreviewState } from '../../PreviewState';
 import styles from './PreviewArea.module.css';
+import {
+  detectIframeLoadError,
+  fetchScriptErrorBody,
+  formatRuntimeError,
+  formatUnhandledRejection,
+  resolveMissingExportError,
+} from './previewErrorUtils';
 
-const PreviewAreaUiState = createState('PreviewAreaUiState');
+const SW_INIT_TIMEOUT_MS = 15000;
+
+function PreviewErrorActions({ copied, onCopy, onDismiss }) {
+  return (
+    <div className={styles.errorActions}>
+      <Tooltip content={copied ? 'Copied!' : 'Copy error'}>
+        <button
+          type="button"
+          className={styles.errorActionBtn}
+          onClick={onCopy}
+          aria-label={copied ? 'Copied!' : 'Copy error'}
+        >
+          {copied ? <Icons.Check /> : <Icons.Copy />}
+        </button>
+      </Tooltip>
+      <Tooltip content="Dismiss error">
+        <button
+          type="button"
+          className={styles.errorActionBtn}
+          onClick={onDismiss}
+          aria-label="Dismiss error"
+        >
+          <Icons.Close />
+        </button>
+      </Tooltip>
+    </div>
+  );
+}
+
+export const PreviewAreaUiState = createState('PreviewAreaUiState');
 
 export default function PreviewArea() {
-  const { htmlContent, isCompilerReady } = PreviewState.useState([
+  const previewState = PreviewState.useState([
     'htmlContent',
     'isCompilerReady',
+    'restoreError',
+    'compileError',
+    'serverError',
   ]);
+  const {
+    htmlContent,
+    isCompilerReady,
+    restoreError = null,
+    compileError = null,
+    serverError = null,
+  } = previewState;
   const iframeRef = useRef(null);
+  const listenersRef = useRef(null);
   const previewAreaUiState = PreviewAreaUiState.useState(null, {
     isLoading: false,
     scale: 1,
@@ -37,27 +83,48 @@ export default function PreviewArea() {
     host = '',
   } = previewAreaUiState || {};
   const containerRef = useRef(null);
+  const [errorCopied, setErrorCopied] = useState(false);
+  const displayError = error || restoreError || compileError || serverError;
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      previewAreaUiState((draft) => {
-        draft.host = window.location.host;
-      });
-      // If we are on a subpath, we might need to prefix the address.
-      // But we should only do this if we are sure it's necessary.
-      // For now, let's assume root-relative paths are safer.
-      const currentPath = window.location.pathname;
-      if (currentPath.includes('/preview/')) {
-        const baseBeforePreview = currentPath.split('/preview/')[0];
-        if (
-          baseBeforePreview &&
-          baseBeforePreview !== '/' &&
-          !address.startsWith(baseBeforePreview)
-        ) {
-          previewAreaUiState((draft) => {
-            draft.address = `${baseBeforePreview}${address}`;
-          });
-        }
+    void displayError;
+    setErrorCopied(false);
+  }, [displayError]);
+
+  const handleCopyError = useCallback(async () => {
+    if (!displayError || !navigator.clipboard?.writeText) return;
+    await navigator.clipboard.writeText(displayError);
+    setErrorCopied(true);
+    window.setTimeout(() => setErrorCopied(false), 2000);
+  }, [displayError]);
+
+  const removeIframeListeners = useCallback(() => {
+    if (!listenersRef.current) return;
+    const { win, onError, onRejection } = listenersRef.current;
+    win.removeEventListener('error', onError, true);
+    win.removeEventListener('unhandledrejection', onRejection);
+    listenersRef.current = null;
+  }, []);
+
+  useEffect(() => () => removeIframeListeners(), [removeIframeListeners]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    previewAreaUiState((draft) => {
+      draft.host = window.location.host;
+    });
+    const currentPath = window.location.pathname;
+    if (currentPath.includes('/preview/')) {
+      const baseBeforePreview = currentPath.split('/preview/')[0];
+      if (
+        baseBeforePreview &&
+        baseBeforePreview !== '/' &&
+        !address.startsWith(baseBeforePreview)
+      ) {
+        previewAreaUiState((draft) => {
+          draft.address = `${baseBeforePreview}${address}`;
+        });
       }
     }
   }, [address, previewAreaUiState]);
@@ -81,46 +148,170 @@ export default function PreviewArea() {
     previewAreaUiState((draft) => {
       draft.isLoading = true;
       draft.error = null;
-      // When htmlContent changes, we simply increment the key to reload the virtual path
       draft.refreshKey = Date.now();
     });
   }, [htmlContent, previewAreaUiState]);
+
+  useEffect(() => {
+    if (!htmlContent || isSwReady) return;
+
+    const timer = window.setTimeout(() => {
+      previewAreaUiState((draft) => {
+        if (!draft.isSwReady) {
+          draft.error = 'Service worker did not activate. Try building the project again.';
+        }
+      });
+    }, SW_INIT_TIMEOUT_MS);
+
+    return () => window.clearTimeout(timer);
+  }, [htmlContent, isSwReady, previewAreaUiState]);
+
+  const handleDismissError = useCallback(() => {
+    previewAreaUiState((draft) => {
+      draft.error = null;
+    });
+    if (restoreError || compileError || serverError) {
+      previewState((draft) => {
+        draft.restoreError = null;
+        draft.compileError = null;
+        draft.serverError = null;
+      });
+    }
+  }, [previewAreaUiState, previewState, restoreError, compileError, serverError]);
+
+  const setPreviewError = useCallback(
+    (message) => {
+      if (!message) return;
+      previewAreaUiState((draft) => {
+        draft.error = message;
+      });
+      previewState((draft) => {
+        draft.serverError = message;
+      });
+    },
+    [previewAreaUiState, previewState],
+  );
+
+  const scanModuleScriptsForErrors = useCallback(async () => {
+    if (!iframeRef.current) return;
+    try {
+      const doc = iframeRef.current.contentDocument;
+      const scripts = doc?.querySelectorAll('script[type="module"][src]') || [];
+      for (const script of scripts) {
+        const fetched = await fetchScriptErrorBody(script.src);
+        if (fetched) {
+          setPreviewError(fetched);
+          return;
+        }
+      }
+    } catch (_e) {
+      // Ignore cross-origin errors
+    }
+  }, [setPreviewError]);
+
+  const scanIframeForErrors = useCallback(() => {
+    if (!iframeRef.current) return;
+    try {
+      const loadError = detectIframeLoadError(iframeRef.current.contentDocument);
+      if (loadError) {
+        setPreviewError(loadError);
+      }
+    } catch (_e) {
+      // Ignore cross-origin errors
+    }
+  }, [setPreviewError]);
 
   const handleLoad = useCallback(() => {
     previewAreaUiState((draft) => {
       draft.isLoading = false;
     });
-    if (iframeRef.current) {
-      try {
-        const win = iframeRef.current.contentWindow;
-        const path = win.location.pathname;
-        if (path && path !== 'blank') {
-          previewAreaUiState((draft) => {
-            draft.address = path;
-          });
-        }
 
-        win.addEventListener('error', (event) => {
-          previewAreaUiState((draft) => {
-            draft.error = event.message || 'An unknown error occurred in the preview.';
-          });
-        });
+    removeIframeListeners();
 
-        win.addEventListener('unhandledrejection', (event) => {
-          previewAreaUiState((draft) => {
-            draft.error =
-              event.reason?.message || 'An unhandled promise rejection occurred in the preview.';
-          });
+    if (!iframeRef.current) return;
+
+    try {
+      const win = iframeRef.current.contentWindow;
+      const doc = iframeRef.current.contentDocument;
+      const path = win.location.pathname;
+
+      if (path && path !== 'blank') {
+        previewAreaUiState((draft) => {
+          draft.address = path;
         });
-      } catch (_e) {
-        // Ignore cross-origin errors
       }
+
+      const loadError = detectIframeLoadError(doc);
+      if (loadError) {
+        setPreviewError(loadError);
+        return;
+      }
+
+      const onError = (event) => {
+        void (async () => {
+          const missingExportError = await resolveMissingExportError(event);
+          if (missingExportError) {
+            setPreviewError(missingExportError);
+            return;
+          }
+
+          let message = formatRuntimeError(event);
+          const scriptUrl = event.target?.src || event.filename;
+          if (scriptUrl) {
+            const fetched = await fetchScriptErrorBody(scriptUrl);
+            if (fetched) message = fetched;
+          }
+          setPreviewError(message);
+        })();
+      };
+
+      const onRejection = (event) => {
+        void (async () => {
+          const reason = event.reason;
+          const missingExportError =
+            reason instanceof Error
+              ? await resolveMissingExportError({
+                  message: reason.message,
+                  filename: reason.fileName,
+                })
+              : typeof reason === 'object' && reason?.message
+                ? await resolveMissingExportError(reason)
+                : null;
+          if (missingExportError) {
+            setPreviewError(missingExportError);
+            return;
+          }
+          setPreviewError(formatUnhandledRejection(event));
+        })();
+      };
+
+      win.addEventListener('error', onError, true);
+      win.addEventListener('unhandledrejection', onRejection);
+      listenersRef.current = { win, onError, onRejection };
+
+      window.setTimeout(() => {
+        scanIframeForErrors();
+        void scanModuleScriptsForErrors();
+      }, 500);
+      window.setTimeout(() => {
+        scanIframeForErrors();
+        void scanModuleScriptsForErrors();
+      }, 2000);
+    } catch (_e) {
+      // Ignore cross-origin errors
     }
-  }, [previewAreaUiState]);
+  }, [
+    previewAreaUiState,
+    removeIframeListeners,
+    scanIframeForErrors,
+    scanModuleScriptsForErrors,
+    setPreviewError,
+  ]);
 
   const handleRefresh = useCallback(() => {
     previewAreaUiState((draft) => {
       draft.isLoading = true;
+      draft.error = null;
       draft.refreshKey = Date.now();
     });
   }, [previewAreaUiState]);
@@ -149,6 +340,25 @@ export default function PreviewArea() {
     });
 
   if (!htmlContent) {
+    if (displayError) {
+      return (
+        <div className={styles.emptyState}>
+          <div className={styles.emptyIcon}>
+            <Icons.AlertCircle size={28} />
+          </div>
+          <h2 className={styles.emptyTitle}>Preview Error</h2>
+          <div className={styles.emptyError} role="alert">
+            {displayError}
+          </div>
+          <PreviewErrorActions
+            copied={errorCopied}
+            onCopy={handleCopyError}
+            onDismiss={handleDismissError}
+          />
+        </div>
+      );
+    }
+
     return (
       <div className={styles.emptyState}>
         <div className={styles.emptyIcon}>
@@ -162,6 +372,8 @@ export default function PreviewArea() {
       </div>
     );
   }
+
+  const showInitOverlay = (!isSwReady || !isCompilerReady) && !displayError;
 
   return (
     <div ref={containerRef} className={`${styles.wrapper} ${isMaximized ? styles.maximized : ''}`}>
@@ -214,7 +426,7 @@ export default function PreviewArea() {
             <div className={styles.spinner} />
           </div>
         )}
-        {(!isSwReady || !isCompilerReady) && (
+        {showInitOverlay && (
           <div className={styles.loadingOverlay}>
             <div className={styles.spinner} />
             <p className={styles.loadingText}>
@@ -222,11 +434,18 @@ export default function PreviewArea() {
             </p>
           </div>
         )}
+        {displayError && (
+          <div className={styles.errorBanner} role="alert">
+            <Icons.AlertCircle size={14} />
+            <span className={styles.errorText}>{displayError}</span>
+            <PreviewErrorActions
+              copied={errorCopied}
+              onCopy={handleCopyError}
+              onDismiss={handleDismissError}
+            />
+          </div>
+        )}
         <div className={styles.scaleWrapper} style={{ '--preview-scale': scale }}>
-          {/* 
-              CRITICAL: We point src to /index.html. 
-              The almostnode Service Worker MUST be active to intercept this. 
-          */}
           {isCompilerReady && isSwReady && (
             <iframe
               key={refreshKey}
@@ -241,24 +460,6 @@ export default function PreviewArea() {
           )}
         </div>
       </div>
-
-      <Dialog
-        isOpen={!!error}
-        title="Preview Error"
-        message={error}
-        onConfirm={() =>
-          previewAreaUiState((draft) => {
-            draft.error = null;
-          })
-        }
-        onCancel={() =>
-          previewAreaUiState((draft) => {
-            draft.error = null;
-          })
-        }
-        confirmText="Close"
-        type="danger"
-      />
     </div>
   );
 }

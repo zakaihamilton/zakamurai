@@ -1,6 +1,6 @@
 import { AppState } from '@/components/App/AppState';
 import { TabState } from '@/components/App/Panes/TabBar';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { EditorState } from './EditorArea';
 import EditorArea from './EditorArea';
@@ -24,7 +24,7 @@ vi.mock('@/components/App/Panes/TabBar', () => ({
 
 // No need to mock the whole file, just spy on the state hook
 describe('EditorArea', () => {
-  it('renders the file path and content', () => {
+  it('renders the file path and content', async () => {
     const mockState = {
       fileContents: {
         'src/test.js': 'console.log("hello");',
@@ -49,14 +49,16 @@ describe('EditorArea', () => {
       openTabs: [],
     });
 
-    render(<EditorArea file={{ path: ['src', 'test.js'], name: 'test.js' }} />);
+    await act(async () => {
+      render(<EditorArea file={{ path: ['src', 'test.js'], name: 'test.js' }} />);
+    });
     expect(screen.getByText('src/test.js')).toBeDefined();
     // The content is rendered in a textarea and a pre tag
     const textarea = screen.getByRole('textbox');
     expect(textarea.value).toBe('console.log("hello");');
   });
 
-  it('falls back to template content for restored tabs without saved content', () => {
+  it('falls back to template content for restored tabs without saved content', async () => {
     const mockState = {
       fileContents: {},
       cursorPos: {},
@@ -74,7 +76,9 @@ describe('EditorArea', () => {
     vi.spyOn(AppState, 'useState').mockReturnValue({ fs: { mode: null } });
     vi.spyOn(TabState, 'useState').mockReturnValue({ openTabs: [] });
 
-    render(<EditorArea file={{ path: ['src', 'App.jsx'], name: 'App.jsx' }} />);
+    await act(async () => {
+      render(<EditorArea file={{ path: ['src', 'App.jsx'], name: 'App.jsx' }} />);
+    });
 
     expect(screen.getByRole('textbox').value).toContain('export default function App');
   });
@@ -145,7 +149,7 @@ describe('EditorArea', () => {
     });
   });
 
-  it('memoizes syntax highlighting', () => {
+  it('memoizes syntax highlighting', async () => {
     const mockState = {
       fileContents: { 'test.js': 'content' },
       cursorPos: {},
@@ -158,20 +162,28 @@ describe('EditorArea', () => {
     vi.spyOn(AppState, 'useState').mockReturnValue({ fs: { mode: null } });
     vi.spyOn(TabState, 'useState').mockReturnValue({ openTabs: [] });
 
-    const { rerender } = render(<EditorArea file={{ path: ['test.js'], name: 'test.js' }} />);
+    let rerenderFn;
+    await act(async () => {
+      const { rerender } = render(<EditorArea file={{ path: ['test.js'], name: 'test.js' }} />);
+      rerenderFn = rerender;
+    });
 
     // Initial call
     expect(highlightCode).toHaveBeenCalled();
     const callCount = vi.mocked(highlightCode).mock.calls.length;
 
     // Rerender with same props and same state should NOT call highlightCode again (due to memo)
-    rerender(<EditorArea file={{ path: ['test.js'], name: 'test.js' }} />);
+    await act(async () => {
+      rerenderFn(<EditorArea file={{ path: ['test.js'], name: 'test.js' }} />);
+    });
     expect(highlightCode).toHaveBeenCalledTimes(callCount);
 
     // Rerender with different state but SAME content should NOT call highlightCode again
     // We simulate this by having stateHook return the same mockState (or a copy with same content)
     stateHook.mockReturnValue({ ...mockState, unrelated: 'change' });
-    rerender(<EditorArea file={{ path: ['test.js'], name: 'test.js' }} />);
+    await act(async () => {
+      rerenderFn(<EditorArea file={{ path: ['test.js'], name: 'test.js' }} />);
+    });
     expect(highlightCode).toHaveBeenCalledTimes(callCount);
   });
 
@@ -189,11 +201,17 @@ describe('EditorArea', () => {
     vi.spyOn(AppState, 'useState').mockReturnValue({ fs: { mode: null } });
     vi.spyOn(TabState, 'useState').mockReturnValue({ openTabs: [] });
 
-    render(<EditorArea file={{ path: ['test.js'], name: 'test.js' }} />);
+    let rerenderFn;
+    await act(async () => {
+      const { rerender } = render(<EditorArea file={{ path: ['test.js'], name: 'test.js' }} />);
+      rerenderFn = rerender;
+    });
 
     expect(vi.mocked(highlightCode).mock.calls.at(-1)?.[9]).toBe(false);
 
-    fireEvent.keyDown(window, { key: 'Meta' });
+    await act(async () => {
+      fireEvent.keyDown(window, { key: 'Meta' });
+    });
 
     await waitFor(() => {
       expect(vi.mocked(highlightCode).mock.calls.at(-1)?.[9]).toBe(true);
@@ -201,10 +219,14 @@ describe('EditorArea', () => {
 
     vi.mocked(highlightCode).mockClear();
 
-    render(<EditorArea file={{ path: ['next.js'], name: 'next.js' }} />);
+    await act(async () => {
+      rerenderFn(<EditorArea file={{ path: ['next.js'], name: 'next.js' }} />);
+    });
 
     expect(vi.mocked(highlightCode).mock.calls.at(-1)?.[9]).toBe(true);
 
-    fireEvent.keyUp(window, { key: 'Meta' });
+    await act(async () => {
+      fireEvent.keyUp(window, { key: 'Meta' });
+    });
   });
 });

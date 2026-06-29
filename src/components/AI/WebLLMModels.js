@@ -96,10 +96,7 @@ export const resolveCompletionModelId = async () => {
     const promptModel = resolveWebLLMModelId(
       Settings.getAIPromptModel(RECOMMENDED_WEB_LLM_MODEL.id),
     );
-    if (
-      promptModel !== RECOMMENDED_COMPLETION_MODEL.id &&
-      (await hasModelInCache(promptModel))
-    ) {
+    if (promptModel !== RECOMMENDED_COMPLETION_MODEL.id && (await hasModelInCache(promptModel))) {
       return promptModel;
     }
   } catch (error) {

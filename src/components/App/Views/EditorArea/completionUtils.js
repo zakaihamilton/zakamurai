@@ -17,7 +17,9 @@ export const getCompletionActivityMessage = (debug) => {
     case COMPLETION_PHASES.RESOLVING_MODEL:
       return debug.model ? `Loading ${debug.model}…` : 'Loading completion model…';
     case COMPLETION_PHASES.GENERATING:
-      return debug.model ? `Generating completion with ${debug.model}…` : 'Generating code completion…';
+      return debug.model
+        ? `Generating completion with ${debug.model}…`
+        : 'Generating code completion…';
     default:
       return null;
   }
@@ -249,18 +251,20 @@ const polishCompletionText = (cleaned, before, after, { limitScope = true } = {}
   const afterTrimmed = after.trimStart();
   const cleanedTrimmed = cleaned.trim();
 
+  let result = cleaned;
+
   if (cleanedTrimmed.startsWith(beforeTrimmed) && beforeTrimmed) {
-    cleaned = cleanedTrimmed.slice(beforeTrimmed.length);
+    result = cleanedTrimmed.slice(beforeTrimmed.length);
   }
 
-  if (afterTrimmed && cleaned.trimEnd().endsWith(afterTrimmed)) {
-    cleaned = cleaned.trimEnd().slice(0, -afterTrimmed.length);
+  if (afterTrimmed && result.trimEnd().endsWith(afterTrimmed)) {
+    result = result.trimEnd().slice(0, -afterTrimmed.length);
   }
 
-  cleaned = fixJsxClassNameCompletion(cleaned, before);
-  cleaned = fixJsxOpeningTagCompletion(cleaned, before);
+  result = fixJsxClassNameCompletion(result, before);
+  result = fixJsxOpeningTagCompletion(result, before);
 
-  const trimmed = trimSharedBoundary(cleaned, before, after);
+  const trimmed = trimSharedBoundary(result, before, after);
   return limitScope ? limitCompletionScope(trimmed) : trimmed;
 };
 

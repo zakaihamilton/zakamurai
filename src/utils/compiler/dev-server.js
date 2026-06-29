@@ -2,6 +2,13 @@
  * Custom Vite Dev Server with CSS Module support.
  */
 
+import { reportPreviewError } from '@/components/App/Views/PreviewArea/previewErrorBridge';
+import {
+  createTransformErrorResponse,
+  extractTransformErrorFromResponse,
+  formatEsbuildTransformError,
+} from '@/components/App/Views/PreviewArea/previewErrorUtils';
+
 const simpleHash = (str) => {
   let hash = 0;
   for (let i = 0; i < str.length; i++) {
@@ -16,6 +23,26 @@ export async function setupSmartDevServer(container, onLog) {
   const { ViteDevServer } = await nativeImport('/lib/almostnode/index.mjs');
 
   class SmartViteDevServer extends ViteDevServer {
+    reportTransformError(response) {
+      const message = extractTransformErrorFromResponse(response);
+      if (message) {
+        reportPreviewError(message);
+      }
+    }
+
+    async transformAndServe(filePath, urlPath) {
+      try {
+        const content = this.vfs.readFileSync(filePath, 'utf8');
+        await this.transformCode(content, urlPath);
+      } catch (error) {
+        const message = formatEsbuildTransformError(error);
+        reportPreviewError(message);
+        return createTransformErrorResponse(message);
+      }
+
+      return super.transformAndServe(filePath, urlPath);
+    }
+
     async handleRequest(method, url, headers, body) {
       const urlObj = new URL(url, 'http://localhost');
       const pathname = urlObj.pathname;
@@ -36,16 +63,21 @@ export async function setupSmartDevServer(container, onLog) {
       if (!this.exists(filePath)) {
         for (const ext of ['.jsx', '.tsx', '.js', '.ts']) {
           if (this.exists(filePath + ext)) {
-            return super.handleRequest(
+            const response = await super.handleRequest(
               method,
               url.replace(pathname, pathname + ext),
               headers,
               body,
             );
+            this.reportTransformError(response);
+            return response;
           }
         }
       }
-      return super.handleRequest(method, url, headers, body);
+
+      const response = await super.handleRequest(method, url, headers, body);
+      this.reportTransformError(response);
+      return response;
     }
 
     serveCssModule(filePath) {

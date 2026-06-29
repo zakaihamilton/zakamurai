@@ -11,9 +11,9 @@ describe('ContextMenu', () => {
       </ContextMenu>,
     );
 
-    const menu = screen.getByText('Option 1').closest('div');
-    expect(menu.style.top).toBe('200px');
-    expect(menu.style.left).toBe('100px');
+    const menu = screen.getByRole('menu');
+    expect(menu.style.getPropertyValue('--menu-top')).toBe('200px');
+    expect(menu.style.getPropertyValue('--menu-left')).toBe('100px');
   });
 
   it('calls onClose when overlay is clicked', () => {

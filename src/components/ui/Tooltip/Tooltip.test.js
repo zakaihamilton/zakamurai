@@ -196,9 +196,9 @@ describe('Tooltip', () => {
 
     const tooltip = screen.getByRole('tooltip');
 
-    expect(tooltip.style.left).toBe('70px');
-    expect(tooltip.style.top).toBe('24px');
-    expect(tooltip.style.maxWidth).toBe('120px');
-    expect(tooltip.style.maxHeight).toBe('70px');
+    expect(tooltip.style.getPropertyValue('--tooltip-left')).toBe('70px');
+    expect(tooltip.style.getPropertyValue('--tooltip-top')).toBe('24px');
+    expect(tooltip.style.getPropertyValue('--tooltip-max-width')).toBe('120px');
+    expect(tooltip.style.getPropertyValue('--tooltip-max-height')).toBe('70px');
   });
 });
