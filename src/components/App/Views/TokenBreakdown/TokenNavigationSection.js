@@ -13,8 +13,8 @@ export default function TokenNavigationSection({ navigationTargets, navigationLi
             <li key={`${target.start}-${target.end}-${target.name || target.className || index}`}>
               <code>{target.type || 'target'}</code>
               <span>
-                {target.name || target.className || target.text || 'unnamed'} at {target.position?.line || '-'}:
-                {target.position?.column || '-'}
+                {target.name || target.className || target.text || 'unnamed'} at{' '}
+                {target.position?.line || '-'}:{target.position?.column || '-'}
               </span>
             </li>
           ))}

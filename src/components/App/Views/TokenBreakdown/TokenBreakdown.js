@@ -60,6 +60,60 @@ const compareTokensBySourceOrder = (a, b) => {
   return a.index - b.index;
 };
 
+const checkTokenReportMatch = (code, report) => {
+  const tokens = [...report.tokens].sort((a, b) => (a.range?.start ?? 0) - (b.range?.start ?? 0));
+  let reconstructed = '';
+  let lastIdx = 0;
+  const mismatches = [];
+
+  for (const token of tokens) {
+    const start = token.range?.start;
+    const end = token.range?.end;
+    const value = token.value;
+
+    if (start === undefined || end === undefined) {
+      mismatches.push({
+        token,
+        reason: `Missing range for token "${value}"`,
+      });
+      continue;
+    }
+
+    if (start > lastIdx) {
+      reconstructed += code.substring(lastIdx, start);
+    } else if (start < lastIdx) {
+      mismatches.push({
+        token,
+        reason: `Overlap: Token starts at ${start}, previous ended at ${lastIdx}`,
+      });
+    }
+
+    const originalValue = code.substring(start, end);
+    if (originalValue !== value) {
+      mismatches.push({
+        token,
+        reason: `Value mismatch: report has "${value}" but file has "${originalValue}"`,
+      });
+    }
+
+    reconstructed += value;
+    lastIdx = end;
+  }
+
+  if (lastIdx < code.length) {
+    reconstructed += code.substring(lastIdx);
+  }
+
+  const isMatch = reconstructed === code && mismatches.length === 0;
+
+  return {
+    isMatch,
+    mismatches,
+    reconstructedLength: reconstructed.length,
+    originalLength: code.length,
+  };
+};
+
 export default function TokenBreakdown({ tab }) {
   const editorState = EditorState.useState();
   const tabState = TabState.useState();
@@ -68,6 +122,7 @@ export default function TokenBreakdown({ tab }) {
   const [activeSection, setActiveSection] = useState('tokens');
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState('All');
+  const [verificationResult, setVerificationResult] = useState(null);
 
   const filePath = tab?.sourceFilePath || tab?.filePath || tab?.file?.path?.join('/') || '';
   const fileName = tab?.file?.name || filePath.split('/').pop() || '';
@@ -169,6 +224,11 @@ ${JSON.stringify(conciseReport, null, 2)}`;
     }
   };
 
+  const handleVerifyMatch = () => {
+    const result = checkTokenReportMatch(code, report);
+    setVerificationResult(result);
+  };
+
   const presentTypes = useMemo(() => {
     const types = new Set(orderedTokens.map((t) => t.type));
     return ['All', ...Array.from(types)];
@@ -202,6 +262,18 @@ ${JSON.stringify(conciseReport, null, 2)}`;
           <span className={editorStyles.filePath}>{filePath}</span>
         </div>
         <div className={editorStyles.headerActions}>
+          {process.env.NODE_ENV === 'development' && (
+            <Tooltip content="Verify token report match">
+              <button
+                type="button"
+                className={editorStyles.actionBtn}
+                onClick={handleVerifyMatch}
+                aria-label="Verify token report match"
+              >
+                <Icons.Check />
+              </button>
+            </Tooltip>
+          )}
           <Tooltip content={copied ? 'Copied!' : 'Copy token breakdown'}>
             <button
               type="button"
@@ -237,6 +309,67 @@ ${JSON.stringify(conciseReport, null, 2)}`;
       </div>
       <div className={styles.shell}>
         <TokenSummaryCards report={report} />
+
+        {verificationResult && (
+          <div className={styles.verificationCard}>
+            <div className={styles.verificationCardHeader}>
+              <div className={styles.verificationTitleGroup}>
+                <span className={styles.verificationTitle}>Token Report Alignment Check</span>
+                <span
+                  className={`${styles.verificationStatus} ${
+                    verificationResult.isMatch ? styles.statusSuccess : styles.statusError
+                  }`}
+                >
+                  {verificationResult.isMatch ? 'Match Success' : 'Mismatch Found'}
+                </span>
+              </div>
+              <button
+                type="button"
+                className={styles.verificationClose}
+                onClick={() => setVerificationResult(null)}
+                aria-label="Close check results"
+              >
+                <Icons.Close />
+              </button>
+            </div>
+            <div className={styles.verificationDetails}>
+              <div className={styles.verificationMetrics}>
+                <div className={styles.verificationMetric}>
+                  <span className={styles.metricLabel}>Original Length</span>
+                  <span className={styles.metricValue}>
+                    {verificationResult.originalLength} chars
+                  </span>
+                </div>
+                <div className={styles.verificationMetric}>
+                  <span className={styles.metricLabel}>Reconstructed</span>
+                  <span className={styles.metricValue}>
+                    {verificationResult.reconstructedLength} chars
+                  </span>
+                </div>
+                <div className={styles.verificationMetric}>
+                  <span className={styles.metricLabel}>Total Mismatches</span>
+                  <span className={styles.metricValue}>{verificationResult.mismatches.length}</span>
+                </div>
+              </div>
+              {verificationResult.mismatches.length > 0 && (
+                <ul className={styles.mismatchList}>
+                  {verificationResult.mismatches.map((m, idx) => (
+                    <li
+                      key={`${m.token.value}-${m.token.range?.start ?? idx}-${idx}`}
+                      className={styles.mismatchItem}
+                    >
+                      <span className={styles.mismatchItemReason}>{m.reason}</span>
+                      <span className={styles.mismatchItemDetails}>
+                        Token: "{m.token.value}" | Type: {m.token.type} | Range: [
+                        {m.token.range?.start}, {m.token.range?.end}]
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
+        )}
 
         {report.largeFileFallback && (
           <div className={styles.notice}>

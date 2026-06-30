@@ -241,14 +241,44 @@ describe('TokenBreakdown', () => {
     expect(writeText).toHaveBeenCalled();
 
     const rawCopiedText = writeText.mock.calls[0][0];
-    expect(rawCopiedText).toContain("Explain why the tokens in the token breakdown do not match the source file. Here is the source file:");
-    expect(rawCopiedText).toContain("export const answer = 42;");
-    expect(rawCopiedText).toContain("Here is the token breakdown:");
+    expect(rawCopiedText).toContain(
+      'Explain why the tokens in the token breakdown do not match the source file. Here is the source file:',
+    );
+    expect(rawCopiedText).toContain('export const answer = 42;');
+    expect(rawCopiedText).toContain('Here is the token breakdown:');
 
     const jsonPart = rawCopiedText.substring(rawCopiedText.indexOf('{'));
     const copiedBreakdown = JSON.parse(jsonPart);
     expect(copiedBreakdown.filePath).toBe('src/test.js');
 
     process.env.NODE_ENV = originalNodeEnv;
+  });
+
+  it('performs alignment check and displays success check results', async () => {
+    vi.spyOn(EditorState, 'useState').mockReturnValue({
+      fileContents: {
+        'src/test.js': 'export const answer = 42;',
+      },
+      selectedLines: {},
+      pendingDiffs: {},
+    });
+
+    render(
+      <TokenBreakdown
+        tab={{
+          id: 'token-breakdown:src/test.js',
+          sourceFilePath: 'src/test.js',
+          collapsedFoldIds: [],
+        }}
+      />,
+    );
+
+    const checkBtn = screen.getByRole('button', { name: /Verify token report match/i });
+    expect(checkBtn).toBeDefined();
+
+    fireEvent.click(checkBtn);
+    expect(screen.getByText('Token Report Alignment Check')).toBeDefined();
+    expect(screen.getByText('Match Success')).toBeDefined();
+    expect(screen.getByText('Original Length')).toBeDefined();
   });
 });

@@ -449,17 +449,13 @@ const createHighlightAnalysis = ({
       (_m, p1, p2) => (p1 ? p1 : pushToken(p2, 'hlProp')),
     );
     // Selectors (basic & comma-separated list support)
-    escaped = escaped.replace(
-      // biome-ignore lint/suspicious/noControlCharactersInRegex: markers
-      /(^|(?<=\}))([^\{\}]+)(?=\s*\{)/g,
-      (selectorList) => {
-        return selectorList.replace(
-          // biome-ignore lint/suspicious/noControlCharactersInRegex: markers
-          /(\x01\d+\x02|\u0003\d+\u0003|\u0004|\u0005|\u0006[a-j]+\u0006|\u0007)|([.#a-zA-Z0-9_\-\[\]="':*]+)/g,
-          (_m, p1, p2) => (p1 ? p1 : pushToken(p2, 'hlTag')),
-        );
-      },
-    );
+    escaped = escaped.replace(/(^|(?<=\}))([^\{\}]+)(?=\s*\{)/g, (selectorList) => {
+      return selectorList.replace(
+        // biome-ignore lint/suspicious/noControlCharactersInRegex: markers
+        /(\x01\d+\x02|\u0003\d+\u0003|\u0004|\u0005|\u0006[a-j]+\u0006|\u0007)|([.#a-zA-Z0-9_\-\[\]="':*]+)/g,
+        (_m, p1, p2) => (p1 ? p1 : pushToken(p2, 'hlTag')),
+      );
+    });
     // Values (after colon, before semicolon)
     escaped = escaped.replace(/(?<=:\s*)([^;\}]+)(?=;|\})/g, (m) => {
       // Highlight hex colors within values

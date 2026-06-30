@@ -231,12 +231,12 @@ describe('highlighter', () => {
     const filePath = 'src/components/AI/Processor/utils/SearchReplaceParser.js';
     const code = [
       "import { someSymbol } from './Parser';",
-      "",
-      "",
-      "",
-      "",
+      '',
+      '',
+      '',
+      '',
       "const placeholder = '[exact existing lines]';",
-      "const secondary = 123;",
+      'const secondary = 123;',
     ].join('\n');
     const breakdown = getHighlightBreakdown({
       code,
@@ -285,7 +285,8 @@ describe('highlighter', () => {
   });
 
   it('reports CSS tokens that match rendered highlight classes', () => {
-    const code = '.card, .btn-primary { color: #fff; margin: 12px; border: 1px solid red; background: rgb(0, 0, 0); }';
+    const code =
+      '.card, .btn-primary { color: #fff; margin: 12px; border: 1px solid red; background: rgb(0, 0, 0); }';
     const result = highlightCode(code, 'src/test.css', {}, styles, false, '', -1, '');
     const breakdown = getHighlightBreakdown({ code, filePath: 'src/test.css', state: {}, styles });
 
@@ -306,12 +307,12 @@ describe('highlighter', () => {
     expect(
       breakdown.tokens.some((token) => token.type === 'hlVal' && token.value === 'solid'),
     ).toBe(true);
-    expect(
-      breakdown.tokens.some((token) => token.type === 'hlVal' && token.value === 'red'),
-    ).toBe(true);
-    expect(
-      breakdown.tokens.some((token) => token.type === 'hlFunc' && token.value === 'rgb'),
-    ).toBe(true);
+    expect(breakdown.tokens.some((token) => token.type === 'hlVal' && token.value === 'red')).toBe(
+      true,
+    );
+    expect(breakdown.tokens.some((token) => token.type === 'hlFunc' && token.value === 'rgb')).toBe(
+      true,
+    );
   });
 
   it('reports JSON tokens that match rendered highlight classes', () => {
