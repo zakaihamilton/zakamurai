@@ -105,7 +105,7 @@ describe('Prompt', () => {
     EditorState.useState.mockReturnValue(vi.fn());
 
     render(<Prompt />);
-    expect(screen.getByPlaceholderText('Enter the AI prompt here...')).toBeDefined();
+    expect(screen.getByPlaceholderText('Tell the Agent what to do...')).toBeDefined();
     expect(screen.getByTitle('Execute prompt')).toBeDefined();
     const modelDropdown = screen.getByRole('button', { name: /^model /i });
     expect(modelDropdown).toBeDefined();
@@ -150,10 +150,10 @@ describe('Prompt', () => {
 
     expect(screen.getByRole('heading', { name: 'AI Models' })).toBeDefined();
     expect(screen.getByText('Qwen2.5 Coder 7B')).toBeDefined();
-    expect(screen.getByText(/Best coding model/)).toBeDefined();
+    expect(screen.getByText(/Complex code edits/)).toBeDefined();
 
     await act(async () => {
-      fireEvent.click(screen.getAllByText('Cache')[0]);
+      fireEvent.click(screen.getAllByRole('button', { name: 'Cache' })[0]);
     });
 
     expect(webLLMAPI.cacheWebLLMModel).toHaveBeenCalled();
@@ -267,7 +267,7 @@ describe('Prompt', () => {
     EditorState.useState.mockReturnValue(vi.fn());
 
     render(<Prompt />);
-    const input = screen.getByPlaceholderText('Enter the AI prompt here...');
+    const input = screen.getByPlaceholderText('Tell the Agent what to do...');
     const button = screen.getByTitle('Execute prompt');
 
     await act(async () => {

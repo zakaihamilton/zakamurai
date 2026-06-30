@@ -1,3 +1,4 @@
+import { Icons } from '@/components/ui/Icons';
 import Tooltip from '@/components/ui/Tooltip';
 import React from 'react';
 import { createPortal } from 'react-dom';
@@ -40,7 +41,7 @@ export default function Dialog({
               onClick={onCancel}
               aria-label="Close dialog"
             >
-              ×
+              <Icons.Close size={16} />
             </button>
           </Tooltip>
         </div>

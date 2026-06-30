@@ -101,14 +101,14 @@ export default function ActionButtons({ onCompile, onOpenLog, onOpenPreview, onT
 
       <div className={styles.sidebarToggleGroup}>
         <Tooltip
-          content={isAIInputActive ? 'Hide AI Prompt' : 'Show AI Prompt'}
+          content={isAIInputActive ? 'Hide Agent' : 'Show Agent'}
           shortcut={formatShortcut('⌃J')}
         >
           <button
             type="button"
             className={`${styles.sidebarBtn} ${isAIInputActive ? styles.activeSidebar : ''}`}
             onClick={onToggleAIInput}
-            aria-label={isAIInputActive ? 'Hide AI Prompt' : 'Show AI Prompt'}
+            aria-label={isAIInputActive ? 'Hide Agent' : 'Show Agent'}
             data-testid="ai-prompt-toggle"
           >
             <Icons.AIPrompt />

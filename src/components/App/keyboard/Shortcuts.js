@@ -12,7 +12,7 @@ export const SHORTCUT_GROUPS = {
   EDITOR: 'Editor',
   AI: 'AI',
   TABS: 'Tabs',
-  AI_PROMPT: 'AI Prompt',
+  AI_PROMPT: 'Agent',
   GENERAL: 'General',
 };
 
@@ -297,7 +297,7 @@ export const SHORTCUTS = [
   {
     id: 'toggle-ai-input',
     group: SHORTCUT_GROUPS.NAVIGATION,
-    desc: 'Toggle AI Prompt',
+    desc: 'Toggle Agent',
     key: 'j',
     displayKey: '⌃J',
     modifier: 'ctrl',

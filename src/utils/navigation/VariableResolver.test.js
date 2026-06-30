@@ -399,7 +399,7 @@ describe('VariableResolver', () => {
         (t) => t.name === 'generationOptions' && t.start === generationOptionsUseIndex,
       );
       expect(generationOptionsUse).toBeDefined();
-      expect(generationOptionsUse.targets[0].loc.line).toBe(109);
+      expect(generationOptionsUse.targets[0].loc.line).toBe(103);
     });
   });
 });

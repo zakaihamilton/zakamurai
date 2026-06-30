@@ -13,7 +13,7 @@ export default function PromptHeader({
   return (
     <div className={styles.header}>
       <div>
-        <h2 className={styles.title}>AI Prompt</h2>
+        <h2 className={styles.title}>Agent</h2>
       </div>
       <div className={styles.headerActions}>
         {isAIProcessing && <span className={styles.status}>AI Working</span>}

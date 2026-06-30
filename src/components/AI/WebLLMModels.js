@@ -2,6 +2,8 @@ export const WEB_LLM_MODELS = [
   {
     id: 'Qwen2.5-Coder-7B-Instruct-q4f16_1-MLC',
     name: 'Qwen2.5 Coder 7B',
+    ramMB: 5106.67,
+    storageMB: 4300,
     requirement: 'Best coding model in this list. Requires a strong GPU and large browser cache.',
     details: [
       ['System', 'High-end WebGPU laptop/desktop with generous unified/VRAM memory'],
@@ -14,6 +16,8 @@ export const WEB_LLM_MODELS = [
   {
     id: 'Qwen3.5-9B-q4f16_1-MLC',
     name: 'Qwen3.5 9B',
+    ramMB: 6433.01,
+    storageMB: 5060,
     requirement: 'Strongest general reasoning option. Heavier than Qwen3.5 4B.',
     details: [
       ['System', 'High-end WebGPU device with ~6.4 GB VRAM'],
@@ -26,6 +30,8 @@ export const WEB_LLM_MODELS = [
   {
     id: 'Qwen3.5-4B-q4f16_1-MLC',
     name: 'Qwen3.5 4B',
+    ramMB: 3867.82,
+    storageMB: 2390,
     requirement: 'Best default balance of quality, reasoning, and browser practicality.',
     details: [
       ['System', 'Modern WebGPU-capable laptop or desktop with ~3.9 GB VRAM'],
@@ -38,6 +44,8 @@ export const WEB_LLM_MODELS = [
   {
     id: 'Qwen2.5-Coder-3B-Instruct-q4f16_1-MLC',
     name: 'Qwen2.5 Coder 3B',
+    ramMB: 2504.76,
+    storageMB: 1750,
     requirement: 'Smaller coding-focused fallback. Better coding fit than many generic 3B models.',
     details: [
       ['System', 'Most modern WebGPU-capable devices'],
@@ -50,6 +58,8 @@ export const WEB_LLM_MODELS = [
   {
     id: 'Qwen3.5-2B-q4f16_1-MLC',
     name: 'Qwen3.5 2B',
+    ramMB: 2245.44,
+    storageMB: 1080,
     requirement: 'Lightweight reasoning fallback for lower-memory devices.',
     details: [
       ['System', 'Lower-memory WebGPU-capable devices with ~2.2 GB VRAM'],

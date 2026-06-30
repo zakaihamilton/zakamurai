@@ -68,11 +68,13 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-family: inherit;
-  font-size: 18px;
-  line-height: 0;
   padding: 0;
   transition: all 0.2s;
+}
+
+.closeBtn svg {
+  display: block;
+  flex-shrink: 0;
 }
 
 .closeBtn:hover {

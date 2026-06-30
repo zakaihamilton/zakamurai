@@ -2,10 +2,18 @@ import { describe, expect, it } from 'vitest';
 import {
   LEGACY_WEB_LLM_MODEL_IDS,
   RECOMMENDED_WEB_LLM_MODEL,
+  WEB_LLM_MODELS,
   resolveWebLLMModelId,
 } from './WebLLMModels';
 
 describe('WebLLMModels', () => {
+  it('provides numeric runtime RAM and storage requirements for every model', () => {
+    for (const model of WEB_LLM_MODELS) {
+      expect(model.ramMB).toBeGreaterThan(0);
+      expect(model.storageMB).toBeGreaterThan(0);
+    }
+  });
+
   it('recommends Qwen3.5 4B by default', () => {
     expect(RECOMMENDED_WEB_LLM_MODEL.id).toBe('Qwen3.5-4B-q4f16_1-MLC');
   });

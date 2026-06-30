@@ -18,7 +18,7 @@ describe('PromptHeader', () => {
         onToggleReasoning={vi.fn()}
       />,
     );
-    expect(screen.getByText('AI Prompt')).toBeDefined();
+    expect(screen.getByText('Agent')).toBeDefined();
     expect(screen.getByText('AI Working')).toBeDefined();
     expect(screen.getByText('Compiling')).toBeDefined();
   });

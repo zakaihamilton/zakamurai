@@ -95,15 +95,9 @@ export const askWebLLM = async (prompt, systemPrompt = '', onUpdate = null, opti
     const modelId = options.model || DEFAULT_WEB_LLM_MODEL_ID;
     const defaultSystemPrompt = DEFAULT_SYSTEM_PROMPT;
 
-    const messages = [
-      {
-        role: 'system',
-        content: systemPrompt || defaultSystemPrompt,
-      },
-      {
-        role: 'user',
-        content: prompt,
-      },
+    const messages = options.messages || [
+      { role: 'system', content: systemPrompt || defaultSystemPrompt },
+      { role: 'user', content: prompt },
     ];
 
     const generationOptions = {

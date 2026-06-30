@@ -1,5 +1,5 @@
+import { collectWorkspaceFiles, runAgent } from '@/components/AI/Agent';
 import { processAIResponse } from '@/components/AI/Processor';
-import { DEFAULT_SYSTEM_PROMPT, buildEditPrompt } from '@/components/AI/Prompts';
 import {
   RECOMMENDED_WEB_LLM_MODEL,
   WEB_LLM_MODELS,
@@ -12,7 +12,26 @@ import { EditorState } from '@/components/App/Views/EditorArea';
 import { LogState } from '@/components/App/Views/LogArea';
 import Settings from '@/components/Storage/Settings';
 import { createState } from '@/components/state/State';
+import { Compiler } from '@/utils/compiler';
 import React, { useCallback, useEffect } from 'react';
+
+const formatAgentChanges = (changes) =>
+  changes
+    .filter((change) => change.after !== undefined)
+    .map(({ path, after }) => `// --- File: ${path} ---\n${after}\n// --- End File ---`)
+    .join('\n\n');
+
+const formatAgentEvent = (event) => {
+  if (event.type === 'thinking') return `**Step ${event.turn}:** planning next action…`;
+  if (event.type === 'tool') {
+    const target = event.action.path || event.action.query || '';
+    return `**Step ${event.turn}:** \`${event.action.action}\`${target ? ` — ${target}` : ''}`;
+  }
+  if (event.type === 'observation') return event.error ? `⚠ ${event.message}` : event.message;
+  if (event.type === 'finished')
+    return `**Ready for review:** ${event.message || 'Agent finished.'}`;
+  return '';
+};
 import useModelDownloader from './ModelDownloader';
 import styles from './Prompt.module.css';
 import usePromptHistory from './PromptHistory';
@@ -20,7 +39,6 @@ import ModelDownloader from './subcomponents/ModelManager';
 import PromptComposer from './subcomponents/PromptComposer';
 import PromptContextPanel from './subcomponents/PromptContextPanel';
 import PromptHeader from './subcomponents/PromptHeader';
-import PromptModelPanel from './subcomponents/PromptModelPanel';
 import ReasoningPanel from './subcomponents/ReasoningPanel';
 
 export const PromptState = createState('PromptState');
@@ -46,6 +64,7 @@ export default function Prompt() {
     modelCacheProgress: '',
     modelCacheError: '',
     animatedWidth: promptState?.promptWidth ?? 0,
+    abortController: null,
   });
   const {
     val = '',
@@ -59,6 +78,7 @@ export default function Prompt() {
     modelCacheProgress = '',
     modelCacheError = '',
     animatedWidth = promptState?.promptWidth ?? 0,
+    abortController = null,
   } = promptUiState || {};
 
   const setAnimatedWidth = useCallback(
@@ -93,6 +113,7 @@ export default function Prompt() {
 
   const handleStop = (e) => {
     e.preventDefault();
+    abortController?.abort();
     import('@/components/AI/WebLLMAPI').then(({ interruptWebLLM }) => {
       interruptWebLLM();
     });
@@ -120,11 +141,6 @@ export default function Prompt() {
 
     const currentActiveTabId = tabState.activeTabId;
     const currentActiveTab = tabState.openTabs.find((t) => t.id === currentActiveTabId);
-    let activeFileContent = undefined;
-    if (currentActiveTab && currentActiveTab.type === 'file') {
-      activeFileContent = editorState.fileContents?.[currentActiveTabId];
-    }
-
     // Log only the short user message to the UI
     logState((draft) => {
       draft.logs = [
@@ -143,39 +159,38 @@ export default function Prompt() {
     const runAI = async () => {
       try {
         console.info('[Prompt] Starting AI request for:', userMsg);
-        let ragResults = [];
-
-        // 1. Retrieve RAG context
-        try {
-          console.info('[Prompt] Retrieving RAG context...');
-          const { ragSearch } = await import('@/utils/rag/search-utility');
-          ragResults = await ragSearch.retrieveContext(userMsg, 3);
-          console.info('[Prompt] RAG context retrieved:', ragResults.length, 'items');
-        } catch (ragErr) {
-          console.error('[Prompt] RAG retrieval failed:', ragErr);
-        }
-
         const selectedLines = editorState.selectedLines?.[currentActiveTabId] || [];
-        const finalPrompt = buildEditPrompt({
-          userRequest: userMsg,
-          activeFilePath: currentActiveTab?.type === 'file' ? currentActiveTabId : undefined,
-          activeFileContent,
-          selectedLines,
-          relatedContext: ragResults,
+        const controller = new AbortController();
+        promptUiState((draft) => {
+          draft.abortController = controller;
         });
-
-        console.info('[Prompt] Calling askWebLLM...');
-        const { askWebLLM } = await import('@/components/AI/WebLLMAPI');
-        const webLLMResult = await askWebLLM(
-          finalPrompt,
-          DEFAULT_SYSTEM_PROMPT,
-          (partial) => {
+        const events = [];
+        const workspaceFiles = await collectWorkspaceFiles(fs, editorState.fileContents || {});
+        const result = await runAgent({
+          request: userMsg,
+          activeFile: currentActiveTab?.type === 'file' ? currentActiveTabId : undefined,
+          selectedLines,
+          files: workspaceFiles,
+          model: selectedModel,
+          signal: controller.signal,
+          validate: async (stagedFiles) => {
+            const validationLogs = [];
+            const compiler = new Compiler((line) => validationLogs.push(line));
+            try {
+              await compiler.compile(fs, sidebarState.folderTree || [], stagedFiles);
+              return `Validation passed.\n${validationLogs.slice(-12).join('\n')}`;
+            } catch (error) {
+              return `Validation failed: ${error.message}\n${validationLogs.slice(-20).join('\n')}`;
+            }
+          },
+          onEvent: (event) => {
+            const line = formatAgentEvent(event);
+            if (line) events.push(line);
             logState((draft) => {
-              draft.reasoning = partial;
+              draft.reasoning = events.slice(-30).join('\n\n');
             });
           },
-          { temperature: 0.2, top_p: 0.8, model: selectedModel },
-        );
+        });
 
         let stillProcessing = false;
         logState((draft) => {
@@ -189,7 +204,7 @@ export default function Prompt() {
             {
               id: Date.now() + 1,
               role: 'ai',
-              text: `[Browser WebLLM]: ${webLLMResult}`,
+              text: `[Local agent]: ${result.summary || `Prepared ${result.changes.length} file(s) for review.`}`,
               timestamp: new Date().toTimeString().split(' ')[0],
             },
           ];
@@ -197,7 +212,29 @@ export default function Prompt() {
         });
 
         // Use the centralized processor to apply file changes
-        await processAIResponse(webLLMResult, fs, logState, sidebarState, editorState, tabState);
+        const supportedChanges = result.changes.filter((change) => change.after !== undefined);
+        const deleted = result.changes.filter((change) => change.after === undefined);
+        await processAIResponse(
+          formatAgentChanges(supportedChanges),
+          fs,
+          logState,
+          sidebarState,
+          editorState,
+          tabState,
+        );
+        if (deleted.length > 0) {
+          logState((draft) => {
+            draft.logs = [
+              ...draft.logs,
+              {
+                id: Date.now() + 6,
+                role: 'system',
+                text: `Deletion review is not yet supported; kept ${deleted.map(({ path }) => path).join(', ')} unchanged.`,
+                timestamp: new Date().toTimeString().split(' ')[0],
+              },
+            ];
+          });
+        }
       } catch (err) {
         logState((draft) => {
           if (!draft.isAIProcessing) return; // Discard if stopped
@@ -206,7 +243,7 @@ export default function Prompt() {
             {
               id: Date.now(),
               role: 'ai',
-              text: `Error processing AI prompt: ${err.message || err}`,
+              text: `Agent error: ${err.message || err}`,
               timestamp: new Date().toTimeString().split(' ')[0],
             },
           ];
@@ -320,20 +357,6 @@ export default function Prompt() {
           selectedLineText={selectedLineText}
           runState={runState}
         />
-        <PromptModelPanel
-          selectedModelInfo={selectedModelInfo}
-          modelOptions={modelOptions}
-          onChangeModel={(nextModel) =>
-            promptUiState((draft) => {
-              draft.selectedModel = nextModel;
-              Settings.setAIPromptModel(nextModel);
-            })
-          }
-          onLoadCachedModelIds={loadCachedModelIds}
-          onOpenModelManager={openModelManager}
-          isAIProcessing={isAIProcessing}
-          isOpen={isOpen}
-        />
         <ModelDownloader
           isOpen={isModelManagerOpen}
           selectedModelId={selectedModelInfo.id}
@@ -362,6 +385,16 @@ export default function Prompt() {
           isAIProcessing={isAIProcessing}
           isButtonActive={isBtnActive}
           isOpen={isOpen}
+          selectedModelInfo={selectedModelInfo}
+          modelOptions={modelOptions}
+          onChangeModel={(nextModel) =>
+            promptUiState((draft) => {
+              draft.selectedModel = nextModel;
+              Settings.setAIPromptModel(nextModel);
+            })
+          }
+          onLoadCachedModelIds={loadCachedModelIds}
+          onOpenModelManager={openModelManager}
         />
       </div>
     </aside>

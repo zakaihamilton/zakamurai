@@ -6,7 +6,18 @@ vi.mock('@/components/ui/Tooltip', () => ({
   default: ({ children }) => <div>{children}</div>,
 }));
 vi.mock('@/components/ui/Icons', () => ({
-  Icons: { Close: () => <span />, Send: () => <span /> },
+  Icons: { Close: () => <span />, Info: () => <span />, Send: () => <span /> },
+}));
+vi.mock('@/components/ui/Select', () => ({
+  default: ({ label, value, options = [], onChange }) => (
+    <select aria-label={label} value={value} onChange={(event) => onChange(event.target.value)}>
+      {options.map((option) => (
+        <option key={option.value} value={option.value}>
+          {option.label}
+        </option>
+      ))}
+    </select>
+  ),
 }));
 vi.mock('@/utils/os', () => ({ formatShortcut: (s) => s }));
 
@@ -24,7 +35,7 @@ describe('PromptComposer', () => {
         isOpen={true}
       />,
     );
-    expect(screen.getByPlaceholderText('Enter the AI prompt here...')).toBeDefined();
+    expect(screen.getByPlaceholderText('Tell the Agent what to do...')).toBeDefined();
   });
 
   it('shows stop button when AI processing', () => {
@@ -40,7 +51,7 @@ describe('PromptComposer', () => {
         isOpen={true}
       />,
     );
-    expect(screen.getByPlaceholderText(/AI is working/)).toBeDefined();
+    expect(screen.getByPlaceholderText(/Agent is working/)).toBeDefined();
   });
 
   it('submits form', () => {
@@ -59,5 +70,30 @@ describe('PromptComposer', () => {
     );
     fireEvent.submit(document.querySelector('form'));
     expect(onSubmit).toHaveBeenCalled();
+  });
+
+  it('changes the model from the embedded selector', () => {
+    const onChangeModel = vi.fn();
+    render(
+      <PromptComposer
+        value=""
+        onChange={vi.fn()}
+        onKeyDown={vi.fn()}
+        onSubmit={vi.fn()}
+        onStop={vi.fn()}
+        isAIProcessing={false}
+        isButtonActive={false}
+        isOpen={true}
+        selectedModelInfo={{ id: 'model-a' }}
+        modelOptions={[
+          { value: 'model-a', label: 'Model A' },
+          { value: 'model-b', label: 'Model B' },
+        ]}
+        onChangeModel={onChangeModel}
+      />,
+    );
+
+    fireEvent.change(screen.getByLabelText('Model'), { target: { value: 'model-b' } });
+    expect(onChangeModel).toHaveBeenCalledWith('model-b');
   });
 });

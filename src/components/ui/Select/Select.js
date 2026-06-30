@@ -42,8 +42,8 @@ function SelectInner({
   tabIndex,
   className = '',
 }) {
-  const selectState = SelectState.useState(null, { isOpen: false });
-  const { isOpen = false } = selectState || {};
+  const selectState = SelectState.useState(null, { isOpen: false, opensUp: false });
+  const { isOpen = false, opensUp = false } = selectState || {};
   const wrapperRef = useRef(null);
   const selectedOption = options.find((option) => option.value === value) || options[0];
 
@@ -85,8 +85,12 @@ function SelectInner({
           aria-labelledby={id && label ? `${id}-label ${id}` : undefined}
           disabled={disabled}
           className={styles.trigger}
-          onClick={() =>
+          onClick={(event) =>
             selectState((draft) => {
+              const rect = event.currentTarget.getBoundingClientRect();
+              const roomBelow = window.innerHeight - rect.bottom;
+              const roomAbove = rect.top;
+              draft.opensUp = roomBelow < 260 && roomAbove > roomBelow;
               draft.isOpen = !draft.isOpen;
             })
           }
@@ -103,7 +107,10 @@ function SelectInner({
           <Icons.ChevronDown />
         </button>
         {isOpen && !disabled && (
-          <div className={styles.menu} aria-labelledby={id ? `${id}-label` : undefined}>
+          <div
+            className={`${styles.menu} ${opensUp ? styles.menuAbove : ''}`}
+            aria-labelledby={id ? `${id}-label` : undefined}
+          >
             {options.map((option) => (
               <button
                 key={option.value}

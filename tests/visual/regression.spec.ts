@@ -33,7 +33,7 @@ test.describe('Zakamurai Visual Regression', () => {
 
     // Close it
     await getToggle().click();
-    await page.waitForTimeout(400);
+    await page.waitForTimeout(1000);
     await page.addStyleTag({
       content: '* { animation: none !important; transition: none !important; }',
     });
@@ -88,6 +88,7 @@ test.describe('Zakamurai Visual Regression', () => {
     await expect(page.getByTestId('preview-tab').filter({ visible: true })).toBeVisible({
       timeout: 120000,
     });
+    await page.waitForTimeout(2000);
     await page.getByTestId('logs-tab').filter({ visible: true }).click();
     await expect(page.locator('[class*="processing"]')).toHaveCount(0, { timeout: 30000 });
 

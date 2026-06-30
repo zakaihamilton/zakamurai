@@ -39,10 +39,10 @@ test.describe('Zakamurai Basic Tests', () => {
     await expect(page.getByText('Logs', { exact: true })).toBeVisible({ timeout: 10000 });
   });
 
-  test('should interact with the AI prompt', async ({ page }) => {
-    const textarea = page.getByPlaceholder('Enter the AI prompt here...');
+  test('should interact with the Agent', async ({ page }) => {
+    const textarea = page.getByPlaceholder('Tell the Agent what to do...');
 
-    // In the screenshot, AI Prompt is already open
+    // In the screenshot, Agent is already open
     await expect(textarea).toBeVisible({ timeout: 10000 });
     await textarea.fill('Hello AI, help me code!');
     await expect(textarea).toHaveValue('Hello AI, help me code!');
