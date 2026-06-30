@@ -57,6 +57,8 @@ function EditorAreaInner({ file, fsHandle }) {
   const { fs } = appState;
   const state = EditorState.useState();
   const filePath = file?.path?.join('/') || file?.name;
+  const hasDiff = !!state.pendingDiffs?.[filePath];
+  const diffData = state.pendingDiffs?.[filePath];
   const fallbackContent = getTemplateContents()[filePath] ?? file?.content ?? '';
 
   const editorAreaUiState = EditorAreaUiState.useState(null, {
@@ -85,6 +87,7 @@ function EditorAreaInner({ file, fsHandle }) {
   const isReadOnly = state.isReadOnly ?? Settings.getEditorReadOnly(false);
   const [isCommandPressed, setIsCommandPressed] = useState(() => commandKeyPressed);
   const navigationLinksEnabled = isReadOnly || isCommandPressed;
+  const reviewNavigationLinksEnabled = hasDiff ? false : navigationLinksEnabled;
 
   const setEditorAreaValue = useCallback(
     (key, nextValue) => {
@@ -166,9 +169,9 @@ function EditorAreaInner({ file, fsHandle }) {
     });
 
   const linesCount = useMemo(() => countLines(localContent), [localContent]);
-  const editorContent = visibleFoldedContent.content;
-  const editorLineItems = visibleFoldedContent.lineItems;
-  const hasCollapsedFolds = visibleFoldedContent.hasCollapsedFolds;
+  const editorContent = hasDiff ? localContent : visibleFoldedContent.content;
+  const editorLineItems = hasDiff ? null : visibleFoldedContent.lineItems;
+  const hasCollapsedFolds = hasDiff ? false : visibleFoldedContent.hasCollapsedFolds;
 
   const handleChange = (e) => {
     const newVal = hasCollapsedFolds
@@ -200,8 +203,6 @@ function EditorAreaInner({ file, fsHandle }) {
   const scrollContainerRef = useRef(null);
   const shouldScrollRef = useRef(null);
 
-  const hasDiff = !!state.pendingDiffs?.[filePath];
-  const diffData = state.pendingDiffs?.[filePath];
   const selectedLines = state.selectedLines?.[filePath] || [];
   const cursorPos = state.cursorPos?.[filePath];
   const aiCompletionEnabled = state.aiCompletionEnabled === true;
@@ -361,7 +362,7 @@ function EditorAreaInner({ file, fsHandle }) {
     matchIndex,
     suggestion,
     cursorPos,
-    navigationLinksEnabled,
+    navigationLinksEnabled: reviewNavigationLinksEnabled,
     diffData,
   });
 
@@ -425,7 +426,7 @@ function EditorAreaInner({ file, fsHandle }) {
           styles={styles}
           diffData={diffData}
           isReadOnly={isReadOnly}
-          navigationLinksEnabled={navigationLinksEnabled}
+          navigationLinksEnabled={reviewNavigationLinksEnabled}
           filePath={filePath}
           handleNavigateToAssociated={handleNavigateToAssociated}
           fileContents={state.fileContents}
@@ -474,7 +475,7 @@ function EditorAreaInner({ file, fsHandle }) {
           isCompleting={loading}
           filePath={filePath}
           isReadOnly={isReadOnly}
-          navigationLinksEnabled={navigationLinksEnabled}
+          navigationLinksEnabled={reviewNavigationLinksEnabled}
           handleNavigateToAssociated={handleNavigateToAssociated}
           fileContents={state.fileContents}
           handleJumpToTarget={handleJumpToTarget}

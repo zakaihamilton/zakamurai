@@ -104,11 +104,16 @@ export function computeDiff(original, updated, selectedLines = []) {
   const resultDiffs = allDiffs.map((d) => {
     let offset = 0;
     for (let k = 0; k < d.updStart; k++) offset += (updatedLines[k]?.length || 0) + 1;
+    let origOffset = 0;
+    for (let k = 0; k < d.origStart; k++) origOffset += (originalLines[k]?.length || 0) + 1;
     return {
       start: offset,
       end: offset + d.updated.length,
+      origStart: origOffset,
+      origEnd: origOffset + d.original.length,
       type: 'replacement',
       original: d.original,
+      updated: d.updated,
     };
   });
 

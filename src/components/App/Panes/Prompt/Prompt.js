@@ -53,9 +53,9 @@ export default function Prompt() {
   const promptState = PromptState.useState();
   const { promptWidth } = promptState;
   const promptUiState = PromptUiState.useState(null, {
-    val: '',
+    val: Settings.getPromptDraft(),
     historyIndex: -1,
-    draftVal: '',
+    draftVal: Settings.getPromptDraft(),
     isReasoningVisible: true,
     selectedModel: getInitialSelectedModel(),
     isModelManagerOpen: false,
@@ -221,6 +221,11 @@ export default function Prompt() {
           sidebarState,
           editorState,
           tabState,
+          Object.fromEntries(
+            supportedChanges
+              .filter(({ before }) => typeof before === 'string')
+              .map(({ path, before }) => [path, before]),
+          ),
         );
         if (deleted.length > 0) {
           logState((draft) => {
@@ -316,6 +321,11 @@ export default function Prompt() {
   }));
 
   const isOpen = isMobile ? sidebarState.isAIInputPopupOpen : showAIInput;
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => Settings.setPromptDraft(val), 250);
+    return () => window.clearTimeout(timer);
+  }, [val]);
 
   useEffect(() => {
     if (isMobile) return undefined;

@@ -1,3 +1,4 @@
+import { computeDiff } from '@/components/AI/Processor/utils/DiffEngine';
 import { findNavigationTargets } from '@/utils/navigation';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { getHighlightBreakdown, highlightCode } from './highlighter';
@@ -167,6 +168,74 @@ describe('highlighter', () => {
     const result2 = highlightCode('const x = 20;', 'test.js', state, styles, false, '', -1, '');
 
     expect(result1).not.toBe(result2);
+  });
+
+  it('highlights appended JSX list items when navigation markers are present', () => {
+    const original = [
+      'import styles from "./styles.css";',
+      '<ul>',
+      '  <li>CSS Module Support</li>',
+      '  <li>Responsive Design</li>',
+      '</ul>',
+    ].join('\n');
+    const updated = [
+      'import styles from "./styles.css";',
+      '<ul>',
+      '  <li>CSS Module Support</li>',
+      '  <li>Responsive Design</li>',
+      '  <li>Accessibility Compliant</li>',
+      '  <li>Cross-Browser Compatible</li>',
+      '  <li>Performance Optimized</li>',
+      '  <li>SEO Friendly</li>',
+      '</ul>',
+    ].join('\n');
+    const diffs = computeDiff(original, updated).diffs;
+    vi.mocked(findNavigationTargets).mockReturnValue([
+      { start: 20, end: 34, type: 'import', name: './styles.css', targets: [] },
+    ]);
+    const state = {
+      fileContents: { 'src/Card.jsx': updated },
+      pendingDiffs: { 'src/Card.jsx': { originalContent: original, diffs } },
+    };
+
+    const result = highlightCode(
+      updated,
+      'src/Card.jsx',
+      state,
+      { ...styles, diffHighlight: 'diffHighlight' },
+      false,
+      '',
+      -1,
+      undefined,
+      undefined,
+      true,
+    );
+
+    expect(result.match(/class="diffHighlight"/g)).toHaveLength(4);
+    expect(result.indexOf('Accessibility Compliant')).toBeGreaterThan(
+      result.indexOf('diffHighlight'),
+    );
+    expect(result.lastIndexOf('diffHighlight')).toBeLessThan(result.indexOf('SEO Friendly'));
+    expect(result.indexOf('diffHighlight')).toBeGreaterThan(result.indexOf('Responsive Design'));
+  });
+
+  it('does not render multiline tooltip content as duplicate code lines', () => {
+    const original = ['const old = 1;', 'const second = 2;', 'const third = 3;'].join('\n');
+    const updated = ['const replacement = 4;', 'const finalValue = 5;'].join('\n');
+    const state = {
+      pendingDiffs: {
+        'src/file.js': { originalContent: original, diffs: computeDiff(original, updated).diffs },
+      },
+    };
+
+    const result = highlightCode(updated, 'src/file.js', state, {
+      ...styles,
+      diffHighlight: 'diffHighlight',
+      lineRow: 'lineRow',
+    });
+
+    expect(result.match(/data-line=/g)).toHaveLength(2);
+    expect(result).not.toContain('data-original');
   });
 
   it('invalidates cache when filePath changes to a different language', () => {

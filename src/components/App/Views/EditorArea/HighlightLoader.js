@@ -62,6 +62,7 @@ export default function useHighlightLoader({
       undefined,
       state.cursorPos?.[filePath],
       navigationLinksEnabled,
+      true,
     );
   }, [
     showSideBySide,

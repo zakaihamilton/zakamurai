@@ -5,7 +5,9 @@ const KEYS = {
   ACTIVE_TAB_ID: 'zakamurai_active_tab_id',
   LAST_CODE_TAB_ID: 'zakamurai_last_code_tab_id',
   PROMPT_HISTORY: 'zakamurai_prompt_history',
+  PROMPT_DRAFT: 'zakamurai_prompt_draft',
   FILE_CONTENTS: 'zakamurai_file_contents',
+  PENDING_DIFFS: 'zakamurai_pending_diffs',
   AI_LOGS: 'zakamurai_ai_logs',
   PREVIEW_HTML: 'zakamurai_preview_html',
   SIDEBAR_WIDTH: 'zakamurai_sidebar_width',
@@ -130,6 +132,14 @@ const Settings = {
     this.set(KEYS.PROMPT_HISTORY, JSON.stringify(newHistory));
   },
 
+  getPromptDraft(defaultValue = '') {
+    return this.get(KEYS.PROMPT_DRAFT, defaultValue);
+  },
+
+  setPromptDraft(prompt) {
+    this.set(KEYS.PROMPT_DRAFT, prompt || null);
+  },
+
   getAILogs() {
     const val = this.get(KEYS.AI_LOGS);
     if (!val) return [];
@@ -165,6 +175,42 @@ const Settings = {
       this.set(KEYS.FILE_CONTENTS, JSON.stringify(contents));
     } catch (e) {
       console.warn('Failed to save file contents to localStorage (likely size limit)', e);
+    }
+  },
+
+  getPendingDiffs() {
+    const val = this.get(KEYS.PENDING_DIFFS);
+    if (!val) return {};
+    try {
+      const parsed = JSON.parse(val);
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {};
+      return Object.fromEntries(
+        Object.entries(parsed).filter(([, diff]) => {
+          if (!diff || typeof diff !== 'object' || typeof diff.originalContent !== 'string') {
+            return false;
+          }
+          if (typeof diff.modifiedContent !== 'string' || !Array.isArray(diff.diffs)) return false;
+          return diff.diffs.every(
+            (range) =>
+              range &&
+              Number.isFinite(range.start) &&
+              Number.isFinite(range.end) &&
+              Number.isFinite(range.origStart) &&
+              Number.isFinite(range.origEnd),
+          );
+        }),
+      );
+    } catch (e) {
+      console.error('Failed to parse pending diffs from localStorage', e);
+      return {};
+    }
+  },
+
+  setPendingDiffs(diffs) {
+    try {
+      this.set(KEYS.PENDING_DIFFS, Object.keys(diffs || {}).length ? JSON.stringify(diffs) : null);
+    } catch (e) {
+      console.warn('Failed to save pending diffs to localStorage (likely size limit)', e);
     }
   },
 

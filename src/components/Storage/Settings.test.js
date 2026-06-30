@@ -43,6 +43,35 @@ describe('Settings', () => {
     expect(history).toEqual(['hello', 'world']);
   });
 
+  it('gets, sets, and clears the prompt draft', () => {
+    expect(Settings.getPromptDraft()).toBe('');
+    Settings.setPromptDraft('unfinished request');
+    expect(Settings.getPromptDraft()).toBe('unfinished request');
+    Settings.setPromptDraft('');
+    expect(Settings.getPromptDraft()).toBe('');
+  });
+
+  it('gets and sets validated pending diffs', () => {
+    const pendingDiffs = {
+      'src/App.js': {
+        originalContent: 'old',
+        modifiedContent: 'new',
+        diffs: [{ start: 0, end: 3, origStart: 0, origEnd: 3, original: 'old', updated: 'new' }],
+      },
+    };
+    Settings.setPendingDiffs(pendingDiffs);
+    expect(Settings.getPendingDiffs()).toEqual(pendingDiffs);
+    Settings.setPendingDiffs({});
+    expect(Settings.getPendingDiffs()).toEqual({});
+  });
+
+  it('ignores malformed pending diff state', () => {
+    localStorage.setItem('zakamurai_pending_diffs', '{bad json');
+    expect(Settings.getPendingDiffs()).toEqual({});
+    localStorage.setItem('zakamurai_pending_diffs', JSON.stringify({ bad: { diffs: [] } }));
+    expect(Settings.getPendingDiffs()).toEqual({});
+  });
+
   it('gets and sets sidebar width', () => {
     expect(Settings.getSidebarWidth(260)).toBe(260);
     Settings.setSidebarWidth(300);

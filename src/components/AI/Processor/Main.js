@@ -42,6 +42,7 @@ export const processAIResponse = async (
   sidebarState,
   editorState,
   tabState,
+  originalContents = {},
 ) => {
   if (!webLLMResult) return 0;
 
@@ -61,13 +62,18 @@ export const processAIResponse = async (
     const filePath = resolveFilePath(block.filePath, existingPaths);
 
     try {
-      let originalContent = '';
-      if (fs?.rootHandle) {
+      const suppliedOriginal = originalContents[filePath];
+      let originalContent = typeof suppliedOriginal === 'string' ? suppliedOriginal : '';
+      if (typeof suppliedOriginal !== 'string' && fs?.rootHandle) {
         const handle = await fs.getFileHandleAtPath(filePath);
         if (handle) {
           originalContent = await fs.readFile(handle);
         }
-      } else if (editorState && typeof editorState.useState !== 'function') {
+      } else if (
+        typeof suppliedOriginal !== 'string' &&
+        editorState &&
+        typeof editorState.useState !== 'function'
+      ) {
         originalContent = editorState.fileContents?.[filePath] || '';
       }
 
@@ -131,11 +137,19 @@ export const processAIResponse = async (
             const existingOriginal = existingDiffs[filePath]?.originalContent;
             const existingCursor = existingDiffs[filePath]?.originalCursorPos;
             const currentCursor = editorState.cursorPos?.[filePath];
+            const reviewOriginal =
+              typeof suppliedOriginal === 'string'
+                ? suppliedOriginal
+                : existingOriginal !== undefined
+                  ? existingOriginal
+                  : originalContent;
+            const reviewDiffs = computeDiff(reviewOriginal, finalContent).diffs;
 
             setInDraft(draft, ['pendingDiffs', filePath], {
-              originalContent: existingOriginal !== undefined ? existingOriginal : originalContent,
+              originalContent: reviewOriginal,
+              modifiedContent: finalContent,
               originalCursorPos: existingCursor !== undefined ? existingCursor : currentCursor,
-              diffs: finalDiffs,
+              diffs: reviewDiffs,
             });
           }
         });

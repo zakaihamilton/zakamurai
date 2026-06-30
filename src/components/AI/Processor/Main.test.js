@@ -103,5 +103,86 @@ modified content
 
       expect(result).toBe(0);
     });
+
+    test('recomputes accumulated diff ranges against the first review baseline', async () => {
+      const state = {
+        fileContents: { 'test.js': 'one\ntwo\nthree' },
+        pendingDiffs: {
+          'test.js': {
+            originalContent: 'one\nthree',
+            modifiedContent: 'one\ntwo\nthree',
+            diffs: [],
+          },
+        },
+      };
+      const editorState = Object.assign(
+        vi.fn((update) => {
+          update(state);
+          return state;
+        }),
+        state,
+      );
+      const fs = {
+        rootHandle: {},
+        getFileHandleAtPath: vi.fn().mockResolvedValue({}),
+        readFile: vi.fn().mockResolvedValue('one\ntwo\nthree'),
+      };
+      const response = `// --- File: test.js ---
+one
+two
+three
+four
+// --- End File ---`;
+
+      expect(
+        await processAIResponse(
+          response,
+          fs,
+          mockLogState,
+          mockSidebarState,
+          editorState,
+          mockTabState,
+        ),
+      ).toBe(1);
+
+      const pending = state.pendingDiffs['test.js'];
+      expect(pending.originalContent).toBe('one\nthree');
+      expect(pending.modifiedContent).toBe('one\ntwo\nthree\nfour');
+      expect(pending.diffs.map(({ original, updated }) => ({ original, updated }))).toEqual([
+        { original: '', updated: 'two' },
+        { original: '', updated: 'four' },
+      ]);
+    });
+
+    test('uses the agent before snapshot as the authoritative original', async () => {
+      const state = { fileContents: { 'test.js': 'mutable editor state' }, pendingDiffs: {} };
+      const editorState = Object.assign(
+        vi.fn((update) => {
+          update(state);
+          return state;
+        }),
+        state,
+      );
+      const response = `// --- File: test.js ---
+original
+added
+// --- End File ---`;
+
+      await processAIResponse(
+        response,
+        mockFS,
+        mockLogState,
+        mockSidebarState,
+        editorState,
+        mockTabState,
+        { 'test.js': 'original' },
+      );
+
+      expect(state.pendingDiffs['test.js'].originalContent).toBe('original');
+      expect(state.pendingDiffs['test.js'].diffs).toEqual(
+        expect.arrayContaining([expect.objectContaining({ original: '', updated: 'added' })]),
+      );
+      expect(mockFS.readFile).not.toHaveBeenCalled();
+    });
   });
 });

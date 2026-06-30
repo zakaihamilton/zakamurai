@@ -444,42 +444,23 @@
   border-bottom: 2px solid rgb(76 175 80 / 50%);
   border-radius: 2px;
   display: inline;
-  position: relative;
-  cursor: help;
 }
 
-.diffHighlight:hover::after {
-  content: "Original: " attr(data-original);
-  position: absolute;
-  bottom: 100%;
-  left: 50%;
-  transform: translateX(-50%);
-  background: #333;
-  color: white;
-  padding: 6px 10px;
-  border-radius: 6px;
-  font-size: 12px;
-  white-space: pre;
-  z-index: 1000;
-  pointer-events: none;
-  box-shadow: 0 4px 12px rgb(0 0 0 / 30%);
-  margin-bottom: 8px;
-  border: 1px solid rgb(255 255 255 / 10%);
-  max-width: 400px;
-  overflow: hidden;
-  text-overflow: ellipsis;
+.diffHighlight:empty {
+  display: inline-block;
+  width: 8px;
+  height: 1.2em;
+  background: rgb(244 67 54 / 40%) !important;
+  border-bottom: 2px solid rgb(244 67 54 / 80%) !important;
+  vertical-align: middle;
+  margin: 0 1px;
 }
 
-.diffHighlight:hover::before {
-  content: "";
-  position: absolute;
-  bottom: 100%;
-  left: 50%;
-  transform: translateX(-50%);
-  border: 6px solid transparent;
-  border-top-color: #333;
-  margin-bottom: -4px;
-  z-index: 1000;
+.diffDeleteHighlight {
+  background: rgb(244 67 54 / 25%);
+  border-bottom: 2px solid rgb(244 67 54 / 50%);
+  border-radius: 2px;
+  display: inline;
 }
 
 .findBar {
@@ -576,7 +557,7 @@
 }
 
 .paneHeader {
-  padding: 8px 24px;
+  padding: 8px 16px;
   background: var(--bg-hover);
   border-bottom: 1px solid var(--border);
   font-size: 10px;
@@ -586,7 +567,31 @@
   letter-spacing: 0.1em;
   display: flex;
   align-items: center;
+  justify-content: space-between;
+}
+
+.paneHeaderTitle {
+  display: flex;
+  align-items: center;
   gap: 8px;
+}
+
+.copyPaneBtn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.copyPaneBtn:hover {
+  background: var(--bg-card);
+  color: var(--text-main);
 }
 
 .sideBySideScroll {

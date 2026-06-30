@@ -56,6 +56,8 @@ export function resetNewProjectState({
     draft.htmlContent = null;
   });
   Settings.setFileContents(initialContents);
+  Settings.setPendingDiffs({});
+  Settings.setPromptDraft('');
 }
 
 export default function TopBar() {

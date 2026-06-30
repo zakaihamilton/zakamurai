@@ -1,5 +1,6 @@
 'use client';
 
+import { computeDiff } from '@/components/AI/Processor/utils/DiffEngine';
 import { useFileSystem } from '@/components/Storage';
 import {
   DEFAULT_CONTENTS,
@@ -35,14 +36,29 @@ export default function App() {
     const isScratch = template === 'scratch';
     const defaultFiles = isScratch ? SCRATCH_FILES : DEFAULT_FILES;
     const defaultContents = isScratch ? SCRATCH_CONTENTS : DEFAULT_CONTENTS;
+    const storedContents = Settings.getFileContents();
+    const pendingDiffs = Object.fromEntries(
+      Object.entries(Settings.getPendingDiffs()).map(([path, diff]) => [
+        path,
+        {
+          ...diff,
+          diffs: computeDiff(diff.originalContent, diff.modifiedContent).diffs,
+        },
+      ]),
+    );
+    const restoredContents = {
+      ...(storedContents && Object.keys(storedContents).length > 0
+        ? storedContents
+        : defaultContents),
+      ...Object.fromEntries(
+        Object.entries(pendingDiffs).map(([path, diff]) => [path, diff.modifiedContent]),
+      ),
+    };
 
     return {
       projectName: Settings.getProjectName(),
       files: defaultFiles,
-      contents: (() => {
-        const stored = Settings.getFileContents();
-        return stored && Object.keys(stored).length > 0 ? stored : defaultContents;
-      })(),
+      contents: restoredContents,
       theme: Settings.getTheme(),
       tabs: Settings.getOpenTabs() || [],
       activeTabId: Settings.getActiveTabId() || null,
@@ -53,6 +69,7 @@ export default function App() {
       showAIInput: Settings.getShowAIInput(),
       expandedFolders: Settings.getExpandedFolders(),
       aiCompletionEnabled: Settings.getAICompletionEnabled(),
+      pendingDiffs,
     };
   }, []);
 
@@ -95,6 +112,7 @@ export default function App() {
       stack: [],
       currentIndex: -1,
     },
+    pendingDiffs: initialValues.pendingDiffs,
   });
 
   const promptState = PromptState.useState(null, {

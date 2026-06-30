@@ -117,6 +117,7 @@ const buildCacheKey = ({
   suggestion,
   cursorPos,
   navigationLinksEnabled,
+  isOriginal = false,
 }) =>
   JSON.stringify([
     code,
@@ -129,6 +130,7 @@ const buildCacheKey = ({
     suggestion,
     cursorPos?.index,
     navigationLinksEnabled,
+    isOriginal,
     navigationLinksEnabled
       ? Object.entries(state?.fileContents || {})
           .map(([k, v]) => `${k}:${v?.length || 0}`)
@@ -147,6 +149,7 @@ const createHighlightAnalysis = ({
   suggestion,
   cursorPos,
   navigationLinksEnabled = false,
+  isOriginal = false,
 }) => {
   const jsonPath = isJsonPath(filePath);
   const languageMode = jsonPath ? 'json' : filePath?.endsWith('.css') ? 'css' : 'javascript';
@@ -190,9 +193,14 @@ const createHighlightAnalysis = ({
   const fileDiff = state.pendingDiffs?.[filePath];
   const diffs = fileDiff?.diffs || [];
   const selectedLines = state.selectedLines?.[filePath] || [];
-  const sortedDiffs = [...diffs].sort((a, b) => b.start - a.start);
+  const sortedDiffs = [...diffs].sort((a, b) => {
+    const startA = isOriginal ? (a.origStart ?? a.start) : a.start;
+    const startB = isOriginal ? (b.origStart ?? b.start) : b.start;
+    return startB - startA;
+  });
 
-  let escaped = code;
+  const END_OF_SOURCE = '\u0008';
+  let escaped = `${code}${END_OF_SOURCE}`;
 
   // Track index mapping
   const mapIndex = new Int32Array(code.length + 1);
@@ -204,6 +212,22 @@ const createHighlightAnalysis = ({
       mapIndex[i] += amount;
     }
   };
+
+  // Insert diff markers before navigation markers. Diff offsets are source offsets;
+  // inserting navigation markers first made the mapping drift in JSX with many links.
+  for (let i = 0; i < sortedDiffs.length; i++) {
+    const diff = sortedDiffs[i];
+    const finalStart = isOriginal ? (diff.origStart ?? diff.start) : diff.start;
+    const finalEnd = isOriginal ? (diff.origEnd ?? diff.end) : diff.end;
+    const endMapped = mapIndex[finalEnd];
+    escaped = `${escaped.substring(0, endMapped)}\u0004${escaped.substring(endMapped)}`;
+    shiftIndices(finalEnd, 1);
+
+    const startMarker = `\u0003${i}\u0003`;
+    const startMapped = mapIndex[finalStart];
+    escaped = `${escaped.substring(0, startMapped)}${startMarker}${escaped.substring(startMapped)}`;
+    shiftIndices(finalStart, startMarker.length);
+  }
 
   // 1. Insert target markers when navigation links are enabled
   let targets = [];
@@ -242,19 +266,6 @@ const createHighlightAnalysis = ({
     const idx = cursorPos.index;
     const mappedIdx = mapIndex[idx];
     escaped = `${escaped.substring(0, mappedIdx)}\u0005${escaped.substring(mappedIdx)}`;
-  }
-
-  // 3. Insert diff markers
-  for (let i = 0; i < sortedDiffs.length; i++) {
-    const diff = sortedDiffs[i];
-    const startMapped =
-      mapIndex[diff.start] + (hasSuggestion && diff.start >= cursorPos.index ? 1 : 0);
-    const endMapped = mapIndex[diff.end] + (hasSuggestion && diff.end >= cursorPos.index ? 1 : 0);
-
-    escaped = `${escaped.substring(0, startMapped)}\u0003${i}\u0003${escaped.substring(
-      startMapped,
-      endMapped,
-    )}\u0004${escaped.substring(endMapped)}`;
   }
 
   escaped = escapeHtml(escaped);
@@ -595,19 +606,13 @@ const createHighlightAnalysis = ({
 
   debug.search.matchCount = matchCounter;
 
-  // Replace diff markers with spans including original content
-  // biome-ignore lint/suspicious/noControlCharactersInRegex: markers are intentional for tracking
-  escaped = escaped.replace(/\u0003(\d+)\u0003/g, (_m, idx) => {
-    const diff = sortedDiffs[Number(idx)];
-    const original = (diff.original || '')
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;');
-    return `<span class="${styles.diffHighlight}" data-original="${original || 'Added'}">`;
-  });
-  // biome-ignore lint/suspicious/noControlCharactersInRegex: markers are intentional for tracking
-  escaped = escaped.replace(/\u0004/g, '</span>');
+  const openDiffSpan = (idx) => {
+    void idx;
+    if (isOriginal) {
+      return `<span class="${styles.diffDeleteHighlight || 'diffDeleteHighlight'}">`;
+    }
+    return `<span class="${styles.diffHighlight}">`;
+  };
 
   escaped = escaped.replace(
     // biome-ignore lint/suspicious/noControlCharactersInRegex: markers are intentional
@@ -616,6 +621,9 @@ const createHighlightAnalysis = ({
       suggestion ? `<span class="${styles.tabHint}">Press <kbd>Tab</kbd></span>` : ''
     }</span>`,
   );
+
+  const endOfSourceIndex = escaped.indexOf(END_OF_SOURCE);
+  if (endOfSourceIndex !== -1) escaped = escaped.slice(0, endOfSourceIndex);
 
   // Replace navigation target markers with styled links
   // biome-ignore lint/suspicious/noControlCharactersInRegex: markers are intentional for tracking
@@ -627,8 +635,21 @@ const createHighlightAnalysis = ({
   escaped = escaped.replace(/\u0007/g, '</span>');
 
   // Add line selection backgrounds
-  const linesArr = escaped.split('\n');
-  const finalLines = linesArr.map((line, i) => {
+  const linesArr = escaped.split('\n').slice(0, countLines(code));
+  let activeDiff = null;
+  const finalLines = linesArr.map((rawLine, i) => {
+    let line = activeDiff === null ? rawLine : `${openDiffSpan(activeDiff)}${rawLine}`;
+    // biome-ignore lint/suspicious/noControlCharactersInRegex: markers are intentional for tracking
+    line = line.replace(/\u0003(\d+)\u0003/g, (_marker, idx) => {
+      activeDiff = Number(idx);
+      return openDiffSpan(activeDiff);
+    });
+    // biome-ignore lint/suspicious/noControlCharactersInRegex: markers are intentional for tracking
+    line = line.replace(/\u0004/g, () => {
+      activeDiff = null;
+      return '</span>';
+    });
+    if (activeDiff !== null) line += '</span>';
     const isSelected = selectedLines.includes(i + 1);
     const lineClass = isSelected ? styles.selectedLineRow : '';
     return `<span class="${styles.lineRow || 'lineRow'} ${lineClass}" data-line="${i + 1}" style="display: block;">${line || ' '}</span>`;
@@ -648,6 +669,7 @@ export const getHighlightBreakdown = ({
   suggestion,
   cursorPos,
   navigationLinksEnabled = false,
+  isOriginal = false,
 }) =>
   createHighlightAnalysis({
     code,
@@ -660,6 +682,7 @@ export const getHighlightBreakdown = ({
     suggestion,
     cursorPos,
     navigationLinksEnabled,
+    isOriginal,
   }).debug;
 
 export const highlightCode = (
@@ -673,6 +696,7 @@ export const highlightCode = (
   suggestion,
   cursorPos,
   navigationLinksEnabled,
+  isOriginal = false,
 ) => {
   if (!code) return '';
   if (code.length > MAX_HIGHLIGHT_CHARS) return escapeHtml(code);
@@ -687,6 +711,7 @@ export const highlightCode = (
     suggestion,
     cursorPos,
     navigationLinksEnabled,
+    isOriginal,
   });
 
   if (highlightCache.has(cacheKey)) {
@@ -704,6 +729,7 @@ export const highlightCode = (
     suggestion,
     cursorPos,
     navigationLinksEnabled,
+    isOriginal,
   }).html;
 
   // Store in cache

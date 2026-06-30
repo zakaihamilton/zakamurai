@@ -251,8 +251,8 @@ export default function CodeEditor({
         readOnly={readOnly || isReadOnly}
         spellCheck="false"
         wrap="off"
-        className={`${styles.textarea} ${isReadOnly ? styles.readOnlyTextarea : ''} ${
-          !isReadOnly && navigationLinksEnabled ? styles.navigationLinksTextarea : ''
+        className={`${styles.textarea} ${isReadOnly || readOnly ? styles.readOnlyTextarea : ''} ${
+          !isReadOnly && !readOnly && navigationLinksEnabled ? styles.navigationLinksTextarea : ''
         }`}
       />
 
@@ -260,7 +260,7 @@ export default function CodeEditor({
       <pre
         ref={preRef}
         aria-hidden="true"
-        className={`${styles.pre} ${isReadOnly || navigationLinksEnabled ? styles.readOnlyPre : ''}`}
+        className={`${styles.pre} ${isReadOnly || readOnly || navigationLinksEnabled ? styles.readOnlyPre : ''}`}
         onClick={handlePreClick}
         // biome-ignore lint/security/noDangerouslySetInnerHtml: used for code syntax highlighting
         dangerouslySetInnerHTML={{

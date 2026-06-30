@@ -12,15 +12,16 @@ export function useContentSaver() {
       const currentContents = state.fileContents;
       const currentDiffs = state.pendingDiffs;
 
-      const contentsToSave = { ...currentContents };
-      if (currentDiffs) {
-        for (const [path, diff] of Object.entries(currentDiffs)) {
-          if (diff.originalContent !== undefined) {
-            contentsToSave[path] = diff.originalContent;
-          }
-        }
+      const diffsToSave = {};
+      for (const [path, diff] of Object.entries(currentDiffs || {})) {
+        if (typeof diff?.originalContent !== 'string' || !Array.isArray(diff?.diffs)) continue;
+        diffsToSave[path] = {
+          ...diff,
+          modifiedContent: currentContents?.[path] ?? diff.modifiedContent ?? '',
+        };
       }
-      Settings.setFileContents(contentsToSave);
+      Settings.setFileContents({ ...currentContents });
+      Settings.setPendingDiffs(diffsToSave);
     };
 
     const timer = setTimeout(saveContents, 1000);
