@@ -409,6 +409,7 @@ export function findNavigationTargets(code, isCss, fileContents, filePath) {
           targets.push({
             type: 'style',
             className,
+            name: className,
             start,
             end,
             targets: referencing,
@@ -524,6 +525,7 @@ export function findNavigationTargets(code, isCss, fileContents, filePath) {
                 targets.push({
                   type: 'style',
                   className,
+                  name: className,
                   start,
                   end,
                   resolvedPath,
@@ -557,6 +559,7 @@ export function findNavigationTargets(code, isCss, fileContents, filePath) {
             targets.push({
               type: 'style',
               className,
+              name: className,
               start,
               end,
               resolvedPath,
@@ -584,6 +587,7 @@ export function findNavigationTargets(code, isCss, fileContents, filePath) {
             targets.push({
               type: 'style',
               className,
+              name: className,
               start,
               end,
               resolvedPath,

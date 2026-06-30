@@ -10,10 +10,10 @@ export default function TokenNavigationSection({ navigationTargets, navigationLi
       {navigationTargets.length > 0 ? (
         <ul className={styles.detailList}>
           {navigationTargets.map((target, index) => (
-            <li key={`${target.start}-${target.end}-${target.name || index}`}>
+            <li key={`${target.start}-${target.end}-${target.name || target.className || index}`}>
               <code>{target.type || 'target'}</code>
               <span>
-                {target.name || target.text || 'unnamed'} at {target.position?.line || '-'}:
+                {target.name || target.className || target.text || 'unnamed'} at {target.position?.line || '-'}:
                 {target.position?.column || '-'}
               </span>
             </li>
