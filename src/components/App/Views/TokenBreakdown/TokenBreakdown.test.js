@@ -20,6 +20,8 @@ vi.mock('@/components/ui/Icons', () => ({
     Search: () => <span data-testid="icon-search" />,
     Info: () => <span data-testid="icon-info" />,
     Close: () => <span data-testid="icon-close" />,
+    AIPrompt: () => <span data-testid="icon-aiprompt" />,
+    Brain: () => <span data-testid="icon-brain" />,
   },
 }));
 
@@ -205,5 +207,48 @@ describe('TokenBreakdown', () => {
     // Click "All Types" pill to clear type filter (though it's default)
     const allPill = screen.getByRole('button', { name: /All Types/i });
     expect(allPill).toBeDefined();
+  });
+
+  it('renders and allows copying combined file and token breakdown in development mode', async () => {
+    const originalNodeEnv = process.env.NODE_ENV;
+    process.env.NODE_ENV = 'development';
+
+    const writeText = vi.fn(async () => {});
+    Object.assign(navigator, { clipboard: { writeText } });
+
+    vi.spyOn(EditorState, 'useState').mockReturnValue({
+      fileContents: {
+        'src/test.js': 'export const answer = 42;',
+      },
+      selectedLines: {},
+      pendingDiffs: {},
+    });
+
+    render(
+      <TokenBreakdown
+        tab={{
+          id: 'token-breakdown:src/test.js',
+          sourceFilePath: 'src/test.js',
+          collapsedFoldIds: [],
+        }}
+      />,
+    );
+
+    const combinedBtn = screen.getByRole('button', { name: /Copy troubleshooting prompt/i });
+    expect(combinedBtn).toBeDefined();
+
+    fireEvent.click(combinedBtn);
+    expect(writeText).toHaveBeenCalled();
+
+    const rawCopiedText = writeText.mock.calls[0][0];
+    expect(rawCopiedText).toContain("Explain why the tokens in the token breakdown do not match the source file. Here is the source file:");
+    expect(rawCopiedText).toContain("export const answer = 42;");
+    expect(rawCopiedText).toContain("Here is the token breakdown:");
+
+    const jsonPart = rawCopiedText.substring(rawCopiedText.indexOf('{'));
+    const copiedBreakdown = JSON.parse(jsonPart);
+    expect(copiedBreakdown.filePath).toBe('src/test.js');
+
+    process.env.NODE_ENV = originalNodeEnv;
   });
 });

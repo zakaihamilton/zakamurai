@@ -64,6 +64,7 @@ export default function TokenBreakdown({ tab }) {
   const editorState = EditorState.useState();
   const tabState = TabState.useState();
   const [copied, setCopied] = useState(false);
+  const [copiedCombined, setCopiedCombined] = useState(false);
   const [activeSection, setActiveSection] = useState('tokens');
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState('All');
@@ -153,6 +154,21 @@ export default function TokenBreakdown({ tab }) {
     }
   };
 
+  const handleCopyCombined = async () => {
+    const text = `Explain why the tokens in the token breakdown do not match the source file. Here is the source file:
+
+${code}
+
+Here is the token breakdown:
+
+${JSON.stringify(conciseReport, null, 2)}`;
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text);
+      setCopiedCombined(true);
+      window.setTimeout(() => setCopiedCombined(false), 1200);
+    }
+  };
+
   const presentTypes = useMemo(() => {
     const types = new Set(orderedTokens.map((t) => t.type));
     return ['All', ...Array.from(types)];
@@ -197,6 +213,19 @@ export default function TokenBreakdown({ tab }) {
               {copied ? <Icons.Check /> : <Icons.Copy />}
             </button>
           </Tooltip>
+          {process.env.NODE_ENV === 'development' && (
+            <Tooltip content={copiedCombined ? 'Copied!' : 'Copy troubleshooting prompt'}>
+              <button
+                type="button"
+                className={`${editorStyles.actionBtn} ${copiedCombined ? styles.copyButtonCopied : ''}`}
+                onClick={handleCopyCombined}
+                aria-live="polite"
+                aria-label={copiedCombined ? 'Copied!' : 'Copy troubleshooting prompt'}
+              >
+                {copiedCombined ? <Icons.Check /> : <Icons.Brain />}
+              </button>
+            </Tooltip>
+          )}
           {canSwitchFileViews && (
             <FileViewToolbar
               fileName={fileName}

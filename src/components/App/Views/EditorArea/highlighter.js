@@ -444,11 +444,17 @@ const createHighlightAnalysis = ({
   if (filePath?.endsWith('.css')) {
     // Properties
     escaped = escaped.replace(/([a-zA-Z\-]+)(?=\s*:)/g, (m) => pushToken(m, 'hlProp'));
-    // Selectors (basic)
+    // Selectors (basic & comma-separated list support)
     escaped = escaped.replace(
       // biome-ignore lint/suspicious/noControlCharactersInRegex: markers
-      /(^|(?<=\}))(\u0003\d+\u0003|\u0004|\u0005)*([.#a-zA-Z0-9_\-\[\]="':*]+)(?=\s*\{)/gm,
-      (_m, p1, p2, p3) => p1 + (p2 || '') + pushToken(p3, 'hlTag'),
+      /(^|(?<=\}))([^\{\}]+)(?=\s*\{)/g,
+      (selectorList) => {
+        return selectorList.replace(
+          // biome-ignore lint/suspicious/noControlCharactersInRegex: markers
+          /(\x01\d+\x02)|([.#a-zA-Z0-9_\-\[\]="':*]+)/g,
+          (_m, p1, p2) => (p1 ? p1 : pushToken(p2, 'hlTag')),
+        );
+      },
     );
     // Values (after colon, before semicolon)
     escaped = escaped.replace(/(?<=:\s*)([^;\}]+)(?=;|\})/g, (m) => {
@@ -459,9 +465,27 @@ const createHighlightAnalysis = ({
         /(\d+)(px|rem|em|%|vh|vw|ms|s|deg)/g,
         (_m2, p1, p2) => `${pushToken(p1, 'hlNum')}${pushToken(p2, 'hlKw')}`,
       );
+      // Highlight functions (e.g. rgb, rgba, calc, var, etc.)
+      val = val.replace(
+        // biome-ignore lint/suspicious/noControlCharactersInRegex: markers
+        /(\x01\d+\x02)|([a-zA-Z\-]+)(?=\()/g,
+        (_m2, p1, p2) => (p1 ? p1 : pushToken(p2, 'hlFunc')),
+      );
+      // Highlight other numbers (e.g. unitless numbers)
+      val = val.replace(
+        // biome-ignore lint/suspicious/noControlCharactersInRegex: markers
+        /(\x01\d+\x02)|(-?\d+(?:\.\d+)?)/g,
+        (_m2, p1, p2) => (p1 ? p1 : pushToken(p2, 'hlNum')),
+      );
+      // Highlight remaining identifiers/keywords (e.g. solid, red, block, none, etc.)
+      val = val.replace(
+        // biome-ignore lint/suspicious/noControlCharactersInRegex: markers
+        /(\x01\d+\x02)|([a-zA-Z0-9\-]+)/g,
+        (_m2, p1, p2) => (p1 ? p1 : pushToken(p2, 'hlVal')),
+      );
       return val;
     });
-    // Variables
+    // Variables (for any variables outside standard values or fallback handling)
     escaped = escaped.replace(/(var\(--[a-zA-Z0-9\-]+\))/g, (m) => pushToken(m, 'hlFunc'));
   } else if (!jsonPath) {
     // JSX/HTML Tags

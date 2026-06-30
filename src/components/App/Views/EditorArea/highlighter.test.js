@@ -1,5 +1,3 @@
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
 import { findNavigationTargets } from '@/utils/navigation';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { getHighlightBreakdown, highlightCode } from './highlighter';
@@ -28,6 +26,7 @@ describe('highlighter', () => {
     hlTag: 'hlTag',
     hlAttr: 'hlAttr',
     hlProp: 'hlProp',
+    hlVal: 'hlVal',
     hlMatch: 'hlMatch',
     hlMatchActive: 'hlMatchActive',
   };
@@ -230,7 +229,15 @@ describe('highlighter', () => {
 
   it('orders SearchReplaceParser tokens by source position', () => {
     const filePath = 'src/components/AI/Processor/utils/SearchReplaceParser.js';
-    const code = readFileSync(join(process.cwd(), filePath), 'utf8');
+    const code = [
+      "import { someSymbol } from './Parser';",
+      "",
+      "",
+      "",
+      "",
+      "const placeholder = '[exact existing lines]';",
+      "const secondary = 123;",
+    ].join('\n');
     const breakdown = getHighlightBreakdown({
       code,
       filePath,
@@ -278,15 +285,32 @@ describe('highlighter', () => {
   });
 
   it('reports CSS tokens that match rendered highlight classes', () => {
-    const code = '.card { color: #fff; margin: 12px; }';
+    const code = '.card, .btn-primary { color: #fff; margin: 12px; border: 1px solid red; background: rgb(0, 0, 0); }';
     const result = highlightCode(code, 'src/test.css', {}, styles, false, '', -1, '');
     const breakdown = getHighlightBreakdown({ code, filePath: 'src/test.css', state: {}, styles });
 
     expect(result).toContain('class="hlProp"');
     expect(result).toContain('class="hlNum"');
+    expect(result).toContain('class="hlVal"');
+    expect(result).toContain('class="hlFunc"');
     expect(breakdown.languageMode).toBe('css');
     expect(
+      breakdown.tokens.some((token) => token.type === 'hlTag' && token.value === '.card'),
+    ).toBe(true);
+    expect(
+      breakdown.tokens.some((token) => token.type === 'hlTag' && token.value === '.btn-primary'),
+    ).toBe(true);
+    expect(
       breakdown.tokens.some((token) => token.type === 'hlProp' && token.value === 'color'),
+    ).toBe(true);
+    expect(
+      breakdown.tokens.some((token) => token.type === 'hlVal' && token.value === 'solid'),
+    ).toBe(true);
+    expect(
+      breakdown.tokens.some((token) => token.type === 'hlVal' && token.value === 'red'),
+    ).toBe(true);
+    expect(
+      breakdown.tokens.some((token) => token.type === 'hlFunc' && token.value === 'rgb'),
     ).toBe(true);
   });
 
