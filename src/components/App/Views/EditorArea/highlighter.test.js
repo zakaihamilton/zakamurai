@@ -170,6 +170,62 @@ describe('highlighter', () => {
     expect(result1).not.toBe(result2);
   });
 
+  it('does not mark unchanged closing tags as removed on the original pane', () => {
+    const original = [
+      '      <ul className={styles.features}>',
+      '        <li>CSS Module Support</li>',
+      '        <li>Responsive Design</li>',
+      '      </ul>',
+      '    </div>',
+    ].join('\n');
+    const updated = [
+      '      <ul className={styles.features}>',
+      '        <li>CSS Module Support</li>',
+      '        <li>Responsive Design</li>',
+      '        <li>Accessibility Compliant</li>',
+      '        <li>Cross-Browser Compatible</li>',
+      '        <li>Performance Optimized</li>',
+      '        <li>SEO Friendly</li>',
+      '      </ul>',
+      '    </div>',
+    ].join('\n');
+    const diffs = computeDiff(original, updated).diffs;
+    const state = {
+      pendingDiffs: { 'src/AnimatedCard.jsx': { originalContent: original, diffs } },
+    };
+
+    const originalResult = highlightCode(
+      original,
+      'src/AnimatedCard.jsx',
+      state,
+      { ...styles, diffHighlight: 'diffHighlight', diffDeleteHighlight: 'diffDeleteHighlight' },
+      false,
+      '',
+      -1,
+      undefined,
+      undefined,
+      false,
+      true,
+    );
+    const modifiedResult = highlightCode(
+      updated,
+      'src/AnimatedCard.jsx',
+      state,
+      { ...styles, diffHighlight: 'diffHighlight', diffDeleteHighlight: 'diffDeleteHighlight' },
+      false,
+      '',
+      -1,
+      undefined,
+      undefined,
+      false,
+      false,
+    );
+
+    expect(diffs[0]?.original).toBe('');
+    expect(originalResult).not.toContain('diffDeleteHighlight');
+    expect(modifiedResult.match(/class="diffHighlight"/g)).toHaveLength(4);
+  });
+
   it('highlights appended JSX list items when navigation markers are present', () => {
     const original = [
       'import styles from "./styles.css";',

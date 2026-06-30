@@ -217,6 +217,8 @@ const createHighlightAnalysis = ({
   // inserting navigation markers first made the mapping drift in JSX with many links.
   for (let i = 0; i < sortedDiffs.length; i++) {
     const diff = sortedDiffs[i];
+    // Pure insertions have no removed text on the original side.
+    if (isOriginal && !diff.original) continue;
     const finalStart = isOriginal ? (diff.origStart ?? diff.start) : diff.start;
     const finalEnd = isOriginal ? (diff.origEnd ?? diff.end) : diff.end;
     const endMapped = mapIndex[finalEnd];
