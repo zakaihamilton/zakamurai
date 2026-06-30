@@ -5,7 +5,7 @@ export default function TokenJsonSection({ report }) {
     <>
       <div className={styles.sectionHeader}>
         <h3>Raw JSON</h3>
-        <span>full report</span>
+        <span>concise report</span>
       </div>
       <pre className={styles.jsonBlock}>{JSON.stringify(report, null, 2)}</pre>
     </>

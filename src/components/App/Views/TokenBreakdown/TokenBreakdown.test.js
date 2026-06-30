@@ -55,7 +55,7 @@ describe('TokenBreakdown', () => {
     expect(screen.getByText('42')).toBeDefined();
 
     fireEvent.click(screen.getByRole('button', { name: /Raw JSON/i }));
-    expect(screen.getByText('full report')).toBeDefined();
+    expect(screen.getByText('concise report')).toBeDefined();
     expect(screen.getByText(/"languageMode": "javascript"/)).toBeDefined();
   });
 

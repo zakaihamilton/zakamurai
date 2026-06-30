@@ -8,7 +8,7 @@ describe('TokenJsonSection', () => {
     render(<TokenJsonSection report={report} />);
 
     expect(screen.getByText('Raw JSON')).toBeDefined();
-    expect(screen.getByText('full report')).toBeDefined();
+    expect(screen.getByText('concise report')).toBeDefined();
     expect(screen.getByText(/"languageMode": "javascript"/)).toBeDefined();
   });
 });

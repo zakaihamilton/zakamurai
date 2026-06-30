@@ -123,19 +123,35 @@ export default function TokenBreakdown({ tab }) {
     };
   }, [code, filePath, editorState, collapsedFoldIds]);
 
+  const orderedTokens = useMemo(
+    () => [...report.tokens].sort(compareTokensBySourceOrder),
+    [report.tokens],
+  );
+
+  const conciseReport = useMemo(() => {
+    return {
+      filePath: report.filePath,
+      languageMode: report.languageMode,
+      lineCount: report.lineCount,
+      tokens: orderedTokens.map((t) => ({
+        type: t.type,
+        value: t.value,
+        start: t.range?.start,
+        end: t.range?.end,
+        line: t.range?.startPosition?.line,
+        column: t.range?.startPosition?.column,
+      })),
+    };
+  }, [report, orderedTokens]);
+
   const handleCopy = async () => {
-    const text = JSON.stringify(report, null, 2);
+    const text = JSON.stringify(conciseReport, null, 2);
     if (navigator.clipboard?.writeText) {
       await navigator.clipboard.writeText(text);
       setCopied(true);
       window.setTimeout(() => setCopied(false), 1200);
     }
   };
-
-  const orderedTokens = useMemo(
-    () => [...report.tokens].sort(compareTokensBySourceOrder),
-    [report.tokens],
-  );
 
   const presentTypes = useMemo(() => {
     const types = new Set(orderedTokens.map((t) => t.type));
@@ -250,7 +266,7 @@ export default function TokenBreakdown({ tab }) {
             />
           )}
 
-          {activeSection === 'json' && <TokenJsonSection report={report} />}
+          {activeSection === 'json' && <TokenJsonSection report={conciseReport} />}
         </section>
       </div>
     </div>
