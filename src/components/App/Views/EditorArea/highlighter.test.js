@@ -406,4 +406,39 @@ generationOptions.max_tokens = options.max_tokens;`;
     const strTokens = breakdown.tokens.filter((t) => t.type === 'hlStr');
     expect(strTokens.some((t) => t.value === "'/'")).toBe(true);
   });
+
+  it('correctly tokenizes CSS and ignores internal markers (navigation, diffs, suggestions)', () => {
+    // This simulates having a navigation target at `.card`
+    const code = '.card { color: red; }';
+    const mockTargets = [
+      {
+        start: 0,
+        end: 5,
+        type: 'selector',
+        name: '.card',
+        targets: [{ filePath: 'src/styles.css', fileName: 'styles.css', loc: { line: 1, col: 1 } }],
+      },
+    ];
+    vi.mocked(findNavigationTargets).mockReturnValue(mockTargets);
+
+    const breakdown = getHighlightBreakdown({
+      code,
+      filePath: 'src/styles.css',
+      state: { fileContents: {} },
+      styles,
+      navigationLinksEnabled: true,
+    });
+
+    // It should NOT contain any token with value 'a'
+    const aTokens = breakdown.tokens.filter((t) => t.value === 'a');
+    expect(aTokens).toHaveLength(0);
+
+    // It should have the correct selector token
+    const selectorToken = breakdown.tokens.find((t) => t.type === 'hlTag' && t.value === '.card');
+    expect(selectorToken).toBeDefined();
+
+    // It should have the correct property token
+    const propToken = breakdown.tokens.find((t) => t.type === 'hlProp' && t.value === 'color');
+    expect(propToken).toBeDefined();
+  });
 });

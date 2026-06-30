@@ -443,7 +443,11 @@ const createHighlightAnalysis = ({
   // 3. Language specific (CSS or JSX/HTML)
   if (filePath?.endsWith('.css')) {
     // Properties
-    escaped = escaped.replace(/([a-zA-Z\-]+)(?=\s*:)/g, (m) => pushToken(m, 'hlProp'));
+    escaped = escaped.replace(
+      // biome-ignore lint/suspicious/noControlCharactersInRegex: markers
+      /(\x01\d+\x02|\u0003\d+\u0003|\u0004|\u0005|\u0006[a-j]+\u0006|\u0007)|([a-zA-Z\-]+)(?=\s*(?:\u0007|\u0004)?\s*:)/g,
+      (_m, p1, p2) => (p1 ? p1 : pushToken(p2, 'hlProp')),
+    );
     // Selectors (basic & comma-separated list support)
     escaped = escaped.replace(
       // biome-ignore lint/suspicious/noControlCharactersInRegex: markers
@@ -451,7 +455,7 @@ const createHighlightAnalysis = ({
       (selectorList) => {
         return selectorList.replace(
           // biome-ignore lint/suspicious/noControlCharactersInRegex: markers
-          /(\x01\d+\x02)|([.#a-zA-Z0-9_\-\[\]="':*]+)/g,
+          /(\x01\d+\x02|\u0003\d+\u0003|\u0004|\u0005|\u0006[a-j]+\u0006|\u0007)|([.#a-zA-Z0-9_\-\[\]="':*]+)/g,
           (_m, p1, p2) => (p1 ? p1 : pushToken(p2, 'hlTag')),
         );
       },
@@ -459,28 +463,33 @@ const createHighlightAnalysis = ({
     // Values (after colon, before semicolon)
     escaped = escaped.replace(/(?<=:\s*)([^;\}]+)(?=;|\})/g, (m) => {
       // Highlight hex colors within values
-      let val = m.replace(/(#[a-fA-F0-9]{3,8})/g, (c) => pushToken(c, 'hlNum'));
+      let val = m.replace(
+        // biome-ignore lint/suspicious/noControlCharactersInRegex: markers
+        /(\x01\d+\x02|\u0003\d+\u0003|\u0004|\u0005|\u0006[a-j]+\u0006|\u0007)|(#[a-fA-F0-9]{3,8})/g,
+        (_m2, p1, p2) => (p1 ? p1 : pushToken(p2, 'hlNum')),
+      );
       // Highlight units
       val = val.replace(
-        /(\d+)(px|rem|em|%|vh|vw|ms|s|deg)/g,
-        (_m2, p1, p2) => `${pushToken(p1, 'hlNum')}${pushToken(p2, 'hlKw')}`,
+        // biome-ignore lint/suspicious/noControlCharactersInRegex: markers
+        /(\x01\d+\x02|\u0003\d+\u0003|\u0004|\u0005|\u0006[a-j]+\u0006|\u0007)|(\d+)(px|rem|em|%|vh|vw|ms|s|deg)/g,
+        (_m2, p1, p2, p3) => (p1 ? p1 : `${pushToken(p2, 'hlNum')}${pushToken(p3, 'hlKw')}`),
       );
       // Highlight functions (e.g. rgb, rgba, calc, var, etc.)
       val = val.replace(
         // biome-ignore lint/suspicious/noControlCharactersInRegex: markers
-        /(\x01\d+\x02)|([a-zA-Z\-]+)(?=\()/g,
+        /(\x01\d+\x02|\u0003\d+\u0003|\u0004|\u0005|\u0006[a-j]+\u0006|\u0007)|([a-zA-Z\-]+)(?=\()/g,
         (_m2, p1, p2) => (p1 ? p1 : pushToken(p2, 'hlFunc')),
       );
       // Highlight other numbers (e.g. unitless numbers)
       val = val.replace(
         // biome-ignore lint/suspicious/noControlCharactersInRegex: markers
-        /(\x01\d+\x02)|(-?\d+(?:\.\d+)?)/g,
+        /(\x01\d+\x02|\u0003\d+\u0003|\u0004|\u0005|\u0006[a-j]+\u0006|\u0007)|(-?\d+(?:\.\d+)?)/g,
         (_m2, p1, p2) => (p1 ? p1 : pushToken(p2, 'hlNum')),
       );
       // Highlight remaining identifiers/keywords (e.g. solid, red, block, none, etc.)
       val = val.replace(
         // biome-ignore lint/suspicious/noControlCharactersInRegex: markers
-        /(\x01\d+\x02)|([a-zA-Z0-9\-]+)/g,
+        /(\x01\d+\x02|\u0003\d+\u0003|\u0004|\u0005|\u0006[a-j]+\u0006|\u0007)|([a-zA-Z0-9\-]+)/g,
         (_m2, p1, p2) => (p1 ? p1 : pushToken(p2, 'hlVal')),
       );
       return val;
