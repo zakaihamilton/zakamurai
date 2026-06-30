@@ -255,6 +255,9 @@ describe('TokenBreakdown', () => {
   });
 
   it('performs alignment check and displays success check results', async () => {
+    const originalNodeEnv = process.env.NODE_ENV;
+    process.env.NODE_ENV = 'development';
+
     vi.spyOn(EditorState, 'useState').mockReturnValue({
       fileContents: {
         'src/test.js': 'export const answer = 42;',
@@ -280,5 +283,7 @@ describe('TokenBreakdown', () => {
     expect(screen.getByText('Token Report Alignment Check')).toBeDefined();
     expect(screen.getByText('Match Success')).toBeDefined();
     expect(screen.getByText('Original Length')).toBeDefined();
+
+    process.env.NODE_ENV = originalNodeEnv;
   });
 });
