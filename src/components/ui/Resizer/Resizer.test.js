@@ -78,4 +78,18 @@ describe('Resizer', () => {
     expect(onResize).not.toHaveBeenCalled();
     expect(resizerStateUpdater).not.toHaveBeenCalled();
   });
+
+  it('supports omitted lifecycle callbacks', () => {
+    const resizerStateUpdater = vi.fn((callback) => callback({ isResizing: true }));
+    const state = Object.assign(resizerStateUpdater, { isResizing: false });
+    createState().useState.mockReturnValue(state);
+    const { container, rerender } = render(<Resizer onResize={() => {}} />);
+
+    fireEvent.mouseDown(container.firstChild);
+    state.isResizing = true;
+    rerender(<Resizer onResize={() => {}} />);
+    fireEvent.mouseUp(window);
+
+    expect(resizerStateUpdater).toHaveBeenCalledTimes(2);
+  });
 });

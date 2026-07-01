@@ -212,6 +212,7 @@ describe('TokenBreakdown', () => {
   it('renders and allows copying combined file and token breakdown in development mode', async () => {
     const originalNodeEnv = process.env.NODE_ENV;
     process.env.NODE_ENV = 'development';
+    vi.useFakeTimers();
 
     const writeText = vi.fn(async () => {});
     Object.assign(navigator, { clipboard: { writeText } });
@@ -253,7 +254,12 @@ describe('TokenBreakdown', () => {
     const copiedBreakdown = JSON.parse(jsonPart);
     expect(copiedBreakdown.filePath).toBe('src/test.js');
 
+    await act(async () => {
+      vi.advanceTimersByTime(1200);
+    });
+
     process.env.NODE_ENV = originalNodeEnv;
+    vi.useRealTimers();
   });
 
   it('performs alignment check and displays success check results', async () => {

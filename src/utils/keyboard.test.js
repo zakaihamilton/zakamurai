@@ -48,6 +48,18 @@ describe('keyboard utilities', () => {
     expect(isMobileLikeDevice()).toBe(false);
   });
 
+  it('supports environments without matchMedia', () => {
+    const originalMatchMedia = window.matchMedia;
+    Object.defineProperty(window, 'matchMedia', { configurable: true, value: undefined });
+
+    expect(isMobileLikeDevice()).toBe(false);
+
+    Object.defineProperty(window, 'matchMedia', {
+      configurable: true,
+      value: originalMatchMedia,
+    });
+  });
+
   it('handles sessionStorage errors gracefully', () => {
     vi.spyOn(window, 'matchMedia').mockReturnValue({ matches: true });
     vi.spyOn(window.sessionStorage, 'getItem').mockImplementation(() => {

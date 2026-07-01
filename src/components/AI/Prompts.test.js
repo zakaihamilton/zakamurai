@@ -75,4 +75,26 @@ describe('AI Prompts', () => {
     ).toBe('User request:\nCreate a button');
     expect(formatCompactContext()).toBe('');
   });
+
+  it('handles a related file with omitted optional content and CSS metadata', () => {
+    expect(formatCompactContext([{ filePath: 'empty.js' }])).toContain(
+      'Related file: empty.js\n```\n\n```',
+    );
+  });
+
+  it('omits incomplete active-file context', () => {
+    const withMissingContent = buildEditPrompt({
+      userRequest: 'Continue',
+      activeFilePath: 'src/App.js',
+      activeFileContent: undefined,
+    });
+    const withMissingPath = buildEditPrompt({
+      userRequest: 'Continue',
+      activeFilePath: '',
+      activeFileContent: 'content',
+    });
+
+    expect(withMissingContent).toBe('User request:\nContinue');
+    expect(withMissingPath).toBe('User request:\nContinue');
+  });
 });
