@@ -60,4 +60,32 @@ describe('WebLLMModels', () => {
 
     await expect(resolveCompletionModelId()).resolves.toBe('Qwen3.5-9B-q4f16_1-MLC');
   });
+
+  it('falls back without checking the same completion model twice', async () => {
+    hasModelInCache.mockResolvedValue(false);
+    getAIPromptModel.mockReturnValue(RECOMMENDED_COMPLETION_MODEL.id);
+
+    await expect(resolveCompletionModelId()).resolves.toBe(RECOMMENDED_COMPLETION_MODEL.id);
+    expect(hasModelInCache).toHaveBeenCalledOnce();
+  });
+
+  it('falls back when the selected prompt model is not cached', async () => {
+    hasModelInCache.mockResolvedValue(false);
+    getAIPromptModel.mockReturnValue('Qwen3.5-9B-q4f16_1-MLC');
+
+    await expect(resolveCompletionModelId()).resolves.toBe(RECOMMENDED_COMPLETION_MODEL.id);
+    expect(hasModelInCache).toHaveBeenNthCalledWith(2, 'Qwen3.5-9B-q4f16_1-MLC');
+  });
+
+  it('recovers from cache API failures and reports the diagnostic', async () => {
+    const error = new Error('Cache storage unavailable');
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    hasModelInCache.mockRejectedValue(error);
+
+    await expect(resolveCompletionModelId()).resolves.toBe(RECOMMENDED_COMPLETION_MODEL.id);
+    expect(warn).toHaveBeenCalledWith(
+      '[Completion] Failed to resolve cached completion model:',
+      error,
+    );
+  });
 });
