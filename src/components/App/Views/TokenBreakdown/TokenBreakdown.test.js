@@ -1,6 +1,6 @@
 import { TabState } from '@/components/App/Panes/TabBar';
 import { EditorState } from '@/components/App/Views/EditorArea';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import TokenBreakdown from './TokenBreakdown';
 
@@ -237,7 +237,9 @@ describe('TokenBreakdown', () => {
     const combinedBtn = screen.getByRole('button', { name: /Copy troubleshooting prompt/i });
     expect(combinedBtn).toBeDefined();
 
-    fireEvent.click(combinedBtn);
+    await act(async () => {
+      fireEvent.click(combinedBtn);
+    });
     expect(writeText).toHaveBeenCalled();
 
     const rawCopiedText = writeText.mock.calls[0][0];

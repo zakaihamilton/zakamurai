@@ -75,5 +75,47 @@ new
       expect(blocks[0].content).toContain('old');
       expect(blocks[0].content).toContain('>>>>>>> REPLACE');
     });
+
+    test('skips files containing refusal patterns', () => {
+      const response = `
+// --- File: refuse.js ---
+I apologize, but I cannot assist you with this request.
+// --- End File ---
+`;
+      const blocks = parseAIResponse(response);
+      expect(blocks).toHaveLength(0);
+    });
+
+    test('skips files containing abbreviation patterns', () => {
+      const response = `
+// --- File: incomplete.js ---
+function test() {
+  // rest of code
+}
+// --- End File ---
+`;
+      const blocks = parseAIResponse(response);
+      expect(blocks).toHaveLength(0);
+    });
+
+    test('skips truncated response blocks ending in partial token', () => {
+      const response = '// --- File: app.js ---\nconst a = \n<\n// --- File ---';
+      const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const blocks = parseAIResponse(response);
+      expect(blocks).toHaveLength(0);
+      expect(consoleWarnSpy).toHaveBeenCalled();
+      consoleWarnSpy.mockRestore();
+    });
+
+    test('strips surrounding brackets if block has [...] format', () => {
+      const response = `// --- File: app.js ---
+[
+const ready = true;
+]
+// --- End File ---`;
+      const blocks = parseAIResponse(response);
+      expect(blocks).toHaveLength(1);
+      expect(blocks[0].content).toBe('const ready = true;');
+    });
   });
 });

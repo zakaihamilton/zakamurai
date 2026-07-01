@@ -1,7 +1,7 @@
 import { createState } from '@/components/state/State';
 import { useEffect } from 'react';
 
-const KeyboardShortcutState = createState('KeyboardShortcutState');
+export const KeyboardShortcutState = createState('KeyboardShortcutState');
 
 const hasWindow = () => typeof window !== 'undefined';
 

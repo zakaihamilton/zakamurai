@@ -39,4 +39,27 @@ describe('Welcome', () => {
     expect(tabState.activeTabId).toBe('project-info');
     expect(tabState.openTabs.some((t) => t.id === 'project-info')).toBe(true);
   });
+
+  it('opens instructions tab when clicked', () => {
+    const tabState = { openTabs: [], activeTabId: null };
+    vi.spyOn(TabState, 'useState').mockReturnValue(tabState);
+
+    render(<Welcome />);
+    fireEvent.click(screen.getByText('Instructions'));
+    expect(tabState.activeTabId).toBe('instructions');
+    expect(tabState.openTabs.some((t) => t.id === 'instructions')).toBe(true);
+  });
+
+  it('does not duplicate instructions tab if already open', () => {
+    const tabState = {
+      openTabs: [{ id: 'instructions', type: 'instructions', label: 'Instructions' }],
+      activeTabId: null,
+    };
+    vi.spyOn(TabState, 'useState').mockReturnValue(tabState);
+
+    render(<Welcome />);
+    fireEvent.click(screen.getByText('Instructions'));
+    expect(tabState.activeTabId).toBe('instructions');
+    expect(tabState.openTabs.filter((t) => t.id === 'instructions')).toHaveLength(1);
+  });
 });

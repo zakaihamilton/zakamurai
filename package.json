@@ -10,6 +10,7 @@
     "format": "biome check --write .",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
     "test:visual": "npx playwright test",
     "test:visual:chromium": "npx playwright test --project=chromium tests/visual/basic.spec.ts tests/visual/advanced.spec.ts",
     "test:visual:regression": "npx playwright test --project=chromium tests/visual/regression.spec.ts",
@@ -19,7 +20,7 @@
     "postinstall": "\"$npm_execpath\" run setup:almostnode && \"$npm_execpath\" run setup:wasm && \"$npm_execpath\" run setup:playwright",
     "predev": "\"$npm_execpath\" run setup:almostnode && \"$npm_execpath\" run setup:wasm",
     "prebuild": "\"$npm_execpath\" run setup:almostnode && \"$npm_execpath\" run setup:wasm",
-    "verify": "stylelint \"src/**/*.css\" --fix && biome check . && knip && vitest run && npm run test:visual",
+    "verify": "stylelint \"src/**/*.css\" --fix && biome check . && knip && vitest run --coverage && npm run test:visual",
     "prepare": "husky"
   },
   "dependencies": {
@@ -41,6 +42,7 @@
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.2.0",
     "@vitejs/plugin-react": "^4.3.4",
+    "@vitest/coverage-v8": "3.2.4",
     "eslint": "^9",
     "eslint-config-next": "16.2.4",
     "fast-check": "^3.0.0",
@@ -54,7 +56,13 @@
     "vitest": "^3.0.4"
   },
   "lint-staged": {
-    "src/**/*.{ts,tsx}": ["biome check --write", "vitest related --run", "npx playwright test"],
-    "src/**/*.module.css": ["stylelint --fix"]
+    "src/**/*.{ts,tsx}": [
+      "biome check --write",
+      "vitest related --run",
+      "npx playwright test"
+    ],
+    "src/**/*.module.css": [
+      "stylelint --fix"
+    ]
   }
 }

@@ -32,9 +32,14 @@ vi.mock('@/components/App/Views/LogArea', () => ({
 vi.mock('@/components/ui/Notification', () => ({
   useNotification: vi.fn(),
 }));
-vi.mock('@/utils/os', () => ({
-  isMac: vi.fn(() => true), // Mock as Mac for test consistency
+vi.mock('@/utils/keyboard', () => ({
+  markKeyboardActivity: vi.fn(),
 }));
+vi.mock('@/utils/os', () => ({
+  isMac: vi.fn(() => true),
+}));
+
+import { markKeyboardActivity } from '@/utils/keyboard';
 
 describe('KeyboardHandler', () => {
   let sidebarState;
@@ -156,5 +161,26 @@ describe('KeyboardHandler', () => {
     expect(draft.showShortcuts).toBe(false);
 
     window.removeEventListener(SHORTCUT_HIGHLIGHT_EVENT, highlightHandler);
+  });
+
+  it('ignores shortcuts if composing', () => {
+    render(<TestComponent />);
+
+    fireEvent.keyDown(window, { key: 'b', ctrlKey: true, isComposing: true });
+
+    expect(markKeyboardActivity).not.toHaveBeenCalled();
+  });
+
+  it('ignores navigation shortcuts if input/textarea is focused', () => {
+    render(<TestComponent />);
+
+    const input = document.createElement('input');
+    document.body.appendChild(input);
+    input.focus();
+
+    fireEvent.keyDown(input, { key: 'ArrowLeft', altKey: true });
+
+    expect(editorState).not.toHaveBeenCalled();
+    document.body.removeChild(input);
   });
 });

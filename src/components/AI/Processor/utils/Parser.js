@@ -150,7 +150,7 @@ export function parseAIResponse(response, activeTabId) {
     // Truncation check: If the block hit the end of the response without a terminator
     // and looks incomplete (e.g. ends with a lone character or partial tag), discard it.
     const matchEnd = match.index + match[0].length;
-    const isAtResponseEnd = matchEnd >= response.length - 2;
+    const isAtResponseEnd = matchEnd >= response.length - 40;
     const hasTerminator = response.substring(matchEnd).trim().startsWith('// --- End File ---');
 
     if (isAtResponseEnd && !hasTerminator && !isStructured) {

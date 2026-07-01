@@ -13,7 +13,7 @@ import SidebarMountSection from './subcomponents/SidebarMountSection';
 import SidebarTree from './subcomponents/SidebarTree';
 
 export const SidebarState = createState('SidebarState');
-const SidebarUiState = createState('SidebarUiState');
+export const SidebarUiState = createState('SidebarUiState');
 
 const COLLAPSED_DESKTOP_WIDTH = 0;
 

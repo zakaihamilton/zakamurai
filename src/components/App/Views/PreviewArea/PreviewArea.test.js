@@ -1,10 +1,14 @@
 import { PreviewState } from '@/components/App/PreviewState';
 import { act, fireEvent, render, screen } from '@testing-library/react';
+import React from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import PreviewArea, { PreviewAreaUiState } from './PreviewArea';
 
 vi.mock('@/components/ui/Tooltip', () => ({
-  default: ({ children }) => children,
+  __esModule: true,
+  default: ({ children, content }) => {
+    return React.cloneElement(children, { title: content });
+  },
 }));
 
 function createStateHook(initialState) {
@@ -214,5 +218,53 @@ describe('PreviewArea', () => {
     });
 
     expect(writeText).toHaveBeenCalledWith('Transform failed with 5 errors');
+  });
+
+  it('handles toolbar actions correctly', () => {
+    const preview = createStateHook({
+      htmlContent: '<html><body>Hello</body></html>',
+      isCompilerReady: true,
+      restoreError: null,
+    });
+    const ui = createStateHook({
+      isLoading: false,
+      scale: 1.0,
+      error: null,
+      refreshKey: 1,
+      isSwReady: true,
+      isMaximized: false,
+      address: '/preview/',
+      host: 'localhost',
+    });
+
+    vi.spyOn(PreviewState, 'useState').mockReturnValue(preview.hook);
+    vi.spyOn(PreviewAreaUiState, 'useState').mockReturnValue(ui.hook);
+    vi.spyOn(window, 'open').mockImplementation(() => null);
+
+    render(<PreviewArea />);
+
+    // Zoom in
+    fireEvent.click(screen.getByTitle('Zoom in'));
+    expect(ui.hook).toHaveBeenCalled();
+
+    // Zoom out
+    fireEvent.click(screen.getByTitle('Zoom out'));
+    expect(ui.hook).toHaveBeenCalled();
+
+    // Zoom reset
+    fireEvent.click(screen.getByText('100%'));
+    expect(ui.hook).toHaveBeenCalled();
+
+    // Refresh
+    fireEvent.click(screen.getByTitle('Refresh preview'));
+    expect(ui.hook).toHaveBeenCalled();
+
+    // Maximize
+    fireEvent.click(screen.getByTitle('Maximize preview'));
+    expect(ui.hook).toHaveBeenCalled();
+
+    // Open in new tab
+    fireEvent.click(screen.getByTitle('Open in new tab'));
+    expect(window.open).toHaveBeenCalledWith('/preview/', '_blank');
   });
 });

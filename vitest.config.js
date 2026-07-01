@@ -9,6 +9,18 @@ export default defineConfig({
     globals: true,
     setupFiles: ['./src/setupTests.js'],
     exclude: ['**/node_modules/**', '**/dist/**', '**/tests/visual/**'],
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'json', 'html'],
+      include: ['src/**/*'],
+      exclude: ['src/setupTests.js', 'src/**/*.test.{js,jsx}', 'src/**/*.spec.{js,jsx}'],
+      thresholds: {
+        statements: 80,
+        branches: 80,
+        functions: 80,
+        lines: 80,
+      },
+    },
   },
   resolve: {
     alias: {

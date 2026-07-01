@@ -38,4 +38,38 @@ describe('ContextMenu', () => {
     );
     expect(container.firstChild).toBeNull();
   });
+
+  it('calls onClose when overlay receives Enter/Escape keydown', () => {
+    const onClose = vi.fn();
+    render(
+      <ContextMenu position={{ x: 0, y: 0 }} onClose={onClose}>
+        <button type="button">Option</button>
+      </ContextMenu>,
+    );
+
+    const overlay = screen.getByRole('presentation');
+    fireEvent.keyDown(overlay, { key: 'Escape' });
+    expect(onClose).toHaveBeenCalledTimes(1);
+
+    fireEvent.keyDown(overlay, { key: 'Enter' });
+    expect(onClose).toHaveBeenCalledTimes(2);
+
+    fireEvent.keyDown(overlay, { key: 'ArrowDown' });
+    expect(onClose).toHaveBeenCalledTimes(2); // should not close
+  });
+
+  it('calls onClose and prevents default on overlay right-click', () => {
+    const onClose = vi.fn();
+    render(
+      <ContextMenu position={{ x: 0, y: 0 }} onClose={onClose}>
+        <button type="button">Option</button>
+      </ContextMenu>,
+    );
+
+    const overlay = screen.getByRole('presentation');
+    const event = new MouseEvent('contextmenu', { bubbles: true, cancelable: true });
+    fireEvent(overlay, event);
+    expect(onClose).toHaveBeenCalled();
+    expect(event.defaultPrevented).toBe(true);
+  });
 });

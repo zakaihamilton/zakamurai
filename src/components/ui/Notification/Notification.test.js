@@ -53,4 +53,30 @@ describe('Notification', () => {
     fireEvent.click(screen.getByRole('button'));
     expect(stateUpdater).toHaveBeenCalled();
   });
+
+  it('useNotification hook can add and auto-remove a notification', async () => {
+    vi.useFakeTimers();
+    const stateUpdater = vi.fn((cb) => {
+      const draft = { notifications: [] };
+      if (typeof cb === 'function') cb(draft);
+    });
+    NotificationState.useState.mockReturnValue(stateUpdater);
+
+    const { renderHook } = await import('@testing-library/react');
+    const { result } = renderHook(() => useNotification());
+
+    act(() => {
+      result.current.addNotification('Hook message', 'success', 2000);
+    });
+
+    expect(stateUpdater).toHaveBeenCalled();
+
+    // Fast-forward timers to trigger auto-remove setTimeout
+    act(() => {
+      vi.advanceTimersByTime(2500);
+    });
+
+    expect(stateUpdater).toHaveBeenCalledTimes(2);
+    vi.useRealTimers();
+  });
 });

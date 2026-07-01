@@ -7,7 +7,7 @@ import React, { useEffect, useRef } from 'react';
 import styles from './LogArea.module.css';
 
 export const LogState = createState('LogState');
-const LogAreaUiState = createState('LogAreaUiState');
+export const LogAreaUiState = createState('LogAreaUiState');
 LogState.useState.initial = {
   logs: Settings.getAILogs(),
   isSystemProcessing: false,

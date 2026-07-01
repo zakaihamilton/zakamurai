@@ -51,4 +51,28 @@ describe('AI Prompts', () => {
     expect(prompt).toContain('Selected lines: 3, 4');
     expect(prompt).toContain('User request:\nChange the title');
   });
+
+  it('includes linked CSS and truncates oversized context', () => {
+    const context = formatCompactContext([
+      {
+        filePath: 'src/Card.js',
+        content: 'x'.repeat(1500),
+        linkedCss: [{ filePath: 'src/Card.css', content: 'y'.repeat(1500) }],
+      },
+    ]);
+
+    expect(context).toContain('Related CSS: src/Card.css');
+    expect(context.match(/\.\.\.\[truncated\]/g)).toHaveLength(2);
+  });
+
+  it('builds a minimal prompt when optional context is absent', () => {
+    expect(
+      buildEditPrompt({
+        userRequest: 'Create a button',
+        activeFilePath: '',
+        activeFileContent: undefined,
+      }),
+    ).toBe('User request:\nCreate a button');
+    expect(formatCompactContext()).toBe('');
+  });
 });

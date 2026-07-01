@@ -184,5 +184,71 @@ added
       );
       expect(mockFS.readFile).not.toHaveBeenCalled();
     });
+
+    test('creates missing directory nodes in sidebar state', async () => {
+      mockFS.getFileHandleAtPath.mockResolvedValue(null);
+      const sidebarStateObj = { folderTree: [] };
+      const sidebarState = vi.fn((update) => {
+        update(sidebarStateObj);
+      });
+
+      const response = `// --- File: nested/dir/newfile.js ---
+content
+// --- End File ---`;
+
+      await processAIResponse(
+        response,
+        mockFS,
+        mockLogState,
+        sidebarState,
+        mockEditorState,
+        mockTabState,
+      );
+
+      expect(sidebarStateObj.folderTree[0].name).toBe('nested');
+      expect(sidebarStateObj.folderTree[0].type).toBe('folder');
+      expect(sidebarStateObj.folderTree[0].children[0].name).toBe('dir');
+      expect(sidebarStateObj.folderTree[0].children[0].children[0].name).toBe('newfile.js');
+    });
+
+    test('handles filesystem and processing errors gracefully by logging', async () => {
+      mockFS.readFile.mockRejectedValue(new Error('FS Read Error'));
+
+      const response = `// --- File: test.js ---
+new content
+// --- End File ---`;
+
+      const result = await processAIResponse(
+        response,
+        mockFS,
+        mockLogState,
+        mockSidebarState,
+        mockEditorState,
+        mockTabState,
+      );
+
+      expect(result).toBe(0);
+      expect(mockLogState).toHaveBeenCalled();
+    });
+
+    test('handles editorState with useState function branch', async () => {
+      const editorState = vi.fn();
+      editorState.useState = vi.fn();
+
+      const response = `// --- File: test.js ---
+new content
+// --- End File ---`;
+
+      const result = await processAIResponse(
+        response,
+        mockFS,
+        mockLogState,
+        mockSidebarState,
+        editorState,
+        mockTabState,
+      );
+
+      expect(result).toBe(1);
+    });
   });
 });

@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo } from 'react';
 const DB_NAME = 'ZakamuraiFS';
 const STORE_NAME = 'handles';
 const FS_INIT_TIMEOUT_MS = 3000;
-const FileSystemState = createState('FileSystemState');
+export const FileSystemState = createState('FileSystemState');
 
 function withTimeout(promise, message, timeoutMs = FS_INIT_TIMEOUT_MS) {
   let timeoutId;
@@ -158,15 +158,18 @@ export function useFileSystem() {
   }, [fileSystemState, refreshDirectory, setFileSystemValue]);
 
   useEffect(() => {
+    let active = true;
     const init = async () => {
       try {
         const handle = await withTimeout(loadHandle(), 'Timed out restoring local file handle');
+        if (!active) return;
         if (handle) {
           // Verify permission
           const status = await withTimeout(
             handle.queryPermission({ mode: 'readwrite' }),
             'Timed out checking local file permissions',
           );
+          if (!active) return;
           if (status === 'granted') {
             fileSystemState((draft) => {
               draft.rootHandle = handle;
@@ -178,10 +181,15 @@ export function useFileSystem() {
       } catch (err) {
         console.error('Failed to restore FS handle:', err);
       } finally {
-        setFileSystemValue('isReady', true);
+        if (active) {
+          setFileSystemValue('isReady', true);
+        }
       }
     };
     init();
+    return () => {
+      active = false;
+    };
   }, [fileSystemState, refreshDirectory, setFileSystemValue]);
 
   // Handle manual refreshes via trigger

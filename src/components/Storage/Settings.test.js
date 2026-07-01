@@ -66,8 +66,12 @@ describe('Settings', () => {
   });
 
   it('ignores malformed pending diff state', () => {
+    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     localStorage.setItem('zakamurai_pending_diffs', '{bad json');
     expect(Settings.getPendingDiffs()).toEqual({});
+    expect(consoleErrorSpy).toHaveBeenCalled();
+    consoleErrorSpy.mockRestore();
+
     localStorage.setItem('zakamurai_pending_diffs', JSON.stringify({ bad: { diffs: [] } }));
     expect(Settings.getPendingDiffs()).toEqual({});
   });

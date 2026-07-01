@@ -26,3 +26,26 @@ describe('computeDiff metadata', () => {
     expect(diffs.map(({ updated: value }) => value)).toEqual(['ONE', 'FIVE']);
   });
 });
+
+import { applyMarkerReplacement } from './DiffEngine';
+
+describe('applyMarkerReplacement', () => {
+  it('replaces marked lines using context heuristics', () => {
+    const original = 'first line\nsecond line\nthird line\nfourth line';
+    const updated = 'first line\nnew second line content /* <<< NEW LINE >>> */\nthird line\nfourth line';
+
+    const result = applyMarkerReplacement(original, updated);
+    expect(result.content).toBe('first line\nnew second line content\nthird line\nfourth line');
+    expect(result.diffs).toHaveLength(1);
+    expect(result.diffs[0].original).toBe('second line');
+  });
+
+  it('falls back to computeDiff if no markers are present', () => {
+    const original = 'first line\nsecond line';
+    const updated = 'first line\nsecond line updated';
+
+    const result = applyMarkerReplacement(original, updated);
+    expect(result.content).toBe(updated);
+    expect(result.diffs.length).toBeGreaterThan(0);
+  });
+});

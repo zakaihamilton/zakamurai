@@ -49,4 +49,33 @@ describe('Select', () => {
       expect(document.querySelector('[class*="menuAbove"]')).toBeDefined();
     });
   });
+
+  it('closes when clicking outside or pressing Escape', async () => {
+    render(<Select id="select-test" value="alpha" options={options} onChange={vi.fn()} />);
+    const trigger = screen.getByRole('button', { name: 'Alpha' });
+
+    // Open first
+    fireEvent.click(trigger);
+    await waitFor(() => {
+      expect(trigger).toHaveAttribute('aria-expanded', 'true');
+    });
+
+    // Press Escape
+    fireEvent.keyDown(trigger, { key: 'Escape' });
+    await waitFor(() => {
+      expect(trigger).toHaveAttribute('aria-expanded', 'false');
+    });
+
+    // Open again
+    fireEvent.click(trigger);
+    await waitFor(() => {
+      expect(trigger).toHaveAttribute('aria-expanded', 'true');
+    });
+
+    // Click outside (dispatch pointerdown on document.body)
+    fireEvent.pointerDown(document.body);
+    await waitFor(() => {
+      expect(trigger).toHaveAttribute('aria-expanded', 'false');
+    });
+  });
 });

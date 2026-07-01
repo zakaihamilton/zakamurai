@@ -282,4 +282,68 @@ describe('Prompt', () => {
 
     expect(stateUpdate).toHaveBeenCalled();
   });
+
+  it('handles input keydown events correctly', async () => {
+    SidebarState.useState.mockReturnValue({
+      showAIInput: true,
+    });
+    const mockLogState = { isProcessing: false };
+    LogState.useState.mockReturnValue(mockLogState);
+    LogState.usePassiveState.mockReturnValue(mockLogState);
+    TabState.useState.mockReturnValue(
+      Object.assign(vi.fn(), {
+        openTabs: [],
+        activeTabId: null,
+      }),
+    );
+    const mockAppState = { fs: {} };
+    AppState.useState.mockReturnValue(mockAppState);
+    AppState.usePassiveState.mockReturnValue(mockAppState);
+    EditorState.useState.mockReturnValue(vi.fn());
+
+    render(<Prompt />);
+    const input = screen.getByPlaceholderText('Tell the Agent what to do...');
+
+    // Shift + Enter should not submit
+    fireEvent.keyDown(input, { key: 'Enter', shiftKey: true });
+    
+    // ArrowUp / ArrowDown triggers history
+    fireEvent.keyDown(input, { key: 'ArrowUp' });
+    fireEvent.keyDown(input, { key: 'ArrowDown' });
+
+    // Cmd + . stops request
+    fireEvent.keyDown(input, { key: '.', metaKey: true });
+
+    // Cmd + Enter adds a newline
+    fireEvent.keyDown(input, { key: 'Enter', metaKey: true });
+  });
+
+  it('allows toggling reasoning visibility', async () => {
+    SidebarState.useState.mockReturnValue({
+      showAIInput: true,
+    });
+    const mockLogState = {
+      isAIProcessing: true,
+      isSystemProcessing: false,
+      reasoning: 'Some reasoning text',
+    };
+    LogState.useState.mockReturnValue(mockLogState);
+    LogState.usePassiveState.mockReturnValue(mockLogState);
+    TabState.useState.mockReturnValue(
+      Object.assign(vi.fn(), {
+        openTabs: [],
+        activeTabId: null,
+      }),
+    );
+    const mockAppState = { fs: {}, isMobile: false };
+    AppState.useState.mockReturnValue(mockAppState);
+    AppState.usePassiveState.mockReturnValue(mockAppState);
+    EditorState.useState.mockReturnValue(vi.fn());
+
+    render(<Prompt />);
+
+    const toggleBtn = screen.getByTitle('Hide Reasoning');
+    expect(toggleBtn).toBeDefined();
+    fireEvent.click(toggleBtn);
+  });
 });

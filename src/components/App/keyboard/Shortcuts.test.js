@@ -264,4 +264,48 @@ describe('Shortcuts isMatch', () => {
     previousShortcut.action({ tabState });
     expect(tabDraft.activeTabId).toBe('preview');
   });
+
+  it('matches ctrl-alt and cmd-alt key combinations', () => {
+    isMac.mockReturnValue(true);
+    const ctrlAltShortcut = { key: 'p', modifier: 'ctrl-alt' };
+    const cmdAltShortcut = { key: 'p', modifier: 'cmd-alt' };
+
+    expect(
+      isMatch({ key: 'p', metaKey: false, ctrlKey: true, shiftKey: false, altKey: true }, ctrlAltShortcut)
+    ).toBe(true);
+
+    expect(
+      isMatch({ key: 'p', metaKey: true, ctrlKey: false, shiftKey: false, altKey: true }, cmdAltShortcut)
+    ).toBe(true);
+  });
+
+  it('triggers toggle-theme action correctly', () => {
+    const themeShortcut = SHORTCUTS.find((s) => s.id === 'toggle-theme');
+    expect(themeShortcut).toBeDefined();
+
+    const appDraft = { theme: 'dark' };
+    const appState = vi.fn((producer) => {
+      producer(appDraft);
+    });
+
+    themeShortcut.action({ appState });
+    expect(appDraft.theme).toBe('light');
+
+    themeShortcut.action({ appState });
+    expect(appDraft.theme).toBe('dark');
+  });
+
+  it('triggers close-modal action correctly', () => {
+    const closeModalShortcut = SHORTCUTS.find((s) => s.id === 'close-modal');
+    expect(closeModalShortcut).toBeDefined();
+
+    const appDraft = { showShortcuts: true, showCompletionDebug: true };
+    const appState = vi.fn((producer) => {
+      producer(appDraft);
+    });
+
+    closeModalShortcut.action({ appState });
+    expect(appDraft.showShortcuts).toBe(false);
+    expect(appDraft.showCompletionDebug).toBe(false);
+  });
 });

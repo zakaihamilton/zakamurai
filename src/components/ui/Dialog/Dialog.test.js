@@ -55,4 +55,27 @@ describe('Dialog', () => {
     );
     expect(container.firstChild).toBeNull();
   });
+
+  it('calls onCancel when backdrop receives Enter or Space keydown', () => {
+    const onCancel = vi.fn();
+    render(
+      <Dialog
+        isOpen={true}
+        title="T"
+        message="M"
+        onConfirm={vi.fn()}
+        onCancel={onCancel}
+      />,
+    );
+
+    const backdrop = screen.getAllByLabelText('Close dialog')[0];
+    fireEvent.keyDown(backdrop, { key: 'Enter' });
+    expect(onCancel).toHaveBeenCalledTimes(1);
+
+    fireEvent.keyDown(backdrop, { key: ' ' });
+    expect(onCancel).toHaveBeenCalledTimes(2);
+
+    fireEvent.keyDown(backdrop, { key: 'Escape' });
+    expect(onCancel).toHaveBeenCalledTimes(2); // should not close
+  });
 });

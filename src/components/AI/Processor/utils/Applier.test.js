@@ -41,6 +41,21 @@ describe('Applier', () => {
       const result = applyFileUpdate(original, snippet);
       expect(result.content).toContain('Cherry</li>\n  <li className="item">Date</li>');
     });
+
+    test('uses marker replacement when NEW LINE marker is present', () => {
+      const original = 'line1\nline2\nline3';
+      const update = 'line1\nline2-new /* NEW LINE */\nline3';
+      const result = applyFileUpdate(original, update);
+      expect(result.content).toBe('line1\nline2-new\nline3');
+    });
+
+    test('returns original content when snippet has no match', () => {
+      const original = 'line1\nline2\nline3\nline4\nline5\nline6\nline7\nline8\nline9\nline10';
+      const snippet = 'completely different content';
+      const result = applyFileUpdate(original, snippet);
+      expect(result.content).toBe(original);
+      expect(result.diffs).toEqual([]);
+    });
   });
 
   describe('applySearchReplace', () => {

@@ -42,4 +42,40 @@ describe('Resizer', () => {
     fireEvent.doubleClick(resizer);
     expect(onDoubleClick).toHaveBeenCalled();
   });
+
+  it('handles mouse and touch resizing while active', () => {
+    const onResize = vi.fn();
+    const onResizeEnd = vi.fn();
+    const resizerStateUpdater = vi.fn((callback) => callback({ isResizing: true }));
+    createState().useState.mockReturnValue(
+      Object.assign(resizerStateUpdater, { isResizing: true }),
+    );
+
+    const { container } = render(<Resizer onResize={onResize} onResizeEnd={onResizeEnd} />);
+    expect(container.firstChild.className).toContain('resizing');
+
+    fireEvent.mouseMove(window, { clientX: 125 });
+    fireEvent.touchMove(window, { touches: [{ clientX: 240 }] });
+    fireEvent.mouseUp(window);
+
+    expect(onResize).toHaveBeenNthCalledWith(1, 125);
+    expect(onResize).toHaveBeenNthCalledWith(2, 240);
+    expect(onResizeEnd).toHaveBeenCalledOnce();
+    expect(resizerStateUpdater).toHaveBeenCalled();
+  });
+
+  it('ignores incomplete resize events and double-click mouse downs', () => {
+    const onResize = vi.fn();
+    const resizerStateUpdater = vi.fn();
+    createState().useState.mockReturnValue(
+      Object.assign(resizerStateUpdater, { isResizing: true }),
+    );
+
+    const { container } = render(<Resizer onResize={onResize} />);
+    fireEvent.mouseMove(window);
+    fireEvent.mouseDown(container.firstChild, { detail: 2 });
+
+    expect(onResize).not.toHaveBeenCalled();
+    expect(resizerStateUpdater).not.toHaveBeenCalled();
+  });
 });
