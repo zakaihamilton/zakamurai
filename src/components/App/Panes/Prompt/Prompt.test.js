@@ -305,17 +305,13 @@ describe('Prompt', () => {
     const input = screen.getByPlaceholderText('Tell the Agent what to do...');
 
     // Shift + Enter should not submit
-    fireEvent.keyDown(input, { key: 'Enter', shiftKey: true });
-    
-    // ArrowUp / ArrowDown triggers history
-    fireEvent.keyDown(input, { key: 'ArrowUp' });
-    fireEvent.keyDown(input, { key: 'ArrowDown' });
-
-    // Cmd + . stops request
-    fireEvent.keyDown(input, { key: '.', metaKey: true });
-
-    // Cmd + Enter adds a newline
-    fireEvent.keyDown(input, { key: 'Enter', metaKey: true });
+    await act(async () => {
+      fireEvent.keyDown(input, { key: 'Enter', shiftKey: true });
+      fireEvent.keyDown(input, { key: 'ArrowUp' });
+      fireEvent.keyDown(input, { key: 'ArrowDown' });
+      fireEvent.keyDown(input, { key: '.', metaKey: true });
+      fireEvent.keyDown(input, { key: 'Enter', metaKey: true });
+    });
   });
 
   it('allows toggling reasoning visibility', async () => {
@@ -344,6 +340,6 @@ describe('Prompt', () => {
 
     const toggleBtn = screen.getByTitle('Hide Reasoning');
     expect(toggleBtn).toBeDefined();
-    fireEvent.click(toggleBtn);
+    await act(async () => fireEvent.click(toggleBtn));
   });
 });

@@ -34,6 +34,7 @@ describe('useZipExporter', () => {
     originalRevokeObjectURL = URL.revokeObjectURL;
     URL.createObjectURL = vi.fn(() => 'blob:test-url');
     URL.revokeObjectURL = vi.fn();
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
     
     const originalAppend = Node.prototype.appendChild;
     vi.spyOn(document.body, 'appendChild').mockImplementation(function(el) {

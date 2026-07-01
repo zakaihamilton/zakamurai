@@ -11,6 +11,7 @@ describe('IndexerController', () => {
     originalWorker = global.Worker;
     originalNavigator = global.navigator;
     originalFileSystemObserver = window.FileSystemObserver;
+    window.FileSystemObserver = vi.fn(() => ({ observe: vi.fn() }));
   });
 
   afterEach(() => {

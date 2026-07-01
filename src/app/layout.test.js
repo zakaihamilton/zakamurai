@@ -1,4 +1,4 @@
-import { render } from '@testing-library/react';
+import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 import RootLayout from './layout';
 
@@ -9,11 +9,13 @@ vi.mock('next/font/google', () => ({
 
 describe('RootLayout', () => {
   it('renders children within RootLayout structure', () => {
-    const { getByText } = render(
+    const markup = renderToStaticMarkup(
       <RootLayout>
         <div>Hello Child</div>
-      </RootLayout>
+      </RootLayout>,
     );
-    expect(getByText('Hello Child')).toBeDefined();
+    expect(markup).toContain('<html');
+    expect(markup).toContain('<body');
+    expect(markup).toContain('Hello Child');
   });
 });

@@ -77,6 +77,7 @@ new
     });
 
     test('skips files containing refusal patterns', () => {
+      const consoleWarn = vi.spyOn(console, 'warn').mockImplementation(() => {});
       const response = `
 // --- File: refuse.js ---
 I apologize, but I cannot assist you with this request.
@@ -84,9 +85,11 @@ I apologize, but I cannot assist you with this request.
 `;
       const blocks = parseAIResponse(response);
       expect(blocks).toHaveLength(0);
+      expect(consoleWarn).toHaveBeenCalledOnce();
     });
 
     test('skips files containing abbreviation patterns', () => {
+      const consoleWarn = vi.spyOn(console, 'warn').mockImplementation(() => {});
       const response = `
 // --- File: incomplete.js ---
 function test() {
@@ -96,6 +99,7 @@ function test() {
 `;
       const blocks = parseAIResponse(response);
       expect(blocks).toHaveLength(0);
+      expect(consoleWarn).toHaveBeenCalledOnce();
     });
 
     test('skips truncated response blocks ending in partial token', () => {

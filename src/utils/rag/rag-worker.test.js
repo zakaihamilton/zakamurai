@@ -112,6 +112,7 @@ describe('rag-worker', () => {
 
   it('handles errors and posts ERROR message', async () => {
     const onMessage = listeners.message;
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
     // Trigger error by sending invalid payload
     await onMessage({
       data: {
@@ -126,5 +127,6 @@ describe('rag-worker', () => {
       type: 'ERROR',
       error: expect.any(String)
     });
+    expect(consoleError).toHaveBeenCalledWith('[RAG] Worker error:', expect.any(TypeError));
   });
 });

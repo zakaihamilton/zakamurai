@@ -135,7 +135,7 @@ describe('ImageViewer', () => {
     });
 
     const zoomInBtn = screen.getByText('+');
-    fireEvent.click(zoomInBtn);
+    await act(async () => fireEvent.click(zoomInBtn));
     // Since ImageViewerState is the real hook, clicking zoom-in will invoke state update
     // We verify the button exists and is clickable without crash
     expect(zoomInBtn).toBeDefined();
@@ -154,7 +154,7 @@ describe('ImageViewer', () => {
     });
 
     const zoomOutBtn = screen.getByText('−');
-    fireEvent.click(zoomOutBtn);
+    await act(async () => fireEvent.click(zoomOutBtn));
     expect(zoomOutBtn).toBeDefined();
   });
 
@@ -171,7 +171,7 @@ describe('ImageViewer', () => {
     });
 
     const zoomResetBtn = screen.getByText('100%');
-    fireEvent.click(zoomResetBtn);
+    await act(async () => fireEvent.click(zoomResetBtn));
     expect(zoomResetBtn).toBeDefined();
   });
 
@@ -192,7 +192,7 @@ describe('ImageViewer', () => {
     // Last button among zoom controls is toggle grid
     const gridBtn = allButtons.find(btn => !btn.textContent || btn.textContent.trim() === '');
     if (gridBtn) {
-      fireEvent.click(gridBtn);
+      await act(async () => fireEvent.click(gridBtn));
     }
   });
 

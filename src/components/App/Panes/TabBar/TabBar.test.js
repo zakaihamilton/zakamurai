@@ -1,5 +1,5 @@
 import { SidebarState } from '@/components/App/Panes/Sidebar';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { TabState } from './TabBar';
 import TabBar from './TabBar';
@@ -155,7 +155,7 @@ describe('TabBar', () => {
     expect(container.firstChild).toBeNull();
   });
 
-  it('triggers dragOver and dragLeave on tab bar', () => {
+  it('triggers dragOver and dragLeave on tab bar', async () => {
     const tabBarUiUpdater = vi.fn();
     const tabBarUiState = Object.assign(tabBarUiUpdater, {
       draggedTabId: null,
@@ -173,10 +173,12 @@ describe('TabBar', () => {
     const { container } = render(<TabBar />);
     const tabBarContainer = container.firstChild;
 
-    fireEvent.dragOver(tabBarContainer, {
-      dataTransfer: { dropEffect: '' },
+    await act(async () => {
+      fireEvent.dragOver(tabBarContainer, {
+        dataTransfer: { dropEffect: '' },
+      });
+      fireEvent.dragLeave(tabBarContainer);
     });
-    fireEvent.dragLeave(tabBarContainer);
     // No crash is good enough — handlers ran
   });
 
@@ -270,4 +272,3 @@ describe('TabBar', () => {
     expect(sidebarUpdater).toHaveBeenCalled();
   });
 });
-

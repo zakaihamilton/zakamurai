@@ -114,11 +114,13 @@ describe('WebLLMAPI', () => {
 
     await interruptWebLLM();
     expect(consoleWarnSpy).toHaveBeenCalled();
+    mockEngine.interruptGenerate.mockResolvedValue(undefined);
     consoleWarnSpy.mockRestore();
   });
 
   it('interruptWebLLMModel interrupts a specific model generation', async () => {
     const { interruptWebLLMModel } = await import('./WebLLMAPI');
+    const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     
     // Cache engine
     mockEngine.chat.completions.create.mockResolvedValue({
@@ -137,7 +139,6 @@ describe('WebLLMAPI', () => {
 
     // Check when it throws
     mockEngine.interruptGenerate.mockRejectedValue(new Error('Failed'));
-    const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     await interruptWebLLMModel('test-model');
     expect(consoleWarnSpy).toHaveBeenCalled();
     consoleWarnSpy.mockRestore();

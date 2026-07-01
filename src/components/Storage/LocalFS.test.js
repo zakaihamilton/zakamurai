@@ -105,7 +105,10 @@ describe('useFileSystem', () => {
     global.indexedDB = makeIDBMock();
   });
 
-  afterEach(() => {
+  afterEach(async () => {
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
     vi.restoreAllMocks();
   });
 
@@ -501,4 +504,3 @@ describe('useFileSystem', () => {
     expect(state).toHaveBeenCalled();
   });
 });
-

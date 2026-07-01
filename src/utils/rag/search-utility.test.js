@@ -102,6 +102,8 @@ describe('RagSearchUtility', () => {
   });
 
   it('handles OPFS read errors and parsing errors gracefully', async () => {
+    const consoleWarn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
     global.navigator = {
       storage: {
         getDirectory: vi.fn().mockRejectedValue(new Error('Storage Denied')),
@@ -132,6 +134,8 @@ describe('RagSearchUtility', () => {
     expect(results).toHaveLength(2);
     expect(results[0].linkedCss).toHaveLength(0);
     expect(results[1].linkedCss).toHaveLength(0);
+    expect(consoleWarn).toHaveBeenCalledOnce();
+    expect(consoleError).toHaveBeenCalledOnce();
   });
 
   it('handles relative path resolution containing parent segment ..', async () => {
