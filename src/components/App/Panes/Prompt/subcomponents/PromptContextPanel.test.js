@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import PromptContextPanel from './PromptContextPanel';
 
@@ -25,5 +25,41 @@ describe('PromptContextPanel', () => {
     expect(screen.getByText('foo.js')).toBeDefined();
     expect(screen.getByText('Lines 1-2')).toBeDefined();
     expect(screen.getByText('Ready')).toBeDefined();
+  });
+
+  it('switches between file and project scope', () => {
+    const onScopeChange = vi.fn();
+    const { rerender } = render(
+      <PromptContextPanel
+        scope="file"
+        onScopeChange={onScopeChange}
+        activeFileName="foo.js"
+        activeFilePath="src/foo.js"
+        selectedLines={[1]}
+        selectedLineText="1"
+        runState="Ready"
+      />,
+    );
+
+    expect(screen.getByRole('button', { name: 'File' }).getAttribute('aria-pressed')).toBe('true');
+    fireEvent.click(screen.getByRole('button', { name: 'Project' }));
+    expect(onScopeChange).toHaveBeenCalledWith('project');
+
+    rerender(
+      <PromptContextPanel
+        scope="project"
+        onScopeChange={onScopeChange}
+        activeFileName="foo.js"
+        activeFilePath="src/foo.js"
+        selectedLines={[1]}
+        selectedLineText="1"
+        runState="Ready"
+      />,
+    );
+    expect(screen.getByText('Whole project')).toBeDefined();
+    expect(screen.queryByText('Selection')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Project' }).getAttribute('aria-pressed')).toBe(
+      'true',
+    );
   });
 });

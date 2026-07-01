@@ -60,6 +60,45 @@
   color: var(--text-muted);
 }
 
+.scopeControl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 2px;
+  margin: 3px 5px;
+  padding: 2px;
+  min-width: 0;
+  border: 0;
+  border-radius: 5px;
+  background: var(--bg-surface);
+}
+
+.scopeButton {
+  min-height: 22px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 3px;
+  color: var(--text-muted);
+  background: transparent;
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.scopeButton:hover {
+  color: var(--text-main);
+}
+
+.scopeButton:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.scopeButtonActive {
+  color: var(--text-main);
+  background: var(--bg-input);
+  box-shadow: 0 0 0 1px var(--border);
+}
+
 .contextDot {
   width: 7px;
   height: 7px;

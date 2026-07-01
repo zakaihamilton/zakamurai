@@ -7,6 +7,7 @@ const observation = (action, ok, data) =>
 
 export async function runAgent({
   request,
+  scope = 'file',
   activeFile,
   selectedLines = [],
   files,
@@ -21,7 +22,10 @@ export async function runAgent({
     { role: 'system', content: AGENT_SYSTEM_PROMPT },
     {
       role: 'user',
-      content: `Request: ${request}\nActive file: ${activeFile || 'none'}\nSelected lines: ${selectedLines.join(', ') || 'none'}\nStart by inspecting the workspace.`,
+      content:
+        scope === 'project'
+          ? `Request: ${request}\nScope: whole project\nStart by inspecting the entire workspace. Do not assume any file is the primary target.`
+          : `Request: ${request}\nScope: current file\nActive file: ${activeFile || 'none'}\nSelected lines: ${selectedLines.join(', ') || 'none'}\nStart by inspecting the workspace.`,
     },
   ];
   let protocolFailures = 0;

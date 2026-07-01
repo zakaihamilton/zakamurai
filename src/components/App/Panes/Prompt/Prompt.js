@@ -65,6 +65,7 @@ export default function Prompt() {
     modelCacheError: '',
     animatedWidth: promptState?.promptWidth ?? 0,
     abortController: null,
+    promptScope: 'file',
   });
   const {
     val = '',
@@ -79,6 +80,7 @@ export default function Prompt() {
     modelCacheError = '',
     animatedWidth = promptState?.promptWidth ?? 0,
     abortController = null,
+    promptScope = 'file',
   } = promptUiState || {};
 
   const setAnimatedWidth = useCallback(
@@ -168,8 +170,12 @@ export default function Prompt() {
         const workspaceFiles = await collectWorkspaceFiles(fs, editorState.fileContents || {});
         const result = await runAgent({
           request: userMsg,
-          activeFile: currentActiveTab?.type === 'file' ? currentActiveTabId : undefined,
-          selectedLines,
+          scope: promptScope,
+          activeFile:
+            promptScope === 'file' && currentActiveTab?.type === 'file'
+              ? currentActiveTabId
+              : undefined,
+          selectedLines: promptScope === 'file' ? selectedLines : [],
           files: workspaceFiles,
           model: selectedModel,
           signal: controller.signal,
@@ -361,6 +367,12 @@ export default function Prompt() {
           }
         />
         <PromptContextPanel
+          scope={promptScope}
+          onScopeChange={(scope) =>
+            promptUiState((draft) => {
+              draft.promptScope = scope;
+            })
+          }
           activeFileName={activeFileName}
           activeFilePath={activeFilePath}
           selectedLines={selectedLines}
