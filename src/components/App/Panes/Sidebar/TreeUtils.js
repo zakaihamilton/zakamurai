@@ -129,3 +129,23 @@ export const flattenTree = (
 
   return rows;
 };
+
+export const insertCreateRow = (rows, creatingAt) => {
+  if (!creatingAt) return rows;
+
+  const parentIndex = rows.findIndex((row) => !row.isCreateRow && row.pathStr === creatingAt.pathStr);
+  if (parentIndex === -1) return rows;
+
+  const parent = rows[parentIndex];
+  const createRow = {
+    key: `${creatingAt.pathStr}::__create__`,
+    isCreateRow: true,
+    createType: creatingAt.type,
+    level: parent.level + 1,
+    path: parent.path,
+    pathStr: creatingAt.pathStr,
+    parentRow: parent,
+  };
+
+  return [...rows.slice(0, parentIndex + 1), createRow, ...rows.slice(parentIndex + 1)];
+};

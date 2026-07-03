@@ -8,7 +8,7 @@ const ROW_HEIGHT = 34;
 export default function SidebarTree({
   rows,
   activeTabId,
-  activeIndex,
+  scrollToIndex,
   filterText,
   expandedFolders,
   loadingPaths,
@@ -20,6 +20,8 @@ export default function SidebarTree({
   onOpenFile,
   onRename,
   onCreate,
+  onStartCreate,
+  onCancelCreate,
   onDelete,
   onDragStart,
   onDragOver,
@@ -37,24 +39,28 @@ export default function SidebarTree({
         items={rows}
         itemHeight={ROW_HEIGHT}
         scrollKey={activeTabId}
-        scrollToIndex={activeIndex >= 0 ? activeIndex : null}
+        scrollToIndex={scrollToIndex}
         renderItem={(row) => (
           <TreeItem
             row={row}
             filterText={filterText}
-            isActive={activeTabId === row.pathStr}
+            isActive={!row.isCreateRow && activeTabId === row.pathStr}
             isExpanded={
-              row.item.isRoot ||
-              !!filterText ||
-              (!!row.item.children && expandedFolders[row.pathStr] !== false)
+              row.isCreateRow
+                ? false
+                : row.item.isRoot ||
+                  !!filterText ||
+                  (!!row.item.children && expandedFolders[row.pathStr] !== false)
             }
-            isLoading={!!loadingPaths[row.pathStr]}
-            isDragged={draggedPath === row.pathStr}
-            isDropTarget={dropTargetPath === row.pathStr}
+            isLoading={!row.isCreateRow && !!loadingPaths[row.pathStr]}
+            isDragged={!row.isCreateRow && draggedPath === row.pathStr}
+            isDropTarget={!row.isCreateRow && dropTargetPath === row.pathStr}
             onToggle={onToggle}
             onOpenFile={onOpenFile}
             onRename={onRename}
             onCreate={onCreate}
+            onStartCreate={onStartCreate}
+            onCancelCreate={onCancelCreate}
             onDelete={onDelete}
             onDragStart={onDragStart}
             onDragOver={onDragOver}

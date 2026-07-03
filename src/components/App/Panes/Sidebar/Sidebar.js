@@ -7,7 +7,7 @@ import React, { useCallback, useDeferredValue, useEffect, useMemo, useRef } from
 import styles from './Sidebar.module.css';
 import useSidebarDragAndDrop from './SidebarDragAndDrop';
 import useSidebarFileLoader from './SidebarFileLoader';
-import { flattenTree, isNodeModulesPath, normalizeChildren } from './TreeUtils';
+import { flattenTree, insertCreateRow, isNodeModulesPath, normalizeChildren } from './TreeUtils';
 import SidebarFilter from './subcomponents/SidebarFilter';
 import SidebarMountSection from './subcomponents/SidebarMountSection';
 import SidebarTree from './subcomponents/SidebarTree';
@@ -29,12 +29,14 @@ export default function Sidebar() {
     loadingPaths: {},
     dropTargetPath: null,
     animatedWidth: sidebarWidth ?? 0,
+    creatingAt: null,
   });
   const {
     filterText = '',
     loadingPaths = {},
     dropTargetPath = null,
     animatedWidth = sidebarWidth ?? 0,
+    creatingAt = null,
   } = sidebarUiState || {};
   const setSidebarUiValue = useCallback(
     (key, nextValue) => {
@@ -185,7 +187,7 @@ export default function Sidebar() {
     setDropTargetPath,
   });
 
-  const rows = useMemo(
+  const baseRows = useMemo(
     () => [
       {
         key: '__root__',
@@ -199,10 +201,42 @@ export default function Sidebar() {
     [deferredFilterText, expandedFolders, folderTree, fs.rootHandle, projectName],
   );
 
+  const rows = useMemo(
+    () => insertCreateRow(baseRows, creatingAt),
+    [baseRows, creatingAt],
+  );
+
   const activeIndex = useMemo(() => {
     if (!tabState.activeTabId) return -1;
-    return rows.findIndex((row) => row.pathStr === tabState.activeTabId);
+    return rows.findIndex((row) => !row.isCreateRow && row.pathStr === tabState.activeTabId);
   }, [rows, tabState.activeTabId]);
+
+  const scrollToIndex = useMemo(() => {
+    if (creatingAt) {
+      const createIndex = rows.findIndex((row) => row.isCreateRow);
+      if (createIndex >= 0) return createIndex;
+    }
+    return activeIndex >= 0 ? activeIndex : null;
+  }, [creatingAt, rows, activeIndex]);
+
+  const handleStartCreate = useCallback(
+    (row, type) => {
+      sidebarUiState((draft) => {
+        draft.creatingAt = { pathStr: row.pathStr, type };
+      });
+      const isExpanded = row.item.isRoot || expandedFolders[row.pathStr] !== false;
+      if (row.item.type === 'folder' && !isExpanded) {
+        handleToggle(row, { expandOnly: true });
+      }
+    },
+    [expandedFolders, handleToggle, sidebarUiState],
+  );
+
+  const handleCancelCreate = useCallback(() => {
+    sidebarUiState((draft) => {
+      draft.creatingAt = null;
+    });
+  }, [sidebarUiState]);
 
   const isOpen = isMobile ? sidebarState.isSidebarPopupOpen : isSidebarOpen;
 
@@ -239,7 +273,7 @@ export default function Sidebar() {
         <SidebarTree
           rows={rows}
           activeTabId={tabState.activeTabId}
-          activeIndex={activeIndex}
+          scrollToIndex={scrollToIndex}
           filterText={deferredFilterText}
           expandedFolders={expandedFolders}
           loadingPaths={loadingPaths}
@@ -251,6 +285,8 @@ export default function Sidebar() {
           onOpenFile={handleOpenFile}
           onRename={handleRename}
           onCreate={handleCreate}
+          onStartCreate={handleStartCreate}
+          onCancelCreate={handleCancelCreate}
           onDelete={handleDelete}
           onDragStart={handleDragStart}
           onDragOver={handleDragOver}

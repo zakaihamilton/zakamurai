@@ -18,6 +18,8 @@ const baseHandlers = {
   onOpenFile: vi.fn(),
   onRename: vi.fn(),
   onCreate: vi.fn(),
+  onStartCreate: vi.fn(),
+  onCancelCreate: vi.fn(),
   onDelete: vi.fn(),
   onDragStart: vi.fn(),
   onDragOver: vi.fn(),
@@ -283,5 +285,57 @@ describe('TreeItem', () => {
       expect(screen.getByText('Rename')).toBeDefined();
       expect(screen.queryByText('Delete')).toBeNull();
     });
+  });
+
+  it('starts create via context menu', async () => {
+    const onStartCreate = vi.fn();
+    const folderRow = {
+      item: { name: 'src', type: 'folder', children: [] },
+      level: 0,
+      path: ['src'],
+      pathStr: 'src',
+    };
+    render(<TreeItem row={folderRow} {...baseHandlers} onStartCreate={onStartCreate} />);
+
+    await act(async () => {
+      fireEvent.contextMenu(screen.getByText('src').closest('[draggable="true"]'));
+    });
+
+    await waitFor(() => {
+      expect(screen.getByRole('menu')).toBeDefined();
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('New File'));
+    });
+
+    expect(onStartCreate).toHaveBeenCalledWith(folderRow, 'file');
+  });
+
+  it('renders create row input at child indent', () => {
+    const parentRow = {
+      key: 'src',
+      item: { name: 'src', type: 'folder', children: [] },
+      level: 0,
+      path: ['src'],
+      pathStr: 'src',
+    };
+    const createRow = {
+      key: 'src::__create__',
+      isCreateRow: true,
+      createType: 'file',
+      level: 1,
+      path: ['src'],
+      pathStr: 'src',
+      parentRow,
+    };
+
+    const { container } = render(
+      <TreeItem row={createRow} {...baseHandlers} onCreate={vi.fn().mockResolvedValue(true)} />,
+    );
+
+    const input = screen.getByRole('textbox');
+    expect(input).toBeDefined();
+    expect(container.querySelector('[class*="createInputContainer"]')).toBeDefined();
   });
 });

@@ -60,6 +60,8 @@ export default function TreeItem({
   onOpenFile,
   onRename,
   onCreate,
+  onStartCreate,
+  onCancelCreate,
   onDelete,
   onDragStart,
   onDragOver,
@@ -68,6 +70,14 @@ export default function TreeItem({
   onDrop,
   onDragEnd,
 }) {
+  if (row.isCreateRow) {
+    return (
+      <Node id={row.key}>
+        <CreateRowInner row={row} onCreate={onCreate} onCancelCreate={onCancelCreate} />
+      </Node>
+    );
+  }
+
   return (
     <Node id={row?.pathStr || row?.item?.name || 'TreeItem'}>
       <TreeItemInner
@@ -81,7 +91,7 @@ export default function TreeItem({
         onToggle={onToggle}
         onOpenFile={onOpenFile}
         onRename={onRename}
-        onCreate={onCreate}
+        onStartCreate={onStartCreate}
         onDelete={onDelete}
         onDragStart={onDragStart}
         onDragOver={onDragOver}
@@ -91,6 +101,53 @@ export default function TreeItem({
         onDragEnd={onDragEnd}
       />
     </Node>
+  );
+}
+
+function CreateRowInner({ row, onCreate, onCancelCreate }) {
+  const { level, createType, parentRow } = row;
+  const createRowState = TreeItemState.useState(null, { createValue: '' });
+  const { createValue = '' } = createRowState || {};
+  const createInputRef = useRef(null);
+
+  useEffect(() => {
+    createInputRef.current?.focus();
+  }, []);
+
+  const submitCreate = async () => {
+    const nextName = createValue.trim();
+    if (nextName) {
+      const created = await onCreate(parentRow, createType, nextName);
+      if (!created) return;
+    }
+    onCancelCreate();
+  };
+
+  return (
+    <div
+      style={{ '--tree-indent': `${16 + level * 16}px` }}
+      className={styles.createInputContainer}
+    >
+      <span className={styles.iconContainer} />
+      <span className={styles.typeIcon}>
+        {createType === 'folder' ? <Icons.Folder /> : <Icons.File />}
+      </span>
+      <input
+        ref={createInputRef}
+        value={createValue}
+        onChange={(event) =>
+          createRowState((draft) => {
+            draft.createValue = event.target.value;
+          })
+        }
+        onBlur={submitCreate}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter') submitCreate();
+          if (event.key === 'Escape') onCancelCreate();
+        }}
+        className={styles.editInput}
+      />
+    </div>
   );
 }
 
@@ -105,7 +162,7 @@ function TreeItemInner({
   onToggle,
   onOpenFile,
   onRename,
-  onCreate,
+  onStartCreate,
   onDelete,
   onDragStart,
   onDragOver,
@@ -118,21 +175,16 @@ function TreeItemInner({
   const treeItemState = TreeItemState.useState(null, {
     isEditing: false,
     editValue: item.name,
-    isCreating: null,
-    createValue: '',
     contextMenu: null,
     showDeleteDialog: false,
   });
   const {
     isEditing = false,
     editValue = item.name,
-    isCreating = null,
-    createValue = '',
     contextMenu = null,
     showDeleteDialog = false,
   } = treeItemState || {};
   const editInputRef = useRef(null);
-  const createInputRef = useRef(null);
   const longPressHandlers = useLongPress(
     (event) => {
       const touch = event.touches[0];
@@ -157,10 +209,6 @@ function TreeItemInner({
   }, [isEditing]);
 
   useEffect(() => {
-    if (isCreating) createInputRef.current?.focus();
-  }, [isCreating]);
-
-  useEffect(() => {
     const handleClick = () => {
       treeItemState((draft) => {
         draft.contextMenu = null;
@@ -181,18 +229,6 @@ function TreeItemInner({
     });
   };
 
-  const submitCreate = async () => {
-    const nextName = createValue.trim();
-    if (nextName) {
-      const created = await onCreate(row, isCreating, nextName);
-      if (!created) return;
-    }
-    treeItemState((draft) => {
-      draft.isCreating = null;
-      draft.createValue = '';
-    });
-  };
-
   const handleClick = () => {
     if (isEditing) return;
     if (item.type === 'folder') {
@@ -204,12 +240,9 @@ function TreeItemInner({
 
   const startCreate = (type) => {
     treeItemState((draft) => {
-      draft.isCreating = type;
       draft.contextMenu = null;
     });
-    if (item.type === 'folder' && !isExpanded) {
-      onToggle(row, { expandOnly: true });
-    }
+    onStartCreate(row, type);
   };
 
   return (
@@ -305,37 +338,6 @@ function TreeItemInner({
           )}
         </button>
       </div>
-
-      {isCreating && (
-        <div
-          style={{ '--tree-indent': `${16 + (level + 1) * 16}px` }}
-          className={styles.createInputContainer}
-        >
-          <span className={styles.iconContainer} />
-          <span className={styles.typeIcon}>
-            {isCreating === 'folder' ? <Icons.Folder /> : <Icons.File />}
-          </span>
-          <input
-            ref={createInputRef}
-            value={createValue}
-            onChange={(event) =>
-              treeItemState((draft) => {
-                draft.createValue = event.target.value;
-              })
-            }
-            onBlur={submitCreate}
-            onKeyDown={(event) => {
-              if (event.key === 'Enter') submitCreate();
-              if (event.key === 'Escape') {
-                treeItemState((draft) => {
-                  draft.isCreating = null;
-                });
-              }
-            }}
-            className={styles.editInput}
-          />
-        </div>
-      )}
 
       <SidebarContextMenu
         item={item}

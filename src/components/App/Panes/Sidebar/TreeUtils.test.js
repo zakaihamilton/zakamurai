@@ -6,6 +6,7 @@ import {
   getInitialFileContents,
   getNodeType,
   getPathStr,
+  insertCreateRow,
   isNodeModulesPath,
   normalizeChildren,
   removeNodeAtPath,
@@ -234,6 +235,41 @@ describe('TreeUtils', () => {
       expect(flat.map((f) => f.key)).toContain('src/App.js');
       expect(flat.map((f) => f.key)).toContain('src/components');
       expect(flat.map((f) => f.key)).not.toContain('package.json');
+    });
+  });
+
+  describe('insertCreateRow', () => {
+    const rows = [
+      { key: '__root__', pathStr: '', level: 0, path: [], item: { name: 'Project', type: 'folder' } },
+      { key: 'src', pathStr: 'src', level: 1, path: ['src'], item: { name: 'src', type: 'folder' } },
+      { key: 'src/App.js', pathStr: 'src/App.js', level: 2, path: ['src', 'App.js'], item: { name: 'App.js', type: 'file' } },
+    ];
+
+    it('inserts create row immediately after the parent folder', () => {
+      const next = insertCreateRow(rows, { pathStr: 'src', type: 'file' });
+      expect(next.length).toBe(4);
+      expect(next[2].isCreateRow).toBe(true);
+      expect(next[2].createType).toBe('file');
+      expect(next[2].level).toBe(2);
+      expect(next[2].parentRow).toBe(rows[1]);
+      expect(next[3].key).toBe('src/App.js');
+    });
+
+    it('inserts create row after the project root', () => {
+      const next = insertCreateRow(rows, { pathStr: '', type: 'folder' });
+      expect(next.length).toBe(4);
+      expect(next[1].isCreateRow).toBe(true);
+      expect(next[1].createType).toBe('folder');
+      expect(next[1].level).toBe(1);
+      expect(next[2].key).toBe('src');
+    });
+
+    it('returns original rows when creatingAt is null', () => {
+      expect(insertCreateRow(rows, null)).toBe(rows);
+    });
+
+    it('returns original rows when parent is not found', () => {
+      expect(insertCreateRow(rows, { pathStr: 'missing', type: 'file' })).toBe(rows);
     });
   });
 });
