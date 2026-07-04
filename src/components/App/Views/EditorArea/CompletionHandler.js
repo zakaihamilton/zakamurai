@@ -380,6 +380,7 @@ export default function useCompletion({
           }
         } catch (err) {
           if (lastRequestRef.current !== scheduledRequestId) return;
+          if (err?.name === 'AbortError') return;
 
           console.error('Completion error:', err);
           const errorMessage = err.message || String(err);

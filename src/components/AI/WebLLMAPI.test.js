@@ -29,6 +29,8 @@ describe('WebLLMAPI', () => {
         },
       },
       interruptGenerate: vi.fn(),
+      resetChat: vi.fn().mockResolvedValue(undefined),
+      interruptSignal: false,
     };
     CreateMLCEngine.mockResolvedValue(mockEngine);
     await deleteCachedWebLLMModel('test-model');
@@ -100,7 +102,34 @@ describe('WebLLMAPI', () => {
     await askWebLLM('hello', '', null, { model: 'test-model' });
 
     await interruptWebLLM();
+    expect(mockEngine.interruptGenerate).not.toHaveBeenCalled();
+    expect(mockEngine.resetChat).toHaveBeenCalledWith(false, 'test-model');
+    expect(mockEngine.interruptSignal).toBe(false);
+  });
+
+  it('interruptWebLLM waits for in-flight generation and resets engine state', async () => {
+    let resolveCreate;
+    const createPromise = new Promise((resolve) => {
+      resolveCreate = resolve;
+    });
+    mockEngine.chat.completions.create.mockReturnValue(createPromise);
+
+    const generation = askWebLLM('hello', '', null, { model: 'test-model' });
+    await Promise.resolve();
+
+    const interruptPromise = interruptWebLLM();
+    await Promise.resolve();
     expect(mockEngine.interruptGenerate).toHaveBeenCalled();
+
+    resolveCreate({
+      choices: [{ message: { content: 'AI Response' } }],
+    });
+
+    await generation;
+    await interruptPromise;
+
+    expect(mockEngine.resetChat).toHaveBeenCalledWith(false, 'test-model');
+    expect(mockEngine.interruptSignal).toBe(false);
   });
 
   it('handles error in interruptWebLLM gracefully', async () => {
@@ -113,9 +142,17 @@ describe('WebLLMAPI', () => {
     const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
     await interruptWebLLM();
-    expect(consoleWarnSpy).toHaveBeenCalled();
+    expect(consoleWarnSpy).not.toHaveBeenCalled();
     mockEngine.interruptGenerate.mockResolvedValue(undefined);
     consoleWarnSpy.mockRestore();
+  });
+
+  it('maps web-llm interrupt errors to AbortError', async () => {
+    mockEngine.chat.completions.create.mockRejectedValue(new Error('Message error should not be 0'));
+
+    await expect(askWebLLM('hello', '', null, { model: 'test-model' })).rejects.toMatchObject({
+      name: 'AbortError',
+    });
   });
 
   it('interruptWebLLMModel interrupts a specific model generation', async () => {
@@ -129,7 +166,7 @@ describe('WebLLMAPI', () => {
     await askWebLLM('hello', '', null, { model: 'test-model' });
 
     await interruptWebLLMModel('test-model');
-    expect(mockEngine.interruptGenerate).toHaveBeenCalled();
+    expect(mockEngine.interruptGenerate).not.toHaveBeenCalled();
 
     // Check with no model
     await interruptWebLLMModel(null);
@@ -137,9 +174,19 @@ describe('WebLLMAPI', () => {
     // Check with non-existent model
     await interruptWebLLMModel('non-existent');
 
-    // Check when it throws
+    // Check when it throws during an in-flight generation
+    let resolveCreate;
+    const createPromise = new Promise((resolve) => {
+      resolveCreate = resolve;
+    });
+    mockEngine.chat.completions.create.mockReturnValue(createPromise);
+    const generation = askWebLLM('hello', '', null, { model: 'test-model' });
+    await Promise.resolve();
     mockEngine.interruptGenerate.mockRejectedValue(new Error('Failed'));
-    await interruptWebLLMModel('test-model');
+    const interruptPromise = interruptWebLLMModel('test-model');
+    resolveCreate({ choices: [{ message: { content: 'AI Response' } }] });
+    await generation;
+    await interruptPromise;
     expect(consoleWarnSpy).toHaveBeenCalled();
     consoleWarnSpy.mockRestore();
   });

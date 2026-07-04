@@ -7,6 +7,41 @@ const DEFAULT_WEB_LLM_MODEL_ID = RECOMMENDED_WEB_LLM_MODEL.id;
 
 // A map of initialization promises keyed by model ID.
 const enginePromises = new Map();
+/** @type {Map<string, Promise<void>>} */
+const inflightGenerations = new Map();
+
+const isWebLLMInterruptError = (error) => {
+  const message = error?.message || String(error);
+  return message.includes('Message error should not be 0');
+};
+
+const clearEngineInterruptState = async (engine, modelId) => {
+  // web-llm leaves interruptSignal true after interruptGenerate(); the next non-streaming
+  // request then calls triggerStop() before prefill and throws.
+  engine.interruptSignal = false;
+  try {
+    await engine.resetChat(false, modelId);
+  } catch (error) {
+    console.warn(`Failed to reset WebLLM chat state for ${modelId}:`, error);
+  }
+};
+
+const interruptEngine = async (engine, modelId) => {
+  const inflight = inflightGenerations.get(modelId);
+  if (!inflight) {
+    await clearEngineInterruptState(engine, modelId);
+    return;
+  }
+
+  try {
+    await engine.interruptGenerate();
+    await inflight;
+  } catch (error) {
+    console.warn(`Failed to interrupt WebLLM model ${modelId}:`, error);
+  } finally {
+    await clearEngineInterruptState(engine, modelId);
+  }
+};
 
 export const getCachedWebLLMModelIds = async () => {
   const cacheEntries = await Promise.all(
@@ -87,12 +122,22 @@ const getEngine = (modelId = DEFAULT_WEB_LLM_MODEL_ID, onProgress = null, option
  * @returns {Promise<string>} - The AI's generated response.
  */
 export const askWebLLM = async (prompt, systemPrompt = '', onUpdate = null, options = {}) => {
+  const modelId = options.model || DEFAULT_WEB_LLM_MODEL_ID;
+  let resolveInflight = () => {};
+  const inflightPromise = new Promise((resolve) => {
+    resolveInflight = resolve;
+  });
+  inflightGenerations.set(modelId, inflightPromise);
+
   try {
+    if (options.signal?.aborted) {
+      throw new DOMException('WebLLM generation interrupted', 'AbortError');
+    }
+
     console.info('[WebLLM] Retrieving engine...');
     const engine = await getEngine(options.model, options.onInitProgress ?? null, options);
     console.info('[WebLLM] Engine retrieved. Starting completion...');
 
-    const modelId = options.model || DEFAULT_WEB_LLM_MODEL_ID;
     const defaultSystemPrompt = DEFAULT_SYSTEM_PROMPT;
 
     const messages = options.messages || [
@@ -135,8 +180,18 @@ export const askWebLLM = async (prompt, systemPrompt = '', onUpdate = null, opti
 
     return reply.choices?.[0]?.message?.content ?? 'No response generated.';
   } catch (error) {
+    if (
+      options.signal?.aborted ||
+      error?.name === 'AbortError' ||
+      isWebLLMInterruptError(error)
+    ) {
+      throw new DOMException('WebLLM generation interrupted', 'AbortError');
+    }
     console.error('Error in askWebLLM:', error);
     throw new Error(`Local AI failed: ${error.message || error}`);
+  } finally {
+    resolveInflight();
+    inflightGenerations.delete(modelId);
   }
 };
 
@@ -151,7 +206,7 @@ export const interruptWebLLMModel = async (modelId) => {
 
   try {
     const engine = await enginePromise;
-    await engine.interruptGenerate();
+    await interruptEngine(engine, modelId);
   } catch (e) {
     console.warn(`Failed to interrupt WebLLM model ${modelId}:`, e);
   }
@@ -161,10 +216,10 @@ export const interruptWebLLMModel = async (modelId) => {
  * Halts the current generation process of the WebLLM engine.
  */
 export const interruptWebLLM = async () => {
-  for (const enginePromise of enginePromises.values()) {
+  for (const [modelId, enginePromise] of enginePromises.entries()) {
     try {
       const engine = await enginePromise;
-      await engine.interruptGenerate();
+      await interruptEngine(engine, modelId);
     } catch (e) {
       console.warn('Failed to interrupt WebLLM:', e);
     }
