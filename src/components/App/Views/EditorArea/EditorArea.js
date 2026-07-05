@@ -41,6 +41,8 @@ const countLines = (value) => {
 const getTemplateContents = () =>
   Settings.getTemplate() === 'scratch' ? SCRATCH_CONTENTS : DEFAULT_CONTENTS;
 
+const COMMAND_NAV_DELAY_MS = 1000;
+
 let commandKeyPressed = false;
 
 export default function EditorArea({ file, fsHandle }) {
@@ -317,21 +319,48 @@ function EditorAreaInner({ file, fsHandle }) {
   );
 
   useEffect(() => {
-    const updateCommandPressed = (nextValue) => {
+    let delayTimer = null;
+
+    const clearDelayTimer = () => {
+      if (delayTimer !== null) {
+        clearTimeout(delayTimer);
+        delayTimer = null;
+      }
+    };
+
+    const setCommandHighlightEnabled = (nextValue) => {
       commandKeyPressed = nextValue;
       setIsCommandPressed(nextValue);
     };
+
+    const scheduleCommandHighlight = () => {
+      if (commandKeyPressed || delayTimer !== null) return;
+      delayTimer = setTimeout(() => {
+        delayTimer = null;
+        setCommandHighlightEnabled(true);
+      }, COMMAND_NAV_DELAY_MS);
+    };
+
+    const disableCommandHighlight = () => {
+      clearDelayTimer();
+      setCommandHighlightEnabled(false);
+    };
+
     const handleKeyDown = (e) => {
-      if (e.key === 'Meta') updateCommandPressed(true);
+      if (e.key === 'Meta') scheduleCommandHighlight();
     };
     const handleKeyUp = (e) => {
-      if (e.key === 'Meta') updateCommandPressed(false);
+      if (e.key === 'Meta') disableCommandHighlight();
     };
     const handleMouseModifier = (e) => {
-      updateCommandPressed(e.metaKey);
+      if (e.metaKey) {
+        scheduleCommandHighlight();
+      } else {
+        disableCommandHighlight();
+      }
     };
     const handleBlur = () => {
-      updateCommandPressed(false);
+      disableCommandHighlight();
     };
 
     window.addEventListener('keydown', handleKeyDown);
@@ -341,6 +370,7 @@ function EditorAreaInner({ file, fsHandle }) {
     window.addEventListener('blur', handleBlur);
 
     return () => {
+      clearDelayTimer();
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
       window.removeEventListener('mousedown', handleMouseModifier);

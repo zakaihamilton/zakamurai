@@ -188,6 +188,8 @@ describe('EditorArea', () => {
   });
 
   it('keeps navigation highlighting enabled after switching files while Command is held', async () => {
+    vi.useFakeTimers();
+
     const mockState = {
       fileContents: { 'test.js': 'content', 'next.js': 'next content' },
       cursorPos: {},
@@ -213,9 +215,13 @@ describe('EditorArea', () => {
       fireEvent.keyDown(window, { key: 'Meta' });
     });
 
-    await waitFor(() => {
-      expect(vi.mocked(highlightCode).mock.calls.at(-1)?.[9]).toBe(true);
+    expect(vi.mocked(highlightCode).mock.calls.at(-1)?.[9]).toBe(false);
+
+    await act(async () => {
+      vi.advanceTimersByTime(1000);
     });
+
+    expect(vi.mocked(highlightCode).mock.calls.at(-1)?.[9]).toBe(true);
 
     vi.mocked(highlightCode).mockClear();
 
@@ -228,5 +234,46 @@ describe('EditorArea', () => {
     await act(async () => {
       fireEvent.keyUp(window, { key: 'Meta' });
     });
+
+    expect(vi.mocked(highlightCode).mock.calls.at(-1)?.[9]).toBe(false);
+
+    vi.useRealTimers();
+  });
+
+  it('does not enable navigation highlighting when Command is released before the delay', async () => {
+    vi.useFakeTimers();
+
+    const mockState = {
+      fileContents: { 'test.js': 'content' },
+      cursorPos: {},
+      isCompleting: {},
+      isReadOnly: false,
+    };
+    const stateHook = vi.fn(() => mockState);
+    Object.assign(stateHook, mockState);
+
+    vi.spyOn(EditorState, 'useState').mockReturnValue(stateHook);
+    vi.spyOn(AppState, 'useState').mockReturnValue({ fs: { mode: null } });
+    vi.spyOn(TabState, 'useState').mockReturnValue({ openTabs: [] });
+
+    await act(async () => {
+      render(<EditorArea file={{ path: ['test.js'], name: 'test.js' }} />);
+    });
+
+    await act(async () => {
+      fireEvent.keyDown(window, { key: 'Meta' });
+    });
+
+    await act(async () => {
+      fireEvent.keyUp(window, { key: 'Meta' });
+    });
+
+    await act(async () => {
+      vi.advanceTimersByTime(1000);
+    });
+
+    expect(vi.mocked(highlightCode).mock.calls.at(-1)?.[9]).toBe(false);
+
+    vi.useRealTimers();
   });
 });
