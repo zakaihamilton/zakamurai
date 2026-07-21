@@ -7,9 +7,30 @@ vi.mock('@/utils/rag/search-utility', () => {
   return {
     ragSearch: {
       init: vi.fn(),
+      indexWorkspaceFiles: vi.fn().mockResolvedValue(undefined),
     },
   };
 });
+
+vi.mock('@/components/AI/Agent/Snapshot', () => ({
+  collectWorkspaceFiles: vi.fn().mockResolvedValue({}),
+}));
+
+vi.mock('@/components/App/AppState', () => ({
+  AppState: {
+    useState: vi.fn(),
+  },
+}));
+
+vi.mock('@/components/App/Views/EditorArea', () => ({
+  EditorState: {
+    useState: vi.fn(),
+  },
+}));
+
+import { collectWorkspaceFiles } from '@/components/AI/Agent/Snapshot';
+import { AppState } from '@/components/App/AppState';
+import { EditorState } from '@/components/App/Views/EditorArea';
 
 describe('useRagIndexer', () => {
   let consoleLogSpy;
@@ -20,6 +41,10 @@ describe('useRagIndexer', () => {
     vi.clearAllMocks();
     consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
     consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    AppState.useState.mockReturnValue({ fs: { isReady: true } });
+    EditorState.useState.mockReturnValue({ fileContents: {} });
+    collectWorkspaceFiles.mockResolvedValue({});
+    ragSearch.indexWorkspaceFiles.mockResolvedValue(undefined);
   });
 
   afterEach(() => {
