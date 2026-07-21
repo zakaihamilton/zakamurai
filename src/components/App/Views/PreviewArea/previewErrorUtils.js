@@ -155,11 +155,54 @@ export function isMissingDefaultExportError(message) {
   return /does not provide an export named ['"]default['"]/i.test(message || '');
 }
 
+export function extractFailedModuleSpecifier(message) {
+  const match = message.match(/requested module ['"]([^'"]+)['"]/i);
+  return match?.[1] || null;
+}
+
+/** Map bundled /dist URLs onto /preview so parent-window fetches hit the virtual server. */
+export function toPreviewFetchUrl(url, origin = 'http://localhost') {
+  if (!url) return url;
+  try {
+    const parsed = new URL(url, origin);
+    if (parsed.pathname === '/preview' || parsed.pathname.startsWith('/preview/')) {
+      return parsed.href;
+    }
+    if (parsed.pathname === '/dist' || parsed.pathname.startsWith('/dist/')) {
+      parsed.pathname = `/preview${parsed.pathname}`;
+      return parsed.href;
+    }
+  } catch {
+    // Keep the original URL when parsing fails.
+  }
+  return url;
+}
+
+/** Host framework 404/500 HTML must not be shown as a preview script error. */
+export function isHtmlErrorDocument(text, contentType = '') {
+  if (/text\/html/i.test(contentType)) return true;
+  const trimmed = (text || '').trimStart();
+  if (!trimmed) return false;
+  return (
+    /^<!doctype\s+html/i.test(trimmed) ||
+    /^<html[\s>]/i.test(trimmed) ||
+    /404:\s*This page could not be found/i.test(trimmed)
+  );
+}
+
 export async function fetchScriptErrorBody(url, fetchImpl = fetch) {
   if (!url) return null;
   try {
-    const response = await fetchImpl(url);
+    const origin =
+      typeof window !== 'undefined' && window.location?.origin
+        ? window.location.origin
+        : 'http://localhost';
+    const response = await fetchImpl(toPreviewFetchUrl(url, origin));
     const text = await response.text();
+    const contentType = response.headers.get('content-type') || '';
+
+    if (isHtmlErrorDocument(text, contentType)) return null;
+
     const transformHeader =
       response.headers.get('X-Transform-Error') || response.headers.get('x-transform-error');
     const extracted = extractTransformErrorMessage(text);
@@ -168,17 +211,19 @@ export async function fetchScriptErrorBody(url, fetchImpl = fetch) {
       return truncatePreviewError(text.trim());
     }
     if (!response.ok && text.trim()) {
-      return truncatePreviewError(text.trim());
+      const trimmed = text.trim();
+      if (
+        trimmed.startsWith('Service Worker Error:') ||
+        trimmed.startsWith('Decode error:') ||
+        normalizeTransformError(trimmed)
+      ) {
+        return truncatePreviewError(trimmed);
+      }
     }
   } catch {
     // Ignore fetch failures for error enrichment.
   }
   return null;
-}
-
-export function extractFailedModuleSpecifier(message) {
-  const match = message.match(/requested module ['"]([^'"]+)['"]/i);
-  return match?.[1] || null;
 }
 
 export async function resolveMissingExportError(event, fetchImpl = fetch) {

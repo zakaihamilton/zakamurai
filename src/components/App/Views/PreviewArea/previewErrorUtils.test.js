@@ -7,8 +7,10 @@ import {
   formatEsbuildTransformError,
   formatRuntimeError,
   formatUnhandledRejection,
+  isHtmlErrorDocument,
   normalizeTransformError,
   resolveMissingExportError,
+  toPreviewFetchUrl,
 } from './previewErrorUtils';
 
 describe('previewErrorUtils', () => {
@@ -237,6 +239,52 @@ console.error("Transform failed with 1 error");`,
       expect(result).toContain('Transform failed with 1 error');
 
       global.fetch = originalFetch;
+    });
+
+    it('ignores host Next.js 404 HTML from bare /dist asset probes', async () => {
+      const fetchImpl = vi.fn(async (url) => {
+        expect(url).toBe('https://www.zakamurai.com/preview/dist/assets/main.js');
+        return {
+          ok: false,
+          headers: { get: (name) => (name === 'content-type' ? 'text/html; charset=utf-8' : null) },
+          text: async () =>
+            '<!DOCTYPE html><html><head><title>404: This page could not be found.</title></head><body>404</body></html>',
+        };
+      });
+
+      await expect(
+        fetchScriptErrorBody('https://www.zakamurai.com/dist/assets/main.js', fetchImpl),
+      ).resolves.toBeNull();
+    });
+
+    it('ignores HTML bodies even when content-type is missing', async () => {
+      const fetchImpl = vi.fn(async () => ({
+        ok: false,
+        headers: { get: () => null },
+        text: async () =>
+          '<!DOCTYPE html><html><title>404: This page could not be found.</title></html>',
+      }));
+
+      await expect(fetchScriptErrorBody('/dist/assets/main.js', fetchImpl)).resolves.toBeNull();
+    });
+  });
+
+  describe('toPreviewFetchUrl', () => {
+    it('prefixes bare /dist paths with /preview', () => {
+      expect(toPreviewFetchUrl('/dist/assets/main.js', 'https://www.zakamurai.com')).toBe(
+        'https://www.zakamurai.com/preview/dist/assets/main.js',
+      );
+      expect(
+        toPreviewFetchUrl('https://www.zakamurai.com/preview/dist/index.html', 'https://www.zakamurai.com'),
+      ).toBe('https://www.zakamurai.com/preview/dist/index.html');
+    });
+  });
+
+  describe('isHtmlErrorDocument', () => {
+    it('detects HTML documents and Next.js 404 pages', () => {
+      expect(isHtmlErrorDocument('<!DOCTYPE html><html></html>')).toBe(true);
+      expect(isHtmlErrorDocument('ok', 'text/html')).toBe(true);
+      expect(isHtmlErrorDocument('Service Worker Error: unavailable')).toBe(false);
     });
   });
 });
