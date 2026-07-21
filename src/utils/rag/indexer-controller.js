@@ -48,7 +48,7 @@ export class IndexerController {
       const root = await navigator.storage.getDirectory();
 
       // Fallback or explicit check if FileSystemObserver is available
-      if ('FileSystemObserver' in window) {
+      if (typeof window.FileSystemObserver === 'function') {
         this.observer = new window.FileSystemObserver(this.handleFileChanges.bind(this));
         await this.observer.observe(root, { recursive: true });
         console.log('[IndexerController] FileSystemObserver initialized on OPFS root.');

@@ -1,7 +1,7 @@
-import { renderHook, act } from '@testing-library/react';
-import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
-import { useRagIndexer } from './RagIndexer';
 import { ragSearch } from '@/utils/rag/search-utility';
+import { act, renderHook } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { useRagIndexer } from './RagIndexer';
 
 vi.mock('@/utils/rag/search-utility', () => {
   return {
@@ -74,7 +74,7 @@ describe('useRagIndexer', () => {
 
     expect(consoleErrorSpy).toHaveBeenCalledWith(
       '[RAG] Failed to initialize indexer:',
-      expect.any(Error)
+      expect.any(Error),
     );
   });
 });

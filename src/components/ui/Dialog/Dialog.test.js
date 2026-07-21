@@ -58,15 +58,7 @@ describe('Dialog', () => {
 
   it('calls onCancel when backdrop receives Enter or Space keydown', () => {
     const onCancel = vi.fn();
-    render(
-      <Dialog
-        isOpen={true}
-        title="T"
-        message="M"
-        onConfirm={vi.fn()}
-        onCancel={onCancel}
-      />,
-    );
+    render(<Dialog isOpen={true} title="T" message="M" onConfirm={vi.fn()} onCancel={onCancel} />);
 
     const backdrop = screen.getAllByLabelText('Close dialog')[0];
     fireEvent.keyDown(backdrop, { key: 'Enter' });

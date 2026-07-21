@@ -32,23 +32,34 @@ vi.mock('./useTabDragAndDrop', () => ({
 }));
 
 // Capture TabContextMenu callbacks so we can test them
-let capturedContextMenuProps = null;
+let _capturedContextMenuProps = null;
 vi.mock('./TabContextMenu', () => ({
   default: (props) => {
-    capturedContextMenuProps = props;
+    _capturedContextMenuProps = props;
     return (
       <div data-testid="TabContextMenu">
-        <button onClick={() => props.onCloseTab(props.tab.id)}>ctx-close</button>
-        <button onClick={() => props.onCloseOthers(props.tab.id)}>ctx-close-others</button>
-        <button onClick={() => props.onCloseToLeft(props.tab.id)}>ctx-close-left</button>
-        <button onClick={() => props.onCloseToRight(props.tab.id)}>ctx-close-right</button>
-        <button onClick={() => props.onCloseAll()}>ctx-close-all</button>
-        <button onClick={() => props.onClose()}>ctx-dismiss</button>
+        <button type="button" onClick={() => props.onCloseTab(props.tab.id)}>
+          ctx-close
+        </button>
+        <button type="button" onClick={() => props.onCloseOthers(props.tab.id)}>
+          ctx-close-others
+        </button>
+        <button type="button" onClick={() => props.onCloseToLeft(props.tab.id)}>
+          ctx-close-left
+        </button>
+        <button type="button" onClick={() => props.onCloseToRight(props.tab.id)}>
+          ctx-close-right
+        </button>
+        <button type="button" onClick={() => props.onCloseAll()}>
+          ctx-close-all
+        </button>
+        <button type="button" onClick={() => props.onClose()}>
+          ctx-dismiss
+        </button>
       </div>
     );
   },
 }));
-
 
 const makeTabState = (overrides = {}) => {
   const updater = vi.fn();
@@ -148,7 +159,9 @@ describe('TabBar', () => {
   });
 
   it('returns null when no tabs are open', () => {
-    vi.spyOn(TabState, 'useState').mockReturnValue(makeTabState({ openTabs: [], activeTabId: null }));
+    vi.spyOn(TabState, 'useState').mockReturnValue(
+      makeTabState({ openTabs: [], activeTabId: null }),
+    );
     vi.mocked(SidebarState.useState).mockReturnValue(makeSidebarState());
 
     const { container } = render(<TabBar />);
@@ -157,7 +170,7 @@ describe('TabBar', () => {
 
   it('triggers dragOver and dragLeave on tab bar', async () => {
     const tabBarUiUpdater = vi.fn();
-    const tabBarUiState = Object.assign(tabBarUiUpdater, {
+    const _tabBarUiState = Object.assign(tabBarUiUpdater, {
       draggedTabId: null,
       dropTargetId: null,
       isOverBar: false,
@@ -237,9 +250,7 @@ describe('TabBar', () => {
 
   it('context menu dismiss sets contextMenu to null', () => {
     const stateUpdate = makeTabState({
-      openTabs: [
-        { id: 'tab1', label: 'Tab 1', type: 'file', file: { path: [] } },
-      ],
+      openTabs: [{ id: 'tab1', label: 'Tab 1', type: 'file', file: { path: [] } }],
       activeTabId: 'tab1',
     });
     vi.spyOn(TabState, 'useState').mockReturnValue(stateUpdate);
@@ -256,7 +267,12 @@ describe('TabBar', () => {
     const sidebarUpdater = vi.fn();
     const stateUpdate = makeTabState({
       openTabs: [
-        { id: 'src/components/App.js', label: 'App.js', type: 'file', file: { path: ['src', 'components', 'App.js'] } },
+        {
+          id: 'src/components/App.js',
+          label: 'App.js',
+          type: 'file',
+          file: { path: ['src', 'components', 'App.js'] },
+        },
       ],
       activeTabId: 'src/components/App.js',
     });

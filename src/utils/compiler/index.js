@@ -2,6 +2,7 @@
  * Compiler utility that uses almostnode to run build scripts in the browser.
  */
 
+import { bundleBrowserProject } from './browser-bundler';
 import { getSharedContainer, initContainer, resetContainer } from './container';
 import { setupSmartDevServer } from './dev-server';
 import { scaffoldMissingFiles } from './scaffold';
@@ -34,11 +35,7 @@ export class Compiler {
       setupSmartDevServer(container, this.onLog),
     );
 
-    const timeoutPromise = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error('Container initialization timed out after 30s')), 30000),
-    );
-
-    return await Promise.race([initPromise, timeoutPromise]);
+    return await withTimeout(initPromise, 30000, 'Container initialization timed out after 30s');
   }
 
   async syncFiles(fs, folderTree, fileContents) {
@@ -66,11 +63,7 @@ export class Compiler {
           onProgress: (msg) => this.onLog(`[NPM] ${msg}`),
         });
 
-        const timeoutPromise = new Promise((_, reject) =>
-          setTimeout(() => reject(new Error('NPM install timed out after 60s')), 60000),
-        );
-
-        await Promise.race([installPromise, timeoutPromise]);
+        await withTimeout(installPromise, 60000, 'NPM install timed out after 60s');
 
         let packageJson;
         try {
@@ -100,29 +93,8 @@ export class Compiler {
               esbuild: '/node_modules/esbuild/bin/esbuild',
             };
 
-            if (cmd === 'vite' || cmd === 'esbuild') {
-              this.onLog(
-                '[WARN] Native binaries (Go/Rust) cannot be executed in a pure JS browser sandbox.',
-              );
-              this.onLog(
-                `Compiler: Bypassing native bundler. Handing off to almostnode's native ESM Transformer...`,
-              );
-
-              const isBuild = args.includes('build');
-
-              if (isBuild) {
-                if (!vfs.existsSync('/dist')) vfs.mkdirSync('/dist');
-                if (vfs.existsSync('/index.html')) {
-                  vfs.writeFileSync('/dist/index.html', vfs.readFileSync('/index.html', 'utf8'));
-                }
-                this.onLog(
-                  'Mock build complete. Application ready for Service Worker preview interception.',
-                );
-              } else {
-                this.onLog(
-                  'Dev server requested. The almostnode Service Worker is already listening for preview requests.',
-                );
-              }
+            if ((cmd === 'vite' && args.includes('build')) || cmd === 'esbuild') {
+              await bundleBrowserProject(vfs, packageJson, cmdString, this.onLog);
             } else if (knownBinaries[cmd] && vfs.existsSync(knownBinaries[cmd])) {
               this.onLog(`Compiler: Routing pure-JS CLI '${cmd}' directly to Node runtime...`);
               const scriptPath = knownBinaries[cmd];
@@ -157,14 +129,11 @@ import('${scriptPath}').catch(err => console.error('[Runner Error]', err));
               });
 
               // Add a 30-second timeout to each subcommand
-              const timeoutPromise = new Promise((_, reject) =>
-                setTimeout(
-                  () => reject(new Error(`Command '${cmdString}' timed out after 30s`)),
-                  30000,
-                ),
+              const result = await withTimeout(
+                runPromise,
+                30000,
+                `Command '${cmdString}' timed out after 30s`,
               );
-
-              const result = await Promise.race([runPromise, timeoutPromise]);
 
               if (result.exitCode !== 0) {
                 const errorMsg = `Command '${cmdString}' failed with exit code ${result.exitCode}`;
@@ -207,4 +176,12 @@ import('${scriptPath}').catch(err => console.error('[Runner Error]', err));
       throw err;
     }
   }
+}
+
+function withTimeout(promise, ms, message) {
+  let timeoutId;
+  const timeout = new Promise((_, reject) => {
+    timeoutId = setTimeout(() => reject(new Error(message)), ms);
+  });
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timeoutId));
 }

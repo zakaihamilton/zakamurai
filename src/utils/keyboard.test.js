@@ -1,11 +1,11 @@
-import { renderHook, act } from '@testing-library/react';
+import { act, renderHook } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
-  isMobileLikeDevice,
-  shouldShowKeyboardShortcuts,
-  markKeyboardActivity,
-  useShouldShowKeyboardShortcuts,
   KeyboardShortcutState,
+  isMobileLikeDevice,
+  markKeyboardActivity,
+  shouldShowKeyboardShortcuts,
+  useShouldShowKeyboardShortcuts,
 } from './keyboard';
 
 describe('keyboard utilities', () => {

@@ -1,7 +1,7 @@
-import { renderHook, act } from '@testing-library/react';
-import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
-import useZipExporter from './ZipExporter';
 import { Compiler } from '@/utils/compiler';
+import { act, renderHook } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import useZipExporter from './ZipExporter';
 
 vi.mock('@/utils/compiler', () => ({
   Compiler: {
@@ -35,15 +35,15 @@ describe('useZipExporter', () => {
     URL.createObjectURL = vi.fn(() => 'blob:test-url');
     URL.revokeObjectURL = vi.fn();
     vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
-    
+
     const originalAppend = Node.prototype.appendChild;
-    vi.spyOn(document.body, 'appendChild').mockImplementation(function(el) {
+    vi.spyOn(document.body, 'appendChild').mockImplementation((el) => {
       if (el.tagName === 'A' && el.download) return el;
       return originalAppend.call(document.body, el);
     });
-    
+
     const originalRemove = Node.prototype.removeChild;
-    vi.spyOn(document.body, 'removeChild').mockImplementation(function(el) {
+    vi.spyOn(document.body, 'removeChild').mockImplementation((el) => {
       if (el.tagName === 'A' && el.download) return el;
       return originalRemove.call(document.body, el);
     });
@@ -79,7 +79,9 @@ describe('useZipExporter', () => {
       await result.current.handleExportCompiledZip();
     });
 
-    expect(alertSpy).toHaveBeenCalledWith('No compiled files found. Please compile the project first.');
+    expect(alertSpy).toHaveBeenCalledWith(
+      'No compiled files found. Please compile the project first.',
+    );
   });
 
   it('handleExportCompiledZip processes and exports files correctly', async () => {

@@ -4,9 +4,11 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 vi.mock('@huggingface/transformers', () => {
   return {
     env: { backends: { onnx: { wasm: {} } } },
-    pipeline: vi.fn().mockResolvedValue(vi.fn().mockResolvedValue({
-      data: [0.1, 0.2, 0.3]
-    }))
+    pipeline: vi.fn().mockResolvedValue(
+      vi.fn().mockResolvedValue({
+        data: [0.1, 0.2, 0.3],
+      }),
+    ),
   };
 });
 
@@ -20,40 +22,47 @@ const mockSelf = {
     getDirectory: vi.fn().mockResolvedValue({
       getFileHandle: vi.fn().mockResolvedValue({
         getFile: vi.fn().mockResolvedValue({
-          text: vi.fn().mockResolvedValue(JSON.stringify([
-            { filePath: 'existing.js', content: 'existing content', hash: 'abc', vector: [0.1, 0.2, 0.3] }
-          ]))
+          text: vi.fn().mockResolvedValue(
+            JSON.stringify([
+              {
+                filePath: 'existing.js',
+                content: 'existing content',
+                hash: 'abc',
+                vector: [0.1, 0.2, 0.3],
+              },
+            ]),
+          ),
         }),
         createWritable: vi.fn().mockResolvedValue({
           write: vi.fn().mockResolvedValue(),
-          close: vi.fn().mockResolvedValue()
-        })
-      })
-    })
-  }
+          close: vi.fn().mockResolvedValue(),
+        }),
+      }),
+    }),
+  },
 };
 
 Object.defineProperty(globalThis, 'self', {
   value: mockSelf,
   writable: true,
-  configurable: true
+  configurable: true,
 });
 
 globalThis.navigator = {
-  storage: mockSelf.storage
+  storage: mockSelf.storage,
 };
 
-if (globalThis.crypto && globalThis.crypto.subtle) {
+if (globalThis.crypto?.subtle) {
   vi.spyOn(globalThis.crypto.subtle, 'digest').mockResolvedValue(new Uint8Array([1, 2, 3]).buffer);
 } else {
   Object.defineProperty(globalThis, 'crypto', {
     value: {
       subtle: {
-        digest: vi.fn().mockResolvedValue(new Uint8Array([1, 2, 3]).buffer)
-      }
+        digest: vi.fn().mockResolvedValue(new Uint8Array([1, 2, 3]).buffer),
+      },
     },
     writable: true,
-    configurable: true
+    configurable: true,
   });
 }
 
@@ -79,14 +88,14 @@ describe('rag-worker', () => {
         type: 'INDEX_FILE',
         payload: {
           filePath: 'src/App.js',
-          content: 'console.log("hello world");\n\nconsole.log("second chunk");'
-        }
-      }
+          content: 'console.log("hello world");\n\nconsole.log("second chunk");',
+        },
+      },
     });
 
     expect(mockSelf.postMessage).toHaveBeenCalledWith({
       id: 'msg-1',
-      type: 'INDEX_FILE_SUCCESS'
+      type: 'INDEX_FILE_SUCCESS',
     });
   });
 
@@ -98,15 +107,15 @@ describe('rag-worker', () => {
         type: 'SEARCH',
         payload: {
           query: 'hello',
-          k: 2
-        }
-      }
+          k: 2,
+        },
+      },
     });
 
     expect(mockSelf.postMessage).toHaveBeenCalledWith({
       id: 'msg-2',
       type: 'SEARCH_SUCCESS',
-      payload: expect.any(Array)
+      payload: expect.any(Array),
     });
   });
 
@@ -118,14 +127,14 @@ describe('rag-worker', () => {
       data: {
         id: 'msg-3',
         type: 'INDEX_FILE',
-        payload: null
-      }
+        payload: null,
+      },
     });
 
     expect(mockSelf.postMessage).toHaveBeenCalledWith({
       id: 'msg-3',
       type: 'ERROR',
-      error: expect.any(String)
+      error: expect.any(String),
     });
     expect(consoleError).toHaveBeenCalledWith('[RAG] Worker error:', expect.any(TypeError));
   });

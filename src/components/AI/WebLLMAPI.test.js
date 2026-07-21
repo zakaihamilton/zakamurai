@@ -1,12 +1,12 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { CreateMLCEngine, deleteModelAllInfoInCache, hasModelInCache } from '@mlc-ai/web-llm';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
-  getCachedWebLLMModelIds,
+  askWebLLM,
   cacheWebLLMModel,
   deleteCachedWebLLMModel,
-  askWebLLM,
+  getCachedWebLLMModelIds,
   interruptWebLLM,
 } from './WebLLMAPI';
-import { CreateMLCEngine, deleteModelAllInfoInCache, hasModelInCache } from '@mlc-ai/web-llm';
 
 vi.mock('@mlc-ai/web-llm', () => {
   return {
@@ -50,7 +50,7 @@ describe('WebLLMAPI', () => {
     expect(CreateMLCEngine).toHaveBeenCalledWith(
       'test-model',
       expect.any(Object),
-      expect.any(Object)
+      expect.any(Object),
     );
   });
 
@@ -148,7 +148,9 @@ describe('WebLLMAPI', () => {
   });
 
   it('maps web-llm interrupt errors to AbortError', async () => {
-    mockEngine.chat.completions.create.mockRejectedValue(new Error('Message error should not be 0'));
+    mockEngine.chat.completions.create.mockRejectedValue(
+      new Error('Message error should not be 0'),
+    );
 
     await expect(askWebLLM('hello', '', null, { model: 'test-model' })).rejects.toMatchObject({
       name: 'AbortError',
@@ -158,7 +160,7 @@ describe('WebLLMAPI', () => {
   it('interruptWebLLMModel interrupts a specific model generation', async () => {
     const { interruptWebLLMModel } = await import('./WebLLMAPI');
     const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    
+
     // Cache engine
     mockEngine.chat.completions.create.mockResolvedValue({
       choices: [{ message: { content: 'AI Response' } }],

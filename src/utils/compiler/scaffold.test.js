@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { scaffoldMissingFiles } from './scaffold';
 
 describe('scaffoldMissingFiles', () => {
@@ -31,14 +31,12 @@ describe('scaffoldMissingFiles', () => {
     expect(packageJson.type).toBe('module');
     expect(mockVfs.writeFileSync).toHaveBeenCalledWith(
       '/package.json',
-      expect.stringContaining('"type": "module"')
+      expect.stringContaining('"type": "module"'),
     );
-    expect(onLogMock).toHaveBeenCalledWith(
-      expect.stringContaining('Adding "type": "module"')
-    );
+    expect(onLogMock).toHaveBeenCalledWith(expect.stringContaining('Adding "type": "module"'));
   });
 
-  it('scaffolds default vite.config.js if missing', () => {
+  it('does not create a Node-only Vite config for browser builds', () => {
     const packageJson = {
       scripts: {
         build: 'vite build',
@@ -47,13 +45,7 @@ describe('scaffoldMissingFiles', () => {
     };
     scaffoldMissingFiles(mockVfs, packageJson, onLogMock);
 
-    expect(mockVfs.writeFileSync).toHaveBeenCalledWith(
-      '/vite.config.js',
-      expect.stringContaining("plugins: [react()]")
-    );
-    expect(onLogMock).toHaveBeenCalledWith(
-      expect.stringContaining('No vite.config.js found. Creating a default one...')
-    );
+    expect(mockVfs.writeFileSync).not.toHaveBeenCalledWith('/vite.config.js', expect.anything());
   });
 
   it('scaffolds index.html with detected entry point index.jsx', () => {
@@ -63,14 +55,13 @@ describe('scaffoldMissingFiles', () => {
       },
       type: 'module',
     };
-    mockVfs.writeFileSync('/vite.config.js', 'existing config');
     mockVfs.writeFileSync('/src/index.jsx', 'index jsx content');
 
     scaffoldMissingFiles(mockVfs, packageJson, onLogMock);
 
     expect(mockVfs.writeFileSync).toHaveBeenCalledWith(
       '/index.html',
-      expect.stringContaining('src="src/index.jsx"')
+      expect.stringContaining('src="src/index.jsx"'),
     );
   });
 
@@ -81,18 +72,17 @@ describe('scaffoldMissingFiles', () => {
       },
       type: 'module',
     };
-    mockVfs.writeFileSync('/vite.config.js', 'existing config');
     mockVfs.writeFileSync('/src/App.tsx', 'App component');
 
     scaffoldMissingFiles(mockVfs, packageJson, onLogMock);
 
     expect(mockVfs.writeFileSync).toHaveBeenCalledWith(
       '/src/main.tsx',
-      expect.stringContaining("import App from './App.tsx';")
+      expect.stringContaining("import App from './App.tsx';"),
     );
     expect(mockVfs.writeFileSync).toHaveBeenCalledWith(
       '/index.html',
-      expect.stringContaining('src="src/main.tsx"')
+      expect.stringContaining('src="src/main.tsx"'),
     );
   });
 
@@ -103,7 +93,6 @@ describe('scaffoldMissingFiles', () => {
       },
       type: 'module',
     };
-    mockVfs.writeFileSync('/vite.config.js', 'existing");');
     mockVfs.writeFileSync('/src/App.jsx', 'App component');
 
     // Simulate /src folder does not exist physically (mkdirSync mock)
@@ -117,7 +106,7 @@ describe('scaffoldMissingFiles', () => {
     expect(mockVfs.mkdirSync).toHaveBeenCalledWith('/src');
     expect(mockVfs.writeFileSync).toHaveBeenCalledWith(
       '/src/main.jsx',
-      expect.stringContaining("import App from './App.jsx';")
+      expect.stringContaining("import App from './App.jsx';"),
     );
   });
 });

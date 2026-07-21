@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { syncFilesToContainer } from './syncer';
 
 describe('syncFilesToContainer', () => {
@@ -85,12 +85,9 @@ describe('syncFilesToContainer', () => {
 
     expect(mockContainer.vfs.writeFileSync).toHaveBeenCalledWith(
       '/src/App.js',
-      'console.log("app in-memory");'
+      'console.log("app in-memory");',
     );
-    expect(mockContainer.vfs.writeFileSync).toHaveBeenCalledWith(
-      '/package.json',
-      '{}'
-    );
+    expect(mockContainer.vfs.writeFileSync).toHaveBeenCalledWith('/package.json', '{}');
   });
 
   it('handles file read errors gracefully during sync', async () => {
@@ -113,7 +110,9 @@ describe('syncFilesToContainer', () => {
     await syncFilesToContainer(mockContainer, fs, [], {}, onLogMock);
 
     expect(mockContainer.vfs.writeFileSync).toHaveBeenCalledWith('/unreadable.js', '');
-    expect(onLogMock).toHaveBeenCalledWith('Warning: Failed to read unreadable.js: File access denied');
+    expect(onLogMock).toHaveBeenCalledWith(
+      'Warning: Failed to read unreadable.js: File access denied',
+    );
   });
 
   it('yields execution on large folderTree counts', async () => {

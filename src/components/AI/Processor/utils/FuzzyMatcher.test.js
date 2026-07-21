@@ -28,7 +28,8 @@ describe('FuzzyMatcher', () => {
     });
 
     it('inserts item correctly when at least 2 similar items are found', () => {
-      const original = '<ul>\n  <li className="item">Apple</li>\n  <li className="item">Banana</li>\n</ul>';
+      const original =
+        '<ul>\n  <li className="item">Apple</li>\n  <li className="item">Banana</li>\n</ul>';
       const snippet = '<li className="item">Cherry</li>';
       const result = applyHeuristicInsertion(original, snippet);
       expect(result).not.toBeNull();

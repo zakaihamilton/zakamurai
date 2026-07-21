@@ -33,7 +33,7 @@ describe('useSidebarDragAndDrop', () => {
       useSidebarDragAndDrop({
         ...defaultArgs,
         sidebarState,
-      })
+      }),
     );
 
     const event = {
@@ -60,7 +60,7 @@ describe('useSidebarDragAndDrop', () => {
       useSidebarDragAndDrop({
         ...defaultArgs,
         sidebarState,
-      })
+      }),
     );
 
     const event = {
@@ -88,7 +88,7 @@ describe('useSidebarDragAndDrop', () => {
         ...defaultArgs,
         sidebarState,
         setDropTargetPath,
-      })
+      }),
     );
 
     const row = {
@@ -117,7 +117,7 @@ describe('useSidebarDragAndDrop', () => {
         fs,
         sidebarState,
         setDropTargetPath,
-      })
+      }),
     );
 
     const event = { preventDefault: vi.fn() };

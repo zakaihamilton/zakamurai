@@ -1,5 +1,5 @@
-import { render, screen, fireEvent, act } from '@testing-library/react';
-import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { act, fireEvent, render, screen } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import SideBySideEditorView from './SideBySideEditorView';
 
 vi.mock('./CodeEditor', () => ({
@@ -7,7 +7,7 @@ vi.mock('./CodeEditor', () => ({
     <textarea
       data-testid="code-editor"
       value={value}
-      onChange={(e) => onChange && onChange(e.target.value)}
+      onChange={(e) => onChange?.(e.target.value)}
     />
   ),
 }));
@@ -43,7 +43,7 @@ describe('SideBySideEditorView', () => {
         selectedLines={[]}
         diffActions={{}}
         handleChange={vi.fn()}
-      />
+      />,
     );
 
     expect(screen.getAllByTestId('code-editor')).toHaveLength(2);

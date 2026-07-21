@@ -1,7 +1,7 @@
-import { render, screen, act, fireEvent } from '@testing-library/react';
-import { describe, expect, it, vi, beforeEach } from 'vitest';
-import ImageViewer from './ImageViewer';
 import { TabState } from '@/components/App/Panes/TabBar';
+import { act, fireEvent, render, screen } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import ImageViewer from './ImageViewer';
 
 vi.mock('@/components/App/Panes/TabBar', () => ({
   TabState: { useState: vi.fn() },
@@ -9,7 +9,7 @@ vi.mock('@/components/App/Panes/TabBar', () => ({
 
 vi.mock('@/components/App/Views/FileViewToolbar', () => ({
   default: ({ onSelectView }) => (
-    <button data-testid="toolbar" onClick={() => onSelectView && onSelectView('editor')}>
+    <button type="button" data-testid="toolbar" onClick={() => onSelectView?.('editor')}>
       Switch View
     </button>
   ),
@@ -62,7 +62,11 @@ describe('ImageViewer', () => {
   it('renders image from file content (no fsHandle)', async () => {
     const tab = {
       id: '2',
-      file: { name: 'photo.png', path: ['images', 'photo.png'], content: new Uint8Array([1, 2, 3]) },
+      file: {
+        name: 'photo.png',
+        path: ['images', 'photo.png'],
+        content: new Uint8Array([1, 2, 3]),
+      },
     };
 
     render(<ImageViewer tab={tab} />);
@@ -190,7 +194,7 @@ describe('ImageViewer', () => {
     // The grid toggle button contains a Grid icon
     const allButtons = screen.getAllByRole('button');
     // Last button among zoom controls is toggle grid
-    const gridBtn = allButtons.find(btn => !btn.textContent || btn.textContent.trim() === '');
+    const gridBtn = allButtons.find((btn) => !btn.textContent || btn.textContent.trim() === '');
     if (gridBtn) {
       await act(async () => fireEvent.click(gridBtn));
     }

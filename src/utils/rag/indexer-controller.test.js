@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { IndexerController } from './indexer-controller.js';
 
 describe('IndexerController', () => {
@@ -152,21 +152,24 @@ describe('IndexerController', () => {
       },
     });
 
-    expect(consoleErrorSpy).toHaveBeenCalledWith('[IndexerController] Worker Error:', 'Background error');
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      '[IndexerController] Worker Error:',
+      'Background error',
+    );
     consoleErrorSpy.mockRestore();
   });
 
   it('warns when FileSystemObserver is not supported', async () => {
     global.Worker = vi.fn(() => ({ addEventListener: vi.fn(), postMessage: vi.fn() }));
     global.navigator = { storage: { getDirectory: vi.fn().mockResolvedValue({}) } };
-    delete window.FileSystemObserver;
+    window.FileSystemObserver = undefined;
 
     const controller = new IndexerController();
     const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     await controller.init();
 
     expect(consoleWarnSpy).toHaveBeenCalledWith(
-      '[IndexerController] FileSystemObserver is not supported in this browser. RAG auto-indexing disabled.'
+      '[IndexerController] FileSystemObserver is not supported in this browser. RAG auto-indexing disabled.',
     );
     consoleWarnSpy.mockRestore();
   });
@@ -262,7 +265,7 @@ describe('IndexerController', () => {
     await controller.init();
 
     const sendPromise = controller.sendMessage('SEARCH', 'test');
-    
+
     controller.dispose();
 
     expect(mockWorker.terminate).toHaveBeenCalled();

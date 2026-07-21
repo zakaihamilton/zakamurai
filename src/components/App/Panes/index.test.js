@@ -1,5 +1,14 @@
 import { describe, expect, it, vi } from 'vitest';
-import { Sidebar, SidebarState, StatusBar, Prompt, PromptState, TabBar, TabState, TopBar } from './index';
+import {
+  Prompt,
+  PromptState,
+  Sidebar,
+  SidebarState,
+  StatusBar,
+  TabBar,
+  TabState,
+  TopBar,
+} from './index';
 
 vi.mock('./Sidebar', () => ({
   default: 'mockSidebar',

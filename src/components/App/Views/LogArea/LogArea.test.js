@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import { LogState, LogAreaUiState } from './LogArea';
+import { LogAreaUiState, LogState } from './LogArea';
 import LogArea from './LogArea';
 
 vi.mock('@/utils/os', () => ({
@@ -11,8 +11,6 @@ vi.mock('@/utils/os', () => ({
 // Mock scrollIntoView since it's not implemented in jsdom
 window.HTMLElement.prototype.scrollIntoView = vi.fn();
 window.HTMLElement.prototype.scrollTo = vi.fn();
-
-
 
 describe('LogArea', () => {
   it('renders logs', () => {
@@ -97,7 +95,7 @@ describe('LogArea', () => {
         copied: false,
         autoScroll: true,
         filterText: '',
-      })
+      }),
     );
 
     render(<LogArea />);
@@ -118,7 +116,7 @@ describe('LogArea', () => {
         copied: false,
         autoScroll: false,
         filterText: '',
-      })
+      }),
     );
 
     render(<LogArea />);
@@ -143,7 +141,7 @@ describe('LogArea', () => {
         copied: false,
         autoScroll: true,
         filterText: 'some-filter',
-      })
+      }),
     );
 
     render(<LogArea />);
@@ -273,9 +271,10 @@ describe('LogArea', () => {
 
     render(<LogArea />);
     // Simulate scroll on the log container
-    const container = document.querySelector('[class*="logArea"]') ||
-                      document.querySelector('div.scrollHide') ||
-                      document.querySelector('div');
+    const container =
+      document.querySelector('[class*="logArea"]') ||
+      document.querySelector('div.scrollHide') ||
+      document.querySelector('div');
     if (container) {
       // Set scrollTop to simulate at-bottom state
       Object.defineProperty(container, 'scrollTop', { value: 0, writable: true });

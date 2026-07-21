@@ -32,7 +32,8 @@ import { applyMarkerReplacement } from './DiffEngine';
 describe('applyMarkerReplacement', () => {
   it('replaces marked lines using context heuristics', () => {
     const original = 'first line\nsecond line\nthird line\nfourth line';
-    const updated = 'first line\nnew second line content /* <<< NEW LINE >>> */\nthird line\nfourth line';
+    const updated =
+      'first line\nnew second line content /* <<< NEW LINE >>> */\nthird line\nfourth line';
 
     const result = applyMarkerReplacement(original, updated);
     expect(result.content).toBe('first line\nnew second line content\nthird line\nfourth line');
