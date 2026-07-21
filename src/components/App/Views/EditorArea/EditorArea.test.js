@@ -16,12 +16,15 @@ vi.mock('@/components/App/AppState', () => ({
   },
 }));
 
-vi.mock('@/components/App/Panes/TabBar', () => ({
-  TabState: {
-    useState: vi.fn(),
-    usePassiveState: vi.fn(),
-  },
-}));
+vi.mock('@/components/App/Panes/TabBar', () => {
+  const mockPassiveTabState = Object.assign(vi.fn(), { openTabs: [], activeTabId: null });
+  return {
+    TabState: {
+      useState: vi.fn(),
+      usePassiveState: vi.fn(() => mockPassiveTabState),
+    },
+  };
+});
 
 // No need to mock the whole file, just spy on the state hook
 describe('EditorArea', () => {

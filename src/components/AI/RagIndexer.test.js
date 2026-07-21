@@ -1,25 +1,36 @@
 import { ragSearch } from '@/utils/rag/search-utility';
 import { act, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { AppState } from '../App/AppState';
-import { EditorState } from '../App/Views/EditorArea';
 import { useRagIndexer } from './RagIndexer';
 
 vi.mock('@/utils/rag/search-utility', () => {
   return {
     ragSearch: {
       init: vi.fn(),
+      indexWorkspaceFiles: vi.fn().mockResolvedValue(undefined),
     },
   };
 });
 
-vi.mock('../App/AppState', () => ({
-  AppState: { useState: vi.fn() },
+vi.mock('@/components/AI/Agent/Snapshot', () => ({
+  collectWorkspaceFiles: vi.fn().mockResolvedValue({}),
 }));
 
-vi.mock('../App/Views/EditorArea', () => ({
-  EditorState: { useState: vi.fn() },
+vi.mock('@/components/App/AppState', () => ({
+  AppState: {
+    useState: vi.fn(),
+  },
 }));
+
+vi.mock('@/components/App/Views/EditorArea', () => ({
+  EditorState: {
+    useState: vi.fn(),
+  },
+}));
+
+import { collectWorkspaceFiles } from '@/components/AI/Agent/Snapshot';
+import { AppState } from '@/components/App/AppState';
+import { EditorState } from '@/components/App/Views/EditorArea';
 
 describe('useRagIndexer', () => {
   let consoleLogSpy;
@@ -28,10 +39,12 @@ describe('useRagIndexer', () => {
   beforeEach(() => {
     vi.useFakeTimers();
     vi.clearAllMocks();
-    AppState.useState.mockReturnValue({ fs: { isReady: true } });
-    EditorState.useState.mockReturnValue({ fileContents: {} });
     consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
     consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    AppState.useState.mockReturnValue({ fs: { isReady: true } });
+    EditorState.useState.mockReturnValue({ fileContents: {} });
+    collectWorkspaceFiles.mockResolvedValue({});
+    ragSearch.indexWorkspaceFiles.mockResolvedValue(undefined);
   });
 
   afterEach(() => {
