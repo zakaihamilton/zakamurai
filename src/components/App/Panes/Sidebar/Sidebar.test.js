@@ -2,7 +2,7 @@ import { AppState } from '@/components/App/AppState';
 import { TabState } from '@/components/App/Panes/TabBar';
 import { EditorState } from '@/components/App/Views/EditorArea';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { SidebarState, SidebarUiState } from './Sidebar';
 import Sidebar from './Sidebar';
 
@@ -126,7 +126,7 @@ describe('Sidebar', () => {
     vi.spyOn(EditorState, 'useState').mockReturnValue({});
 
     render(<Sidebar />);
-    
+
     await waitFor(() => {
       expect(screen.getByText('Icons')).toBeDefined();
       expect(screen.getByText('Icons').tagName).toBe('MARK');
@@ -169,7 +169,7 @@ describe('Sidebar', () => {
         folderTree,
         showAIInput: true,
         expandedFolders: {},
-      })
+      }),
     );
     vi.spyOn(SidebarUiState, 'useState').mockReturnValue(createUiState());
     vi.spyOn(AppState, 'useState').mockReturnValue({

@@ -33,14 +33,10 @@ describe('useSidebarFileLoader', () => {
         ...defaultArgs,
         sidebarState,
         addNotification,
-      })
+      }),
     );
 
-    const success = await result.current.handleCreate(
-      { path: ['src'] },
-      'file',
-      'index.js'
-    );
+    const success = await result.current.handleCreate({ path: ['src'] }, 'file', 'index.js');
 
     expect(success).toBe(true);
     expect(sidebarState).toHaveBeenCalled();
@@ -64,13 +60,13 @@ describe('useSidebarFileLoader', () => {
         ...defaultArgs,
         fs,
         addNotification,
-      })
+      }),
     );
 
     const success = await result.current.handleCreate(
       { item: { handle: mockDirHandle }, path: ['src'] },
       'file',
-      'index.js'
+      'index.js',
     );
 
     expect(success).toBe(true);
@@ -88,13 +84,13 @@ describe('useSidebarFileLoader', () => {
       useSidebarFileLoader({
         ...defaultArgs,
         fs,
-      })
+      }),
     );
 
     const success = await result.current.handleCreate(
       { item: { handle: mockDirHandle }, path: ['src'] },
       'folder',
-      'components'
+      'components',
     );
 
     expect(success).toBe(true);
@@ -112,13 +108,13 @@ describe('useSidebarFileLoader', () => {
       useSidebarFileLoader({
         ...defaultArgs,
         fs,
-      })
+      }),
     );
 
     const success = await result.current.handleCreate(
       { item: { handle: mockDirHandle }, path: ['src'] },
       'file',
-      'index.js'
+      'index.js',
     );
 
     expect(success).toBe(false);

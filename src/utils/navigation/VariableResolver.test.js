@@ -393,13 +393,17 @@ describe('VariableResolver', () => {
         (t) => t.name === 'messages' && t.start === messagesUseIndex,
       );
       expect(messagesUse).toBeDefined();
-      expect(messagesUse.targets[0].loc.line).toBe(98);
+      const messagesDeclLine = code.slice(0, code.search(/const messages\s*=/)).split('\n').length;
+      expect(messagesUse.targets[0].loc.line).toBe(messagesDeclLine);
 
       const generationOptionsUse = targets.find(
         (t) => t.name === 'generationOptions' && t.start === generationOptionsUseIndex,
       );
       expect(generationOptionsUse).toBeDefined();
-      expect(generationOptionsUse.targets[0].loc.line).toBe(103);
+      const generationOptionsDeclLine = code
+        .slice(0, code.search(/const generationOptions\s*=/))
+        .split('\n').length;
+      expect(generationOptionsUse.targets[0].loc.line).toBe(generationOptionsDeclLine);
     });
   });
 });

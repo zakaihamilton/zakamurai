@@ -271,11 +271,17 @@ describe('Shortcuts isMatch', () => {
     const cmdAltShortcut = { key: 'p', modifier: 'cmd-alt' };
 
     expect(
-      isMatch({ key: 'p', metaKey: false, ctrlKey: true, shiftKey: false, altKey: true }, ctrlAltShortcut)
+      isMatch(
+        { key: 'p', metaKey: false, ctrlKey: true, shiftKey: false, altKey: true },
+        ctrlAltShortcut,
+      ),
     ).toBe(true);
 
     expect(
-      isMatch({ key: 'p', metaKey: true, ctrlKey: false, shiftKey: false, altKey: true }, cmdAltShortcut)
+      isMatch(
+        { key: 'p', metaKey: true, ctrlKey: false, shiftKey: false, altKey: true },
+        cmdAltShortcut,
+      ),
     ).toBe(true);
   });
 

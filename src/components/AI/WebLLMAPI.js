@@ -180,11 +180,7 @@ export const askWebLLM = async (prompt, systemPrompt = '', onUpdate = null, opti
 
     return reply.choices?.[0]?.message?.content ?? 'No response generated.';
   } catch (error) {
-    if (
-      options.signal?.aborted ||
-      error?.name === 'AbortError' ||
-      isWebLLMInterruptError(error)
-    ) {
+    if (options.signal?.aborted || error?.name === 'AbortError' || isWebLLMInterruptError(error)) {
       throw new DOMException('WebLLM generation interrupted', 'AbortError');
     }
     console.error('Error in askWebLLM:', error);

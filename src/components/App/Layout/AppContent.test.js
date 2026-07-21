@@ -21,15 +21,23 @@ vi.mock('@/components/ui/Resizer', () => ({
       onMouseDown={onResizeStart}
       onMouseUp={onResizeEnd}
       onDoubleClick={onDoubleClick}
-      onMouseMove={(e) => onResize && onResize(e.clientX)}
+      onMouseMove={(e) => onResize?.(e.clientX)}
     />
   ),
 }));
 vi.mock('../Popups', () => ({
   ShortcutsHelp: ({ isOpen, onClose }) =>
-    isOpen ? <button data-testid="close-shortcuts" onClick={onClose}>Close</button> : null,
+    isOpen ? (
+      <button type="button" data-testid="close-shortcuts" onClick={onClose}>
+        Close
+      </button>
+    ) : null,
   CompletionDebug: ({ isOpen, onClose }) =>
-    isOpen ? <button data-testid="close-completion" onClick={onClose}>Close</button> : null,
+    isOpen ? (
+      <button type="button" data-testid="close-completion" onClick={onClose}>
+        Close
+      </button>
+    ) : null,
 }));
 vi.mock('../../state/Node', () => ({
   default: ({ children }) => <>{children}</>,

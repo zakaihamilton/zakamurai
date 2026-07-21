@@ -1,7 +1,7 @@
-import { renderHook } from '@testing-library/react';
-import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { useWindowResize } from './WindowResize';
 import { MOBILE_BREAKPOINT } from '@/constants/Layout';
+import { renderHook } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { useWindowResize } from './WindowResize';
 
 describe('useWindowResize', () => {
   let appStateMock;
@@ -49,9 +49,7 @@ describe('useWindowResize', () => {
     sidebarStateMock.isSidebarPopupOpen = true;
     sidebarStateMock.isAIInputPopupOpen = true;
 
-    const { rerender } = renderHook(
-      () => useWindowResize(appStateMock, sidebarStateMock)
-    );
+    const { rerender } = renderHook(() => useWindowResize(appStateMock, sidebarStateMock));
 
     // Transition from desktop to mobile
     appStateMock.isMobile = true;
@@ -66,9 +64,7 @@ describe('useWindowResize', () => {
     window.innerWidth = MOBILE_BREAKPOINT - 10;
     appStateMock.isMobile = true;
 
-    const { rerender } = renderHook(
-      () => useWindowResize(appStateMock, sidebarStateMock)
-    );
+    const { rerender } = renderHook(() => useWindowResize(appStateMock, sidebarStateMock));
 
     // Now set popups to true
     sidebarStateMock.isSidebarPopupOpen = true;

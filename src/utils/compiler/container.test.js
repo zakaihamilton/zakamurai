@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { getSharedContainer, initContainer, resetContainer } from './container';
 
 describe('container', () => {
@@ -100,7 +100,7 @@ describe('container', () => {
 
     expect(consoleWarnSpy).toHaveBeenCalledWith(
       'Failed to unregister Service Worker:',
-      expect.any(Error)
+      expect.any(Error),
     );
     consoleWarnSpy.mockRestore();
   });

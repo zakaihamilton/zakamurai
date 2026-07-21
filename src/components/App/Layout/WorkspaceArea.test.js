@@ -19,7 +19,7 @@ vi.mock('@/components/ui/Resizer', () => ({
       onMouseDown={onResizeStart}
       onMouseUp={onResizeEnd}
       onDoubleClick={onDoubleClick}
-      onMouseMove={(e) => onResize && onResize(e.clientX)}
+      onMouseMove={(e) => onResize?.(e.clientX)}
     />
   ),
 }));
@@ -109,7 +109,9 @@ describe('WorkspaceArea', () => {
   it('renders token breakdown view', () => {
     AppState.useState.mockReturnValue({ isMobile: false });
     TabState.useState.mockReturnValue({
-      openTabs: [{ id: 'test.js', type: 'file', viewType: 'token-breakdown', file: { name: 'test.js' } }],
+      openTabs: [
+        { id: 'test.js', type: 'file', viewType: 'token-breakdown', file: { name: 'test.js' } },
+      ],
       activeTabId: 'test.js',
     });
     SidebarState.useState.mockReturnValue({ showAIInput: false });

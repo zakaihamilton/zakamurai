@@ -10,17 +10,6 @@ export function scaffoldMissingFiles(vfs, packageJson, onLog) {
     vfs.writeFileSync('/package.json', JSON.stringify(packageJson, null, 2));
   }
 
-  // Ensure a basic vite.config.js exists if using vite build and it's missing
-  if (
-    packageJson.scripts?.build?.includes('vite') &&
-    !vfs.existsSync('/vite.config.js') &&
-    !vfs.existsSync('/vite.config.ts')
-  ) {
-    onLog('No vite.config.js found. Creating a default one...');
-    const defaultConfig = `import { defineConfig } from 'vite';\nimport react from '@vitejs/plugin-react';\n\nexport default defineConfig({\n  plugins: [react()],\n  resolve: {\n    alias: {\n      '@': '/src',\n    },\n  },\n  build: {\n    outDir: 'dist',\n    emptyOutDir: true,\n  }\n});`;
-    vfs.writeFileSync('/vite.config.js', defaultConfig);
-  }
-
   // Ensure index.html exists for Vite builds
   if (packageJson.scripts?.build?.includes('vite') && !vfs.existsSync('/index.html')) {
     onLog('No index.html found. Creating a default one for Vite...');

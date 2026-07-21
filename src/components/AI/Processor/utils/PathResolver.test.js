@@ -20,7 +20,9 @@ describe('PathResolver', () => {
     test('longest suffix match with multiple candidates', () => {
       const candidates = ['other/components/Button.js', 'new-path/components/Button.js'];
       // Query is not in candidates, matches 'new-path/components/Button.js' (3 segments) over 'other/components/Button.js' (2 segments)
-      expect(resolveFilePath('parent/new-path/components/Button.js', candidates)).toBe('new-path/components/Button.js');
+      expect(resolveFilePath('parent/new-path/components/Button.js', candidates)).toBe(
+        'new-path/components/Button.js',
+      );
     });
 
     test('fallback to provided path', () => {

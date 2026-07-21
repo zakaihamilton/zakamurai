@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   LEGACY_WEB_LLM_MODEL_IDS,
+  RECOMMENDED_COMPLETION_MODEL,
   RECOMMENDED_WEB_LLM_MODEL,
   WEB_LLM_MODELS,
-  RECOMMENDED_COMPLETION_MODEL,
   resolveCompletionModelId,
   resolveWebLLMModelId,
 } from './WebLLMModels';

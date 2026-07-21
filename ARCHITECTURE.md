@@ -5,16 +5,16 @@
 We use a bespoke Hierarchical Context + Proxy architecture optimized for high-frequency, granular mutations. You must adhere to the following rules when generating or modifying React components.
 
 ## 1. Core Concepts
-* **Node (`src/Core/Base/Node.js`):** Creates a spatial hierarchy mirroring the DOM. State exists at specific levels of the tree, not globally.
-* **Object (`src/Core/Base/Object.js`):** A Proxy wrapper that intercepts mutations, performs zero-allocation diffing, and surgically updates subscribers without top-down React re-renders.
-* **State (`src/Core/Base/State.js`):** The hook interface for subscribing to Proxy Objects.
+* **Node (`src/components/state/Node.js`):** Creates a spatial hierarchy mirroring the DOM. State exists at specific levels of the tree, not globally.
+* **Object (`src/components/state/Object.js`):** A Proxy wrapper that intercepts mutations, batches diffs, and surgically updates subscribers without top-down React re-renders.
+* **State (`src/components/state/State.js`):** The hook interface for subscribing to Proxy Objects.
 
 ## 2. Reading State
 Do not use standard selectors. Use the provided hooks.
 
 **For state guaranteed to exist in the current or ancestor nodes:**
 ```javascript
-import { State } from 'src/Core/Base/State'; 
+import { State } from '@/components/state/State';
 
 function MyComponent() {
   // Pass a string key to get a specific primitive

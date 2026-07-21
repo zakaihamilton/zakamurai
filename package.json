@@ -15,7 +15,7 @@
     "test:visual:chromium": "npx playwright test --project=chromium tests/visual/basic.spec.ts tests/visual/advanced.spec.ts",
     "test:visual:regression": "npx playwright test --project=chromium tests/visual/regression.spec.ts",
     "setup:almostnode": "mkdir -p public/lib/almostnode public/assets && cp -r node_modules/almostnode/dist/* public/lib/almostnode/ && cp node_modules/almostnode/dist/assets/* public/assets/",
-    "setup:wasm": "mkdir -p public/wasm && cp node_modules/onnxruntime-web/dist/* public/wasm/",
+    "setup:wasm": "mkdir -p public/wasm public/esbuild && cp node_modules/onnxruntime-web/dist/* public/wasm/ && cp node_modules/esbuild-wasm/esbuild.wasm public/esbuild/esbuild.wasm",
     "setup:playwright": "playwright install chromium webkit",
     "postinstall": "\"$npm_execpath\" run setup:almostnode && \"$npm_execpath\" run setup:wasm && \"$npm_execpath\" run setup:playwright",
     "predev": "\"$npm_execpath\" run setup:almostnode && \"$npm_execpath\" run setup:wasm",
@@ -29,6 +29,7 @@
     "@testing-library/dom": "^10.4.1",
     "almostnode": "latest",
     "apache-arrow": "^18.1.0",
+    "esbuild-wasm": "^0.28.1",
     "next": "16.2.10",
     "react": "19.2.4",
     "react-dom": "19.2.4",
@@ -56,13 +57,7 @@
     "vitest": "^3.0.4"
   },
   "lint-staged": {
-    "src/**/*.{ts,tsx}": [
-      "biome check --write",
-      "vitest related --run",
-      "npx playwright test"
-    ],
-    "src/**/*.module.css": [
-      "stylelint --fix"
-    ]
+    "src/**/*.{ts,tsx}": ["biome check --write", "vitest related --run", "npx playwright test"],
+    "src/**/*.module.css": ["stylelint --fix"]
   }
 }

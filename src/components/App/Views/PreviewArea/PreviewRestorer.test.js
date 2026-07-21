@@ -1,11 +1,11 @@
-import { renderHook, act } from '@testing-library/react';
-import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { usePreviewRestorer } from './PreviewRestorer';
-import { PreviewState } from '@/components/App/PreviewState';
 import { AppState } from '@/components/App/AppState';
 import { SidebarState } from '@/components/App/Panes/Sidebar';
+import { PreviewState } from '@/components/App/PreviewState';
 import { EditorState } from '@/components/App/Views/EditorArea';
 import { Compiler } from '@/utils/compiler';
+import { act, renderHook } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { usePreviewRestorer } from './PreviewRestorer';
 
 const mockVfs = {
   existsSync: vi.fn(),

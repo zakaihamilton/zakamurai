@@ -1,8 +1,8 @@
-import { renderHook, act } from '@testing-library/react';
-import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
-import { useContentSaver } from './ContentSaver';
 import { EditorState } from '@/components/App/Views/EditorArea';
 import Settings from '@/components/Storage/Settings';
+import { act, renderHook } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { useContentSaver } from './ContentSaver';
 
 vi.mock('@/components/App/Views/EditorArea', () => {
   return {

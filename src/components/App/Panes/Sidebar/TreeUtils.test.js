@@ -240,9 +240,27 @@ describe('TreeUtils', () => {
 
   describe('insertCreateRow', () => {
     const rows = [
-      { key: '__root__', pathStr: '', level: 0, path: [], item: { name: 'Project', type: 'folder' } },
-      { key: 'src', pathStr: 'src', level: 1, path: ['src'], item: { name: 'src', type: 'folder' } },
-      { key: 'src/App.js', pathStr: 'src/App.js', level: 2, path: ['src', 'App.js'], item: { name: 'App.js', type: 'file' } },
+      {
+        key: '__root__',
+        pathStr: '',
+        level: 0,
+        path: [],
+        item: { name: 'Project', type: 'folder' },
+      },
+      {
+        key: 'src',
+        pathStr: 'src',
+        level: 1,
+        path: ['src'],
+        item: { name: 'src', type: 'folder' },
+      },
+      {
+        key: 'src/App.js',
+        pathStr: 'src/App.js',
+        level: 2,
+        path: ['src', 'App.js'],
+        item: { name: 'App.js', type: 'file' },
+      },
     ];
 
     it('inserts create row immediately after the parent folder', () => {

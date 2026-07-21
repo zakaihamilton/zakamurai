@@ -1,6 +1,6 @@
-import { renderHook, act } from '@testing-library/react';
-import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
-import { useFileSystem, FileSystemState } from './LocalFS';
+import { act, renderHook } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { FileSystemState, useFileSystem } from './LocalFS';
 
 // Helper to create a mock directory handle
 const makeDirHandle = (name = 'root', entries = []) => {
@@ -38,18 +38,18 @@ const makeIDBMock = (storedHandle = null) => {
       objectStore: vi.fn().mockImplementation(() => ({
         get: vi.fn().mockImplementation((key) => {
           const req = { result: store[key] };
-          setTimeout(() => req.onsuccess && req.onsuccess(), 0);
+          setTimeout(() => req.onsuccess?.(), 0);
           return req;
         }),
         put: vi.fn().mockImplementation((val, key) => {
           store[key] = val;
           // fire tx.oncomplete after operation
-          setTimeout(() => tx.oncomplete && tx.oncomplete(), 0);
+          setTimeout(() => tx.oncomplete?.(), 0);
           return {};
         }),
         delete: vi.fn().mockImplementation((key) => {
           delete store[key];
-          setTimeout(() => tx.oncomplete && tx.oncomplete(), 0);
+          setTimeout(() => tx.oncomplete?.(), 0);
           return {};
         }),
       })),
@@ -67,7 +67,7 @@ const makeIDBMock = (storedHandle = null) => {
       onsuccess: null,
       onerror: null,
     };
-    setTimeout(() => req.onsuccess && req.onsuccess(), 0);
+    setTimeout(() => req.onsuccess?.(), 0);
     return req;
   };
 
@@ -133,31 +133,41 @@ describe('useFileSystem', () => {
   it('throws error when deleting entry without directory handle', async () => {
     vi.spyOn(FileSystemState, 'useState').mockReturnValue(makeFileSystemState());
     const { result } = renderHook(() => useFileSystem());
-    await expect(result.current.deleteEntry('file.js', null)).rejects.toThrow('No directory mounted');
+    await expect(result.current.deleteEntry('file.js', null)).rejects.toThrow(
+      'No directory mounted',
+    );
   });
 
   it('throws error when moving entry with missing handles', async () => {
     vi.spyOn(FileSystemState, 'useState').mockReturnValue(makeFileSystemState());
     const { result } = renderHook(() => useFileSystem());
-    await expect(result.current.moveEntry(null, {})).rejects.toThrow('Source or destination missing');
+    await expect(result.current.moveEntry(null, {})).rejects.toThrow(
+      'Source or destination missing',
+    );
   });
 
   it('throws error when writing file without directory', async () => {
     vi.spyOn(FileSystemState, 'useState').mockReturnValue(makeFileSystemState());
     const { result } = renderHook(() => useFileSystem());
-    await expect(result.current.writeFile('test.js', 'content', null)).rejects.toThrow('No directory mounted');
+    await expect(result.current.writeFile('test.js', 'content', null)).rejects.toThrow(
+      'No directory mounted',
+    );
   });
 
   it('throws error when writing file at path without root', async () => {
     vi.spyOn(FileSystemState, 'useState').mockReturnValue(makeFileSystemState());
     const { result } = renderHook(() => useFileSystem());
-    await expect(result.current.writeFileAtPath('src/test.js', 'content', null)).rejects.toThrow('No root directory mounted');
+    await expect(result.current.writeFileAtPath('src/test.js', 'content', null)).rejects.toThrow(
+      'No root directory mounted',
+    );
   });
 
   it('throws error when creating folder without directory handle', async () => {
     vi.spyOn(FileSystemState, 'useState').mockReturnValue(makeFileSystemState());
     const { result } = renderHook(() => useFileSystem());
-    await expect(result.current.createFolder('newfolder', null)).rejects.toThrow('No directory mounted');
+    await expect(result.current.createFolder('newfolder', null)).rejects.toThrow(
+      'No directory mounted',
+    );
   });
 
   it('returns null from getFileHandleAtPath when no root', async () => {
@@ -329,7 +339,10 @@ describe('useFileSystem', () => {
 
   it('mountOPFS mounts OPFS storage', async () => {
     const opfsHandle = makeDirHandle('opfs');
-    global.navigator = { ...global.navigator, storage: { getDirectory: vi.fn().mockResolvedValue(opfsHandle) } };
+    global.navigator = {
+      ...global.navigator,
+      storage: { getDirectory: vi.fn().mockResolvedValue(opfsHandle) },
+    };
 
     const state = makeFileSystemState();
     vi.spyOn(FileSystemState, 'useState').mockReturnValue(state);
@@ -385,14 +398,17 @@ describe('useFileSystem', () => {
   it('mountLocal silently ignores AbortError', async () => {
     const abortError = new Error('User cancelled');
     abortError.name = 'AbortError';
-    global.window = { ...global.window, showDirectoryPicker: vi.fn().mockRejectedValue(abortError) };
+    global.window = {
+      ...global.window,
+      showDirectoryPicker: vi.fn().mockRejectedValue(abortError),
+    };
 
     const state = makeFileSystemState();
     vi.spyOn(FileSystemState, 'useState').mockReturnValue(state);
     const { result } = renderHook(() => useFileSystem());
 
     // Should not set error for AbortError
-    const callCountBefore = state.mock.calls.length;
+    const _callCountBefore = state.mock.calls.length;
     await act(async () => {
       await result.current.mountLocal();
     });
@@ -404,7 +420,10 @@ describe('useFileSystem', () => {
   it('mountLocal handles non-AbortError by setting error state', async () => {
     const networkError = new Error('Permission denied');
     networkError.name = 'SecurityError';
-    global.window = { ...global.window, showDirectoryPicker: vi.fn().mockRejectedValue(networkError) };
+    global.window = {
+      ...global.window,
+      showDirectoryPicker: vi.fn().mockRejectedValue(networkError),
+    };
 
     const state = makeFileSystemState();
     vi.spyOn(FileSystemState, 'useState').mockReturnValue(state);
@@ -420,6 +439,7 @@ describe('useFileSystem', () => {
   it('refreshDirectory handles error reading entries', async () => {
     const badHandle = {
       entries: async function* () {
+        yield* [];
         throw new Error('Permission denied');
       },
     };

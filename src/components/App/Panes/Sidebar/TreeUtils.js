@@ -133,7 +133,9 @@ export const flattenTree = (
 export const insertCreateRow = (rows, creatingAt) => {
   if (!creatingAt) return rows;
 
-  const parentIndex = rows.findIndex((row) => !row.isCreateRow && row.pathStr === creatingAt.pathStr);
+  const parentIndex = rows.findIndex(
+    (row) => !row.isCreateRow && row.pathStr === creatingAt.pathStr,
+  );
   if (parentIndex === -1) return rows;
 
   const parent = rows[parentIndex];

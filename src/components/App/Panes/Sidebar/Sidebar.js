@@ -201,10 +201,7 @@ export default function Sidebar() {
     [deferredFilterText, expandedFolders, folderTree, fs.rootHandle, projectName],
   );
 
-  const rows = useMemo(
-    () => insertCreateRow(baseRows, creatingAt),
-    [baseRows, creatingAt],
-  );
+  const rows = useMemo(() => insertCreateRow(baseRows, creatingAt), [baseRows, creatingAt]);
 
   const activeIndex = useMemo(() => {
     if (!tabState.activeTabId) return -1;

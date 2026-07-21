@@ -1,7 +1,7 @@
-import { renderHook } from '@testing-library/react';
-import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { useSettingsSync } from './SettingsSync';
 import Settings from '@/components/Storage/Settings';
+import { renderHook } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { useSettingsSync } from './SettingsSync';
 
 vi.mock('@/components/Storage/Settings', () => {
   return {
@@ -35,8 +35,7 @@ describe('useSettingsSync', () => {
     const editorState = { aiCompletionEnabled: true };
 
     const { rerender } = renderHook(
-      ({ app, sidebar, prompt, editor }) =>
-        useSettingsSync(app, sidebar, prompt, editor),
+      ({ app, sidebar, prompt, editor }) => useSettingsSync(app, sidebar, prompt, editor),
       {
         initialProps: {
           app: appState,
@@ -44,7 +43,7 @@ describe('useSettingsSync', () => {
           prompt: promptState,
           editor: editorState,
         },
-      }
+      },
     );
 
     // Initial effect runs
