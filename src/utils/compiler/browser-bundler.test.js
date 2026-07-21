@@ -127,4 +127,40 @@ describe('browser-bundler', () => {
     await expect(fresh.initialize()).resolves.toBeUndefined();
     expect(initialize).toHaveBeenCalledTimes(2);
   });
+
+  it('bundles with the automatic JSX runtime', async () => {
+    const build = vi.fn().mockResolvedValue({
+      outputFiles: [{ path: '/dist/assets/main-abc.js', contents: new Uint8Array([1]) }],
+    });
+    const initialize = vi.fn().mockResolvedValue(undefined);
+
+    vi.doMock('esbuild-wasm/lib/browser', () => ({
+      initialize,
+      build,
+    }));
+
+    const { bundleBrowserProject } = await import('./browser-bundler');
+    const files = {
+      '/src/main.jsx': 'import { createRoot } from "react-dom/client"; createRoot(document.getElementById("root"));',
+      '/index.html':
+        '<!doctype html><html><head></head><body><div id="root"></div><script type="module" src="/src/main.jsx"></script></body></html>',
+    };
+    const fs = {
+      existsSync: (path) =>
+        Object.hasOwn(files, path) || Object.keys(files).some((file) => file.startsWith(`${path}/`)),
+      readFileSync: (path) => files[path],
+      writeFileSync: (path, contents) => {
+        files[path] = typeof contents === 'string' ? contents : contents;
+      },
+    };
+
+    await bundleBrowserProject(fs, { name: 'demo' }, 'vite build');
+
+    expect(build).toHaveBeenCalledWith(
+      expect.objectContaining({
+        jsx: 'automatic',
+        entryPoints: ['/src/main.jsx'],
+      }),
+    );
+  });
 });

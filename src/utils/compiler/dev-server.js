@@ -48,6 +48,18 @@ export async function setupSmartDevServer(container, onLog) {
       const pathname = urlObj.pathname;
       const filePath = this.resolvePath(pathname);
 
+      // Production SPA output is already bundled — serve it as-is so Vite does not
+      // inject HMR / React Refresh into /dist/index.html.
+      if (pathname === '/dist' || pathname.startsWith('/dist/')) {
+        if (this.exists(filePath) && !this.isDirectory(filePath)) {
+          return this.serveFile(filePath);
+        }
+        if (this.isDirectory(filePath) && this.exists(`${filePath}/index.html`)) {
+          return this.serveFile(`${filePath}/index.html`);
+        }
+        return this.notFound(pathname);
+      }
+
       if (pathname.endsWith('.module.css')) {
         const secFetchDest =
           headers['sec-fetch-dest'] || headers['Sec-Fetch-Dest'] || headers['SEC-FETCH-DEST'] || '';

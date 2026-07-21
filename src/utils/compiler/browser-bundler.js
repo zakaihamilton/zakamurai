@@ -216,6 +216,8 @@ export async function bundleBrowserProject(vfs, packageJson, buildCommand, onLog
     format: 'esm',
     splitting: true,
     platform: 'browser',
+    // Match Vite's default so .jsx/.tsx work without importing React.
+    jsx: 'automatic',
     target: ['es2020'],
     minify: true,
     sourcemap: false,
