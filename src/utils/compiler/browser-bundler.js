@@ -135,10 +135,16 @@ export function assertBrowserBuildSupported(vfs, buildCommand) {
 
 async function initialize() {
   if (!initializePromise) {
-    initializePromise = import('esbuild-wasm/lib/browser').then(async (module) => {
-      esbuildApi = module;
-      await esbuildApi.initialize({ wasmURL: '/esbuild/esbuild.wasm', worker: true });
-    });
+    initializePromise = import('esbuild-wasm/lib/browser')
+      .then(async (module) => {
+        esbuildApi = module;
+        await esbuildApi.initialize({ wasmURL: '/esbuild/esbuild.wasm', worker: true });
+      })
+      .catch((error) => {
+        initializePromise = undefined;
+        esbuildApi = undefined;
+        throw error;
+      });
   }
   return initializePromise;
 }
@@ -153,8 +159,8 @@ function createHtml(vfs, packageJson, entryPath, outputFiles) {
     : defaultHtml(packageJson.name, entryPath);
   const js = outputFiles.find((file) => file.path.endsWith('.js'));
   const css = outputFiles.find((file) => file.path.endsWith('.css'));
-  const script = js ? `<script type="module" src="${js.path.replace('/dist', '')}"></script>` : '';
-  const style = css ? `<link rel="stylesheet" href="${css.path.replace('/dist', '')}">` : '';
+  const script = js ? `<script type="module" src="${js.path}"></script>` : '';
+  const style = css ? `<link rel="stylesheet" href="${css.path}">` : '';
   const withoutSourceScript = source.replace(
     /<script\b[^>]*type=["']module["'][^>]*src=["'][^"']+["'][^>]*><\/script>\s*/i,
     '',
@@ -162,6 +168,29 @@ function createHtml(vfs, packageJson, entryPath, outputFiles) {
   return withoutSourceScript
     .replace(/<\/head>/i, `${style}\n</head>`)
     .replace(/<\/body>/i, `${script}\n</body>`);
+}
+
+/** True for bare or package-runner SPA build commands (vite build / npx vite build / esbuild). */
+export function isBrowserBundleCommand(cmd, args = []) {
+  const runners = new Set(['npx', 'npm', 'pnpm', 'yarn', 'bunx']);
+  let binary = cmd;
+  let binaryArgs = args;
+
+  if (runners.has(cmd)) {
+    let index = 0;
+    if ((cmd === 'npm' || cmd === 'pnpm') && args[0] === 'exec') {
+      index = 1;
+    }
+    while (index < args.length && args[index].startsWith('-')) {
+      index += 1;
+    }
+    binary = args[index];
+    binaryArgs = args.slice(index + 1);
+  }
+
+  if (!binary) return false;
+  const name = binary.split('/').pop();
+  return (name === 'vite' && binaryArgs.includes('build')) || name === 'esbuild';
 }
 
 /** Bundle a standard SPA from almostnode's virtual filesystem into /dist. */
@@ -239,4 +268,10 @@ export const __testables = {
   resolvePackage,
   resolveSpecifier,
   getLoader,
+  createHtml,
+  initialize,
+  resetInitialize() {
+    initializePromise = undefined;
+    esbuildApi = undefined;
+  },
 };

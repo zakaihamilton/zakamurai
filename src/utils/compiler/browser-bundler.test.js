@@ -1,5 +1,9 @@
-import { describe, expect, it } from 'vitest';
-import { __testables, assertBrowserBuildSupported } from './browser-bundler';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import {
+  __testables,
+  assertBrowserBuildSupported,
+  isBrowserBundleCommand,
+} from './browser-bundler';
 
 function vfs(files) {
   return {
@@ -10,6 +14,12 @@ function vfs(files) {
 }
 
 describe('browser-bundler', () => {
+  afterEach(() => {
+    __testables.resetInitialize();
+    vi.unstubAllGlobals();
+    vi.resetModules();
+  });
+
   it('finds standard TypeScript/React SPA entry points', () => {
     expect(__testables.findEntryPoint(vfs({ '/src/main.tsx': '' }))).toBe('/src/main.tsx');
     expect(__testables.findEntryPoint(vfs({ '/src/index.jsx': '' }))).toBe('/src/index.jsx');
@@ -44,5 +54,55 @@ describe('browser-bundler', () => {
     expect(() => assertBrowserBuildSupported(vfs({}), 'vite build --config custom.js')).toThrow(
       'do not support',
     );
+  });
+
+  it('keeps /dist prefixes in generated HTML asset URLs', () => {
+    const html = __testables.createHtml(
+      vfs({
+        '/index.html':
+          '<!doctype html><html><head></head><body><div id="root"></div><script type="module" src="/src/main.tsx"></script></body></html>',
+      }),
+      { name: 'demo' },
+      '/src/main.tsx',
+      [
+        { path: '/dist/assets/main-abc123.js', contents: new Uint8Array() },
+        { path: '/dist/assets/main-abc123.css', contents: new Uint8Array() },
+      ],
+    );
+
+    expect(html).toContain('src="/dist/assets/main-abc123.js"');
+    expect(html).toContain('href="/dist/assets/main-abc123.css"');
+    expect(html).not.toContain('src="/assets/main-abc123.js"');
+    expect(html).not.toContain('/src/main.tsx');
+  });
+
+  it('detects bare and package-runner SPA build commands', () => {
+    expect(isBrowserBundleCommand('vite', ['build'])).toBe(true);
+    expect(isBrowserBundleCommand('npx', ['vite', 'build'])).toBe(true);
+    expect(isBrowserBundleCommand('npx', ['-y', 'vite', 'build'])).toBe(true);
+    expect(isBrowserBundleCommand('pnpm', ['exec', 'vite', 'build'])).toBe(true);
+    expect(isBrowserBundleCommand('yarn', ['vite', 'build'])).toBe(true);
+    expect(isBrowserBundleCommand('esbuild', [])).toBe(true);
+    expect(isBrowserBundleCommand('./node_modules/.bin/vite', ['build'])).toBe(true);
+    expect(isBrowserBundleCommand('vite', ['dev'])).toBe(false);
+    expect(isBrowserBundleCommand('npx', ['tsc'])).toBe(false);
+  });
+
+  it('retries esbuild-wasm initialization after a failed attempt', async () => {
+    const initialize = vi
+      .fn()
+      .mockRejectedValueOnce(new Error('wasm missing'))
+      .mockResolvedValueOnce(undefined);
+
+    vi.doMock('esbuild-wasm/lib/browser', () => ({
+      initialize,
+      build: vi.fn(),
+    }));
+
+    const { __testables: fresh } = await import('./browser-bundler');
+
+    await expect(fresh.initialize()).rejects.toThrow('wasm missing');
+    await expect(fresh.initialize()).resolves.toBeUndefined();
+    expect(initialize).toHaveBeenCalledTimes(2);
   });
 });

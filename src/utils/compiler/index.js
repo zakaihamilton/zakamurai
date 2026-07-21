@@ -2,7 +2,7 @@
  * Compiler utility that uses almostnode to run build scripts in the browser.
  */
 
-import { bundleBrowserProject } from './browser-bundler';
+import { bundleBrowserProject, isBrowserBundleCommand } from './browser-bundler';
 import { getSharedContainer, initContainer, resetContainer } from './container';
 import { setupSmartDevServer } from './dev-server';
 import { scaffoldMissingFiles } from './scaffold';
@@ -93,7 +93,7 @@ export class Compiler {
               esbuild: '/node_modules/esbuild/bin/esbuild',
             };
 
-            if ((cmd === 'vite' && args.includes('build')) || cmd === 'esbuild') {
+            if (isBrowserBundleCommand(cmd, args)) {
               await bundleBrowserProject(vfs, packageJson, cmdString, this.onLog);
             } else if (knownBinaries[cmd] && vfs.existsSync(knownBinaries[cmd])) {
               this.onLog(`Compiler: Routing pure-JS CLI '${cmd}' directly to Node runtime...`);
