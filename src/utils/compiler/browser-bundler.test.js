@@ -41,6 +41,28 @@ describe('browser-bundler', () => {
     );
   });
 
+  it('skips object-shaped browser maps when resolving package roots', () => {
+    // Mirrors react-dom@18: client.js does require('react-dom') while package.json
+    // has an object "browser" remapping map instead of a string entry.
+    const fs = vfs({
+      '/node_modules/react-dom/package.json': JSON.stringify({
+        main: 'index.js',
+        browser: {
+          './server.js': './server.browser.js',
+          './static.js': './static.browser.js',
+        },
+      }),
+      '/node_modules/react-dom/index.js': '',
+      '/node_modules/react-dom/client.js': "require('react-dom');",
+    });
+    expect(__testables.resolveSpecifier(fs, 'react-dom', '/node_modules/react-dom')).toBe(
+      '/node_modules/react-dom/index.js',
+    );
+    expect(__testables.resolveSpecifier(fs, 'react-dom/client', '/src')).toBe(
+      '/node_modules/react-dom/client.js',
+    );
+  });
+
   it('uses CSS module and static asset loaders', () => {
     expect(__testables.getLoader('/src/Button.module.css')).toBe('local-css');
     expect(__testables.getLoader('/public/logo.svg')).toBe('file');

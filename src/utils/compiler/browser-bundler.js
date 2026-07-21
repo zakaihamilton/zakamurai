@@ -61,6 +61,16 @@ function packageParts(specifier) {
   return [parts.slice(0, count).join('/'), parts.slice(count).join('/')];
 }
 
+function packageEntry(manifest) {
+  // Object-shaped "browser" maps (e.g. react-dom) remaps specific files and must
+  // not be treated as the package entry path.
+  for (const field of ['browser', 'module', 'main']) {
+    const value = manifest[field];
+    if (typeof value === 'string' && value) return value;
+  }
+  return 'index.js';
+}
+
 function resolvePackage(vfs, specifier) {
   const [packageName, subpath] = packageParts(specifier);
   const root = `/node_modules/${packageName}`;
@@ -70,8 +80,7 @@ function resolvePackage(vfs, specifier) {
   const manifestPath = `${root}/package.json`;
   if (!vfs.existsSync(manifestPath)) return resolveFile(vfs, root);
   const manifest = JSON.parse(vfs.readFileSync(manifestPath, 'utf8'));
-  const entry = manifest.browser || manifest.module || manifest.main || 'index.js';
-  return resolveFile(vfs, normalizePath(`${root}/${entry}`));
+  return resolveFile(vfs, normalizePath(`${root}/${packageEntry(manifest)}`));
 }
 
 function resolveSpecifier(vfs, specifier, resolveDir) {
@@ -264,6 +273,7 @@ export async function bundleBrowserProject(vfs, packageJson, buildCommand, onLog
 
 export const __testables = {
   findEntryPoint,
+  packageEntry,
   resolveFile,
   resolvePackage,
   resolveSpecifier,
