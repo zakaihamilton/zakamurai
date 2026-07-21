@@ -63,6 +63,56 @@ describe('browser-bundler', () => {
     );
   });
 
+  it('resolves exports using browser, import, default, scoped packages, and patterns', () => {
+    const fs = vfs({
+      '/node_modules/@scope/ui/package.json': JSON.stringify({
+        exports: {
+          '.': { browser: './browser.js', import: './module.js', default: './main.js' },
+          './icons/*': { import: './icons/*.mjs' },
+        },
+      }),
+      '/node_modules/@scope/ui/browser.js': '',
+      '/node_modules/@scope/ui/icons/check.mjs': '',
+      '/node_modules/fallback/package.json': JSON.stringify({
+        exports: { '.': { default: './default.js' } },
+      }),
+      '/node_modules/fallback/default.js': '',
+      '/node_modules/conditional/package.json': JSON.stringify({
+        exports: { import: './esm.js', default: './cjs.js' },
+      }),
+      '/node_modules/conditional/esm.js': '',
+    });
+    expect(__testables.resolveSpecifier(fs, '@scope/ui', '/src')).toBe(
+      '/node_modules/@scope/ui/browser.js',
+    );
+    expect(__testables.resolveSpecifier(fs, '@scope/ui/icons/check', '/src')).toBe(
+      '/node_modules/@scope/ui/icons/check.mjs',
+    );
+    expect(__testables.resolveSpecifier(fs, 'fallback', '/src')).toBe(
+      '/node_modules/fallback/default.js',
+    );
+    expect(__testables.resolveSpecifier(fs, 'conditional', '/src')).toBe(
+      '/node_modules/conditional/esm.js',
+    );
+  });
+
+  it('reports missing, malformed, and non-exported packages clearly', () => {
+    expect(() => __testables.resolvePackage(vfs({}), 'missing')).toThrow('not installed');
+    expect(() =>
+      __testables.resolvePackage(vfs({ '/node_modules/broken/package.json': '{' }), 'broken'),
+    ).toThrow('malformed');
+    expect(() =>
+      __testables.resolvePackage(
+        vfs({
+          '/node_modules/private/package.json': JSON.stringify({ exports: { '.': './index.js' } }),
+          '/node_modules/private/index.js': '',
+          '/node_modules/private/hidden.js': '',
+        }),
+        'private/hidden',
+      ),
+    ).toThrow("does not provide './hidden'");
+  });
+
   it('uses CSS module and static asset loaders', () => {
     expect(__testables.getLoader('/src/Button.module.css')).toBe('local-css');
     expect(__testables.getLoader('/public/logo.svg')).toBe('file');
@@ -98,6 +148,23 @@ describe('browser-bundler', () => {
     expect(html).not.toContain('/src/main.tsx');
   });
 
+  it('preserves custom HTML and only replaces its source entry script', () => {
+    const html = __testables.createHtml(
+      vfs({
+        '/index.html':
+          '<html><head><meta name="theme-color" content="#111"></head><body><main>Custom</main><script type="module" src="src/main.tsx"></script><script src="/keep.js"></script></body></html>',
+      }),
+      {},
+      '/src/main.tsx',
+      [{ path: '/dist/assets/main.js', contents: new Uint8Array() }],
+    );
+    expect(html).toContain('name="theme-color"');
+    expect(html).toContain('<main>Custom</main>');
+    expect(html).toContain('src="/keep.js"');
+    expect(html).not.toContain('src="src/main.tsx"');
+    expect(html).toContain('src="/dist/assets/main.js"');
+  });
+
   it('detects bare and package-runner SPA build commands', () => {
     expect(isBrowserBundleCommand('vite', ['build'])).toBe(true);
     expect(isBrowserBundleCommand('npx', ['vite', 'build'])).toBe(true);
@@ -108,6 +175,17 @@ describe('browser-bundler', () => {
     expect(isBrowserBundleCommand('./node_modules/.bin/vite', ['build'])).toBe(true);
     expect(isBrowserBundleCommand('vite', ['dev'])).toBe(false);
     expect(isBrowserBundleCommand('npx', ['tsc'])).toBe(false);
+  });
+
+  it('parses quoted build arguments and rejects unsupported shell operators', () => {
+    expect(__testables.parseBuildCommand('tsc && npx vite build --mode "production"')).toEqual([
+      ['tsc'],
+      ['npx', 'vite', 'build', '--mode', 'production'],
+    ]);
+    expect(() => __testables.parseBuildCommand('vite build | tee output')).toThrow(
+      'Unsupported shell operator',
+    );
+    expect(() => __testables.parseBuildCommand('vite build "')).toThrow('Unterminated quote');
   });
 
   it('retries esbuild-wasm initialization after a failed attempt', async () => {
@@ -141,13 +219,15 @@ describe('browser-bundler', () => {
 
     const { bundleBrowserProject } = await import('./browser-bundler');
     const files = {
-      '/src/main.jsx': 'import { createRoot } from "react-dom/client"; createRoot(document.getElementById("root"));',
+      '/src/main.jsx':
+        'import { createRoot } from "react-dom/client"; createRoot(document.getElementById("root"));',
       '/index.html':
         '<!doctype html><html><head></head><body><div id="root"></div><script type="module" src="/src/main.jsx"></script></body></html>',
     };
     const fs = {
       existsSync: (path) =>
-        Object.hasOwn(files, path) || Object.keys(files).some((file) => file.startsWith(`${path}/`)),
+        Object.hasOwn(files, path) ||
+        Object.keys(files).some((file) => file.startsWith(`${path}/`)),
       readFileSync: (path) => files[path],
       writeFileSync: (path, contents) => {
         files[path] = typeof contents === 'string' ? contents : contents;
@@ -162,5 +242,46 @@ describe('browser-bundler', () => {
         entryPoints: ['/src/main.jsx'],
       }),
     );
+  });
+
+  it('clears stale output and copies public assets into dist', async () => {
+    const build = vi.fn().mockResolvedValue({
+      outputFiles: [{ path: '/dist/assets/main-new.js', contents: new Uint8Array([1]) }],
+    });
+    vi.doMock('esbuild-wasm/lib/browser', () => ({ initialize: vi.fn(), build }));
+    const { bundleBrowserProject } = await import('./browser-bundler');
+    const files = {
+      '/src/main.js': '',
+      '/dist/stale.js': 'stale',
+      '/public/logo.svg': '<svg/>',
+    };
+    const removed = [];
+    const fs = {
+      existsSync: (path) =>
+        Object.hasOwn(files, path) ||
+        Object.keys(files).some((file) => file.startsWith(`${path}/`)),
+      readFileSync: (path) => files[path],
+      writeFileSync: (path, contents) => {
+        files[path] = contents;
+      },
+      readdirSync: (path) => {
+        if (Object.hasOwn(files, path)) throw new Error('ENOTDIR');
+        return Object.keys(files)
+          .filter((file) => file.startsWith(`${path}/`))
+          .map((file) => file.slice(path.length + 1).split('/')[0])
+          .filter((name, index, names) => names.indexOf(name) === index);
+      },
+      unlinkSync: (path) => {
+        removed.push(path);
+        delete files[path];
+      },
+      rmdirSync: (path) => {
+        if (Object.hasOwn(files, path)) throw new Error('ENOTDIR');
+      },
+    };
+    await bundleBrowserProject(fs, {}, 'vite build');
+    expect(removed).toContain('/dist/stale.js');
+    expect(files['/dist/logo.svg']).toBe('<svg/>');
+    expect(files['/dist/index.html']).toContain('/dist/assets/main-new.js');
   });
 });

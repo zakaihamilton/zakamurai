@@ -1,6 +1,6 @@
 import { Icons } from '@/components/ui/Icons';
 import Tooltip from '@/components/ui/Tooltip';
-import React from 'react';
+import React, { useEffect, useId, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import styles from './Dialog.module.css';
 
@@ -17,23 +17,63 @@ export default function Dialog({
   footer,
   className = '',
 }) {
+  const dialogRef = useRef(null);
+  const openerRef = useRef(null);
+  const titleId = useId();
+
+  useEffect(() => {
+    if (!isOpen) return undefined;
+    openerRef.current = document.activeElement;
+    const dialog = dialogRef.current;
+    const focusable = dialog?.querySelectorAll(
+      'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+    );
+    (focusable?.[0] || dialog)?.focus();
+
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        onCancel();
+        return;
+      }
+      if (event.key !== 'Tab' || !focusable?.length) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+      openerRef.current?.focus?.();
+    };
+  }, [isOpen, onCancel]);
+
   if (!isOpen) return null;
 
   return createPortal(
     <div className={styles.wrapper}>
-      <div
+      <button
+        type="button"
         className={styles.backdrop}
         onClick={onCancel}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' || e.key === ' ') onCancel();
-        }}
-        role="button"
-        tabIndex={-1}
         aria-label="Close dialog"
       />
-      <div className={`${styles.dialog} ${className}`}>
+      <dialog
+        ref={dialogRef}
+        className={`${styles.dialog} ${className}`}
+        open
+        aria-modal="true"
+        aria-labelledby={titleId}
+        tabIndex={-1}
+      >
         <div className={styles.header}>
-          <h3>{title}</h3>
+          <h3 id={titleId}>{title}</h3>
           <Tooltip content="Close">
             <button
               type="button"
@@ -64,7 +104,7 @@ export default function Dialog({
             </button>
           </div>
         )}
-      </div>
+      </dialog>
     </div>,
     document.body,
   );

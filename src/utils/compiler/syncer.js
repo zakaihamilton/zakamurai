@@ -2,10 +2,15 @@
  * File synchronization logic for the compiler container.
  */
 
+// The virtual container is intentionally shared between builds. Remember which
+// project files we wrote so removing a file in the editor removes it there too.
+const syncedFiles = new WeakMap();
+
 export async function syncFilesToContainer(container, fs, folderTree, fileContents, onLog) {
   onLog('Synchronizing files to virtual environment...');
 
   let syncCount = 0;
+  const currentFiles = new Set();
   const syncFile = async (fullPath, contentPromise) => {
     syncCount++;
     if (syncCount % 50 === 0) {
@@ -14,6 +19,7 @@ export async function syncFilesToContainer(container, fs, folderTree, fileConten
 
     const pathStr = String(fullPath);
     const vfsPath = pathStr.startsWith('/') ? pathStr : `/${pathStr}`;
+    currentFiles.add(vfsPath);
     const inMemory = fileContents[pathStr];
     let content;
     if (inMemory !== undefined) {
@@ -97,5 +103,17 @@ export async function syncFilesToContainer(container, fs, folderTree, fileConten
       await traverseNodes(node);
     }
   }
+
+  const previousFiles = syncedFiles.get(container) || new Set();
+  for (const path of previousFiles) {
+    if (currentFiles.has(path)) continue;
+    try {
+      container.vfs.unlinkSync(path);
+      onLog(`Removed deleted file from virtual environment: ${path}`);
+    } catch (err) {
+      onLog(`Warning: Failed to remove deleted file ${path}: ${err.message}`);
+    }
+  }
+  syncedFiles.set(container, currentFiles);
   onLog('File synchronization complete.');
 }

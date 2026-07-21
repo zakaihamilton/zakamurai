@@ -275,7 +275,10 @@ console.error("Transform failed with 1 error");`,
         'https://www.zakamurai.com/preview/dist/assets/main.js',
       );
       expect(
-        toPreviewFetchUrl('https://www.zakamurai.com/preview/dist/index.html', 'https://www.zakamurai.com'),
+        toPreviewFetchUrl(
+          'https://www.zakamurai.com/preview/dist/index.html',
+          'https://www.zakamurai.com',
+        ),
       ).toBe('https://www.zakamurai.com/preview/dist/index.html');
     });
   });

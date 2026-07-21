@@ -26,6 +26,7 @@ const defaultHandlers = {
   onDragOver: vi.fn(),
   onDragEnd: vi.fn(),
   onDrop: vi.fn(),
+  onKeyDown: vi.fn(),
 };
 
 describe('TabItem', () => {
@@ -58,12 +59,20 @@ describe('TabItem', () => {
   it('calls onTabClick when clicked or Enter pressed', () => {
     const onTabClick = vi.fn();
     const tab = { id: 'tab1', label: 'Tab 1', type: 'file', file: { name: 'tab1.js' } };
-    render(<TabItem tab={tab} isActive={false} {...defaultHandlers} onTabClick={onTabClick} />);
+    render(
+      <TabItem
+        tab={tab}
+        isActive={false}
+        {...defaultHandlers}
+        onTabClick={onTabClick}
+        onKeyDown={(event, id) => event.key === 'Enter' && onTabClick(id)}
+      />,
+    );
 
-    fireEvent.click(screen.getByRole('button', { name: 'Tab 1' }));
+    fireEvent.click(screen.getByRole('tab', { name: 'Tab 1' }));
     expect(onTabClick).toHaveBeenCalledWith('tab1');
 
-    fireEvent.keyDown(screen.getByRole('button', { name: 'Tab 1' }), { key: 'Enter' });
+    fireEvent.keyDown(screen.getByRole('tab', { name: 'Tab 1' }), { key: 'Enter' });
     expect(onTabClick).toHaveBeenCalledTimes(2);
   });
 
@@ -92,7 +101,7 @@ describe('TabItem', () => {
       />,
     );
 
-    const tabEl = screen.getByRole('button', { name: 'Tab 1' });
+    const tabEl = screen.getByRole('tab', { name: 'Tab 1' });
     fireEvent.dragStart(tabEl);
     expect(onDragStart).toHaveBeenCalled();
     fireEvent.dragOver(tabEl);

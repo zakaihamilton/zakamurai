@@ -11,6 +11,7 @@ describe('syncFilesToContainer', () => {
         writeFileSync: vi.fn(),
         existsSync: vi.fn().mockReturnValue(false),
         mkdirSync: vi.fn(),
+        unlinkSync: vi.fn(),
       },
     };
     onLogMock = vi.fn();
@@ -156,5 +157,22 @@ describe('syncFilesToContainer', () => {
     await syncFilesToContainer(mockContainer, fs, [], {}, onLogMock);
 
     expect(mockContainer.vfs.writeFileSync).toHaveBeenCalledTimes(25);
+  });
+
+  it('removes files deleted from the project on a later sync', async () => {
+    const fs = { mode: 'opfs' };
+    await syncFilesToContainer(
+      mockContainer,
+      fs,
+      [{ name: 'removed.js', isDir: false, content: 'first' }],
+      {},
+      onLogMock,
+    );
+    await syncFilesToContainer(mockContainer, fs, [], {}, onLogMock);
+
+    expect(mockContainer.vfs.unlinkSync).toHaveBeenCalledWith('/removed.js');
+    expect(onLogMock).toHaveBeenCalledWith(
+      'Removed deleted file from virtual environment: /removed.js',
+    );
   });
 });

@@ -31,19 +31,23 @@ export default function TabItem({
   onDragOver,
   onDragEnd,
   onDrop,
+  tabRef,
+  onKeyDown,
 }) {
   return (
-    // biome-ignore lint/a11y/useSemanticElements: tab contains a nested close button and drag handlers
     <div
-      role="button"
-      tabIndex={0}
+      ref={tabRef}
+      role="tab"
+      aria-selected={isActive}
+      aria-controls={`tab-panel-${encodeURIComponent(tab.id)}`}
+      tabIndex={isActive ? 0 : -1}
       draggable
       onDragStart={(e) => onDragStart(e, tab.id)}
       onDragOver={(e) => onDragOver(e, tab.id)}
       onDragEnd={onDragEnd}
       onDrop={(e) => onDrop(e, tab.id)}
       onClick={() => onTabClick(tab.id)}
-      onKeyDown={(e) => e.key === 'Enter' && onTabClick(tab.id)}
+      onKeyDown={(e) => onKeyDown(e, tab.id)}
       onContextMenu={(e) => onContextMenu(e, tab)}
       className={`${styles.tab} ${isActive ? styles.activeTab : styles.inactiveTab} ${
         isDragging ? styles.tabDragging : ''
@@ -75,7 +79,7 @@ export default function TabItem({
           onClick={(e) => onCloseTab(e, tab.id)}
           onKeyDown={(e) => e.key === 'Enter' && onCloseTab(e, tab.id)}
           className={`${styles.closeButton} ${isActive ? '' : styles.closeButtonDimmed}`}
-          aria-label="Close Tab"
+          aria-label={`Close Tab: ${tab.label}`}
         >
           <Icons.Close />
         </button>

@@ -24,9 +24,7 @@ describe('FileViewToolbar', () => {
   });
 
   it('renders view switch buttons for multi-view files', () => {
-    render(
-      <FileViewToolbar fileName="App.jsx" activeViewType="editor" onSelectView={vi.fn()} />,
-    );
+    render(<FileViewToolbar fileName="App.jsx" activeViewType="editor" onSelectView={vi.fn()} />);
 
     expect(screen.getByLabelText('Open with')).toBeDefined();
     expect(screen.getByLabelText('Open with Editor')).toHaveAttribute('aria-pressed', 'true');

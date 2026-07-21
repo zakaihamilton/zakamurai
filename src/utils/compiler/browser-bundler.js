@@ -71,23 +71,100 @@ function packageEntry(manifest) {
   return 'index.js';
 }
 
+function selectExport(target) {
+  if (typeof target === 'string') return target;
+  if (Array.isArray(target)) {
+    for (const item of target) {
+      const selected = selectExport(item);
+      if (selected) return selected;
+    }
+    return null;
+  }
+  if (!target || typeof target !== 'object') return null;
+
+  // These are the conditions esbuild uses for our browser ESM bundle. Keep
+  // default as a fallback because many packages only provide that condition.
+  for (const condition of ['browser', 'import', 'default']) {
+    const selected = selectExport(target[condition]);
+    if (selected) return selected;
+  }
+  return null;
+}
+
+function exportTarget(exportsField, subpath) {
+  if (typeof exportsField === 'string' || Array.isArray(exportsField)) {
+    return subpath ? null : selectExport(exportsField);
+  }
+  if (!exportsField || typeof exportsField !== 'object') return null;
+  const key = subpath ? `./${subpath}` : '.';
+  // A conditional root export omits the '.' key entirely.
+  if (!subpath && Object.keys(exportsField).every((entry) => !entry.startsWith('.'))) {
+    return selectExport(exportsField);
+  }
+  if (Object.hasOwn(exportsField, key)) return selectExport(exportsField[key]);
+
+  // Package export patterns are common for icon/component libraries.
+  for (const [pattern, target] of Object.entries(exportsField)) {
+    if (!pattern.includes('*')) continue;
+    const [start, end] = pattern.split('*');
+    if (!key.startsWith(start) || !key.endsWith(end)) continue;
+    const replacement = key.slice(start.length, key.length - end.length);
+    const selected = selectExport(target);
+    if (selected) return selected.replaceAll('*', replacement);
+  }
+  return null;
+}
+
+function parseManifest(vfs, manifestPath, packageName) {
+  try {
+    const parsed = JSON.parse(vfs.readFileSync(manifestPath, 'utf8'));
+    if (!parsed || typeof parsed !== 'object') throw new Error('not an object');
+    return parsed;
+  } catch (error) {
+    throw new Error(
+      `Cannot read package '${packageName}': malformed ${manifestPath} (${error.message}).`,
+    );
+  }
+}
+
 function resolvePackage(vfs, specifier) {
   const [packageName, subpath] = packageParts(specifier);
   const root = `/node_modules/${packageName}`;
-  if (!vfs.existsSync(root)) return null;
-  if (subpath) return resolveFile(vfs, `${root}/${subpath}`);
+  if (!vfs.existsSync(root)) {
+    throw new Error(`Package '${packageName}' is not installed (required by '${specifier}').`);
+  }
 
   const manifestPath = `${root}/package.json`;
-  if (!vfs.existsSync(manifestPath)) return resolveFile(vfs, root);
-  const manifest = JSON.parse(vfs.readFileSync(manifestPath, 'utf8'));
-  return resolveFile(vfs, normalizePath(`${root}/${packageEntry(manifest)}`));
+  if (!vfs.existsSync(manifestPath)) {
+    const resolved = subpath ? resolveFile(vfs, `${root}/${subpath}`) : resolveFile(vfs, root);
+    if (resolved) return resolved;
+    throw new Error(`Package '${packageName}' has no package.json or resolvable entry point.`);
+  }
+  const manifest = parseManifest(vfs, manifestPath, packageName);
+  const target = exportTarget(manifest.exports, subpath);
+  if (manifest.exports !== undefined && !target) {
+    throw new Error(
+      `Package '${packageName}' does not provide '${subpath ? `./${subpath}` : '.'}' for browser imports.`,
+    );
+  }
+  const candidate = target || (subpath ? subpath : packageEntry(manifest));
+  const resolved = resolveFile(vfs, normalizePath(`${root}/${candidate}`));
+  if (resolved) return resolved;
+  throw new Error(
+    `Package '${packageName}' does not provide '${subpath ? `./${subpath}` : '.'}' for browser imports.`,
+  );
 }
 
 function resolveSpecifier(vfs, specifier, resolveDir) {
   if (specifier.startsWith('/') || specifier.startsWith('.')) {
-    return resolveFile(
-      vfs,
-      normalizePath(specifier.startsWith('/') ? specifier : `${resolveDir}/${specifier}`),
+    const candidate = normalizePath(
+      specifier.startsWith('/') ? specifier : `${resolveDir}/${specifier}`,
+    );
+    // Vite serves /public files from the site root. Resolve absolute imports
+    // against that directory when they are not source files.
+    return (
+      resolveFile(vfs, candidate) ||
+      (specifier.startsWith('/') ? resolveFile(vfs, `/public${candidate}`) : null)
     );
   }
   return resolvePackage(vfs, specifier);
@@ -137,9 +214,43 @@ export function assertBrowserBuildSupported(vfs, buildCommand) {
       `Browser builds do not execute ${config}. Remove it or use supported defaults.`,
     );
   }
-  if (/(?:^|\s)--(?:config|plugin)(?:\s|=|$)/.test(buildCommand)) {
+  if (/(?:^|\s)--(?:config|plugin|outDir|base|ssr|watch)(?:\s|=|$)/.test(buildCommand)) {
     throw new Error('Browser builds do not support custom Vite/esbuild config files or plugins.');
   }
+}
+
+function removeTree(vfs, path) {
+  if (!vfs.existsSync(path)) return;
+  for (const name of vfs.readdirSync(path)) {
+    const child = `${path}/${name}`;
+    try {
+      removeTree(vfs, child);
+    } catch (_) {
+      vfs.unlinkSync(child);
+    }
+  }
+  try {
+    vfs.rmdirSync(path);
+  } catch (_) {
+    vfs.unlinkSync(path);
+  }
+}
+
+function copyPublicFiles(vfs, from = '/public', to = '/dist') {
+  if (!vfs.existsSync(from)) return [];
+  const copied = [];
+  for (const name of vfs.readdirSync(from)) {
+    const source = `${from}/${name}`;
+    const destination = `${to}/${name}`;
+    try {
+      const nested = copyPublicFiles(vfs, source, destination);
+      copied.push(...nested);
+    } catch (_) {
+      vfs.writeFileSync(destination, vfs.readFileSync(source));
+      copied.push(destination.replace('/dist/', ''));
+    }
+  }
+  return copied;
 }
 
 async function initialize() {
@@ -170,13 +281,18 @@ function createHtml(vfs, packageJson, entryPath, outputFiles) {
   const css = outputFiles.find((file) => file.path.endsWith('.css'));
   const script = js ? `<script type="module" src="${js.path}"></script>` : '';
   const style = css ? `<link rel="stylesheet" href="${css.path}">` : '';
-  const withoutSourceScript = source.replace(
-    /<script\b[^>]*type=["']module["'][^>]*src=["'][^"']+["'][^>]*><\/script>\s*/i,
-    '',
+  const escapedEntry = entryPath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const sourceScript = new RegExp(
+    `<script\\b(?=[^>]*\\btype=["']module["'])[^>]*\\bsrc=["'](?:/?${escapedEntry.slice(1)}|${escapedEntry})["'][^>]*>\\s*<\\/script>\\s*`,
+    'i',
   );
-  return withoutSourceScript
-    .replace(/<\/head>/i, `${style}\n</head>`)
-    .replace(/<\/body>/i, `${script}\n</body>`);
+  const withoutSourceScript = source.replace(sourceScript, '');
+  const withStyle = /<\/head>/i.test(withoutSourceScript)
+    ? withoutSourceScript.replace(/<\/head>/i, `${style}\n</head>`)
+    : `${style}\n${withoutSourceScript}`;
+  return /<\/body>/i.test(withStyle)
+    ? withStyle.replace(/<\/body>/i, `${script}\n</body>`)
+    : `${withStyle}\n${script}`;
 }
 
 /** True for bare or package-runner SPA build commands (vite build / npx vite build / esbuild). */
@@ -202,11 +318,52 @@ export function isBrowserBundleCommand(cmd, args = []) {
   return (name === 'vite' && binaryArgs.includes('build')) || name === 'esbuild';
 }
 
+/** Split a shell-like build script without executing shell syntax. */
+export function parseBuildCommand(command) {
+  const commands = [];
+  let tokens = [];
+  let token = '';
+  let quote = null;
+  const finishToken = () => {
+    if (token) tokens.push(token);
+    token = '';
+  };
+  const finishCommand = () => {
+    finishToken();
+    if (tokens.length) commands.push(tokens);
+    tokens = [];
+  };
+  for (let index = 0; index < command.length; index += 1) {
+    const char = command[index];
+    if (quote) {
+      if (char === quote) quote = null;
+      else if (char === '\\' && quote === '"' && index + 1 < command.length)
+        token += command[++index];
+      else token += char;
+    } else if (char === '"' || char === "'") quote = char;
+    else if (/\s/.test(char)) finishToken();
+    else if (char === '&' && command[index + 1] === '&') {
+      finishCommand();
+      index += 1;
+    } else if ('|;<>`'.includes(char) || char === '&') {
+      throw new Error(
+        `Unsupported shell operator '${char}' in build command. Use a standard Vite SPA build script.`,
+      );
+    } else token += char;
+  }
+  if (quote) throw new Error('Unterminated quote in build command.');
+  finishCommand();
+  return commands;
+}
+
 /** Bundle a standard SPA from almostnode's virtual filesystem into /dist. */
 export async function bundleBrowserProject(vfs, packageJson, buildCommand, onLog = () => {}) {
   assertBrowserBuildSupported(vfs, buildCommand);
   const entryPoint = findEntryPoint(vfs);
   onLog(`Bundling ${entryPoint} with esbuild-wasm...`);
+
+  // A failed or changed build must never leave an old preview behind.
+  removeTree(vfs, '/dist');
   await initialize();
 
   const result = await esbuildApi.build({
@@ -238,11 +395,16 @@ export async function bundleBrowserProject(vfs, packageJson, buildCommand, onLog
             ) {
               return { path: args.path, external: true };
             }
-            const path = resolveSpecifier(
-              vfs,
-              args.path,
-              args.resolveDir || dirname(args.importer || entryPoint),
-            );
+            let path;
+            try {
+              path = resolveSpecifier(
+                vfs,
+                args.path,
+                args.resolveDir || dirname(args.importer || entryPoint),
+              );
+            } catch (error) {
+              return { errors: [{ text: error.message }] };
+            }
             if (!path)
               return {
                 errors: [
@@ -267,6 +429,7 @@ export async function bundleBrowserProject(vfs, packageJson, buildCommand, onLog
   const html = createHtml(vfs, packageJson, entryPoint, result.outputFiles);
   vfs.writeFileSync('/dist/index.html', html);
   const names = result.outputFiles.map((file) => file.path.replace('/dist/', ''));
+  names.push(...copyPublicFiles(vfs));
   onLog(
     `Bundling complete. Generated /dist: index.html${names.length ? `, ${names.join(', ')}` : ''}`,
   );
@@ -276,11 +439,16 @@ export async function bundleBrowserProject(vfs, packageJson, buildCommand, onLog
 export const __testables = {
   findEntryPoint,
   packageEntry,
+  selectExport,
+  exportTarget,
   resolveFile,
   resolvePackage,
   resolveSpecifier,
   getLoader,
   createHtml,
+  removeTree,
+  copyPublicFiles,
+  parseBuildCommand,
   initialize,
   resetInitialize() {
     initializePromise = undefined;

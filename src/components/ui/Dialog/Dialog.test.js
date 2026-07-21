@@ -56,18 +56,14 @@ describe('Dialog', () => {
     expect(container.firstChild).toBeNull();
   });
 
-  it('calls onCancel when backdrop receives Enter or Space keydown', () => {
+  it('provides modal semantics and closes on Escape', () => {
     const onCancel = vi.fn();
     render(<Dialog isOpen={true} title="T" message="M" onConfirm={vi.fn()} onCancel={onCancel} />);
 
-    const backdrop = screen.getAllByLabelText('Close dialog')[0];
-    fireEvent.keyDown(backdrop, { key: 'Enter' });
-    expect(onCancel).toHaveBeenCalledTimes(1);
-
-    fireEvent.keyDown(backdrop, { key: ' ' });
-    expect(onCancel).toHaveBeenCalledTimes(2);
-
-    fireEvent.keyDown(backdrop, { key: 'Escape' });
-    expect(onCancel).toHaveBeenCalledTimes(2); // should not close
+    const dialog = screen.getByRole('dialog', { name: 'T' });
+    expect(dialog).toHaveAttribute('aria-modal', 'true');
+    expect(document.activeElement).toBe(dialog.querySelector('button[aria-label="Close dialog"]'));
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(onCancel).toHaveBeenCalledOnce();
   });
 });

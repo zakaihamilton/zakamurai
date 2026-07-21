@@ -11,7 +11,7 @@ export default function AppContent() {
   const appState = AppState.useState();
   const sidebarState = SidebarState.useState();
   const { theme, showShortcuts, showCompletionDebug, isResizing = false, isMobile } = appState;
-  const { isSidebarOpen, isSidebarPopupOpen, isAIInputPopupOpen } = sidebarState;
+  const { isSidebarOpen, isSidebarPopupOpen, isAIInputPopupOpen, sidebarWidth } = sidebarState;
 
   const handleSidebarResize = (clientX) => {
     if (isSidebarOpen) {
@@ -80,6 +80,10 @@ export default function AppContent() {
               onResizeStart={handleResizeStart}
               onResizeEnd={handleResizeEnd}
               onDoubleClick={handleSidebarReset}
+              value={sidebarWidth}
+              min={240}
+              max={600}
+              label="Resize sidebar"
               className={!isSidebarOpen ? styles.hidden : ''}
             />
           </Node>

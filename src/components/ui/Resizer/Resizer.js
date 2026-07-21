@@ -4,7 +4,16 @@ import styles from './Resizer.module.css';
 
 const ResizerState = createState('ResizerState');
 
-export default function Resizer({ onResize, onResizeStart, onResizeEnd, onDoubleClick }) {
+export default function Resizer({
+  onResize,
+  onResizeStart,
+  onResizeEnd,
+  onDoubleClick,
+  value,
+  min = 160,
+  max = 960,
+  label = 'Resize pane',
+}) {
   const resizerState = ResizerState.useState(null, { isResizing: false });
   const { isResizing = false } = resizerState || {};
 
@@ -68,6 +77,25 @@ export default function Resizer({ onResize, onResizeStart, onResizeEnd, onDouble
       }}
       onTouchStart={startResizing}
       onDoubleClick={onDoubleClick}
+      onKeyDown={(event) => {
+        const step = event.shiftKey ? 48 : 16;
+        let nextValue;
+        if (event.key === 'ArrowLeft') nextValue = Math.max(min, value - step);
+        if (event.key === 'ArrowRight') nextValue = Math.min(max, value + step);
+        if (event.key === 'Home') nextValue = min;
+        if (event.key === 'End') nextValue = max;
+        if (nextValue !== undefined) {
+          event.preventDefault();
+          onResize(nextValue);
+        }
+      }}
+      role="separator"
+      aria-orientation="vertical"
+      aria-label={label}
+      aria-valuemin={min}
+      aria-valuemax={max}
+      aria-valuenow={value}
+      tabIndex={0}
       data-resizer="true"
     />
   );

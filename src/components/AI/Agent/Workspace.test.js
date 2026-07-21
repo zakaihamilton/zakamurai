@@ -32,9 +32,11 @@ describe('AgentWorkspace', () => {
 
   it('formats semantic search results', async () => {
     const workspace = new AgentWorkspace({});
-    const retrieve = vi.fn().mockResolvedValue([
-      { filePath: 'src/auth.js', content: 'function login() {}', score: 0.91 },
-    ]);
+    const retrieve = vi
+      .fn()
+      .mockResolvedValue([
+        { filePath: 'src/auth.js', content: 'function login() {}', score: 0.91 },
+      ]);
     const result = await workspace.semanticSearch('authentication', retrieve, 3);
     expect(retrieve).toHaveBeenCalledWith('authentication', 3);
     expect(result).toContain('src/auth.js');

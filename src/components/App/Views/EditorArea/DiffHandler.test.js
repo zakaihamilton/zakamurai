@@ -53,13 +53,19 @@ describe('DiffHandler', () => {
         selectedLines: {},
       },
     );
-    tabState = Object.assign(vi.fn((updater) => updater(tabState)), {
-      openTabs: [{ id: 'a.js' }, { id: 'b.js' }],
-      activeTabId: 'a.js',
-    });
-    sidebarState = Object.assign(vi.fn((updater) => updater(sidebarState)), {
-      folderTree: { name: 'root', children: [] },
-    });
+    tabState = Object.assign(
+      vi.fn((updater) => updater(tabState)),
+      {
+        openTabs: [{ id: 'a.js' }, { id: 'b.js' }],
+        activeTabId: 'a.js',
+      },
+    );
+    sidebarState = Object.assign(
+      vi.fn((updater) => updater(sidebarState)),
+      {
+        folderTree: { name: 'root', children: [] },
+      },
+    );
     onStateChange = vi.fn();
     setLocalContent = vi.fn();
     fs = {

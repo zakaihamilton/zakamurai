@@ -92,4 +92,17 @@ describe('Resizer', () => {
 
     expect(resizerStateUpdater).toHaveBeenCalledTimes(2);
   });
+
+  it('supports keyboard resizing with separator semantics', () => {
+    const onResize = vi.fn();
+    createState().useState.mockReturnValue(Object.assign(vi.fn(), { isResizing: false }));
+    render(<Resizer onResize={onResize} value={300} min={240} max={600} label="Resize sidebar" />);
+
+    const resizer = screen.getByRole('separator', { name: 'Resize sidebar' });
+    expect(resizer).toHaveAttribute('aria-valuenow', '300');
+    fireEvent.keyDown(resizer, { key: 'ArrowRight' });
+    fireEvent.keyDown(resizer, { key: 'Home' });
+    expect(onResize).toHaveBeenNthCalledWith(1, 316);
+    expect(onResize).toHaveBeenNthCalledWith(2, 240);
+  });
 });
