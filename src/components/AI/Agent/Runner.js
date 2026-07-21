@@ -13,6 +13,7 @@ export async function runAgent({
   files,
   model,
   validate,
+  retrieveContext,
   signal,
   onEvent = () => {},
   maxTurns = 20,
@@ -75,6 +76,8 @@ export async function runAgent({
       if (action.action === 'list_files') result = workspace.list(action.query).join('\n');
       if (action.action === 'search_workspace')
         result = workspace.search(action.query, action.glob);
+      if (action.action === 'search_semantic')
+        result = await workspace.semanticSearch(action.query, retrieveContext, action.k);
       if (action.action === 'read_file') result = workspace.read(action.path);
       if (action.action === 'write_file') {
         workspace.write(action.path, action.content);

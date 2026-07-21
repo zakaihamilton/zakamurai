@@ -48,7 +48,14 @@ export function useTabRestorer() {
         }
 
         editorState((draft) => {
-          draft.fileContents = { ...draft.fileContents, ...newContents };
+          const pending = draft.pendingDiffs || {};
+          const merged = { ...draft.fileContents };
+          for (const [path, content] of Object.entries(newContents)) {
+            // Keep in-memory AI review buffers; do not clobber with disk.
+            if (pending[path]) continue;
+            merged[path] = content;
+          }
+          draft.fileContents = merged;
         });
         tabState((draft) => {
           draft.openTabs = restoredTabs;

@@ -129,10 +129,7 @@ export default function useAssociationNavigator({
     });
 
     state((draft) => {
-      if (!draft.cursorPos) {
-        draft.cursorPos = {};
-      }
-      draft.cursorPos[targetPath] = targetLoc;
+      draft.cursorPos = { ...(draft.cursorPos || {}), [targetPath]: targetLoc };
       draft.shouldScrollTo = {
         filePath: targetPath,
         line: targetLoc.line,
@@ -174,10 +171,7 @@ export default function useAssociationNavigator({
       });
 
       state((draft) => {
-        if (!draft.cursorPos) {
-          draft.cursorPos = {};
-        }
-        draft.cursorPos[targetPath] = targetLoc;
+        draft.cursorPos = { ...(draft.cursorPos || {}), [targetPath]: targetLoc };
         draft.shouldScrollTo = {
           filePath: targetPath,
           line: targetLoc.line,

@@ -1,4 +1,5 @@
 import Settings from '@/components/Storage/Settings';
+import { deleteKeysWithPrefixInDraft } from '@/components/state/StateUtils';
 import {
   findClassInCss,
   findClassReferenceInJs,
@@ -104,10 +105,7 @@ const toggleCssJsAction = ({ editorState, tabState, sidebarState }) => {
   });
 
   editorState((draft) => {
-    if (!draft.cursorPos) {
-      draft.cursorPos = {};
-    }
-    draft.cursorPos[targetPath] = targetLoc;
+    draft.cursorPos = { ...(draft.cursorPos || {}), [targetPath]: targetLoc };
     draft.shouldScrollTo = {
       filePath: targetPath,
       line: targetLoc.line,
@@ -148,17 +146,17 @@ const navigateToHistoryItem = ({ editorState, tabState }, nextIndex) => {
   });
 
   editorState((draft) => {
-    if (!draft.cursorPos) {
-      draft.cursorPos = {};
-    }
-    draft.cursorPos[targetPath] = targetLoc;
+    draft.cursorPos = { ...(draft.cursorPos || {}), [targetPath]: targetLoc };
     draft.shouldScrollTo = {
       filePath: targetPath,
       line: targetLoc.line,
       timestamp: Date.now(),
     };
     if (draft.navigationHistory) {
-      draft.navigationHistory.currentIndex = nextIndex;
+      draft.navigationHistory = {
+        ...draft.navigationHistory,
+        currentIndex: nextIndex,
+      };
     }
   });
 };
@@ -578,11 +576,44 @@ export const SHORTCUTS = [
     isGlobal: true,
     action: ({ tabState, editorState, appState, showNotification }) => {
       const activeTabId = tabState.activeTabId;
+      const hasDeletion = editorState.pendingDeletions?.[activeTabId];
       const hasDiff = editorState.pendingDiffs?.[activeTabId];
-      if (hasDiff) {
+      if (hasDeletion) {
+        editorState((draft) => {
+          deleteKeysWithPrefixInDraft(
+            draft,
+            [
+              'fileContents',
+              'pendingDiffs',
+              'pendingDeletions',
+              'history',
+              'cursorPos',
+              'selectedLines',
+            ],
+            activeTabId,
+          );
+        });
+        tabState((draft) => {
+          draft.openTabs = draft.openTabs.filter(
+            (tab) => tab.id !== activeTabId && !tab.id.startsWith(`${activeTabId}/`),
+          );
+          if (
+            draft.activeTabId === activeTabId ||
+            draft.activeTabId?.startsWith(`${activeTabId}/`)
+          ) {
+            draft.activeTabId = draft.openTabs.at(-1)?.id || null;
+          }
+        });
+        if (appState.fs?.deleteFileAtPath) {
+          appState.fs.deleteFileAtPath(activeTabId);
+        }
+        showNotification('Deletion approved', 'success');
+      } else if (hasDiff) {
         editorState((draft) => {
           if (draft.pendingDiffs) {
-            delete draft.pendingDiffs[activeTabId];
+            const nextDiffs = { ...draft.pendingDiffs };
+            delete nextDiffs[activeTabId];
+            draft.pendingDiffs = nextDiffs;
           }
         });
         const content = editorState.fileContents?.[activeTabId];
@@ -605,6 +636,18 @@ export const SHORTCUTS = [
     isGlobal: true,
     action: ({ tabState, editorState, appState, showNotification }) => {
       const activeTabId = tabState.activeTabId;
+      const pendingDeletion = editorState.pendingDeletions?.[activeTabId];
+      if (pendingDeletion) {
+        editorState((draft) => {
+          if (draft.pendingDeletions) {
+            const next = { ...draft.pendingDeletions };
+            delete next[activeTabId];
+            draft.pendingDeletions = next;
+          }
+        });
+        showNotification('Deletion cancelled', 'info');
+        return;
+      }
       const diff = editorState.pendingDiffs?.[activeTabId];
       if (diff) {
         const prevContent = diff.originalContent;

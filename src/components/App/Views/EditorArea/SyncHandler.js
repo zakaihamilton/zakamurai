@@ -7,6 +7,7 @@ export default function SyncHandler({ fs, filePath, localContent, state, tabStat
   // Auto-save to Local FS if applicable
   useEffect(() => {
     if (fs.mode !== 'local' || !filePath) return;
+    if (state.pendingDiffs?.[filePath] || state.pendingDeletions?.[filePath]) return;
     if (localContent === lastSavedContent.current) return;
 
     const currentTab = tabState.openTabs.find((t) => t.id === filePath);
@@ -35,14 +36,22 @@ export default function SyncHandler({ fs, filePath, localContent, state, tabStat
     return () => {
       if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
     };
-  }, [localContent, filePath, fs.mode, tabState.openTabs, state]);
+  }, [
+    localContent,
+    filePath,
+    fs.mode,
+    tabState.openTabs,
+    state,
+    state.pendingDiffs,
+    state.pendingDeletions,
+  ]);
 
   // Flush changes to disk on window reload/close
   useEffect(() => {
     if (fs.mode !== 'local' || !filePath) return;
 
     const flush = async () => {
-      if (state.pendingDiffs?.[filePath]) return; // Do not flush if there are pending AI changes
+      if (state.pendingDiffs?.[filePath] || state.pendingDeletions?.[filePath]) return; // Do not flush if there are pending AI changes
 
       const currentTab = tabState.openTabs.find((t) => t.id === filePath);
       const handle = currentTab?.fsHandle;
@@ -66,6 +75,7 @@ export default function SyncHandler({ fs, filePath, localContent, state, tabStat
     localContent,
     state.fileContents,
     state.pendingDiffs,
+    state.pendingDeletions,
     tabState.openTabs,
     state,
   ]);

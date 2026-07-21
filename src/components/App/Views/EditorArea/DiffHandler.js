@@ -1,4 +1,17 @@
+import { SidebarState } from '@/components/App/Panes/Sidebar';
+import { removeNodeAtPath } from '@/components/App/Panes/Sidebar/TreeUtils';
+import { TabState } from '@/components/App/Panes/TabBar';
+import { deleteKeysWithPrefixInDraft } from '@/components/state/StateUtils';
 import { useCallback, useEffect, useRef } from 'react';
+
+const EDITOR_PATH_MAPS = [
+  'fileContents',
+  'pendingDiffs',
+  'pendingDeletions',
+  'history',
+  'cursorPos',
+  'selectedLines',
+];
 
 export default function DiffHandler({
   filePath,
@@ -9,8 +22,42 @@ export default function DiffHandler({
   onStateChange,
 }) {
   const lastPublishedActions = useRef(null);
+  const sidebarState = SidebarState.usePassiveState();
+  const tabState = TabState.usePassiveState();
 
   const handleApprove = useCallback(async () => {
+    const pendingDeletion = state.pendingDeletions?.[filePath];
+    if (pendingDeletion) {
+      state((draft) => {
+        deleteKeysWithPrefixInDraft(draft, EDITOR_PATH_MAPS, filePath);
+      });
+      tabState((draft) => {
+        draft.openTabs = draft.openTabs.filter(
+          (tab) => tab.id !== filePath && !tab.id.startsWith(`${filePath}/`),
+        );
+        if (draft.activeTabId === filePath || draft.activeTabId?.startsWith(`${filePath}/`)) {
+          draft.activeTabId = draft.openTabs.at(-1)?.id || null;
+        }
+      });
+      if (sidebarState) {
+        sidebarState((draft) => {
+          if (!draft.folderTree) return;
+          draft.folderTree = removeNodeAtPath(
+            draft.folderTree,
+            filePath.split('/').filter(Boolean),
+          );
+        });
+      }
+      try {
+        if (fs?.rootHandle && fs?.deleteFileAtPath) {
+          await fs.deleteFileAtPath(filePath);
+        }
+      } catch (err) {
+        console.error('Failed to delete from FS on approve:', err);
+      }
+      return;
+    }
+
     state((draft) => {
       if (draft.pendingDiffs) {
         const nextDiffs = { ...draft.pendingDiffs };
@@ -32,9 +79,21 @@ export default function DiffHandler({
     } catch (err) {
       console.error('Failed to save to FS on approve:', err);
     }
-  }, [filePath, localContent, state, fs]);
+  }, [filePath, localContent, state, fs, sidebarState, tabState]);
 
   const handleUndo = useCallback(async () => {
+    const pendingDeletion = state.pendingDeletions?.[filePath];
+    if (pendingDeletion) {
+      state((draft) => {
+        if (draft.pendingDeletions) {
+          const next = { ...draft.pendingDeletions };
+          delete next[filePath];
+          draft.pendingDeletions = next;
+        }
+      });
+      return;
+    }
+
     const diff = state.pendingDiffs?.[filePath];
     if (diff) {
       const prevContent = diff.originalContent;
@@ -104,7 +163,6 @@ export default function DiffHandler({
     [filePath, state],
   );
 
-  // Provide methods to parent
   useEffect(() => {
     const nextActions = {
       handleApprove,

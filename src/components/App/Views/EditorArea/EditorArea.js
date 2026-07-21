@@ -60,6 +60,7 @@ function EditorAreaInner({ file, fsHandle }) {
   const state = EditorState.useState();
   const filePath = file?.path?.join('/') || file?.name;
   const hasDiff = !!state.pendingDiffs?.[filePath];
+  const hasPendingDeletion = !!state.pendingDeletions?.[filePath];
   const diffData = state.pendingDiffs?.[filePath];
   const fallbackContent = getTemplateContents()[filePath] ?? file?.content ?? '';
 
@@ -404,6 +405,7 @@ function EditorAreaInner({ file, fsHandle }) {
         showFind={showFind}
         setShowFind={setShowFind}
         hasDiff={hasDiff}
+        hasPendingDeletion={hasPendingDeletion}
         handleApprove={diffActions.handleApprove}
         handleUndo={diffActions.handleUndo}
         showSideBySide={showSideBySide}

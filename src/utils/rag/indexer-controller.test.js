@@ -159,7 +159,7 @@ describe('IndexerController', () => {
     consoleErrorSpy.mockRestore();
   });
 
-  it('warns when FileSystemObserver is not supported', async () => {
+  it('skips OPFS observer by default', async () => {
     global.Worker = vi.fn(() => ({ addEventListener: vi.fn(), postMessage: vi.fn() }));
     global.navigator = { storage: { getDirectory: vi.fn().mockResolvedValue({}) } };
     window.FileSystemObserver = undefined;
@@ -168,21 +168,35 @@ describe('IndexerController', () => {
     const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     await controller.init();
 
-    expect(consoleWarnSpy).toHaveBeenCalledWith(
-      '[IndexerController] FileSystemObserver is not supported in this browser. RAG auto-indexing disabled.',
-    );
+    expect(consoleWarnSpy).not.toHaveBeenCalled();
+    expect(global.navigator.storage.getDirectory).not.toHaveBeenCalled();
     consoleWarnSpy.mockRestore();
   });
 
-  it('handles errors during init gracefully', async () => {
+  it('enables OPFS observer when requested and warns if unsupported', async () => {
+    global.Worker = vi.fn(() => ({ addEventListener: vi.fn(), postMessage: vi.fn() }));
+    global.navigator = { storage: { getDirectory: vi.fn().mockResolvedValue({}) } };
+    window.FileSystemObserver = undefined;
+
+    const controller = new IndexerController({ enableOpfsObserver: true });
+    const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    await controller.init();
+
+    // Observer path runs; FileSystemObserver missing is silent (no warn) — just no observer.
+    expect(controller.observer).toBeNull();
+    consoleWarnSpy.mockRestore();
+  });
+
+  it('handles errors during OPFS observer init gracefully', async () => {
     global.Worker = vi.fn(() => ({ addEventListener: vi.fn(), postMessage: vi.fn() }));
     global.navigator = {
       storage: {
         getDirectory: vi.fn().mockRejectedValue(new Error('OPFS error')),
       },
     };
+    window.FileSystemObserver = vi.fn();
 
-    const controller = new IndexerController();
+    const controller = new IndexerController({ enableOpfsObserver: true });
     const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     await controller.init();
 

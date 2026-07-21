@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { AgentWorkspace } from './Workspace';
 
 describe('AgentWorkspace', () => {
@@ -22,5 +22,22 @@ describe('AgentWorkspace', () => {
     });
     expect(workspace.search('needle')).toContain('src/a.js:1');
     expect(workspace.search('needle', '.css')).toBe('No matches.');
+  });
+
+  it('stages deletions in changes()', () => {
+    const workspace = new AgentWorkspace({ 'src/a.js': 'gone' });
+    workspace.delete('src/a.js');
+    expect(workspace.changes()).toEqual([{ path: 'src/a.js', before: 'gone', after: undefined }]);
+  });
+
+  it('formats semantic search results', async () => {
+    const workspace = new AgentWorkspace({});
+    const retrieve = vi.fn().mockResolvedValue([
+      { filePath: 'src/auth.js', content: 'function login() {}', score: 0.91 },
+    ]);
+    const result = await workspace.semanticSearch('authentication', retrieve, 3);
+    expect(retrieve).toHaveBeenCalledWith('authentication', 3);
+    expect(result).toContain('src/auth.js');
+    expect(result).toContain('0.910');
   });
 });

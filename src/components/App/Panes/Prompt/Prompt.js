@@ -1,5 +1,4 @@
-import { collectWorkspaceFiles, runAgent } from '@/components/AI/Agent';
-import { processAIResponse } from '@/components/AI/Processor';
+import { applyAgentChanges, collectWorkspaceFiles, runAgent } from '@/components/AI/Agent';
 import {
   RECOMMENDED_WEB_LLM_MODEL,
   WEB_LLM_MODELS,
@@ -14,12 +13,6 @@ import Settings from '@/components/Storage/Settings';
 import { createState } from '@/components/state/State';
 import { Compiler } from '@/utils/compiler';
 import React, { useCallback, useEffect } from 'react';
-
-const formatAgentChanges = (changes) =>
-  changes
-    .filter((change) => change.after !== undefined)
-    .map(({ path, after }) => `// --- File: ${path} ---\n${after}\n// --- End File ---`)
-    .join('\n\n');
 
 const formatAgentEvent = (event) => {
   if (event.type === 'thinking') return `**Step ${event.turn}:** planning next action…`;
@@ -179,6 +172,10 @@ export default function Prompt() {
           files: workspaceFiles,
           model: selectedModel,
           signal: controller.signal,
+          retrieveContext: async (query, k) => {
+            const { ragSearch } = await import('@/utils/rag/search-utility');
+            return ragSearch.retrieveContext(query, k);
+          },
           validate: async (stagedFiles) => {
             const validationLogs = [];
             const compiler = new Compiler((line) => validationLogs.push(line));
@@ -217,30 +214,26 @@ export default function Prompt() {
           draft.isAIProcessing = false;
         });
 
-        // Use the centralized processor to apply file changes
-        const supportedChanges = result.changes.filter((change) => change.after !== undefined);
-        const deleted = result.changes.filter((change) => change.after === undefined);
-        await processAIResponse(
-          formatAgentChanges(supportedChanges),
-          fs,
-          logState,
-          sidebarState,
+        const { deletions } = applyAgentChanges(result.changes, {
           editorState,
-          tabState,
-          Object.fromEntries(
-            supportedChanges
-              .filter(({ before }) => typeof before === 'string')
-              .map(({ path, before }) => [path, before]),
-          ),
-        );
-        if (deleted.length > 0) {
+          sidebarState,
+          logState,
+        });
+        if (deletions.length > 0) {
+          editorState((draft) => {
+            const next = { ...(draft.pendingDeletions || {}) };
+            for (const { path, before } of deletions) {
+              next[path] = { originalContent: before };
+            }
+            draft.pendingDeletions = next;
+          });
           logState((draft) => {
             draft.logs = [
               ...draft.logs,
               {
                 id: Date.now() + 6,
                 role: 'system',
-                text: `Deletion review is not yet supported; kept ${deleted.map(({ path }) => path).join(', ')} unchanged.`,
+                text: `Deletion review pending for ${deletions.map(({ path }) => path).join(', ')}. Approve or undo in the editor.`,
                 timestamp: new Date().toTimeString().split(' ')[0],
               },
             ];

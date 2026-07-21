@@ -244,6 +244,24 @@ export function useFileSystem() {
     [rootHandle, refreshDirectory, setFileSystemValue],
   );
 
+  const deleteFileAtPath = useCallback(
+    async (path, root = rootHandle) => {
+      if (!root) throw new Error('No root directory mounted');
+      try {
+        const parts = path.split('/').filter(Boolean);
+        let currentHandle = root;
+        for (let i = 0; i < parts.length - 1; i++) {
+          currentHandle = await currentHandle.getDirectoryHandle(parts[i]);
+        }
+        await currentHandle.removeEntry(parts[parts.length - 1], { recursive: true });
+        await refreshDirectory(root);
+      } catch (err) {
+        setFileSystemValue('error', `Failed to delete file at path: ${err.message}`);
+      }
+    },
+    [rootHandle, refreshDirectory, setFileSystemValue],
+  );
+
   const getFileHandleAtPath = useCallback(
     async (path, root = rootHandle) => {
       if (!root) return null;
@@ -335,6 +353,7 @@ export function useFileSystem() {
       readFile,
       writeFile,
       writeFileAtPath,
+      deleteFileAtPath,
       getFileHandleAtPath,
       createFolder,
       deleteEntry,
@@ -356,6 +375,7 @@ export function useFileSystem() {
       readFile,
       writeFile,
       writeFileAtPath,
+      deleteFileAtPath,
       getFileHandleAtPath,
       createFolder,
       deleteEntry,

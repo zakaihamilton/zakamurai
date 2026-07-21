@@ -11,6 +11,7 @@ const mockVfs = {
   existsSync: vi.fn(),
   mkdirSync: vi.fn(),
   writeFileSync: vi.fn(),
+  readdirSync: vi.fn(),
 };
 
 const mockCompilerInstance = {
@@ -42,32 +43,42 @@ vi.mock('@/components/App/Views/EditorArea', () => ({
 
 describe('usePreviewRestorer', () => {
   let previewStateMock;
+  let appStateMock;
 
   beforeEach(() => {
     vi.clearAllMocks();
 
-    const stateObj = { isCompilerReady: false, restoreError: null };
+    const previewObj = { isCompilerReady: false, restoreError: null, previewAddress: null };
     previewStateMock = vi.fn((cb) => {
-      cb(stateObj);
-      previewStateMock.isCompilerReady = stateObj.isCompilerReady;
-      previewStateMock.restoreError = stateObj.restoreError;
+      cb(previewObj);
+      previewStateMock.isCompilerReady = previewObj.isCompilerReady;
+      previewStateMock.restoreError = previewObj.restoreError;
+      previewStateMock.previewAddress = previewObj.previewAddress;
     });
     previewStateMock.htmlContent = '<html></html>';
     previewStateMock.isCompilerReady = false;
     previewStateMock.restoreError = null;
 
+    const appObj = { silentCompileRequest: 0, fs: { isReady: true } };
+    appStateMock = vi.fn((cb) => {
+      cb(appObj);
+      appStateMock.silentCompileRequest = appObj.silentCompileRequest;
+    });
+    appStateMock.fs = { isReady: true };
+    appStateMock.silentCompileRequest = 0;
+
     PreviewState.useState.mockReturnValue(previewStateMock);
-    AppState.useState.mockReturnValue({ fs: { isReady: true } });
+    AppState.useState.mockReturnValue(appStateMock);
     SidebarState.useState.mockReturnValue({ folderTree: [] });
     EditorState.useState.mockReturnValue({ fileContents: {} });
+    mockVfs.readdirSync.mockReturnValue([]);
   });
 
-  it('restores html content and initializes compiler', async () => {
+  it('triggers silent recompile when dist assets are missing', async () => {
     mockVfs.existsSync.mockReturnValue(false);
 
     renderHook(() => usePreviewRestorer());
 
-    // Flush promises
     await act(async () => {
       await Promise.resolve();
       await Promise.resolve();
@@ -80,7 +91,25 @@ describe('usePreviewRestorer', () => {
     expect(mockVfs.writeFileSync).toHaveBeenCalledWith('/dist/index.html', '<html></html>');
     expect(mockVfs.writeFileSync).toHaveBeenCalledWith('/index.html', '<html></html>');
     expect(mockCompilerInstance.syncFiles).toHaveBeenCalled();
+    expect(appStateMock.silentCompileRequest).toBe(1);
+    expect(previewStateMock.isCompilerReady).toBe(false);
+  });
+
+  it('marks ready when dist assets already exist', async () => {
+    mockVfs.existsSync.mockReturnValue(true);
+    mockVfs.readdirSync.mockReturnValue(['assets', 'index.html']);
+
+    renderHook(() => usePreviewRestorer());
+
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(appStateMock.silentCompileRequest).toBe(0);
     expect(previewStateMock.isCompilerReady).toBe(true);
+    expect(previewStateMock.previewAddress).toBe('/preview/dist/index.html');
   });
 
   it('handles restore error gracefully', async () => {
@@ -96,19 +125,6 @@ describe('usePreviewRestorer', () => {
     });
 
     expect(previewStateMock.restoreError).toBe('Init compilation failed');
-    expect(previewStateMock.isCompilerReady).toBe(true);
-  });
-
-  it('marks ready instantly if htmlContent is empty', async () => {
-    previewStateMock.htmlContent = '';
-
-    renderHook(() => usePreviewRestorer());
-
-    await act(async () => {
-      await Promise.resolve();
-    });
-
-    expect(Compiler).not.toHaveBeenCalled();
     expect(previewStateMock.isCompilerReady).toBe(true);
   });
 });

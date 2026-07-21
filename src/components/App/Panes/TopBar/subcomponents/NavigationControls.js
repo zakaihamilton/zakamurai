@@ -84,17 +84,17 @@ export default function NavigationControls() {
     });
 
     editorState((draft) => {
-      if (!draft.cursorPos) {
-        draft.cursorPos = {};
-      }
-      draft.cursorPos[targetPath] = targetLoc;
+      draft.cursorPos = { ...(draft.cursorPos || {}), [targetPath]: targetLoc };
       draft.shouldScrollTo = {
         filePath: targetPath,
         line: targetLoc.line,
         timestamp: Date.now(),
       };
       if (draft.navigationHistory) {
-        draft.navigationHistory.currentIndex = nextIndex;
+        draft.navigationHistory = {
+          ...draft.navigationHistory,
+          currentIndex: nextIndex,
+        };
       }
     });
   };

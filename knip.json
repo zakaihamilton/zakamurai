@@ -1,8 +1,8 @@
 {
   "$schema": "https://unpkg.com/knip@5/schema.json",
   "project": ["src/**/*.{js,jsx,ts,tsx}"],
-  "ignore": ["src/components/AI/index.js", "src/components/AI/RagIndexer.js", "src/utils/empty.js"],
-  "ignoreDependencies": ["almostnode", "apache-arrow", "wasm-loader", "fast-check", "promptfoo"],
+  "ignore": ["src/components/AI/index.js", "src/utils/empty.js"],
+  "ignoreDependencies": ["almostnode", "apache-arrow", "wasm-loader", "fast-check", "promptfoo", "esbuild-wasm"],
   "ignoreExportsUsedInFile": true,
   "rules": {
     "exports": "off"
