@@ -86,7 +86,12 @@ describe('StateUtils', () => {
         pendingDiffs: { 'src/a.js': { x: 1 } },
         cursorPos: { 'src/a.js': { line: 1 } },
       };
-      remapKeysInDraft(draft, ['fileContents', 'pendingDiffs', 'cursorPos'], 'src/a.js', 'src/b.js');
+      remapKeysInDraft(
+        draft,
+        ['fileContents', 'pendingDiffs', 'cursorPos'],
+        'src/a.js',
+        'src/b.js',
+      );
       expect(draft.fileContents).toEqual({ 'src/b.js': '1', 'other.js': '2' });
       expect(draft.pendingDiffs['src/b.js']).toEqual({ x: 1 });
       expect(draft.cursorPos['src/b.js']).toEqual({ line: 1 });

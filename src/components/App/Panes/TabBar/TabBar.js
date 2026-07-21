@@ -3,7 +3,7 @@ import Settings from '@/components/Storage/Settings';
 import { createState } from '@/components/state/State';
 import { Icons } from '@/components/ui/Icons';
 import Tooltip from '@/components/ui/Tooltip';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import styles from './TabBar.module.css';
 import TabContextMenu from './TabContextMenu';
 import TabItem from './TabItem';
@@ -33,6 +33,7 @@ export default function TabBar() {
   const { openTabs = [], activeTabId } = tabState;
   const sidebarState = SidebarState.useState();
   const [contextMenu, setContextMenu] = useState(null);
+  const tabRefs = useRef(new Map());
   const tabBarUiState = TabBarUiState.useState(null, {
     draggedTabId: null,
     dropTargetId: null,
@@ -61,6 +62,28 @@ export default function TabBar() {
     const tab = openTabs.find((t) => t.id === tabId);
     if (tab && tab.type === 'file' && tab.file?.path) {
       expandAncestors(sidebarState, tab.id);
+    }
+  };
+
+  const handleTabKeyDown = (event, tabId) => {
+    const currentIndex = openTabs.findIndex((tab) => tab.id === tabId);
+    if (currentIndex === -1) return;
+    let targetIndex = currentIndex;
+    if (event.key === 'ArrowLeft')
+      targetIndex = (currentIndex - 1 + openTabs.length) % openTabs.length;
+    if (event.key === 'ArrowRight') targetIndex = (currentIndex + 1) % openTabs.length;
+    if (event.key === 'Home') targetIndex = 0;
+    if (event.key === 'End') targetIndex = openTabs.length - 1;
+    if (targetIndex !== currentIndex) {
+      event.preventDefault();
+      const targetId = openTabs[targetIndex].id;
+      handleTabClick(targetId);
+      tabRefs.current.get(targetId)?.focus();
+      return;
+    }
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      handleTabClick(tabId);
     }
   };
 
@@ -170,7 +193,7 @@ export default function TabBar() {
       }
       onDrop={handleDropOnBar}
     >
-      <div className={`${styles.tabBar} scrollHide`}>
+      <div className={`${styles.tabBar} scrollHide`} role="tablist" aria-label="Open files">
         {openTabs.map((tab) => (
           <TabItem
             key={tab.id}
@@ -192,6 +215,11 @@ export default function TabBar() {
             onDragOver={handleDragOver}
             onDragEnd={handleDragEnd}
             onDrop={handleDrop}
+            tabRef={(element) => {
+              if (element) tabRefs.current.set(tab.id, element);
+              else tabRefs.current.delete(tab.id);
+            }}
+            onKeyDown={handleTabKeyDown}
           />
         ))}
       </div>

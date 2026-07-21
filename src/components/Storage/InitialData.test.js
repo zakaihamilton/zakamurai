@@ -1,10 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  DEFAULT_CONTENTS,
-  DEFAULT_FILES,
-  SCRATCH_CONTENTS,
-  SCRATCH_FILES,
-} from './InitialData';
+import { DEFAULT_CONTENTS, DEFAULT_FILES, SCRATCH_CONTENTS, SCRATCH_FILES } from './InitialData';
 
 describe('InitialData', () => {
   it('provides a default project tree with matching file contents', () => {

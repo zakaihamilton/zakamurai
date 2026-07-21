@@ -19,6 +19,7 @@ vi.mock('@/components/App/AppState', () => ({
 vi.mock('@/components/App/Panes/TabBar', () => ({
   TabState: {
     useState: vi.fn(),
+    usePassiveState: vi.fn(),
   },
 }));
 

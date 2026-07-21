@@ -1,6 +1,8 @@
 import { ragSearch } from '@/utils/rag/search-utility';
 import { act, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { AppState } from '../App/AppState';
+import { EditorState } from '../App/Views/EditorArea';
 import { useRagIndexer } from './RagIndexer';
 
 vi.mock('@/utils/rag/search-utility', () => {
@@ -11,6 +13,14 @@ vi.mock('@/utils/rag/search-utility', () => {
   };
 });
 
+vi.mock('../App/AppState', () => ({
+  AppState: { useState: vi.fn() },
+}));
+
+vi.mock('../App/Views/EditorArea', () => ({
+  EditorState: { useState: vi.fn() },
+}));
+
 describe('useRagIndexer', () => {
   let consoleLogSpy;
   let consoleErrorSpy;
@@ -18,6 +28,8 @@ describe('useRagIndexer', () => {
   beforeEach(() => {
     vi.useFakeTimers();
     vi.clearAllMocks();
+    AppState.useState.mockReturnValue({ fs: { isReady: true } });
+    EditorState.useState.mockReturnValue({ fileContents: {} });
     consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
     consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
   });

@@ -24,6 +24,7 @@ export default function WorkspaceArea() {
   const { isMobile } = appState;
   const { openTabs = [], activeTabId } = tabState;
   const { showAIInput } = sidebarState;
+  const { promptWidth } = promptState;
 
   const handlePromptResize = (clientX) => {
     if (showAIInput) {
@@ -87,6 +88,10 @@ export default function WorkspaceArea() {
             onResizeStart={handleResizeStart}
             onResizeEnd={handleResizeEnd}
             onDoubleClick={handlePromptReset}
+            value={promptWidth}
+            min={300}
+            max={600}
+            label="Resize AI panel"
             className={!showAIInput ? styles.hidden : ''}
           />
         </Node>

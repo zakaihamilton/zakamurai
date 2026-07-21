@@ -14,6 +14,7 @@ export default function SidebarFilter({ inputRef, value, onChange }) {
           ref={inputRef}
           value={value}
           onChange={onChange}
+          aria-label="Search files"
           placeholder={`Search files (${formatShortcut('⌃P')})`}
           className={styles.searchInput}
         />

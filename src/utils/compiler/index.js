@@ -2,7 +2,7 @@
  * Compiler utility that uses almostnode to run build scripts in the browser.
  */
 
-import { bundleBrowserProject, isBrowserBundleCommand } from './browser-bundler';
+import { bundleBrowserProject, isBrowserBundleCommand, parseBuildCommand } from './browser-bundler';
 import { getSharedContainer, initContainer, resetContainer } from './container';
 import { setupSmartDevServer } from './dev-server';
 import { scaffoldMissingFiles } from './scaffold';
@@ -78,12 +78,14 @@ export class Compiler {
 
           scaffoldMissingFiles(vfs, packageJson, this.onLog);
 
-          // Split chained commands (e.g., "tsc && vite build") so we can process them sequentially
-          const subCommands = buildCommand.split('&&').map((c) => c.trim());
+          // Only support shell-free commands joined with &&. This preserves
+          // quoted arguments while preventing browser builds from silently
+          // interpreting pipes, redirects, or arbitrary shell constructs.
+          const subCommands = parseBuildCommand(buildCommand);
 
-          for (const cmdString of subCommands) {
+          for (const parts of subCommands) {
+            const cmdString = parts.join(' ');
             this.onLog(`-> Executing: ${cmdString}`);
-            const parts = cmdString.split(/\s+/);
             const cmd = parts[0];
             const args = parts.slice(1);
 
