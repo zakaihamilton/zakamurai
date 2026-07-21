@@ -11,6 +11,7 @@ export default function EditorHeader({
   showFind,
   setShowFind,
   hasDiff,
+  hasPendingDeletion = false,
   handleApprove,
   handleUndo,
   showSideBySide,
@@ -51,7 +52,33 @@ export default function EditorHeader({
             <Icons.Layout />
           </button>
         </Tooltip>
-        {hasDiff && (
+        {hasPendingDeletion && (
+          <div className={styles.diffHeaderToolbar}>
+            <span className={styles.diffLabel}>Review AI Deletion:</span>
+            <Tooltip content="Approve Deletion" shortcut={formatShortcut('⌘S')}>
+              <button
+                type="button"
+                onClick={handleApprove}
+                className={`${styles.diffButton} ${styles.approveBtn}`}
+              >
+                <Icons.Check /> Delete
+              </button>
+            </Tooltip>
+            <Tooltip
+              content="Keep File"
+              shortcut={`${formatShortcut('⌘.')} / ${formatShortcut('⌘⌫')}`}
+            >
+              <button
+                type="button"
+                onClick={handleUndo}
+                className={`${styles.diffButton} ${styles.undoBtn}`}
+              >
+                <Icons.Undo /> Keep
+              </button>
+            </Tooltip>
+          </div>
+        )}
+        {hasDiff && !hasPendingDeletion && (
           <div className={styles.diffHeaderToolbar}>
             <span className={styles.diffLabel}>Review AI Changes:</span>
             <Tooltip content="Approve Changes" shortcut={formatShortcut('⌘S')}>

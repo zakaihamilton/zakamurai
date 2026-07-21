@@ -1,7 +1,7 @@
 // src/utils/rag/indexer-controller.js
 
 export class IndexerController {
-  constructor() {
+  constructor({ enableOpfsObserver = false } = {}) {
     this.worker = null;
     this.observer = null;
     this.debouncerMap = new Map();
@@ -9,6 +9,7 @@ export class IndexerController {
     this.msgId = 0;
     this.resolvers = new Map();
     this.initPromise = null;
+    this.enableOpfsObserver = enableOpfsObserver;
   }
 
   async init() {
@@ -43,22 +44,19 @@ export class IndexerController {
       }
     });
 
-    // 2. Setup FileSystemObserver on OPFS root
-    try {
-      const root = await navigator.storage.getDirectory();
-
-      // Fallback or explicit check if FileSystemObserver is available
-      if (typeof window.FileSystemObserver === 'function') {
-        this.observer = new window.FileSystemObserver(this.handleFileChanges.bind(this));
-        await this.observer.observe(root, { recursive: true });
-        console.log('[IndexerController] FileSystemObserver initialized on OPFS root.');
-      } else {
-        console.warn(
-          '[IndexerController] FileSystemObserver is not supported in this browser. RAG auto-indexing disabled.',
-        );
+    // OPFS observer is optional — primary indexing is driven by workspace sync.
+    // Only attach when explicitly enabled for OPFS-backed workspaces.
+    if (this.enableOpfsObserver) {
+      try {
+        const root = await navigator.storage.getDirectory();
+        if (typeof window.FileSystemObserver === 'function') {
+          this.observer = new window.FileSystemObserver(this.handleFileChanges.bind(this));
+          await this.observer.observe(root, { recursive: true });
+          console.log('[IndexerController] FileSystemObserver initialized on OPFS root.');
+        }
+      } catch (e) {
+        console.error('[IndexerController] Error initializing OPFS or FileSystemObserver:', e);
       }
-    } catch (e) {
-      console.error('[IndexerController] Error initializing OPFS or FileSystemObserver:', e);
     }
   }
 
@@ -131,6 +129,29 @@ export class IndexerController {
     } catch (e) {
       console.error(`[IndexerController] Error processing file ${filePath}:`, e);
     }
+  }
+
+  async indexFile(filePath, content) {
+    if (!this.worker) {
+      await this.init();
+    }
+    return this.sendMessage('INDEX_FILE', { filePath, content: String(content ?? '') });
+  }
+
+  async indexWorkspaceFiles(files = {}) {
+    if (!this.worker) {
+      await this.init();
+    }
+    const entries = Object.entries(files);
+    for (const [filePath, content] of entries) {
+      if (typeof content !== 'string') continue;
+      try {
+        await this.sendMessage('INDEX_FILE', { filePath, content });
+      } catch (e) {
+        console.error(`[IndexerController] Failed to index ${filePath}:`, e);
+      }
+    }
+    return entries.length;
   }
 
   async search(query, k = 5) {

@@ -5,10 +5,15 @@ import { EditorState } from '@/components/App/Views/EditorArea';
 import { Compiler } from '@/utils/compiler';
 import { useEffect, useRef } from 'react';
 
+/**
+ * On reload, saved preview HTML alone is not enough — bundled /dist/assets are gone.
+ * Trigger a silent recompile so preview can serve real production output again.
+ */
 export function usePreviewRestorer() {
   const previewState = PreviewState.useState();
   const { htmlContent } = previewState;
-  const { fs } = AppState.useState();
+  const appState = AppState.useState();
+  const { fs } = appState;
   const sidebarState = SidebarState.useState();
   const editorState = EditorState.useState();
   const restoredRef = useRef(false);
@@ -17,36 +22,55 @@ export function usePreviewRestorer() {
     if (restoredRef.current || !fs?.isReady) return;
     restoredRef.current = true;
 
-    if (htmlContent) {
-      const restore = async () => {
-        try {
-          const compiler = new Compiler(() => {});
-          const container = await compiler.init();
-          if (!container.vfs.existsSync('/dist')) {
-            container.vfs.mkdirSync('/dist', { recursive: true });
-          }
-          container.vfs.writeFileSync('/dist/index.html', htmlContent);
-          container.vfs.writeFileSync('/index.html', htmlContent);
-
-          // Also sync files so that imports in index.html work
-          await compiler.syncFiles(fs, sidebarState.folderTree, editorState.fileContents);
-        } catch (e) {
-          previewState((draft) => {
-            draft.restoreError = e?.message || String(e);
-          });
-        } finally {
-          // Mark as ready even on error so we don't stay stuck
-          previewState((draft) => {
-            draft.isCompilerReady = true;
-          });
-        }
-      };
-      restore();
-    } else if (!htmlContent) {
-      // If no content, it's "ready" in the sense that there's nothing to restore
+    if (!htmlContent) {
       previewState((draft) => {
         draft.isCompilerReady = true;
       });
+      return;
     }
-  }, [htmlContent, fs, sidebarState.folderTree, editorState.fileContents, previewState]);
+
+    const restore = async () => {
+      try {
+        previewState((draft) => {
+          draft.isCompilerReady = false;
+          draft.restoreError = null;
+        });
+
+        const compiler = new Compiler(() => {});
+        const container = await compiler.init();
+        if (!container.vfs.existsSync('/dist')) {
+          container.vfs.mkdirSync('/dist', { recursive: true });
+        }
+        container.vfs.writeFileSync('/dist/index.html', htmlContent);
+        container.vfs.writeFileSync('/index.html', htmlContent);
+        await compiler.syncFiles(fs, sidebarState.folderTree, editorState.fileContents);
+
+        const hasAssets =
+          container.vfs.existsSync('/dist') &&
+          (container.vfs.readdirSync('/dist') || []).some(
+            (name) => name === 'assets' || name.endsWith('.js') || name.endsWith('.css'),
+          );
+
+        if (!hasAssets) {
+          // VFS lost hashed bundles — rebuild quietly.
+          appState((draft) => {
+            draft.silentCompileRequest = (draft.silentCompileRequest || 0) + 1;
+          });
+          return;
+        }
+
+        previewState((draft) => {
+          draft.previewAddress = '/preview/dist/index.html';
+          draft.isCompilerReady = true;
+        });
+      } catch (e) {
+        previewState((draft) => {
+          draft.restoreError = e?.message || String(e);
+          draft.isCompilerReady = true;
+        });
+      }
+    };
+
+    restore();
+  }, [htmlContent, fs, sidebarState.folderTree, editorState.fileContents, previewState, appState]);
 }

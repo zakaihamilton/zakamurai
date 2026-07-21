@@ -47,6 +47,29 @@ export class AgentWorkspace {
     return hits.join('\n').slice(0, MAX_RESULT_CHARS) || 'No matches.';
   }
 
+  /**
+   * Semantic search over the RAG index. Falls back to a short notice when empty.
+   * @param {string} query
+   * @param {number} [k=5]
+   * @param {(query: string, k: number) => Promise<Array>} retrieveContext
+   */
+  async semanticSearch(query, retrieveContext, k = 5) {
+    if (!query) throw new Error('search_semantic requires a query');
+    if (typeof retrieveContext !== 'function') {
+      return 'Semantic search is unavailable in this session.';
+    }
+    const results = await retrieveContext(query, Math.min(Math.max(Number(k) || 5, 1), 10));
+    if (!results?.length) return 'No semantic matches.';
+    const lines = results.map((item) => {
+      const score = typeof item.score === 'number' ? item.score.toFixed(3) : '?';
+      const snippet = String(item.content || '')
+        .replace(/\s+/g, ' ')
+        .slice(0, 280);
+      return `${item.filePath} (score ${score}): ${snippet}`;
+    });
+    return lines.join('\n').slice(0, MAX_RESULT_CHARS);
+  }
+
   write(path, content) {
     this.files[normalizeAgentPath(path)] = content;
   }

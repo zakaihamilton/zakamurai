@@ -1,3 +1,4 @@
+import { deleteKeysWithPrefixInDraft, remapKeysInDraft } from '@/components/state/StateUtils';
 import { isMediaFile } from '@/utils/file';
 import { FILE_VIEW_TYPES, getDefaultFileViewType } from '@/utils/fileViews';
 import { useCallback } from 'react';
@@ -12,6 +13,15 @@ import {
   renameNodeAtPath,
   setChildrenAtPath,
 } from './TreeUtils';
+
+const EDITOR_PATH_MAPS = [
+  'fileContents',
+  'pendingDiffs',
+  'pendingDeletions',
+  'history',
+  'cursorPos',
+  'selectedLines',
+];
 
 export default function useSidebarFileLoader({
   fs,
@@ -195,16 +205,7 @@ export default function useSidebarFileLoader({
       });
 
       editorState((draft) => {
-        if (!draft.fileContents) return;
-        const nextContents = {};
-        for (const key in draft.fileContents) {
-          nextContents[
-            key === oldPathStr || key.startsWith(`${oldPathStr}/`)
-              ? nextPathStr + key.substring(oldPathStr.length)
-              : key
-          ] = draft.fileContents[key];
-        }
-        draft.fileContents = nextContents;
+        remapKeysInDraft(draft, EDITOR_PATH_MAPS, oldPathStr, nextPathStr);
       });
 
       tabState((draft) => {
@@ -286,11 +287,7 @@ export default function useSidebarFileLoader({
       });
 
       editorState((draft) => {
-        if (!draft.fileContents) return;
-        for (const key in draft.fileContents) {
-          if (key === row.pathStr || key.startsWith(`${row.pathStr}/`))
-            delete draft.fileContents[key];
-        }
+        deleteKeysWithPrefixInDraft(draft, EDITOR_PATH_MAPS, row.pathStr);
       });
 
       addNotification(`"${row.item.name}" deleted`, 'info');

@@ -1,3 +1,4 @@
+import { useRagIndexer } from '@/components/AI/RagIndexer';
 import { useTabRestorer } from '@/components/App/Panes/TabBar/TabRestorer';
 import { usePreviewRestorer } from '@/components/App/Views/PreviewArea/PreviewRestorer';
 import { usePreviewErrorBridge } from '@/components/App/Views/PreviewArea/usePreviewErrorBridge';
@@ -12,4 +13,5 @@ export function useAppBackgroundServices() {
   usePreviewErrorBridge();
   useContentSaver();
   useKeyboardHandler();
+  useRagIndexer();
 }

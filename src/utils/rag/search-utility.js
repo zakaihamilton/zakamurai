@@ -95,6 +95,20 @@ export class RagSearchUtility {
   }
 
   /**
+   * Index a map of workspace file paths → contents (local FS / editor buffers).
+   * @param {Record<string, string>} files
+   */
+  async indexWorkspaceFiles(files = {}) {
+    await this.init();
+    return this.controller.indexWorkspaceFiles(files);
+  }
+
+  async indexFile(filePath, content) {
+    await this.init();
+    return this.controller.indexFile(filePath, content);
+  }
+
+  /**
    * Formats retrieved context blocks into a string suitable for injection into an LLM prompt.
    * @param {Array} results - The output from `retrieveContext`.
    * @returns {string} Formatted context block.

@@ -16,4 +16,13 @@ describe('agent protocol', () => {
   it('requires complete content for writes', () => {
     expect(() => parseAgentAction('{"action":"write_file","path":"a.js"}')).toThrow(/content/);
   });
+
+  it('parses search_semantic and requires a query', () => {
+    expect(parseAgentAction('{"action":"search_semantic","query":"auth flow","k":3}')).toEqual({
+      action: 'search_semantic',
+      query: 'auth flow',
+      k: 3,
+    });
+    expect(() => parseAgentAction('{"action":"search_semantic"}')).toThrow(/query/);
+  });
 });

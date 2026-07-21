@@ -194,6 +194,9 @@ describe('Shortcuts isMatch', () => {
 
     const editorState = vi.fn((producer) => {
       producer(editorDraft);
+      editorState.navigationHistory = editorDraft.navigationHistory;
+      editorState.fileContents = editorDraft.fileContents;
+      editorState.cursorPos = editorDraft.cursorPos;
     });
     editorState.navigationHistory = editorDraft.navigationHistory;
     editorState.fileContents = editorDraft.fileContents;

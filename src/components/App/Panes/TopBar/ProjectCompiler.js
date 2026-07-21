@@ -99,11 +99,15 @@ export default function useProjectCompiler(
           if (container?.vfs?.existsSync('/dist/index.html')) {
             const html = container.vfs.readFileSync('/dist/index.html', 'utf8');
             if (html) {
+              // Mirror production HTML to VFS root so /preview/ also serves the bundle.
+              container.vfs.writeFileSync('/index.html', html);
               previewState((draft) => {
                 draft.htmlContent = html;
+                draft.previewAddress = '/preview/dist/index.html';
                 draft.restoreError = null;
                 draft.compileError = null;
                 draft.serverError = null;
+                draft.isCompilerReady = true;
               });
               Settings.setPreviewHtml(html);
               tabState((draft) => {

@@ -1,77 +1,72 @@
 # Project Architecture & State Management Rules
 
-**CRITICAL INSTRUCTION FOR AI ASSISTANTS:** This project DOES NOT use standard React global state management. Do NOT use Redux, Zustand, Recoil, or React's standard Context API + `useState` for sharing state between components. 
+**CRITICAL INSTRUCTION FOR AI ASSISTANTS:** This project does **not** use Redux, Zustand, Recoil, or React Context + `useState` for **shared domain state**. Shared state uses a custom hierarchical Proxy system under `src/components/state/`.
 
-We use a bespoke Hierarchical Context + Proxy architecture optimized for high-frequency, granular mutations. You must adhere to the following rules when generating or modifying React components.
+`Node.js` does use React `createContext` internally to walk the component tree — do not add a second global store on top of that.
 
 ## 1. Core Concepts
-* **Node (`src/components/state/Node.js`):** Creates a spatial hierarchy mirroring the DOM. State exists at specific levels of the tree, not globally.
-* **Object (`src/components/state/Object.js`):** A Proxy wrapper that intercepts mutations, batches diffs, and surgically updates subscribers without top-down React re-renders.
-* **State (`src/components/state/State.js`):** The hook interface for subscribing to Proxy Objects.
+
+| Module | Path | Role |
+| --- | --- | --- |
+| **Node** | `src/components/state/Node.js` | Spatial hierarchy mirroring the React tree. Stores attach to nodes. |
+| **Object** | `src/components/state/Object.js` | Proxy wrapper; mutations notify subscribers (microtask-batched). |
+| **State** | `src/components/state/State.js` | `createState(displayName)` factory → component + hooks. |
+| **StateUtils** | `src/components/state/StateUtils.js` | `setInDraft`, `updateInDraft`, `deleteInDraft`, `remapKeysInDraft`, `deleteKeysWithPrefixInDraft`. |
+
+Domain stores (`AppState`, `EditorState`, …) are **bootstrapped in `App.js` on the root node** via `XState.useState(null, initial)`. Per-file UI stores pass `initial` under `<Node id={filePath}>` so they are scoped to that node.
 
 ## 2. Reading State
-Do not use standard selectors. Use the provided hooks.
 
-**For state guaranteed to exist in the current or ancestor nodes:**
 ```javascript
-import { State } from '@/components/state/State';
+import { EditorState } from '@/components/App/Views/EditorArea';
 
 function MyComponent() {
-  // Pass a string key to get a specific primitive
-  const value = State.useState('myKey'); 
-  
-  // Or pass no selector to get the whole proxy object
-  const store = State.useState();
-  
-  return <div>{value}</div>;
+  // Selector only controls which key changes trigger re-render.
+  // The return value is always the full proxy store — not a primitive slice.
+  const editorState = EditorState.useState(['fileContents', 'pendingDiffs']);
+  const { fileContents } = editorState;
+
+  // Read without subscribing (callbacks / hot paths):
+  const passive = EditorState.usePassiveState();
 }
 ```
 
-**For state that may be loaded lazily or asynchronously higher in the tree:**
-```javascript
-function MyDeepComponent() {
-  // Listens up the hierarchy until the state is hydrated
-  const futureValue = State.useFutureState('myKey');
-}
-```
+`State.useFutureState` listens up the hierarchy until a store appears (rarely needed in production UI).
 
 ## 3. Mutating State (STRICT RULES)
-You must NEVER return a cloned object (e.g., `return { ...state, key: new_value }`). You must NEVER use a traditional setter tuple.
 
-State is mutated by passing a callback function to the store proxy. This callback receives a mutable `draft`. The underlying Proxy will calculate the diff and trigger micro-task updates.
+Mutate by assigning on the proxy or via a draft callback. **Never** return a cloned root object from a setter.
 
 ### Shallow Mutation Only
-The `draft` is a shallow clone. You **must not** mutate nested objects directly. If a property is an object or array, you must replace it entirely at the top level of the draft.
 
-**Correct Mutation Patterns:**
+The draft is a shallow clone of top-level keys. Nested maps must be **replaced** (or updated via StateUtils):
+
 ```javascript
-function InteractiveComponent() {
-  const store = State.useState();
-
-  const handleUpdate = () => {
-    store((draft) => {
-      // Correct: Mutating top-level primitives
-      draft.isActive = true; 
-      
-      // Correct: Shallow replacement of a nested object
-      draft.position = { ...draft.position, x: 100 }; 
-      
-      // Correct: Shallow replacement of an array
-      draft.items = [...draft.items, newItem]; 
-    });
-  };
-}
+editorState((draft) => {
+  draft.fileContents = { ...draft.fileContents, [path]: nextContent };
+  // or: setInDraft(draft, ['fileContents', path], nextContent);
+});
 ```
 
-**FORBIDDEN Patterns:**
-* ❌ `draft.position.x = 100;` (Fails proxy diffing)
-* ❌ `draft.items.push(newItem);` (Fails proxy diffing)
-* ❌ `const [val, setVal] = useState(...)` (For shared state)
-* ❌ `store.update({ position: 100 })`
-* ❌ `setStore(prev => ({ ...prev, isActive: true }))`
+**FORBIDDEN:**
+- `draft.fileContents[path] = x` without reassigning `draft.fileContents`
+- `delete draft.pendingDiffs[path]` without replacing the map (use `deleteInDraft`)
+- `useState` for shared domain state
+- Nested in-place array mutation (`draft.items.push(...)`)
 
-## 4. Component Generation Strategy
-When generating new UI elements:
-1. Default to standard, "dumb" presentation components that receive data via props.
-2. If the component needs to read/write shared state, create a "Container" component that uses `State.useState()` or `State.useFutureState()` and passes the extracted primitives down as props to the presentation layer.
-3. Do not attempt to modify `Node.js`, `Object.js`, or `State.js` unless explicitly instructed.
+## 4. Editor Content Model
+
+| Layer | Store | Role |
+| --- | --- | --- |
+| Canonical buffers | `EditorState.fileContents` | Persistence, AI, compiler |
+| Typing surface | `EditorAreaUiState.localContent` | Per-file Node; synced via FileLoader |
+| AI review | `EditorState.pendingDiffs` / `pendingDeletions` | Approve/undo before disk flush |
+
+Manual edits clear `pendingDiffs[path]`. Pending review blocks FS auto-save.
+
+## 5. Component Generation Strategy
+
+1. Prefer presentational components that receive props.
+2. Containers subscribe with `XState.useState(...)` / `usePassiveState` and pass primitives down.
+3. Do not modify `Node.js`, `Object.js`, or `State.js` unless explicitly instructed.
+4. For nested map updates, prefer `StateUtils` helpers so Proxy notifications always fire.

@@ -52,6 +52,7 @@ export default function PreviewArea() {
     'restoreError',
     'compileError',
     'serverError',
+    'previewAddress',
   ]);
   const {
     htmlContent,
@@ -59,6 +60,7 @@ export default function PreviewArea() {
     restoreError = null,
     compileError = null,
     serverError = null,
+    previewAddress = '/preview/dist/index.html',
   } = previewState;
   const iframeRef = useRef(null);
   const listenersRef = useRef(null);
@@ -69,7 +71,7 @@ export default function PreviewArea() {
     refreshKey: Date.now(),
     isSwReady: !!(typeof navigator !== 'undefined' && navigator.serviceWorker?.controller),
     isMaximized: false,
-    address: '/preview/',
+    address: '/preview/dist/index.html',
     host: '',
   });
   const {
@@ -79,7 +81,7 @@ export default function PreviewArea() {
     refreshKey = Date.now(),
     isSwReady = false,
     isMaximized = false,
-    address = '/preview/',
+    address = '/preview/dist/index.html',
     host = '',
   } = previewAreaUiState || {};
   const containerRef = useRef(null);
@@ -142,6 +144,15 @@ export default function PreviewArea() {
     return () =>
       navigator.serviceWorker.removeEventListener('controllerchange', handleControllerChange);
   }, [previewAreaUiState]);
+
+  useEffect(() => {
+    if (!previewAddress) return;
+    previewAreaUiState((draft) => {
+      if (draft.address !== previewAddress) {
+        draft.address = previewAddress;
+      }
+    });
+  }, [previewAddress, previewAreaUiState]);
 
   useEffect(() => {
     if (!htmlContent) return;

@@ -81,6 +81,8 @@ export default function App() {
     showShortcuts: false,
     isResizing: false,
     isMobile: typeof window !== 'undefined' ? window.innerWidth <= MOBILE_BREAKPOINT : false,
+    compileRequest: 0,
+    silentCompileRequest: 0,
   });
 
   const sidebarState = SidebarState.useState(null, {
@@ -113,6 +115,7 @@ export default function App() {
       currentIndex: -1,
     },
     pendingDiffs: initialValues.pendingDiffs,
+    pendingDeletions: {},
   });
 
   const promptState = PromptState.useState(null, {
@@ -122,6 +125,7 @@ export default function App() {
   PreviewState.useState(null, {
     htmlContent: Settings.getPreviewHtml(),
     isCompilerReady: false,
+    previewAddress: '/preview/dist/index.html',
   });
 
   // Background Services & Sync
