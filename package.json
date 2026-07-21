@@ -16,7 +16,7 @@
     "test:visual:regression": "npx playwright test --project=chromium tests/visual/regression.spec.ts",
     "setup:almostnode": "mkdir -p public/lib/almostnode public/assets && cp -r node_modules/almostnode/dist/* public/lib/almostnode/ && cp node_modules/almostnode/dist/assets/* public/assets/",
     "setup:wasm": "mkdir -p public/wasm public/esbuild && cp node_modules/onnxruntime-web/dist/* public/wasm/ && cp node_modules/esbuild-wasm/esbuild.wasm public/esbuild/esbuild.wasm",
-    "setup:playwright": "playwright install chromium webkit",
+    "setup:playwright": "if [ -z \"$VERCEL\" ]; then playwright install chromium webkit; fi",
     "postinstall": "\"$npm_execpath\" run setup:almostnode && \"$npm_execpath\" run setup:wasm && \"$npm_execpath\" run setup:playwright",
     "predev": "\"$npm_execpath\" run setup:almostnode && \"$npm_execpath\" run setup:wasm",
     "prebuild": "\"$npm_execpath\" run setup:almostnode && \"$npm_execpath\" run setup:wasm",
