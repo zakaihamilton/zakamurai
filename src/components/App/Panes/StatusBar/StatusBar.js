@@ -87,7 +87,7 @@ export default function StatusBar() {
           }
           className={styles.tooltipWrapper}
         >
-          <div
+          <output
             className={styles.item}
             aria-label={
               fs.mode === 'local'
@@ -97,7 +97,7 @@ export default function StatusBar() {
           >
             <Icons.Globe size={14} />
             <span>{fs.mode === 'local' ? 'Local' : 'Virtual'}</span>
-          </div>
+          </output>
         </Tooltip>
       </div>
 

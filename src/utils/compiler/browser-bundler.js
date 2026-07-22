@@ -190,11 +190,11 @@ function resolvePackage(vfs, specifier) {
       `Package '${packageName}' does not provide '${subpath ? `./${subpath}` : '.'}' for browser imports.`,
     );
   }
-  // Prefer exports; fall back to mainFields. Never treat an object "browser"
-  // map as a path — that previously made resolveFile return null for react-dom
-  // when client.js did require('react-dom'). Apply object browser remaps after
-  // exports/entry so e.g. exports "." -> "./index.js" can still remap to
-  // "./index.browser.js".
+  // Prefer exports; fall back to mainFields. Never coerce an object "browser"
+  // map into a path string (that produced "[object Object]" and broke package
+  // resolution when client.js required bare 'react-dom'). Apply object browser
+  // remaps after exports/entry so e.g. exports "." -> "./index.js" can still
+  // remap to "./index.browser.js".
   const candidate = target || (subpath ? subpath : packageEntry(manifest));
   const remapped = applyBrowserRemap(manifest, candidate);
   const resolved = resolveFile(vfs, normalizePath(`${root}/${remapped}`));

@@ -20,8 +20,9 @@ describe('AppErrorBoundary', () => {
     expect(screen.getByText('ok')).toBeDefined();
   });
 
-  it('shows fallback UI and reloads on button click', () => {
+  it('shows fallback UI, focuses the heading, and reloads on button click', () => {
     vi.spyOn(console, 'error').mockImplementation(() => {});
+    const focusSpy = vi.spyOn(HTMLElement.prototype, 'focus').mockImplementation(() => {});
     const reload = vi.fn();
     Object.defineProperty(window, 'location', {
       configurable: true,
@@ -34,12 +35,35 @@ describe('AppErrorBoundary', () => {
       </AppErrorBoundary>,
     );
 
-    expect(screen.getByRole('alert')).toBeDefined();
+    const alert = screen.getByRole('alert');
+    expect(alert).toBeDefined();
+    expect(alert.getAttribute('aria-describedby')).toBe('app-error-details');
     expect(screen.getByText('Something went wrong')).toBeDefined();
     expect(screen.getByText(/Error: boom/)).toBeDefined();
+    expect(focusSpy).toHaveBeenCalled();
 
     fireEvent.click(screen.getByRole('button', { name: 'Reload' }));
     expect(reload).toHaveBeenCalled();
+  });
+
+  it('Try again clears the error and remounts children', () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    let shouldThrow = true;
+    function Flaky() {
+      if (shouldThrow) throw new Error('flaky');
+      return <div>recovered</div>;
+    }
+
+    render(
+      <AppErrorBoundary>
+        <Flaky />
+      </AppErrorBoundary>,
+    );
+
+    expect(screen.getByRole('alert')).toBeDefined();
+    shouldThrow = false;
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    expect(screen.getByText('recovered')).toBeDefined();
   });
 
   it('renders string throwables as details', () => {

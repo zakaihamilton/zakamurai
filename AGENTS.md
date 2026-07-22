@@ -19,9 +19,10 @@ process is the Next.js dev server. Standard commands live in `README.md` and
 
 - `npm run format:check` (Biome) may still report a few formatting diffs on a
   clean checkout. Prefer `npm run format` when touching those files.
-- In-browser Build/Preview depends on the custom esbuild-wasm resolver in
-  `src/utils/compiler/browser-bundler.js` (object-shaped package `browser`
-  maps such as react-dom must not be treated as entry paths).
+- In-browser Build/Preview uses the custom esbuild-wasm resolver in
+  `src/utils/compiler/browser-bundler.js`. Object-shaped package `browser` maps
+  (e.g. react-dom) are applied via `applyBrowserRemap` and must not be treated
+  as entry path strings.
 
 ### Playwright / visual tests
 

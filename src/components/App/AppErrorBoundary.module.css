@@ -52,15 +52,23 @@
   overflow-wrap: anywhere;
 }
 
+.title:focus {
+  outline: none;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.retryBtn,
 .reloadBtn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   padding: 8px 16px;
-  border: 1px solid transparent;
   border-radius: 6px;
-  background: var(--accent);
-  color: var(--text-on-accent);
   font-family: inherit;
   font-size: 14px;
   font-weight: 500;
@@ -68,11 +76,25 @@
   transition: opacity 0.2s, transform 0.2s;
 }
 
+.retryBtn {
+  border: 1px solid var(--border);
+  background: var(--bg-surface);
+  color: var(--text-main);
+}
+
+.reloadBtn {
+  border: 1px solid transparent;
+  background: var(--accent);
+  color: var(--text-on-accent);
+}
+
+.retryBtn:hover,
 .reloadBtn:hover {
   opacity: 0.92;
   transform: translateY(-1px);
 }
 
+.retryBtn:active,
 .reloadBtn:active {
   transform: translateY(0);
 }
