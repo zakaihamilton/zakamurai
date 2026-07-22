@@ -20,6 +20,7 @@ export function getInitialPromptUiState() {
     isReasoningVisible: true,
     selectedModel: getInitialPromptSelectedModel(),
     isModelManagerOpen: false,
+    isRoleGraphOpen: false,
     cachedModelIds: [],
     modelCacheWork: null,
     modelCacheProgress: '',
