@@ -81,6 +81,42 @@ describe('browser-bundler', () => {
     ).toBe('./index.browser.js');
   });
 
+  it('applies browser remaps after exports resolution', () => {
+    const fs = vfs({
+      '/node_modules/pkg/package.json': JSON.stringify({
+        exports: { '.': './index.js' },
+        browser: { './index.js': './index.browser.js' },
+      }),
+      '/node_modules/pkg/index.js': '',
+      '/node_modules/pkg/index.browser.js': '',
+    });
+    expect(__testables.resolvePackage(fs, 'pkg')).toBe('/node_modules/pkg/index.browser.js');
+    expect(
+      __testables.applyBrowserRemap(
+        { browser: { './index.js': './index.browser.js' } },
+        './index.js',
+      ),
+    ).toBe('./index.browser.js');
+    // false remaps are skipped (not stubbed)
+    expect(
+      __testables.applyBrowserRemap({ browser: { './server.js': false } }, './server.js'),
+    ).toBe('./server.js');
+  });
+
+  it('applies browser remaps to relative imports inside a package', () => {
+    const fs = vfs({
+      '/node_modules/react-dom/package.json': JSON.stringify({
+        main: 'index.js',
+        browser: { './server.js': './server.browser.js' },
+      }),
+      '/node_modules/react-dom/server.js': '',
+      '/node_modules/react-dom/server.browser.js': '',
+    });
+    expect(__testables.resolveSpecifier(fs, './server.js', '/node_modules/react-dom')).toBe(
+      '/node_modules/react-dom/server.browser.js',
+    );
+  });
+
   it('prefers a string browser entry and falls back through module/main', () => {
     expect(__testables.packageEntry({ browser: './browser.js', main: 'index.js' })).toBe(
       './browser.js',
@@ -387,5 +423,110 @@ describe('browser-bundler', () => {
     expect(removed).toContain('/dist/stale.js');
     expect(files['/dist/logo.svg']).toBe('<svg/>');
     expect(files['/dist/index.html']).toContain('/dist/assets/main-new.js');
+  });
+
+  it('bundleBrowserProject succeeds for react-dom-like VFS (client requires react-dom)', async () => {
+    // Historical failure: object-shaped browser + client.js require('react-dom')
+    // made resolve return null / "[object Object]". Exercise the VFS plugin path.
+    const reactDomPkg = {
+      name: 'react-dom',
+      main: 'index.js',
+      exports: {
+        '.': { default: './index.js' },
+        './client': { default: './client.js' },
+      },
+      browser: {
+        './server.js': './server.browser.js',
+        './index.js': './index.js',
+      },
+    };
+    const files = {
+      '/src/main.jsx':
+        'import { createRoot } from "react-dom/client";\ncreateRoot(document.getElementById("root"));\n',
+      '/index.html':
+        '<!doctype html><html><head></head><body><div id="root"></div><script type="module" src="/src/main.jsx"></script></body></html>',
+      '/node_modules/react/package.json': JSON.stringify({
+        main: 'index.js',
+        exports: { '.': './index.js', './jsx-runtime': './jsx-runtime.js' },
+      }),
+      '/node_modules/react/index.js': 'export default {};',
+      '/node_modules/react/jsx-runtime.js':
+        'export const jsx = () => null; export const jsxs = jsx;',
+      '/node_modules/react-dom/package.json': JSON.stringify(reactDomPkg),
+      '/node_modules/react-dom/index.js':
+        'export function createRoot() { return { render() {} }; }',
+      '/node_modules/react-dom/client.js':
+        "var m = require('react-dom');\nexports.createRoot = m.createRoot;",
+      '/node_modules/react-dom/server.browser.js': '',
+    };
+
+    const build = vi.fn().mockImplementation(async (options) => {
+      const plugin = options.plugins[0];
+      let onResolve;
+      plugin.setup({
+        onResolve: (_opts, cb) => {
+          onResolve = cb;
+        },
+        onLoad: () => {},
+      });
+
+      const resolve = (path, importer, resolveDir) =>
+        onResolve({ path, importer, resolveDir: resolveDir || '/src' });
+
+      const entry = resolve('/src/main.jsx', undefined, '/');
+      expect(entry.errors).toBeUndefined();
+      expect(entry.path).toBe('/src/main.jsx');
+
+      const client = resolve('react-dom/client', '/src/main.jsx', '/src');
+      expect(client.errors).toBeUndefined();
+      expect(client.path).toBe('/node_modules/react-dom/client.js');
+
+      // The path that previously failed inside client.js
+      const root = resolve(
+        'react-dom',
+        '/node_modules/react-dom/client.js',
+        '/node_modules/react-dom',
+      );
+      expect(root.errors).toBeUndefined();
+      expect(root.path).toBe('/node_modules/react-dom/index.js');
+
+      return {
+        outputFiles: [{ path: '/dist/assets/main-abc.js', contents: new Uint8Array([1]) }],
+      };
+    });
+
+    vi.doMock('esbuild-wasm/lib/browser', () => ({
+      initialize: vi.fn().mockResolvedValue(undefined),
+      build,
+    }));
+
+    const { bundleBrowserProject } = await import('./browser-bundler');
+    const fs = {
+      existsSync: (path) =>
+        Object.hasOwn(files, path) ||
+        Object.keys(files).some((file) => file.startsWith(`${path}/`)),
+      readFileSync: (path) => files[path],
+      writeFileSync: (path, contents) => {
+        files[path] = contents;
+      },
+      readdirSync: (path) => {
+        if (Object.hasOwn(files, path)) throw new Error('ENOTDIR');
+        return Object.keys(files)
+          .filter((file) => file.startsWith(`${path}/`))
+          .map((file) => file.slice(path.length + 1).split('/')[0])
+          .filter((name, index, names) => names.indexOf(name) === index);
+      },
+      unlinkSync: (path) => {
+        delete files[path];
+      },
+      rmdirSync: () => {},
+    };
+
+    await expect(bundleBrowserProject(fs, { name: 'demo' }, 'vite build')).resolves.toMatchObject({
+      entryPoint: '/src/main.jsx',
+      files: expect.arrayContaining(['index.html']),
+    });
+    expect(build).toHaveBeenCalled();
+    expect(files['/dist/index.html']).toContain('/dist/assets/main-abc.js');
   });
 });

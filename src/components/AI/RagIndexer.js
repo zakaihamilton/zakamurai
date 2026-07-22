@@ -23,14 +23,19 @@ export function useRagIndexer() {
 
     const initRag = async () => {
       try {
-        const [{ ragSearch }, { collectWorkspaceFiles }] = await Promise.all([
-          import('@/utils/rag/search-utility'),
-          import('@/components/AI/Agent/Snapshot'),
-        ]);
+        // Start the timeout before dynamic imports so hung imports are covered.
         const timeout = new Promise((_, reject) =>
           setTimeout(() => reject(new Error('RAG Init Timeout')), 10000),
         );
-        await Promise.race([ragSearch.init(), timeout]);
+        const initWork = (async () => {
+          const [{ ragSearch }, { collectWorkspaceFiles }] = await Promise.all([
+            import('@/utils/rag/search-utility'),
+            import('@/components/AI/Agent/Snapshot'),
+          ]);
+          await ragSearch.init();
+          return { ragSearch, collectWorkspaceFiles };
+        })();
+        const { ragSearch, collectWorkspaceFiles } = await Promise.race([initWork, timeout]);
         if (cancelled || !fs?.isReady) return;
         console.log('[RAG] Indexer initialized successfully.');
 

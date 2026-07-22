@@ -26,7 +26,11 @@ async function loadTransformers() {
       console.log('[RAG] Initialized with wasmPaths:', env.wasmPaths);
 
       return { env, pipeline };
-    })();
+    })().catch((error) => {
+      // Reset on failure so a later retry can succeed (same pattern as WebLLM).
+      transformersPromise = undefined;
+      throw error;
+    });
   }
   return transformersPromise;
 }
@@ -195,3 +199,10 @@ self.addEventListener('message', async (event) => {
     self.postMessage({ id, type: 'ERROR', error: error.message });
   }
 });
+
+export const __testables = {
+  loadTransformers,
+  resetTransformers() {
+    transformersPromise = undefined;
+  },
+};

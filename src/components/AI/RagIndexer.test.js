@@ -102,22 +102,18 @@ describe('useRagIndexer', () => {
 
     renderHook(() => useRagIndexer());
 
-    // Wait for dynamic imports to finish and start init (registers the 10s timeout).
-    await act(async () => {
-      for (let i = 0; i < 20 && !ragSearch.init.mock.calls.length; i++) {
-        await Promise.resolve();
-      }
-    });
-    expect(ragSearch.init).toHaveBeenCalled();
-
+    // Timeout starts before imports finish; advance wall clock to fire it.
     await act(async () => {
       vi.advanceTimersByTime(10000);
-      await Promise.resolve();
+      // Flush microtasks so the race rejection is handled (imports may still resolve).
+      for (let i = 0; i < 10; i++) {
+        await Promise.resolve();
+      }
     });
 
     expect(consoleErrorSpy).toHaveBeenCalledWith(
       '[RAG] Failed to initialize indexer:',
-      expect.any(Error),
+      expect.objectContaining({ message: 'RAG Init Timeout' }),
     );
   });
 });

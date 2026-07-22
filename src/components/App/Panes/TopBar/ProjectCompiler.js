@@ -175,25 +175,41 @@ export default function useProjectCompiler(
   }, [silentCompileRequest, handleCompile]);
 
   const handleClearFS = useCallback(async () => {
-    const { Compiler } = await loadCompiler();
-    await Compiler.reset();
-    previewState((draft) => {
-      draft.htmlContent = null;
-    });
-    Settings.setPreviewHtml(null);
-    logState((draft) => {
-      draft.logs = [
-        ...draft.logs,
-        {
-          id: `${Date.now()}-${Math.random()}`,
-          role: 'system',
-          text: 'Virtual filesystem cleared. Next compile will start fresh.',
-          timestamp: new Date().toTimeString().split(' ')[0],
-        },
-      ];
-    });
-    handleOpenLog();
-  }, [previewState, logState, handleOpenLog]);
+    try {
+      const { Compiler } = await loadCompiler();
+      await Compiler.reset();
+      previewState((draft) => {
+        draft.htmlContent = null;
+      });
+      Settings.setPreviewHtml(null);
+      logState((draft) => {
+        draft.logs = [
+          ...draft.logs,
+          {
+            id: `${Date.now()}-${Math.random()}`,
+            role: 'system',
+            text: 'Virtual filesystem cleared. Next compile will start fresh.',
+            timestamp: new Date().toTimeString().split(' ')[0],
+          },
+        ];
+      });
+      handleOpenLog();
+    } catch (err) {
+      const errorMsg = err?.message || String(err);
+      addNotification(`Failed to clear filesystem: ${errorMsg}`, 'error');
+      logState((draft) => {
+        draft.logs = [
+          ...draft.logs,
+          {
+            id: `${Date.now()}-${Math.random()}`,
+            role: 'system',
+            text: `Failed to clear filesystem: ${errorMsg}`,
+            timestamp: new Date().toTimeString().split(' ')[0],
+          },
+        ];
+      });
+    }
+  }, [previewState, logState, handleOpenLog, addNotification]);
 
   return {
     handleCompile,

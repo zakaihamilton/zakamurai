@@ -33,7 +33,7 @@
     "prebuild": "\"$npm_execpath\" run setup:almostnode && \"$npm_execpath\" run setup:wasm",
     "perf": "node scripts/check-performance-budget.mjs",
     "audit": "npm audit --audit-level=critical",
-    "verify": "npm run format:check && npm run lint && npm run stylelint && npm run deadcode && npm run test:coverage && npm run build && npm run perf && npm run test:e2e",
+    "verify": "npm run format:check && npm run lint && npm run stylelint && npm run deadcode && npm run test:coverage && npm run build && npm run perf && npm run test:e2e && npm run test:visual:chromium",
     "verify:ai": "bash scripts/verify-ai.sh",
     "prepare": "husky"
   },

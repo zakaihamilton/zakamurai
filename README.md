@@ -82,9 +82,10 @@ npm run verify:ai     # Optional: local AI eval (promptfoo); not part of verify 
 ```
 
 `verify` never rewrites source files. Formatting and CSS fixes are intentionally opt-in via
-`format` and `stylelint:fix`. CI runs Chromium smoke e2e (`test:e2e`); screenshot regression
-(`test:visual` / `test:visual:chromium`) remains available locally while WebKit host-level
-browser dependencies are stabilized.
+`format` and `stylelint:fix`. CI and `verify` run Chromium smoke e2e (`test:e2e`) and Chromium
+visual regression (`test:visual:chromium`). Full screenshot regression across browsers
+(`test:visual`, including WebKit) remains available locally while WebKit host-level browser
+dependencies are stabilized.
 
 `verify:ai` runs `scripts/verify-ai.sh` for optional, local AI regression checks. It uses
 [promptfoo](https://www.promptfoo.dev/) for semantic eval (`promptfooconfig.yaml`) and needs

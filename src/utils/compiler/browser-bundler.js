@@ -62,6 +62,31 @@ function packageParts(specifier) {
 }
 
 /**
+ * Apply object-shaped package.json "browser" remaps to a relative path.
+ * A string "browser" field is an entry override (handled elsewhere); only object
+ * maps are remapped here. `false` values (Node-only stubs) are skipped for now.
+ *
+ * @param {object} manifest Parsed package.json
+ * @param {string} relativePath Path relative to the package root (with or without ./)
+ * @returns {string} Remapped path, or relativePath when no string remap applies
+ */
+function applyBrowserRemap(manifest, relativePath) {
+  if (!manifest?.browser || typeof manifest.browser !== 'object' || !relativePath) {
+    return relativePath;
+  }
+  const candidates = relativePath.startsWith('./')
+    ? [relativePath, relativePath.slice(2)]
+    : [`./${relativePath}`, relativePath];
+  for (const key of candidates) {
+    const remapped = manifest.browser[key];
+    // Skip false remaps (Node-only stubs) rather than inventing empty modules.
+    if (remapped === false) continue;
+    if (typeof remapped === 'string' && remapped) return remapped;
+  }
+  return relativePath;
+}
+
+/**
  * Resolve the package root entry from classic mainFields.
  * A string "browser" is an entry override; an object "browser" is a file remap
  * map (as in react-dom) and must not be stringified into the path.
@@ -76,16 +101,13 @@ function packageEntry(manifest) {
     (typeof manifest.main === 'string' && manifest.main) ||
     'index.js';
 
-  // Apply object-shaped browser remaps to the chosen entry when present.
-  if (manifest.browser && typeof manifest.browser === 'object') {
-    const candidates = entry.startsWith('./') ? [entry, entry.slice(2)] : [`./${entry}`, entry];
-    for (const key of candidates) {
-      const remapped = manifest.browser[key];
-      if (typeof remapped === 'string' && remapped) return remapped;
-    }
-  }
+  return applyBrowserRemap(manifest, entry);
+}
 
-  return entry;
+/** Package root under /node_modules for a resolveDir, or null. */
+function packageRootFromDir(resolveDir) {
+  const match = String(resolveDir || '').match(/^\/node_modules\/(@[^/]+\/[^/]+|[^/]+)/);
+  return match ? match[0] : null;
 }
 
 function selectExport(target) {
@@ -170,9 +192,12 @@ function resolvePackage(vfs, specifier) {
   }
   // Prefer exports; fall back to mainFields. Never treat an object "browser"
   // map as a path — that previously made resolveFile return null for react-dom
-  // when client.js did require('react-dom').
+  // when client.js did require('react-dom'). Apply object browser remaps after
+  // exports/entry so e.g. exports "." -> "./index.js" can still remap to
+  // "./index.browser.js".
   const candidate = target || (subpath ? subpath : packageEntry(manifest));
-  const resolved = resolveFile(vfs, normalizePath(`${root}/${candidate}`));
+  const remapped = applyBrowserRemap(manifest, candidate);
+  const resolved = resolveFile(vfs, normalizePath(`${root}/${remapped}`));
   if (resolved) return resolved;
   throw new Error(
     `Package '${packageName}' does not provide '${subpath ? `./${subpath}` : '.'}' for browser imports.`,
@@ -191,6 +216,26 @@ function resolvePackage(vfs, specifier) {
  */
 function resolveSpecifier(vfs, specifier, resolveDir) {
   if (specifier.startsWith('/') || specifier.startsWith('.')) {
+    // Relative imports inside a package may need object browser remaps
+    // (e.g. react-dom's "./server.js" -> "./server.browser.js").
+    if (specifier.startsWith('.')) {
+      const pkgRoot = packageRootFromDir(resolveDir);
+      if (pkgRoot) {
+        const manifestPath = `${pkgRoot}/package.json`;
+        if (vfs.existsSync(manifestPath)) {
+          try {
+            const manifest = JSON.parse(vfs.readFileSync(manifestPath, 'utf8'));
+            const remapped = applyBrowserRemap(manifest, specifier);
+            if (remapped !== specifier) {
+              const fromRoot = resolveFile(vfs, normalizePath(`${pkgRoot}/${remapped}`));
+              if (fromRoot) return fromRoot;
+            }
+          } catch (_) {
+            // Fall through to normal relative resolve.
+          }
+        }
+      }
+    }
     const candidate = normalizePath(
       specifier.startsWith('/') ? specifier : `${resolveDir}/${specifier}`,
     );
@@ -501,6 +546,7 @@ export async function bundleBrowserProject(vfs, packageJson, buildCommand, onLog
 
 export const __testables = {
   findEntryPoint,
+  applyBrowserRemap,
   packageEntry,
   selectExport,
   exportTarget,
