@@ -1,7 +1,16 @@
+import { AppState } from '@/components/App/AppState';
+import { SidebarState } from '@/components/App/Panes/Sidebar';
+import { EditorState } from '@/components/App/Views/EditorArea';
+import { useFileSystem } from '@/components/Storage';
 import { ZipWriter } from '@/utils/zip';
 import { useCallback } from 'react';
 
-export default function useZipExporter(fs, editorState, folderTree, projectName) {
+export default function useZipExporter() {
+  const fs = useFileSystem();
+  const { projectName } = AppState.useState(['projectName']);
+  const editorState = EditorState.usePassiveState();
+  const { folderTree } = SidebarState.useState(['folderTree']);
+
   const handleExportZip = useCallback(async () => {
     const zip = new ZipWriter();
 
@@ -43,7 +52,7 @@ export default function useZipExporter(fs, editorState, folderTree, projectName)
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `${projectName.replace(/\s+/g, '_')}.zip`;
+    link.download = `${(projectName || 'project').replace(/\s+/g, '_')}.zip`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -171,7 +180,7 @@ export default function useZipExporter(fs, editorState, folderTree, projectName)
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `${projectName.replace(/\s+/g, '_')}_compiled.zip`;
+    link.download = `${(projectName || 'project').replace(/\s+/g, '_')}_compiled.zip`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);

@@ -1,3 +1,4 @@
+import { PreviewState } from '@/components/App/PreviewState';
 import { LogState } from '@/components/App/Views/LogArea';
 import { Icons } from '@/components/ui/Icons';
 import React from 'react';
@@ -8,8 +9,14 @@ export default function WorkingIndicator() {
     'isSystemProcessing',
     'isAIProcessing',
   ]);
+  const { compileStatus, compilePhase } = PreviewState.useState(['compileStatus', 'compilePhase']);
 
   if (!isSystemProcessing && !isAIProcessing) return null;
+
+  const systemLabel =
+    compileStatus && compileStatus !== 'idle' && compileStatus !== 'success'
+      ? compilePhase || `Compile ${compileStatus}…`
+      : 'System working...';
 
   return (
     <div className={styles.workingIndicator}>
@@ -22,7 +29,7 @@ export default function WorkingIndicator() {
       {isSystemProcessing && (
         <div className={styles.indicatorGroup}>
           <Icons.RefreshSmall />
-          <span>System working...</span>
+          <span>{systemLabel}</span>
         </div>
       )}
     </div>

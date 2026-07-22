@@ -1,3 +1,4 @@
+vi.mock('@/components/Storage', () => ({ useFileSystem: vi.fn(() => ({ mode: 'local' })) }));
 import { AppState } from '@/components/App/AppState';
 import { SidebarState } from '@/components/App/Panes/Sidebar';
 import { TabState } from '@/components/App/Panes/TabBar';

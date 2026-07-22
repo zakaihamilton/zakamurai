@@ -1,5 +1,6 @@
-import { AppState } from '@/components/App/AppState';
+import { RagState } from '@/components/AI/RagState';
 import { EditorState } from '@/components/App/Views/EditorArea';
+import { useFileSystem } from '@/components/Storage';
 import { useEffect, useRef } from 'react';
 
 const INDEX_DEBOUNCE_MS = 1500;
@@ -10,8 +11,9 @@ const INDEX_DEBOUNCE_MS = 1500;
  * Heavy deps (transformers via rag-worker) load only when indexing starts.
  */
 export function useRagIndexer() {
-  const { fs } = AppState.useState(['fs']);
+  const fs = useFileSystem();
   const editorState = EditorState.useState(['fileContents']);
+  const ragState = RagState.useState();
   const bootstrappedRef = useRef(false);
   const debounceRef = useRef(null);
   const lastFingerprintRef = useRef('');
@@ -23,6 +25,10 @@ export function useRagIndexer() {
 
     const initRag = async () => {
       try {
+        ragState((draft) => {
+          draft.status = 'initializing';
+          draft.error = null;
+        });
         // Start the timeout before dynamic imports so hung imports are covered.
         const timeout = new Promise((_, reject) =>
           setTimeout(() => reject(new Error('RAG Init Timeout')), 10000),
@@ -41,14 +47,29 @@ export function useRagIndexer() {
 
         if (!bootstrappedRef.current) {
           bootstrappedRef.current = true;
+          ragState((draft) => {
+            draft.status = 'indexing';
+          });
           const files = await collectWorkspaceFiles(fs, fileContentsRef.current || {});
           if (cancelled) return;
           await ragSearch.indexWorkspaceFiles(files);
-          lastFingerprintRef.current = fingerprintContents(fileContentsRef.current);
+          const fingerprint = fingerprintContents(fileContentsRef.current);
+          lastFingerprintRef.current = fingerprint;
+          ragState((draft) => {
+            draft.status = 'ready';
+            draft.error = null;
+            draft.indexedFileCount = Object.keys(files || {}).length;
+            draft.lastIndexedAt = Date.now();
+            draft.lastFingerprint = fingerprint;
+          });
           console.log('[RAG] Workspace bootstrap index complete.');
         }
       } catch (error) {
         console.error('[RAG] Failed to initialize indexer:', error);
+        ragState((draft) => {
+          draft.status = 'error';
+          draft.error = error?.message || String(error);
+        });
       }
     };
 
@@ -56,7 +77,7 @@ export function useRagIndexer() {
     return () => {
       cancelled = true;
     };
-  }, [fs, fs?.isReady]);
+  }, [fs, fs?.isReady, ragState]);
 
   useEffect(() => {
     if (!fs?.isReady) return undefined;
@@ -66,19 +87,33 @@ export function useRagIndexer() {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(async () => {
       try {
+        ragState((draft) => {
+          draft.status = 'indexing';
+          draft.error = null;
+        });
         const { ragSearch } = await import('@/utils/rag/search-utility');
         const files = editorState.fileContents || {};
         await ragSearch.indexWorkspaceFiles(files);
         lastFingerprintRef.current = nextFingerprint;
+        ragState((draft) => {
+          draft.status = 'ready';
+          draft.indexedFileCount = Object.keys(files).length;
+          draft.lastIndexedAt = Date.now();
+          draft.lastFingerprint = nextFingerprint;
+        });
       } catch (error) {
         console.error('[RAG] Failed to sync workspace index:', error);
+        ragState((draft) => {
+          draft.status = 'error';
+          draft.error = error?.message || String(error);
+        });
       }
     }, INDEX_DEBOUNCE_MS);
 
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
-  }, [editorState.fileContents, fs?.isReady]);
+  }, [editorState.fileContents, fs?.isReady, ragState]);
 }
 
 function fingerprintContents(fileContents = {}) {

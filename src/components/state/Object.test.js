@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createObject, filterObjectByKeys, objectChangedKeys } from './Object';
+import { setInDraft } from './StateUtils';
 
 describe('Object utils', () => {
   describe('objectChangedKeys', () => {
@@ -74,6 +75,44 @@ describe('Object utils', () => {
 
       expect(handler).toHaveBeenCalledTimes(1);
       expect(handler).toHaveBeenCalledWith(['a', 'b', 'c']);
+    });
+
+    it('fires parent keys for nested map/array mutation hygiene paths', async () => {
+      const obj = createObject({
+        isCompleting: { 'a.js': false },
+        completionActivity: {},
+        expandedFolders: { src: true },
+        openTabs: [{ id: 'a.js' }],
+        history: { past: [{ id: 1 }, { id: 2 }], future: [] },
+        selectedLines: { 'a.js': [1] },
+      });
+      const handler = vi.fn();
+      obj.__monitor(null, handler);
+
+      obj((draft) => {
+        setInDraft(draft, ['isCompleting', 'a.js'], true);
+        setInDraft(draft, ['completionActivity', 'a.js'], { status: 'thinking' });
+        setInDraft(draft, ['expandedFolders', 'src/lib'], true);
+        draft.openTabs = [...draft.openTabs, { id: 'b.js' }];
+        const past = [...draft.history.past];
+        past.pop();
+        draft.history = { ...draft.history, past, future: [{ id: 2 }] };
+        setInDraft(draft, ['selectedLines', 'a.js'], [1, 2]);
+      });
+
+      await vi.runAllTimersAsync();
+
+      const keys = handler.mock.calls.flat().flat();
+      expect(keys).toEqual(
+        expect.arrayContaining([
+          'isCompleting',
+          'completionActivity',
+          'expandedFolders',
+          'openTabs',
+          'history',
+          'selectedLines',
+        ]),
+      );
     });
   });
 

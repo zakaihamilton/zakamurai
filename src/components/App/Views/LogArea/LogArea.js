@@ -1,4 +1,3 @@
-import Settings from '@/components/Storage/Settings';
 import { createState } from '@/components/state/State';
 import { Icons } from '@/components/ui/Icons';
 import Tooltip from '@/components/ui/Tooltip';
@@ -8,12 +7,6 @@ import styles from './LogArea.module.css';
 
 export const LogState = createState('LogState');
 export const LogAreaUiState = createState('LogAreaUiState');
-LogState.useState.initial = {
-  logs: Settings.getAILogs(),
-  isSystemProcessing: false,
-  isAIProcessing: false,
-  reasoning: '',
-};
 
 export default function LogArea() {
   const logState = LogState.useState();
@@ -36,13 +29,6 @@ export default function LogArea() {
         .some((value) => String(value).toLowerCase().includes(normalizedFilter));
     })
     .slice(-200);
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      Settings.setAILogs(logs);
-    }, 1000);
-    return () => clearTimeout(timer);
-  }, [logs]);
 
   useEffect(() => {
     if (autoScroll && containerRef.current && (logs.length || isProcessing)) {

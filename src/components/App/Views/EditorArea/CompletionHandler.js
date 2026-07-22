@@ -1,8 +1,10 @@
 import { COMPLETION_SYSTEM_PROMPT } from '@/components/AI/Prompts';
+import { RagState } from '@/components/AI/RagState';
 import {
   RECOMMENDED_COMPLETION_MODEL,
   resolveCompletionModelId,
 } from '@/components/AI/WebLLMModels';
+import { PromptUiState } from '@/components/App/Panes/Prompt/PromptState';
 import { createState } from '@/components/state/State';
 import { useCallback, useEffect, useRef } from 'react';
 import {
@@ -55,6 +57,10 @@ export default function useCompletion({
   onDebugUpdate,
 }) {
   const completionState = CompletionState.useState(null, { suggestion: '', loading: false });
+  const promptUiState = PromptUiState.usePassiveState();
+  const selectedModel = promptUiState?.selectedModel;
+  const ragState = RagState.usePassiveState();
+  const ragStatus = ragState?.status;
   const { suggestion = '', loading = false } = completionState || {};
   const setSuggestion = useCallback(
     (nextSuggestion) => {
@@ -299,9 +305,11 @@ export default function useCompletion({
         const ragQuery = buildCompletionRagQuery(before);
         let ragContext = '';
         try {
-          const { ragSearch } = await import('@/utils/rag/search-utility');
-          const ragResults = await ragSearch.retrieveContext(ragQuery, 3);
-          ragContext = ragSearch.formatPromptContext(ragResults);
+          if (ragStatus === 'ready') {
+            const { ragSearch } = await import('@/utils/rag/search-utility');
+            const ragResults = await ragSearch.retrieveContext(ragQuery, 3);
+            ragContext = ragSearch.formatPromptContext(ragResults);
+          }
         } catch (ragErr) {
           console.error('[Completion] RAG retrieval failed:', ragErr);
         }
@@ -329,7 +337,7 @@ export default function useCompletion({
         const scheduledPromptForError = scheduledPrompt;
 
         try {
-          const completionModelId = await resolveCompletionModelId();
+          const completionModelId = await resolveCompletionModelId(selectedModel);
           if (lastRequestRef.current !== scheduledRequestId) return;
 
           activeCompletionModelRef.current = completionModelId;
@@ -422,6 +430,8 @@ export default function useCompletion({
     setLoading,
     setSuggestion,
     stopThinking,
+    selectedModel,
+    ragStatus,
   ]);
 
   const cancelSuggestion = useCallback(

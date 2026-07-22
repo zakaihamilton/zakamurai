@@ -148,20 +148,15 @@ describe('Shortcuts isMatch', () => {
       producer(draftState);
     });
 
-    Settings.getEditorReadOnly.mockReturnValue(false);
-
     shortcut.action({ editorState, showNotification });
 
     expect(draftState.isReadOnly).toBe(true);
-    expect(Settings.setEditorReadOnly).toHaveBeenCalledWith(true);
     expect(showNotification).toHaveBeenCalledWith('Inspection mode active', 'info');
 
     // Toggle again (from true to false)
-    Settings.getEditorReadOnly.mockReturnValue(true);
     shortcut.action({ editorState, showNotification });
 
     expect(draftState.isReadOnly).toBe(false);
-    expect(Settings.setEditorReadOnly).toHaveBeenCalledWith(false);
     expect(showNotification).toHaveBeenCalledWith('Edit mode active', 'info');
   });
 

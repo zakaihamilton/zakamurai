@@ -2,7 +2,6 @@ import { AppState } from '@/components/App/AppState';
 import { SidebarState } from '@/components/App/Panes/Sidebar';
 import { TabState } from '@/components/App/Panes/TabBar';
 import { LogState } from '@/components/App/Views/LogArea';
-import Settings from '@/components/Storage/Settings';
 import { Icons } from '@/components/ui/Icons';
 import Tooltip from '@/components/ui/Tooltip';
 import { formatShortcut } from '@/utils/os';
@@ -13,15 +12,15 @@ const isViewTab = (tabId) => tabId === 'ai-logs' || tabId === 'preview';
 
 export default function ActionButtons({ onCompile, onOpenLog, onOpenPreview, onToggleAIInput }) {
   const { isSystemProcessing } = LogState.useState('isSystemProcessing');
-  const tabState = TabState.useState(['activeTabId', 'openTabs']);
-  const { activeTabId, openTabs = [] } = tabState;
+  const tabState = TabState.useState(['activeTabId', 'openTabs', 'lastCodeTabId']);
+  const { activeTabId, openTabs = [], lastCodeTabId } = tabState;
   const { isMobile } = AppState.useState('isMobile');
   const { showAIInput, isAIInputPopupOpen } = SidebarState.useState([
     'showAIInput',
     'isAIInputPopupOpen',
   ]);
   const isAIInputActive = isMobile ? isAIInputPopupOpen : showAIInput;
-  const lastContentTabIdRef = useRef(Settings.getLastCodeTabId());
+  const lastContentTabIdRef = useRef(lastCodeTabId);
   const lastContentTabId =
     activeTabId && !isViewTab(activeTabId) ? activeTabId : lastContentTabIdRef.current;
 
@@ -33,9 +32,11 @@ export default function ActionButtons({ onCompile, onOpenLog, onOpenPreview, onT
   useEffect(() => {
     if (activeTabId && !isViewTab(activeTabId)) {
       lastContentTabIdRef.current = activeTabId;
-      Settings.setLastCodeTabId(activeTabId);
+      tabState((draft) => {
+        draft.lastCodeTabId = activeTabId;
+      });
     }
-  }, [activeTabId]);
+  }, [activeTabId, tabState]);
 
   const handleOpenLastContentTab = () => {
     if (!lastContentTab) return;

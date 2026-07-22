@@ -1,15 +1,11 @@
-import {
-  RECOMMENDED_WEB_LLM_MODEL,
-  WEB_LLM_MODELS,
-  resolveWebLLMModelId,
-} from '@/components/AI/WebLLMModels';
+import { RECOMMENDED_WEB_LLM_MODEL, WEB_LLM_MODELS } from '@/components/AI/WebLLMModels';
+import { WebLLMState } from '@/components/AI/WebLLMState';
 import { AppState } from '@/components/App/AppState';
 import { SidebarState } from '@/components/App/Panes/Sidebar';
 import { TabState } from '@/components/App/Panes/TabBar';
 import { EditorState } from '@/components/App/Views/EditorArea';
 import { LogState } from '@/components/App/Views/LogArea';
-import Settings from '@/components/Storage/Settings';
-import { createState } from '@/components/state/State';
+import { useFileSystem } from '@/components/Storage';
 import React, { useCallback, useEffect } from 'react';
 import {
   AgentSessionState,
@@ -27,6 +23,7 @@ import {
 import useModelDownloader from './ModelDownloader';
 import styles from './Prompt.module.css';
 import usePromptHistory from './PromptHistory';
+import { PromptState, PromptUiState, getInitialPromptUiState } from './PromptState';
 import ModelDownloader from './subcomponents/ModelManager';
 import PromptComposer from './subcomponents/PromptComposer';
 import PromptContextPanel from './subcomponents/PromptContextPanel';
@@ -35,6 +32,8 @@ import ReasoningPanel from './subcomponents/ReasoningPanel';
 import RoleGraphEditor from './subcomponents/RoleGraphEditor';
 import SessionManager from './subcomponents/SessionManager';
 import SessionTranscript from './subcomponents/SessionTranscript';
+
+export { PromptState, PromptUiState } from './PromptState';
 
 const ROLE_LABELS = {
   planner: 'Planner',
@@ -62,32 +61,14 @@ const formatAgentEvent = (event, roleLabelById = {}) => {
   return '';
 };
 
-export const PromptState = createState('PromptState');
-export const PromptUiState = createState('PromptUiState');
-const getInitialSelectedModel = () =>
-  resolveWebLLMModelId(
-    Settings.getAIPromptModel(RECOMMENDED_WEB_LLM_MODEL.id) || RECOMMENDED_WEB_LLM_MODEL.id,
-  );
-
 export default function Prompt() {
-  const { fs, isMobile } = AppState.useState(['fs', 'isMobile']);
+  const { isMobile } = AppState.useState(['isMobile']);
+  const fs = useFileSystem();
   const promptState = PromptState.useState();
   const { promptWidth } = promptState;
   const promptUiState = PromptUiState.useState(null, {
-    val: Settings.getPromptDraft(),
-    historyIndex: -1,
-    draftVal: Settings.getPromptDraft(),
-    isReasoningVisible: true,
-    selectedModel: getInitialSelectedModel(),
-    isModelManagerOpen: false,
-    cachedModelIds: [],
-    modelCacheWork: null,
-    modelCacheProgress: '',
-    modelCacheError: '',
+    ...getInitialPromptUiState(),
     animatedWidth: promptState?.promptWidth ?? 0,
-    abortController: null,
-    promptScope: 'file',
-    runningSessionId: null,
   });
   const {
     val = '',
@@ -96,7 +77,6 @@ export default function Prompt() {
     isReasoningVisible = true,
     selectedModel = RECOMMENDED_WEB_LLM_MODEL.id,
     isModelManagerOpen = false,
-    cachedModelIds = [],
     modelCacheWork = null,
     modelCacheProgress = '',
     modelCacheError = '',
@@ -105,6 +85,7 @@ export default function Prompt() {
     promptScope = 'file',
     runningSessionId = null,
   } = promptUiState || {};
+  const { cachedModelIds = [] } = WebLLMState.useState(['cachedModelIds']);
 
   const setAnimatedWidth = useCallback(
     (nextValue) => {
@@ -465,11 +446,6 @@ export default function Prompt() {
   const sessionReasoning = activeSession?.reasoning || '';
 
   useEffect(() => {
-    const timer = window.setTimeout(() => Settings.setPromptDraft(val), 250);
-    return () => window.clearTimeout(timer);
-  }, [val]);
-
-  useEffect(() => {
     if (isMobile) return undefined;
 
     if (isOpen) {
@@ -633,7 +609,6 @@ export default function Prompt() {
           onChangeModel={(nextModel) =>
             promptUiState((draft) => {
               draft.selectedModel = nextModel;
-              Settings.setAIPromptModel(nextModel);
             })
           }
           onLoadCachedModelIds={loadCachedModelIds}

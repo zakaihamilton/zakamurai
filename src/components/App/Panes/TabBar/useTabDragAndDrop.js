@@ -47,12 +47,14 @@ export default function useTabDragAndDrop({
       }
 
       tabState((draft) => {
-        const draggedIndex = draft.openTabs.findIndex((t) => t.id === draggedId);
-        const targetIndex = draft.openTabs.findIndex((t) => t.id === targetTabId);
+        const openTabs = [...(draft.openTabs || [])];
+        const draggedIndex = openTabs.findIndex((t) => t.id === draggedId);
+        const targetIndex = openTabs.findIndex((t) => t.id === targetTabId);
 
         if (draggedIndex !== -1 && targetIndex !== -1) {
-          const [draggedTab] = draft.openTabs.splice(draggedIndex, 1);
-          draft.openTabs.splice(targetIndex, 0, draggedTab);
+          const [draggedTab] = openTabs.splice(draggedIndex, 1);
+          openTabs.splice(targetIndex, 0, draggedTab);
+          draft.openTabs = openTabs;
         }
       });
 
@@ -68,10 +70,12 @@ export default function useTabDragAndDrop({
       if (!draggedId) return;
 
       tabState((draft) => {
-        const draggedIndex = draft.openTabs.findIndex((t) => t.id === draggedId);
+        const openTabs = [...(draft.openTabs || [])];
+        const draggedIndex = openTabs.findIndex((t) => t.id === draggedId);
         if (draggedIndex !== -1) {
-          const [draggedTab] = draft.openTabs.splice(draggedIndex, 1);
-          draft.openTabs.push(draggedTab);
+          const [draggedTab] = openTabs.splice(draggedIndex, 1);
+          openTabs.push(draggedTab);
+          draft.openTabs = openTabs;
         }
       });
 

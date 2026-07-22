@@ -391,8 +391,19 @@ describe('useFileSystem', () => {
     const state = makeFileSystemState({ rootHandle, mode: 'local', refreshTrigger: 1 });
     vi.spyOn(FileSystemState, 'useState').mockReturnValue(state);
 
-    renderHook(() => useFileSystem());
+    renderHook(() => useFileSystem({ bootstrap: true }));
     // Simply verify hook mounts without crash — refresh is triggered via effect
+  });
+
+  it('does not run restore/refresh effects without bootstrap', async () => {
+    const rootHandle = makeDirHandle('root');
+    const state = makeFileSystemState({ rootHandle, mode: 'local', refreshTrigger: 1 });
+    const spy = vi.spyOn(FileSystemState, 'useState').mockReturnValue(state);
+
+    renderHook(() => useFileSystem());
+
+    expect(spy).toHaveBeenCalledWith(null, undefined);
+    expect(state.isReady).toBe(false);
   });
 
   it('mountLocal silently ignores AbortError', async () => {

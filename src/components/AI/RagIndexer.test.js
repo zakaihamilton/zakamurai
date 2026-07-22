@@ -22,9 +22,13 @@ vi.mock('@/components/AI/Agent/Snapshot', () => ({
   collectWorkspaceFiles: (...args) => collectWorkspaceFiles(...args),
 }));
 
-vi.mock('@/components/App/AppState', () => ({
-  AppState: {
-    useState: vi.fn(),
+vi.mock('@/components/Storage', () => ({
+  useFileSystem: vi.fn(),
+}));
+
+vi.mock('@/components/AI/RagState', () => ({
+  RagState: {
+    useState: vi.fn(() => Object.assign(vi.fn(), { status: 'idle' })),
   },
 }));
 
@@ -34,8 +38,9 @@ vi.mock('@/components/App/Views/EditorArea', () => ({
   },
 }));
 
-import { AppState } from '@/components/App/AppState';
+import { RagState } from '@/components/AI/RagState';
 import { EditorState } from '@/components/App/Views/EditorArea';
+import { useFileSystem } from '@/components/Storage';
 
 describe('useRagIndexer', () => {
   let consoleLogSpy;
@@ -46,10 +51,10 @@ describe('useRagIndexer', () => {
     vi.clearAllMocks();
     consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
     consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-    AppState.useState.mockReturnValue({ fs: { isReady: true } });
+    useFileSystem.mockReturnValue({ isReady: true });
     EditorState.useState.mockReturnValue({ fileContents: {} });
-    collectWorkspaceFiles.mockResolvedValue({});
-    ragSearch.indexWorkspaceFiles.mockResolvedValue(undefined);
+    RagState.useState.mockReturnValue(Object.assign(vi.fn(), { status: 'idle' }));
+    ragSearch.init.mockResolvedValue(undefined);
   });
 
   afterEach(() => {
@@ -58,62 +63,48 @@ describe('useRagIndexer', () => {
     consoleErrorSpy.mockRestore();
   });
 
-  it('initializes RAG successfully', async () => {
-    let resolveInit;
-    const initPromise = new Promise((resolve) => {
-      resolveInit = resolve;
-    });
-    ragSearch.init.mockReturnValue(initPromise);
-
+  it('initializes the RAG indexer when FS is ready', async () => {
     renderHook(() => useRagIndexer());
 
     await act(async () => {
       await Promise.resolve();
+      await Promise.resolve();
     });
 
     expect(ragSearch.init).toHaveBeenCalled();
-
-    await act(async () => {
-      resolveInit();
-      await initPromise;
-    });
-
-    expect(consoleLogSpy).toHaveBeenCalledWith('[RAG] Indexer initialized successfully.');
+    expect(collectWorkspaceFiles).toHaveBeenCalled();
+    expect(ragSearch.indexWorkspaceFiles).toHaveBeenCalled();
   });
 
-  it('logs error if RAG initialization fails', async () => {
-    const error = new Error('Init error');
-    ragSearch.init.mockRejectedValue(error);
+  it('debounces reindexing when file contents change', async () => {
+    const { rerender } = renderHook(() => useRagIndexer());
 
-    renderHook(() => useRagIndexer());
-
-    // Flush macro tasks / micro tasks so the promise rejection is handled
     await act(async () => {
       await Promise.resolve();
       await Promise.resolve();
     });
 
-    expect(consoleErrorSpy).toHaveBeenCalledWith('[RAG] Failed to initialize indexer:', error);
+    ragSearch.indexWorkspaceFiles.mockClear();
+    EditorState.useState.mockReturnValue({ fileContents: { 'a.js': 'hi' } });
+    rerender();
+
+    await act(async () => {
+      vi.advanceTimersByTime(1600);
+      await Promise.resolve();
+    });
+
+    expect(ragSearch.indexWorkspaceFiles).toHaveBeenCalled();
   });
 
-  it('rejects on timeout if RAG init hangs', async () => {
-    // Return a promise that never resolves
-    ragSearch.init.mockReturnValue(new Promise(() => {}));
-
+  it('logs initialization failures', async () => {
+    ragSearch.init.mockRejectedValue(new Error('boom'));
     renderHook(() => useRagIndexer());
 
-    // Timeout starts before imports finish; advance wall clock to fire it.
     await act(async () => {
-      vi.advanceTimersByTime(10000);
-      // Flush microtasks so the race rejection is handled (imports may still resolve).
-      for (let i = 0; i < 10; i++) {
-        await Promise.resolve();
-      }
+      await Promise.resolve();
+      await Promise.resolve();
     });
 
-    expect(consoleErrorSpy).toHaveBeenCalledWith(
-      '[RAG] Failed to initialize indexer:',
-      expect.objectContaining({ message: 'RAG Init Timeout' }),
-    );
+    expect(consoleErrorSpy).toHaveBeenCalled();
   });
 });

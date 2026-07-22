@@ -209,12 +209,17 @@ export default function useSidebarFileLoader({
       });
 
       tabState((draft) => {
-        for (const tab of draft.openTabs) {
+        draft.openTabs = (draft.openTabs || []).map((tab) => {
           if (tab.id === oldPathStr || tab.id.startsWith(`${oldPathStr}/`)) {
-            tab.id = nextPathStr + tab.id.substring(oldPathStr.length);
-            if (tab.id === nextPathStr) tab.label = nextName;
+            const nextId = nextPathStr + tab.id.substring(oldPathStr.length);
+            return {
+              ...tab,
+              id: nextId,
+              label: nextId === nextPathStr ? nextName : tab.label,
+            };
           }
-        }
+          return tab;
+        });
         if (draft.activeTabId === oldPathStr || draft.activeTabId?.startsWith(`${oldPathStr}/`)) {
           draft.activeTabId = nextPathStr + draft.activeTabId.substring(oldPathStr.length);
         }

@@ -43,6 +43,15 @@ describe('Settings', () => {
     expect(history).toEqual(['hello', 'world']);
   });
 
+  it('replaces prompt history via setPromptHistory', () => {
+    Settings.setPromptHistory([' one ', 'two', 'one', '', 3, 'three']);
+    expect(Settings.getPromptHistory()).toEqual(['one', 'two', 'three']);
+    Settings.setPromptHistory([]);
+    expect(Settings.getPromptHistory()).toEqual([]);
+    Settings.setPromptHistory(null);
+    expect(Settings.getPromptHistory()).toEqual([]);
+  });
+
   it('gets, sets, and clears the prompt draft', () => {
     expect(Settings.getPromptDraft()).toBe('');
     Settings.setPromptDraft('unfinished request');

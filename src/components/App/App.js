@@ -1,6 +1,8 @@
 'use client';
 
 import { computeDiff } from '@/components/AI/Processor/utils/DiffEngine';
+import { RagState } from '@/components/AI/RagState';
+import { WebLLMState, bindWebLLMStore } from '@/components/AI/WebLLMState';
 import { useFileSystem } from '@/components/Storage';
 import {
   DEFAULT_CONTENTS,
@@ -11,12 +13,14 @@ import {
 import Settings from '@/components/Storage/Settings';
 import React, { useEffect, useMemo, useRef } from 'react';
 import styles from './App.module.css';
-import { PromptState, SidebarState, TabState } from './Panes';
+import { PromptState, PromptUiState, SidebarState, TabState } from './Panes';
 import { AgentSessionState, normalizeAgentSessions } from './Panes/Prompt/AgentSessions';
+import { getInitialPromptUiState } from './Panes/Prompt/PromptState';
 import { PreviewState } from './PreviewState';
 import { EditorState } from './Views/EditorArea';
 import { LogState } from './Views/LogArea';
 
+import { NotificationState } from '@/components/ui/Notification/Notification';
 import { MOBILE_BREAKPOINT } from '@/constants/Layout';
 import { AppState } from './AppState';
 
@@ -28,7 +32,7 @@ import { useSettingsSync } from '@/components/Storage/SettingsSync';
 import { useWindowResize } from './WindowResize';
 
 export default function App() {
-  const fs = useFileSystem();
+  const fs = useFileSystem({ bootstrap: true });
   const syncedRootHandleRef = useRef(null);
 
   // Memoized initial values from Settings
@@ -63,6 +67,7 @@ export default function App() {
       theme: Settings.getTheme(),
       tabs: Settings.getOpenTabs() || [],
       activeTabId: Settings.getActiveTabId() || null,
+      lastCodeTabId: Settings.getLastCodeTabId() || null,
       aiLogs: Settings.getAILogs() || [],
       sidebarWidth: Settings.getSidebarWidth(),
       promptWidth: Settings.getPromptWidth(),
@@ -70,6 +75,9 @@ export default function App() {
       showAIInput: Settings.getShowAIInput(),
       expandedFolders: Settings.getExpandedFolders(),
       aiCompletionEnabled: Settings.getAICompletionEnabled(),
+      isReadOnly: Settings.getEditorReadOnly(false),
+      promptHistory: Settings.getPromptHistory() || [],
+      previewHtml: Settings.getPreviewHtml(),
       pendingDiffs,
       agentSessions: (() => {
         const stored = Settings.getAgentSessions();
@@ -85,7 +93,6 @@ export default function App() {
   const appState = AppState.useState(null, {
     theme: initialValues.theme,
     projectName: initialValues.projectName,
-    fs,
     showShortcuts: false,
     isResizing: false,
     isMobile: typeof window !== 'undefined' ? window.innerWidth <= MOBILE_BREAKPOINT : false,
@@ -103,12 +110,13 @@ export default function App() {
     expandedFolders: initialValues.expandedFolders,
   });
 
-  TabState.useState(null, {
+  const tabState = TabState.useState(null, {
     openTabs: initialValues.tabs,
     activeTabId: initialValues.activeTabId,
+    lastCodeTabId: initialValues.lastCodeTabId,
   });
 
-  LogState.useState(null, {
+  const logState = LogState.useState(null, {
     isSystemProcessing: false,
     isAIProcessing: false,
     logs: initialValues.aiLogs,
@@ -117,7 +125,7 @@ export default function App() {
   const editorState = EditorState.useState(null, {
     fileContents: initialValues.contents,
     aiCompletionEnabled: initialValues.aiCompletionEnabled,
-    isReadOnly: Settings.getEditorReadOnly(false),
+    isReadOnly: initialValues.isReadOnly,
     navigationHistory: {
       stack: [],
       currentIndex: -1,
@@ -128,38 +136,74 @@ export default function App() {
 
   const promptState = PromptState.useState(null, {
     promptWidth: initialValues.promptWidth,
+    promptHistory: initialValues.promptHistory,
   });
+
+  const promptUiState = PromptUiState.useState(null, getInitialPromptUiState());
 
   const agentSessionState = AgentSessionState.useState(null, {
     sessions: initialValues.agentSessions.sessions,
     activeSessionId: initialValues.agentSessions.activeSessionId,
   });
 
-  PreviewState.useState(null, {
-    htmlContent: Settings.getPreviewHtml(),
+  const previewState = PreviewState.useState(null, {
+    htmlContent: initialValues.previewHtml,
     isCompilerReady: false,
     previewAddress: '/preview/dist/index.html',
+    containerStatus: 'idle',
+    compileStatus: 'idle',
+    compilePhase: null,
+    lastCompileAt: null,
+    containerError: null,
+  });
+
+  NotificationState.useState(null, { notifications: [] });
+
+  const webLLMState = WebLLMState.useState(null, {
+    cachedModelIds: [],
+    engines: {},
+    activeModelId: null,
+  });
+
+  useEffect(() => {
+    bindWebLLMStore(webLLMState);
+    return () => bindWebLLMStore(null);
+  }, [webLLMState]);
+
+  RagState.useState(null, {
+    status: 'idle',
+    error: null,
+    indexedFileCount: 0,
+    lastIndexedAt: null,
+    lastFingerprint: null,
   });
 
   // Background Services & Sync
   useWindowResize(appState, sidebarState);
-  useSettingsSync(appState, sidebarState, promptState, editorState, agentSessionState);
+  useSettingsSync(
+    appState,
+    sidebarState,
+    promptState,
+    editorState,
+    agentSessionState,
+    tabState,
+    logState,
+    previewState,
+    promptUiState,
+  );
 
-  // Sync fs when it changes
+  // Sync project name from mounted FS root
   useEffect(() => {
-    appState((draft) => {
-      if (draft.fs !== fs) {
-        draft.fs = fs;
-      }
-      if (
-        fs.rootHandle?.name &&
-        syncedRootHandleRef.current !== fs.rootHandle &&
-        draft.projectName !== fs.rootHandle.name
-      ) {
+    if (
+      fs.rootHandle?.name &&
+      syncedRootHandleRef.current !== fs.rootHandle &&
+      appState.projectName !== fs.rootHandle.name
+    ) {
+      appState((draft) => {
         draft.projectName = fs.rootHandle.name;
-      }
-      syncedRootHandleRef.current = fs.rootHandle || null;
-    });
+      });
+    }
+    syncedRootHandleRef.current = fs.rootHandle || null;
   }, [fs, appState]);
 
   // Global side effects

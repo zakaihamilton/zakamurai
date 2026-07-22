@@ -1,3 +1,6 @@
+vi.mock('@/components/App/PreviewState', () => ({
+  PreviewState: { useState: vi.fn(() => ({ compileStatus: 'idle', compilePhase: null })) },
+}));
 import { LogState } from '@/components/App/Views/LogArea';
 import { render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';

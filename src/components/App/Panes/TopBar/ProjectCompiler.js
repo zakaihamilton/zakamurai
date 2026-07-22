@@ -1,21 +1,26 @@
-import Settings from '@/components/Storage/Settings';
+import { AppState } from '@/components/App/AppState';
+import { SidebarState } from '@/components/App/Panes/Sidebar';
+import { TabState } from '@/components/App/Panes/TabBar';
+import { PreviewState } from '@/components/App/PreviewState';
+import { EditorState } from '@/components/App/Views/EditorArea';
+import { LogState } from '@/components/App/Views/LogArea';
+import { useFileSystem } from '@/components/Storage';
 import { useNotification } from '@/components/ui/Notification';
 import { useCallback, useEffect, useRef } from 'react';
 
 /** Lazy-load compiler (almostnode / browser-bundler) only on build / clear. */
 const loadCompiler = () => import('@/utils/compiler');
 
-export default function useProjectCompiler(
-  appState,
-  tabState,
-  sidebarState,
-  editorState,
-  logState,
-  previewState,
-  isSystemProcessing,
-) {
-  const { fs, compileRequest, silentCompileRequest } = appState;
-  const { folderTree } = sidebarState;
+export default function useProjectCompiler() {
+  const appState = AppState.useState(['compileRequest', 'silentCompileRequest']);
+  const { compileRequest, silentCompileRequest } = appState;
+  const fs = useFileSystem();
+  const tabState = TabState.usePassiveState();
+  const { folderTree } = SidebarState.useState(['folderTree']);
+  const editorState = EditorState.usePassiveState();
+  const logState = LogState.usePassiveState();
+  const previewState = PreviewState.usePassiveState();
+  const { isSystemProcessing } = LogState.useState(['isSystemProcessing']);
   const { addNotification } = useNotification();
   const isCompilingRef = useRef(false);
   const lastCompileRequestRef = useRef(0);
@@ -55,6 +60,13 @@ export default function useProjectCompiler(
       logState((draft) => {
         draft.isSystemProcessing = true;
       });
+      previewState((draft) => {
+        draft.compileStatus = 'building';
+        draft.compilePhase = isSilent ? 'Silent rebuild' : 'Compiling…';
+        draft.containerStatus = 'ready';
+        draft.containerError = null;
+        draft.compileError = null;
+      });
 
       if (!isSilent && tabState.activeTabId !== 'ai-logs') {
         handleOpenLog();
@@ -82,6 +94,9 @@ export default function useProjectCompiler(
 
       const onLog = (text) => {
         logQueue.push(text);
+        previewState((draft) => {
+          draft.compilePhase = text;
+        });
         if (!logTimer) {
           logTimer = setTimeout(() => {
             flushLogs();
@@ -92,10 +107,19 @@ export default function useProjectCompiler(
 
       try {
         const { Compiler } = await loadCompiler();
+        previewState((draft) => {
+          draft.containerStatus = 'initializing';
+        });
         const compiler = new Compiler(onLog);
         await compiler.compile(fs, folderTree, editorState.fileContents);
         flushLogs();
         addNotification('Project compiled successfully', 'success');
+        previewState((draft) => {
+          draft.compileStatus = 'success';
+          draft.compilePhase = null;
+          draft.lastCompileAt = Date.now();
+          draft.containerStatus = 'ready';
+        });
 
         try {
           const container = compiler.container;
@@ -112,7 +136,6 @@ export default function useProjectCompiler(
                 draft.serverError = null;
                 draft.isCompilerReady = true;
               });
-              Settings.setPreviewHtml(html);
               tabState((draft) => {
                 const exists = draft.openTabs.some((t) => t.id === 'preview');
                 if (!exists) {
@@ -136,6 +159,10 @@ export default function useProjectCompiler(
         onLog(`Unexpected error: ${errorMsg}`);
         previewState((draft) => {
           draft.compileError = errorMsg;
+          draft.compileStatus = 'error';
+          draft.compilePhase = null;
+          draft.containerError = errorMsg;
+          draft.containerStatus = 'error';
         });
         addNotification(`Compilation failed: ${errorMsg}`, 'error');
         handleOpenPreview();
@@ -181,7 +208,6 @@ export default function useProjectCompiler(
       previewState((draft) => {
         draft.htmlContent = null;
       });
-      Settings.setPreviewHtml(null);
       logState((draft) => {
         draft.logs = [
           ...draft.logs,

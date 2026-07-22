@@ -3,6 +3,7 @@ import { SidebarState } from '@/components/App/Panes/Sidebar';
 import { TabState } from '@/components/App/Panes/TabBar';
 import { EditorState } from '@/components/App/Views/EditorArea';
 import { LogState } from '@/components/App/Views/LogArea';
+import { useFileSystem } from '@/components/Storage';
 import { useNotification } from '@/components/ui/Notification';
 import { markKeyboardActivity } from '@/utils/keyboard';
 import { useEffect } from 'react';
@@ -13,6 +14,7 @@ export function useKeyboardHandler() {
   const logState = LogState.useState();
   const appState = AppState.useState();
   const tabState = TabState.useState();
+  const fs = useFileSystem();
   const { addNotification: showNotification } = useNotification();
   const editorState = EditorState.useState();
 
@@ -27,6 +29,7 @@ export function useKeyboardHandler() {
         appState,
         tabState,
         editorState,
+        fs,
         showNotification,
       };
 
@@ -70,5 +73,5 @@ export function useKeyboardHandler() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [sidebarState, logState, appState, tabState, showNotification, editorState]);
+  }, [sidebarState, logState, appState, tabState, showNotification, editorState, fs]);
 }

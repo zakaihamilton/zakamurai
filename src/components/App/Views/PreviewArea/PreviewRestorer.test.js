@@ -2,6 +2,7 @@ import { AppState } from '@/components/App/AppState';
 import { SidebarState } from '@/components/App/Panes/Sidebar';
 import { PreviewState } from '@/components/App/PreviewState';
 import { EditorState } from '@/components/App/Views/EditorArea';
+import { useFileSystem } from '@/components/Storage';
 import { Compiler } from '@/utils/compiler';
 import { act, renderHook } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -29,6 +30,9 @@ vi.mock('@/components/App/PreviewState', () => ({
   PreviewState: { useState: vi.fn() },
 }));
 
+vi.mock('@/components/Storage', () => ({
+  useFileSystem: vi.fn(() => ({ isReady: true })),
+}));
 vi.mock('@/components/App/AppState', () => ({
   AppState: { useState: vi.fn() },
 }));
@@ -59,16 +63,16 @@ describe('usePreviewRestorer', () => {
     previewStateMock.isCompilerReady = false;
     previewStateMock.restoreError = null;
 
-    const appObj = { silentCompileRequest: 0, fs: { isReady: true } };
+    const appObj = { silentCompileRequest: 0 };
     appStateMock = vi.fn((cb) => {
       cb(appObj);
       appStateMock.silentCompileRequest = appObj.silentCompileRequest;
     });
-    appStateMock.fs = { isReady: true };
     appStateMock.silentCompileRequest = 0;
 
     PreviewState.useState.mockReturnValue(previewStateMock);
     AppState.useState.mockReturnValue(appStateMock);
+    useFileSystem.mockReturnValue({ isReady: true });
     SidebarState.useState.mockReturnValue({ folderTree: [] });
     EditorState.useState.mockReturnValue({ fileContents: {} });
     mockVfs.readdirSync.mockReturnValue([]);

@@ -1,12 +1,11 @@
-import { AppState } from '@/components/App/AppState';
 import { TabState } from '@/components/App/Panes/TabBar';
 import { EditorState } from '@/components/App/Views/EditorArea';
-import Settings from '@/components/Storage/Settings';
+import { useFileSystem } from '@/components/Storage';
 import { isMediaFile } from '@/utils/file';
 import { useEffect, useRef } from 'react';
 
 export function useTabRestorer() {
-  const { fs } = AppState.useState();
+  const fs = useFileSystem();
   const tabState = TabState.useState();
   const editorState = EditorState.useState();
   const lastRootHandleRef = useRef(null);
@@ -17,8 +16,8 @@ export function useTabRestorer() {
 
     const restore = async () => {
       lastRootHandleRef.current = fs.rootHandle;
-      const parsedTabs = tabState.openTabs.length > 0 ? tabState.openTabs : Settings.getOpenTabs();
-      const savedActiveTabId = tabState.activeTabId || Settings.getActiveTabId();
+      const parsedTabs = tabState.openTabs || [];
+      const savedActiveTabId = tabState.activeTabId;
 
       if (parsedTabs && parsedTabs.length > 0) {
         const restoredTabs = [];

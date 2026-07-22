@@ -2,7 +2,6 @@ import { AppState } from '@/components/App/AppState';
 import { SidebarState } from '@/components/App/Panes/Sidebar';
 import { TabState } from '@/components/App/Panes/TabBar';
 import { LogState } from '@/components/App/Views/LogArea';
-import Settings from '@/components/Storage/Settings';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import ActionButtons from './ActionButtons';
@@ -30,14 +29,13 @@ describe('ActionButtons', () => {
     LogState.useState.mockReturnValue({ isSystemProcessing: false });
     AppState.useState.mockReturnValue({ isMobile: false });
     SidebarState.useState.mockReturnValue({ showAIInput: true, isAIInputPopupOpen: false });
-    Settings.getLastCodeTabId = vi.fn(() => 'src/foo.js');
-    Settings.setLastCodeTabId = vi.fn();
   });
 
   it('renders action buttons', () => {
     const tabState = Object.assign(vi.fn(), {
       activeTabId: 'src/foo.js',
       openTabs: [{ id: 'src/foo.js', type: 'file', label: 'foo.js' }],
+      lastCodeTabId: 'src/foo.js',
     });
     TabState.useState.mockReturnValue(tabState);
 
@@ -65,6 +63,7 @@ describe('ActionButtons', () => {
     const tabState = Object.assign(vi.fn(), {
       activeTabId: 'ai-logs',
       openTabs: [{ id: 'src/foo.js', type: 'file', label: 'foo.js' }],
+      lastCodeTabId: 'src/foo.js',
     });
     TabState.useState.mockReturnValue(tabState);
 
@@ -94,6 +93,7 @@ describe('ActionButtons', () => {
       {
         activeTabId: 'ai-logs',
         openTabs: [{ id: 'src/foo.js', type: 'file', label: 'foo.js' }],
+        lastCodeTabId: 'src/foo.js',
       },
     );
     TabState.useState.mockReturnValue(tabState);

@@ -9,12 +9,8 @@ import {
 } from './WebLLMModels';
 
 const hasModelInCache = vi.fn();
-const getAIPromptModel = vi.fn();
 
 vi.mock('@mlc-ai/web-llm', () => ({ hasModelInCache }));
-vi.mock('@/components/Storage/Settings', () => ({
-  default: { getAIPromptModel },
-}));
 
 describe('WebLLMModels', () => {
   beforeEach(() => {
@@ -51,29 +47,31 @@ describe('WebLLMModels', () => {
   it('uses the preferred completion model when it is cached', async () => {
     hasModelInCache.mockResolvedValue(true);
     await expect(resolveCompletionModelId()).resolves.toBe(RECOMMENDED_COMPLETION_MODEL.id);
-    expect(getAIPromptModel).not.toHaveBeenCalled();
   });
 
   it('uses the selected prompt model when the preferred completion model is absent', async () => {
     hasModelInCache.mockResolvedValueOnce(false).mockResolvedValueOnce(true);
-    getAIPromptModel.mockReturnValue('Qwen3.5-9B-q4f16_1-MLC');
 
-    await expect(resolveCompletionModelId()).resolves.toBe('Qwen3.5-9B-q4f16_1-MLC');
+    await expect(resolveCompletionModelId('Qwen3.5-9B-q4f16_1-MLC')).resolves.toBe(
+      'Qwen3.5-9B-q4f16_1-MLC',
+    );
   });
 
   it('falls back without checking the same completion model twice', async () => {
     hasModelInCache.mockResolvedValue(false);
-    getAIPromptModel.mockReturnValue(RECOMMENDED_COMPLETION_MODEL.id);
 
-    await expect(resolveCompletionModelId()).resolves.toBe(RECOMMENDED_COMPLETION_MODEL.id);
+    await expect(resolveCompletionModelId(RECOMMENDED_COMPLETION_MODEL.id)).resolves.toBe(
+      RECOMMENDED_COMPLETION_MODEL.id,
+    );
     expect(hasModelInCache).toHaveBeenCalledOnce();
   });
 
   it('falls back when the selected prompt model is not cached', async () => {
     hasModelInCache.mockResolvedValue(false);
-    getAIPromptModel.mockReturnValue('Qwen3.5-9B-q4f16_1-MLC');
 
-    await expect(resolveCompletionModelId()).resolves.toBe(RECOMMENDED_COMPLETION_MODEL.id);
+    await expect(resolveCompletionModelId('Qwen3.5-9B-q4f16_1-MLC')).resolves.toBe(
+      RECOMMENDED_COMPLETION_MODEL.id,
+    );
     expect(hasModelInCache).toHaveBeenNthCalledWith(2, 'Qwen3.5-9B-q4f16_1-MLC');
   });
 

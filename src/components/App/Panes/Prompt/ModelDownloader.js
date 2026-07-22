@@ -12,10 +12,6 @@ export default function useModelDownloader(promptUiState) {
     [promptUiState],
   );
 
-  const setCachedModelIds = useCallback(
-    (nextValue) => setPromptUiValue('cachedModelIds', nextValue),
-    [setPromptUiValue],
-  );
   const setModelCacheWork = useCallback(
     (nextValue) => setPromptUiValue('modelCacheWork', nextValue),
     [setPromptUiValue],
@@ -32,12 +28,11 @@ export default function useModelDownloader(promptUiState) {
   const refreshCachedModelIds = useCallback(() => {
     return import('@/components/AI/WebLLMAPI')
       .then(({ getCachedWebLLMModelIds }) => getCachedWebLLMModelIds())
-      .then(setCachedModelIds)
       .catch((error) => {
         hasLoadedModelCacheRef.current = false;
         console.warn('[Prompt] Failed to load cached model metadata:', error);
       });
-  }, [setCachedModelIds]);
+  }, []);
 
   const loadCachedModelIds = useCallback(() => {
     if (hasLoadedModelCacheRef.current) return;
@@ -78,19 +73,18 @@ export default function useModelDownloader(promptUiState) {
         }
         hasLoadedModelCacheRef.current = true;
         await refreshCachedModelIds();
-        setModelCacheProgress(action === 'cache' ? 'Cached and ready.' : 'Cache removed.');
       } catch (error) {
-        setModelCacheError(error.message || String(error));
+        setModelCacheError(error?.message || String(error));
       } finally {
         setModelCacheWork(null);
+        setModelCacheProgress('');
       }
     },
-    [setModelCacheWork, setModelCacheError, setModelCacheProgress, refreshCachedModelIds],
+    [refreshCachedModelIds, setModelCacheError, setModelCacheProgress, setModelCacheWork],
   );
 
   return {
     loadCachedModelIds,
-    refreshCachedModelIds,
     openModelManager,
     closeModelManager,
     handleModelCacheAction,

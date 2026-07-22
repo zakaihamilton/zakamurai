@@ -3,6 +3,7 @@
  */
 import { DEFAULT_SYSTEM_PROMPT } from './Prompts';
 import { RECOMMENDED_WEB_LLM_MODEL, WEB_LLM_MODELS } from './WebLLMModels';
+import { setWebLLMCachedModelIds, updateWebLLMEngine } from './WebLLMState';
 export { RECOMMENDED_WEB_LLM_MODEL, WEB_LLM_MODELS } from './WebLLMModels';
 
 const DEFAULT_WEB_LLM_MODEL_ID = RECOMMENDED_WEB_LLM_MODEL.id;
@@ -66,7 +67,9 @@ export const getCachedWebLLMModelIds = async () => {
     }),
   );
 
-  return cacheEntries.filter(([_, isCached]) => isCached).map(([modelId]) => modelId);
+  const ids = cacheEntries.filter(([_, isCached]) => isCached).map(([modelId]) => modelId);
+  setWebLLMCachedModelIds(ids);
+  return ids;
 };
 
 /**
@@ -89,8 +92,15 @@ export const cacheWebLLMModel = async (modelId, onProgress = null) => {
 export const deleteCachedWebLLMModel = async (modelId) => {
   await interruptWebLLM();
   enginePromises.delete(modelId);
+  updateWebLLMEngine(modelId, {
+    status: 'absent',
+    progressText: '',
+    error: null,
+    generating: false,
+  });
   const { deleteModelAllInfoInCache } = await loadWebLLM();
   await deleteModelAllInfoInCache(modelId);
+  await getCachedWebLLMModelIds();
 };
 
 /**
@@ -103,6 +113,12 @@ const getEngine = (modelId = DEFAULT_WEB_LLM_MODEL_ID, onProgress = null, option
   const selectedModel = modelId || DEFAULT_WEB_LLM_MODEL_ID;
 
   if (!enginePromises.has(selectedModel)) {
+    updateWebLLMEngine(selectedModel, {
+      status: 'downloading',
+      progressText: 'Initializing…',
+      error: null,
+      generating: false,
+    });
     // Assign an async IIFE to the promise variable to satisfy Biome's
     // no-async-promise-executor rule while maintaining the singleton pattern.
     const enginePromise = (async () => {
@@ -115,6 +131,11 @@ const getEngine = (modelId = DEFAULT_WEB_LLM_MODEL_ID, onProgress = null, option
           {
             initProgressCallback: (progress) => {
               console.info(`[WebLLM]: ${progress.text}`);
+              updateWebLLMEngine(selectedModel, {
+                status: 'downloading',
+                progressText: progress.text || '',
+                error: null,
+              });
               if (onProgress) {
                 onProgress(progress.text);
               }
@@ -125,9 +146,22 @@ const getEngine = (modelId = DEFAULT_WEB_LLM_MODEL_ID, onProgress = null, option
           },
         );
 
+        updateWebLLMEngine(selectedModel, {
+          status: 'ready',
+          progressText: '',
+          error: null,
+          generating: false,
+        });
+        await getCachedWebLLMModelIds();
         return engine;
       } catch (error) {
         console.error('Failed to initialize WebLLM engine:', error);
+        updateWebLLMEngine(selectedModel, {
+          status: 'error',
+          progressText: '',
+          error: error?.message || String(error),
+          generating: false,
+        });
         // Reset on failure so the user can try again without reloading
         enginePromises.delete(selectedModel);
         throw error;
@@ -160,6 +194,7 @@ export const askWebLLM = async (prompt, systemPrompt = '', onUpdate = null, opti
       throw new DOMException('WebLLM generation interrupted', 'AbortError');
     }
 
+    updateWebLLMEngine(modelId, { generating: true, error: null });
     console.info('[WebLLM] Retrieving engine...');
     const engine = await getEngine(options.model, options.onInitProgress ?? null, options);
     console.info('[WebLLM] Engine retrieved. Starting completion...');
@@ -214,6 +249,7 @@ export const askWebLLM = async (prompt, systemPrompt = '', onUpdate = null, opti
   } finally {
     resolveInflight();
     inflightGenerations.delete(modelId);
+    updateWebLLMEngine(modelId, { generating: false });
   }
 };
 
@@ -232,6 +268,7 @@ export const interruptWebLLMModel = async (modelId) => {
   try {
     const engine = await enginePromise;
     await interruptEngine(engine, modelId);
+    updateWebLLMEngine(modelId, { generating: false, status: 'interrupted' });
   } catch (e) {
     console.warn(`Failed to interrupt WebLLM model ${modelId}:`, e);
   }
@@ -247,6 +284,7 @@ export const interruptWebLLM = async () => {
     try {
       const engine = await enginePromise;
       await interruptEngine(engine, modelId);
+      updateWebLLMEngine(modelId, { generating: false, status: 'interrupted' });
     } catch (e) {
       console.warn('Failed to interrupt WebLLM:', e);
     }

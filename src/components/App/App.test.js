@@ -22,7 +22,14 @@ vi.mock('./Panes', () => {
   TabState.useState = vi.fn(() => Object.assign(vi.fn(), { openTabs: [], activeTabId: null }));
 
   const PromptState = ({ children }) => <div data-testid="prompt-state">{children}</div>;
-  PromptState.useState = vi.fn(() => Object.assign(vi.fn(), { promptWidth: 340 }));
+  PromptState.useState = vi.fn(() =>
+    Object.assign(vi.fn(), { promptWidth: 340, promptHistory: [] }),
+  );
+
+  const PromptUiState = ({ children }) => <div data-testid="prompt-ui-state">{children}</div>;
+  PromptUiState.useState = vi.fn(() =>
+    Object.assign(vi.fn(), { val: '', selectedModel: 'Qwen3.5-4B-q4f16_1-MLC' }),
+  );
 
   return {
     Sidebar: () => <div data-testid="sidebar">Sidebar</div>,
@@ -33,9 +40,45 @@ vi.mock('./Panes', () => {
     StatusBar: () => <div data-testid="statusbar">StatusBar</div>,
     Prompt: () => <div data-testid="prompt">Prompt</div>,
     PromptState,
+    PromptUiState,
   };
 });
 
+vi.mock('./Panes/Prompt/PromptState', () => ({
+  PromptState: {
+    useState: vi.fn(() => Object.assign(vi.fn(), { promptWidth: 340, promptHistory: [] })),
+    usePassiveState: vi.fn(() => Object.assign(vi.fn(), { promptHistory: [] })),
+  },
+  PromptUiState: {
+    useState: vi.fn(() =>
+      Object.assign(vi.fn(), { val: '', selectedModel: 'Qwen3.5-4B-q4f16_1-MLC' }),
+    ),
+    usePassiveState: vi.fn(() =>
+      Object.assign(vi.fn(), { val: '', selectedModel: 'Qwen3.5-4B-q4f16_1-MLC' }),
+    ),
+  },
+  getInitialPromptUiState: vi.fn(() => ({
+    val: '',
+    selectedModel: 'Qwen3.5-4B-q4f16_1-MLC',
+  })),
+}));
+
+vi.mock('@/components/AI/WebLLMState', () => ({
+  WebLLMState: {
+    useState: vi.fn(() => Object.assign(vi.fn(), { cachedModelIds: [], engines: {} })),
+  },
+  bindWebLLMStore: vi.fn(),
+}));
+vi.mock('@/components/AI/RagState', () => ({
+  RagState: { useState: vi.fn(() => Object.assign(vi.fn(), { status: 'idle' })) },
+}));
+vi.mock('@/components/ui/Notification/Notification', () => ({
+  NotificationState: {
+    useState: vi.fn(() => Object.assign(vi.fn(), { notifications: [] })),
+  },
+  Notification: () => <div data-testid="notification" />,
+  useNotification: vi.fn(() => ({ addNotification: vi.fn() })),
+}));
 vi.mock('./Views/EditorArea', () => {
   const State = ({ children }) => <div data-testid="editor-state">{children}</div>;
   State.useState = vi.fn(() => Object.assign(vi.fn(), {}));
