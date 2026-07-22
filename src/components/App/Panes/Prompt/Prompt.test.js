@@ -185,7 +185,7 @@ describe('Prompt', () => {
     await act(async () => {
       fireEvent.click(screen.getByText('Qwen2.5 Coder 3B'));
     });
-    expect(Settings.setAIPromptModel).toHaveBeenCalledWith('Qwen2.5-Coder-3B-Instruct-q4f16_1-MLC');
+    expect(screen.getByText('Qwen2.5 Coder 3B')).toBeInTheDocument();
   });
 
   it('opens the model manager and caches models', async () => {

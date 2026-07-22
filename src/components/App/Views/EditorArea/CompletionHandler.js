@@ -3,6 +3,7 @@ import {
   RECOMMENDED_COMPLETION_MODEL,
   resolveCompletionModelId,
 } from '@/components/AI/WebLLMModels';
+import { PromptUiState } from '@/components/App/Panes/Prompt/PromptState';
 import { createState } from '@/components/state/State';
 import { useCallback, useEffect, useRef } from 'react';
 import {
@@ -55,6 +56,8 @@ export default function useCompletion({
   onDebugUpdate,
 }) {
   const completionState = CompletionState.useState(null, { suggestion: '', loading: false });
+  const promptUiState = PromptUiState.usePassiveState();
+  const selectedModel = promptUiState?.selectedModel;
   const { suggestion = '', loading = false } = completionState || {};
   const setSuggestion = useCallback(
     (nextSuggestion) => {
@@ -329,7 +332,7 @@ export default function useCompletion({
         const scheduledPromptForError = scheduledPrompt;
 
         try {
-          const completionModelId = await resolveCompletionModelId();
+          const completionModelId = await resolveCompletionModelId(selectedModel);
           if (lastRequestRef.current !== scheduledRequestId) return;
 
           activeCompletionModelRef.current = completionModelId;
@@ -422,6 +425,7 @@ export default function useCompletion({
     setLoading,
     setSuggestion,
     stopThinking,
+    selectedModel,
   ]);
 
   const cancelSuggestion = useCallback(

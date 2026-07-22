@@ -95,17 +95,14 @@ export const resolveWebLLMModelId = (savedId) => {
   return RECOMMENDED_WEB_LLM_MODEL.id;
 };
 
-export const resolveCompletionModelId = async () => {
+export const resolveCompletionModelId = async (preferredModelId) => {
   try {
     const { hasModelInCache } = await import('@mlc-ai/web-llm');
     if (await hasModelInCache(RECOMMENDED_COMPLETION_MODEL.id)) {
       return RECOMMENDED_COMPLETION_MODEL.id;
     }
 
-    const Settings = (await import('@/components/Storage/Settings')).default;
-    const promptModel = resolveWebLLMModelId(
-      Settings.getAIPromptModel(RECOMMENDED_WEB_LLM_MODEL.id),
-    );
+    const promptModel = resolveWebLLMModelId(preferredModelId || RECOMMENDED_WEB_LLM_MODEL.id);
     if (promptModel !== RECOMMENDED_COMPLETION_MODEL.id && (await hasModelInCache(promptModel))) {
       return promptModel;
     }

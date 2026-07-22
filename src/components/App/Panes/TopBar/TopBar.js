@@ -1,4 +1,5 @@
 import { AppState } from '@/components/App/AppState';
+import { PromptUiState } from '@/components/App/Panes/Prompt/PromptState';
 import { SidebarState } from '@/components/App/Panes/Sidebar';
 import { TabState } from '@/components/App/Panes/TabBar';
 import { PreviewState } from '@/components/App/PreviewState';
@@ -11,6 +12,7 @@ import {
   SCRATCH_FILES,
 } from '@/components/Storage/InitialData';
 import Settings from '@/components/Storage/Settings';
+import { setInDraft } from '@/components/state/StateUtils';
 import { Icons } from '@/components/ui/Icons';
 import Tooltip from '@/components/ui/Tooltip';
 import { formatShortcut } from '@/utils/os';
@@ -32,6 +34,7 @@ export function resetNewProjectState({
   tabState,
   editorState,
   previewState,
+  promptUiState,
 }) {
   const isScratch = template === 'scratch';
   const initialFiles = isScratch ? SCRATCH_FILES : DEFAULT_FILES;
@@ -55,9 +58,11 @@ export function resetNewProjectState({
   previewState((draft) => {
     draft.htmlContent = null;
   });
-  Settings.setFileContents(initialContents);
-  Settings.setPendingDiffs({});
-  Settings.setPromptDraft('');
+  promptUiState?.((draft) => {
+    draft.val = '';
+    draft.draftVal = '';
+    draft.historyIndex = -1;
+  });
 }
 
 export default function TopBar() {
@@ -70,6 +75,7 @@ export default function TopBar() {
   const editorState = EditorState.useState();
   const logState = LogState.usePassiveState();
   const previewState = PreviewState.usePassiveState();
+  const promptUiState = PromptUiState.usePassiveState();
   const { isSystemProcessing } = LogState.useState('isSystemProcessing');
 
   const { handleCompile, handleOpenLog, handleOpenPreview, handleClearFS } = useProjectCompiler(
@@ -101,6 +107,7 @@ export default function TopBar() {
       tabState,
       editorState,
       previewState,
+      promptUiState,
     });
     window.location.reload();
   };
@@ -118,16 +125,14 @@ export default function TopBar() {
 
   const handleBreadcrumbClick = (_seg, index) => {
     sidebarState((draft) => {
-      if (!draft.expandedFolders) draft.expandedFolders = {};
-
       let fullPath = '';
       if (index > 0) {
         const pathSegments = breadcrumb.slice(1, index + 1);
         fullPath = pathSegments.join('/');
       }
 
-      const current = draft.expandedFolders[fullPath] !== false;
-      draft.expandedFolders[fullPath] = !current;
+      const current = draft.expandedFolders?.[fullPath] !== false;
+      setInDraft(draft, ['expandedFolders', fullPath], !current);
     });
   };
 

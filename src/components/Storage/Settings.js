@@ -134,6 +134,17 @@ const Settings = {
     this.set(KEYS.PROMPT_HISTORY, JSON.stringify(newHistory));
   },
 
+  setPromptHistory(history) {
+    const next = Array.isArray(history)
+      ? history
+          .map((p) => (typeof p === 'string' ? p.trim() : ''))
+          .filter(Boolean)
+          .filter((p, index, arr) => arr.indexOf(p) === index)
+          .slice(0, 50)
+      : [];
+    this.set(KEYS.PROMPT_HISTORY, next.length ? JSON.stringify(next) : null);
+  },
+
   getPromptDraft(defaultValue = '') {
     return this.get(KEYS.PROMPT_DRAFT, defaultValue);
   },

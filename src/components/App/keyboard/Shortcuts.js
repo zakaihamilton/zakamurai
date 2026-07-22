@@ -1,4 +1,3 @@
-import Settings from '@/components/Storage/Settings';
 import { deleteKeysWithPrefixInDraft } from '@/components/state/StateUtils';
 import {
   findClassInCss,
@@ -361,10 +360,8 @@ export const SHORTCUTS = [
     isGlobal: true,
     action: ({ editorState, showNotification }) => {
       editorState((draft) => {
-        const current = draft.isReadOnly ?? Settings.getEditorReadOnly(false);
-        const nextVal = !current;
+        const nextVal = draft.isReadOnly !== true;
         draft.isReadOnly = nextVal;
-        Settings.setEditorReadOnly(nextVal);
         showNotification(nextVal ? 'Inspection mode active' : 'Edit mode active', 'info');
       });
     },
@@ -409,7 +406,9 @@ export const SHORTCUTS = [
 
         if (!hist.past || hist.past.length === 0) return;
 
-        const prevState = hist.past.pop();
+        const past = [...hist.past];
+        const prevState = past.pop();
+        hist.past = past;
         const future = [...(hist.future || [])];
         future.push({ content: currentContent, cursor: currentCursor });
         if (future.length > 100) future.shift();
@@ -444,7 +443,9 @@ export const SHORTCUTS = [
         const currentContent = draft.fileContents[filePath];
         const currentCursor = draft.cursorPos?.[filePath] || { line: 1, col: 1, index: 0 };
 
-        const nextState = hist.future.pop();
+        const future = [...hist.future];
+        const nextState = future.pop();
+        hist.future = future;
         const past = [...(hist.past || [])];
         past.push({ content: currentContent, cursor: currentCursor });
         hist.past = past;
@@ -479,7 +480,9 @@ export const SHORTCUTS = [
         const currentContent = draft.fileContents[filePath];
         const currentCursor = draft.cursorPos?.[filePath] || { line: 1, col: 1, index: 0 };
 
-        const nextState = hist.future.pop();
+        const future = [...hist.future];
+        const nextState = future.pop();
+        hist.future = future;
         const past = [...(hist.past || [])];
         past.push({ content: currentContent, cursor: currentCursor });
         hist.past = past;

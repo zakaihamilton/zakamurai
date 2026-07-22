@@ -1,16 +1,24 @@
 import { act, renderHook } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import usePromptHistory from './PromptHistory';
+import { PromptState } from './PromptState';
 
-vi.mock('@/components/Storage/Settings', () => ({
-  __esModule: true,
-  default: {
-    addPromptHistory: vi.fn(),
-    getPromptHistory: vi.fn().mockReturnValue(['first message', 'second message']),
+vi.mock('./PromptState', () => ({
+  PromptState: {
+    usePassiveState: vi.fn(),
   },
 }));
 
 describe('usePromptHistory', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    PromptState.usePassiveState.mockReturnValue(
+      Object.assign(vi.fn(), {
+        promptHistory: ['first message', 'second message'],
+      }),
+    );
+  });
+
   it('returns handler functions', () => {
     const mockPromptUiState = vi.fn();
     const { result } = renderHook(() =>

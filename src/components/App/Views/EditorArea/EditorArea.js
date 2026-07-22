@@ -3,6 +3,7 @@ import { TabState } from '@/components/App/Panes/TabBar';
 import { LogState } from '@/components/App/Views/LogArea';
 import Node from '@/components/state/Node';
 import { createState } from '@/components/state/State';
+import { setInDraft } from '@/components/state/StateUtils';
 import React, { useCallback, useRef, useEffect, useMemo, useState } from 'react';
 import styles from './EditorArea.module.css';
 
@@ -87,7 +88,7 @@ function EditorAreaInner({ file, fsHandle }) {
     collapsedFolds = {},
   } = editorAreaUiState || {};
 
-  const isReadOnly = state.isReadOnly ?? Settings.getEditorReadOnly(false);
+  const isReadOnly = state.isReadOnly === true;
   const [isCommandPressed, setIsCommandPressed] = useState(() => commandKeyPressed);
   const navigationLinksEnabled = isReadOnly || isCommandPressed;
   const reviewNavigationLinksEnabled = hasDiff ? false : navigationLinksEnabled;
@@ -139,10 +140,8 @@ function EditorAreaInner({ file, fsHandle }) {
   const setIsReadOnly = useCallback(
     (nextValue) => {
       state((draft) => {
-        const current = draft.isReadOnly ?? Settings.getEditorReadOnly(false);
-        const resolvedValue = typeof nextValue === 'function' ? nextValue(current) : nextValue;
-        draft.isReadOnly = resolvedValue;
-        Settings.setEditorReadOnly(resolvedValue);
+        const current = draft.isReadOnly === true;
+        draft.isReadOnly = typeof nextValue === 'function' ? nextValue(current) : nextValue;
       });
     },
     [state],
@@ -237,15 +236,13 @@ function EditorAreaInner({ file, fsHandle }) {
       onDebugUpdate: (debug) => {
         state((draft) => {
           draft.aiCompletionDebug = debug;
-          if (!draft.completionActivity) draft.completionActivity = {};
-          if (!draft.isCompleting) draft.isCompleting = {};
           if (debug.filePath) {
-            draft.completionActivity[debug.filePath] = {
+            setInDraft(draft, ['completionActivity', debug.filePath], {
               phase: debug.phase || '',
               model: debug.model || '',
               status: debug.status || 'idle',
-            };
-            draft.isCompleting[debug.filePath] = debug.status === 'thinking';
+            });
+            setInDraft(draft, ['isCompleting', debug.filePath], debug.status === 'thinking');
           }
         });
       },
@@ -254,14 +251,12 @@ function EditorAreaInner({ file, fsHandle }) {
   useEffect(() => {
     return () => {
       state((draft) => {
-        if (!draft.isCompleting) draft.isCompleting = {};
-        if (!draft.completionActivity) draft.completionActivity = {};
-        draft.isCompleting[filePath] = false;
-        draft.completionActivity[filePath] = {
+        setInDraft(draft, ['isCompleting', filePath], false);
+        setInDraft(draft, ['completionActivity', filePath], {
           phase: '',
           model: '',
           status: 'idle',
-        };
+        });
       });
     };
   }, [filePath, state]);

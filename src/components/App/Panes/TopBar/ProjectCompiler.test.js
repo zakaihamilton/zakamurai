@@ -3,19 +3,12 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import useProjectCompiler from './ProjectCompiler';
 
 const addNotification = vi.fn();
-const setPreviewHtml = vi.fn();
 const compilerReset = vi.fn();
 
 vi.mock('@/components/ui/Notification', () => ({
   useNotification: () => ({
     addNotification,
   }),
-}));
-
-vi.mock('@/components/Storage/Settings', () => ({
-  default: {
-    setPreviewHtml: (...args) => setPreviewHtml(...args),
-  },
 }));
 
 vi.mock('@/utils/compiler', () => ({
@@ -81,7 +74,6 @@ describe('useProjectCompiler', () => {
 
     expect(compilerReset).toHaveBeenCalled();
     expect(mockPreviewState).toHaveBeenCalled();
-    expect(setPreviewHtml).toHaveBeenCalledWith(null);
     expect(mockLogState).toHaveBeenCalled();
     const logUpdater = mockLogState.mock.calls.at(-1)[0];
     const draft = { logs: [] };
@@ -110,6 +102,5 @@ describe('useProjectCompiler', () => {
     const draft = { logs: [] };
     logUpdater(draft);
     expect(draft.logs.at(-1).text).toBe('Failed to clear filesystem: OPFS locked');
-    expect(setPreviewHtml).not.toHaveBeenCalled();
   });
 });

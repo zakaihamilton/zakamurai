@@ -2,6 +2,7 @@ import { AppState } from '@/components/App/AppState';
 import { TabState } from '@/components/App/Panes/TabBar';
 import { EditorState } from '@/components/App/Views/EditorArea';
 import { getCompletionStatusMessage } from '@/components/App/Views/EditorArea/completionUtils';
+import { setInDraft } from '@/components/state/StateUtils';
 import { Icons } from '@/components/ui/Icons';
 import Tooltip from '@/components/ui/Tooltip';
 import React from 'react';
@@ -45,7 +46,7 @@ export default function StatusBar() {
     editorState((draft) => {
       draft.aiCompletionEnabled = draft.aiCompletionEnabled !== true;
       if (!draft.aiCompletionEnabled && draft.isCompleting && activeTabId) {
-        draft.isCompleting[activeTabId] = false;
+        setInDraft(draft, ['isCompleting', activeTabId], false);
       }
     });
   };

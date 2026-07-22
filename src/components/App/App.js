@@ -11,12 +11,14 @@ import {
 import Settings from '@/components/Storage/Settings';
 import React, { useEffect, useMemo, useRef } from 'react';
 import styles from './App.module.css';
-import { PromptState, SidebarState, TabState } from './Panes';
+import { PromptState, PromptUiState, SidebarState, TabState } from './Panes';
 import { AgentSessionState, normalizeAgentSessions } from './Panes/Prompt/AgentSessions';
+import { getInitialPromptUiState } from './Panes/Prompt/PromptState';
 import { PreviewState } from './PreviewState';
 import { EditorState } from './Views/EditorArea';
 import { LogState } from './Views/LogArea';
 
+import { NotificationState } from '@/components/ui/Notification/Notification';
 import { MOBILE_BREAKPOINT } from '@/constants/Layout';
 import { AppState } from './AppState';
 
@@ -63,6 +65,7 @@ export default function App() {
       theme: Settings.getTheme(),
       tabs: Settings.getOpenTabs() || [],
       activeTabId: Settings.getActiveTabId() || null,
+      lastCodeTabId: Settings.getLastCodeTabId() || null,
       aiLogs: Settings.getAILogs() || [],
       sidebarWidth: Settings.getSidebarWidth(),
       promptWidth: Settings.getPromptWidth(),
@@ -70,6 +73,9 @@ export default function App() {
       showAIInput: Settings.getShowAIInput(),
       expandedFolders: Settings.getExpandedFolders(),
       aiCompletionEnabled: Settings.getAICompletionEnabled(),
+      isReadOnly: Settings.getEditorReadOnly(false),
+      promptHistory: Settings.getPromptHistory() || [],
+      previewHtml: Settings.getPreviewHtml(),
       pendingDiffs,
       agentSessions: (() => {
         const stored = Settings.getAgentSessions();
@@ -103,12 +109,13 @@ export default function App() {
     expandedFolders: initialValues.expandedFolders,
   });
 
-  TabState.useState(null, {
+  const tabState = TabState.useState(null, {
     openTabs: initialValues.tabs,
     activeTabId: initialValues.activeTabId,
+    lastCodeTabId: initialValues.lastCodeTabId,
   });
 
-  LogState.useState(null, {
+  const logState = LogState.useState(null, {
     isSystemProcessing: false,
     isAIProcessing: false,
     logs: initialValues.aiLogs,
@@ -117,7 +124,7 @@ export default function App() {
   const editorState = EditorState.useState(null, {
     fileContents: initialValues.contents,
     aiCompletionEnabled: initialValues.aiCompletionEnabled,
-    isReadOnly: Settings.getEditorReadOnly(false),
+    isReadOnly: initialValues.isReadOnly,
     navigationHistory: {
       stack: [],
       currentIndex: -1,
@@ -128,22 +135,37 @@ export default function App() {
 
   const promptState = PromptState.useState(null, {
     promptWidth: initialValues.promptWidth,
+    promptHistory: initialValues.promptHistory,
   });
+
+  const promptUiState = PromptUiState.useState(null, getInitialPromptUiState());
 
   const agentSessionState = AgentSessionState.useState(null, {
     sessions: initialValues.agentSessions.sessions,
     activeSessionId: initialValues.agentSessions.activeSessionId,
   });
 
-  PreviewState.useState(null, {
-    htmlContent: Settings.getPreviewHtml(),
+  const previewState = PreviewState.useState(null, {
+    htmlContent: initialValues.previewHtml,
     isCompilerReady: false,
     previewAddress: '/preview/dist/index.html',
   });
 
+  NotificationState.useState(null, { notifications: [] });
+
   // Background Services & Sync
   useWindowResize(appState, sidebarState);
-  useSettingsSync(appState, sidebarState, promptState, editorState, agentSessionState);
+  useSettingsSync(
+    appState,
+    sidebarState,
+    promptState,
+    editorState,
+    agentSessionState,
+    tabState,
+    logState,
+    previewState,
+    promptUiState,
+  );
 
   // Sync fs when it changes
   useEffect(() => {

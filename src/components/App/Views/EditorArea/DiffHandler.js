@@ -1,7 +1,7 @@
 import { SidebarState } from '@/components/App/Panes/Sidebar';
 import { removeNodeAtPath } from '@/components/App/Panes/Sidebar/TreeUtils';
 import { TabState } from '@/components/App/Panes/TabBar';
-import { deleteKeysWithPrefixInDraft } from '@/components/state/StateUtils';
+import { deleteKeysWithPrefixInDraft, setInDraft } from '@/components/state/StateUtils';
 import { useCallback, useEffect, useRef } from 'react';
 
 const EDITOR_PATH_MAPS = [
@@ -126,16 +126,10 @@ export default function DiffHandler({
     (line) => {
       const lineNum = Number(line);
       state((draft) => {
-        if (!draft.selectedLines) draft.selectedLines = {};
-        const current = draft.selectedLines[filePath] || [];
+        const current = draft.selectedLines?.[filePath] || [];
         const exists = current.some((l) => Number(l) === lineNum);
-
-        if (exists) {
-          draft.selectedLines[filePath] = current.filter((l) => Number(l) !== lineNum);
-        } else {
-          draft.selectedLines[filePath] = [...current, lineNum];
-        }
-        draft.selectedLines = { ...draft.selectedLines };
+        const next = exists ? current.filter((l) => Number(l) !== lineNum) : [...current, lineNum];
+        setInDraft(draft, ['selectedLines', filePath], next);
       });
     },
     [filePath, state],

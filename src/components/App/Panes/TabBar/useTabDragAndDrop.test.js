@@ -34,12 +34,14 @@ describe('useTabDragAndDrop', () => {
   });
 
   it('handleDrop reorders tabs', () => {
-    const openTabs = [
-      { id: 'tab1', label: 'Tab 1' },
-      { id: 'tab2', label: 'Tab 2' },
-      { id: 'tab3', label: 'Tab 3' },
-    ];
-    const tabState = vi.fn((fn) => fn({ openTabs }));
+    const draft = {
+      openTabs: [
+        { id: 'tab1', label: 'Tab 1' },
+        { id: 'tab2', label: 'Tab 2' },
+        { id: 'tab3', label: 'Tab 3' },
+      ],
+    };
+    const tabState = vi.fn((fn) => fn(draft));
     const resetDragState = vi.fn();
     const { result } = renderHook(() =>
       useTabDragAndDrop({
@@ -53,7 +55,7 @@ describe('useTabDragAndDrop', () => {
     const e = createMockEvent('tab1');
     act(() => result.current.handleDrop(e, 'tab3'));
 
-    expect(openTabs.map((t) => t.id)).toEqual(['tab2', 'tab3', 'tab1']);
+    expect(draft.openTabs.map((t) => t.id)).toEqual(['tab2', 'tab3', 'tab1']);
     expect(resetDragState).toHaveBeenCalled();
   });
 
@@ -77,11 +79,13 @@ describe('useTabDragAndDrop', () => {
   });
 
   it('handleDropOnBar moves tab to end', () => {
-    const openTabs = [
-      { id: 'tab1', label: 'Tab 1' },
-      { id: 'tab2', label: 'Tab 2' },
-    ];
-    const tabState = vi.fn((fn) => fn({ openTabs }));
+    const draft = {
+      openTabs: [
+        { id: 'tab1', label: 'Tab 1' },
+        { id: 'tab2', label: 'Tab 2' },
+      ],
+    };
+    const tabState = vi.fn((fn) => fn(draft));
     const resetDragState = vi.fn();
     const { result } = renderHook(() =>
       useTabDragAndDrop({
@@ -95,7 +99,7 @@ describe('useTabDragAndDrop', () => {
     const e = createMockEvent('tab1');
     act(() => result.current.handleDropOnBar(e));
 
-    expect(openTabs.map((t) => t.id)).toEqual(['tab2', 'tab1']);
+    expect(draft.openTabs.map((t) => t.id)).toEqual(['tab2', 'tab1']);
     expect(resetDragState).toHaveBeenCalled();
   });
 

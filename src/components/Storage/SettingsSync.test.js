@@ -14,6 +14,15 @@ vi.mock('@/components/Storage/Settings', () => {
       setShowAIInput: vi.fn(),
       setExpandedFolders: vi.fn(),
       setAICompletionEnabled: vi.fn(),
+      setEditorReadOnly: vi.fn(),
+      setAIPromptModel: vi.fn(),
+      setPromptDraft: vi.fn(),
+      setPromptHistory: vi.fn(),
+      setOpenTabs: vi.fn(),
+      setActiveTabId: vi.fn(),
+      setLastCodeTabId: vi.fn(),
+      setAILogs: vi.fn(),
+      setPreviewHtml: vi.fn(),
       setAgentSessions: vi.fn(),
       setActiveAgentSessionId: vi.fn(),
     },
@@ -33,8 +42,8 @@ describe('useSettingsSync', () => {
       showAIInput: false,
       expandedFolders: ['src'],
     };
-    const promptState = { promptWidth: 400 };
-    const editorState = { aiCompletionEnabled: true };
+    const promptState = { promptWidth: 400, promptHistory: ['hello'] };
+    const editorState = { aiCompletionEnabled: true, isReadOnly: false };
     const agentSessionState = {
       sessions: {
         'session-1': {
@@ -51,10 +60,21 @@ describe('useSettingsSync', () => {
       },
       activeSessionId: 'session-1',
     };
+    const tabState = {
+      openTabs: [{ id: 'a.js', type: 'file', label: 'a.js' }],
+      activeTabId: 'a.js',
+      lastCodeTabId: 'a.js',
+    };
+    const logState = { logs: [{ id: '1', text: 'hi' }] };
+    const previewState = { htmlContent: '<html></html>' };
+    const promptUiState = {
+      val: 'draft text',
+      selectedModel: 'Qwen3.5-4B-q4f16_1-MLC',
+    };
 
     const { rerender } = renderHook(
-      ({ app, sidebar, prompt, editor, agents }) =>
-        useSettingsSync(app, sidebar, prompt, editor, agents),
+      ({ app, sidebar, prompt, editor, agents, tabs, logs, preview, promptUi }) =>
+        useSettingsSync(app, sidebar, prompt, editor, agents, tabs, logs, preview, promptUi),
       {
         initialProps: {
           app: appState,
@@ -62,6 +82,10 @@ describe('useSettingsSync', () => {
           prompt: promptState,
           editor: editorState,
           agents: agentSessionState,
+          tabs: tabState,
+          logs: logState,
+          preview: previewState,
+          promptUi: promptUiState,
         },
       },
     );
@@ -74,6 +98,15 @@ describe('useSettingsSync', () => {
     expect(Settings.setExpandedFolders).toHaveBeenCalledWith(['src']);
     expect(Settings.setPromptWidth).toHaveBeenCalledWith(400);
     expect(Settings.setAICompletionEnabled).toHaveBeenCalledWith(true);
+    expect(Settings.setEditorReadOnly).toHaveBeenCalledWith(false);
+    expect(Settings.setAIPromptModel).toHaveBeenCalledWith('Qwen3.5-4B-q4f16_1-MLC');
+    expect(Settings.setPromptDraft).toHaveBeenCalledWith('draft text');
+    expect(Settings.setPromptHistory).toHaveBeenCalledWith(['hello']);
+    expect(Settings.setOpenTabs).toHaveBeenCalledWith(tabState.openTabs);
+    expect(Settings.setActiveTabId).toHaveBeenCalledWith('a.js');
+    expect(Settings.setLastCodeTabId).toHaveBeenCalledWith('a.js');
+    expect(Settings.setAILogs).toHaveBeenCalledWith(logState.logs);
+    expect(Settings.setPreviewHtml).toHaveBeenCalledWith('<html></html>');
     expect(Settings.setAgentSessions).toHaveBeenCalled();
     expect(Settings.setActiveAgentSessionId).toHaveBeenCalledWith('session-1');
 
@@ -85,9 +118,13 @@ describe('useSettingsSync', () => {
         showAIInput: true,
         expandedFolders: ['src', 'components'],
       },
-      prompt: { promptWidth: 450 },
-      editor: { aiCompletionEnabled: false },
+      prompt: { promptWidth: 450, promptHistory: ['hello', 'world'] },
+      editor: { aiCompletionEnabled: false, isReadOnly: true },
       agents: agentSessionState,
+      tabs: { openTabs: [], activeTabId: null, lastCodeTabId: 'a.js' },
+      logs: { logs: [] },
+      preview: { htmlContent: null },
+      promptUi: { val: '', selectedModel: 'Qwen3.5-9B-q4f16_1-MLC' },
     });
 
     expect(Settings.setTheme).toHaveBeenCalledWith('light');
@@ -98,5 +135,9 @@ describe('useSettingsSync', () => {
     expect(Settings.setExpandedFolders).toHaveBeenCalledWith(['src', 'components']);
     expect(Settings.setPromptWidth).toHaveBeenCalledWith(450);
     expect(Settings.setAICompletionEnabled).toHaveBeenCalledWith(false);
+    expect(Settings.setEditorReadOnly).toHaveBeenCalledWith(true);
+    expect(Settings.setAIPromptModel).toHaveBeenCalledWith('Qwen3.5-9B-q4f16_1-MLC');
+    expect(Settings.setPromptDraft).toHaveBeenCalledWith('');
+    expect(Settings.setPromptHistory).toHaveBeenCalledWith(['hello', 'world']);
   });
 });

@@ -1,9 +1,8 @@
 import { SidebarState } from '@/components/App/Panes/Sidebar';
-import Settings from '@/components/Storage/Settings';
 import { createState } from '@/components/state/State';
 import { Icons } from '@/components/ui/Icons';
 import Tooltip from '@/components/ui/Tooltip';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useRef, useState } from 'react';
 import styles from './TabBar.module.css';
 import TabContextMenu from './TabContextMenu';
 import TabItem from './TabItem';
@@ -48,11 +47,6 @@ export default function TabBar() {
       draft.isOverBar = false;
     });
   };
-
-  useEffect(() => {
-    Settings.setOpenTabs(openTabs);
-    Settings.setActiveTabId(activeTabId);
-  }, [openTabs, activeTabId]);
 
   const handleTabClick = (tabId) => {
     tabState((draft) => {

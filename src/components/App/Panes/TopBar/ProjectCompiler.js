@@ -1,4 +1,3 @@
-import Settings from '@/components/Storage/Settings';
 import { useNotification } from '@/components/ui/Notification';
 import { useCallback, useEffect, useRef } from 'react';
 
@@ -112,7 +111,6 @@ export default function useProjectCompiler(
                 draft.serverError = null;
                 draft.isCompilerReady = true;
               });
-              Settings.setPreviewHtml(html);
               tabState((draft) => {
                 const exists = draft.openTabs.some((t) => t.id === 'preview');
                 if (!exists) {
@@ -181,7 +179,6 @@ export default function useProjectCompiler(
       previewState((draft) => {
         draft.htmlContent = null;
       });
-      Settings.setPreviewHtml(null);
       logState((draft) => {
         draft.logs = [
           ...draft.logs,

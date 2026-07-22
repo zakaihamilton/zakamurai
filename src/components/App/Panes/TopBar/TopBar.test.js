@@ -1,4 +1,5 @@
 import { AppState } from '@/components/App/AppState';
+import { PromptUiState } from '@/components/App/Panes/Prompt/PromptState';
 import { SidebarState } from '@/components/App/Panes/Sidebar';
 import { TabState } from '@/components/App/Panes/TabBar';
 import { PreviewState } from '@/components/App/PreviewState';
@@ -64,6 +65,17 @@ vi.mock('@/components/App/Views/EditorArea', () => ({
   },
 }));
 
+vi.mock('@/components/App/Panes/Prompt/PromptState', () => ({
+  PromptUiState: {
+    useState: vi.fn(),
+    usePassiveState: vi.fn(),
+  },
+  PromptState: {
+    useState: vi.fn(),
+    usePassiveState: vi.fn(),
+  },
+}));
+
 describe('TopBar', () => {
   beforeEach(() => {
     localStorage.clear();
@@ -77,20 +89,26 @@ describe('TopBar', () => {
     AppState.usePassiveState.mockReturnValue({});
     SidebarState.usePassiveState.mockReturnValue({});
     EditorState.usePassiveState.mockReturnValue({});
+    PromptUiState.usePassiveState.mockReturnValue(Object.assign(vi.fn(), { val: '' }));
   });
 
+  const mockTabState = (fields) => Object.assign(vi.fn(), fields);
+
   it('renders breadcrumbs for an active file', () => {
-    TabState.useState.mockReturnValue({
-      openTabs: [
-        {
-          id: 'test.js',
-          type: 'file',
-          label: 'test.js',
-          file: { path: ['src', 'test.js'], name: 'test.js' },
-        },
-      ],
-      activeTabId: 'test.js',
-    });
+    TabState.useState.mockReturnValue(
+      mockTabState({
+        openTabs: [
+          {
+            id: 'test.js',
+            type: 'file',
+            label: 'test.js',
+            file: { path: ['src', 'test.js'], name: 'test.js' },
+          },
+        ],
+        activeTabId: 'test.js',
+        lastCodeTabId: 'test.js',
+      }),
+    );
     AppState.useState.mockReturnValue({
       theme: 'dark',
       fs: { mode: null },
@@ -105,10 +123,12 @@ describe('TopBar', () => {
   });
 
   it('renders default breadcrumb when no active tab', () => {
-    TabState.useState.mockReturnValue({
-      openTabs: [],
-      activeTabId: null,
-    });
+    TabState.useState.mockReturnValue(
+      mockTabState({
+        openTabs: [],
+        activeTabId: null,
+      }),
+    );
     AppState.useState.mockReturnValue({
       theme: 'dark',
       fs: { mode: null },
@@ -123,10 +143,12 @@ describe('TopBar', () => {
 
   it('renders the brand and toggles the sidebar from the top bar', () => {
     const stateUpdate = vi.fn();
-    TabState.useState.mockReturnValue({
-      openTabs: [],
-      activeTabId: null,
-    });
+    TabState.useState.mockReturnValue(
+      mockTabState({
+        openTabs: [],
+        activeTabId: null,
+      }),
+    );
     AppState.useState.mockReturnValue({
       theme: 'dark',
       fs: { mode: null },
@@ -149,10 +171,12 @@ describe('TopBar', () => {
   });
 
   it('renders export button and handles click', async () => {
-    TabState.useState.mockReturnValue({
-      openTabs: [],
-      activeTabId: null,
-    });
+    TabState.useState.mockReturnValue(
+      mockTabState({
+        openTabs: [],
+        activeTabId: null,
+      }),
+    );
     AppState.useState.mockReturnValue({
       theme: 'dark',
       fs: { mode: null },
@@ -170,10 +194,12 @@ describe('TopBar', () => {
   });
 
   it('renders compile button', () => {
-    TabState.useState.mockReturnValue({
-      openTabs: [],
-      activeTabId: null,
-    });
+    TabState.useState.mockReturnValue(
+      mockTabState({
+        openTabs: [],
+        activeTabId: null,
+      }),
+    );
     AppState.useState.mockReturnValue({
       theme: 'dark',
       fs: { mode: null },
@@ -247,7 +273,6 @@ describe('TopBar', () => {
   });
 
   it('uses the saved last code tab after a reload', () => {
-    localStorage.setItem('zakamurai_last_code_tab_id', 'src/App.js');
     const tabStateUpdate = vi.fn((producer) => {
       producer(tabState);
     });
@@ -262,6 +287,7 @@ describe('TopBar', () => {
         { id: 'preview', type: 'preview', label: 'Preview' },
       ],
       activeTabId: 'preview',
+      lastCodeTabId: 'src/App.js',
     });
 
     TabState.useState.mockReturnValue(tabState);
@@ -281,10 +307,12 @@ describe('TopBar', () => {
   });
 
   it('renders new project button and handles click', async () => {
-    TabState.useState.mockReturnValue({
-      openTabs: [],
-      activeTabId: null,
-    });
+    TabState.useState.mockReturnValue(
+      mockTabState({
+        openTabs: [],
+        activeTabId: null,
+      }),
+    );
     AppState.useState.mockReturnValue({
       theme: 'dark',
       fs: { mode: null },
@@ -302,10 +330,12 @@ describe('TopBar', () => {
   });
 
   it('renders new project from scratch button and handles click', async () => {
-    TabState.useState.mockReturnValue({
-      openTabs: [],
-      activeTabId: null,
-    });
+    TabState.useState.mockReturnValue(
+      mockTabState({
+        openTabs: [],
+        activeTabId: null,
+      }),
+    );
     AppState.useState.mockReturnValue({
       theme: 'dark',
       fs: { mode: null },
@@ -349,6 +379,7 @@ describe('TopBar', () => {
       pendingDiffs: { 'old.js': { originalContent: 'older content' } },
     });
     const previewState = makeState({ htmlContent: '<p>old</p>' });
+    const promptUiState = makeState({ val: 'draft', draftVal: 'draft', historyIndex: 0 });
 
     Settings.reset('default');
     resetNewProjectState({
@@ -358,6 +389,7 @@ describe('TopBar', () => {
       tabState,
       editorState,
       previewState,
+      promptUiState,
     });
 
     expect(appState.state.projectName).toBe('My App');
@@ -367,7 +399,7 @@ describe('TopBar', () => {
     expect(editorState.state.fileContents).toBe(DEFAULT_CONTENTS);
     expect(editorState.state.pendingDiffs).toEqual({});
     expect(previewState.state.htmlContent).toBeNull();
-    expect(Settings.getFileContents()).toEqual(DEFAULT_CONTENTS);
+    expect(promptUiState.state.val).toBe('');
   });
 
   it('handles dynamic tooltips, history dropdown toggle, reverse order list, and clearing history', async () => {
@@ -384,10 +416,12 @@ describe('TopBar', () => {
       },
     });
 
-    TabState.useState.mockReturnValue({
-      openTabs: [],
-      activeTabId: null,
-    });
+    TabState.useState.mockReturnValue(
+      mockTabState({
+        openTabs: [],
+        activeTabId: null,
+      }),
+    );
     AppState.useState.mockReturnValue({
       theme: 'dark',
       fs: { mode: null },
