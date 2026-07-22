@@ -1,0 +1,155 @@
+/* Syntax / highlight tokens used by highlighter.js */
+.lineRow {
+  display: block;
+  min-height: 22.4px;
+}
+
+.hlStr {
+  color: var(--editor-syntax-string);
+}
+
+.hlKw {
+  color: var(--editor-syntax-keyword);
+  font-weight: 500;
+}
+
+.hlTag {
+  color: var(--editor-syntax-tag);
+}
+
+.hlFunc {
+  color: var(--editor-syntax-function);
+}
+
+.hlAttr {
+  color: var(--editor-syntax-attr);
+}
+
+.hlComment {
+  color: var(--editor-syntax-comment);
+  font-style: italic;
+}
+
+.hlNum {
+  color: var(--editor-syntax-number);
+}
+
+.hlProp {
+  color: var(--editor-syntax-property);
+}
+
+.hlVal {
+  color: var(--editor-syntax-string);
+}
+
+.hlJsonKey {
+  color: var(--editor-syntax-json-key);
+}
+
+.hlJsonBool {
+  color: var(--editor-syntax-json-bool);
+  font-weight: 500;
+}
+
+.hlJsonPunc {
+  color: var(--editor-syntax-json-punc);
+}
+
+.hlMatch {
+  background: var(--editor-search-bg);
+  border-bottom: 1px solid var(--editor-search-border);
+}
+
+.hlMatchActive {
+  background: var(--editor-search-active-bg);
+  border: 1px solid var(--editor-search-active-border);
+  border-radius: 2px;
+  box-shadow: 0 0 5px color-mix(in srgb, var(--editor-search-active-border) 45%, transparent);
+}
+
+.hlGhost {
+  color: color-mix(in srgb, var(--text-muted) 80%, var(--accent, #61afef));
+  opacity: 0.42;
+  pointer-events: none;
+  white-space: pre;
+  border-bottom: 1px dotted color-mix(in srgb, var(--text-muted) 65%, transparent);
+}
+
+.tabHint {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  background: color-mix(in srgb, var(--bg-card) 88%, var(--accent, #61afef));
+  color: var(--text-main);
+  border: 1px solid color-mix(in srgb, var(--border) 75%, var(--accent, #61afef));
+  border-radius: 4px;
+  padding: 1px 5px;
+  margin-left: 8px;
+  font-size: 9px;
+  font-style: normal;
+  font-family: var(--font-mono);
+  vertical-align: middle;
+  line-height: 1.3;
+  opacity: 0.82;
+}
+
+.tabHint kbd {
+  border: 1px solid var(--border);
+  border-bottom-width: 2px;
+  border-radius: 3px;
+  padding: 0 3px;
+  background: var(--bg-base);
+  color: var(--text-main);
+  font: inherit;
+}
+
+.selectedLineRow {
+  background: var(--editor-line-selected-bg);
+  display: inline-block;
+  min-width: 100%;
+  border-left: 3px solid var(--editor-line-selected-border);
+  margin-left: -30px;
+  padding-left: 27px;
+}
+
+.diffHighlight {
+  background: rgb(76 175 80 / 25%);
+  border-bottom: 2px solid rgb(76 175 80 / 50%);
+  border-radius: 2px;
+  display: inline;
+}
+
+.diffHighlight:empty {
+  display: inline-block;
+  width: 8px;
+  height: 1.2em;
+  background: rgb(244 67 54 / 40%) !important;
+  border-bottom: 2px solid rgb(244 67 54 / 80%) !important;
+  vertical-align: middle;
+  margin: 0 1px;
+}
+
+.diffDeleteHighlight {
+  background: rgb(244 67 54 / 25%);
+  border-bottom: 2px solid rgb(244 67 54 / 50%);
+  border-radius: 2px;
+  display: inline;
+}
+
+.navLink {
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-decoration-color: var(--accent, #6cb6f5);
+  text-underline-offset: 4px;
+  cursor: pointer;
+  pointer-events: auto;
+  transition: all 0.2s ease;
+}
+
+.navLink:hover {
+  text-decoration-style: solid;
+  color: var(--accent, #6cb6f5);
+  background: color-mix(in srgb, var(--accent, #6cb6f5) 8%, transparent);
+  border-radius: 2px;
+}

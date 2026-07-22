@@ -1,0 +1,7 @@
+.scrollContainer {
+  flex: 1;
+  overflow: auto;
+  display: flex;
+  align-items: flex-start;
+  position: relative;
+}

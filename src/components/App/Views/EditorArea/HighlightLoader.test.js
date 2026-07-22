@@ -9,7 +9,6 @@ vi.mock('./highlighter', () => ({
 }));
 
 describe('useHighlightLoader', () => {
-  const styles = {};
   const state = {
     pendingDiffs: {},
     selectedLines: {},
@@ -26,7 +25,6 @@ describe('useHighlightLoader', () => {
         editorContent: 'editor',
         filePath: 'a.js',
         state,
-        styles,
         showFind: false,
         findQuery: '',
         matchIndex: -1,
@@ -50,7 +48,6 @@ describe('useHighlightLoader', () => {
         editorContent: 'editor',
         filePath: 'a.js',
         state,
-        styles,
         showFind: true,
         findQuery: 'x',
         matchIndex: 0,

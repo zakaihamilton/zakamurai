@@ -381,7 +381,6 @@ function EditorAreaInner({ file, fsHandle }) {
     editorContent,
     filePath,
     state,
-    styles,
     showFind,
     findQuery,
     matchIndex,
@@ -449,7 +448,6 @@ function EditorAreaInner({ file, fsHandle }) {
 
       {showSideBySide && hasDiff ? (
         <SideBySideEditorView
-          styles={styles}
           diffData={diffData}
           isReadOnly={isReadOnly}
           navigationLinksEnabled={reviewNavigationLinksEnabled}
@@ -468,7 +466,6 @@ function EditorAreaInner({ file, fsHandle }) {
         />
       ) : (
         <SingleEditorView
-          styles={styles}
           scrollContainerRef={scrollContainerRef}
           linesCount={linesCount}
           editorLineItems={editorLineItems}

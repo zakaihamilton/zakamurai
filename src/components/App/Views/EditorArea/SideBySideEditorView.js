@@ -3,6 +3,7 @@ import Tooltip from '@/components/ui/Tooltip';
 import React, { useRef, useState } from 'react';
 import CodeEditor from './CodeEditor';
 import Gutter from './Gutter';
+import styles from './SideBySideEditorView.module.css';
 
 const countLines = (value) => {
   if (!value) return 1;
@@ -14,7 +15,6 @@ const countLines = (value) => {
 };
 
 export default function SideBySideEditorView({
-  styles,
   diffData,
   isReadOnly,
   navigationLinksEnabled,

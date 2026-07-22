@@ -1,6 +1,5 @@
 import { render } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import styles from './EditorArea.module.css';
 import SingleEditorView from './SingleEditorView';
 
 vi.mock('@/components/ui/Tooltip', () => ({
@@ -22,7 +21,6 @@ describe('SingleEditorView', () => {
 
     const { container } = render(
       <SingleEditorView
-        styles={styles}
         scrollContainerRef={scrollContainerRef}
         linesCount={12}
         editorLineItems={[{ line: 2 }, { line: 10 }]}
