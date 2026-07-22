@@ -12,6 +12,7 @@ import Settings from '@/components/Storage/Settings';
 import React, { useEffect, useMemo, useRef } from 'react';
 import styles from './App.module.css';
 import { PromptState, SidebarState, TabState } from './Panes';
+import { AgentSessionState, normalizeAgentSessions } from './Panes/Prompt/AgentSessions';
 import { PreviewState } from './PreviewState';
 import { EditorState } from './Views/EditorArea';
 import { LogState } from './Views/LogArea';
@@ -70,6 +71,13 @@ export default function App() {
       expandedFolders: Settings.getExpandedFolders(),
       aiCompletionEnabled: Settings.getAICompletionEnabled(),
       pendingDiffs,
+      agentSessions: (() => {
+        const stored = Settings.getAgentSessions();
+        const activeId = Settings.getActiveAgentSessionId();
+        return normalizeAgentSessions(
+          stored ? { ...stored, activeSessionId: activeId || stored.activeSessionId } : null,
+        );
+      })(),
     };
   }, []);
 
@@ -122,6 +130,11 @@ export default function App() {
     promptWidth: initialValues.promptWidth,
   });
 
+  const agentSessionState = AgentSessionState.useState(null, {
+    sessions: initialValues.agentSessions.sessions,
+    activeSessionId: initialValues.agentSessions.activeSessionId,
+  });
+
   PreviewState.useState(null, {
     htmlContent: Settings.getPreviewHtml(),
     isCompilerReady: false,
@@ -130,7 +143,7 @@ export default function App() {
 
   // Background Services & Sync
   useWindowResize(appState, sidebarState);
-  useSettingsSync(appState, sidebarState, promptState, editorState);
+  useSettingsSync(appState, sidebarState, promptState, editorState, agentSessionState);
 
   // Sync fs when it changes
   useEffect(() => {

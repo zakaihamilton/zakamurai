@@ -1,11 +1,20 @@
+import { serializeAgentSessions } from '@/components/App/Panes/Prompt/AgentSessions';
 import Settings from '@/components/Storage/Settings';
 import { useEffect } from 'react';
 
-export function useSettingsSync(appState, sidebarState, promptState, editorState) {
+export function useSettingsSync(
+  appState,
+  sidebarState,
+  promptState,
+  editorState,
+  agentSessionState,
+) {
   const { theme, projectName } = appState;
   const { sidebarWidth, isSidebarOpen, showAIInput, expandedFolders } = sidebarState;
   const { promptWidth } = promptState;
   const { aiCompletionEnabled } = editorState;
+  const sessions = agentSessionState?.sessions;
+  const activeSessionId = agentSessionState?.activeSessionId;
 
   useEffect(() => {
     Settings.setTheme(theme);
@@ -38,4 +47,11 @@ export function useSettingsSync(appState, sidebarState, promptState, editorState
   useEffect(() => {
     Settings.setAICompletionEnabled(aiCompletionEnabled === true);
   }, [aiCompletionEnabled]);
+
+  useEffect(() => {
+    if (!sessions || !activeSessionId) return;
+    const payload = serializeAgentSessions({ sessions, activeSessionId });
+    Settings.setAgentSessions(payload);
+    Settings.setActiveAgentSessionId(payload.activeSessionId);
+  }, [sessions, activeSessionId]);
 }
