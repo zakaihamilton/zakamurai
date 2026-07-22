@@ -1,0 +1,34 @@
+.workspaceContent {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.workspaceMain {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.editorContainer {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+  background: var(--bg-base);
+}
+
+.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+@media (width <= 768px) {
+  .workspaceContent,
+  .workspaceMain,
+  .editorContainer {
+    min-width: 0;
+  }
+}

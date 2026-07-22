@@ -123,7 +123,7 @@ export default function TopBar() {
 
   const isSidebarActive = isMobile ? isSidebarPopupOpen : isSidebarOpen;
   return (
-    <header className={`${styles.header} ${isSidebarActive ? styles.sidebarOpen : ''}`}>
+    <header className={styles.header}>
       <Tooltip
         content={isSidebarActive ? 'Collapse Sidebar' : 'Expand Sidebar'}
         shortcut={formatShortcut('⌃B')}

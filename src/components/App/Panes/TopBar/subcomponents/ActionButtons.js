@@ -6,7 +6,7 @@ import { Icons } from '@/components/ui/Icons';
 import Tooltip from '@/components/ui/Tooltip';
 import { formatShortcut } from '@/utils/os';
 import React, { useEffect, useMemo, useRef } from 'react';
-import styles from '../TopBar.module.css';
+import styles from './ActionButtons.module.css';
 
 const isViewTab = (tabId) => tabId === 'ai-logs' || tabId === 'preview';
 

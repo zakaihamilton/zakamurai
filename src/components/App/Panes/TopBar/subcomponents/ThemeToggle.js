@@ -3,7 +3,7 @@ import { Icons } from '@/components/ui/Icons';
 import Tooltip from '@/components/ui/Tooltip';
 import { formatShortcut } from '@/utils/os';
 import React from 'react';
-import styles from '../TopBar.module.css';
+import styles from './ThemeToggle.module.css';
 
 export default function ThemeToggle() {
   const appState = AppState.useState();

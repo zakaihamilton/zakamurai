@@ -1,4 +1,4 @@
-import styles from './TokenBreakdown.module.css';
+import styles from './TokenJsonSection.module.css';
 
 export default function TokenJsonSection({ report }) {
   return (

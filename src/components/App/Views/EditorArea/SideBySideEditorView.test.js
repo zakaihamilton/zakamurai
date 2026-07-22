@@ -36,7 +36,6 @@ describe('SideBySideEditorView', () => {
 
     render(
       <SideBySideEditorView
-        styles={{}}
         diffData={diffData}
         localContent={localContent}
         linesCount={5}

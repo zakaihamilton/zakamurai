@@ -1,10 +1,10 @@
 import Resizer from '@/components/ui/Resizer';
 import React from 'react';
 import Node from '../../state/Node';
-import styles from '../App.module.css';
 import { AppState } from '../AppState';
 import { Sidebar, SidebarState, StatusBar, TopBar } from '../Panes';
 import { CompletionDebug, ShortcutsHelp } from '../Popups';
+import styles from './AppContent.module.css';
 import WorkspaceArea from './WorkspaceArea';
 
 export default function AppContent() {

@@ -1,4 +1,5 @@
 import { findNavigationTargets } from '@/utils/navigation';
+import highlighterStyles from './Highlighter.module.css';
 
 const encodeIdx = (num) => String(num).replace(/\d/g, (d) => String.fromCharCode(97 + Number(d)));
 const decodeIdx = (str) => Number(str.replace(/[a-j]/g, (c) => String(c.charCodeAt(0) - 97)));
@@ -142,7 +143,7 @@ const createHighlightAnalysis = ({
   code,
   filePath,
   state = {},
-  styles = {},
+  styles = highlighterStyles,
   showFind = false,
   findQuery = '',
   matchIndex = -1,
@@ -664,7 +665,7 @@ export const getHighlightBreakdown = ({
   code = '',
   filePath = '',
   state = {},
-  styles = {},
+  styles = highlighterStyles,
   showFind = false,
   findQuery = '',
   matchIndex = -1,
@@ -724,7 +725,7 @@ export const highlightCode = (
     code,
     filePath,
     state,
-    styles,
+    styles: styles ?? highlighterStyles,
     showFind,
     findQuery,
     matchIndex,

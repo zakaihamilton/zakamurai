@@ -1,0 +1,144 @@
+.editorHeader {
+  padding: 12px 24px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-shrink: 0;
+  background: var(--bg-card);
+  min-height: 56px;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 5%);
+}
+
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.actionBtn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.actionBtn:hover {
+  background: var(--bg-hover);
+  color: var(--text-main);
+}
+
+.actionBtnActive {
+  background: color-mix(in srgb, var(--accent, #6cb6f5) 12%, transparent) !important;
+  color: var(--accent, #6cb6f5) !important;
+  box-shadow: 0 0 8px color-mix(in srgb, var(--accent, #6cb6f5) 25%, transparent);
+}
+
+.headerTitle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+
+.filePath {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 13px;
+}
+
+.diffHeaderToolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: rgb(76 175 80 / 5%);
+  padding: 4px 12px;
+  border-radius: 8px;
+  border: 1px solid rgb(76 175 80 / 15%);
+  animation: fade-in 0.3s ease-out;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateX(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.diffLabel {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #4caf50;
+}
+
+.diffButton {
+  padding: 6px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg-base);
+  color: var(--text-main);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.diffButton:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgb(0 0 0 / 10%);
+}
+
+.approveBtn {
+  border-color: rgb(76 175 80 / 30%);
+  color: #4caf50;
+}
+
+.approveBtn:hover {
+  background: #4caf50;
+  color: white;
+  border-color: #4caf50;
+}
+
+.undoBtn {
+  border-color: rgb(244 67 54 / 30%);
+  color: #f44336;
+}
+
+.undoBtn:hover {
+  background: #f44336;
+  color: white;
+  border-color: #f44336;
+}
+
+.sideBySideActive {
+  background: var(--bg-hover);
+  border-color: var(--accent) !important;
+  color: var(--accent) !important;
+}
+
+@media (width <= 768px) {
+  .editorHeader {
+    padding: 12px 16px;
+  }
+}

@@ -1,0 +1,92 @@
+.hoverPopup {
+  position: absolute;
+  top: var(--popup-top);
+  left: var(--popup-left);
+  background: var(--bg-card);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 12px;
+  box-shadow: 0 8px 32px rgb(0 0 0 / 15%);
+  font-family: Inter, system-ui, -apple-system, sans-serif;
+  font-size: 12px;
+  color: var(--text-main);
+  z-index: 1000;
+  pointer-events: auto;
+  min-width: 200px;
+  animation: popup-fade-in 0.15s ease-out;
+}
+
+@keyframes popup-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.popupHeader {
+  font-weight: 600;
+  margin-bottom: 6px;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 4px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.popupCloseBtn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 22px;
+  font-weight: bold;
+  cursor: pointer;
+  padding: 4px;
+  line-height: 1;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+  width: 24px;
+  height: 24px;
+}
+
+.popupCloseBtn:hover {
+  background: var(--bg-hover);
+  color: var(--text-main);
+}
+
+.popupList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.popupItem {
+  padding: 4px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.15s;
+  color: var(--text-main);
+}
+
+.popupLineNumber {
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.popupItem:hover {
+  background: var(--accent);
+  color: #fff;
+}

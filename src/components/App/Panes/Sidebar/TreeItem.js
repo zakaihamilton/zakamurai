@@ -1,7 +1,6 @@
 import Node from '@/components/state/Node';
 import { createState } from '@/components/state/State';
 import Dialog from '@/components/ui/Dialog';
-import dialogStyles from '@/components/ui/Dialog/Dialog.module.css';
 import { Icons } from '@/components/ui/Icons';
 import Tooltip from '@/components/ui/Tooltip';
 import { isMediaFile } from '@/utils/file';
@@ -377,8 +376,8 @@ function TreeItemInner({
         message={
           <>
             Are you sure you want to delete <strong>{item.name}</strong>?
-            <div className={dialogStyles.detailBox}>{pathStr}</div>
-            <div className={dialogStyles.deleteWarning}>This action cannot be undone.</div>
+            <div className={styles.detailBox}>{pathStr}</div>
+            <div className={styles.deleteWarning}>This action cannot be undone.</div>
           </>
         }
         confirmText="Delete"

@@ -2,7 +2,7 @@ import { PreviewState } from '@/components/App/PreviewState';
 import { LogState } from '@/components/App/Views/LogArea';
 import { Icons } from '@/components/ui/Icons';
 import React from 'react';
-import styles from '../TopBar.module.css';
+import styles from './WorkingIndicator.module.css';
 
 export default function WorkingIndicator() {
   const { isSystemProcessing, isAIProcessing } = LogState.useState([

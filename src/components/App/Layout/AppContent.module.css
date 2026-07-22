@@ -1,0 +1,85 @@
+.light {
+  /* Theme variables live in globals.css. */
+}
+
+.appWrapper {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  height: 100dvh;
+  width: 100vw;
+  background: var(--bg-base);
+  position: relative;
+}
+
+.appBody {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.isResizing {
+  cursor: col-resize !important;
+}
+
+.isResizing *:not([data-resizer]) {
+  transition: none !important;
+  user-select: none !important;
+  pointer-events: none !important;
+}
+
+.isResizing [data-resizer] {
+  pointer-events: auto !important;
+}
+
+.mainContent {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.mobileOverlay {
+  display: none;
+}
+
+.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+@media (width <= 768px) {
+  .appWrapper {
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  .mainContent,
+  .appBody {
+    min-width: 0;
+  }
+
+  .mobileOverlay {
+    display: block;
+    position: fixed;
+    inset: 56px 0 0;
+    background: rgb(0 0 0 / 40%);
+    z-index: 800;
+    backdrop-filter: blur(4px);
+    animation: fade-in-overlay 0.4s var(--ease-premium);
+  }
+
+  @keyframes fade-in-overlay {
+    from {
+      opacity: 0;
+      backdrop-filter: blur(0);
+    }
+
+    to {
+      opacity: 1;
+      backdrop-filter: blur(4px);
+    }
+  }
+}

@@ -1,6 +1,6 @@
 import { Icons } from '@/components/ui/Icons';
 import React from 'react';
-import styles from '../TopBar.module.css';
+import styles from './Breadcrumb.module.css';
 
 export default function Breadcrumb({ breadcrumb, onBreadcrumbClick }) {
   return (

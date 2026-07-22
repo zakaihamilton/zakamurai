@@ -1,0 +1,58 @@
+.navigationControls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-right: 18px;
+  flex-shrink: 0;
+}
+
+.navButton {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg-surface);
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s var(--ease-premium);
+  padding: 0;
+}
+
+.navButton:hover:not(.disabled) {
+  background: var(--bg-hover);
+  border-color: var(--accent);
+  color: var(--text-main);
+  transform: translateY(-1px);
+}
+
+.navButton:active:not(.disabled) {
+  transform: translateY(0) scale(0.95);
+}
+
+.navButton.disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  background: transparent;
+  border-color: var(--border-light);
+  color: var(--text-muted);
+}
+
+.historyWrapper {
+  position: relative;
+  display: inline-flex;
+}
+
+.activeNav {
+  background: var(--bg-hover) !important;
+  border-color: var(--accent) !important;
+  color: var(--text-main) !important;
+}
+
+@media (width <= 768px) {
+  .navigationControls {
+    display: none;
+  }
+}

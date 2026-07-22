@@ -1,6 +1,7 @@
 import { WEB_LLM_MODELS } from '@/components/AI/WebLLMModels';
 import Dialog from '@/components/ui/Dialog';
 import React, { useMemo, useState } from 'react';
+import styles from './ModelManager.module.css';
 import ModelSearch from './ModelSearch';
 import ModelTable from './ModelTable';
 import RemoveCacheDialog from './RemoveCacheDialog';
@@ -15,7 +16,6 @@ export default function ModelManager({
   modelCacheWork,
   modelCacheProgress,
   modelCacheError,
-  styles = {},
 }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [sort, setSort] = useState(null);
@@ -68,7 +68,7 @@ export default function ModelManager({
           <div className={styles.modelManagerIntro}>
             <p>Choose the local browser model that matches this device and the kind of edit.</p>
           </div>
-          <ModelSearch searchTerm={searchTerm} onSearchTermChange={setSearchTerm} styles={styles} />
+          <ModelSearch searchTerm={searchTerm} onSearchTermChange={setSearchTerm} />
           <ModelTable
             visibleModels={visibleModels}
             sort={sort}
@@ -78,7 +78,6 @@ export default function ModelManager({
             modelCacheWork={modelCacheWork}
             onModelCacheAction={onModelCacheAction}
             onRequestUncache={setModelPendingRemoval}
-            styles={styles}
           />
           {(modelCacheProgress || modelCacheError) && (
             <div

@@ -1,7 +1,6 @@
 import { TabState } from '@/components/App/Panes/TabBar';
 import { EditorState } from '@/components/App/Views/EditorArea';
 import { getCssBlockFolds, isCssPath } from '@/components/App/Views/EditorArea/CssFolding';
-import editorStyles from '@/components/App/Views/EditorArea/EditorArea.module.css';
 import {
   getJavaScriptBlockFolds,
   isJavaScriptPath,
@@ -167,7 +166,7 @@ export default function TokenBreakdown({ tab }) {
       code,
       filePath,
       state: editorState,
-      styles: editorStyles,
+      styles,
       navigationLinksEnabled: true,
     });
     const folds = getFolds(code, filePath);
@@ -256,17 +255,19 @@ ${JSON.stringify(conciseReport, null, 2)}`;
 
   return (
     <div className={styles.breakdownView}>
-      <div className={editorStyles.editorHeader}>
-        <div className={editorStyles.headerTitle}>
-          <Icons.Tokens size={16} />
-          <span className={editorStyles.filePath}>{filePath}</span>
+      <div className={styles.header}>
+        <div className={styles.titleGroup}>
+          <span className={styles.titleIcon}>
+            <Icons.Tokens size={16} />
+          </span>
+          <span className={styles.filePath}>{filePath}</span>
         </div>
-        <div className={editorStyles.headerActions}>
+        <div className={styles.headerActions}>
           {process.env.NODE_ENV === 'development' && (
             <Tooltip content="Verify token report match">
               <button
                 type="button"
-                className={editorStyles.actionBtn}
+                className={styles.copyButton}
                 onClick={handleVerifyMatch}
                 aria-label="Verify token report match"
               >
@@ -277,7 +278,7 @@ ${JSON.stringify(conciseReport, null, 2)}`;
           <Tooltip content={copied ? 'Copied!' : 'Copy token breakdown'}>
             <button
               type="button"
-              className={`${editorStyles.actionBtn} ${copied ? styles.copyButtonCopied : ''}`}
+              className={`${styles.copyButton} ${copied ? styles.copyButtonCopied : ''}`}
               onClick={handleCopy}
               aria-live="polite"
               aria-label={copied ? 'Copied!' : 'Copy token breakdown'}
@@ -289,7 +290,7 @@ ${JSON.stringify(conciseReport, null, 2)}`;
             <Tooltip content={copiedCombined ? 'Copied!' : 'Copy troubleshooting prompt'}>
               <button
                 type="button"
-                className={`${editorStyles.actionBtn} ${copiedCombined ? styles.copyButtonCopied : ''}`}
+                className={`${styles.copyButton} ${copiedCombined ? styles.copyButtonCopied : ''}`}
                 onClick={handleCopyCombined}
                 aria-live="polite"
                 aria-label={copiedCombined ? 'Copied!' : 'Copy troubleshooting prompt'}

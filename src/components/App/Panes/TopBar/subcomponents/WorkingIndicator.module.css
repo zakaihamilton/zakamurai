@@ -1,0 +1,43 @@
+.workingIndicator {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--accent-light);
+  padding: 6px 14px;
+  border-radius: 6px;
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 600;
+  animation: pulse 2s infinite ease-in-out;
+  box-shadow: none;
+}
+
+.indicatorGroup {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.indicatorGroup:not(:last-child)::after {
+  content: "|";
+  margin-left: 6px;
+  opacity: 0.3;
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+
+  50% {
+    transform: scale(0.98);
+    opacity: 0.8;
+  }
+
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}

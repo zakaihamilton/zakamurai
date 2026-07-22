@@ -102,23 +102,6 @@
   font-size: 14px;
 }
 
-.deleteWarning {
-  margin-top: 12px;
-}
-
-.detailBox {
-  margin-top: 12px;
-  padding: 8px;
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  background: var(--bg-surface);
-  color: var(--text-main);
-  font-family: "JetBrains Mono", "Fira Code", monospace;
-  font-size: 12px;
-  line-height: 1.4;
-  word-break: break-all;
-}
-
 .footer {
   padding: 16px 24px;
   display: flex;

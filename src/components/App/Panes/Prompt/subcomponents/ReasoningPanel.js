@@ -6,18 +6,19 @@ import React, { useEffect, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { AgentSessionState, getActiveAgentSession } from '../AgentSessions';
 import { PromptUiState } from '../Prompt';
+import styles from './ReasoningPanel.module.css';
 
 const ReasoningPanelState = createState('ReasoningPanelState');
 
-export default function ReasoningPanel({ styles = {} }) {
+export default function ReasoningPanel() {
   return (
     <Node id="ReasoningPanel">
-      <ReasoningPanelInner styles={styles} />
+      <ReasoningPanelInner />
     </Node>
   );
 }
 
-function ReasoningPanelInner({ styles = {} }) {
+function ReasoningPanelInner() {
   const agentSessionState = AgentSessionState.useState(['sessions', 'activeSessionId']);
   const activeSession = getActiveAgentSession(agentSessionState);
   const reasoning = activeSession?.reasoning || '';

@@ -1,0 +1,67 @@
+.modelCacheToggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--border-light);
+  border-radius: 5px;
+  background: var(--bg-input);
+  color: var(--text-muted);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  min-height: 32px;
+  padding: 6px 9px;
+  transition: all 0.2s;
+}
+
+.modelCacheToggle:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+}
+
+.modelCacheToggle:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.modelCacheToggleOn {
+  border-color: var(--accent);
+  background: var(--accent-light);
+  color: var(--accent);
+}
+
+.modelCacheToggleTrack {
+  width: 28px;
+  height: 16px;
+  border-radius: 999px;
+  background: var(--border-light);
+  padding: 2px;
+  display: inline-flex;
+  align-items: center;
+  transition: all 0.2s;
+}
+
+.modelCacheToggleThumb {
+  width: 12px;
+  height: 12px;
+  border-radius: 999px;
+  background: var(--text-muted);
+  transition: all 0.2s;
+}
+
+.modelCacheToggleOn .modelCacheToggleTrack {
+  background: var(--accent);
+}
+
+.modelCacheToggleOn .modelCacheToggleThumb {
+  background: var(--text-on-accent);
+  transform: translateX(12px);
+}
+
+@media (width <= 380px) {
+  .modelCacheToggle {
+    width: 100%;
+    justify-content: center;
+  }
+}

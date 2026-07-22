@@ -3,7 +3,6 @@ import { isMediaFile } from '@/utils/file';
 import { FILE_VIEW_TYPES, getDefaultFileViewType } from '@/utils/fileViews';
 import React from 'react';
 import Node from '../../state/Node';
-import styles from '../App.module.css';
 import { AppState } from '../AppState';
 import { Prompt, PromptState, SidebarState, TabBar, TabState } from '../Panes';
 import EditorArea from '../Views/EditorArea';
@@ -14,6 +13,7 @@ import PreviewArea from '../Views/PreviewArea';
 import ProjectInfo from '../Views/ProjectInfo';
 import TokenBreakdown from '../Views/TokenBreakdown';
 import Welcome from '../Views/Welcome';
+import styles from './WorkspaceArea.module.css';
 
 export default function WorkspaceArea() {
   const appState = AppState.useState();

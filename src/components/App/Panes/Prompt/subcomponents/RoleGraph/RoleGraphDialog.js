@@ -1,5 +1,6 @@
 import Dialog from '@/components/ui/Dialog';
 import React from 'react';
+import styles from './RoleGraphDialog.module.css';
 import RoleGraphEditor from './RoleGraphEditor';
 
 export default function RoleGraphDialog({
@@ -10,7 +11,6 @@ export default function RoleGraphDialog({
   defaultModelId = '',
   disabled = false,
   onChange,
-  className = '',
 }) {
   return (
     <Dialog
@@ -18,7 +18,7 @@ export default function RoleGraphDialog({
       title="Team role graph"
       onCancel={onCancel}
       footer={null}
-      className={className}
+      className={styles.roleGraphDialog}
     >
       <RoleGraphEditor
         roleGraph={roleGraph}

@@ -32,19 +32,6 @@ Object.defineProperty(navigator, 'clipboard', {
 });
 
 describe('ReasoningPanel', () => {
-  const styles = {
-    reasoningWrapper: 'reasoningWrapper',
-    reasoningVisible: 'reasoningVisible',
-    reasoningContainer: 'reasoningContainer',
-    reasoningHeader: 'reasoningHeader',
-    reasoningTitle: 'reasoningTitle',
-    reasoningActions: 'reasoningActions',
-    iconButton: 'iconButton',
-    copySuccess: 'copySuccess',
-    reasoningContent: 'reasoningContent',
-    reasoningLink: 'reasoningLink',
-  };
-
   const setSessionReasoning = (reasoning) => {
     mockAgentSessionStore = createDefaultAgentSessions();
     const active = getActiveAgentSession(mockAgentSessionStore);
@@ -55,7 +42,7 @@ describe('ReasoningPanel', () => {
     setSessionReasoning('This is some **Markdown** content');
     PromptUiState.useState.mockReturnValue({ isReasoningVisible: true });
 
-    render(<ReasoningPanel styles={styles} />);
+    render(<ReasoningPanel />);
 
     expect(screen.getByText('Progress & Reasoning')).toBeDefined();
     expect(screen.getByText('Markdown')).toBeDefined();
@@ -66,7 +53,7 @@ describe('ReasoningPanel', () => {
     setSessionReasoning('Copied content text');
     PromptUiState.useState.mockReturnValue({ isReasoningVisible: true });
 
-    render(<ReasoningPanel styles={styles} />);
+    render(<ReasoningPanel />);
 
     const copyButton = screen.getByRole('button');
     fireEvent.click(copyButton);
@@ -74,7 +61,7 @@ describe('ReasoningPanel', () => {
     expect(navigator.clipboard.writeText).toHaveBeenCalledWith('Copied content text');
 
     await waitFor(() => {
-      expect(copyButton.className).toContain('copySuccess');
+      expect(copyButton.className).toMatch(/copySuccess/);
     });
   });
 });

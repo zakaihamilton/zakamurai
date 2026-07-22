@@ -1,9 +1,9 @@
 import React, { useLayoutEffect } from 'react';
 import CodeEditor from './CodeEditor';
 import Gutter from './Gutter';
+import styles from './SingleEditorView.module.css';
 
 export default function SingleEditorView({
-  styles,
   scrollContainerRef,
   linesCount,
   editorLineItems,

@@ -1,6 +1,6 @@
 import { findNavigationTargets } from '@/utils/navigation';
 import React, { useLayoutEffect, useRef, useCallback, useState, useMemo } from 'react';
-import styles from './EditorArea.module.css';
+import styles from './CodeEditor.module.css';
 
 import useEditorShortcuts from './EditorShortcuts';
 import NavigationPopup from './NavigationPopup';

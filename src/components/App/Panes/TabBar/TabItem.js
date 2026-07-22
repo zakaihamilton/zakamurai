@@ -2,7 +2,7 @@ import { Icons } from '@/components/ui/Icons';
 import Tooltip from '@/components/ui/Tooltip';
 import { isMediaFile } from '@/utils/file';
 import { FILE_VIEW_TYPES, getFileViewByType } from '@/utils/fileViews';
-import styles from './TabBar.module.css';
+import styles from './TabItem.module.css';
 
 const getTabViewType = (tab) => {
   if (tab.type === 'file') return getFileViewByType(tab.file?.name, tab.viewType).label;

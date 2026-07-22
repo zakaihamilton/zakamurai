@@ -1,6 +1,7 @@
 import React from 'react';
+import styles from './ModelCacheToggle.module.css';
 
-export default function ModelCacheToggle({ isCached, isBusy, disabled, onToggle, styles = {} }) {
+export default function ModelCacheToggle({ isCached, isBusy, disabled, onToggle }) {
   return (
     <button
       type="button"

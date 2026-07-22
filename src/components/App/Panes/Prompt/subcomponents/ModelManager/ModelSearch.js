@@ -1,7 +1,8 @@
 import { Icons } from '@/components/ui/Icons';
 import React from 'react';
+import styles from './ModelSearch.module.css';
 
-export default function ModelSearch({ searchTerm, onSearchTermChange, styles = {} }) {
+export default function ModelSearch({ searchTerm, onSearchTermChange }) {
   return (
     <div className={styles.modelSearch}>
       <Icons.Search size={14} />
