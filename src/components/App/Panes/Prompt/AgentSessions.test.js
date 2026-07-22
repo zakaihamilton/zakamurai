@@ -31,6 +31,7 @@ describe('AgentSessions', () => {
     expect(listAgentSessions(state.sessions)).toHaveLength(2);
     expect(state.activeSessionId).not.toBe(firstId);
     expect(getActiveAgentSession(state).mode).toBe('team');
+    expect(getActiveAgentSession(state).roleGraph.roles).toHaveLength(3);
 
     state = renameAgentSession(state, state.activeSessionId, '  Research Ops  ');
     expect(getActiveAgentSession(state).name).toBe('Research Ops');
@@ -75,14 +76,20 @@ describe('AgentSessions', () => {
           messages: [{ id: 1, role: 'user', text: 'hi', timestamp: '12:00:00' }],
           reasoning: 'plan',
           status: 'running',
+          roleGraph: {
+            roles: [{ id: 'p', kind: 'planner', label: 'Plan', modelId: 'm1' }],
+            edges: [],
+          },
         },
       },
     };
     const normalized = normalizeAgentSessions(raw);
     expect(normalized.activeSessionId).toBe('a');
     expect(normalized.sessions.a.status).toBe('idle');
+    expect(normalized.sessions.a.roleGraph.roles[0].modelId).toBe('m1');
     const serialized = serializeAgentSessions(normalized);
     expect(serialized.sessions.a.messages).toHaveLength(1);
     expect(serialized.sessions.a.status).toBeUndefined();
+    expect(serialized.sessions.a.roleGraph.roles[0].id).toBe('p');
   });
 });

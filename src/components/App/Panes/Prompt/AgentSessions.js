@@ -1,3 +1,4 @@
+import { createDefaultRoleGraph, normalizeRoleGraph } from '@/components/AI/Agent/Roles';
 import { createState } from '@/components/state/State';
 
 export const MAX_AGENT_SESSIONS = 10;
@@ -5,7 +6,12 @@ export const MAX_SESSION_MESSAGES = 40;
 
 export const AgentSessionState = createState('AgentSessionState');
 
-export function createAgentSession({ name, mode = 'single', modelId = null } = {}) {
+export function createAgentSession({
+  name,
+  mode = 'single',
+  modelId = null,
+  roleGraph = null,
+} = {}) {
   const now = Date.now();
   return {
     id: `session-${now}-${Math.random().toString(36).slice(2, 8)}`,
@@ -14,6 +20,7 @@ export function createAgentSession({ name, mode = 'single', modelId = null } = {
     updatedAt: now,
     mode: mode === 'team' ? 'team' : 'single',
     modelId: modelId || null,
+    roleGraph: normalizeRoleGraph(roleGraph || createDefaultRoleGraph()),
     messages: [],
     reasoning: '',
     status: 'idle',
@@ -86,6 +93,7 @@ export function normalizeAgentSessions(raw, { modelId = null } = {}) {
       updatedAt: Number.isFinite(session.updatedAt) ? session.updatedAt : Date.now(),
       mode,
       modelId: typeof session.modelId === 'string' ? session.modelId : null,
+      roleGraph: normalizeRoleGraph(session.roleGraph),
       messages,
       reasoning: typeof session.reasoning === 'string' ? session.reasoning : '',
       status: 'idle',
@@ -118,6 +126,7 @@ export function serializeAgentSessions(state) {
           updatedAt: session.updatedAt,
           mode: session.mode,
           modelId: session.modelId,
+          roleGraph: normalizeRoleGraph(session.roleGraph),
           messages: capSessionMessages(session.messages),
           reasoning: session.reasoning || '',
         },
@@ -126,7 +135,7 @@ export function serializeAgentSessions(state) {
   };
 }
 
-export function addAgentSession(state, { name, mode = 'single', modelId = null } = {}) {
+export function addAgentSession(state, { name, mode = 'single', modelId = null, roleGraph } = {}) {
   const sessions = { ...(state?.sessions || {}) };
   const existing = listAgentSessions(sessions);
   if (existing.length >= MAX_AGENT_SESSIONS) {
@@ -137,6 +146,7 @@ export function addAgentSession(state, { name, mode = 'single', modelId = null }
     name: name || `Agent ${nextIndex}`,
     mode,
     modelId,
+    roleGraph,
   });
   sessions[session.id] = session;
   return { sessions, activeSessionId: session.id };
@@ -185,6 +195,7 @@ export function updateAgentSession(state, sessionId, patch) {
     updatedAt: Date.now(),
   };
   if (patch.messages) next.messages = capSessionMessages(patch.messages);
+  if (patch.roleGraph) next.roleGraph = normalizeRoleGraph(patch.roleGraph);
   sessions[sessionId] = next;
   return { ...state, sessions };
 }

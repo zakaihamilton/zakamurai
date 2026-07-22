@@ -276,6 +276,17 @@ describe('Prompt', () => {
     expect(listAgentSessions(mockAgentSessionStore.sessions)).toHaveLength(2);
   });
 
+  it('shows the role graph editor in team mode', async () => {
+    const active = getActiveAgentSession(mockAgentSessionStore);
+    mockAgentSessionStore.sessions[active.id] = {
+      ...active,
+      mode: 'team',
+    };
+    render(<Prompt />);
+    expect(screen.getByLabelText('Team role graph')).toBeDefined();
+    expect(screen.getByText('Role graph')).toBeDefined();
+  });
+
   it('handles input keydown events correctly', async () => {
     render(<Prompt />);
     const input = screen.getByPlaceholderText('Tell the Agent what to do...');

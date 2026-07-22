@@ -1,6 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { runCollaborativeAgent } from './CollaborativeRunner';
-import { parsePlanSummary, parseReviewSummary } from './Roles';
+import {
+  createDefaultRoleGraph,
+  createRoleNode,
+  parsePlanSummary,
+  parseReviewSummary,
+} from './Roles';
 
 vi.mock('../WebLLMAPI', () => ({ askWebLLM: vi.fn() }));
 
@@ -65,21 +70,16 @@ describe('runCollaborativeAgent', () => {
 
   it('retries coder once when reviewer rejects', async () => {
     askWebLLM
-      // planner
       .mockResolvedValueOnce(
         '{"action":"finish","summary":"{\\"goals\\":[\\"g\\"],\\"files\\":[\\"src/a.js\\"],\\"steps\\":[\\"s\\"]}"}',
       )
-      // coder first pass
       .mockResolvedValueOnce('{"action":"write_file","path":"src/a.js","content":"bad"}')
       .mockResolvedValueOnce('{"action":"finish","summary":"first"}')
-      // reviewer reject
       .mockResolvedValueOnce(
         '{"action":"finish","summary":"{\\"approved\\":false,\\"fixes\\":[\\"use 2\\"],\\"notes\\":\\"no\\"}"}',
       )
-      // coder retry
       .mockResolvedValueOnce('{"action":"write_file","path":"src/a.js","content":"const a = 2;"}')
       .mockResolvedValueOnce('{"action":"finish","summary":"fixed"}')
-      // reviewer approve
       .mockResolvedValueOnce(
         '{"action":"finish","summary":"{\\"approved\\":true,\\"notes\\":\\"good\\"}"}',
       );
@@ -93,5 +93,55 @@ describe('runCollaborativeAgent', () => {
     expect(result.changes[0].after).toBe('const a = 2;');
     expect(result.review.approved).toBe(true);
     expect(askWebLLM).toHaveBeenCalledTimes(7);
+  });
+
+  it('uses per-role models and custom role graphs', async () => {
+    const planner = createRoleNode({ id: 'p1', kind: 'planner', modelId: 'model-plan' });
+    const coder = createRoleNode({ id: 'c1', kind: 'coder', modelId: 'model-code' });
+    const graph = {
+      entryRoleId: 'p1',
+      roles: [planner, coder],
+      edges: [{ from: 'p1', to: 'c1', when: 'always' }],
+    };
+
+    askWebLLM
+      .mockResolvedValueOnce(
+        '{"action":"finish","summary":"{\\"goals\\":[\\"g\\"],\\"files\\":[\\"src/a.js\\"],\\"steps\\":[\\"s\\"]}"}',
+      )
+      .mockResolvedValueOnce('{"action":"write_file","path":"src/a.js","content":"done"}')
+      .mockResolvedValueOnce('{"action":"finish","summary":"coded"}');
+
+    const result = await runCollaborativeAgent({
+      request: 'update a',
+      files: { 'src/a.js': 'old' },
+      model: 'fallback-model',
+      roleGraph: graph,
+    });
+
+    expect(result.changes[0].after).toBe('done');
+    expect(askWebLLM.mock.calls[0][3].model).toBe('model-plan');
+    expect(askWebLLM.mock.calls[1][3].model).toBe('model-code');
+    expect(askWebLLM.mock.calls[2][3].model).toBe('model-code');
+  });
+
+  it('falls back to the session model when a role has no modelId', async () => {
+    const graph = createDefaultRoleGraph();
+    askWebLLM
+      .mockResolvedValueOnce(
+        '{"action":"finish","summary":"{\\"goals\\":[],\\"files\\":[],\\"steps\\":[]}"}',
+      )
+      .mockResolvedValueOnce('{"action":"finish","summary":"noop"}')
+      .mockResolvedValueOnce(
+        '{"action":"finish","summary":"{\\"approved\\":true,\\"notes\\":\\"ok\\"}"}',
+      );
+
+    await runCollaborativeAgent({
+      request: 'noop',
+      files: { 'src/a.js': 'a' },
+      model: 'session-model',
+      roleGraph: graph,
+    });
+
+    expect(askWebLLM.mock.calls.every((call) => call[3].model === 'session-model')).toBe(true);
   });
 });

@@ -1,4 +1,14 @@
-import { AGENT_ROLES, formatPlanContext, parsePlanSummary, parseReviewSummary } from './Roles';
+import {
+  createDefaultRoleGraph,
+  describeRoleGraph,
+  findEdge,
+  formatPlanContext,
+  getRoleById,
+  normalizeRoleGraph,
+  parsePlanSummary,
+  parseReviewSummary,
+  resolveRoleConfig,
+} from './Roles';
 import { runAgent } from './Runner';
 import { AgentWorkspace } from './Workspace';
 
@@ -6,9 +16,11 @@ const withRoleEvent = (onEvent, agentRole) => (event) => {
   onEvent({ ...event, agentRole: event.agentRole || agentRole });
 };
 
+const MAX_GRAPH_STEPS = 24;
+
 /**
- * Runs Planner → Coder → Reviewer on a shared workspace.
- * If the Reviewer rejects, the Coder gets one retry, then the Reviewer runs once more.
+ * Runs a role graph on a shared workspace.
+ * Supports custom role order/kinds, reject→retry edges, and per-role models.
  */
 export async function runCollaborativeAgent({
   request,
@@ -17,11 +29,13 @@ export async function runCollaborativeAgent({
   selectedLines = [],
   files,
   model,
+  roleGraph = null,
   validate,
   retrieveContext,
   signal,
   onEvent = () => {},
 }) {
+  const graph = normalizeRoleGraph(roleGraph || createDefaultRoleGraph());
   const workspace = new AgentWorkspace(files);
   const shared = {
     request,
@@ -29,7 +43,6 @@ export async function runCollaborativeAgent({
     activeFile,
     selectedLines,
     files,
-    model,
     validate,
     retrieveContext,
     signal,
@@ -39,98 +52,125 @@ export async function runCollaborativeAgent({
   onEvent({
     type: 'thinking',
     turn: 0,
-    agentRole: 'planner',
-    message: 'Starting Planner → Coder → Reviewer pipeline',
+    agentRole: graph.entryRoleId,
+    message: `Starting team pipeline: ${describeRoleGraph(graph)}`,
   });
 
-  const planner = await runAgent({
-    ...shared,
-    systemPrompt: AGENT_ROLES.planner.systemPrompt,
-    allowedActions: AGENT_ROLES.planner.allowedActions,
-    maxTurns: AGENT_ROLES.planner.maxTurns,
-    agentRole: 'planner',
-    onEvent: withRoleEvent(onEvent, 'planner'),
-  });
-  const plan = parsePlanSummary(planner.summary);
-  const planContext = formatPlanContext(plan);
+  const priorParts = [];
+  const roleSummaries = {};
+  const rejectCounts = {};
+  let currentRoleId = graph.entryRoleId;
+  let plan = null;
+  let review = null;
+  let lastRoleId = currentRoleId;
+  let steps = 0;
 
-  onEvent({
-    type: 'observation',
-    turn: 0,
-    agentRole: 'planner',
-    message: `Plan ready (${plan.steps.length || 0} steps, ${plan.files.length || 0} files).`,
-  });
+  while (currentRoleId && steps < MAX_GRAPH_STEPS) {
+    steps += 1;
+    if (signal?.aborted) throw new DOMException('Agent stopped', 'AbortError');
 
-  let coder = await runAgent({
-    ...shared,
-    priorContext: planContext,
-    systemPrompt: AGENT_ROLES.coder.systemPrompt,
-    allowedActions: AGENT_ROLES.coder.allowedActions,
-    maxTurns: AGENT_ROLES.coder.maxTurns,
-    agentRole: 'coder',
-    onEvent: withRoleEvent(onEvent, 'coder'),
-  });
+    const roleNode = getRoleById(graph, currentRoleId);
+    if (!roleNode) break;
+    const config = resolveRoleConfig(roleNode);
+    const roleModel = config.modelId || model;
+    lastRoleId = currentRoleId;
 
-  let reviewer = await runAgent({
-    ...shared,
-    priorContext: `${planContext}\n\nCoder summary:\n${coder.summary || ''}`,
-    systemPrompt: AGENT_ROLES.reviewer.systemPrompt,
-    allowedActions: AGENT_ROLES.reviewer.allowedActions,
-    maxTurns: AGENT_ROLES.reviewer.maxTurns,
-    agentRole: 'reviewer',
-    onEvent: withRoleEvent(onEvent, 'reviewer'),
-  });
-
-  let review = parseReviewSummary(reviewer.summary);
-  if (!review.approved) {
-    const fixContext = [
-      planContext,
-      `Coder summary:\n${coder.summary || ''}`,
-      `Reviewer requested fixes:\n${(review.fixes.length ? review.fixes : [review.notes]).map((f) => `- ${f}`).join('\n')}`,
-    ].join('\n\n');
-
-    onEvent({
-      type: 'observation',
-      turn: 0,
-      agentRole: 'reviewer',
-      message: 'Reviewer requested fixes — Coder retrying once.',
-    });
-
-    coder = await runAgent({
+    const result = await runAgent({
       ...shared,
-      priorContext: fixContext,
-      systemPrompt: AGENT_ROLES.coder.systemPrompt,
-      allowedActions: AGENT_ROLES.coder.allowedActions,
-      maxTurns: AGENT_ROLES.coder.maxTurns,
-      agentRole: 'coder',
-      onEvent: withRoleEvent(onEvent, 'coder'),
+      model: roleModel,
+      priorContext: priorParts.join('\n\n'),
+      systemPrompt: config.systemPrompt,
+      allowedActions: config.allowedActions,
+      maxTurns: config.maxTurns,
+      agentRole: config.id,
+      onEvent: withRoleEvent(onEvent, config.id),
     });
 
-    reviewer = await runAgent({
-      ...shared,
-      priorContext: `${planContext}\n\nCoder summary after fixes:\n${coder.summary || ''}`,
-      systemPrompt: AGENT_ROLES.reviewer.systemPrompt,
-      allowedActions: AGENT_ROLES.reviewer.allowedActions,
-      maxTurns: AGENT_ROLES.reviewer.maxTurns,
-      agentRole: 'reviewer',
-      onEvent: withRoleEvent(onEvent, 'reviewer'),
-    });
-    review = parseReviewSummary(reviewer.summary);
+    roleSummaries[config.id] = result.summary || '';
+
+    let nextRoleId = null;
+
+    if (config.kind === 'planner') {
+      plan = parsePlanSummary(result.summary);
+      priorParts.push(formatPlanContext(plan));
+      onEvent({
+        type: 'observation',
+        turn: 0,
+        agentRole: config.id,
+        message: `Plan ready (${plan.steps.length || 0} steps, ${plan.files.length || 0} files).`,
+      });
+      nextRoleId = findEdge(graph, config.id, 'always')?.to || null;
+    } else if (config.kind === 'reviewer') {
+      review = parseReviewSummary(result.summary);
+      if (!review.approved) {
+        const rejectEdge = findEdge(graph, config.id, 'reject');
+        const key = rejectEdge ? `${rejectEdge.from}->${rejectEdge.to}` : '';
+        const used = rejectCounts[key] || 0;
+        const maxTimes = rejectEdge?.maxTimes || 1;
+        if (rejectEdge && used < maxTimes) {
+          rejectCounts[key] = used + 1;
+          priorParts.push(
+            `Reviewer (${config.label}) requested fixes:\n${(review.fixes.length
+              ? review.fixes
+              : [review.notes]
+            )
+              .map((fix) => `- ${fix}`)
+              .join('\n')}`,
+          );
+          onEvent({
+            type: 'observation',
+            turn: 0,
+            agentRole: config.id,
+            message: `${config.label} requested fixes — retrying ${rejectEdge.to} (${used + 1}/${maxTimes}).`,
+          });
+          nextRoleId = rejectEdge.to;
+        } else {
+          priorParts.push(`${config.label} notes: ${review.notes || result.summary || ''}`);
+          nextRoleId =
+            findEdge(graph, config.id, 'approve')?.to ||
+            findEdge(graph, config.id, 'always')?.to ||
+            null;
+        }
+      } else {
+        priorParts.push(`${config.label} approved: ${review.notes || 'ok'}`);
+        nextRoleId =
+          findEdge(graph, config.id, 'approve')?.to ||
+          findEdge(graph, config.id, 'always')?.to ||
+          null;
+      }
+    } else {
+      priorParts.push(`${config.label} summary:\n${result.summary || ''}`);
+      nextRoleId = findEdge(graph, config.id, 'always')?.to || null;
+    }
+
+    currentRoleId = nextRoleId;
+  }
+
+  if (steps >= MAX_GRAPH_STEPS) {
+    throw new Error('Role graph exceeded its step safety limit.');
   }
 
   const changes = workspace.changes();
   const summaryParts = [
-    plan.raw ? `Plan: ${plan.raw}` : null,
-    coder.summary ? `Coder: ${coder.summary}` : null,
-    review.notes ? `Reviewer: ${review.notes}` : null,
-    review.approved ? 'Review approved.' : 'Review completed with unresolved notes.',
+    plan?.raw ? `Plan: ${plan.raw}` : null,
+    ...Object.entries(roleSummaries)
+      .filter(([id]) => id !== graph.roles.find((r) => r.kind === 'planner')?.id)
+      .map(([id, text]) => {
+        const role = getRoleById(graph, id);
+        return text ? `${role?.label || id}: ${text}` : null;
+      }),
+    review
+      ? review.approved
+        ? 'Review approved.'
+        : 'Review completed with unresolved notes.'
+      : null,
   ].filter(Boolean);
 
   const summary = summaryParts.join(' ');
   onEvent({
     type: 'finished',
     turn: 0,
-    agentRole: 'reviewer',
+    agentRole: lastRoleId,
     changes,
     message: summary,
   });
@@ -141,6 +181,8 @@ export async function runCollaborativeAgent({
     summary,
     plan,
     review,
+    roleSummaries,
+    roleGraph: graph,
     events: 'team',
   };
 }

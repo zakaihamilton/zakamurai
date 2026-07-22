@@ -32,6 +32,7 @@ import PromptComposer from './subcomponents/PromptComposer';
 import PromptContextPanel from './subcomponents/PromptContextPanel';
 import PromptHeader from './subcomponents/PromptHeader';
 import ReasoningPanel from './subcomponents/ReasoningPanel';
+import RoleGraphEditor from './subcomponents/RoleGraphEditor';
 import SessionManager from './subcomponents/SessionManager';
 import SessionTranscript from './subcomponents/SessionTranscript';
 
@@ -41,10 +42,10 @@ const ROLE_LABELS = {
   reviewer: 'Reviewer',
 };
 
-const formatAgentEvent = (event) => {
-  const rolePrefix = event.agentRole
-    ? `**${ROLE_LABELS[event.agentRole] || event.agentRole}** · `
-    : '';
+const formatAgentEvent = (event, roleLabelById = {}) => {
+  const roleName =
+    roleLabelById[event.agentRole] || ROLE_LABELS[event.agentRole] || event.agentRole || null;
+  const rolePrefix = roleName ? `**${roleName}** · ` : '';
   if (event.type === 'thinking') {
     return `${rolePrefix}**Step ${event.turn}:** planning next action…`;
   }
@@ -260,6 +261,9 @@ export default function Prompt() {
           draft.abortController = controller;
         });
         const events = [];
+        const roleLabelById = Object.fromEntries(
+          (activeSession.roleGraph?.roles || []).map((role) => [role.id, role.label || role.kind]),
+        );
         const [
           { collectWorkspaceFiles, runAgent, runCollaborativeAgent, applyAgentChanges },
           { Compiler },
@@ -275,6 +279,7 @@ export default function Prompt() {
           selectedLines: promptScope === 'file' ? selectedLines : [],
           files: workspaceFiles,
           model: selectedModel,
+          roleGraph: activeSession.roleGraph,
           signal: controller.signal,
           retrieveContext: async (query, k) => {
             const { ragSearch } = await import('@/utils/rag/search-utility');
@@ -291,7 +296,7 @@ export default function Prompt() {
             }
           },
           onEvent: (event) => {
-            const line = formatAgentEvent(event);
+            const line = formatAgentEvent(event, roleLabelById);
             if (line) events.push(line);
             const reasoning = events.slice(-30).join('\n\n');
             patchSession(sessionId, { reasoning });
@@ -572,6 +577,15 @@ export default function Prompt() {
           onDelete={handleDeleteSession}
           isOpen={isOpen}
         />
+        {activeSession?.mode === 'team' && (
+          <RoleGraphEditor
+            roleGraph={activeSession.roleGraph}
+            modelOptions={modelOptions}
+            defaultModelId={selectedModel}
+            disabled={!isOpen || isAIProcessing}
+            onChange={(nextGraph) => patchSession(activeSession.id, { roleGraph: nextGraph })}
+          />
+        )}
         <PromptContextPanel
           scope={promptScope}
           onScopeChange={(scope) =>
