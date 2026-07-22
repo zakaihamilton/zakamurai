@@ -162,9 +162,8 @@ export function getExportRanges(code) {
 
   // Named exports: export const name, export function name, export class name
   const namedExportRegex = /\bexport\s+(?:const|let|var|function|class)\s+([a-zA-Z0-9_$]+)\b/g;
-  let match;
-  // biome-ignore lint/suspicious/noAssignInExpressions: regex exec loop
-  while ((match = namedExportRegex.exec(code)) !== null) {
+  let match = namedExportRegex.exec(code);
+  while (match !== null) {
     const name = match[1];
     const start = match.index;
     const end = start + match[0].length;
@@ -175,13 +174,14 @@ export function getExportRanges(code) {
       start,
       end,
     });
+    match = namedExportRegex.exec(code);
   }
 
   // Default exports: export default name or export default function name
   const defaultExportRegex =
     /\bexport\s+default\s+(?:function\s+|class\s+|const\s+|let\s+|var\s+)?([a-zA-Z0-9_$]+)\b/g;
-  // biome-ignore lint/suspicious/noAssignInExpressions: regex exec loop
-  while ((match = defaultExportRegex.exec(code)) !== null) {
+  match = defaultExportRegex.exec(code);
+  while (match !== null) {
     const name = match[1];
     const start = match.index;
     const end = start + match[0].length;
@@ -192,6 +192,7 @@ export function getExportRanges(code) {
       start,
       end,
     });
+    match = defaultExportRegex.exec(code);
   }
 
   return ranges;

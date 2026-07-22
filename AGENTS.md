@@ -21,12 +21,6 @@ process is the Next.js dev server. Standard commands live in `README.md` and
   (Vitest) has some failing specs (e.g. `TabState.usePassiveState is not a
   function` in `EditorArea`/`DiffHandler`). These reproduce on a clean checkout,
   so the baseline is not all-green — do not assume you broke something.
-- The in-browser Build/Preview feature (almostnode + esbuild-wasm virtual
-  filesystem) currently fails to bundle the default sample React project with
-  `Cannot resolve 'react-dom' from '/node_modules/react-dom/client.js'`. This is
-  a pre-existing application bug in the browser bundler, not a setup/egress
-  problem (esm.sh is reachable and all WASM assets are present). Editing, file
-  management, syntax highlighting, and auto-save/persistence all work.
 
 ### Playwright / visual tests
 
@@ -34,3 +28,15 @@ process is the Next.js dev server. Standard commands live in `README.md` and
   Linux host-requirements warning because some system libraries are missing.
   Browsers still download. Running `npm run test:visual` may require system
   browser deps (`npx playwright install-deps`, needs root/apt) before it works.
+
+### Optional local AI eval
+
+- `npm run verify:ai` is optional and not part of `verify`/CI. It runs
+  promptfoo (needs provider API secrets) and may run `lucid`/`lucidshark` when
+  installed; otherwise the architectural scan step is skipped.
+
+### LocalFS
+
+- `src/components/Storage/LocalFS.js` uses the File System Access API and
+  IndexedDB in the browser. It is not available in all environments (for example
+  headless CI or browsers without the API).

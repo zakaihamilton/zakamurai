@@ -9,36 +9,38 @@ export function getCssImports(jsCode) {
 
   // Pattern 1: import styles from './file.module.css'; or import * as styles from './file.module.css';
   const esmRegex = /import\s+(?:(\w+)|\*\s+as\s+(\w+))\s+from\s+['"](.+?\.(?:module\.)?css)['"]/g;
-  let match;
-  // biome-ignore lint/suspicious/noAssignInExpressions: standard regex execution loop
-  while ((match = esmRegex.exec(jsCode)) !== null) {
+  let match = esmRegex.exec(jsCode);
+  while (match !== null) {
     const identifier = match[1] || match[2];
     const importPath = match[3];
     if (identifier) {
       imports.push({ identifier, importPath });
     }
+    match = esmRegex.exec(jsCode);
   }
 
   // Pattern 2: const styles = require('./file.module.css');
   const cjsRegex =
     /(?:const|let|var)\s+(\w+)\s*=\s*require\(\s*['"](.+?\.(?:module\.)?css)['"]\s*\)/g;
-  // biome-ignore lint/suspicious/noAssignInExpressions: standard regex execution loop
-  while ((match = cjsRegex.exec(jsCode)) !== null) {
+  match = cjsRegex.exec(jsCode);
+  while (match !== null) {
     const identifier = match[1];
     const importPath = match[2];
     if (identifier) {
       imports.push({ identifier, importPath });
     }
+    match = cjsRegex.exec(jsCode);
   }
 
   // Pattern 3: anonymous import: import './file.module.css';
   const anonRegex = /import\s+['"](.+?\.(?:module\.)?css)['"]/g;
-  // biome-ignore lint/suspicious/noAssignInExpressions: standard regex execution loop
-  while ((match = anonRegex.exec(jsCode)) !== null) {
+  match = anonRegex.exec(jsCode);
+  while (match !== null) {
     const importPath = match[1];
     if (!imports.some((imp) => imp.importPath === importPath)) {
       imports.push({ identifier: null, importPath });
     }
+    match = anonRegex.exec(jsCode);
   }
 
   return imports;
@@ -236,9 +238,8 @@ export function getImportRanges(code, isCss = false) {
   if (isCss) {
     // Pattern: @import './file.css'; or @import url('./file.css');
     const cssImportRegex = /@import\s+(?:url\()?['"]([^'"]+)['"]\)?/g;
-    let match;
-    // biome-ignore lint/suspicious/noAssignInExpressions: standard regex execution loop
-    while ((match = cssImportRegex.exec(code)) !== null) {
+    let match = cssImportRegex.exec(code);
+    while (match !== null) {
       const path = match[1];
       const fullMatch = match[0];
       const pathIndex = match.index + fullMatch.indexOf(path);
@@ -247,15 +248,15 @@ export function getImportRanges(code, isCss = false) {
         start: pathIndex,
         end: pathIndex + path.length,
       });
+      match = cssImportRegex.exec(code);
     }
     return ranges;
   }
 
   // Pattern 1: ES6 imports and exports
   const es6Regex = /\b(import|export)\s+(?:[^'"]*?\bfrom\s+)?(['"])([^'"]+)\2/g;
-  let match;
-  // biome-ignore lint/suspicious/noAssignInExpressions: standard regex execution loop
-  while ((match = es6Regex.exec(code)) !== null) {
+  let match = es6Regex.exec(code);
+  while (match !== null) {
     const quote = match[2];
     const path = match[3];
     const fullMatch = match[0];
@@ -266,12 +267,13 @@ export function getImportRanges(code, isCss = false) {
       start: pathIndex,
       end: pathIndex + path.length,
     });
+    match = es6Regex.exec(code);
   }
 
   // Pattern 2: CommonJS require
   const requireRegex = /\brequire\s*\(\s*(['"])([^'"]+)\1\s*\)/g;
-  // biome-ignore lint/suspicious/noAssignInExpressions: standard regex execution loop
-  while ((match = requireRegex.exec(code)) !== null) {
+  match = requireRegex.exec(code);
+  while (match !== null) {
     const quote = match[1];
     const path = match[2];
     const fullMatch = match[0];
@@ -282,6 +284,7 @@ export function getImportRanges(code, isCss = false) {
       start: pathIndex,
       end: pathIndex + path.length,
     });
+    match = requireRegex.exec(code);
   }
 
   return ranges;

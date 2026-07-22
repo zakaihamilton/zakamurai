@@ -80,10 +80,21 @@ export default function StatusBar() {
           </div>
         </Tooltip>
         <Tooltip
-          content={`FileSystem Mode: ${fs.mode === 'local' ? 'Local' : 'Virtual'}`}
+          content={
+            fs.mode === 'local'
+              ? 'Local folder (File System Access API)'
+              : 'Browser storage (default). Open a local folder for larger projects.'
+          }
           className={styles.tooltipWrapper}
         >
-          <div className={styles.item}>
+          <div
+            className={styles.item}
+            aria-label={
+              fs.mode === 'local'
+                ? 'Storage: local folder'
+                : 'Storage: browser (virtual filesystem)'
+            }
+          >
             <Icons.Globe size={14} />
             <span>{fs.mode === 'local' ? 'Local' : 'Virtual'}</span>
           </div>

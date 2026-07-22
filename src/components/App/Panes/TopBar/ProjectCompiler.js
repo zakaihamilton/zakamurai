@@ -1,7 +1,9 @@
 import Settings from '@/components/Storage/Settings';
 import { useNotification } from '@/components/ui/Notification';
-import { Compiler } from '@/utils/compiler';
 import { useCallback, useEffect, useRef } from 'react';
+
+/** Lazy-load compiler (almostnode / browser-bundler) only on build / clear. */
+const loadCompiler = () => import('@/utils/compiler');
 
 export default function useProjectCompiler(
   appState,
@@ -89,6 +91,7 @@ export default function useProjectCompiler(
       };
 
       try {
+        const { Compiler } = await loadCompiler();
         const compiler = new Compiler(onLog);
         await compiler.compile(fs, folderTree, editorState.fileContents);
         flushLogs();
@@ -171,8 +174,9 @@ export default function useProjectCompiler(
     }
   }, [silentCompileRequest, handleCompile]);
 
-  const handleClearFS = useCallback(() => {
-    Compiler.reset();
+  const handleClearFS = useCallback(async () => {
+    const { Compiler } = await loadCompiler();
+    await Compiler.reset();
     previewState((draft) => {
       draft.htmlContent = null;
     });

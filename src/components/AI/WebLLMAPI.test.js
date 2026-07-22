@@ -115,11 +115,15 @@ describe('WebLLMAPI', () => {
     mockEngine.chat.completions.create.mockReturnValue(createPromise);
 
     const generation = askWebLLM('hello', '', null, { model: 'test-model' });
-    await Promise.resolve();
+    // Wait for lazy WebLLM import + engine init before interrupting.
+    await vi.waitFor(() => {
+      expect(mockEngine.chat.completions.create).toHaveBeenCalled();
+    });
 
     const interruptPromise = interruptWebLLM();
-    await Promise.resolve();
-    expect(mockEngine.interruptGenerate).toHaveBeenCalled();
+    await vi.waitFor(() => {
+      expect(mockEngine.interruptGenerate).toHaveBeenCalled();
+    });
 
     resolveCreate({
       choices: [{ message: { content: 'AI Response' } }],
@@ -183,7 +187,9 @@ describe('WebLLMAPI', () => {
     });
     mockEngine.chat.completions.create.mockReturnValue(createPromise);
     const generation = askWebLLM('hello', '', null, { model: 'test-model' });
-    await Promise.resolve();
+    await vi.waitFor(() => {
+      expect(mockEngine.chat.completions.create).toHaveBeenCalled();
+    });
     mockEngine.interruptGenerate.mockRejectedValue(new Error('Failed'));
     const interruptPromise = interruptWebLLMModel('test-model');
     resolveCreate({ choices: [{ message: { content: 'AI Response' } }] });

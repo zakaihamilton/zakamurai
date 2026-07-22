@@ -2,7 +2,6 @@ import { AppState } from '@/components/App/AppState';
 import { SidebarState } from '@/components/App/Panes/Sidebar';
 import { PreviewState } from '@/components/App/PreviewState';
 import { EditorState } from '@/components/App/Views/EditorArea';
-import { Compiler } from '@/utils/compiler';
 import { useEffect, useRef } from 'react';
 
 /**
@@ -36,6 +35,7 @@ export function usePreviewRestorer() {
           draft.restoreError = null;
         });
 
+        const { Compiler } = await import('@/utils/compiler');
         const compiler = new Compiler(() => {});
         const container = await compiler.init();
         if (!container.vfs.existsSync('/dist')) {

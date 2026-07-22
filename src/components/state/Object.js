@@ -1,3 +1,10 @@
+/**
+ * Returns keys whose values differ between two plain objects (shallow, `Object.is`).
+ *
+ * @param {Record<string, unknown>} [a]
+ * @param {Record<string, unknown>} [b]
+ * @returns {string[]}
+ */
 export function objectChangedKeys(a = {}, b = {}) {
   const aKeys = Object.keys(a);
   const bKeys = Object.keys(b);
@@ -9,6 +16,12 @@ export function objectChangedKeys(a = {}, b = {}) {
   return aKeys.filter((key) => !Object.hasOwn(b, key) || !Object.is(a[key], b[key]));
 }
 
+/**
+ * JSON.stringify replacer that drops functions and breaks circular references on `object`'s keys.
+ *
+ * @param {Record<string, unknown>} object
+ * @returns {(key: string, value: unknown) => unknown}
+ */
 export function getCircularReplacer(object) {
   if (typeof object !== 'object' || object === null) {
     return object;
@@ -32,6 +45,17 @@ export function getCircularReplacer(object) {
   };
 }
 
+/**
+ * Creates a callable proxy store: invoke with a draft callback to batch-update, or assign properties directly.
+ *
+ * @param {Record<string, unknown>} props - Initial state.
+ * @param {string} [id] - Optional debug label (`__id`).
+ * @returns {object & {
+ *   (draft: (draft: Record<string, unknown>) => void): void,
+ *   __monitor: (key: string | null, cb: (keys: string[]) => void, id?: string) => void,
+ *   __unmonitor: (key: string | null, cb: (keys: string[]) => void) => void
+ * }}
+ */
 export function createObject(props, id) {
   const monitor = new Map();
   let counter = 0;
@@ -208,6 +232,13 @@ export function createObject(props, id) {
   return proxy;
 }
 
+/**
+ * Splits `obj` into `[picked, rest]` by whether each key is in `keysToFilter`.
+ *
+ * @param {Record<string, unknown>} obj
+ * @param {string[]} keysToFilter
+ * @returns {[Record<string, unknown>, Record<string, unknown>]}
+ */
 export function filterObjectByKeys(obj, keysToFilter) {
   const filtered = {};
   const leftover = {};

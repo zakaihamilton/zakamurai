@@ -1,7 +1,22 @@
+/**
+ * @fileoverview State factory and hooks built on the Node tree and proxy-based Object store.
+ */
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import Node, { nodeGetProperty, nodeSetProperty, subscribeToNode } from './Node';
 import { createObject, objectChangedKeys } from './Object';
 
+/**
+ * Creates a named state scope: a React component plus `useState`, `useFutureState`, and
+ * `usePassiveState` hooks bound to a shared proxy object in the Node tree.
+ *
+ * @param {string} displayName - Scope id used for Node lookup and React devtools.
+ * @returns {import('react').FC & {
+ *   useState: (selector?: unknown, initial?: object, id?: string) => object,
+ *   useFutureState: (selector?: unknown, id?: string) => object,
+ *   usePassiveState: () => object | undefined,
+ *   displayName: string
+ * }}
+ */
 export function createState(displayName) {
   function State({ children, ...props }) {
     const object = State.useState(null, props);
@@ -113,6 +128,13 @@ export function createState(displayName) {
   return State;
 }
 
+/**
+ * Returns whether a state change notification should fire for `key` given `selector`.
+ *
+ * @param {string | string[] | Record<string, unknown> | ((key: string) => boolean) | undefined} selector
+ * @param {string} key
+ * @returns {boolean}
+ */
 export function isSelectorMatch(selector, key) {
   if (selector === undefined) {
     return true;
@@ -135,6 +157,14 @@ export function isSelectorMatch(selector, key) {
   return true;
 }
 
+/**
+ * Subscribes `handler` to all changes on `object`; invokes once immediately with `null`.
+ *
+ * @param {object | null | undefined} object - Proxy store from `createObject`.
+ * @param {(keys: string[] | null) => void} handler
+ * @param {string} [id] - Optional monitor id for deduplication.
+ * @returns {object | null | undefined}
+ */
 export function useObjectHandler(object, handler, id) {
   useEffect(() => {
     if (!object || !handler || !object.__monitor || !object.__unmonitor) {
@@ -149,6 +179,14 @@ export function useObjectHandler(object, handler, id) {
   return object;
 }
 
+/**
+ * Subscribes a React component to `object` via `useSyncExternalStore`, optionally filtered by `selector`.
+ *
+ * @param {object | null | undefined} object - Proxy store from `createObject`.
+ * @param {string | string[] | Record<string, unknown> | ((key: string) => boolean) | undefined} [selector]
+ * @param {string} [id] - Optional monitor id.
+ * @returns {object | null | undefined}
+ */
 export function useObjectState(object, selector, id) {
   const subscribe = useCallback(
     (onStoreChange) => {

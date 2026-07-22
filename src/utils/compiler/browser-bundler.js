@@ -61,14 +61,31 @@ function packageParts(specifier) {
   return [parts.slice(0, count).join('/'), parts.slice(count).join('/')];
 }
 
+/**
+ * Resolve the package root entry from classic mainFields.
+ * A string "browser" is an entry override; an object "browser" is a file remap
+ * map (as in react-dom) and must not be stringified into the path.
+ */
 function packageEntry(manifest) {
-  // Object-shaped "browser" maps (e.g. react-dom) remaps specific files and must
-  // not be treated as the package entry path.
-  for (const field of ['browser', 'module', 'main']) {
-    const value = manifest[field];
-    if (typeof value === 'string' && value) return value;
+  if (typeof manifest.browser === 'string' && manifest.browser) {
+    return manifest.browser;
   }
-  return 'index.js';
+
+  const entry =
+    (typeof manifest.module === 'string' && manifest.module) ||
+    (typeof manifest.main === 'string' && manifest.main) ||
+    'index.js';
+
+  // Apply object-shaped browser remaps to the chosen entry when present.
+  if (manifest.browser && typeof manifest.browser === 'object') {
+    const candidates = entry.startsWith('./') ? [entry, entry.slice(2)] : [`./${entry}`, entry];
+    for (const key of candidates) {
+      const remapped = manifest.browser[key];
+      if (typeof remapped === 'string' && remapped) return remapped;
+    }
+  }
+
+  return entry;
 }
 
 function selectExport(target) {
@@ -127,6 +144,10 @@ function parseManifest(vfs, manifestPath, packageName) {
   }
 }
 
+/**
+ * Resolve a bare package specifier (e.g. "react-dom" or "react-dom/client")
+ * against `/node_modules` using exports, then browser/module/main.
+ */
 function resolvePackage(vfs, specifier) {
   const [packageName, subpath] = packageParts(specifier);
   const root = `/node_modules/${packageName}`;
@@ -147,6 +168,9 @@ function resolvePackage(vfs, specifier) {
       `Package '${packageName}' does not provide '${subpath ? `./${subpath}` : '.'}' for browser imports.`,
     );
   }
+  // Prefer exports; fall back to mainFields. Never treat an object "browser"
+  // map as a path — that previously made resolveFile return null for react-dom
+  // when client.js did require('react-dom').
   const candidate = target || (subpath ? subpath : packageEntry(manifest));
   const resolved = resolveFile(vfs, normalizePath(`${root}/${candidate}`));
   if (resolved) return resolved;
@@ -155,6 +179,16 @@ function resolvePackage(vfs, specifier) {
   );
 }
 
+/**
+ * Resolve a bare, relative, or absolute import specifier against the VFS.
+ * Bare specifiers use package exports/mainFields; relative/absolute paths use
+ * source extensions and optional `/public` fallback for site-root URLs.
+ *
+ * @param {{ existsSync: (path: string) => boolean, readFileSync: (path: string, encoding?: string) => string }} vfs
+ * @param {string} specifier
+ * @param {string} resolveDir Directory of the importing file (esbuild resolveDir).
+ * @returns {string | null} Absolute VFS path, or null when a relative/absolute path is missing.
+ */
 function resolveSpecifier(vfs, specifier, resolveDir) {
   if (specifier.startsWith('/') || specifier.startsWith('.')) {
     const candidate = normalizePath(
@@ -200,6 +234,13 @@ function findEntryPoint(vfs) {
   );
 }
 
+/**
+ * Reject Vite configs and CLI flags the in-browser bundler cannot honor.
+ *
+ * @param {{ existsSync: (path: string) => boolean }} vfs
+ * @param {string} buildCommand Full build script string from package.json.
+ * @throws {Error} When a custom config file or unsupported flag is present.
+ */
 export function assertBrowserBuildSupported(vfs, buildCommand) {
   const configNames = [
     'vite.config.js',
@@ -295,7 +336,14 @@ function createHtml(vfs, packageJson, entryPath, outputFiles) {
     : `${withStyle}\n${script}`;
 }
 
-/** True for bare or package-runner SPA build commands (vite build / npx vite build / esbuild). */
+/**
+ * True for bare or package-runner SPA build commands
+ * (vite build / npx vite build / esbuild).
+ *
+ * @param {string} cmd First token of a parsed build command.
+ * @param {string[]} [args=[]] Remaining tokens.
+ * @returns {boolean}
+ */
 export function isBrowserBundleCommand(cmd, args = []) {
   const runners = new Set(['npx', 'npm', 'pnpm', 'yarn', 'bunx']);
   let binary = cmd;
@@ -318,7 +366,13 @@ export function isBrowserBundleCommand(cmd, args = []) {
   return (name === 'vite' && binaryArgs.includes('build')) || name === 'esbuild';
 }
 
-/** Split a shell-like build script without executing shell syntax. */
+/**
+ * Split a shell-like build script without executing shell syntax.
+ * Supports `&&`-joined commands and quoted arguments; rejects pipes/redirects.
+ *
+ * @param {string} command
+ * @returns {string[][]} Each inner array is argv for one sub-command.
+ */
 export function parseBuildCommand(command) {
   const commands = [];
   let tokens = [];
@@ -356,7 +410,16 @@ export function parseBuildCommand(command) {
   return commands;
 }
 
-/** Bundle a standard SPA from almostnode's virtual filesystem into /dist. */
+/**
+ * Bundle a standard SPA from almostnode's virtual filesystem into `/dist`
+ * using esbuild-wasm and a VFS resolve/load plugin.
+ *
+ * @param {object} vfs almostnode VirtualFS (existsSync/readFileSync/writeFileSync/…).
+ * @param {{ name?: string }} packageJson Parsed project package.json.
+ * @param {string} buildCommand Build script used for compatibility checks.
+ * @param {(message: string) => void} [onLog]
+ * @returns {Promise<{ entryPoint: string, files: string[] }>}
+ */
 export async function bundleBrowserProject(vfs, packageJson, buildCommand, onLog = () => {}) {
   assertBrowserBuildSupported(vfs, buildCommand);
   const entryPoint = findEntryPoint(vfs);

@@ -55,12 +55,97 @@ describe('browser-bundler', () => {
       '/node_modules/react-dom/index.js': '',
       '/node_modules/react-dom/client.js': "require('react-dom');",
     });
+    expect(
+      __testables.packageEntry(JSON.parse(fs.readFileSync('/node_modules/react-dom/package.json'))),
+    ).toBe('index.js');
     expect(__testables.resolveSpecifier(fs, 'react-dom', '/node_modules/react-dom')).toBe(
       '/node_modules/react-dom/index.js',
     );
     expect(__testables.resolveSpecifier(fs, 'react-dom/client', '/src')).toBe(
       '/node_modules/react-dom/client.js',
     );
+  });
+
+  it('applies object browser remaps to the package entry when present', () => {
+    expect(
+      __testables.packageEntry({
+        main: 'index.js',
+        browser: { './index.js': './index.browser.js' },
+      }),
+    ).toBe('./index.browser.js');
+  });
+
+  it('resolves a real-shaped react-dom tree including CJS self-require and scheduler', () => {
+    // Mirrors almostnode-installed react-dom@18 / @19 package.json shape:
+    // exports + object browser map + client.js requiring bare 'react-dom',
+    // with index.js pulling cjs + scheduler.
+    const reactDomPkg = {
+      name: 'react-dom',
+      main: 'index.js',
+      exports: {
+        '.': { 'react-server': './react-dom.react-server.js', default: './index.js' },
+        './client': { 'react-server': './client.react-server.js', default: './client.js' },
+        './server': {
+          browser: './server.browser.js',
+          default: './server.node.js',
+        },
+        './package.json': './package.json',
+      },
+      browser: {
+        './server.js': './server.browser.js',
+        './static.js': './static.browser.js',
+      },
+      dependencies: { scheduler: '^0.26.0' },
+    };
+    const fs = vfs({
+      '/src/main.jsx':
+        'import React from "react";\nimport { createRoot } from "react-dom/client";\ncreateRoot(document.getElementById("root"));',
+      '/node_modules/react/package.json': JSON.stringify({
+        main: 'index.js',
+        exports: {
+          '.': { default: './index.js' },
+          './jsx-runtime': './jsx-runtime.js',
+          './package.json': './package.json',
+        },
+      }),
+      '/node_modules/react/index.js': 'module.exports = {};',
+      '/node_modules/react/jsx-runtime.js': 'module.exports = {};',
+      '/node_modules/react-dom/package.json': JSON.stringify(reactDomPkg),
+      '/node_modules/react-dom/index.js':
+        "module.exports = require('./cjs/react-dom.development.js');",
+      '/node_modules/react-dom/client.js':
+        "var m = require('react-dom');\nexports.createRoot = m.createRoot;",
+      '/node_modules/react-dom/cjs/react-dom.development.js':
+        "require('react');\nrequire('scheduler');\nexports.createRoot = function () {};",
+      '/node_modules/react-dom/server.browser.js': '',
+      '/node_modules/scheduler/package.json': JSON.stringify({
+        main: 'index.js',
+        exports: { '.': './index.js' },
+      }),
+      '/node_modules/scheduler/index.js': 'module.exports = {};',
+    });
+
+    // App import graph
+    expect(__testables.resolveSpecifier(fs, 'react', '/src')).toBe('/node_modules/react/index.js');
+    expect(__testables.resolveSpecifier(fs, 'react-dom/client', '/src')).toBe(
+      '/node_modules/react-dom/client.js',
+    );
+    // The historical failure: bare 'react-dom' from inside client.js returned null
+    // because object-shaped browser was coerced to "[object Object]".
+    expect(__testables.resolveSpecifier(fs, 'react-dom', '/node_modules/react-dom')).toBe(
+      '/node_modules/react-dom/index.js',
+    );
+    expect(
+      __testables.resolveSpecifier(fs, './cjs/react-dom.development.js', '/node_modules/react-dom'),
+    ).toBe('/node_modules/react-dom/cjs/react-dom.development.js');
+    expect(__testables.resolveSpecifier(fs, 'scheduler', '/node_modules/react-dom/cjs')).toBe(
+      '/node_modules/scheduler/index.js',
+    );
+    expect(__testables.resolveSpecifier(fs, 'react-dom/server', '/src')).toBe(
+      '/node_modules/react-dom/server.browser.js',
+    );
+    // packageEntry must not treat the browser object as a path
+    expect(__testables.packageEntry(reactDomPkg)).toBe('index.js');
   });
 
   it('resolves exports using browser, import, default, scoped packages, and patterns', () => {

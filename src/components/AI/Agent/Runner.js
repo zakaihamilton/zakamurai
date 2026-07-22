@@ -1,9 +1,13 @@
-import { askWebLLM } from '../WebLLMAPI';
 import { AGENT_SYSTEM_PROMPT, parseAgentAction } from './Protocol';
 import { AgentWorkspace } from './Workspace';
 
 const observation = (action, ok, data) =>
   JSON.stringify({ tool: action, ok, ...(ok ? { result: data } : { error: data }) });
+
+const loadAskWebLLM = async () => {
+  const { askWebLLM } = await import('../WebLLMAPI');
+  return askWebLLM;
+};
 
 export async function runAgent({
   request,
@@ -18,6 +22,7 @@ export async function runAgent({
   onEvent = () => {},
   maxTurns = 20,
 }) {
+  const askWebLLM = await loadAskWebLLM();
   const workspace = new AgentWorkspace(files);
   const messages = [
     { role: 'system', content: AGENT_SYSTEM_PROMPT },

@@ -197,16 +197,14 @@ function findKeyframeReferences(cssCode, keyframeName, filePath) {
   const refs = [];
   if (!cssCode || !keyframeName) return refs;
   const animRegex = /\b(animation|animation-name)\s*:\s*([^;]+);/g;
-  let match;
-  // biome-ignore lint/suspicious/noAssignInExpressions: standard regex matching loop
-  while ((match = animRegex.exec(cssCode)) !== null) {
+  let match = animRegex.exec(cssCode);
+  while (match !== null) {
     const value = match[2];
     const valIndex = match.index + match[0].indexOf(value);
 
     const keyframeRegex = new RegExp(`\\b${keyframeName}\\b`, 'g');
-    let keyframeMatch;
-    // biome-ignore lint/suspicious/noAssignInExpressions: standard regex matching loop
-    while ((keyframeMatch = keyframeRegex.exec(value)) !== null) {
+    let keyframeMatch = keyframeRegex.exec(value);
+    while (keyframeMatch !== null) {
       const refIndex = valIndex + keyframeMatch.index;
       const before = cssCode.substring(0, refIndex);
       const lines = before.split('\n');
@@ -219,7 +217,9 @@ function findKeyframeReferences(cssCode, keyframeName, filePath) {
           index: refIndex,
         },
       });
+      keyframeMatch = keyframeRegex.exec(value);
     }
+    match = animRegex.exec(cssCode);
   }
   return refs;
 }

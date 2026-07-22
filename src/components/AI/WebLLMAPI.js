@@ -1,4 +1,6 @@
-import { CreateMLCEngine, deleteModelAllInfoInCache, hasModelInCache } from '@mlc-ai/web-llm';
+/**
+ * @fileoverview Browser-local LLM inference via @mlc-ai/web-llm (lazy-loaded).
+ */
 import { DEFAULT_SYSTEM_PROMPT } from './Prompts';
 import { RECOMMENDED_WEB_LLM_MODEL, WEB_LLM_MODELS } from './WebLLMModels';
 export { RECOMMENDED_WEB_LLM_MODEL, WEB_LLM_MODELS } from './WebLLMModels';
@@ -9,6 +11,9 @@ const DEFAULT_WEB_LLM_MODEL_ID = RECOMMENDED_WEB_LLM_MODEL.id;
 const enginePromises = new Map();
 /** @type {Map<string, Promise<void>>} */
 const inflightGenerations = new Map();
+
+/** Lazy-load the heavy WebLLM package — not on first IDE paint. */
+const loadWebLLM = () => import('@mlc-ai/web-llm');
 
 const isWebLLMInterruptError = (error) => {
   const message = error?.message || String(error);
@@ -43,7 +48,13 @@ const interruptEngine = async (engine, modelId) => {
   }
 };
 
+/**
+ * Returns model ids that are already present in the WebLLM browser cache.
+ *
+ * @returns {Promise<string[]>}
+ */
 export const getCachedWebLLMModelIds = async () => {
+  const { hasModelInCache } = await loadWebLLM();
   const cacheEntries = await Promise.all(
     WEB_LLM_MODELS.map(async (model) => {
       try {
@@ -58,13 +69,27 @@ export const getCachedWebLLMModelIds = async () => {
   return cacheEntries.filter(([_, isCached]) => isCached).map(([modelId]) => modelId);
 };
 
+/**
+ * Downloads and initializes a model so it is ready for inference.
+ *
+ * @param {string} modelId
+ * @param {((progress: string) => void) | null} [onProgress]
+ * @returns {Promise<void>}
+ */
 export const cacheWebLLMModel = async (modelId, onProgress = null) => {
   await getEngine(modelId, onProgress);
 };
 
+/**
+ * Interrupts any in-flight generation and removes `modelId` from cache and engine singletons.
+ *
+ * @param {string} modelId
+ * @returns {Promise<void>}
+ */
 export const deleteCachedWebLLMModel = async (modelId) => {
   await interruptWebLLM();
   enginePromises.delete(modelId);
+  const { deleteModelAllInfoInCache } = await loadWebLLM();
   await deleteModelAllInfoInCache(modelId);
 };
 
@@ -84,6 +109,7 @@ const getEngine = (modelId = DEFAULT_WEB_LLM_MODEL_ID, onProgress = null, option
       try {
         console.info(`Initializing WebLLM with ${selectedModel}...`);
 
+        const { CreateMLCEngine } = await loadWebLLM();
         const engine = await CreateMLCEngine(
           selectedModel,
           {
@@ -116,10 +142,10 @@ const getEngine = (modelId = DEFAULT_WEB_LLM_MODEL_ID, onProgress = null, option
 /**
  * Sends a prompt to the local WebLLM model and returns the text response.
  * @param {string} prompt - The user's input or full codebase context.
- * @param {string} systemPrompt - Optional system prompt.
- * @param {function} onUpdate - Optional callback for streaming updates (e.g., partial text).
- * @param {object} options - Optional generation overrides.
- * @returns {Promise<string>} - The AI's generated response.
+ * @param {string} [systemPrompt] - Optional system prompt.
+ * @param {((text: string) => void) | null} [onUpdate] - Optional callback for streaming updates.
+ * @param {object} [options] - Generation overrides (`model`, `temperature`, `signal`, etc.).
+ * @returns {Promise<string>} The AI's generated response.
  */
 export const askWebLLM = async (prompt, systemPrompt = '', onUpdate = null, options = {}) => {
   const modelId = options.model || DEFAULT_WEB_LLM_MODEL_ID;
@@ -193,6 +219,9 @@ export const askWebLLM = async (prompt, systemPrompt = '', onUpdate = null, opti
 
 /**
  * Halts generation for a single loaded WebLLM model.
+ *
+ * @param {string} modelId
+ * @returns {Promise<void>}
  */
 export const interruptWebLLMModel = async (modelId) => {
   if (!modelId) return;
@@ -209,7 +238,9 @@ export const interruptWebLLMModel = async (modelId) => {
 };
 
 /**
- * Halts the current generation process of the WebLLM engine.
+ * Halts in-flight generation on every initialized WebLLM engine.
+ *
+ * @returns {Promise<void>}
  */
 export const interruptWebLLM = async () => {
   for (const [modelId, enginePromise] of enginePromises.entries()) {

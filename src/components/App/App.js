@@ -19,6 +19,7 @@ import { LogState } from './Views/LogArea';
 import { MOBILE_BREAKPOINT } from '@/constants/Layout';
 import { AppState } from './AppState';
 
+import AppErrorBoundary from './AppErrorBoundary';
 import AppBackgroundServices from './Layout/AppBackgroundServices';
 import AppContent from './Layout/AppContent';
 import AppLoading from './Layout/AppLoading';
@@ -159,9 +160,11 @@ export default function App() {
   }
 
   return (
-    <div className={styles.root}>
-      <AppBackgroundServices />
-      <AppContent />
-    </div>
+    <AppErrorBoundary>
+      <div className={styles.root}>
+        <AppBackgroundServices />
+        <AppContent />
+      </div>
+    </AppErrorBoundary>
   );
 }

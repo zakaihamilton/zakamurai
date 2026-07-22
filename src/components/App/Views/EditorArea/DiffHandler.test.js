@@ -10,6 +10,7 @@ vi.mock('@/components/App/Panes/Sidebar', () => ({
 
 vi.mock('@/components/App/Panes/TabBar', () => ({
   TabState: {
+    useState: vi.fn(),
     usePassiveState: vi.fn(),
   },
 }));
@@ -75,6 +76,7 @@ describe('DiffHandler', () => {
     };
 
     SidebarState.usePassiveState.mockReturnValue(sidebarState);
+    TabState.useState.mockReturnValue(tabState);
     TabState.usePassiveState.mockReturnValue(tabState);
   });
 

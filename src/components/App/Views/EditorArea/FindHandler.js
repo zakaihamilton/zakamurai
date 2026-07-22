@@ -25,9 +25,8 @@ export default function FindHandler({
     const escapedQuery = findQuery.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const regex = new RegExp(escapedQuery, 'gi');
     const newMatches = [];
-    let match;
-    // biome-ignore lint/suspicious/noAssignInExpressions: standard regex match loop
-    while ((match = regex.exec(localContent)) !== null) {
+    let match = regex.exec(localContent);
+    while (match !== null) {
       const before = localContent.substring(0, match.index);
       const line = before.split('\n').length;
       const lineStart = before.lastIndexOf('\n') + 1;
@@ -37,6 +36,7 @@ export default function FindHandler({
         absoluteIndex: match.index,
         length: match[0].length,
       });
+      match = regex.exec(localContent);
     }
 
     setMatches(newMatches);

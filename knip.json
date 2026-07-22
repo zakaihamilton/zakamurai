@@ -4,8 +4,6 @@
   "ignore": ["src/components/AI/index.js", "src/utils/empty.js"],
   "ignoreDependencies": [
     "almostnode",
-    "apache-arrow",
-    "wasm-loader",
     "fast-check",
     "promptfoo",
     "esbuild-wasm"
