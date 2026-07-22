@@ -1,19 +1,25 @@
-import { ragSearch } from '@/utils/rag/search-utility';
 import { act, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useRagIndexer } from './RagIndexer';
 
+const ragSearch = {
+  init: vi.fn(),
+  indexWorkspaceFiles: vi.fn().mockResolvedValue(undefined),
+};
+
 vi.mock('@/utils/rag/search-utility', () => {
   return {
     ragSearch: {
-      init: vi.fn(),
-      indexWorkspaceFiles: vi.fn().mockResolvedValue(undefined),
+      init: (...args) => ragSearch.init(...args),
+      indexWorkspaceFiles: (...args) => ragSearch.indexWorkspaceFiles(...args),
     },
   };
 });
 
+const collectWorkspaceFiles = vi.fn().mockResolvedValue({});
+
 vi.mock('@/components/AI/Agent/Snapshot', () => ({
-  collectWorkspaceFiles: vi.fn().mockResolvedValue({}),
+  collectWorkspaceFiles: (...args) => collectWorkspaceFiles(...args),
 }));
 
 vi.mock('@/components/App/AppState', () => ({
@@ -28,7 +34,6 @@ vi.mock('@/components/App/Views/EditorArea', () => ({
   },
 }));
 
-import { collectWorkspaceFiles } from '@/components/AI/Agent/Snapshot';
 import { AppState } from '@/components/App/AppState';
 import { EditorState } from '@/components/App/Views/EditorArea';
 
@@ -62,6 +67,10 @@ describe('useRagIndexer', () => {
 
     renderHook(() => useRagIndexer());
 
+    await act(async () => {
+      await Promise.resolve();
+    });
+
     expect(ragSearch.init).toHaveBeenCalled();
 
     await act(async () => {
@@ -81,6 +90,7 @@ describe('useRagIndexer', () => {
     // Flush macro tasks / micro tasks so the promise rejection is handled
     await act(async () => {
       await Promise.resolve();
+      await Promise.resolve();
     });
 
     expect(consoleErrorSpy).toHaveBeenCalledWith('[RAG] Failed to initialize indexer:', error);
@@ -92,14 +102,18 @@ describe('useRagIndexer', () => {
 
     renderHook(() => useRagIndexer());
 
+    // Timeout starts before imports finish; advance wall clock to fire it.
     await act(async () => {
       vi.advanceTimersByTime(10000);
-      await Promise.resolve();
+      // Flush microtasks so the race rejection is handled (imports may still resolve).
+      for (let i = 0; i < 10; i++) {
+        await Promise.resolve();
+      }
     });
 
     expect(consoleErrorSpy).toHaveBeenCalledWith(
       '[RAG] Failed to initialize indexer:',
-      expect.any(Error),
+      expect.objectContaining({ message: 'RAG Init Timeout' }),
     );
   });
 });

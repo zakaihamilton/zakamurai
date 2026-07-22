@@ -251,6 +251,7 @@ export default function CodeEditor({
         readOnly={readOnly || isReadOnly}
         spellCheck="false"
         wrap="off"
+        aria-label={filePath ? `Code editor: ${filePath}` : 'Code editor'}
         className={`${styles.textarea} ${isReadOnly || readOnly ? styles.readOnlyTextarea : ''} ${
           !isReadOnly && !readOnly && navigationLinksEnabled ? styles.navigationLinksTextarea : ''
         }`}

@@ -2,7 +2,8 @@ import { defineConfig, devices } from '@playwright/test';
 
 /**
  * Playwright configuration for Zakamurai end-to-end tests.
- * To run tests: npm run test:visual
+ * To run smoke tests: npm run test:e2e
+ * To run screenshot tests: npm run test:visual
  */
 export default defineConfig({
   testDir: './tests/visual',

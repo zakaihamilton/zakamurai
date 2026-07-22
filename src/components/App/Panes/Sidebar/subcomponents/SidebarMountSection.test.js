@@ -10,6 +10,11 @@ describe('SidebarMountSection', () => {
     expect(screen.getByText('Open Folder')).toBeDefined();
   });
 
+  it('explains browser storage vs local folder', () => {
+    render(<SidebarMountSection hasFileSystem={false} onMountLocal={vi.fn()} />);
+    expect(screen.getByText(/Projects save in browser storage by default/i)).toBeDefined();
+  });
+
   it('shows Relink Project when filesystem exists', () => {
     render(<SidebarMountSection hasFileSystem={true} onMountLocal={vi.fn()} />);
     expect(screen.getByText('Relink Project')).toBeDefined();

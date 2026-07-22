@@ -43,6 +43,7 @@ describe('StatusBar', () => {
 
     expect(screen.getByText('Test Project')).toBeDefined();
     expect(screen.getByText('Local')).toBeDefined();
+    expect(screen.getByRole('status', { name: 'Storage: local folder' })).toBeDefined();
   });
 
   it('renders cursor position and language for active tab', () => {

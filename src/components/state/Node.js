@@ -1,3 +1,6 @@
+/**
+ * @fileoverview React context tree for scoping state objects and hierarchical lookup.
+ */
 import { createContext, useContext, useRef } from 'react';
 
 const root = {
@@ -14,6 +17,11 @@ Node.resetRoot = () => {
 
 const Context = createContext(root);
 
+/**
+ * Establishes a named node in the state tree; descendants can resolve properties via `Node.useNode`.
+ *
+ * @param {{ id: string, children?: import('react').ReactNode }} props
+ */
 export default function Node({ id, children }) {
   const parent = Node.useNode();
   const nodeRef = useRef(null);
@@ -43,14 +51,23 @@ Node.useNode = (propId) => {
   return node;
 };
 
+/** @param {{ parent?: object } | null | undefined} node */
 export function nodeGetParent(node) {
   return node?.parent;
 }
 
+/** @param {{ items?: Map<unknown, unknown> } | null | undefined} node @param {unknown} propId */
 export function nodeGetProperty(node, propId) {
   return node?.items?.get(propId);
 }
 
+/**
+ * Stores `value` on `node` under `id` and notifies listeners on the next microtask.
+ *
+ * @param {{ items?: Map<unknown, unknown>, listeners?: Set<Function> } | null | undefined} node
+ * @param {unknown} id
+ * @param {unknown} value
+ */
 export function nodeSetProperty(node, id, value) {
   if (node?.items) {
     node.items.set(id, value);
@@ -62,6 +79,11 @@ export function nodeSetProperty(node, id, value) {
   }
 }
 
+/**
+ * @param {{ listeners?: Set<Function> } | null | undefined} node
+ * @param {(node: object, propId: unknown, value: unknown) => void} callback
+ * @returns {() => void}
+ */
 export function subscribeToNode(node, callback) {
   if (node?.listeners) {
     node.listeners.add(callback);
@@ -70,6 +92,7 @@ export function subscribeToNode(node, callback) {
   return () => {};
 }
 
+/** @param {{ id?: string } | null | undefined} node @returns {string | undefined} */
 export function nodeGetId(node) {
   return node?.id;
 }

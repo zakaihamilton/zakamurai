@@ -54,6 +54,7 @@ export default function ActionButtons({ onCompile, onOpenLog, onOpenPreview, onT
             className={styles.compileBtn}
             onClick={onCompile}
             disabled={isSystemProcessing}
+            aria-label="Build project"
             data-testid="compile-btn"
           >
             <Icons.Play />

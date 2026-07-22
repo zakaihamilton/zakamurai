@@ -12,11 +12,14 @@ describe('InitialData', () => {
 
     expect(DEFAULT_CONTENTS['src/App.jsx']).toContain('AnimatedCard');
     expect(DEFAULT_CONTENTS['package.json']).toContain('animated-vite-app');
+    expect(DEFAULT_CONTENTS['package.json']).toContain('"react": "^19.0.0"');
+    expect(DEFAULT_CONTENTS['package.json']).toContain('"react-dom": "^19.0.0"');
   });
 
   it('provides a scratch project tree with matching file contents', () => {
     expect(SCRATCH_FILES.some((entry) => entry.name === 'src')).toBe(true);
     expect(SCRATCH_CONTENTS['src/App.jsx']).toContain('New Project');
     expect(SCRATCH_CONTENTS['package.json']).toContain('new-project');
+    expect(SCRATCH_CONTENTS['package.json']).toContain('"react": "^19.0.0"');
   });
 });

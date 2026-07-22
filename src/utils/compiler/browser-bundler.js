@@ -61,14 +61,53 @@ function packageParts(specifier) {
   return [parts.slice(0, count).join('/'), parts.slice(count).join('/')];
 }
 
-function packageEntry(manifest) {
-  // Object-shaped "browser" maps (e.g. react-dom) remaps specific files and must
-  // not be treated as the package entry path.
-  for (const field of ['browser', 'module', 'main']) {
-    const value = manifest[field];
-    if (typeof value === 'string' && value) return value;
+/**
+ * Apply object-shaped package.json "browser" remaps to a relative path.
+ * A string "browser" field is an entry override (handled elsewhere); only object
+ * maps are remapped here. `false` values (Node-only stubs) are skipped for now.
+ *
+ * @param {object} manifest Parsed package.json
+ * @param {string} relativePath Path relative to the package root (with or without ./)
+ * @returns {string} Remapped path, or relativePath when no string remap applies
+ */
+function applyBrowserRemap(manifest, relativePath) {
+  if (!manifest?.browser || typeof manifest.browser !== 'object' || !relativePath) {
+    return relativePath;
   }
-  return 'index.js';
+  const candidates = relativePath.startsWith('./')
+    ? [relativePath, relativePath.slice(2)]
+    : [`./${relativePath}`, relativePath];
+  for (const key of candidates) {
+    const remapped = manifest.browser[key];
+    // Skip false remaps (Node-only stubs) rather than inventing empty modules.
+    if (remapped === false) continue;
+    if (typeof remapped === 'string' && remapped) return remapped;
+  }
+  return relativePath;
+}
+
+/**
+ * Resolve the package root entry from classic mainFields.
+ * A string "browser" is an entry override; an object "browser" is a file remap
+ * map (as in react-dom) and must not be stringified into the path.
+ */
+function packageEntry(manifest) {
+  if (typeof manifest.browser === 'string' && manifest.browser) {
+    return manifest.browser;
+  }
+
+  const entry =
+    (typeof manifest.module === 'string' && manifest.module) ||
+    (typeof manifest.main === 'string' && manifest.main) ||
+    'index.js';
+
+  return applyBrowserRemap(manifest, entry);
+}
+
+/** Package root under /node_modules for a resolveDir, or null. */
+function packageRootFromDir(resolveDir) {
+  const match = String(resolveDir || '').match(/^\/node_modules\/(@[^/]+\/[^/]+|[^/]+)/);
+  return match ? match[0] : null;
 }
 
 function selectExport(target) {
@@ -127,6 +166,10 @@ function parseManifest(vfs, manifestPath, packageName) {
   }
 }
 
+/**
+ * Resolve a bare package specifier (e.g. "react-dom" or "react-dom/client")
+ * against `/node_modules` using exports, then browser/module/main.
+ */
 function resolvePackage(vfs, specifier) {
   const [packageName, subpath] = packageParts(specifier);
   const root = `/node_modules/${packageName}`;
@@ -147,16 +190,52 @@ function resolvePackage(vfs, specifier) {
       `Package '${packageName}' does not provide '${subpath ? `./${subpath}` : '.'}' for browser imports.`,
     );
   }
+  // Prefer exports; fall back to mainFields. Never coerce an object "browser"
+  // map into a path string (that produced "[object Object]" and broke package
+  // resolution when client.js required bare 'react-dom'). Apply object browser
+  // remaps after exports/entry so e.g. exports "." -> "./index.js" can still
+  // remap to "./index.browser.js".
   const candidate = target || (subpath ? subpath : packageEntry(manifest));
-  const resolved = resolveFile(vfs, normalizePath(`${root}/${candidate}`));
+  const remapped = applyBrowserRemap(manifest, candidate);
+  const resolved = resolveFile(vfs, normalizePath(`${root}/${remapped}`));
   if (resolved) return resolved;
   throw new Error(
     `Package '${packageName}' does not provide '${subpath ? `./${subpath}` : '.'}' for browser imports.`,
   );
 }
 
+/**
+ * Resolve a bare, relative, or absolute import specifier against the VFS.
+ * Bare specifiers use package exports/mainFields; relative/absolute paths use
+ * source extensions and optional `/public` fallback for site-root URLs.
+ *
+ * @param {{ existsSync: (path: string) => boolean, readFileSync: (path: string, encoding?: string) => string }} vfs
+ * @param {string} specifier
+ * @param {string} resolveDir Directory of the importing file (esbuild resolveDir).
+ * @returns {string | null} Absolute VFS path, or null when a relative/absolute path is missing.
+ */
 function resolveSpecifier(vfs, specifier, resolveDir) {
   if (specifier.startsWith('/') || specifier.startsWith('.')) {
+    // Relative imports inside a package may need object browser remaps
+    // (e.g. react-dom's "./server.js" -> "./server.browser.js").
+    if (specifier.startsWith('.')) {
+      const pkgRoot = packageRootFromDir(resolveDir);
+      if (pkgRoot) {
+        const manifestPath = `${pkgRoot}/package.json`;
+        if (vfs.existsSync(manifestPath)) {
+          try {
+            const manifest = JSON.parse(vfs.readFileSync(manifestPath, 'utf8'));
+            const remapped = applyBrowserRemap(manifest, specifier);
+            if (remapped !== specifier) {
+              const fromRoot = resolveFile(vfs, normalizePath(`${pkgRoot}/${remapped}`));
+              if (fromRoot) return fromRoot;
+            }
+          } catch (_) {
+            // Fall through to normal relative resolve.
+          }
+        }
+      }
+    }
     const candidate = normalizePath(
       specifier.startsWith('/') ? specifier : `${resolveDir}/${specifier}`,
     );
@@ -200,6 +279,13 @@ function findEntryPoint(vfs) {
   );
 }
 
+/**
+ * Reject Vite configs and CLI flags the in-browser bundler cannot honor.
+ *
+ * @param {{ existsSync: (path: string) => boolean }} vfs
+ * @param {string} buildCommand Full build script string from package.json.
+ * @throws {Error} When a custom config file or unsupported flag is present.
+ */
 export function assertBrowserBuildSupported(vfs, buildCommand) {
   const configNames = [
     'vite.config.js',
@@ -295,7 +381,14 @@ function createHtml(vfs, packageJson, entryPath, outputFiles) {
     : `${withStyle}\n${script}`;
 }
 
-/** True for bare or package-runner SPA build commands (vite build / npx vite build / esbuild). */
+/**
+ * True for bare or package-runner SPA build commands
+ * (vite build / npx vite build / esbuild).
+ *
+ * @param {string} cmd First token of a parsed build command.
+ * @param {string[]} [args=[]] Remaining tokens.
+ * @returns {boolean}
+ */
 export function isBrowserBundleCommand(cmd, args = []) {
   const runners = new Set(['npx', 'npm', 'pnpm', 'yarn', 'bunx']);
   let binary = cmd;
@@ -318,7 +411,13 @@ export function isBrowserBundleCommand(cmd, args = []) {
   return (name === 'vite' && binaryArgs.includes('build')) || name === 'esbuild';
 }
 
-/** Split a shell-like build script without executing shell syntax. */
+/**
+ * Split a shell-like build script without executing shell syntax.
+ * Supports `&&`-joined commands and quoted arguments; rejects pipes/redirects.
+ *
+ * @param {string} command
+ * @returns {string[][]} Each inner array is argv for one sub-command.
+ */
 export function parseBuildCommand(command) {
   const commands = [];
   let tokens = [];
@@ -356,7 +455,16 @@ export function parseBuildCommand(command) {
   return commands;
 }
 
-/** Bundle a standard SPA from almostnode's virtual filesystem into /dist. */
+/**
+ * Bundle a standard SPA from almostnode's virtual filesystem into `/dist`
+ * using esbuild-wasm and a VFS resolve/load plugin.
+ *
+ * @param {object} vfs almostnode VirtualFS (existsSync/readFileSync/writeFileSync/…).
+ * @param {{ name?: string }} packageJson Parsed project package.json.
+ * @param {string} buildCommand Build script used for compatibility checks.
+ * @param {(message: string) => void} [onLog]
+ * @returns {Promise<{ entryPoint: string, files: string[] }>}
+ */
 export async function bundleBrowserProject(vfs, packageJson, buildCommand, onLog = () => {}) {
   assertBrowserBuildSupported(vfs, buildCommand);
   const entryPoint = findEntryPoint(vfs);
@@ -438,6 +546,7 @@ export async function bundleBrowserProject(vfs, packageJson, buildCommand, onLog
 
 export const __testables = {
   findEntryPoint,
+  applyBrowserRemap,
   packageEntry,
   selectExport,
   exportTarget,

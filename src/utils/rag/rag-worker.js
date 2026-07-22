@@ -1,17 +1,3 @@
-import { env, pipeline } from '@huggingface/transformers';
-
-// Configure transformers.js for WebGPU and browser environment
-env.allowLocalModels = false;
-env.useBrowserCache = true;
-
-// Ensure backends are configured for the browser environment
-if (env.backends?.onnx) {
-  env.backends.onnx.wasm.wasmPaths = '/wasm/';
-  console.log('[RAG] Set backend wasmPaths to:', env.backends.onnx.wasm.wasmPaths);
-}
-env.wasmPaths = '/wasm/';
-console.log('[RAG] Initialized with wasmPaths:', env.wasmPaths);
-
 let extractor;
 let index = []; // In-memory cache of chunks and vectors
 let hashes = new Set();
@@ -19,6 +5,35 @@ const DB_NAME = 'zakamurai-rag-data.json';
 const MAX_INDEX_ITEMS = 1500;
 const MAX_FILE_BYTES = 512 * 1024;
 const MAX_CHUNK_CHARS = 2000;
+
+/** Lazy-load transformers.js only when indexing/search starts. */
+let transformersPromise;
+async function loadTransformers() {
+  if (!transformersPromise) {
+    transformersPromise = (async () => {
+      const { env, pipeline } = await import('@huggingface/transformers');
+
+      // Configure transformers.js for WebGPU and browser environment
+      env.allowLocalModels = false;
+      env.useBrowserCache = true;
+
+      // Ensure backends are configured for the browser environment
+      if (env.backends?.onnx) {
+        env.backends.onnx.wasm.wasmPaths = '/wasm/';
+        console.log('[RAG] Set backend wasmPaths to:', env.backends.onnx.wasm.wasmPaths);
+      }
+      env.wasmPaths = '/wasm/';
+      console.log('[RAG] Initialized with wasmPaths:', env.wasmPaths);
+
+      return { env, pipeline };
+    })().catch((error) => {
+      // Reset on failure so a later retry can succeed (same pattern as WebLLM).
+      transformersPromise = undefined;
+      throw error;
+    });
+  }
+  return transformersPromise;
+}
 
 /**
  * Dot product of two normalized vectors is the cosine similarity.
@@ -75,6 +90,7 @@ async function saveIndex() {
 
 async function init() {
   if (!extractor) {
+    const { pipeline } = await loadTransformers();
     try {
       extractor = await pipeline('feature-extraction', 'Xenova/all-MiniLM-L6-v2', {
         device: 'webgpu',
@@ -183,3 +199,10 @@ self.addEventListener('message', async (event) => {
     self.postMessage({ id, type: 'ERROR', error: error.message });
   }
 });
+
+export const __testables = {
+  loadTransformers,
+  resetTransformers() {
+    transformersPromise = undefined;
+  },
+};

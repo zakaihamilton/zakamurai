@@ -1,11 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { askWebLLM } from '../WebLLMAPI';
 import { runAgent } from './Runner';
 
 vi.mock('../WebLLMAPI', () => ({ askWebLLM: vi.fn() }));
 
 describe('runAgent', () => {
-  beforeEach(() => vi.clearAllMocks());
+  let askWebLLM;
+
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    ({ askWebLLM } = await import('../WebLLMAPI'));
+  });
 
   it('iterates through tools and returns isolated changes', async () => {
     askWebLLM

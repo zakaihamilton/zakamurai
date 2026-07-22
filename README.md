@@ -70,21 +70,33 @@ npm run deadcode      # Check unused files and dependencies (Knip)
 npm run test          # Unit tests (Vitest)
 npm run test:watch    # Vitest in watch mode
 npm run test:coverage # Unit tests with coverage thresholds
-npm run test:e2e:chromium # Chromium end-to-end tests
-npm run test:visual   # Cross-browser visual tests (Chromium and WebKit)
+npm run test:e2e      # Chromium smoke e2e (basic + advanced)
+npm run test:e2e:chromium # Alias for test:e2e
+npm run test:visual   # Screenshot regression (Chromium + WebKit)
+npm run test:visual:chromium # Screenshot regression on Chromium only
 npm run build         # Production build
 npm run perf          # Enforce the 500 KB per application-entry asset budget after a build
 npm run audit         # Fail only on critical production dependency advisories
 npm run verify        # Run all non-mutating local quality gates
+npm run verify:ai     # Optional: local AI eval (promptfoo); not part of verify or CI
 ```
 
 `verify` never rewrites source files. Formatting and CSS fixes are intentionally opt-in via
-`format` and `stylelint:fix`. CI runs Chromium only; WebKit remains available locally through
-`test:visual` while its host-level browser dependencies are stabilized.
+`format` and `stylelint:fix`. CI and `verify` run Chromium smoke e2e (`test:e2e`) and Chromium
+visual regression (`test:visual:chromium`). Full screenshot regression across browsers
+(`test:visual`, including WebKit) remains available locally while WebKit host-level browser
+dependencies are stabilized.
 
-Knip exclusions are intentional: browser-only build/runtime dependencies (`almostnode`,
-`apache-arrow`, `wasm-loader`, and `esbuild-wasm`) and optional developer tooling (`fast-check`
-and `promptfoo`) are loaded outside Knip's static application entrypoints.
+`verify:ai` runs `scripts/verify-ai.sh` for optional, local AI regression checks. It uses
+[promptfoo](https://www.promptfoo.dev/) for semantic eval (`promptfooconfig.yaml`) and needs
+provider API secrets (for example `OPENAI_API_KEY` for the configured OpenAI provider). It is
+not included in `npm run verify` or CI. The script may also run an architectural drift scan when
+`lucid` or `lucidshark` is installed on your PATH; that step is skipped with a warning if
+neither command is available.
+
+Knip exclusions are intentional: browser-only build/runtime dependencies (`almostnode`
+and `esbuild-wasm`) and optional developer tooling (`fast-check` and `promptfoo`) are loaded
+outside Knip's static application entrypoints.
 
 Contributors working on React components should read [ARCHITECTURE.md](./ARCHITECTURE.md) before making changes. This project uses a custom proxy-based state system—not Redux, Zustand, or React Context for shared state.
 
@@ -96,9 +108,10 @@ src/
 ├── components/
 │   ├── AI/           # WebLLM integration, prompts, diff processor
 │   ├── App/          # IDE shell: editor, sidebar, preview, top bar
-│   ├── Core/         # Proxy state primitives (Node, Object, State)
-│   ├── Storage/      # Settings and initial project data
-│   └── Widgets/      # Shared UI components
+│   ├── state/        # Proxy state primitives (Node, Object, State)
+│   ├── Storage/      # Settings, LocalFS, and initial project data
+│   └── ui/           # Shared UI components
+├── constants/        # Shared app constants
 └── utils/            # Compiler, navigation, formatting, RAG helpers
 ```
 

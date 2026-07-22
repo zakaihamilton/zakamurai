@@ -1,7 +1,9 @@
 import Settings from '@/components/Storage/Settings';
 import { useNotification } from '@/components/ui/Notification';
-import { Compiler } from '@/utils/compiler';
 import { useCallback, useEffect, useRef } from 'react';
+
+/** Lazy-load compiler (almostnode / browser-bundler) only on build / clear. */
+const loadCompiler = () => import('@/utils/compiler');
 
 export default function useProjectCompiler(
   appState,
@@ -89,6 +91,7 @@ export default function useProjectCompiler(
       };
 
       try {
+        const { Compiler } = await loadCompiler();
         const compiler = new Compiler(onLog);
         await compiler.compile(fs, folderTree, editorState.fileContents);
         flushLogs();
@@ -171,25 +174,42 @@ export default function useProjectCompiler(
     }
   }, [silentCompileRequest, handleCompile]);
 
-  const handleClearFS = useCallback(() => {
-    Compiler.reset();
-    previewState((draft) => {
-      draft.htmlContent = null;
-    });
-    Settings.setPreviewHtml(null);
-    logState((draft) => {
-      draft.logs = [
-        ...draft.logs,
-        {
-          id: `${Date.now()}-${Math.random()}`,
-          role: 'system',
-          text: 'Virtual filesystem cleared. Next compile will start fresh.',
-          timestamp: new Date().toTimeString().split(' ')[0],
-        },
-      ];
-    });
-    handleOpenLog();
-  }, [previewState, logState, handleOpenLog]);
+  const handleClearFS = useCallback(async () => {
+    try {
+      const { Compiler } = await loadCompiler();
+      await Compiler.reset();
+      previewState((draft) => {
+        draft.htmlContent = null;
+      });
+      Settings.setPreviewHtml(null);
+      logState((draft) => {
+        draft.logs = [
+          ...draft.logs,
+          {
+            id: `${Date.now()}-${Math.random()}`,
+            role: 'system',
+            text: 'Virtual filesystem cleared. Next compile will start fresh.',
+            timestamp: new Date().toTimeString().split(' ')[0],
+          },
+        ];
+      });
+      handleOpenLog();
+    } catch (err) {
+      const errorMsg = err?.message || String(err);
+      addNotification(`Failed to clear filesystem: ${errorMsg}`, 'error');
+      logState((draft) => {
+        draft.logs = [
+          ...draft.logs,
+          {
+            id: `${Date.now()}-${Math.random()}`,
+            role: 'system',
+            text: `Failed to clear filesystem: ${errorMsg}`,
+            timestamp: new Date().toTimeString().split(' ')[0],
+          },
+        ];
+      });
+    }
+  }, [previewState, logState, handleOpenLog, addNotification]);
 
   return {
     handleCompile,

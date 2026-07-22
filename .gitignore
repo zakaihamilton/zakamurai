@@ -27,6 +27,7 @@
 # misc
 .DS_Store
 *.pem
+/lucidshark
 
 # debug
 npm-debug.log*

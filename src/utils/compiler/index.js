@@ -1,12 +1,14 @@
 /**
  * Compiler utility that uses almostnode to run build scripts in the browser.
+ * Heavy deps (browser-bundler / esbuild-wasm, almostnode) load only when compile runs.
  */
 
-import { bundleBrowserProject, isBrowserBundleCommand, parseBuildCommand } from './browser-bundler';
 import { getSharedContainer, initContainer, resetContainer } from './container';
 import { setupSmartDevServer } from './dev-server';
 import { scaffoldMissingFiles } from './scaffold';
 import { syncFilesToContainer } from './syncer';
+
+const loadBrowserBundler = () => import('./browser-bundler');
 
 export class Compiler {
   constructor(onLog) {
@@ -81,6 +83,8 @@ export class Compiler {
           // Only support shell-free commands joined with &&. This preserves
           // quoted arguments while preventing browser builds from silently
           // interpreting pipes, redirects, or arbitrary shell constructs.
+          const { bundleBrowserProject, isBrowserBundleCommand, parseBuildCommand } =
+            await loadBrowserBundler();
           const subCommands = parseBuildCommand(buildCommand);
 
           for (const parts of subCommands) {

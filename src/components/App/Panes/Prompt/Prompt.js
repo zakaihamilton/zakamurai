@@ -1,4 +1,3 @@
-import { applyAgentChanges, collectWorkspaceFiles, runAgent } from '@/components/AI/Agent';
 import {
   RECOMMENDED_WEB_LLM_MODEL,
   WEB_LLM_MODELS,
@@ -11,7 +10,6 @@ import { EditorState } from '@/components/App/Views/EditorArea';
 import { LogState } from '@/components/App/Views/LogArea';
 import Settings from '@/components/Storage/Settings';
 import { createState } from '@/components/state/State';
-import { Compiler } from '@/utils/compiler';
 import React, { useCallback, useEffect } from 'react';
 
 const formatAgentEvent = (event) => {
@@ -160,6 +158,9 @@ export default function Prompt() {
           draft.abortController = controller;
         });
         const events = [];
+        // Lazy-load agent + compiler only on first ask (keeps WebLLM/almostnode off first paint).
+        const [{ collectWorkspaceFiles, runAgent, applyAgentChanges }, { Compiler }] =
+          await Promise.all([import('@/components/AI/Agent'), import('@/utils/compiler')]);
         const workspaceFiles = await collectWorkspaceFiles(fs, editorState.fileContents || {});
         const result = await runAgent({
           request: userMsg,

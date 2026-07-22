@@ -38,17 +38,30 @@ export default function EditorHeader({
             type="button"
             className={`${styles.actionBtn} ${isReadOnly ? styles.actionBtnActive : ''}`}
             onClick={() => setIsReadOnly(!isReadOnly)}
+            aria-label={isReadOnly ? 'Switch to edit mode' : 'Switch to inspection mode'}
+            aria-pressed={isReadOnly}
           >
             {isReadOnly ? <Icons.Code size={14} /> : <Icons.Edit size={14} />}
           </button>
         </Tooltip>
         <Tooltip content="Find/Replace" shortcut={formatShortcut('⌘F')}>
-          <button type="button" className={styles.actionBtn} onClick={() => setShowFind(!showFind)}>
+          <button
+            type="button"
+            className={styles.actionBtn}
+            onClick={() => setShowFind(!showFind)}
+            aria-label="Find and replace"
+            aria-pressed={showFind}
+          >
             <Icons.Search />
           </button>
         </Tooltip>
         <Tooltip content="Format Code" shortcut={formatShortcut('⌃⇧F')}>
-          <button type="button" className={styles.actionBtn} onClick={handleFormat}>
+          <button
+            type="button"
+            className={styles.actionBtn}
+            onClick={handleFormat}
+            aria-label="Format code"
+          >
             <Icons.Layout />
           </button>
         </Tooltip>

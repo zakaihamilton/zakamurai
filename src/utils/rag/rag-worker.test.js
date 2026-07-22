@@ -1,14 +1,24 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
+const transformersMock = vi.hoisted(() => ({
+  shouldFail: false,
+  pipeline: vi.fn().mockResolvedValue(
+    vi.fn().mockResolvedValue({
+      data: [0.1, 0.2, 0.3],
+    }),
+  ),
+}));
+
 // Mock huggingface transformers
 vi.mock('@huggingface/transformers', () => {
   return {
-    env: { backends: { onnx: { wasm: {} } } },
-    pipeline: vi.fn().mockResolvedValue(
-      vi.fn().mockResolvedValue({
-        data: [0.1, 0.2, 0.3],
-      }),
-    ),
+    get env() {
+      if (transformersMock.shouldFail) {
+        throw new Error('transformers load failed');
+      }
+      return { backends: { onnx: { wasm: {} } } };
+    },
+    pipeline: (...args) => transformersMock.pipeline(...args),
   };
 });
 
@@ -67,13 +77,17 @@ if (globalThis.crypto?.subtle) {
 }
 
 describe('rag-worker', () => {
+  let testables;
+
   beforeAll(async () => {
     vi.resetModules();
-    await import('./rag-worker');
+    const mod = await import('./rag-worker');
+    testables = mod.__testables;
   });
 
   beforeEach(() => {
     vi.clearAllMocks();
+    transformersMock.shouldFail = false;
   });
 
   it('registers a message listener', () => {
@@ -137,5 +151,17 @@ describe('rag-worker', () => {
       error: expect.any(String),
     });
     expect(consoleError).toHaveBeenCalledWith('[RAG] Worker error:', expect.any(TypeError));
+  });
+
+  it('clears transformersPromise so a later retry can succeed', async () => {
+    testables.resetTransformers();
+    transformersMock.shouldFail = true;
+
+    await expect(testables.loadTransformers()).rejects.toThrow('transformers load failed');
+
+    transformersMock.shouldFail = false;
+    await expect(testables.loadTransformers()).resolves.toMatchObject({
+      pipeline: expect.any(Function),
+    });
   });
 });

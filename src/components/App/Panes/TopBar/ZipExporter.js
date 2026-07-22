@@ -1,4 +1,3 @@
-import { Compiler } from '@/utils/compiler';
 import { ZipWriter } from '@/utils/zip';
 import { useCallback } from 'react';
 
@@ -52,6 +51,7 @@ export default function useZipExporter(fs, editorState, folderTree, projectName)
   }, [fs, editorState, folderTree, projectName]);
 
   const handleExportCompiledZip = useCallback(async () => {
+    const { Compiler } = await import('@/utils/compiler');
     const container = Compiler.getContainer();
     if (!container) {
       alert('No compiled files found. Please compile the project first.');

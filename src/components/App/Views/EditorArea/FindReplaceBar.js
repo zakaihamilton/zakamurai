@@ -29,6 +29,7 @@ export default function FindReplaceBar({
           onChange={(e) => setFindQuery(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && handleFind()}
           className={styles.findInput}
+          aria-label="Find in file"
         />
         <div className={styles.findStats}>
           {matches.length > 0 ? `${matchIndex + 1} / ${matches.length}` : 'No results'}
@@ -37,6 +38,7 @@ export default function FindReplaceBar({
           type="button"
           onClick={() => setMatchIndex((i) => (matches.length > 0 ? (i + 1) % matches.length : -1))}
           className={styles.findBtn}
+          aria-label="Next match"
         >
           <Icons.ChevronDown />
         </button>
@@ -48,10 +50,16 @@ export default function FindReplaceBar({
             )
           }
           className={styles.findBtn}
+          aria-label="Previous match"
         >
           <Icons.ChevronUp />
         </button>
-        <button type="button" onClick={() => setShowFind(false)} className={styles.findBtn}>
+        <button
+          type="button"
+          onClick={() => setShowFind(false)}
+          className={styles.findBtn}
+          aria-label="Close find and replace"
+        >
           <Icons.Close />
         </button>
       </div>
@@ -61,6 +69,7 @@ export default function FindReplaceBar({
           value={replaceQuery}
           onChange={(e) => setReplaceQuery(e.target.value)}
           className={styles.findInput}
+          aria-label="Replace with"
         />
         <button type="button" onClick={handleReplace} className={styles.replaceBtn}>
           Replace
