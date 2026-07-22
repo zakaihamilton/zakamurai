@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import { describe, expect, it, vi } from 'vitest';
-import ModelManager from './ModelManager';
+import ModelManager from './index';
 
 // Mock Dialog widget to keep tests focused
 vi.mock('@/components/ui/Dialog', () => ({
