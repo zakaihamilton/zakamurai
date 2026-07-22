@@ -69,13 +69,7 @@
     "vitest": "3.2.7"
   },
   "lint-staged": {
-    "src/**/*.{ts,tsx}": [
-      "biome check --write",
-      "vitest related --run",
-      "npx playwright test"
-    ],
-    "src/**/*.module.css": [
-      "stylelint --fix"
-    ]
+    "src/**/*.{ts,tsx}": ["biome check --write", "vitest related --run", "npx playwright test"],
+    "src/**/*.module.css": ["stylelint --fix"]
   }
 }
