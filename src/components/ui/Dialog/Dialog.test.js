@@ -66,4 +66,44 @@ describe('Dialog', () => {
     fireEvent.keyDown(document, { key: 'Escape' });
     expect(onCancel).toHaveBeenCalledOnce();
   });
+
+  it('traps Tab focus within the dialog', () => {
+    const onCancel = vi.fn();
+    render(
+      <Dialog isOpen={true} title="T" message="M" onConfirm={vi.fn()} onCancel={onCancel} />,
+    );
+
+    const dialog = screen.getByRole('dialog', { name: 'T' });
+    const focusable = dialog.querySelectorAll(
+      'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+    );
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+
+    last.focus();
+    fireEvent.keyDown(document, { key: 'Tab' });
+    expect(document.activeElement).toBe(first);
+
+    first.focus();
+    fireEvent.keyDown(document, { key: 'Tab', shiftKey: true });
+    expect(document.activeElement).toBe(last);
+  });
+
+  it('renders custom children and footer without default actions', () => {
+    render(
+      <Dialog
+        isOpen={true}
+        title="Custom"
+        onConfirm={vi.fn()}
+        onCancel={vi.fn()}
+        footer={<div>Custom footer</div>}
+      >
+        <p>Custom body</p>
+      </Dialog>,
+    );
+
+    expect(screen.getByText('Custom body')).toBeDefined();
+    expect(screen.getByText('Custom footer')).toBeDefined();
+    expect(screen.queryByText('Confirm')).toBeNull();
+  });
 });
