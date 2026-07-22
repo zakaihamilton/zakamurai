@@ -379,7 +379,6 @@ export default function Prompt() {
           modelCacheWork={modelCacheWork}
           modelCacheProgress={modelCacheProgress}
           modelCacheError={modelCacheError}
-          styles={styles}
         />
         <RoleGraphDialog
           isOpen={isRoleGraphOpen}
@@ -392,9 +391,8 @@ export default function Prompt() {
             if (!activeSession) return;
             patchSession(activeSession.id, { roleGraph: nextGraph });
           }}
-          className={styles.roleGraphDialog}
         />
-        <ReasoningPanel styles={styles} />
+        <ReasoningPanel />
         <PromptComposer
           value={val}
           onChange={(e) => {

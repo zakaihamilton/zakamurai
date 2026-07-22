@@ -1,6 +1,7 @@
 import { Icons } from '@/components/ui/Icons';
 import React from 'react';
 import ModelCacheToggle from './ModelCacheToggle';
+import styles from './ModelTable.module.css';
 import { COLUMNS, detailValue, formatSize } from './modelUtils';
 
 export default function ModelTable({
@@ -12,7 +13,6 @@ export default function ModelTable({
   modelCacheWork,
   onModelCacheAction,
   onRequestUncache,
-  styles = {},
 }) {
   return (
     <div className={styles.modelTableWrap}>
@@ -82,7 +82,6 @@ export default function ModelTable({
                           onModelCacheAction?.(model, 'cache');
                         }
                       }}
-                      styles={styles}
                     />
                   </td>
                 </tr>

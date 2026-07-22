@@ -1,4 +1,4 @@
-import styles from './TokenBreakdown.module.css';
+import styles from './TokenNavigationSection.module.css';
 
 export default function TokenNavigationSection({ navigationTargets, navigationLinksEnabled }) {
   return (

@@ -1,5 +1,5 @@
 import { Icons } from '@/components/ui/Icons';
-import styles from './TokenBreakdown.module.css';
+import styles from './TokenTableSection.module.css';
 
 const TOKEN_LABELS = {
   hlAttr: 'Attribute',

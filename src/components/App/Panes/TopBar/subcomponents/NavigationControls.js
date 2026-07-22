@@ -4,8 +4,8 @@ import { Icons } from '@/components/ui/Icons';
 import Tooltip from '@/components/ui/Tooltip';
 import { formatShortcut } from '@/utils/os';
 import React, { useState, useRef, useEffect } from 'react';
-import styles from '../TopBar.module.css';
 import HistoryDropdown from './HistoryDropdown';
+import styles from './NavigationControls.module.css';
 
 export default function NavigationControls() {
   const tabState = TabState.useState();

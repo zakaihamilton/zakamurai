@@ -1,6 +1,6 @@
 import { Icons } from '@/components/ui/Icons';
 import React from 'react';
-import styles from './EditorArea.module.css';
+import styles from './FindReplaceBar.module.css';
 
 export default function FindReplaceBar({
   showFind,

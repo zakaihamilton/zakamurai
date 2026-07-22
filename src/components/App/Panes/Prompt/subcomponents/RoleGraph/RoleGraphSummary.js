@@ -2,7 +2,7 @@ import { describeRoleGraph } from '@/components/AI/Agent/Roles';
 import { Icons } from '@/components/ui/Icons';
 import Tooltip from '@/components/ui/Tooltip';
 import React from 'react';
-import styles from './RoleGraphEditor.module.css';
+import styles from './RoleGraphSummary.module.css';
 
 export default function RoleGraphSummary({ roleGraph, disabled = false, onEdit }) {
   const summary = describeRoleGraph(roleGraph);

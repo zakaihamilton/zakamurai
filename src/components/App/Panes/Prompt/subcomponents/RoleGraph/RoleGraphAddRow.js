@@ -1,5 +1,5 @@
 import React from 'react';
-import styles from './RoleGraphEditor.module.css';
+import styles from './RoleGraphAddRow.module.css';
 
 export default function RoleGraphAddRow({ kindOptions = [], disabled = false, onAdd }) {
   return (

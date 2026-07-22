@@ -1,5 +1,5 @@
 import React from 'react';
-import styles from '../TopBar.module.css';
+import styles from './HistoryDropdown.module.css';
 
 export default function HistoryDropdown({ isOpen, onClose, history, onItemClick, onClearHistory }) {
   if (!isOpen || !history || history.stack.length === 0) return null;

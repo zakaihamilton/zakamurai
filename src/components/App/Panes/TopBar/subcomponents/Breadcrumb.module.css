@@ -1,0 +1,66 @@
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: var(--text-muted);
+  font-weight: 500;
+  overflow: hidden;
+  white-space: nowrap;
+  flex: 1;
+  min-width: 0;
+  margin-right: 12px;
+}
+
+.breadcrumb svg {
+  width: 14px;
+  height: 14px;
+  opacity: 0.5;
+}
+
+.breadcrumbSegment {
+  background: none;
+  border: none;
+  color: inherit;
+  font-family: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  cursor: pointer;
+  user-select: none;
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: all 0.2s var(--ease-premium);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 200px;
+  min-width: 0;
+  display: inline-block;
+  vertical-align: middle;
+}
+
+.breadcrumbSegment:hover:not(.active) {
+  color: var(--text-main);
+  background: var(--accent-light);
+}
+
+.active {
+  color: var(--text-main);
+  font-weight: 600;
+}
+
+.aiHighlight {
+  color: #a78bfa;
+  font-weight: 680;
+  filter: none;
+}
+
+:global(.light) .aiHighlight {
+  color: var(--accent);
+}
+
+@media (width <= 768px) {
+  .breadcrumb {
+    display: none;
+  }
+}

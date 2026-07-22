@@ -1,0 +1,72 @@
+.findBar {
+  background: var(--bg-card);
+  border-bottom: 1px solid var(--border);
+  padding: 8px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  animation: slide-down 0.2s ease-out;
+}
+
+@keyframes slide-down {
+  from {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.findRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.findInput {
+  background: var(--bg-base);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text-main);
+  padding: 4px 8px;
+  font-size: 12px;
+  flex: 1;
+  outline: none;
+}
+
+.findInput:focus {
+  border-color: var(--editor-syntax-function);
+}
+
+.findStats {
+  font-size: 11px;
+  color: var(--text-muted);
+  min-width: 60px;
+}
+
+.findBtn,
+.replaceBtn {
+  background: var(--bg-base);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text-main);
+  padding: 4px 8px;
+  font-size: 11px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.replaceBtn {
+  min-width: 60px;
+  justify-content: center;
+}
+
+.findBtn:hover,
+.replaceBtn:hover {
+  background: var(--bg-hover);
+}

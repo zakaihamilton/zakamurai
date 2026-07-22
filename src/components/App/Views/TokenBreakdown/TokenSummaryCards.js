@@ -1,10 +1,10 @@
 import { Icons } from '@/components/ui/Icons';
-import styles from './TokenBreakdown.module.css';
+import styles from './TokenSummaryCards.module.css';
 
 export default function TokenSummaryCards({ report }) {
   return (
     <section className={styles.summaryGrid} aria-label="Token breakdown summary">
-      <div className={`${styles.summaryCard} ${styles.summaryMode}`}>
+      <div className={styles.summaryCard}>
         <div className={styles.summaryCardHeader}>
           <span className={styles.summaryCardTitle}>Mode</span>
           <span className={styles.summaryCardIcon}>
@@ -13,7 +13,7 @@ export default function TokenSummaryCards({ report }) {
         </div>
         <strong className={styles.summaryCardValue}>{report.languageMode}</strong>
       </div>
-      <div className={`${styles.summaryCard} ${styles.summaryTokens}`}>
+      <div className={styles.summaryCard}>
         <div className={styles.summaryCardHeader}>
           <span className={styles.summaryCardTitle}>Tokens</span>
           <span className={styles.summaryCardIcon}>
@@ -22,7 +22,7 @@ export default function TokenSummaryCards({ report }) {
         </div>
         <strong className={styles.summaryCardValue}>{report.tokens.length}</strong>
       </div>
-      <div className={`${styles.summaryCard} ${styles.summaryLines}`}>
+      <div className={styles.summaryCard}>
         <div className={styles.summaryCardHeader}>
           <span className={styles.summaryCardTitle}>Lines</span>
           <span className={styles.summaryCardIcon}>
@@ -31,7 +31,7 @@ export default function TokenSummaryCards({ report }) {
         </div>
         <strong className={styles.summaryCardValue}>{report.lineCount}</strong>
       </div>
-      <div className={`${styles.summaryCard} ${styles.summaryFolds}`}>
+      <div className={styles.summaryCard}>
         <div className={styles.summaryCardHeader}>
           <span className={styles.summaryCardTitle}>Folds</span>
           <span className={styles.summaryCardIcon}>
@@ -40,7 +40,7 @@ export default function TokenSummaryCards({ report }) {
         </div>
         <strong className={styles.summaryCardValue}>{report.folds.length}</strong>
       </div>
-      <div className={`${styles.summaryCard} ${styles.summaryNav}`}>
+      <div className={styles.summaryCard}>
         <div className={styles.summaryCardHeader}>
           <span className={styles.summaryCardTitle}>Nav Targets</span>
           <span className={styles.summaryCardIcon}>
@@ -49,7 +49,7 @@ export default function TokenSummaryCards({ report }) {
         </div>
         <strong className={styles.summaryCardValue}>{report.navigationTargets.length}</strong>
       </div>
-      <div className={`${styles.summaryCard} ${styles.summarySearch}`}>
+      <div className={styles.summaryCard}>
         <div className={styles.summaryCardHeader}>
           <span className={styles.summaryCardTitle}>Search Matches</span>
           <span className={styles.summaryCardIcon}>

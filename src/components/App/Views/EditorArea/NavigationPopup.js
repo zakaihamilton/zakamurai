@@ -1,5 +1,5 @@
 import Tooltip from '@/components/ui/Tooltip';
-import styles from './EditorArea.module.css';
+import styles from './NavigationPopup.module.css';
 
 export default function NavigationPopup({ popup, onClose, onJumpToTarget }) {
   if (!popup.visible) return null;

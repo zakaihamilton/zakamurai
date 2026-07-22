@@ -1,4 +1,4 @@
-import styles from './TokenBreakdown.module.css';
+import styles from './TokenFoldsSection.module.css';
 
 export default function TokenFoldsSection({ folds, foldLabel, collapsedFoldIds }) {
   return (

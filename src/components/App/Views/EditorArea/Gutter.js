@@ -3,7 +3,7 @@ import { createState } from '@/components/state/State';
 import { Icons } from '@/components/ui/Icons';
 import Tooltip from '@/components/ui/Tooltip';
 import React, { useEffect, useMemo } from 'react';
-import styles from './EditorArea.module.css';
+import styles from './Gutter.module.css';
 
 const LINE_HEIGHT = 22.4;
 const VIRTUALIZE_AFTER = 2000;

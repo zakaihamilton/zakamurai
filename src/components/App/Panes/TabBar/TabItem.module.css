@@ -1,0 +1,106 @@
+.tab {
+  padding: 0 12px;
+  height: 33px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: none;
+  border: none;
+  border-radius: 5px 5px 0 0;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  min-width: max-content;
+  user-select: none;
+  color: var(--text-muted);
+  font-family: inherit;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+}
+
+.tab:hover:not(.activeTab) {
+  background: var(--bg-hover);
+  color: var(--text-main);
+}
+
+.activeTab {
+  background: var(--bg-panel);
+  color: var(--text-main);
+  box-shadow: none;
+}
+
+.activeTab::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--accent);
+  box-shadow: none;
+}
+
+.inactiveTab {
+  color: var(--text-muted);
+}
+
+.tabIcon {
+  display: flex;
+}
+
+.tabIconActive {
+  color: var(--accent);
+}
+
+.closeButton {
+  background: none;
+  border: none;
+  color: inherit;
+  display: flex;
+  margin-left: 6px;
+  padding: 3px;
+  border-radius: 3px;
+  transition: background 0.2s;
+  cursor: pointer;
+}
+
+.closeButton:hover {
+  background: var(--bg-hover);
+}
+
+.closeButtonDimmed {
+  opacity: 0.5;
+}
+
+.tabLabelTooltip {
+  max-width: 150px;
+  display: inline-flex;
+}
+
+.tabLabelText {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 150px;
+}
+
+.tabDragging {
+  opacity: 0.5;
+  cursor: grabbing !important;
+}
+
+.dropTarget {
+  position: relative;
+}
+
+.dropTarget::before {
+  content: "";
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  left: -1px;
+  width: 2px;
+  background: var(--accent);
+  box-shadow: 0 0 8px var(--accent);
+  z-index: 10;
+}

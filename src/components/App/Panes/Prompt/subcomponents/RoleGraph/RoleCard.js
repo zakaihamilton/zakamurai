@@ -1,7 +1,7 @@
 import { ROLE_KIND_DEFAULTS } from '@/components/AI/Agent/Roles';
 import { Icons } from '@/components/ui/Icons';
 import React from 'react';
-import styles from './RoleGraphEditor.module.css';
+import styles from './RoleCard.module.css';
 
 export default function RoleCard({
   role,

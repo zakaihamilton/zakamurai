@@ -4,7 +4,7 @@ import Tooltip from '@/components/ui/Tooltip';
 import { FILE_VIEW_TYPES } from '@/utils/fileViews';
 import { formatShortcut } from '@/utils/os';
 import React from 'react';
-import styles from './EditorArea.module.css';
+import styles from './EditorHeader.module.css';
 
 export default function EditorHeader({
   filePath,

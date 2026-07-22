@@ -1,0 +1,64 @@
+.modelDialog {
+  width: min(1180px, calc(100vw - 32px));
+  max-width: min(1180px, calc(100vw - 32px));
+  max-height: min(86vh, 760px);
+}
+
+.modelManager {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  height: min(68vh, 620px);
+  max-height: min(68vh, 620px);
+  overflow: hidden;
+  padding: 0 2px 12px 0;
+}
+
+.modelManagerIntro {
+  display: block;
+  padding: 0 0 4px;
+}
+
+.modelManagerIntro p {
+  margin: 0;
+  max-width: 440px;
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.modelManagerStatus {
+  border: 1px solid var(--border-light);
+  border-radius: 6px;
+  background: var(--accent-light);
+  color: var(--accent);
+  font-size: 12px;
+  line-height: 1.45;
+  padding: 10px 12px;
+}
+
+.modelManagerError {
+  border-color: var(--danger);
+  background: var(--danger-light);
+  color: var(--danger);
+}
+
+@media (width <= 768px) {
+  .modelDialog {
+    width: calc(100vw - 24px);
+    max-width: calc(100vw - 24px);
+    max-height: calc(100dvh - 24px);
+  }
+
+  .modelManager {
+    height: calc(100dvh - 180px);
+    max-height: calc(100dvh - 180px);
+  }
+}
+
+@media (width <= 380px) {
+  .modelDialog {
+    width: calc(100vw - 16px);
+    max-width: calc(100vw - 16px);
+  }
+}

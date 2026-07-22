@@ -1,0 +1,334 @@
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.sectionHeader h3 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.sectionHeader span {
+  color: var(--text-muted);
+  font-size: 11px;
+  font-family: var(--font-mono);
+}
+
+.toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.searchWrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.searchInput {
+  width: 100%;
+  padding: 8px 12px 8px 32px;
+  font-size: 12px;
+  border-radius: 4px;
+  background: var(--bg-hover);
+  border: 1px solid var(--panel-border);
+  color: var(--text-primary);
+  transition: border-color 0.15s ease;
+  font-family: var(--font-mono);
+}
+
+.searchInput:focus {
+  outline: none;
+  border-color: var(--border-focus);
+}
+
+.searchIcon {
+  position: absolute;
+  left: 10px;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  pointer-events: none;
+}
+
+.clearButton {
+  position: absolute;
+  right: 10px;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  padding: 2px;
+  border-radius: 2px;
+}
+
+.clearButton:hover {
+  color: var(--text-primary);
+}
+
+.filterPills {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  align-items: center;
+  padding: 2px 0;
+}
+
+.filterLabel {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-right: 6px;
+}
+
+.filterPill {
+  background: transparent;
+  border: 1px solid var(--panel-border);
+  color: var(--text-secondary);
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.12s ease;
+}
+
+.filterPill:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+  border-color: var(--border-focus);
+}
+
+.filterPillActive {
+  background: var(--bg-hover);
+  border-color: var(--border-focus);
+  color: var(--border-focus);
+  font-weight: 500;
+}
+
+.tableWrap {
+  overflow-x: auto;
+  scrollbar-gutter: stable;
+  border: 1px solid var(--panel-border);
+  border-radius: 4px;
+  background: var(--panel-bg);
+}
+
+.tableWrap::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.tableWrap::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.tableWrap::-webkit-scrollbar-thumb {
+  background: var(--bg-hover);
+  border-radius: 3px;
+}
+
+.tableWrap::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in srgb, var(--text-muted) 40%, transparent);
+}
+
+.table {
+  width: 100%;
+  min-width: 780px;
+  border-collapse: collapse;
+  font-size: 12px;
+  table-layout: fixed;
+}
+
+.colIndex {
+  width: 44px;
+}
+
+.colName {
+  width: 15%;
+}
+
+.colType {
+  width: 13%;
+}
+
+.colLine,
+.colCol {
+  width: 52px;
+}
+
+.colValue {
+  width: auto;
+}
+
+.table th,
+.table td {
+  border-bottom: 1px solid var(--panel-border);
+  padding: 6px 10px;
+  text-align: left;
+  vertical-align: middle;
+}
+
+.table tr:last-child td {
+  border-bottom: none;
+}
+
+.table tbody tr:hover {
+  background: var(--bg-hover);
+}
+
+.table th {
+  color: var(--text-secondary);
+  font-weight: 600;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--bg-tab-inactive);
+  border-bottom: 1px solid var(--panel-border);
+}
+
+.table code {
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+.nameCell,
+.typeCell,
+.valueCell {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.valueCode {
+  color: var(--text-primary);
+  background: transparent;
+  border: none;
+  padding: 0;
+  font-family: var(--font-mono);
+}
+
+.tokenPill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  border: 1px solid rgb(148 163 184 / 25%);
+  border-radius: 3px;
+  padding: 1px 6px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  background: rgb(148 163 184 / 4%);
+}
+
+.toneKeyword {
+  color: var(--syntax-keyword);
+  border-color: rgb(226 176 255 / 20%);
+  background: rgb(226 176 255 / 3%);
+}
+
+:global(body.light) .toneKeyword {
+  border-color: rgb(124 58 237 / 20%);
+  background: rgb(124 58 237 / 3%);
+}
+
+.toneString {
+  color: var(--syntax-string);
+  border-color: rgb(158 206 106 / 20%);
+  background: rgb(158 206 106 / 3%);
+}
+
+:global(body.light) .toneString {
+  border-color: rgb(22 163 74 / 20%);
+  background: rgb(22 163 74 / 3%);
+}
+
+.toneNumber {
+  color: var(--syntax-number);
+  border-color: rgb(255 158 100 / 20%);
+  background: rgb(255 158 100 / 3%);
+}
+
+:global(body.light) .toneNumber {
+  border-color: rgb(234 88 12 / 20%);
+  background: rgb(234 88 12 / 3%);
+}
+
+.toneComment {
+  color: var(--syntax-comment);
+  border-color: rgb(86 95 137 / 20%);
+  background: rgb(86 95 137 / 3%);
+}
+
+:global(body.light) .toneComment {
+  border-color: rgb(100 116 139 / 20%);
+  background: rgb(100 116 139 / 3%);
+}
+
+.toneTag {
+  color: var(--syntax-tag);
+  border-color: rgb(247 118 142 / 20%);
+  background: rgb(247 118 142 / 3%);
+}
+
+:global(body.light) .toneTag {
+  border-color: rgb(220 38 38 / 20%);
+  background: rgb(220 38 38 / 3%);
+}
+
+.toneFunction {
+  color: var(--syntax-function);
+  border-color: rgb(122 162 247 / 20%);
+  background: rgb(122 162 247 / 3%);
+}
+
+:global(body.light) .toneFunction {
+  border-color: rgb(37 99 235 / 20%);
+  background: rgb(37 99 235 / 3%);
+}
+
+.toneProperty {
+  color: var(--syntax-property);
+  border-color: rgb(125 207 255 / 20%);
+  background: rgb(125 207 255 / 3%);
+}
+
+:global(body.light) .toneProperty {
+  border-color: rgb(8 145 178 / 20%);
+  background: rgb(8 145 178 / 3%);
+}
+
+.toneJson {
+  color: var(--syntax-json-key);
+  border-color: rgb(122 162 247 / 20%);
+  background: rgb(122 162 247 / 3%);
+}
+
+:global(body.light) .toneJson {
+  border-color: rgb(37 99 235 / 20%);
+  background: rgb(37 99 235 / 3%);
+}
+
+.toneDefault {
+  color: var(--text-secondary);
+}
+
+.emptyState {
+  color: var(--text-muted);
+  font-size: 12px;
+  padding: 24px;
+  text-align: center;
+}

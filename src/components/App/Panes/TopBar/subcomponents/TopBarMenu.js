@@ -5,7 +5,7 @@ import Dialog from '@/components/ui/Dialog';
 import { Icons } from '@/components/ui/Icons';
 import Tooltip from '@/components/ui/Tooltip';
 import { formatShortcut } from '@/utils/os';
-import styles from '../TopBar.module.css';
+import styles from './TopBarMenu.module.css';
 
 const TopBarMenuState = createState('TopBarMenuState');
 

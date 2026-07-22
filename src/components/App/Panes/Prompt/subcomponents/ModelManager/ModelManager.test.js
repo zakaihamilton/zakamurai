@@ -30,25 +30,6 @@ vi.mock('@/components/ui/Tooltip', () => ({
 }));
 
 describe('ModelManager', () => {
-  const styles = {
-    modelDialog: 'modelDialog',
-    modelManager: 'modelManager',
-    modelSearch: 'modelSearch',
-    modelTableWrap: 'modelTableWrap',
-    modelTable: 'modelTable',
-    modelTableSelected: 'modelTableSelected',
-    modelNameCell: 'modelNameCell',
-    modelNameContent: 'modelNameContent',
-    modelTableEmpty: 'modelTableEmpty',
-    modelSortIdle: 'modelSortIdle',
-    modelCacheToggle: 'modelCacheToggle',
-    modelCacheToggleOn: 'modelCacheToggleOn',
-    modelCacheToggleTrack: 'modelCacheToggleTrack',
-    modelCacheToggleThumb: 'modelCacheToggleThumb',
-    modelManagerStatus: 'modelManagerStatus',
-    modelManagerError: 'modelManagerError',
-  };
-
   it('renders nothing when closed', () => {
     const { container } = render(
       <ModelManager
@@ -67,7 +48,6 @@ describe('ModelManager', () => {
         selectedModelId="Qwen3.5-4B-q4f16_1-MLC"
         cachedModelIds={['Qwen3.5-4B-q4f16_1-MLC']}
         onCancel={vi.fn()}
-        styles={styles}
       />,
     );
 
@@ -92,7 +72,6 @@ describe('ModelManager', () => {
         selectedModelId="Qwen3.5-4B-q4f16_1-MLC"
         cachedModelIds={['Qwen3.5-4B-q4f16_1-MLC']}
         onCancel={vi.fn()}
-        styles={styles}
       />,
     );
 
@@ -111,12 +90,7 @@ describe('ModelManager', () => {
 
   it('sorts columns in ascending and descending order with aria-sort', () => {
     render(
-      <ModelManager
-        isOpen={true}
-        selectedModelId="Qwen3.5-4B-q4f16_1-MLC"
-        onCancel={vi.fn()}
-        styles={styles}
-      />,
+      <ModelManager isOpen={true} selectedModelId="Qwen3.5-4B-q4f16_1-MLC" onCancel={vi.fn()} />,
     );
 
     const modelHeader = screen.getByRole('columnheader', { name: /Model/ });
@@ -133,7 +107,7 @@ describe('ModelManager', () => {
   });
 
   it('shows an empty state when no models match', () => {
-    render(<ModelManager isOpen={true} selectedModelId="" onCancel={vi.fn()} styles={styles} />);
+    render(<ModelManager isOpen={true} selectedModelId="" onCancel={vi.fn()} />);
     fireEvent.change(screen.getByRole('searchbox', { name: 'Search AI models' }), {
       target: { value: 'does-not-exist' },
     });
@@ -149,7 +123,6 @@ describe('ModelManager', () => {
         cachedModelIds={[]}
         onModelCacheAction={onModelCacheAction}
         onCancel={vi.fn()}
-        styles={styles}
       />,
     );
 
@@ -167,7 +140,6 @@ describe('ModelManager', () => {
         cachedModelIds={['Qwen2.5-Coder-7B-Instruct-q4f16_1-MLC']}
         onModelCacheAction={onModelCacheAction}
         onCancel={vi.fn()}
-        styles={styles}
       />,
     );
 
@@ -196,7 +168,6 @@ describe('ModelManager', () => {
         cachedModelIds={[]}
         onCancel={vi.fn()}
         modelCacheProgress="Downloading: 50%"
-        styles={styles}
       />,
     );
 
