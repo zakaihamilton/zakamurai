@@ -69,9 +69,7 @@ describe('Dialog', () => {
 
   it('traps Tab focus within the dialog', () => {
     const onCancel = vi.fn();
-    render(
-      <Dialog isOpen={true} title="T" message="M" onConfirm={vi.fn()} onCancel={onCancel} />,
-    );
+    render(<Dialog isOpen={true} title="T" message="M" onConfirm={vi.fn()} onCancel={onCancel} />);
 
     const dialog = screen.getByRole('dialog', { name: 'T' });
     const focusable = dialog.querySelectorAll(
