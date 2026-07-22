@@ -15,12 +15,13 @@ process is the Next.js dev server. Standard commands live in `README.md` and
   `public/wasm`, or `public/esbuild` look empty, re-run `npm install` (or
   `npm run setup:almostnode && npm run setup:wasm`) rather than debugging Next.
 
-### Known pre-existing failures (not environment issues)
+### Known pre-existing caveats (not environment issues)
 
-- `npm run lint` (Biome) reports a few formatting diffs and `npm run test`
-  (Vitest) has some failing specs (e.g. `TabState.usePassiveState is not a
-  function` in `EditorArea`/`DiffHandler`). These reproduce on a clean checkout,
-  so the baseline is not all-green — do not assume you broke something.
+- `npm run format:check` (Biome) may still report a few formatting diffs on a
+  clean checkout. Prefer `npm run format` when touching those files.
+- In-browser Build/Preview depends on the custom esbuild-wasm resolver in
+  `src/utils/compiler/browser-bundler.js` (object-shaped package `browser`
+  maps such as react-dom must not be treated as entry paths).
 
 ### Playwright / visual tests
 
