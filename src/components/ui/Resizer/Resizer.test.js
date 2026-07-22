@@ -105,4 +105,21 @@ describe('Resizer', () => {
     expect(onResize).toHaveBeenNthCalledWith(1, 316);
     expect(onResize).toHaveBeenNthCalledWith(2, 240);
   });
+
+  it('supports left/end/shift keyboard resizing and null state defaults', () => {
+    const onResize = vi.fn();
+    createState().useState.mockReturnValue(null);
+    render(<Resizer onResize={onResize} value={300} min={240} max={600} label="Resize sidebar" />);
+
+    const resizer = screen.getByRole('separator', { name: 'Resize sidebar' });
+    fireEvent.keyDown(resizer, { key: 'ArrowLeft' });
+    fireEvent.keyDown(resizer, { key: 'ArrowLeft', shiftKey: true });
+    fireEvent.keyDown(resizer, { key: 'End' });
+    fireEvent.keyDown(resizer, { key: 'Enter' });
+
+    expect(onResize).toHaveBeenNthCalledWith(1, 284);
+    expect(onResize).toHaveBeenNthCalledWith(2, 252);
+    expect(onResize).toHaveBeenNthCalledWith(3, 600);
+    expect(onResize).toHaveBeenCalledTimes(3);
+  });
 });

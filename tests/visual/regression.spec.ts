@@ -5,6 +5,15 @@ test.describe('Zakamurai Visual Regression', () => {
     // Increase timeout for initial load
     test.setTimeout(120000);
 
+    // Avoid polluted persisted settings (model selection, scope, theme) skewing snapshots.
+    await page.addInitScript(() => {
+      try {
+        localStorage.clear();
+      } catch {
+        // Ignore storage access errors in restricted contexts.
+      }
+    });
+
     // Use relative path to leverage baseURL from config
     await page.goto('/');
 

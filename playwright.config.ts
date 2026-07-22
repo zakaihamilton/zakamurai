@@ -11,6 +11,13 @@ export default defineConfig({
   retries: process.env.CI ? 2 : 0,
   workers: process.env.CI ? 1 : undefined,
   reporter: 'list',
+  expect: {
+    toHaveScreenshot: {
+      // Linux font/antialiasing differs slightly across runners; keep tight
+      // enough to catch real UI regressions while allowing CI baselines.
+      maxDiffPixelRatio: 0.05,
+    },
+  },
   use: {
     baseURL: 'http://localhost:3000',
     trace: 'on-first-retry',
@@ -29,7 +36,7 @@ export default defineConfig({
   webServer: {
     command: 'npm run dev',
     url: 'http://127.0.0.1:3000',
-    reuseExistingServer: true,
+    reuseExistingServer: !process.env.CI,
     stdout: 'ignore',
     stderr: 'pipe',
     timeout: 120000,
