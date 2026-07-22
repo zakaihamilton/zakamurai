@@ -101,6 +101,9 @@ describe('browser-bundler', () => {
     expect(
       __testables.applyBrowserRemap({ browser: { './server.js': false } }, './server.js'),
     ).toBe('./server.js');
+    expect(__testables.applyBrowserRemap(null, './x.js')).toBe('./x.js');
+    expect(__testables.applyBrowserRemap({ browser: './entry.js' }, './x.js')).toBe('./x.js');
+    expect(__testables.applyBrowserRemap({ browser: { './x.js': '' } }, './x.js')).toBe('./x.js');
   });
 
   it('applies browser remaps to relative imports inside a package', () => {

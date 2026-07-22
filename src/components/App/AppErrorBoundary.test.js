@@ -66,6 +66,36 @@ describe('AppErrorBoundary', () => {
     expect(screen.getByText('recovered')).toBeDefined();
   });
 
+  it('refocuses the heading when an error reappears after recovery', () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    const focusSpy = vi.spyOn(HTMLElement.prototype, 'focus').mockImplementation(() => {});
+    let shouldThrow = true;
+    function Flaky() {
+      if (shouldThrow) throw new Error('again');
+      return <div>ok</div>;
+    }
+
+    const { rerender } = render(
+      <AppErrorBoundary>
+        <Flaky />
+      </AppErrorBoundary>,
+    );
+
+    shouldThrow = false;
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    expect(screen.getByText('ok')).toBeDefined();
+    focusSpy.mockClear();
+
+    shouldThrow = true;
+    rerender(
+      <AppErrorBoundary>
+        <Flaky />
+      </AppErrorBoundary>,
+    );
+    expect(screen.getByRole('alert')).toBeDefined();
+    expect(focusSpy).toHaveBeenCalled();
+  });
+
   it('renders string throwables as details', () => {
     vi.spyOn(console, 'error').mockImplementation(() => {});
     function BoomString() {
