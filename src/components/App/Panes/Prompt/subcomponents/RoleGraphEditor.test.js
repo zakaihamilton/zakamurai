@@ -10,7 +10,7 @@ vi.mock('@/components/ui/Tooltip', () => ({
 vi.mock('@/components/ui/Icons', () => ({
   Icons: {
     Plus: () => <span>plus</span>,
-    Edit: () => <span>edit</span>,
+    Refresh: () => <span>refresh</span>,
     Trash: () => <span>trash</span>,
   },
 }));
