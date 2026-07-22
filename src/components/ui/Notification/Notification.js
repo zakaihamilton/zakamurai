@@ -34,9 +34,9 @@ export function Notification() {
           onClick={() => removeNotification(n.id)}
         >
           <div className={styles.icon}>
-            {n.type === 'success' && <Icons.Code size={16} />}
-            {n.type === 'error' && <Icons.Trash size={16} />}
-            {n.type === 'info' && <Icons.Bot size={16} />}
+            {n.type === 'success' && <Icons.Check size={16} />}
+            {n.type === 'error' && <Icons.AlertCircle size={16} />}
+            {n.type === 'info' && <Icons.Info size={16} />}
           </div>
           <div className={styles.message}>{n.message}</div>
         </button>

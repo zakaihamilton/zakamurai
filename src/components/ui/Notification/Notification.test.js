@@ -13,9 +13,9 @@ vi.mock('@/components/state/State', () => ({
 
 vi.mock('@/components/ui/Icons', () => ({
   Icons: {
-    Code: () => <div data-testid="success-icon" />,
-    Trash: () => <div data-testid="error-icon" />,
-    Bot: () => <div data-testid="info-icon" />,
+    Check: () => <div data-testid="success-icon" />,
+    AlertCircle: () => <div data-testid="error-icon" />,
+    Info: () => <div data-testid="info-icon" />,
   },
 }));
 

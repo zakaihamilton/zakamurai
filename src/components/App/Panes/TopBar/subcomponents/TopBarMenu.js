@@ -97,7 +97,7 @@ export default function TopBarMenu({
             handleMenuClose();
           }}
         >
-          <Icons.Plus />
+          <Icons.Download />
           <span>Export ZIP</span>
         </button>
         <button
@@ -108,7 +108,7 @@ export default function TopBarMenu({
             handleMenuClose();
           }}
         >
-          <Icons.Play />
+          <Icons.Download />
           <span>Export compiled files</span>
         </button>
 

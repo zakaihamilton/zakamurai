@@ -96,7 +96,7 @@ export default function RoleGraphEditor({
               onClick={() => onChange?.(createDefaultRoleGraph())}
               aria-label="Reset role graph"
             >
-              <Icons.Edit />
+              <Icons.Refresh />
             </button>
           </Tooltip>
           <Tooltip content="Add custom role">
