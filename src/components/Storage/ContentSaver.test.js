@@ -1,7 +1,7 @@
 import { EditorState } from '@/components/App/Views/EditorArea';
 import Settings from '@/components/Storage/Settings';
 import { act, renderHook } from '@testing-library/react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { useContentSaver } from './ContentSaver';
 
 vi.mock('@/components/App/Views/EditorArea', () => {
@@ -23,15 +23,11 @@ vi.mock('@/components/Storage/Settings', () => {
 
 describe('useContentSaver', () => {
   beforeEach(() => {
-    vi.useFakeTimers();
     vi.clearAllMocks();
   });
 
-  afterEach(() => {
-    vi.useRealTimers();
-  });
-
-  it('saves file contents and pending diffs on timer', () => {
+  it('does not save on a timer (SettingsSync owns debounced persistence)', () => {
+    vi.useFakeTimers();
     const mockState = {
       fileContents: { 'test.js': 'console.log("hello");' },
       pendingDiffs: {
@@ -49,14 +45,9 @@ describe('useContentSaver', () => {
       vi.advanceTimersByTime(1000);
     });
 
-    expect(Settings.setFileContents).toHaveBeenCalledWith(mockState.fileContents);
-    expect(Settings.setPendingDiffs).toHaveBeenCalledWith({
-      'test.js': {
-        originalContent: 'old',
-        diffs: [],
-        modifiedContent: 'console.log("hello");',
-      },
-    });
+    expect(Settings.setFileContents).not.toHaveBeenCalled();
+    expect(Settings.setPendingDiffs).not.toHaveBeenCalled();
+    vi.useRealTimers();
   });
 
   it('saves on beforeunload event', () => {

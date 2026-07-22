@@ -16,7 +16,7 @@ export function useSettingsSync(
   const { theme, projectName } = appState;
   const { sidebarWidth, isSidebarOpen, showAIInput, expandedFolders } = sidebarState;
   const { promptWidth, promptHistory } = promptState;
-  const { aiCompletionEnabled, isReadOnly } = editorState;
+  const { aiCompletionEnabled, isReadOnly, fileContents, pendingDiffs } = editorState;
   const sessions = agentSessionState?.sessions;
   const activeSessionId = agentSessionState?.activeSessionId;
   const { openTabs, activeTabId, lastCodeTabId } = tabState || {};
@@ -103,6 +103,25 @@ export function useSettingsSync(
   useEffect(() => {
     Settings.setPreviewHtml(htmlContent || null);
   }, [htmlContent]);
+
+  useEffect(() => {
+    if (fileContents && typeof fileContents === 'object') {
+      Settings.setFileContents({ ...fileContents });
+    }
+  }, [fileContents]);
+
+  useEffect(() => {
+    if (!pendingDiffs || typeof pendingDiffs !== 'object') return;
+    const diffsToSave = {};
+    for (const [path, diff] of Object.entries(pendingDiffs)) {
+      if (typeof diff?.originalContent !== 'string' || !Array.isArray(diff?.diffs)) continue;
+      diffsToSave[path] = {
+        ...diff,
+        modifiedContent: fileContents?.[path] ?? diff.modifiedContent ?? '',
+      };
+    }
+    Settings.setPendingDiffs(diffsToSave);
+  }, [pendingDiffs, fileContents]);
 
   useEffect(() => {
     if (!sessions || !activeSessionId) return;

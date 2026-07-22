@@ -2,6 +2,10 @@ import { EditorState } from '@/components/App/Views/EditorArea';
 import Settings from '@/components/Storage/Settings';
 import { useEffect } from 'react';
 
+/**
+ * Flushes editor contents on beforeunload. Regular persistence lives in SettingsSync;
+ * this keeps a synchronous last-chance write when the tab closes.
+ */
 export function useContentSaver() {
   const state = EditorState.useState();
 
@@ -24,12 +28,10 @@ export function useContentSaver() {
       Settings.setPendingDiffs(diffsToSave);
     };
 
-    const timer = setTimeout(saveContents, 1000);
     window.addEventListener('beforeunload', saveContents);
 
     return () => {
-      clearTimeout(timer);
       window.removeEventListener('beforeunload', saveContents);
     };
-  }, [state, state.fileContents, state.pendingDiffs]);
+  }, [state]);
 }

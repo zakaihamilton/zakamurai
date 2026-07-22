@@ -23,6 +23,8 @@ vi.mock('@/components/Storage/Settings', () => {
       setLastCodeTabId: vi.fn(),
       setAILogs: vi.fn(),
       setPreviewHtml: vi.fn(),
+      setFileContents: vi.fn(),
+      setPendingDiffs: vi.fn(),
       setAgentSessions: vi.fn(),
       setActiveAgentSessionId: vi.fn(),
     },
@@ -43,7 +45,14 @@ describe('useSettingsSync', () => {
       expandedFolders: ['src'],
     };
     const promptState = { promptWidth: 400, promptHistory: ['hello'] };
-    const editorState = { aiCompletionEnabled: true, isReadOnly: false };
+    const editorState = {
+      aiCompletionEnabled: true,
+      isReadOnly: false,
+      fileContents: { 'a.js': 'code' },
+      pendingDiffs: {
+        'a.js': { originalContent: 'old', diffs: [], modifiedContent: 'code' },
+      },
+    };
     const agentSessionState = {
       sessions: {
         'session-1': {
@@ -107,6 +116,10 @@ describe('useSettingsSync', () => {
     expect(Settings.setLastCodeTabId).toHaveBeenCalledWith('a.js');
     expect(Settings.setAILogs).toHaveBeenCalledWith(logState.logs);
     expect(Settings.setPreviewHtml).toHaveBeenCalledWith('<html></html>');
+    expect(Settings.setFileContents).toHaveBeenCalledWith({ 'a.js': 'code' });
+    expect(Settings.setPendingDiffs).toHaveBeenCalledWith({
+      'a.js': { originalContent: 'old', diffs: [], modifiedContent: 'code' },
+    });
     expect(Settings.setAgentSessions).toHaveBeenCalled();
     expect(Settings.setActiveAgentSessionId).toHaveBeenCalledWith('session-1');
 
@@ -119,7 +132,12 @@ describe('useSettingsSync', () => {
         expandedFolders: ['src', 'components'],
       },
       prompt: { promptWidth: 450, promptHistory: ['hello', 'world'] },
-      editor: { aiCompletionEnabled: false, isReadOnly: true },
+      editor: {
+        aiCompletionEnabled: false,
+        isReadOnly: true,
+        fileContents: { 'a.js': 'updated' },
+        pendingDiffs: {},
+      },
       agents: agentSessionState,
       tabs: { openTabs: [], activeTabId: null, lastCodeTabId: 'a.js' },
       logs: { logs: [] },
