@@ -1,10 +1,10 @@
-import { LogState } from '@/components/App/Views/LogArea';
 import Node from '@/components/state/Node';
 import { createState } from '@/components/state/State';
 import { Icons } from '@/components/ui/Icons';
 import Tooltip from '@/components/ui/Tooltip';
 import React, { useEffect, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
+import { AgentSessionState, getActiveAgentSession } from '../AgentSessions';
 import { PromptUiState } from '../Prompt';
 
 const ReasoningPanelState = createState('ReasoningPanelState');
@@ -18,7 +18,9 @@ export default function ReasoningPanel({ styles = {} }) {
 }
 
 function ReasoningPanelInner({ styles = {} }) {
-  const { reasoning = '' } = LogState.useState('reasoning') || {};
+  const agentSessionState = AgentSessionState.useState(['sessions', 'activeSessionId']);
+  const activeSession = getActiveAgentSession(agentSessionState);
+  const reasoning = activeSession?.reasoning || '';
   const { isReasoningVisible = true } = PromptUiState.useState('isReasoningVisible') || {};
   const reasoningPanelState = ReasoningPanelState.useState(null, { isCopied: false });
   const { isCopied = false } = reasoningPanelState || {};

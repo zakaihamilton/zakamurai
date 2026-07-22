@@ -1,0 +1,78 @@
+.transcript {
+  flex: 1;
+  min-height: 80px;
+  max-height: 220px;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-surface);
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.empty {
+  flex: 0 0 auto;
+  border: 1px dashed var(--border-light);
+  border-radius: 8px;
+  padding: 12px;
+  color: var(--text-muted);
+  font-size: 12px;
+  text-align: center;
+}
+
+.item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px 8px;
+  border-radius: 6px;
+}
+
+.meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.role {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.time {
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+.text {
+  font-size: 13px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  color: var(--text-main);
+}
+
+.user .role {
+  color: #fbbf24;
+}
+
+.ai .role {
+  color: var(--accent);
+}
+
+.system .role {
+  color: var(--text-muted);
+}
+
+.user {
+  background: rgb(251 191 36 / 6%);
+}
+
+.ai {
+  background: rgb(129 140 248 / 6%);
+}

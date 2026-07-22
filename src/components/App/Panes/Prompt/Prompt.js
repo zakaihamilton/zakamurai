@@ -11,18 +11,19 @@ import { LogState } from '@/components/App/Views/LogArea';
 import Settings from '@/components/Storage/Settings';
 import { createState } from '@/components/state/State';
 import React, { useCallback, useEffect } from 'react';
-
-const formatAgentEvent = (event) => {
-  if (event.type === 'thinking') return `**Step ${event.turn}:** planning next action…`;
-  if (event.type === 'tool') {
-    const target = event.action.path || event.action.query || '';
-    return `**Step ${event.turn}:** \`${event.action.action}\`${target ? ` — ${target}` : ''}`;
-  }
-  if (event.type === 'observation') return event.error ? `⚠ ${event.message}` : event.message;
-  if (event.type === 'finished')
-    return `**Ready for review:** ${event.message || 'Agent finished.'}`;
-  return '';
-};
+import {
+  AgentSessionState,
+  addAgentSession,
+  appendSessionMessage,
+  createDefaultAgentSessions,
+  createSessionMessage,
+  deleteAgentSession,
+  getActiveAgentSession,
+  listAgentSessions,
+  renameAgentSession,
+  setActiveAgentSession,
+  updateAgentSession,
+} from './AgentSessions';
 import useModelDownloader from './ModelDownloader';
 import styles from './Prompt.module.css';
 import usePromptHistory from './PromptHistory';
@@ -31,6 +32,35 @@ import PromptComposer from './subcomponents/PromptComposer';
 import PromptContextPanel from './subcomponents/PromptContextPanel';
 import PromptHeader from './subcomponents/PromptHeader';
 import ReasoningPanel from './subcomponents/ReasoningPanel';
+import RoleGraphEditor from './subcomponents/RoleGraphEditor';
+import SessionManager from './subcomponents/SessionManager';
+import SessionTranscript from './subcomponents/SessionTranscript';
+
+const ROLE_LABELS = {
+  planner: 'Planner',
+  coder: 'Coder',
+  reviewer: 'Reviewer',
+};
+
+const formatAgentEvent = (event, roleLabelById = {}) => {
+  const roleName =
+    roleLabelById[event.agentRole] || ROLE_LABELS[event.agentRole] || event.agentRole || null;
+  const rolePrefix = roleName ? `**${roleName}** · ` : '';
+  if (event.type === 'thinking') {
+    return `${rolePrefix}**Step ${event.turn}:** planning next action…`;
+  }
+  if (event.type === 'tool') {
+    const target = event.action.path || event.action.query || '';
+    return `${rolePrefix}**Step ${event.turn}:** \`${event.action.action}\`${target ? ` — ${target}` : ''}`;
+  }
+  if (event.type === 'observation') {
+    return event.error ? `⚠ ${event.message}` : `${rolePrefix}${event.message}`;
+  }
+  if (event.type === 'finished') {
+    return `${rolePrefix}**Ready for review:** ${event.message || 'Agent finished.'}`;
+  }
+  return '';
+};
 
 export const PromptState = createState('PromptState');
 export const PromptUiState = createState('PromptUiState');
@@ -57,6 +87,7 @@ export default function Prompt() {
     animatedWidth: promptState?.promptWidth ?? 0,
     abortController: null,
     promptScope: 'file',
+    runningSessionId: null,
   });
   const {
     val = '',
@@ -72,6 +103,7 @@ export default function Prompt() {
     animatedWidth = promptState?.promptWidth ?? 0,
     abortController = null,
     promptScope = 'file',
+    runningSessionId = null,
   } = promptUiState || {};
 
   const setAnimatedWidth = useCallback(
@@ -93,6 +125,25 @@ export default function Prompt() {
   const { showAIInput } = sidebarState;
   const tabState = TabState.useState();
   const editorState = EditorState.useState();
+  const agentSessionState = AgentSessionState.useState(['sessions', 'activeSessionId']);
+
+  useEffect(() => {
+    if (!agentSessionState) return;
+    if (
+      agentSessionState.activeSessionId &&
+      agentSessionState.sessions?.[agentSessionState.activeSessionId]
+    ) {
+      return;
+    }
+    const defaults = createDefaultAgentSessions(selectedModel);
+    agentSessionState((draft) => {
+      draft.sessions = defaults.sessions;
+      draft.activeSessionId = defaults.activeSessionId;
+    });
+  }, [agentSessionState, selectedModel]);
+
+  const activeSession = getActiveAgentSession(agentSessionState);
+  const sessionList = listAgentSessions(agentSessionState?.sessions || {});
 
   const { loadCachedModelIds, openModelManager, closeModelManager, handleModelCacheAction } =
     useModelDownloader(promptUiState);
@@ -104,11 +155,52 @@ export default function Prompt() {
     promptUiState,
   );
 
+  const patchSession = useCallback(
+    (sessionId, patch) => {
+      agentSessionState((draft) => {
+        const next = updateAgentSession(
+          { sessions: draft.sessions, activeSessionId: draft.activeSessionId },
+          sessionId,
+          patch,
+        );
+        draft.sessions = next.sessions;
+        draft.activeSessionId = next.activeSessionId;
+      });
+    },
+    [agentSessionState],
+  );
+
+  const pushSessionMessage = useCallback(
+    (sessionId, message) => {
+      agentSessionState((draft) => {
+        const next = appendSessionMessage(
+          { sessions: draft.sessions, activeSessionId: draft.activeSessionId },
+          sessionId,
+          message,
+        );
+        draft.sessions = next.sessions;
+      });
+    },
+    [agentSessionState],
+  );
+
   const handleStop = (e) => {
     e.preventDefault();
     abortController?.abort();
     import('@/components/AI/WebLLMAPI').then(({ interruptWebLLM }) => {
       interruptWebLLM();
+    });
+    const sessionId = runningSessionId || agentSessionState?.activeSessionId;
+    if (sessionId) {
+      patchSession(sessionId, { status: 'idle', reasoning: '' });
+      pushSessionMessage(
+        sessionId,
+        createSessionMessage({ role: 'system', text: 'AI generation stopped by user.' }),
+      );
+    }
+    promptUiState((draft) => {
+      draft.runningSessionId = null;
+      draft.abortController = null;
     });
     logState((draft) => {
       draft.isAIProcessing = false;
@@ -127,26 +219,37 @@ export default function Prompt() {
 
   const send = (e) => {
     e.preventDefault();
-    if (!val.trim() || isAIProcessing) return;
+    if (!val.trim() || isAIProcessing || !activeSession) return;
 
     const userMsg = val;
+    const sessionId = activeSession.id;
+    const sessionMode = activeSession.mode === 'team' ? 'team' : 'single';
     addToHistory(userMsg);
 
     const currentActiveTabId = tabState.activeTabId;
     const currentActiveTab = tabState.openTabs.find((t) => t.id === currentActiveTabId);
-    // Log only the short user message to the UI
+
+    pushSessionMessage(sessionId, createSessionMessage({ role: 'user', text: userMsg }));
+    patchSession(sessionId, { status: 'running', reasoning: '' });
+    promptUiState((draft) => {
+      draft.val = '';
+      draft.draftVal = '';
+      draft.historyIndex = -1;
+      draft.runningSessionId = sessionId;
+    });
+
     logState((draft) => {
+      draft.isAIProcessing = true;
+      draft.reasoning = '';
       draft.logs = [
         ...draft.logs,
         {
           id: Date.now(),
-          role: 'user',
-          text: userMsg,
+          role: 'system',
+          text: `[${activeSession.name}] started (${sessionMode}).`,
           timestamp: new Date().toTimeString().split(' ')[0],
         },
       ];
-      draft.isAIProcessing = true;
-      draft.reasoning = '';
     });
 
     const runAI = async () => {
@@ -158,11 +261,15 @@ export default function Prompt() {
           draft.abortController = controller;
         });
         const events = [];
-        // Lazy-load agent + compiler only on first ask (keeps WebLLM/almostnode off first paint).
-        const [{ collectWorkspaceFiles, runAgent, applyAgentChanges }, { Compiler }] =
-          await Promise.all([import('@/components/AI/Agent'), import('@/utils/compiler')]);
+        const roleLabelById = Object.fromEntries(
+          (activeSession.roleGraph?.roles || []).map((role) => [role.id, role.label || role.kind]),
+        );
+        const [
+          { collectWorkspaceFiles, runAgent, runCollaborativeAgent, applyAgentChanges },
+          { Compiler },
+        ] = await Promise.all([import('@/components/AI/Agent'), import('@/utils/compiler')]);
         const workspaceFiles = await collectWorkspaceFiles(fs, editorState.fileContents || {});
-        const result = await runAgent({
+        const runOptions = {
           request: userMsg,
           scope: promptScope,
           activeFile:
@@ -172,6 +279,7 @@ export default function Prompt() {
           selectedLines: promptScope === 'file' ? selectedLines : [],
           files: workspaceFiles,
           model: selectedModel,
+          roleGraph: activeSession.roleGraph,
           signal: controller.signal,
           retrieveContext: async (query, k) => {
             const { ragSearch } = await import('@/utils/rag/search-utility');
@@ -188,13 +296,20 @@ export default function Prompt() {
             }
           },
           onEvent: (event) => {
-            const line = formatAgentEvent(event);
+            const line = formatAgentEvent(event, roleLabelById);
             if (line) events.push(line);
+            const reasoning = events.slice(-30).join('\n\n');
+            patchSession(sessionId, { reasoning });
             logState((draft) => {
-              draft.reasoning = events.slice(-30).join('\n\n');
+              draft.reasoning = reasoning;
             });
           },
-        });
+        };
+
+        const result =
+          sessionMode === 'team'
+            ? await runCollaborativeAgent(runOptions)
+            : await runAgent(runOptions);
 
         let stillProcessing = false;
         logState((draft) => {
@@ -202,13 +317,29 @@ export default function Prompt() {
         });
         if (!stillProcessing) return;
 
+        const summaryText = `[Local agent${sessionMode === 'team' ? ' team' : ''}]: ${
+          result.summary || `Prepared ${result.changes.length} file(s) for review.`
+        }`;
+        pushSessionMessage(
+          sessionId,
+          createSessionMessage({
+            role: 'ai',
+            text: summaryText,
+            agentRole: sessionMode === 'team' ? 'reviewer' : null,
+          }),
+        );
+        patchSession(sessionId, { status: 'idle' });
+        promptUiState((draft) => {
+          draft.runningSessionId = null;
+          draft.abortController = null;
+        });
         logState((draft) => {
           draft.logs = [
             ...draft.logs,
             {
               id: Date.now() + 1,
               role: 'ai',
-              text: `[Local agent]: ${result.summary || `Prepared ${result.changes.length} file(s) for review.`}`,
+              text: summaryText,
               timestamp: new Date().toTimeString().split(' ')[0],
             },
           ];
@@ -228,31 +359,43 @@ export default function Prompt() {
             }
             draft.pendingDeletions = next;
           });
+          const deletionText = `Deletion review pending for ${deletions.map(({ path }) => path).join(', ')}. Approve or undo in the editor.`;
+          pushSessionMessage(
+            sessionId,
+            createSessionMessage({ role: 'system', text: deletionText }),
+          );
           logState((draft) => {
             draft.logs = [
               ...draft.logs,
               {
                 id: Date.now() + 6,
                 role: 'system',
-                text: `Deletion review pending for ${deletions.map(({ path }) => path).join(', ')}. Approve or undo in the editor.`,
+                text: deletionText,
                 timestamp: new Date().toTimeString().split(' ')[0],
               },
             ];
           });
         }
       } catch (err) {
+        const message = `Agent error: ${err.message || err}`;
         logState((draft) => {
-          if (!draft.isAIProcessing) return; // Discard if stopped
+          if (!draft.isAIProcessing) return;
           draft.logs = [
             ...draft.logs,
             {
               id: Date.now(),
               role: 'ai',
-              text: `Agent error: ${err.message || err}`,
+              text: message,
               timestamp: new Date().toTimeString().split(' ')[0],
             },
           ];
           draft.isAIProcessing = false;
+        });
+        pushSessionMessage(sessionId, createSessionMessage({ role: 'ai', text: message }));
+        patchSession(sessionId, { status: 'error' });
+        promptUiState((draft) => {
+          draft.runningSessionId = null;
+          draft.abortController = null;
         });
       }
     };
@@ -271,7 +414,6 @@ export default function Prompt() {
 
     if (e.key === 'Enter') {
       if (e.metaKey || e.ctrlKey) {
-        // Explicitly add a newline for Cmd+Enter or Ctrl+Enter
         e.preventDefault();
         e.stopPropagation();
         const { selectionStart, selectionEnd, value } = e.target;
@@ -280,7 +422,6 @@ export default function Prompt() {
           draft.val = newValue;
         });
 
-        // Use requestAnimationFrame or setTimeout to restore cursor position after React render
         requestAnimationFrame(() => {
           e.target.selectionStart = e.target.selectionEnd = selectionStart + 1;
         });
@@ -321,6 +462,7 @@ export default function Prompt() {
   }));
 
   const isOpen = isMobile ? sidebarState.isAIInputPopupOpen : showAIInput;
+  const sessionReasoning = activeSession?.reasoning || '';
 
   useEffect(() => {
     const timer = window.setTimeout(() => Settings.setPromptDraft(val), 250);
@@ -342,6 +484,70 @@ export default function Prompt() {
 
   const desktopWidth = `${animatedWidth}px`;
 
+  const handleCreateSession = () => {
+    try {
+      agentSessionState((draft) => {
+        const next = addAgentSession(
+          { sessions: draft.sessions, activeSessionId: draft.activeSessionId },
+          { modelId: selectedModel },
+        );
+        draft.sessions = next.sessions;
+        draft.activeSessionId = next.activeSessionId;
+      });
+    } catch (error) {
+      window.alert(error.message);
+    }
+  };
+
+  const handleRenameSession = () => {
+    if (!activeSession) return;
+    const nextName = window.prompt('Rename session', activeSession.name);
+    if (nextName == null) return;
+    agentSessionState((draft) => {
+      const next = renameAgentSession(
+        { sessions: draft.sessions, activeSessionId: draft.activeSessionId },
+        activeSession.id,
+        nextName,
+      );
+      draft.sessions = next.sessions;
+    });
+  };
+
+  const handleDeleteSession = () => {
+    if (!activeSession) return;
+    if (activeSession.messages?.length) {
+      const ok = window.confirm(`Delete session "${activeSession.name}"?`);
+      if (!ok) return;
+    }
+    if (runningSessionId === activeSession.id && isAIProcessing) {
+      window.alert('Stop the running agent before deleting this session.');
+      return;
+    }
+    agentSessionState((draft) => {
+      const next = deleteAgentSession(
+        { sessions: draft.sessions, activeSessionId: draft.activeSessionId },
+        activeSession.id,
+      );
+      draft.sessions = next.sessions;
+      draft.activeSessionId = next.activeSessionId;
+    });
+  };
+
+  const handleSelectSession = (sessionId) => {
+    agentSessionState((draft) => {
+      const next = setActiveAgentSession(
+        { sessions: draft.sessions, activeSessionId: draft.activeSessionId },
+        sessionId,
+      );
+      draft.activeSessionId = next.activeSessionId;
+    });
+  };
+
+  const handleModeChange = (mode) => {
+    if (!activeSession || isAIProcessing) return;
+    patchSession(activeSession.id, { mode });
+  };
+
   return (
     <aside
       className={`${styles.prompt} ${isOpen ? '' : styles.closed}`}
@@ -352,14 +558,34 @@ export default function Prompt() {
         <PromptHeader
           isAIProcessing={isAIProcessing}
           isSystemProcessing={isSystemProcessing}
-          hasReasoning={Boolean(logState.reasoning)}
+          hasReasoning={Boolean(sessionReasoning)}
           isReasoningVisible={isReasoningVisible}
           onToggleReasoning={() =>
             promptUiState((draft) => {
               draft.isReasoningVisible = !draft.isReasoningVisible;
             })
           }
+          mode={activeSession?.mode || 'single'}
+          onModeChange={handleModeChange}
         />
+        <SessionManager
+          sessions={sessionList}
+          activeSessionId={agentSessionState?.activeSessionId}
+          onSelect={handleSelectSession}
+          onCreate={handleCreateSession}
+          onRename={handleRenameSession}
+          onDelete={handleDeleteSession}
+          isOpen={isOpen}
+        />
+        {activeSession?.mode === 'team' && (
+          <RoleGraphEditor
+            roleGraph={activeSession.roleGraph}
+            modelOptions={modelOptions}
+            defaultModelId={selectedModel}
+            disabled={!isOpen || isAIProcessing}
+            onChange={(nextGraph) => patchSession(activeSession.id, { roleGraph: nextGraph })}
+          />
+        )}
         <PromptContextPanel
           scope={promptScope}
           onScopeChange={(scope) =>
@@ -373,6 +599,7 @@ export default function Prompt() {
           selectedLineText={selectedLineText}
           runState={runState}
         />
+        <SessionTranscript messages={activeSession?.messages || []} />
         <ModelDownloader
           isOpen={isModelManagerOpen}
           selectedModelId={selectedModelInfo.id}

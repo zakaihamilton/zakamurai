@@ -14,6 +14,8 @@ vi.mock('@/components/Storage/Settings', () => {
       setShowAIInput: vi.fn(),
       setExpandedFolders: vi.fn(),
       setAICompletionEnabled: vi.fn(),
+      setAgentSessions: vi.fn(),
+      setActiveAgentSessionId: vi.fn(),
     },
   };
 });
@@ -33,20 +35,37 @@ describe('useSettingsSync', () => {
     };
     const promptState = { promptWidth: 400 };
     const editorState = { aiCompletionEnabled: true };
+    const agentSessionState = {
+      sessions: {
+        'session-1': {
+          id: 'session-1',
+          name: 'Agent 1',
+          createdAt: 1,
+          updatedAt: 1,
+          mode: 'single',
+          modelId: null,
+          messages: [],
+          reasoning: '',
+          status: 'idle',
+        },
+      },
+      activeSessionId: 'session-1',
+    };
 
     const { rerender } = renderHook(
-      ({ app, sidebar, prompt, editor }) => useSettingsSync(app, sidebar, prompt, editor),
+      ({ app, sidebar, prompt, editor, agents }) =>
+        useSettingsSync(app, sidebar, prompt, editor, agents),
       {
         initialProps: {
           app: appState,
           sidebar: sidebarState,
           prompt: promptState,
           editor: editorState,
+          agents: agentSessionState,
         },
       },
     );
 
-    // Initial effect runs
     expect(Settings.setTheme).toHaveBeenCalledWith('dark');
     expect(Settings.setProjectName).toHaveBeenCalledWith('TestProj');
     expect(Settings.setSidebarWidth).toHaveBeenCalledWith(250);
@@ -55,8 +74,9 @@ describe('useSettingsSync', () => {
     expect(Settings.setExpandedFolders).toHaveBeenCalledWith(['src']);
     expect(Settings.setPromptWidth).toHaveBeenCalledWith(400);
     expect(Settings.setAICompletionEnabled).toHaveBeenCalledWith(true);
+    expect(Settings.setAgentSessions).toHaveBeenCalled();
+    expect(Settings.setActiveAgentSessionId).toHaveBeenCalledWith('session-1');
 
-    // Update props and verify changes are synced
     rerender({
       app: { theme: 'light', projectName: 'NewProj' },
       sidebar: {
@@ -67,6 +87,7 @@ describe('useSettingsSync', () => {
       },
       prompt: { promptWidth: 450 },
       editor: { aiCompletionEnabled: false },
+      agents: agentSessionState,
     });
 
     expect(Settings.setTheme).toHaveBeenCalledWith('light');

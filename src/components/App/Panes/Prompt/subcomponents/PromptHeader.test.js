@@ -34,7 +34,25 @@ describe('PromptHeader', () => {
         onToggleReasoning={onToggleReasoning}
       />,
     );
-    fireEvent.click(screen.getByRole('button'));
+    const buttons = screen.getAllByRole('button');
+    fireEvent.click(buttons[buttons.length - 1]);
     expect(onToggleReasoning).toHaveBeenCalled();
+  });
+
+  it('switches agent mode', () => {
+    const onModeChange = vi.fn();
+    render(
+      <PromptHeader
+        isAIProcessing={false}
+        isSystemProcessing={false}
+        hasReasoning={false}
+        isReasoningVisible={false}
+        onToggleReasoning={vi.fn()}
+        mode="single"
+        onModeChange={onModeChange}
+      />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Team' }));
+    expect(onModeChange).toHaveBeenCalledWith('team');
   });
 });

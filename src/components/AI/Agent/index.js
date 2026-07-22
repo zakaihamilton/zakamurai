@@ -1,5 +1,7 @@
 export * from './Applier';
+export * from './CollaborativeRunner';
 export * from './Protocol';
+export * from './Roles';
 export * from './Runner';
 export * from './Snapshot';
 export * from './Workspace';

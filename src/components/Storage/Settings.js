@@ -20,6 +20,8 @@ const KEYS = {
   AI_MODEL_EXPANDED: 'zakamurai_ai_model_expanded',
   TEMPLATE: 'zakamurai_template',
   EDITOR_READ_ONLY: 'zakamurai_editor_read_only',
+  AGENT_SESSIONS: 'zakamurai_agent_sessions',
+  ACTIVE_AGENT_SESSION: 'zakamurai_active_agent_session',
 };
 
 const getStorage = () => {
@@ -324,6 +326,39 @@ const Settings = {
 
   setEditorReadOnly(isReadOnly) {
     this.set(KEYS.EDITOR_READ_ONLY, isReadOnly.toString());
+  },
+
+  getAgentSessions() {
+    const val = this.get(KEYS.AGENT_SESSIONS);
+    if (!val) return null;
+    try {
+      const parsed = JSON.parse(val);
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return null;
+      return parsed;
+    } catch (e) {
+      console.error('Failed to parse agent sessions from localStorage', e);
+      return null;
+    }
+  },
+
+  setAgentSessions(payload) {
+    try {
+      if (!payload || typeof payload !== 'object') {
+        this.set(KEYS.AGENT_SESSIONS, null);
+        return;
+      }
+      this.set(KEYS.AGENT_SESSIONS, JSON.stringify(payload));
+    } catch (e) {
+      console.warn('Failed to save agent sessions to localStorage (likely size limit)', e);
+    }
+  },
+
+  getActiveAgentSessionId(defaultValue = null) {
+    return this.get(KEYS.ACTIVE_AGENT_SESSION, defaultValue);
+  },
+
+  setActiveAgentSessionId(id) {
+    this.set(KEYS.ACTIVE_AGENT_SESSION, id || null);
   },
 
   reset(template = 'default') {

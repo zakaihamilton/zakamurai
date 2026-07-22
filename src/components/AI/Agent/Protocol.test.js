@@ -25,4 +25,12 @@ describe('agent protocol', () => {
     });
     expect(() => parseAgentAction('{"action":"search_semantic"}')).toThrow(/query/);
   });
+
+  it('rejects actions outside the allowed set', () => {
+    expect(() =>
+      parseAgentAction('{"action":"write_file","path":"a.js","content":"x"}', {
+        allowedActions: ['read_file', 'finish'],
+      }),
+    ).toThrow(/not allowed/);
+  });
 });

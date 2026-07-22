@@ -1,4 +1,4 @@
-import { AGENT_SYSTEM_PROMPT, parseAgentAction } from './Protocol';
+import { AGENT_SYSTEM_PROMPT, ALL_AGENT_ACTIONS, parseAgentAction } from './Protocol';
 import { AgentWorkspace } from './Workspace';
 
 const observation = (action, ok, data) =>
@@ -9,6 +9,19 @@ const loadAskWebLLM = async () => {
   return askWebLLM;
 };
 
+const buildUserRequest = ({ request, scope, activeFile, selectedLines, priorContext }) => {
+  const scopeBlock =
+    scope === 'project'
+      ? `Request: ${request}\nScope: whole project\nStart by inspecting the entire workspace. Do not assume any file is the primary target.`
+      : `Request: ${request}\nScope: current file\nActive file: ${activeFile || 'none'}\nSelected lines: ${selectedLines.join(', ') || 'none'}\nStart by inspecting the workspace.`;
+  if (!priorContext) return scopeBlock;
+  return `${scopeBlock}\n\nPrior context from teammate:\n${priorContext}`;
+};
+
+/**
+ * @param {object} options
+ * @param {import('./Workspace').AgentWorkspace} [options.workspace]
+ */
 export async function runAgent({
   request,
   scope = 'file',
@@ -21,17 +34,19 @@ export async function runAgent({
   signal,
   onEvent = () => {},
   maxTurns = 20,
+  systemPrompt = AGENT_SYSTEM_PROMPT,
+  allowedActions = ALL_AGENT_ACTIONS,
+  priorContext = '',
+  workspace: existingWorkspace = null,
+  agentRole = null,
 }) {
   const askWebLLM = await loadAskWebLLM();
-  const workspace = new AgentWorkspace(files);
+  const workspace = existingWorkspace || new AgentWorkspace(files);
   const messages = [
-    { role: 'system', content: AGENT_SYSTEM_PROMPT },
+    { role: 'system', content: systemPrompt },
     {
       role: 'user',
-      content:
-        scope === 'project'
-          ? `Request: ${request}\nScope: whole project\nStart by inspecting the entire workspace. Do not assume any file is the primary target.`
-          : `Request: ${request}\nScope: current file\nActive file: ${activeFile || 'none'}\nSelected lines: ${selectedLines.join(', ') || 'none'}\nStart by inspecting the workspace.`,
+      content: buildUserRequest({ request, scope, activeFile, selectedLines, priorContext }),
     },
   ];
   let protocolFailures = 0;
@@ -40,7 +55,12 @@ export async function runAgent({
 
   for (let turn = 1; turn <= maxTurns; turn++) {
     if (signal?.aborted) throw new DOMException('Agent stopped', 'AbortError');
-    onEvent({ type: 'thinking', turn, message: `Planning step ${turn}` });
+    onEvent({
+      type: 'thinking',
+      turn,
+      agentRole,
+      message: `Planning step ${turn}`,
+    });
     const reply = await askWebLLM('', '', null, {
       model,
       messages,
@@ -52,7 +72,7 @@ export async function runAgent({
 
     let action;
     try {
-      action = parseAgentAction(reply);
+      action = parseAgentAction(reply, { allowedActions });
       protocolFailures = 0;
     } catch (error) {
       protocolFailures++;
@@ -74,7 +94,7 @@ export async function runAgent({
     lastFingerprint = fingerprint;
     if (repeatedActions >= 2)
       throw new Error('Agent stopped after repeating the same action without progress.');
-    onEvent({ type: 'tool', turn, action });
+    onEvent({ type: 'tool', turn, action, agentRole });
 
     try {
       let result;
@@ -99,8 +119,14 @@ export async function runAgent({
       }
       if (action.action === 'finish') {
         const changes = workspace.changes();
-        onEvent({ type: 'finished', turn, changes, message: action.summary });
-        return { changes, files: workspace.files, summary: action.summary, events: turn };
+        onEvent({ type: 'finished', turn, changes, message: action.summary, agentRole });
+        return {
+          changes,
+          files: workspace.files,
+          summary: action.summary,
+          events: turn,
+          workspace,
+        };
       }
       messages.push({ role: 'user', content: observation(action.action, true, result) });
       onEvent({
@@ -108,6 +134,7 @@ export async function runAgent({
         turn,
         action: action.action,
         message: String(result).slice(0, 500),
+        agentRole,
       });
     } catch (error) {
       messages.push({ role: 'user', content: observation(action.action, false, error.message) });
@@ -117,6 +144,7 @@ export async function runAgent({
         action: action.action,
         error: true,
         message: error.message,
+        agentRole,
       });
     }
   }

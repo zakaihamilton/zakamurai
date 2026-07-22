@@ -76,6 +76,20 @@ describe('Settings', () => {
     expect(Settings.getPendingDiffs()).toEqual({});
   });
 
+  it('gets and sets agent sessions', () => {
+    expect(Settings.getAgentSessions()).toBeNull();
+    const payload = {
+      activeSessionId: 's1',
+      sessions: {
+        s1: { id: 's1', name: 'Agent 1', mode: 'single', messages: [] },
+      },
+    };
+    Settings.setAgentSessions(payload);
+    expect(Settings.getAgentSessions()).toEqual(payload);
+    Settings.setActiveAgentSessionId('s1');
+    expect(Settings.getActiveAgentSessionId()).toBe('s1');
+  });
+
   it('gets and sets sidebar width', () => {
     expect(Settings.getSidebarWidth(260)).toBe(260);
     Settings.setSidebarWidth(300);

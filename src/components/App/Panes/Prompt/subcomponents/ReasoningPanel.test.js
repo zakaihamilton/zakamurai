@@ -1,13 +1,8 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import React from 'react';
 import { describe, expect, it, vi } from 'vitest';
+import { createDefaultAgentSessions, getActiveAgentSession } from '../AgentSessions';
 import ReasoningPanel from './ReasoningPanel';
-
-vi.mock('@/components/App/Views/LogArea', () => ({
-  LogState: {
-    useState: vi.fn(),
-  },
-}));
 
 vi.mock('../Prompt', () => ({
   PromptUiState: {
@@ -15,10 +10,20 @@ vi.mock('../Prompt', () => ({
   },
 }));
 
-import { LogState } from '@/components/App/Views/LogArea';
+let mockAgentSessionStore = createDefaultAgentSessions();
+
+vi.mock('../AgentSessions', async (importOriginal) => {
+  const actual = await importOriginal();
+  return {
+    ...actual,
+    AgentSessionState: {
+      useState: vi.fn(() => Object.assign(vi.fn(), mockAgentSessionStore)),
+    },
+  };
+});
+
 import { PromptUiState } from '../Prompt';
 
-// Mock clipboard API
 Object.defineProperty(navigator, 'clipboard', {
   value: {
     writeText: vi.fn(),
@@ -40,8 +45,14 @@ describe('ReasoningPanel', () => {
     reasoningLink: 'reasoningLink',
   };
 
+  const setSessionReasoning = (reasoning) => {
+    mockAgentSessionStore = createDefaultAgentSessions();
+    const active = getActiveAgentSession(mockAgentSessionStore);
+    mockAgentSessionStore.sessions[active.id] = { ...active, reasoning };
+  };
+
   it('renders reasoning title and text correctly', () => {
-    LogState.useState.mockReturnValue({ reasoning: 'This is some **Markdown** content' });
+    setSessionReasoning('This is some **Markdown** content');
     PromptUiState.useState.mockReturnValue({ isReasoningVisible: true });
 
     render(<ReasoningPanel styles={styles} />);
@@ -52,7 +63,7 @@ describe('ReasoningPanel', () => {
 
   it('copies reasoning to clipboard when copy button is clicked', async () => {
     vi.spyOn(navigator.clipboard, 'writeText').mockResolvedValue();
-    LogState.useState.mockReturnValue({ reasoning: 'Copied content text' });
+    setSessionReasoning('Copied content text');
     PromptUiState.useState.mockReturnValue({ isReasoningVisible: true });
 
     render(<ReasoningPanel styles={styles} />);
@@ -62,7 +73,6 @@ describe('ReasoningPanel', () => {
 
     expect(navigator.clipboard.writeText).toHaveBeenCalledWith('Copied content text');
 
-    // Wait for copied state feedback
     await waitFor(() => {
       expect(copyButton.className).toContain('copySuccess');
     });

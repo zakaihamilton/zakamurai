@@ -6,7 +6,12 @@ import { LogState } from '@/components/App/Views/LogArea';
 import Settings from '@/components/Storage/Settings';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import React from 'react';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+  createDefaultAgentSessions,
+  getActiveAgentSession,
+  listAgentSessions,
+} from './AgentSessions';
 import Prompt from './Prompt';
 
 vi.mock('@/components/App/Views/LogArea', () => ({
@@ -86,29 +91,88 @@ vi.mock('@/components/Storage/Settings', () => ({
   },
 }));
 
-describe('Prompt', () => {
-  it('renders input and button when showAIInput is true', async () => {
-    SidebarState.useState.mockReturnValue({
-      showAIInput: true,
-    });
-    const mockLogState = { isProcessing: false };
-    LogState.useState.mockReturnValue(mockLogState);
-    LogState.usePassiveState.mockReturnValue(mockLogState);
-    const tabUpdate = vi.fn();
-    TabState.useState.mockReturnValue(
-      Object.assign(tabUpdate, {
-        openTabs: [],
-        activeTabId: null,
-      }),
-    );
-    const mockAppState = { fs: {} };
-    AppState.useState.mockReturnValue(mockAppState);
-    AppState.usePassiveState.mockReturnValue(mockAppState);
-    EditorState.useState.mockReturnValue(vi.fn());
+let mockAgentSessionStore = createDefaultAgentSessions();
 
+vi.mock('./AgentSessions', async (importOriginal) => {
+  const actual = await importOriginal();
+  return {
+    ...actual,
+    AgentSessionState: {
+      useState: vi.fn(() => {
+        const updater = (fn) => {
+          if (typeof fn === 'function') {
+            const draft = {
+              sessions: { ...mockAgentSessionStore.sessions },
+              activeSessionId: mockAgentSessionStore.activeSessionId,
+            };
+            // Deep-ish clone sessions for draft mutation style used by Prompt
+            for (const [id, session] of Object.entries(draft.sessions)) {
+              draft.sessions[id] = { ...session, messages: [...(session.messages || [])] };
+            }
+            fn(draft);
+            mockAgentSessionStore = {
+              sessions: draft.sessions,
+              activeSessionId: draft.activeSessionId,
+            };
+          }
+        };
+        return Object.assign(updater, mockAgentSessionStore);
+      }),
+    },
+  };
+});
+
+const setupCommonMocks = ({ reasoning = '', isAIProcessing = false } = {}) => {
+  mockAgentSessionStore = createDefaultAgentSessions();
+  const active = getActiveAgentSession(mockAgentSessionStore);
+  mockAgentSessionStore.sessions[active.id] = {
+    ...active,
+    reasoning,
+  };
+
+  SidebarState.useState.mockReturnValue({
+    showAIInput: true,
+    isAIInputPopupOpen: false,
+  });
+  const mockLogState = {
+    isAIProcessing,
+    isSystemProcessing: false,
+    isProcessing: false,
+    reasoning,
+    logs: [],
+  };
+  LogState.useState.mockReturnValue(mockLogState);
+  LogState.usePassiveState.mockReturnValue(
+    Object.assign(
+      vi.fn((fn) => typeof fn === 'function' && fn(mockLogState)),
+      mockLogState,
+    ),
+  );
+  TabState.useState.mockReturnValue(
+    Object.assign(vi.fn(), {
+      openTabs: [],
+      activeTabId: null,
+    }),
+  );
+  const mockAppState = { fs: {}, isMobile: false };
+  AppState.useState.mockReturnValue(mockAppState);
+  AppState.usePassiveState.mockReturnValue(mockAppState);
+  EditorState.useState.mockReturnValue(vi.fn());
+};
+
+describe('Prompt', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    setupCommonMocks();
+  });
+
+  it('renders input and button when showAIInput is true', async () => {
     render(<Prompt />);
     expect(screen.getByPlaceholderText('Tell the Agent what to do...')).toBeDefined();
     expect(screen.getByTitle('Execute prompt')).toBeDefined();
+    expect(screen.getByLabelText('Agent sessions')).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Single' })).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Team' })).toBeDefined();
     const modelDropdown = screen.getByRole('button', { name: /^model /i });
     expect(modelDropdown).toBeDefined();
     await act(async () => {
@@ -126,24 +190,6 @@ describe('Prompt', () => {
 
   it('opens the model manager and caches models', async () => {
     const webLLMAPI = await import('@/components/AI/WebLLMAPI');
-    SidebarState.useState.mockReturnValue({
-      showAIInput: true,
-    });
-    const mockLogState = { isAIProcessing: false, isSystemProcessing: false, reasoning: '' };
-    LogState.useState.mockReturnValue(mockLogState);
-    LogState.usePassiveState.mockReturnValue(mockLogState);
-    const tabUpdate = vi.fn();
-    TabState.useState.mockReturnValue(
-      Object.assign(tabUpdate, {
-        openTabs: [],
-        activeTabId: null,
-      }),
-    );
-    const mockAppState = { fs: {}, isMobile: false };
-    AppState.useState.mockReturnValue(mockAppState);
-    AppState.usePassiveState.mockReturnValue(mockAppState);
-    EditorState.useState.mockReturnValue(vi.fn());
-
     render(<Prompt />);
 
     await act(async () => {
@@ -165,49 +211,16 @@ describe('Prompt', () => {
     SidebarState.useState.mockReturnValue({
       showAIInput: false,
     });
-    LogState.useState.mockReturnValue(vi.fn());
-    LogState.usePassiveState.mockReturnValue(vi.fn());
-    const tabUpdate = vi.fn();
-    TabState.useState.mockReturnValue(
-      Object.assign(tabUpdate, {
-        openTabs: [],
-        activeTabId: null,
-      }),
-    );
-    const mockAppState = { fs: {} };
-    AppState.useState.mockReturnValue(mockAppState);
-    AppState.usePassiveState.mockReturnValue(mockAppState);
-    EditorState.useState.mockReturnValue(vi.fn());
-
     const { container } = render(<Prompt />);
     await waitFor(() => expect(container.firstChild).not.toBeNull());
-    expect(container.firstChild).not.toBeNull();
     expect(container.firstChild.getAttribute('aria-hidden')).toBe('true');
   });
 
   it('renders reasoning as markdown', () => {
-    SidebarState.useState.mockReturnValue({
-      showAIInput: true,
-    });
-    const mockLogState = {
-      isAIProcessing: true,
-      isSystemProcessing: false,
+    setupCommonMocks({
       reasoning: '## Plan\n\n- **bold step**\n\n```js\nconst ready = true;\n```',
-    };
-    LogState.useState.mockReturnValue(mockLogState);
-    LogState.usePassiveState.mockReturnValue(mockLogState);
-    const tabUpdate = vi.fn();
-    TabState.useState.mockReturnValue(
-      Object.assign(tabUpdate, {
-        openTabs: [],
-        activeTabId: null,
-      }),
-    );
-    const mockAppState = { fs: {}, isMobile: false };
-    AppState.useState.mockReturnValue(mockAppState);
-    AppState.usePassiveState.mockReturnValue(mockAppState);
-    EditorState.useState.mockReturnValue(vi.fn());
-
+      isAIProcessing: true,
+    });
     render(<Prompt />);
 
     expect(screen.getByRole('heading', { name: 'Plan' })).toBeDefined();
@@ -216,28 +229,10 @@ describe('Prompt', () => {
   });
 
   it('wraps long reasoning code blocks inside the prompt pane', () => {
-    SidebarState.useState.mockReturnValue({
-      showAIInput: true,
-    });
-    const mockLogState = {
-      isAIProcessing: true,
-      isSystemProcessing: false,
+    setupCommonMocks({
       reasoning: '```text\nthis-is-a-very-long-agent-output-line-without-natural-breaks\n```',
-    };
-    LogState.useState.mockReturnValue(mockLogState);
-    LogState.usePassiveState.mockReturnValue(mockLogState);
-    const tabUpdate = vi.fn();
-    TabState.useState.mockReturnValue(
-      Object.assign(tabUpdate, {
-        openTabs: [],
-        activeTabId: null,
-      }),
-    );
-    const mockAppState = { fs: {}, isMobile: false };
-    AppState.useState.mockReturnValue(mockAppState);
-    AppState.usePassiveState.mockReturnValue(mockAppState);
-    EditorState.useState.mockReturnValue(vi.fn());
-
+      isAIProcessing: true,
+    });
     const { container } = render(<Prompt />);
     const codeBlock = container.querySelector('pre code');
 
@@ -246,27 +241,16 @@ describe('Prompt', () => {
   });
 
   it('calls state update when form is submitted', async () => {
-    const stateUpdate = vi.fn();
+    const stateUpdate = vi.fn((fn) => {
+      if (typeof fn === 'function') fn({ logs: [], isAIProcessing: false, reasoning: '' });
+    });
     const mockLogState = Object.assign(stateUpdate, {
       isProcessing: false,
+      isAIProcessing: false,
       logs: [],
     });
     LogState.useState.mockReturnValue(mockLogState);
     LogState.usePassiveState.mockReturnValue(mockLogState);
-    SidebarState.useState.mockReturnValue({
-      showAIInput: true,
-    });
-    const tabUpdate = vi.fn();
-    TabState.useState.mockReturnValue(
-      Object.assign(tabUpdate, {
-        openTabs: [],
-        activeTabId: null,
-      }),
-    );
-    const mockAppState = { fs: {} };
-    AppState.useState.mockReturnValue(mockAppState);
-    AppState.usePassiveState.mockReturnValue(mockAppState);
-    EditorState.useState.mockReturnValue(vi.fn());
 
     render(<Prompt />);
     const input = screen.getByPlaceholderText('Tell the Agent what to do...');
@@ -281,30 +265,32 @@ describe('Prompt', () => {
     });
 
     expect(stateUpdate).toHaveBeenCalled();
+    expect(listAgentSessions(mockAgentSessionStore.sessions)[0].messages.length).toBeGreaterThan(0);
+  });
+
+  it('creates a new agent session from the manager', async () => {
+    render(<Prompt />);
+    await act(async () => {
+      fireEvent.click(screen.getByLabelText('New session'));
+    });
+    expect(listAgentSessions(mockAgentSessionStore.sessions)).toHaveLength(2);
+  });
+
+  it('shows the role graph editor in team mode', async () => {
+    const active = getActiveAgentSession(mockAgentSessionStore);
+    mockAgentSessionStore.sessions[active.id] = {
+      ...active,
+      mode: 'team',
+    };
+    render(<Prompt />);
+    expect(screen.getByLabelText('Team role graph')).toBeDefined();
+    expect(screen.getByText('Role graph')).toBeDefined();
   });
 
   it('handles input keydown events correctly', async () => {
-    SidebarState.useState.mockReturnValue({
-      showAIInput: true,
-    });
-    const mockLogState = { isProcessing: false };
-    LogState.useState.mockReturnValue(mockLogState);
-    LogState.usePassiveState.mockReturnValue(mockLogState);
-    TabState.useState.mockReturnValue(
-      Object.assign(vi.fn(), {
-        openTabs: [],
-        activeTabId: null,
-      }),
-    );
-    const mockAppState = { fs: {} };
-    AppState.useState.mockReturnValue(mockAppState);
-    AppState.usePassiveState.mockReturnValue(mockAppState);
-    EditorState.useState.mockReturnValue(vi.fn());
-
     render(<Prompt />);
     const input = screen.getByPlaceholderText('Tell the Agent what to do...');
 
-    // Shift + Enter should not submit
     await act(async () => {
       fireEvent.keyDown(input, { key: 'Enter', shiftKey: true });
       fireEvent.keyDown(input, { key: 'ArrowUp' });
@@ -315,27 +301,10 @@ describe('Prompt', () => {
   });
 
   it('allows toggling reasoning visibility', async () => {
-    SidebarState.useState.mockReturnValue({
-      showAIInput: true,
-    });
-    const mockLogState = {
-      isAIProcessing: true,
-      isSystemProcessing: false,
+    setupCommonMocks({
       reasoning: 'Some reasoning text',
-    };
-    LogState.useState.mockReturnValue(mockLogState);
-    LogState.usePassiveState.mockReturnValue(mockLogState);
-    TabState.useState.mockReturnValue(
-      Object.assign(vi.fn(), {
-        openTabs: [],
-        activeTabId: null,
-      }),
-    );
-    const mockAppState = { fs: {}, isMobile: false };
-    AppState.useState.mockReturnValue(mockAppState);
-    AppState.usePassiveState.mockReturnValue(mockAppState);
-    EditorState.useState.mockReturnValue(vi.fn());
-
+      isAIProcessing: true,
+    });
     render(<Prompt />);
 
     const toggleBtn = screen.getByTitle('Hide Reasoning');
