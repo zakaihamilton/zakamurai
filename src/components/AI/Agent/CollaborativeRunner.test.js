@@ -144,4 +144,90 @@ describe('runCollaborativeAgent', () => {
 
     expect(askWebLLM.mock.calls.every((call) => call[3].model === 'session-model')).toBe(true);
   });
+
+  it('stops after reject retries are exhausted without a further always edge', async () => {
+    const planner = createRoleNode({ id: 'p1', kind: 'planner' });
+    const coder = createRoleNode({ id: 'c1', kind: 'coder' });
+    const reviewer = createRoleNode({ id: 'r1', kind: 'reviewer' });
+    const graph = {
+      entryRoleId: 'p1',
+      roles: [planner, coder, reviewer],
+      edges: [
+        { from: 'p1', to: 'c1', when: 'always' },
+        { from: 'c1', to: 'r1', when: 'always' },
+        { from: 'r1', to: 'c1', when: 'reject', maxTimes: 1 },
+      ],
+    };
+
+    askWebLLM
+      .mockResolvedValueOnce(
+        '{"action":"finish","summary":"{\\"goals\\":[\\"g\\"],\\"files\\":[\\"src/a.js\\"],\\"steps\\":[\\"s\\"]}"}',
+      )
+      .mockResolvedValueOnce('{"action":"write_file","path":"src/a.js","content":"v1"}')
+      .mockResolvedValueOnce('{"action":"finish","summary":"first"}')
+      .mockResolvedValueOnce(
+        '{"action":"finish","summary":"{\\"approved\\":false,\\"fixes\\":[\\"again\\"],\\"notes\\":\\"no\\"}"}',
+      )
+      .mockResolvedValueOnce('{"action":"write_file","path":"src/a.js","content":"v2"}')
+      .mockResolvedValueOnce('{"action":"finish","summary":"second"}')
+      .mockResolvedValueOnce(
+        '{"action":"finish","summary":"{\\"approved\\":false,\\"fixes\\":[\\"still\\"],\\"notes\\":\\"no\\"}"}',
+      );
+
+    const result = await runCollaborativeAgent({
+      request: 'update a',
+      files: { 'src/a.js': 'old' },
+      model: 'test',
+      roleGraph: graph,
+    });
+
+    expect(result.changes[0].after).toBe('v2');
+    expect(result.review.approved).toBe(false);
+    expect(result.summary).toContain('unresolved notes');
+  });
+
+  it('runs custom roles without looping approve edges', async () => {
+    const custom = createRoleNode({
+      id: 'sec',
+      kind: 'custom',
+      label: 'Security',
+      systemPrompt: 'Check security.',
+    });
+    const reviewer = createRoleNode({ id: 'rev', kind: 'reviewer', label: 'Review' });
+    const graph = {
+      entryRoleId: 'sec',
+      roles: [custom, reviewer],
+      edges: [{ from: 'sec', to: 'rev', when: 'always' }],
+    };
+
+    askWebLLM
+      .mockResolvedValueOnce('{"action":"finish","summary":"secured"}')
+      .mockResolvedValueOnce(
+        '{"action":"finish","summary":"{\\"approved\\":true,\\"notes\\":\\"ship it\\"}"}',
+      );
+
+    const result = await runCollaborativeAgent({
+      request: 'harden',
+      files: { 'src/a.js': 'a' },
+      model: 'test',
+      roleGraph: graph,
+    });
+
+    expect(result.roleSummaries.sec).toBe('secured');
+    expect(result.review.approved).toBe(true);
+    expect(askWebLLM).toHaveBeenCalledTimes(2);
+  });
+
+  it('aborts when the signal is already aborted', async () => {
+    const controller = new AbortController();
+    controller.abort();
+    await expect(
+      runCollaborativeAgent({
+        request: 'x',
+        files: { 'a.js': 'a' },
+        model: 'test',
+        signal: controller.signal,
+      }),
+    ).rejects.toMatchObject({ name: 'AbortError' });
+  });
 });

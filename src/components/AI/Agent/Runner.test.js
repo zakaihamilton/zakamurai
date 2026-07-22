@@ -72,4 +72,24 @@ describe('runAgent', () => {
     expect(askWebLLM.mock.calls[0][3].messages[1].content).toContain('Prior context from teammate');
     expect(events[0].agentRole).toBe('planner');
   });
+
+  it('covers list/search/delete tools and recovers from one protocol failure', async () => {
+    askWebLLM
+      .mockResolvedValueOnce('not-json')
+      .mockResolvedValueOnce('{"action":"list_files"}')
+      .mockResolvedValueOnce('{"action":"search_workspace","query":"const"}')
+      .mockResolvedValueOnce('{"action":"delete_file","path":"src/a.js","reason":"gone"}')
+      .mockResolvedValueOnce('{"action":"finish","summary":"cleaned"}');
+
+    const result = await runAgent({
+      request: 'cleanup',
+      files: { 'src/a.js': 'const a = 1;', 'src/b.js': 'const b = 2;' },
+      model: 'test',
+    });
+
+    expect(result.summary).toBe('cleaned');
+    expect(
+      result.changes.some((change) => change.path === 'src/a.js' && change.after === undefined),
+    ).toBe(true);
+  });
 });

@@ -117,7 +117,7 @@ export default function RoleGraphEditor({
         {graph.roles.map((role, index) => {
           const rejectEdge = findEdge(graph, role.id, 'reject');
           return (
-            <div key={role.id} className={styles.card}>
+            <div key={role.id} className={styles.card} data-role-id={role.id}>
               <div className={styles.cardTop}>
                 <span className={styles.index}>{index + 1}</span>
                 <input
