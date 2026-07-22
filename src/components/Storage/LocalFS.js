@@ -6,6 +6,17 @@ const STORE_NAME = 'handles';
 const FS_INIT_TIMEOUT_MS = 3000;
 export const FileSystemState = createState('FileSystemState');
 
+const INITIAL_FS_STATE = {
+  rootHandle: null,
+  currentDirHandle: null,
+  files: [],
+  mode: null,
+  error: null,
+  version: 0,
+  refreshTrigger: 0,
+  isReady: false,
+};
+
 function withTimeout(promise, message, timeoutMs = FS_INIT_TIMEOUT_MS) {
   let timeoutId;
   const timeout = new Promise((_, reject) => {
@@ -60,17 +71,13 @@ async function clearHandle() {
   });
 }
 
-export function useFileSystem() {
-  const fileSystemState = FileSystemState.useState(null, {
-    rootHandle: null,
-    currentDirHandle: null,
-    files: [],
-    mode: null,
-    error: null,
-    version: 0,
-    refreshTrigger: 0,
-    isReady: false,
-  });
+/**
+ * Shared filesystem API backed by FileSystemState.
+ * Pass `{ bootstrap: true }` only from App so init/restore runs once on the root Node.
+ * Other callers omit bootstrap and look up the ancestor store (safe under nested Nodes).
+ */
+export function useFileSystem({ bootstrap = false } = {}) {
+  const fileSystemState = FileSystemState.useState(null, bootstrap ? INITIAL_FS_STATE : undefined);
   const {
     rootHandle = null,
     currentDirHandle = null,
@@ -83,6 +90,7 @@ export function useFileSystem() {
   } = fileSystemState || {};
   const setFileSystemValue = useCallback(
     (key, nextValue) => {
+      if (!fileSystemState) return;
       fileSystemState((draft) => {
         draft[key] = typeof nextValue === 'function' ? nextValue(draft[key]) : nextValue;
       });
@@ -97,6 +105,7 @@ export function useFileSystem() {
   // 1. Wrapped in useCallback so it can be safely used as a dependency
   const refreshDirectory = useCallback(
     async (dirHandle, updateSidebar = true) => {
+      if (!fileSystemState) return;
       try {
         const entries = [];
         for await (const [name, handle] of dirHandle.entries()) {
@@ -158,6 +167,7 @@ export function useFileSystem() {
   }, [fileSystemState, refreshDirectory, setFileSystemValue]);
 
   useEffect(() => {
+    if (!bootstrap || !fileSystemState) return undefined;
     let active = true;
     const init = async () => {
       try {
@@ -190,14 +200,15 @@ export function useFileSystem() {
     return () => {
       active = false;
     };
-  }, [fileSystemState, refreshDirectory, setFileSystemValue]);
+  }, [bootstrap, fileSystemState, refreshDirectory, setFileSystemValue]);
 
-  // Handle manual refreshes via trigger
+  // Handle manual refreshes via trigger (owner mount only)
   useEffect(() => {
+    if (!bootstrap) return;
     if (rootHandle && mode && refreshTrigger > 0) {
       refreshDirectory(rootHandle);
     }
-  }, [refreshTrigger, rootHandle, mode, refreshDirectory]);
+  }, [bootstrap, refreshTrigger, rootHandle, mode, refreshDirectory]);
 
   const readFile = useCallback(async (fileHandle) => {
     const file = await fileHandle.getFile();

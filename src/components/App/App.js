@@ -32,7 +32,7 @@ import { useSettingsSync } from '@/components/Storage/SettingsSync';
 import { useWindowResize } from './WindowResize';
 
 export default function App() {
-  const fs = useFileSystem();
+  const fs = useFileSystem({ bootstrap: true });
   const syncedRootHandleRef = useRef(null);
 
   // Memoized initial values from Settings

@@ -69,7 +69,11 @@ export function useSettingsSync(
   }, [selectedModel]);
 
   useEffect(() => {
-    Settings.setPromptDraft(promptDraft || '');
+    if (typeof promptDraft !== 'string') return undefined;
+    const timer = setTimeout(() => {
+      Settings.setPromptDraft(promptDraft || '');
+    }, 250);
+    return () => clearTimeout(timer);
   }, [promptDraft]);
 
   useEffect(() => {
@@ -89,9 +93,7 @@ export function useSettingsSync(
   }, [activeTabId]);
 
   useEffect(() => {
-    if (lastCodeTabId) {
-      Settings.setLastCodeTabId(lastCodeTabId);
-    }
+    Settings.setLastCodeTabId(lastCodeTabId || null);
   }, [lastCodeTabId]);
 
   useEffect(() => {
@@ -105,22 +107,27 @@ export function useSettingsSync(
   }, [htmlContent]);
 
   useEffect(() => {
-    if (fileContents && typeof fileContents === 'object') {
+    if (!fileContents || typeof fileContents !== 'object') return undefined;
+    const timer = setTimeout(() => {
       Settings.setFileContents({ ...fileContents });
-    }
+    }, 1000);
+    return () => clearTimeout(timer);
   }, [fileContents]);
 
   useEffect(() => {
-    if (!pendingDiffs || typeof pendingDiffs !== 'object') return;
-    const diffsToSave = {};
-    for (const [path, diff] of Object.entries(pendingDiffs)) {
-      if (typeof diff?.originalContent !== 'string' || !Array.isArray(diff?.diffs)) continue;
-      diffsToSave[path] = {
-        ...diff,
-        modifiedContent: fileContents?.[path] ?? diff.modifiedContent ?? '',
-      };
-    }
-    Settings.setPendingDiffs(diffsToSave);
+    if (!pendingDiffs || typeof pendingDiffs !== 'object') return undefined;
+    const timer = setTimeout(() => {
+      const diffsToSave = {};
+      for (const [path, diff] of Object.entries(pendingDiffs)) {
+        if (typeof diff?.originalContent !== 'string' || !Array.isArray(diff?.diffs)) continue;
+        diffsToSave[path] = {
+          ...diff,
+          modifiedContent: fileContents?.[path] ?? diff.modifiedContent ?? '',
+        };
+      }
+      Settings.setPendingDiffs(diffsToSave);
+    }, 1000);
+    return () => clearTimeout(timer);
   }, [pendingDiffs, fileContents]);
 
   useEffect(() => {

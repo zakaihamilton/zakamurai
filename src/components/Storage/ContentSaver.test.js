@@ -53,7 +53,20 @@ describe('useContentSaver', () => {
   it('saves on beforeunload event', () => {
     const mockState = {
       fileContents: { 'test.js': 'console.log("unload");' },
-      pendingDiffs: {},
+      pendingDiffs: {
+        'test.js': {
+          originalContent: 'old',
+          diffs: [],
+        },
+        'missing.js': {
+          originalContent: 'gone',
+          diffs: [],
+        },
+        'skip.js': {
+          originalContent: 1,
+          diffs: 'nope',
+        },
+      },
     };
     EditorState.useState.mockReturnValue(mockState);
 
@@ -65,6 +78,17 @@ describe('useContentSaver', () => {
     });
 
     expect(Settings.setFileContents).toHaveBeenCalledWith(mockState.fileContents);
-    expect(Settings.setPendingDiffs).toHaveBeenCalledWith({});
+    expect(Settings.setPendingDiffs).toHaveBeenCalledWith({
+      'test.js': {
+        originalContent: 'old',
+        diffs: [],
+        modifiedContent: 'console.log("unload");',
+      },
+      'missing.js': {
+        originalContent: 'gone',
+        diffs: [],
+        modifiedContent: '',
+      },
+    });
   });
 });
