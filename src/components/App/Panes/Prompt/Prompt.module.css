@@ -71,6 +71,12 @@
   max-height: min(86vh, 760px);
 }
 
+.roleGraphDialog {
+  width: min(640px, calc(100vw - 32px));
+  max-width: min(640px, calc(100vw - 32px));
+  max-height: min(86vh, 720px);
+}
+
 .modelManager {
   display: flex;
   flex-direction: column;
@@ -558,6 +564,12 @@
     max-height: calc(100dvh - 24px);
   }
 
+  .roleGraphDialog {
+    width: calc(100vw - 24px);
+    max-width: calc(100vw - 24px);
+    max-height: calc(100dvh - 24px);
+  }
+
   .modelManager {
     height: calc(100dvh - 180px);
     max-height: calc(100dvh - 180px);
@@ -581,6 +593,11 @@
   }
 
   .modelDialog {
+    width: calc(100vw - 16px);
+    max-width: calc(100vw - 16px);
+  }
+
+  .roleGraphDialog {
     width: calc(100vw - 16px);
     max-width: calc(100vw - 16px);
   }

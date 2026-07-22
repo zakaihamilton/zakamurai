@@ -287,15 +287,22 @@ describe('Prompt', () => {
     expect(listAgentSessions(mockAgentSessionStore.sessions)).toHaveLength(2);
   });
 
-  it('shows the role graph editor in team mode', async () => {
+  it('shows the role graph summary in team mode and opens the editor dialog', async () => {
     const active = getActiveAgentSession(mockAgentSessionStore);
     mockAgentSessionStore.sessions[active.id] = {
       ...active,
       mode: 'team',
     };
     render(<Prompt />);
-    expect(screen.getByLabelText('Team role graph')).toBeDefined();
-    expect(screen.getByText('Role graph')).toBeDefined();
+    expect(screen.getByLabelText('Team role graph summary')).toBeDefined();
+    expect(screen.getByText('Planner → Coder → Reviewer')).toBeDefined();
+    expect(screen.queryByLabelText('Role graph editor')).toBeNull();
+
+    await act(async () => {
+      fireEvent.click(screen.getByLabelText('Edit role graph'));
+    });
+    expect(screen.getByLabelText('Role graph editor')).toBeDefined();
+    expect(screen.getByRole('dialog', { name: 'Team role graph' })).toBeDefined();
   });
 
   it('handles input keydown events correctly', async () => {
