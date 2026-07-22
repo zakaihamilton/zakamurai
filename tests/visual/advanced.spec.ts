@@ -84,8 +84,8 @@ test.describe('Zakamurai Navigation Tests', () => {
 
     await page.getByText('package.json').click();
     await expect(page.locator('header')).toContainText('package.json');
-    await page.getByText('vite.config.js').click();
-    await expect(page.locator('header')).toContainText('vite.config.js');
+    await page.getByRole('button', { name: 'main.jsx' }).click();
+    await expect(page.locator('header')).toContainText('main.jsx');
   });
 
   test('should filter sidebar files via search', async ({ page }) => {
