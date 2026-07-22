@@ -41,4 +41,30 @@ describe('AppErrorBoundary', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Reload' }));
     expect(reload).toHaveBeenCalled();
   });
+
+  it('renders string throwables as details', () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    function BoomString() {
+      throw 'string failure';
+    }
+    render(
+      <AppErrorBoundary>
+        <BoomString />
+      </AppErrorBoundary>,
+    );
+    expect(screen.getByText('string failure')).toBeDefined();
+  });
+
+  it('renders a generic message for non-Error throwables', () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    function BoomObject() {
+      throw { reason: 'nope' };
+    }
+    render(
+      <AppErrorBoundary>
+        <BoomObject />
+      </AppErrorBoundary>,
+    );
+    expect(screen.getByText('An unexpected error occurred.')).toBeDefined();
+  });
 });

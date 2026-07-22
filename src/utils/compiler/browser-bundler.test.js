@@ -73,6 +73,25 @@ describe('browser-bundler', () => {
         browser: { './index.js': './index.browser.js' },
       }),
     ).toBe('./index.browser.js');
+    expect(
+      __testables.packageEntry({
+        main: './index.js',
+        browser: { './index.js': './index.browser.js' },
+      }),
+    ).toBe('./index.browser.js');
+  });
+
+  it('prefers a string browser entry and falls back through module/main', () => {
+    expect(__testables.packageEntry({ browser: './browser.js', main: 'index.js' })).toBe(
+      './browser.js',
+    );
+    expect(__testables.packageEntry({ browser: '', module: './esm.js', main: 'index.js' })).toBe(
+      './esm.js',
+    );
+    expect(__testables.packageEntry({ browser: { './other.js': './x.js' }, main: 'lib.js' })).toBe(
+      'lib.js',
+    );
+    expect(__testables.packageEntry({})).toBe('index.js');
   });
 
   it('resolves a real-shaped react-dom tree including CJS self-require and scheduler', () => {
