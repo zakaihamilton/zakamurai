@@ -1,8 +1,24 @@
+import { AppState } from '@/components/App/AppState';
+import { SidebarState } from '@/components/App/Panes/Sidebar';
+import { EditorState } from '@/components/App/Views/EditorArea';
+import { useFileSystem } from '@/components/Storage';
 import { Compiler } from '@/utils/compiler';
 import { act, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import useZipExporter from './ZipExporter';
 
+vi.mock('@/components/Storage', () => ({
+  useFileSystem: vi.fn(),
+}));
+vi.mock('@/components/App/AppState', () => ({
+  AppState: { useState: vi.fn(() => ({ projectName: 'Test Project' })) },
+}));
+vi.mock('@/components/App/Views/EditorArea', () => ({
+  EditorState: { usePassiveState: vi.fn() },
+}));
+vi.mock('@/components/App/Panes/Sidebar', () => ({
+  SidebarState: { useState: vi.fn(() => ({ folderTree: [] })) },
+}));
 vi.mock('@/utils/compiler', () => ({
   Compiler: {
     getContainer: vi.fn(),
@@ -34,6 +50,10 @@ describe('useZipExporter', () => {
     originalRevokeObjectURL = URL.revokeObjectURL;
     URL.createObjectURL = vi.fn(() => 'blob:test-url');
     URL.revokeObjectURL = vi.fn();
+    useFileSystem.mockReturnValue(mockFs);
+    EditorState.usePassiveState.mockReturnValue(mockEditorState);
+    SidebarState.useState.mockReturnValue({ folderTree: mockFolderTree });
+    AppState.useState.mockReturnValue({ projectName });
     vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
 
     const originalAppend = Node.prototype.appendChild;

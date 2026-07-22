@@ -1,6 +1,8 @@
 'use client';
 
 import { computeDiff } from '@/components/AI/Processor/utils/DiffEngine';
+import { RagState } from '@/components/AI/RagState';
+import { WebLLMState, bindWebLLMStore } from '@/components/AI/WebLLMState';
 import { useFileSystem } from '@/components/Storage';
 import {
   DEFAULT_CONTENTS,
@@ -91,7 +93,6 @@ export default function App() {
   const appState = AppState.useState(null, {
     theme: initialValues.theme,
     projectName: initialValues.projectName,
-    fs,
     showShortcuts: false,
     isResizing: false,
     isMobile: typeof window !== 'undefined' ? window.innerWidth <= MOBILE_BREAKPOINT : false,
@@ -149,9 +150,33 @@ export default function App() {
     htmlContent: initialValues.previewHtml,
     isCompilerReady: false,
     previewAddress: '/preview/dist/index.html',
+    containerStatus: 'idle',
+    compileStatus: 'idle',
+    compilePhase: null,
+    lastCompileAt: null,
+    containerError: null,
   });
 
   NotificationState.useState(null, { notifications: [] });
+
+  const webLLMState = WebLLMState.useState(null, {
+    cachedModelIds: [],
+    engines: {},
+    activeModelId: null,
+  });
+
+  useEffect(() => {
+    bindWebLLMStore(webLLMState);
+    return () => bindWebLLMStore(null);
+  }, [webLLMState]);
+
+  RagState.useState(null, {
+    status: 'idle',
+    error: null,
+    indexedFileCount: 0,
+    lastIndexedAt: null,
+    lastFingerprint: null,
+  });
 
   // Background Services & Sync
   useWindowResize(appState, sidebarState);
@@ -167,21 +192,18 @@ export default function App() {
     promptUiState,
   );
 
-  // Sync fs when it changes
+  // Sync project name from mounted FS root
   useEffect(() => {
-    appState((draft) => {
-      if (draft.fs !== fs) {
-        draft.fs = fs;
-      }
-      if (
-        fs.rootHandle?.name &&
-        syncedRootHandleRef.current !== fs.rootHandle &&
-        draft.projectName !== fs.rootHandle.name
-      ) {
+    if (
+      fs.rootHandle?.name &&
+      syncedRootHandleRef.current !== fs.rootHandle &&
+      appState.projectName !== fs.rootHandle.name
+    ) {
+      appState((draft) => {
         draft.projectName = fs.rootHandle.name;
-      }
-      syncedRootHandleRef.current = fs.rootHandle || null;
-    });
+      });
+    }
+    syncedRootHandleRef.current = fs.rootHandle || null;
   }, [fs, appState]);
 
   // Global side effects

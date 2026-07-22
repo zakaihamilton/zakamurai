@@ -1,10 +1,20 @@
+import { RagState } from '@/components/AI/RagState';
 import { AppState } from '@/components/App/AppState';
 import { TabState } from '@/components/App/Panes/TabBar';
 import { EditorState } from '@/components/App/Views/EditorArea';
+import { useFileSystem } from '@/components/Storage';
 import { fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import StatusBar from './StatusBar';
+
+vi.mock('@/components/Storage', () => ({
+  useFileSystem: vi.fn(() => ({ mode: 'local' })),
+}));
+
+vi.mock('@/components/AI/RagState', () => ({
+  RagState: { useState: vi.fn(() => ({ status: 'idle' })) },
+}));
 
 vi.mock('@/components/App/AppState', () => ({
   AppState: {
@@ -30,11 +40,15 @@ vi.mock('@/components/ui/Tooltip', () => ({
 }));
 
 describe('StatusBar', () => {
+  beforeEach(() => {
+    useFileSystem.mockReturnValue({ mode: 'local' });
+    RagState.useState.mockReturnValue({ status: 'idle' });
+  });
+
   it('renders project name and filesystem mode', () => {
     AppState.useState.mockReturnValue({
       theme: 'dark',
       projectName: 'Test Project',
-      fs: { mode: 'local' },
     });
     EditorState.useState.mockReturnValue({});
     TabState.useState.mockReturnValue({ activeTabId: null, openTabs: [] });
@@ -50,7 +64,6 @@ describe('StatusBar', () => {
     AppState.useState.mockReturnValue({
       theme: 'dark',
       projectName: 'Test Project',
-      fs: { mode: 'local' },
     });
     EditorState.useState.mockReturnValue({
       cursorPos: { 'file.js': { line: 10, col: 5 } },
@@ -76,7 +89,6 @@ describe('StatusBar', () => {
     AppState.useState.mockReturnValue({
       theme: 'dark',
       projectName: 'Test Project',
-      fs: { mode: 'local' },
     });
     EditorState.useState.mockReturnValue(editorStateMock);
     TabState.useState.mockReturnValue({
@@ -96,7 +108,6 @@ describe('StatusBar', () => {
     AppState.useState.mockReturnValue({
       theme: 'dark',
       projectName: 'Test Project',
-      fs: { mode: 'local' },
     });
     EditorState.useState.mockReturnValue({
       cursorPos: { 'file.js': { line: 1, col: 1 } },
@@ -122,7 +133,6 @@ describe('StatusBar', () => {
     AppState.useState.mockReturnValue({
       theme: 'dark',
       projectName: 'Test Project',
-      fs: { mode: 'local' },
     });
     EditorState.useState.mockReturnValue({
       cursorPos: { 'file.js': { line: 1, col: 1 } },

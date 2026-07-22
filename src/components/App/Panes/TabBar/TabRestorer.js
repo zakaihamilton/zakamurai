@@ -1,11 +1,11 @@
-import { AppState } from '@/components/App/AppState';
 import { TabState } from '@/components/App/Panes/TabBar';
 import { EditorState } from '@/components/App/Views/EditorArea';
+import { useFileSystem } from '@/components/Storage';
 import { isMediaFile } from '@/utils/file';
 import { useEffect, useRef } from 'react';
 
 export function useTabRestorer() {
-  const { fs } = AppState.useState();
+  const fs = useFileSystem();
   const tabState = TabState.useState();
   const editorState = EditorState.useState();
   const lastRootHandleRef = useRef(null);

@@ -1,3 +1,14 @@
+const { mockRagState, mockPromptUiState } = vi.hoisted(() => ({
+  mockRagState: { status: 'ready' },
+  mockPromptUiState: { selectedModel: null },
+}));
+
+vi.mock('@/components/AI/RagState', () => ({
+  RagState: { usePassiveState: vi.fn(() => mockRagState) },
+}));
+vi.mock('@/components/App/Panes/Prompt/PromptState', () => ({
+  PromptUiState: { usePassiveState: vi.fn(() => mockPromptUiState) },
+}));
 import { RECOMMENDED_COMPLETION_MODEL } from '@/components/AI/WebLLMModels';
 import { act, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';

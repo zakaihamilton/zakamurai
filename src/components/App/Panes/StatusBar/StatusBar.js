@@ -1,7 +1,9 @@
+import { RagState } from '@/components/AI/RagState';
 import { AppState } from '@/components/App/AppState';
 import { TabState } from '@/components/App/Panes/TabBar';
 import { EditorState } from '@/components/App/Views/EditorArea';
 import { getCompletionStatusMessage } from '@/components/App/Views/EditorArea/completionUtils';
+import { useFileSystem } from '@/components/Storage';
 import { setInDraft } from '@/components/state/StateUtils';
 import { Icons } from '@/components/ui/Icons';
 import Tooltip from '@/components/ui/Tooltip';
@@ -9,9 +11,11 @@ import React from 'react';
 import styles from './StatusBar.module.css';
 
 export default function StatusBar() {
-  const { theme, projectName, fs } = AppState.useState();
+  const { theme, projectName } = AppState.useState(['theme', 'projectName']);
+  const fs = useFileSystem();
   const editorState = EditorState.useState();
   const tabState = TabState.useState();
+  const { status: ragStatus } = RagState.useState(['status']);
   const { activeTabId, openTabs = [] } = tabState;
   const activeTab = openTabs.find((t) => t.id === activeTabId);
   const { cursorPos = {} } = editorState;
@@ -100,6 +104,13 @@ export default function StatusBar() {
             <span>{fs.mode === 'local' ? 'Local' : 'Virtual'}</span>
           </output>
         </Tooltip>
+        {ragStatus && ragStatus !== 'idle' && (
+          <Tooltip content={`RAG index: ${ragStatus}`} className={styles.tooltipWrapper}>
+            <div className={styles.item}>
+              <span>RAG: {ragStatus}</span>
+            </div>
+          </Tooltip>
+        )}
       </div>
 
       <div className={styles.right}>

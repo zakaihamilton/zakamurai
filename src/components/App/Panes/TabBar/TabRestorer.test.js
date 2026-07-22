@@ -1,6 +1,7 @@
-import { AppState } from '@/components/App/AppState';
+vi.mock('@/components/Storage', () => ({ useFileSystem: vi.fn() }));
 import { TabState } from '@/components/App/Panes/TabBar';
 import { EditorState } from '@/components/App/Views/EditorArea';
+import { useFileSystem } from '@/components/Storage';
 import Settings from '@/components/Storage/Settings';
 import { act, renderHook } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -94,7 +95,7 @@ describe('useTabRestorer', () => {
       getFileHandleAtPath: vi.fn(),
       readFile: vi.fn(),
     };
-    vi.spyOn(AppState, 'useState').mockReturnValue({ fs: mockFs });
+    useFileSystem.mockReturnValue(mockFs);
   });
 
   it('restores all tabs when they are all found in the file system', async () => {

@@ -4,7 +4,7 @@ import { SidebarState } from '@/components/App/Panes/Sidebar';
 import { TabState } from '@/components/App/Panes/TabBar';
 import { PreviewState } from '@/components/App/PreviewState';
 import { EditorState } from '@/components/App/Views/EditorArea';
-import { LogState } from '@/components/App/Views/LogArea';
+import { useFileSystem } from '@/components/Storage';
 import {
   DEFAULT_CONTENTS,
   DEFAULT_FILES,
@@ -66,34 +66,19 @@ export function resetNewProjectState({
 }
 
 export default function TopBar() {
-  const appState = AppState.useState();
-  const { projectName, fs, isMobile } = appState;
+  const appState = AppState.useState(['projectName', 'isMobile', 'theme']);
+  const { projectName, isMobile } = appState;
+  const fs = useFileSystem();
   const tabState = TabState.useState();
   const { openTabs = [], activeTabId } = tabState;
   const sidebarState = SidebarState.useState();
-  const { folderTree, isSidebarOpen, isSidebarPopupOpen } = sidebarState;
+  const { isSidebarOpen, isSidebarPopupOpen } = sidebarState;
   const editorState = EditorState.useState();
-  const logState = LogState.usePassiveState();
   const previewState = PreviewState.usePassiveState();
   const promptUiState = PromptUiState.usePassiveState();
-  const { isSystemProcessing } = LogState.useState('isSystemProcessing');
 
-  const { handleCompile, handleOpenLog, handleOpenPreview, handleClearFS } = useProjectCompiler(
-    appState,
-    tabState,
-    sidebarState,
-    editorState,
-    logState,
-    previewState,
-    isSystemProcessing,
-  );
-
-  const { handleExportZip, handleExportCompiledZip } = useZipExporter(
-    fs,
-    editorState,
-    folderTree,
-    projectName,
-  );
+  const { handleCompile, handleOpenLog, handleOpenPreview, handleClearFS } = useProjectCompiler();
+  const { handleExportZip, handleExportCompiledZip } = useZipExporter();
 
   const activeTab = openTabs.find((t) => t.id === activeTabId);
 

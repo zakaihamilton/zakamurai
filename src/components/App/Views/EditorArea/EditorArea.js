@@ -1,6 +1,6 @@
-import { AppState } from '@/components/App/AppState';
 import { TabState } from '@/components/App/Panes/TabBar';
 import { LogState } from '@/components/App/Views/LogArea';
+import { useFileSystem } from '@/components/Storage';
 import Node from '@/components/state/Node';
 import { createState } from '@/components/state/State';
 import { setInDraft } from '@/components/state/StateUtils';
@@ -55,9 +55,8 @@ export default function EditorArea({ file, fsHandle }) {
 }
 
 function EditorAreaInner({ file, fsHandle }) {
-  const appState = AppState.useState();
   const tabState = TabState.useState();
-  const { fs } = appState;
+  const fs = useFileSystem();
   const state = EditorState.useState();
   const filePath = file?.path?.join('/') || file?.name;
   const hasDiff = !!state.pendingDiffs?.[filePath];

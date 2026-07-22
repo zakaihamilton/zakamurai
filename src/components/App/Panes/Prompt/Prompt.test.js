@@ -42,6 +42,17 @@ vi.mock('@/components/App/Panes/TabBar', () => ({
   },
 }));
 
+vi.mock('@/components/AI/WebLLMState', () => ({
+  WebLLMState: {
+    useState: vi.fn(() => ({ cachedModelIds: ['Qwen3.5-4B-q4f16_1-MLC'] })),
+    usePassiveState: vi.fn(() =>
+      Object.assign(vi.fn(), { cachedModelIds: ['Qwen3.5-4B-q4f16_1-MLC'] }),
+    ),
+  },
+}));
+vi.mock('@/components/Storage', () => ({
+  useFileSystem: vi.fn(() => ({})),
+}));
 vi.mock('@/components/App/AppState', () => ({
   AppState: {
     useState: vi.fn(),

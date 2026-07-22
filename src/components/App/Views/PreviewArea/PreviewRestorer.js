@@ -2,6 +2,7 @@ import { AppState } from '@/components/App/AppState';
 import { SidebarState } from '@/components/App/Panes/Sidebar';
 import { PreviewState } from '@/components/App/PreviewState';
 import { EditorState } from '@/components/App/Views/EditorArea';
+import { useFileSystem } from '@/components/Storage';
 import { useEffect, useRef } from 'react';
 
 /**
@@ -11,8 +12,8 @@ import { useEffect, useRef } from 'react';
 export function usePreviewRestorer() {
   const previewState = PreviewState.useState();
   const { htmlContent } = previewState;
-  const appState = AppState.useState();
-  const { fs } = appState;
+  const appState = AppState.useState(['silentCompileRequest']);
+  const fs = useFileSystem();
   const sidebarState = SidebarState.useState();
   const editorState = EditorState.useState();
   const restoredRef = useRef(false);

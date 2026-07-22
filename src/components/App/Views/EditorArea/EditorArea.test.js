@@ -1,5 +1,9 @@
+vi.mock('@/components/Storage', () => ({
+  useFileSystem: vi.fn(() => ({ mode: null, readFile: vi.fn() })),
+}));
 import { AppState } from '@/components/App/AppState';
 import { TabState } from '@/components/App/Panes/TabBar';
+import { useFileSystem } from '@/components/Storage';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { EditorState } from './EditorArea';
@@ -46,9 +50,8 @@ describe('EditorArea', () => {
     Object.assign(stateHook, mockState);
 
     vi.spyOn(EditorState, 'useState').mockReturnValue(stateHook);
-    vi.spyOn(AppState, 'useState').mockReturnValue({
-      fs: { mode: null },
-    });
+    useFileSystem.mockReturnValue({ mode: null });
+    vi.spyOn(AppState, 'useState').mockReturnValue({});
     vi.spyOn(TabState, 'useState').mockReturnValue({
       openTabs: [],
     });
@@ -77,7 +80,8 @@ describe('EditorArea', () => {
     Object.assign(stateHook, mockState);
 
     vi.spyOn(EditorState, 'useState').mockReturnValue(stateHook);
-    vi.spyOn(AppState, 'useState').mockReturnValue({ fs: { mode: null } });
+    useFileSystem.mockReturnValue({ mode: null });
+    vi.spyOn(AppState, 'useState').mockReturnValue({});
     vi.spyOn(TabState, 'useState').mockReturnValue({ openTabs: [] });
 
     await act(async () => {
@@ -102,13 +106,12 @@ describe('EditorArea', () => {
     Object.assign(stateHook, mockState);
 
     vi.spyOn(EditorState, 'useState').mockReturnValue(stateHook);
-    vi.spyOn(AppState, 'useState').mockReturnValue({
-      fs: {
-        mode: 'local',
-        getFileHandleAtPath: vi.fn().mockResolvedValue({}),
-        readFile: vi.fn().mockResolvedValue('const restored = true;'),
-      },
+    useFileSystem.mockReturnValue({
+      mode: 'local',
+      getFileHandleAtPath: vi.fn().mockResolvedValue({}),
+      readFile: vi.fn().mockResolvedValue('const restored = true;'),
     });
+    vi.spyOn(AppState, 'useState').mockReturnValue({});
     vi.spyOn(TabState, 'useState').mockReturnValue({ openTabs: [] });
 
     render(<EditorArea file={{ path: ['local.js'], name: 'local.js' }} />);
@@ -133,12 +136,11 @@ describe('EditorArea', () => {
     Object.assign(stateHook, mockState);
 
     vi.spyOn(EditorState, 'useState').mockReturnValue(stateHook);
-    vi.spyOn(AppState, 'useState').mockReturnValue({
-      fs: {
-        mode: 'local',
-        readFile: vi.fn().mockResolvedValue('const restoredFromDisk = true;'),
-      },
+    useFileSystem.mockReturnValue({
+      mode: 'local',
+      readFile: vi.fn().mockResolvedValue('const restoredFromDisk = true;'),
     });
+    vi.spyOn(AppState, 'useState').mockReturnValue({});
     vi.spyOn(TabState, 'useState').mockReturnValue({ openTabs: [] });
 
     render(
@@ -163,7 +165,8 @@ describe('EditorArea', () => {
     Object.assign(stateHook, mockState);
 
     vi.spyOn(EditorState, 'useState').mockReturnValue(stateHook);
-    vi.spyOn(AppState, 'useState').mockReturnValue({ fs: { mode: null } });
+    useFileSystem.mockReturnValue({ mode: null });
+    vi.spyOn(AppState, 'useState').mockReturnValue({});
     vi.spyOn(TabState, 'useState').mockReturnValue({ openTabs: [] });
 
     let rerenderFn;
@@ -204,7 +207,8 @@ describe('EditorArea', () => {
     Object.assign(stateHook, mockState);
 
     vi.spyOn(EditorState, 'useState').mockReturnValue(stateHook);
-    vi.spyOn(AppState, 'useState').mockReturnValue({ fs: { mode: null } });
+    useFileSystem.mockReturnValue({ mode: null });
+    vi.spyOn(AppState, 'useState').mockReturnValue({});
     vi.spyOn(TabState, 'useState').mockReturnValue({ openTabs: [] });
 
     let rerenderFn;
@@ -257,7 +261,8 @@ describe('EditorArea', () => {
     Object.assign(stateHook, mockState);
 
     vi.spyOn(EditorState, 'useState').mockReturnValue(stateHook);
-    vi.spyOn(AppState, 'useState').mockReturnValue({ fs: { mode: null } });
+    useFileSystem.mockReturnValue({ mode: null });
+    vi.spyOn(AppState, 'useState').mockReturnValue({});
     vi.spyOn(TabState, 'useState').mockReturnValue({ openTabs: [] });
 
     await act(async () => {

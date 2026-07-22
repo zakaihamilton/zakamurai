@@ -1,6 +1,7 @@
 import { AppState } from '@/components/App/AppState';
 import { TabState } from '@/components/App/Panes/TabBar';
 import { EditorState } from '@/components/App/Views/EditorArea';
+import { useFileSystem } from '@/components/Storage';
 import { createState } from '@/components/state/State';
 import { useNotification } from '@/components/ui/Notification';
 import React, { useCallback, useDeferredValue, useEffect, useMemo, useRef } from 'react';
@@ -20,8 +21,9 @@ const COLLAPSED_DESKTOP_WIDTH = 0;
 export default function Sidebar() {
   const sidebarState = SidebarState.useState();
   const { isSidebarOpen, folderTree = [], sidebarWidth, expandedFolders = {} } = sidebarState;
-  const appState = AppState.useState();
-  const { projectName, isMobile, fs } = appState;
+  const { projectName, isMobile } = AppState.useState(['projectName', 'isMobile']);
+  const appState = AppState.usePassiveState();
+  const fs = useFileSystem();
   const tabState = TabState.useState();
   const editorState = EditorState.useState();
   const sidebarUiState = SidebarUiState.useState(null, {

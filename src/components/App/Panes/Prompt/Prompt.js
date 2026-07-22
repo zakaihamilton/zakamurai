@@ -1,9 +1,11 @@
 import { RECOMMENDED_WEB_LLM_MODEL, WEB_LLM_MODELS } from '@/components/AI/WebLLMModels';
+import { WebLLMState } from '@/components/AI/WebLLMState';
 import { AppState } from '@/components/App/AppState';
 import { SidebarState } from '@/components/App/Panes/Sidebar';
 import { TabState } from '@/components/App/Panes/TabBar';
 import { EditorState } from '@/components/App/Views/EditorArea';
 import { LogState } from '@/components/App/Views/LogArea';
+import { useFileSystem } from '@/components/Storage';
 import React, { useCallback, useEffect } from 'react';
 import {
   AgentSessionState,
@@ -60,7 +62,8 @@ const formatAgentEvent = (event, roleLabelById = {}) => {
 };
 
 export default function Prompt() {
-  const { fs, isMobile } = AppState.useState(['fs', 'isMobile']);
+  const { isMobile } = AppState.useState(['isMobile']);
+  const fs = useFileSystem();
   const promptState = PromptState.useState();
   const { promptWidth } = promptState;
   const promptUiState = PromptUiState.useState(null, {
@@ -74,7 +77,6 @@ export default function Prompt() {
     isReasoningVisible = true,
     selectedModel = RECOMMENDED_WEB_LLM_MODEL.id,
     isModelManagerOpen = false,
-    cachedModelIds = [],
     modelCacheWork = null,
     modelCacheProgress = '',
     modelCacheError = '',
@@ -83,6 +85,7 @@ export default function Prompt() {
     promptScope = 'file',
     runningSessionId = null,
   } = promptUiState || {};
+  const { cachedModelIds = [] } = WebLLMState.useState(['cachedModelIds']);
 
   const setAnimatedWidth = useCallback(
     (nextValue) => {

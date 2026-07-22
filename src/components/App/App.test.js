@@ -63,6 +63,15 @@ vi.mock('./Panes/Prompt/PromptState', () => ({
   })),
 }));
 
+vi.mock('@/components/AI/WebLLMState', () => ({
+  WebLLMState: {
+    useState: vi.fn(() => Object.assign(vi.fn(), { cachedModelIds: [], engines: {} })),
+  },
+  bindWebLLMStore: vi.fn(),
+}));
+vi.mock('@/components/AI/RagState', () => ({
+  RagState: { useState: vi.fn(() => Object.assign(vi.fn(), { status: 'idle' })) },
+}));
 vi.mock('@/components/ui/Notification/Notification', () => ({
   NotificationState: {
     useState: vi.fn(() => Object.assign(vi.fn(), { notifications: [] })),

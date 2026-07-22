@@ -14,7 +14,6 @@ describe('useModelDownloader', () => {
     const { result } = renderHook(() => useModelDownloader(mockPromptUiState));
 
     expect(result.current.loadCachedModelIds).toBeTypeOf('function');
-    expect(result.current.refreshCachedModelIds).toBeTypeOf('function');
     expect(result.current.openModelManager).toBeTypeOf('function');
     expect(result.current.closeModelManager).toBeTypeOf('function');
     expect(result.current.handleModelCacheAction).toBeTypeOf('function');

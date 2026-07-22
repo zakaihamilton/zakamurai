@@ -16,6 +16,26 @@ import TopBar, { resetNewProjectState } from './TopBar';
 global.URL.createObjectURL = vi.fn();
 global.URL.revokeObjectURL = vi.fn();
 
+vi.mock('./ProjectCompiler', () => ({
+  default: vi.fn(() => ({
+    handleCompile: vi.fn(),
+    handleOpenLog: vi.fn(),
+    handleOpenPreview: vi.fn(),
+    handleClearFS: vi.fn(),
+  })),
+}));
+
+vi.mock('./ZipExporter', () => ({
+  default: vi.fn(() => ({
+    handleExportZip: vi.fn(),
+    handleExportCompiledZip: vi.fn(),
+  })),
+}));
+
+vi.mock('@/components/Storage', () => ({
+  useFileSystem: vi.fn(() => ({ mode: null, unlinkProject: vi.fn() })),
+}));
+
 vi.mock('@/components/App/AppState', () => ({
   AppState: {
     useState: vi.fn(),

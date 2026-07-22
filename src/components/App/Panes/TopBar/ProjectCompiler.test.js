@@ -1,3 +1,10 @@
+import { AppState } from '@/components/App/AppState';
+import { SidebarState } from '@/components/App/Panes/Sidebar';
+import { TabState } from '@/components/App/Panes/TabBar';
+import { PreviewState } from '@/components/App/PreviewState';
+import { EditorState } from '@/components/App/Views/EditorArea';
+import { LogState } from '@/components/App/Views/LogArea';
+import { useFileSystem } from '@/components/Storage';
 import { act, renderHook } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import useProjectCompiler from './ProjectCompiler';
@@ -11,6 +18,47 @@ vi.mock('@/components/ui/Notification', () => ({
   }),
 }));
 
+vi.mock('@/components/Storage', () => ({
+  useFileSystem: vi.fn(() => ({ mode: null, rootHandle: null })),
+}));
+
+vi.mock('@/components/App/AppState', () => ({
+  AppState: {
+    useState: vi.fn(() => ({ compileRequest: 0, silentCompileRequest: 0 })),
+  },
+}));
+
+vi.mock('@/components/App/Panes/TabBar', () => ({
+  TabState: {
+    usePassiveState: vi.fn(() => Object.assign(vi.fn(), { activeTabId: null, openTabs: [] })),
+  },
+}));
+
+vi.mock('@/components/App/Panes/Sidebar', () => ({
+  SidebarState: {
+    useState: vi.fn(() => ({ folderTree: [] })),
+  },
+}));
+
+vi.mock('@/components/App/Views/EditorArea', () => ({
+  EditorState: {
+    usePassiveState: vi.fn(() => ({ fileContents: {} })),
+  },
+}));
+
+vi.mock('@/components/App/Views/LogArea', () => ({
+  LogState: {
+    usePassiveState: vi.fn(() => vi.fn()),
+    useState: vi.fn(() => ({ isSystemProcessing: false })),
+  },
+}));
+
+vi.mock('@/components/App/PreviewState', () => ({
+  PreviewState: {
+    usePassiveState: vi.fn(() => vi.fn()),
+  },
+}));
+
 vi.mock('@/utils/compiler', () => ({
   Compiler: {
     reset: (...args) => compilerReset(...args),
@@ -18,25 +66,19 @@ vi.mock('@/utils/compiler', () => ({
 }));
 
 function renderCompilerHook() {
-  const mockAppState = { compileRequest: 0, silentCompileRequest: 0 };
-  const mockTabState = Object.assign(vi.fn(), { activeTabId: null });
-  const mockSidebarState = { folderTree: [] };
-  const mockEditorState = { fileContents: {} };
   const mockLogState = vi.fn();
   const mockPreviewState = vi.fn();
+  const mockTabState = Object.assign(vi.fn(), { activeTabId: null, openTabs: [] });
+  LogState.usePassiveState.mockReturnValue(mockLogState);
+  PreviewState.usePassiveState.mockReturnValue(mockPreviewState);
+  TabState.usePassiveState.mockReturnValue(mockTabState);
+  useFileSystem.mockReturnValue({ mode: null, rootHandle: null });
+  AppState.useState.mockReturnValue({ compileRequest: 0, silentCompileRequest: 0 });
+  SidebarState.useState.mockReturnValue({ folderTree: [] });
+  EditorState.usePassiveState.mockReturnValue({ fileContents: {} });
+  LogState.useState.mockReturnValue({ isSystemProcessing: false });
 
-  const rendered = renderHook(() =>
-    useProjectCompiler(
-      mockAppState,
-      mockTabState,
-      mockSidebarState,
-      mockEditorState,
-      mockLogState,
-      mockPreviewState,
-      false,
-    ),
-  );
-
+  const rendered = renderHook(() => useProjectCompiler());
   return { ...rendered, mockTabState, mockLogState, mockPreviewState };
 }
 

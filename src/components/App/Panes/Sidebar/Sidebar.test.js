@@ -1,6 +1,16 @@
+vi.mock('@/components/Storage', () => ({
+  useFileSystem: vi.fn(() => ({
+    mode: null,
+    files: [],
+    version: 0,
+    mountLocal: vi.fn(),
+    rootHandle: null,
+  })),
+}));
 import { AppState } from '@/components/App/AppState';
 import { TabState } from '@/components/App/Panes/TabBar';
 import { EditorState } from '@/components/App/Views/EditorArea';
+import { useFileSystem } from '@/components/Storage';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { SidebarState, SidebarUiState } from './Sidebar';
@@ -14,6 +24,7 @@ window.HTMLElement.prototype.scrollTo = vi.fn();
 vi.mock('@/components/App/AppState', () => ({
   AppState: {
     useState: vi.fn(),
+    usePassiveState: vi.fn(),
   },
 }));
 
@@ -59,6 +70,17 @@ describe('Sidebar', () => {
   ];
 
   beforeEach(() => {
+    AppState.usePassiveState.mockReturnValue(
+      Object.assign(vi.fn(), { projectName: 'App', isMobile: false }),
+    );
+    useFileSystem.mockReturnValue({
+      mode: null,
+      files: [],
+      version: 0,
+      mountLocal: vi.fn(),
+      rootHandle: null,
+    });
+
     vi.clearAllMocks();
   });
 

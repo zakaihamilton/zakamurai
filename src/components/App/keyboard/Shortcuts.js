@@ -577,7 +577,7 @@ export const SHORTCUTS = [
     displayKey: '⌘S',
     modifier: 'cmd',
     isGlobal: true,
-    action: ({ tabState, editorState, appState, showNotification }) => {
+    action: ({ tabState, editorState, fs, showNotification }) => {
       const activeTabId = tabState.activeTabId;
       const hasDeletion = editorState.pendingDeletions?.[activeTabId];
       const hasDiff = editorState.pendingDiffs?.[activeTabId];
@@ -607,8 +607,8 @@ export const SHORTCUTS = [
             draft.activeTabId = draft.openTabs.at(-1)?.id || null;
           }
         });
-        if (appState.fs?.deleteFileAtPath) {
-          appState.fs.deleteFileAtPath(activeTabId);
+        if (fs?.deleteFileAtPath) {
+          fs.deleteFileAtPath(activeTabId);
         }
         showNotification('Deletion approved', 'success');
       } else if (hasDiff) {
@@ -620,8 +620,8 @@ export const SHORTCUTS = [
           }
         });
         const content = editorState.fileContents?.[activeTabId];
-        if (appState.fs?.writeFileAtPath && content !== undefined) {
-          appState.fs.writeFileAtPath(activeTabId, content);
+        if (fs?.writeFileAtPath && content !== undefined) {
+          fs.writeFileAtPath(activeTabId, content);
         }
         showNotification('Changes approved & saved', 'success');
       } else {
@@ -637,7 +637,7 @@ export const SHORTCUTS = [
     displayKey: '⌘. / ⌘⌫',
     modifier: 'cmd',
     isGlobal: true,
-    action: ({ tabState, editorState, appState, showNotification }) => {
+    action: ({ tabState, editorState, fs, showNotification }) => {
       const activeTabId = tabState.activeTabId;
       const pendingDeletion = editorState.pendingDeletions?.[activeTabId];
       if (pendingDeletion) {
@@ -666,8 +666,8 @@ export const SHORTCUTS = [
             draft.pendingDiffs = nextDiffs;
           }
         });
-        if (appState.fs?.writeFileAtPath) {
-          appState.fs.writeFileAtPath(activeTabId, prevContent);
+        if (fs?.writeFileAtPath) {
+          fs.writeFileAtPath(activeTabId, prevContent);
         }
         showNotification('Changes cancelled', 'info');
       }
