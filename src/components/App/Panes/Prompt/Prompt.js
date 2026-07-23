@@ -81,7 +81,7 @@ export default function Prompt() {
   const sidebarState = SidebarState.useState(['showAIInput', 'isAIInputPopupOpen']);
   const { showAIInput } = sidebarState;
   const tabState = TabState.useState(['activeTabId', 'openTabs']);
-  const editorState = EditorState.useState(['selectedLines', 'fileContents', 'pendingDiffs']);
+  const editorState = EditorState.useState(['selectedLines']);
   const agentSessionState = AgentSessionState.useState(['sessions', 'activeSessionId']);
 
   useEffect(() => {

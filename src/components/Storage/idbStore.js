@@ -1,6 +1,7 @@
 /**
  * Minimal IndexedDB key-value store for large project blobs.
- * Falls back to an in-memory Map when IndexedDB is unavailable (SSR / private mode / tests).
+ * Uses an in-memory Map as a same-session cache when IndexedDB is unavailable,
+ * but only reports durable success when IndexedDB (or an explicit durable fallback) wins.
  */
 
 const DB_NAME = 'zakamurai-project';
@@ -31,6 +32,14 @@ function openDb() {
   return dbPromise;
 }
 
+function mirrorMemory(key, value) {
+  if (value === null || value === undefined) {
+    memoryStore.delete(key);
+  } else {
+    memoryStore.set(key, value);
+  }
+}
+
 export async function idbGet(key) {
   try {
     const db = await openDb();
@@ -45,6 +54,11 @@ export async function idbGet(key) {
   }
 }
 
+/**
+ * Persist a value. Returns true only when IndexedDB accepted the write.
+ * On failure, mirrors into memory for same-session reads and returns false
+ * so callers can fall back to a durable store (e.g. localStorage).
+ */
 export async function idbSet(key, value) {
   try {
     const db = await openDb();
@@ -60,14 +74,12 @@ export async function idbSet(key, value) {
       tx.onerror = () => reject(tx.error);
       tx.onabort = () => reject(tx.error || new Error('IndexedDB transaction aborted'));
     });
+    mirrorMemory(key, value);
+    return true;
   } catch {
-    if (value === null || value === undefined) {
-      memoryStore.delete(key);
-    } else {
-      memoryStore.set(key, value);
-    }
+    mirrorMemory(key, value);
+    return false;
   }
-  return true;
 }
 
 export async function idbDelete(key) {
@@ -93,4 +105,8 @@ export async function idbClear() {
 export function resetIdbConnection() {
   dbPromise = null;
   memoryStore.clear();
+}
+
+export function isIdbAvailable() {
+  return typeof indexedDB !== 'undefined';
 }

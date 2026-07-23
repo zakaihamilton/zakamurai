@@ -115,10 +115,26 @@ describe('Settings', () => {
     expect(Settings.getActiveAgentSessionId()).toBe('s1');
   });
 
-  it('persists file contents via IndexedDB', async () => {
+  it('persists file contents via IndexedDB or durable localStorage fallback', async () => {
     await expect(Settings.setFileContents({ 'a.js': 'code' })).resolves.toBe(true);
     expect(Settings.getFileContents()).toEqual({ 'a.js': 'code' });
-    expect(localStorage.getItem('zakamurai_file_contents')).toBeNull();
+  });
+
+  it('flushes editor buffers synchronously for unload', () => {
+    expect(
+      Settings.flushEditorBuffersSync(
+        { 'a.js': 'code' },
+        {
+          'a.js': {
+            originalContent: 'old',
+            modifiedContent: 'code',
+            diffs: [{ start: 0, end: 1, origStart: 0, origEnd: 1 }],
+          },
+        },
+      ),
+    ).toBe(true);
+    expect(Settings.getFileContents()).toEqual({ 'a.js': 'code' });
+    expect(localStorage.getItem('zakamurai_file_contents')).toContain('a.js');
   });
 
   it('gets and sets sidebar width', () => {

@@ -15,6 +15,7 @@ vi.mock('@/components/App/Views/EditorArea', () => {
 vi.mock('@/components/Storage/Settings', () => {
   return {
     default: {
+      flushEditorBuffersSync: vi.fn(),
       setFileContents: vi.fn(),
       setPendingDiffs: vi.fn(),
     },
@@ -45,12 +46,13 @@ describe('useContentSaver', () => {
       vi.advanceTimersByTime(1000);
     });
 
+    expect(Settings.flushEditorBuffersSync).not.toHaveBeenCalled();
     expect(Settings.setFileContents).not.toHaveBeenCalled();
     expect(Settings.setPendingDiffs).not.toHaveBeenCalled();
     vi.useRealTimers();
   });
 
-  it('saves on beforeunload event', () => {
+  it('flushes synchronously on beforeunload', () => {
     const mockState = {
       fileContents: { 'test.js': 'console.log("unload");' },
       pendingDiffs: {
@@ -77,8 +79,7 @@ describe('useContentSaver', () => {
       window.dispatchEvent(event);
     });
 
-    expect(Settings.setFileContents).toHaveBeenCalledWith(mockState.fileContents);
-    expect(Settings.setPendingDiffs).toHaveBeenCalledWith({
+    expect(Settings.flushEditorBuffersSync).toHaveBeenCalledWith(mockState.fileContents, {
       'test.js': {
         originalContent: 'old',
         diffs: [],

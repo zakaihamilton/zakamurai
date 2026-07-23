@@ -57,3 +57,35 @@ export function parsePreviewMessage(data) {
   }
   return data;
 }
+
+/**
+ * Allow only same-app preview paths. Reject absolute URLs, protocol-relative,
+ * traversal, and anything outside a `/preview` namespace (optionally under a base path).
+ */
+export function sanitizePreviewPath(path) {
+  if (typeof path !== 'string' || !path) return null;
+  const trimmed = path.trim();
+  if (!trimmed.startsWith('/')) return null;
+  if (trimmed.startsWith('//')) return null;
+  if (trimmed.includes('\\')) return null;
+  if (trimmed.includes('..')) return null;
+  if (/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(trimmed)) return null;
+  // /preview, /preview/..., or /{base}/preview/...
+  if (!/^(?:\/[^/]+)*\/preview(?:\/.*)?$/.test(trimmed)) return null;
+  return trimmed;
+}
+
+/**
+ * Accept preview bridge messages only from the preview iframe window.
+ * Opaque sandboxed iframes report origin "null".
+ */
+export function isTrustedPreviewMessage(event, iframeWindow) {
+  if (!event || !iframeWindow) return false;
+  if (event.source !== iframeWindow) return false;
+  const origin = event.origin;
+  if (origin && origin !== 'null' && typeof window !== 'undefined') {
+    // Same-origin preview (sandbox not opaque) must match the IDE origin.
+    if (origin !== window.location.origin) return false;
+  }
+  return !!parsePreviewMessage(event.data);
+}

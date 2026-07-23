@@ -105,26 +105,39 @@ const writeLocalFallback = (key, value) => {
 const writeLarge = async (cacheKey, value) => {
   largeCache[cacheKey] = value;
   const idbKey = LARGE_IDB_KEYS[cacheKey];
-  try {
-    await idbSet(idbKey, value);
+  const durable = await idbSet(idbKey, value);
+  if (durable) {
     clearLegacyLocal(idbKey);
     return true;
-  } catch (e) {
-    console.warn(`Failed to save ${cacheKey} to IndexedDB`, e);
-    // Best-effort localStorage fallback for small payloads / private mode.
-    try {
-      const serialized =
-        value === null || value === undefined
-          ? null
-          : typeof value === 'string'
-            ? value
-            : JSON.stringify(value);
-      return writeLocalFallback(idbKey, serialized);
-    } catch (fallbackError) {
-      console.warn(`Failed to fall back ${cacheKey} to localStorage`, fallbackError);
-      return false;
-    }
   }
+
+  console.warn(`IndexedDB unavailable for ${cacheKey}; trying localStorage fallback`);
+  const serialized =
+    value === null || value === undefined
+      ? null
+      : typeof value === 'string'
+        ? value
+        : JSON.stringify(value);
+  return writeLocalFallback(idbKey, serialized);
+};
+
+/**
+ * Synchronous last-chance write for beforeunload. Updates the in-memory cache and
+ * localStorage so the debounce window is not lost when the tab closes.
+ */
+const persistLargeSync = (cacheKey, value) => {
+  largeCache[cacheKey] = value;
+  const idbKey = LARGE_IDB_KEYS[cacheKey];
+  const serialized =
+    value === null || value === undefined
+      ? null
+      : typeof value === 'string'
+        ? value
+        : JSON.stringify(value);
+  const ok = writeLocalFallback(idbKey, serialized);
+  // Fire-and-forget durable IDB write; unload may cancel it.
+  void idbSet(idbKey, value);
+  return ok;
 };
 
 const normalizePendingDiffs = (parsed) => {
@@ -289,6 +302,18 @@ const Settings = {
   async setPendingDiffs(diffs) {
     const next = normalizePendingDiffs(diffs);
     return writeLarge('pendingDiffs', next);
+  },
+
+  /**
+   * Synchronous unload flush for editor buffers. Prefer this in beforeunload handlers.
+   */
+  flushEditorBuffersSync(fileContents, pendingDiffs) {
+    const contentsOk = persistLargeSync(
+      'fileContents',
+      fileContents && typeof fileContents === 'object' ? fileContents : {},
+    );
+    const diffsOk = persistLargeSync('pendingDiffs', normalizePendingDiffs(pendingDiffs));
+    return contentsOk && diffsOk;
   },
 
   getPreviewHtml() {

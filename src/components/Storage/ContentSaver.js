@@ -26,8 +26,7 @@ export function useContentSaver() {
           modifiedContent: currentContents?.[path] ?? diff.modifiedContent ?? '',
         };
       }
-      Settings.setFileContents({ ...currentContents });
-      Settings.setPendingDiffs(diffsToSave);
+      Settings.flushEditorBuffersSync({ ...currentContents }, diffsToSave);
     };
 
     window.addEventListener('beforeunload', saveContents);

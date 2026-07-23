@@ -13,7 +13,12 @@ import {
   formatUnhandledRejection,
   resolveMissingExportError,
 } from './previewErrorUtils';
-import { parsePreviewMessage, PREVIEW_MESSAGE_TYPES } from './previewSandbox';
+import {
+  parsePreviewMessage,
+  PREVIEW_MESSAGE_TYPES,
+  sanitizePreviewPath,
+  isTrustedPreviewMessage,
+} from './previewSandbox';
 
 const SW_INIT_TIMEOUT_MS = 15000;
 
@@ -235,6 +240,8 @@ export default function PreviewArea() {
 
   useEffect(() => {
     const onMessage = (event) => {
+      const iframeWindow = iframeRef.current?.contentWindow;
+      if (!isTrustedPreviewMessage(event, iframeWindow)) return;
       const payload = parsePreviewMessage(event.data);
       if (!payload) return;
       if (
@@ -243,8 +250,10 @@ export default function PreviewArea() {
       ) {
         if (payload.message) setPreviewError(payload.message);
       } else if (payload.type === PREVIEW_MESSAGE_TYPES.NAVIGATE && payload.path) {
+        const safePath = sanitizePreviewPath(payload.path);
+        if (!safePath) return;
         previewAreaUiState((draft) => {
-          draft.address = payload.path;
+          draft.address = safePath;
         });
       }
     };
