@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { idbClear, idbSet, isIdbAvailable, resetIdbConnection } from './idbStore';
 import Settings from './Settings';
+import { idbClear, idbSet, isIdbAvailable, resetIdbConnection } from './idbStore';
 
 describe('Settings', () => {
   beforeEach(async () => {
