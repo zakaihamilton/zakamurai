@@ -13,4 +13,12 @@ describe('createPreviewLoadingResponse', () => {
     expect(html).toContain('serviceWorker');
     expect(html).toContain('controllerchange');
   });
+
+  it('guards serviceWorker access for opaque sandboxed iframes', async () => {
+    const html = await createPreviewLoadingResponse().text();
+    expect(html).toContain('getServiceWorker');
+    expect(html).toMatch(/try\s*\{[\s\S]*serviceWorker[\s\S]*\}\s*catch/);
+    expect(html).toContain('Sandbox preview');
+    expect(html).toContain('_preview_wait');
+  });
 });
