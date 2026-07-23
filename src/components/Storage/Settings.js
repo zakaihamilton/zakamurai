@@ -448,6 +448,9 @@ const Settings = {
   /**
    * Load large project blobs from IndexedDB (migrating legacy localStorage once).
    * Call before reading fileContents / pendingDiffs / previewHtml / sessions / logs.
+   *
+   * Prefer localStorage when present: durable IDB writes clear it, so a remaining
+   * localStorage copy means either an unfinished migration or a fresher beforeunload flush.
    */
   async hydrate() {
     if (isHydrated) return true;
@@ -456,18 +459,18 @@ const Settings = {
     hydratePromise = (async () => {
       const loadOne = async (cacheKey, fallback, { raw = false } = {}) => {
         const idbKey = LARGE_IDB_KEYS[cacheKey];
-        let value = await idbGet(idbKey);
-        if (value == null) {
-          value = readLegacyLocal(idbKey, fallback, { raw });
-          if (value != null && value !== fallback) {
-            try {
-              await idbSet(idbKey, value);
-              clearLegacyLocal(idbKey);
-            } catch {
-              // Keep legacy localStorage value if migration fails.
-            }
-          }
+        const legacy = readLegacyLocal(idbKey, fallback, { raw });
+        const hasLegacy = legacy != null && legacy !== fallback;
+        let value = hasLegacy ? legacy : await idbGet(idbKey);
+
+        if (hasLegacy) {
+          // Promote fresher/migrating localStorage into IDB, then free the legacy slot.
+          const durable = await idbSet(idbKey, legacy);
+          if (durable) clearLegacyLocal(idbKey);
+        } else if (value == null) {
+          value = fallback;
         }
+
         largeCache[cacheKey] = value == null ? fallback : value;
       };
 

@@ -172,7 +172,9 @@ export function useSettingsSync(
       const payload = serializeAgentSessions({ sessions, activeSessionId });
       void Promise.resolve(Settings.setAgentSessions(payload)).then((ok) => {
         persistRef.current(ok);
-        Settings.setActiveAgentSessionId(payload.activeSessionId);
+        if (ok) {
+          Settings.setActiveAgentSessionId(payload.activeSessionId);
+        }
       });
     }, 500);
     return () => clearTimeout(timer);

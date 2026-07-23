@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { idbClear, resetIdbConnection } from './idbStore';
+import { idbClear, idbSet, isIdbAvailable, resetIdbConnection } from './idbStore';
 import Settings from './Settings';
 
 describe('Settings', () => {
@@ -118,6 +118,30 @@ describe('Settings', () => {
   it('persists file contents via IndexedDB or durable localStorage fallback', async () => {
     await expect(Settings.setFileContents({ 'a.js': 'code' })).resolves.toBe(true);
     expect(Settings.getFileContents()).toEqual({ 'a.js': 'code' });
+  });
+
+  it('hydrate prefers unload localStorage over older IndexedDB', async () => {
+    // Seed a stale IDB/memory blob, then a fresher beforeunload localStorage copy.
+    await idbSet('zakamurai_file_contents', { fromIdb: true });
+    localStorage.setItem('zakamurai_file_contents', JSON.stringify({ fromUnload: true }));
+    Settings._resetHydrationForTests();
+
+    await Settings.hydrate();
+    expect(Settings.getFileContents()).toEqual({ fromUnload: true });
+
+    if (isIdbAvailable()) {
+      // Durable promotion clears the legacy slot.
+      expect(localStorage.getItem('zakamurai_file_contents')).toBeNull();
+    }
+  });
+
+  it('hydrate reads IndexedDB when localStorage has no legacy copy', async () => {
+    await idbSet('zakamurai_file_contents', { onlyIdb: true });
+    localStorage.removeItem('zakamurai_file_contents');
+    Settings._resetHydrationForTests();
+
+    await Settings.hydrate();
+    expect(Settings.getFileContents()).toEqual({ onlyIdb: true });
   });
 
   it('flushes editor buffers synchronously for unload', () => {

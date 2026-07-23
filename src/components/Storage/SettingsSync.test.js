@@ -237,4 +237,54 @@ describe('useSettingsSync', () => {
     expect(addNotification.mock.calls[0][0]).toMatch(/storage is full/i);
     expect(addNotification.mock.calls[0][1]).toBe('error');
   });
+
+  it('does not update active session id when session write fails', async () => {
+    Settings.setAgentSessions.mockResolvedValue(false);
+
+    const agentSessionState = {
+      sessions: {
+        'session-1': {
+          id: 'session-1',
+          name: 'Agent 1',
+          createdAt: 1,
+          updatedAt: 1,
+          mode: 'single',
+          modelId: null,
+          messages: [],
+          reasoning: '',
+          status: 'idle',
+        },
+      },
+      activeSessionId: 'session-1',
+    };
+
+    renderHook(() =>
+      useSettingsSync(
+        { theme: 'dark', projectName: 'Test' },
+        { sidebarWidth: 250, isSidebarOpen: true, showAIInput: false, expandedFolders: {} },
+        { promptWidth: 400, promptHistory: [] },
+        {
+          aiCompletionEnabled: true,
+          isReadOnly: false,
+          fileContents: {},
+          pendingDiffs: {},
+        },
+        agentSessionState,
+        { openTabs: [], activeTabId: null, lastCodeTabId: null },
+        { logs: [] },
+        { htmlContent: null },
+        { val: '', selectedModel: 'model' },
+      ),
+    );
+
+    await act(async () => {
+      vi.advanceTimersByTime(500);
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(Settings.setAgentSessions).toHaveBeenCalled();
+    expect(Settings.setActiveAgentSessionId).not.toHaveBeenCalled();
+    expect(addNotification).toHaveBeenCalledTimes(1);
+  });
 });
