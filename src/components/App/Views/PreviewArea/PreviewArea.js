@@ -13,6 +13,12 @@ import {
   formatUnhandledRejection,
   resolveMissingExportError,
 } from './previewErrorUtils';
+import {
+  parsePreviewMessage,
+  PREVIEW_MESSAGE_TYPES,
+  sanitizePreviewPath,
+  isTrustedPreviewMessage,
+} from './previewSandbox';
 
 const SW_INIT_TIMEOUT_MS = 15000;
 
@@ -232,6 +238,29 @@ export default function PreviewArea() {
     }
   }, [setPreviewError]);
 
+  useEffect(() => {
+    const onMessage = (event) => {
+      const iframeWindow = iframeRef.current?.contentWindow;
+      if (!isTrustedPreviewMessage(event, iframeWindow)) return;
+      const payload = parsePreviewMessage(event.data);
+      if (!payload) return;
+      if (
+        payload.type === PREVIEW_MESSAGE_TYPES.RUNTIME_ERROR ||
+        payload.type === PREVIEW_MESSAGE_TYPES.UNHANDLED_REJECTION
+      ) {
+        if (payload.message) setPreviewError(payload.message);
+      } else if (payload.type === PREVIEW_MESSAGE_TYPES.NAVIGATE && payload.path) {
+        const safePath = sanitizePreviewPath(payload.path);
+        if (!safePath) return;
+        previewAreaUiState((draft) => {
+          draft.address = safePath;
+        });
+      }
+    };
+    window.addEventListener('message', onMessage);
+    return () => window.removeEventListener('message', onMessage);
+  }, [previewAreaUiState, setPreviewError]);
+
   const handleLoad = useCallback(() => {
     previewAreaUiState((draft) => {
       draft.isLoading = false;
@@ -241,9 +270,12 @@ export default function PreviewArea() {
 
     if (!iframeRef.current) return;
 
+    // Prefer same-origin listeners when available; sandboxed opaque iframes rely on postMessage.
     try {
       const win = iframeRef.current.contentWindow;
       const doc = iframeRef.current.contentDocument;
+      if (!win || !doc) return;
+
       const path = win.location.pathname;
 
       if (path && path !== 'blank') {
@@ -309,7 +341,7 @@ export default function PreviewArea() {
         void scanModuleScriptsForErrors();
       }, 2000);
     } catch (_e) {
-      // Ignore cross-origin errors
+      // Opaque sandboxed preview — runtime errors arrive via postMessage bridge.
     }
   }, [
     previewAreaUiState,
@@ -465,7 +497,8 @@ export default function PreviewArea() {
               title="Preview"
               className={styles.iframe}
               onLoad={handleLoad}
-              sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+              sandbox="allow-scripts allow-forms allow-popups"
+              referrerPolicy="no-referrer"
               style={{ '--iframe-size': scale !== 1 ? `${100 / scale}%` : '100%' }}
             />
           )}

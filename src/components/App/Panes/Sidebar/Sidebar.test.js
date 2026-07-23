@@ -37,6 +37,7 @@ vi.mock('@/components/App/Panes/TabBar', () => ({
 vi.mock('@/components/App/Views/EditorArea', () => ({
   EditorState: {
     useState: vi.fn(),
+    usePassiveState: vi.fn(),
   },
 }));
 
@@ -98,7 +99,7 @@ describe('Sidebar', () => {
     vi.spyOn(TabState, 'useState').mockReturnValue({
       activeTabId: null,
     });
-    vi.spyOn(EditorState, 'useState').mockReturnValue({});
+    vi.spyOn(EditorState, 'usePassiveState').mockReturnValue({});
 
     render(<Sidebar />);
     expect(screen.getByText('Test Project')).toBeDefined();
@@ -120,7 +121,7 @@ describe('Sidebar', () => {
     vi.spyOn(TabState, 'useState').mockReturnValue({
       activeTabId: null,
     });
-    vi.spyOn(EditorState, 'useState').mockReturnValue({});
+    vi.spyOn(EditorState, 'usePassiveState').mockReturnValue({});
 
     render(<Sidebar />);
     fireEvent.change(screen.getByPlaceholderText(/Search files/i), {
@@ -145,7 +146,7 @@ describe('Sidebar', () => {
     vi.spyOn(TabState, 'useState').mockReturnValue({
       activeTabId: null,
     });
-    vi.spyOn(EditorState, 'useState').mockReturnValue({});
+    vi.spyOn(EditorState, 'usePassiveState').mockReturnValue({});
 
     render(<Sidebar />);
 
@@ -172,7 +173,7 @@ describe('Sidebar', () => {
     vi.spyOn(TabState, 'useState').mockReturnValue({
       activeTabId: null,
     });
-    vi.spyOn(EditorState, 'useState').mockReturnValue({});
+    vi.spyOn(EditorState, 'usePassiveState').mockReturnValue({});
 
     render(<Sidebar />);
 
@@ -202,7 +203,7 @@ describe('Sidebar', () => {
       activeTabId: 'src/components/Icons.jsx',
       openTabs: [{ id: 'src/components/Icons.jsx', type: 'file' }],
     });
-    vi.spyOn(EditorState, 'useState').mockReturnValue({});
+    vi.spyOn(EditorState, 'usePassiveState').mockReturnValue({});
 
     render(<Sidebar />);
 

@@ -4,9 +4,10 @@ import Tooltip from '@/components/ui/Tooltip';
 import styles from './Welcome.module.css';
 
 export default function Welcome() {
-  const tabState = TabState.useState();
+  const tabState = TabState.usePassiveState();
 
   const handleShowInfo = () => {
+    if (!tabState) return;
     const exists = tabState.openTabs.some((t) => t.id === 'project-info');
     if (!exists) {
       tabState.openTabs = [
@@ -22,6 +23,7 @@ export default function Welcome() {
   };
 
   const handleShowInstructions = () => {
+    if (!tabState) return;
     const exists = tabState.openTabs.some((t) => t.id === 'instructions');
     if (!exists) {
       tabState.openTabs = [

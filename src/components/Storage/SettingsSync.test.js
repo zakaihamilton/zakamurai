@@ -1,4 +1,5 @@
 import Settings from '@/components/Storage/Settings';
+import { useNotification } from '@/components/ui/Notification';
 import { act, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useSettingsSync } from './SettingsSync';
@@ -17,31 +18,39 @@ vi.mock('@/components/Storage/Settings', () => {
       setEditorReadOnly: vi.fn(),
       setAIPromptModel: vi.fn(),
       setPromptDraft: vi.fn(),
-      setPromptHistory: vi.fn(),
-      setOpenTabs: vi.fn(),
+      setPromptHistory: vi.fn(() => true),
+      setOpenTabs: vi.fn(() => true),
       setActiveTabId: vi.fn(),
       setLastCodeTabId: vi.fn(),
-      setAILogs: vi.fn(),
-      setPreviewHtml: vi.fn(),
-      setFileContents: vi.fn(),
-      setPendingDiffs: vi.fn(),
-      setAgentSessions: vi.fn(),
+      setAILogs: vi.fn(async () => true),
+      setPreviewHtml: vi.fn(async () => true),
+      setFileContents: vi.fn(async () => true),
+      setPendingDiffs: vi.fn(async () => true),
+      setAgentSessions: vi.fn(async () => true),
       setActiveAgentSessionId: vi.fn(),
     },
   };
 });
 
+vi.mock('@/components/ui/Notification', () => ({
+  useNotification: vi.fn(() => ({ addNotification: vi.fn() })),
+}));
+
 describe('useSettingsSync', () => {
+  let addNotification;
+
   beforeEach(() => {
     vi.useFakeTimers();
     vi.clearAllMocks();
+    addNotification = vi.fn();
+    useNotification.mockReturnValue({ addNotification });
   });
 
   afterEach(() => {
     vi.useRealTimers();
   });
 
-  it('updates Settings when state dependencies change', () => {
+  it('updates Settings when state dependencies change', async () => {
     const appState = { theme: 'dark', projectName: 'TestProj' };
     const sidebarState = {
       sidebarWidth: 250,
@@ -115,15 +124,14 @@ describe('useSettingsSync', () => {
     expect(Settings.setAICompletionEnabled).toHaveBeenCalledWith(true);
     expect(Settings.setEditorReadOnly).toHaveBeenCalledWith(false);
     expect(Settings.setAIPromptModel).toHaveBeenCalledWith('Qwen3.5-4B-q4f16_1-MLC');
-    expect(Settings.setPromptHistory).toHaveBeenCalledWith(['hello']);
-    expect(Settings.setOpenTabs).toHaveBeenCalledWith(tabState.openTabs);
     expect(Settings.setActiveTabId).toHaveBeenCalledWith('a.js');
     expect(Settings.setLastCodeTabId).toHaveBeenCalledWith('a.js');
-    expect(Settings.setAILogs).toHaveBeenCalledWith(logState.logs);
-    expect(Settings.setPreviewHtml).toHaveBeenCalledWith('<html></html>');
-    expect(Settings.setAgentSessions).toHaveBeenCalled();
-    expect(Settings.setActiveAgentSessionId).toHaveBeenCalledWith('session-1');
 
+    expect(Settings.setPromptHistory).not.toHaveBeenCalled();
+    expect(Settings.setOpenTabs).not.toHaveBeenCalled();
+    expect(Settings.setAILogs).not.toHaveBeenCalled();
+    expect(Settings.setPreviewHtml).not.toHaveBeenCalled();
+    expect(Settings.setAgentSessions).not.toHaveBeenCalled();
     expect(Settings.setPromptDraft).not.toHaveBeenCalled();
     expect(Settings.setFileContents).not.toHaveBeenCalled();
     expect(Settings.setPendingDiffs).not.toHaveBeenCalled();
@@ -134,7 +142,20 @@ describe('useSettingsSync', () => {
     expect(Settings.setPromptDraft).toHaveBeenCalledWith('draft text');
 
     act(() => {
-      vi.advanceTimersByTime(750);
+      vi.advanceTimersByTime(250);
+    });
+    expect(Settings.setPromptHistory).toHaveBeenCalledWith(['hello']);
+    expect(Settings.setOpenTabs).toHaveBeenCalledWith(tabState.openTabs);
+    expect(Settings.setAILogs).toHaveBeenCalledWith(logState.logs);
+    expect(Settings.setPreviewHtml).toHaveBeenCalledWith('<html></html>');
+    expect(Settings.setAgentSessions).toHaveBeenCalled();
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(Settings.setActiveAgentSessionId).toHaveBeenCalledWith('session-1');
+
+    act(() => {
+      vi.advanceTimersByTime(500);
     });
     expect(Settings.setFileContents).toHaveBeenCalledWith({ 'a.js': 'code' });
     expect(Settings.setPendingDiffs).toHaveBeenCalledWith({
@@ -173,14 +194,97 @@ describe('useSettingsSync', () => {
     expect(Settings.setAICompletionEnabled).toHaveBeenCalledWith(false);
     expect(Settings.setEditorReadOnly).toHaveBeenCalledWith(true);
     expect(Settings.setAIPromptModel).toHaveBeenCalledWith('Qwen3.5-9B-q4f16_1-MLC');
-    expect(Settings.setPromptHistory).toHaveBeenCalledWith(['hello', 'world']);
     expect(Settings.setLastCodeTabId).toHaveBeenCalledWith(null);
 
     act(() => {
       vi.advanceTimersByTime(1000);
     });
     expect(Settings.setPromptDraft).toHaveBeenCalledWith('');
+    expect(Settings.setPromptHistory).toHaveBeenCalledWith(['hello', 'world']);
     expect(Settings.setFileContents).toHaveBeenCalledWith({ 'a.js': 'updated' });
     expect(Settings.setPendingDiffs).toHaveBeenCalledWith({});
+  });
+
+  it('notifies once when a large persistence write fails', async () => {
+    Settings.setFileContents.mockResolvedValue(false);
+
+    renderHook(() =>
+      useSettingsSync(
+        { theme: 'dark', projectName: 'Test' },
+        { sidebarWidth: 250, isSidebarOpen: true, showAIInput: false, expandedFolders: {} },
+        { promptWidth: 400, promptHistory: [] },
+        {
+          aiCompletionEnabled: true,
+          isReadOnly: false,
+          fileContents: { 'a.js': 'code' },
+          pendingDiffs: {},
+        },
+        null,
+        { openTabs: [], activeTabId: null, lastCodeTabId: null },
+        { logs: [] },
+        { htmlContent: null },
+        { val: '', selectedModel: 'model' },
+      ),
+    );
+
+    await act(async () => {
+      vi.advanceTimersByTime(1000);
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(addNotification).toHaveBeenCalledTimes(1);
+    expect(addNotification.mock.calls[0][0]).toMatch(/storage is full/i);
+    expect(addNotification.mock.calls[0][1]).toBe('error');
+  });
+
+  it('does not update active session id when session write fails', async () => {
+    Settings.setAgentSessions.mockResolvedValue(false);
+
+    const agentSessionState = {
+      sessions: {
+        'session-1': {
+          id: 'session-1',
+          name: 'Agent 1',
+          createdAt: 1,
+          updatedAt: 1,
+          mode: 'single',
+          modelId: null,
+          messages: [],
+          reasoning: '',
+          status: 'idle',
+        },
+      },
+      activeSessionId: 'session-1',
+    };
+
+    renderHook(() =>
+      useSettingsSync(
+        { theme: 'dark', projectName: 'Test' },
+        { sidebarWidth: 250, isSidebarOpen: true, showAIInput: false, expandedFolders: {} },
+        { promptWidth: 400, promptHistory: [] },
+        {
+          aiCompletionEnabled: true,
+          isReadOnly: false,
+          fileContents: {},
+          pendingDiffs: {},
+        },
+        agentSessionState,
+        { openTabs: [], activeTabId: null, lastCodeTabId: null },
+        { logs: [] },
+        { htmlContent: null },
+        { val: '', selectedModel: 'model' },
+      ),
+    );
+
+    await act(async () => {
+      vi.advanceTimersByTime(500);
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(Settings.setAgentSessions).toHaveBeenCalled();
+    expect(Settings.setActiveAgentSessionId).not.toHaveBeenCalled();
+    expect(addNotification).toHaveBeenCalledTimes(1);
   });
 });

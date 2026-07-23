@@ -16,10 +16,10 @@ import Welcome from '../Views/Welcome';
 import styles from './WorkspaceArea.module.css';
 
 export default function WorkspaceArea() {
-  const appState = AppState.useState();
-  const tabState = TabState.useState();
-  const sidebarState = SidebarState.useState();
-  const promptState = PromptState.useState();
+  const appState = AppState.useState(['isMobile']);
+  const tabState = TabState.useState(['openTabs', 'activeTabId']);
+  const sidebarState = SidebarState.useState(['showAIInput']);
+  const promptState = PromptState.useState(['promptWidth']);
 
   const { isMobile } = appState;
   const { openTabs = [], activeTabId } = tabState;

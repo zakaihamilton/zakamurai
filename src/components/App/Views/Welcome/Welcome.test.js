@@ -3,7 +3,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import Welcome from './Welcome';
 
-vi.mock('@/components/App/Panes', () => ({ TabState: { useState: vi.fn() } }));
+vi.mock('@/components/App/Panes', () => ({ TabState: { usePassiveState: vi.fn() } }));
 vi.mock('@/components/ui/Tooltip', () => ({
   default: ({ children }) => <div>{children}</div>,
 }));
@@ -19,7 +19,7 @@ vi.mock('@/components/ui/Icons', () => ({
 
 describe('Welcome', () => {
   it('renders welcome content', () => {
-    vi.spyOn(TabState, 'useState').mockReturnValue({
+    vi.spyOn(TabState, 'usePassiveState').mockReturnValue({
       openTabs: [],
       activeTabId: null,
     });
@@ -32,7 +32,7 @@ describe('Welcome', () => {
 
   it('opens project info tab', () => {
     const tabState = { openTabs: [], activeTabId: null };
-    vi.spyOn(TabState, 'useState').mockReturnValue(tabState);
+    vi.spyOn(TabState, 'usePassiveState').mockReturnValue(tabState);
 
     render(<Welcome />);
     fireEvent.click(screen.getByText('Project info'));
@@ -42,7 +42,7 @@ describe('Welcome', () => {
 
   it('opens instructions tab when clicked', () => {
     const tabState = { openTabs: [], activeTabId: null };
-    vi.spyOn(TabState, 'useState').mockReturnValue(tabState);
+    vi.spyOn(TabState, 'usePassiveState').mockReturnValue(tabState);
 
     render(<Welcome />);
     fireEvent.click(screen.getByText('Instructions'));
@@ -55,7 +55,7 @@ describe('Welcome', () => {
       openTabs: [{ id: 'instructions', type: 'instructions', label: 'Instructions' }],
       activeTabId: null,
     };
-    vi.spyOn(TabState, 'useState').mockReturnValue(tabState);
+    vi.spyOn(TabState, 'usePassiveState').mockReturnValue(tabState);
 
     render(<Welcome />);
     fireEvent.click(screen.getByText('Instructions'));

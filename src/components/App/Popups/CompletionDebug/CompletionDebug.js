@@ -42,7 +42,7 @@ const formatDebugPayload = (debug) =>
     .join('\n');
 
 export default function CompletionDebug({ isOpen, onClose }) {
-  const editorState = EditorState.useState();
+  const editorState = EditorState.useState(['aiCompletionDebug']);
   const debug = editorState.aiCompletionDebug || EMPTY_DEBUG;
   const completionDebugState = CompletionDebugState.useState(null, { copied: false });
   const { copied = false } = completionDebugState || {};

@@ -3,9 +3,10 @@ import { setPreviewErrorListener } from '@/components/App/Views/PreviewArea/prev
 import { useEffect } from 'react';
 
 export function usePreviewErrorBridge() {
-  const previewState = PreviewState.useState();
+  const previewState = PreviewState.usePassiveState();
 
   useEffect(() => {
+    if (!previewState) return undefined;
     setPreviewErrorListener((message) => {
       previewState((draft) => {
         draft.serverError = message;

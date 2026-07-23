@@ -55,9 +55,17 @@ export default function EditorArea({ file, fsHandle }) {
 }
 
 function EditorAreaInner({ file, fsHandle }) {
-  const tabState = TabState.useState();
+  const tabState = TabState.useState(['activeTabId', 'openTabs']);
   const fs = useFileSystem();
-  const state = EditorState.useState();
+  const state = EditorState.useState([
+    'pendingDiffs',
+    'pendingDeletions',
+    'fileContents',
+    'isReadOnly',
+    'selectedLines',
+    'cursorPos',
+    'aiCompletionEnabled',
+  ]);
   const filePath = file?.path?.join('/') || file?.name;
   const hasDiff = !!state.pendingDiffs?.[filePath];
   const hasPendingDeletion = !!state.pendingDeletions?.[filePath];

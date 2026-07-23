@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import ImageViewer from './ImageViewer';
 
 vi.mock('@/components/App/Panes/TabBar', () => ({
-  TabState: { useState: vi.fn() },
+  TabState: { usePassiveState: vi.fn() },
 }));
 
 vi.mock('@/components/App/Views/FileViewToolbar', () => ({
@@ -29,7 +29,7 @@ describe('ImageViewer', () => {
     mockFsHandle = {
       getFile: vi.fn().mockResolvedValue(mockFile),
     };
-    TabState.useState.mockReturnValue(
+    TabState.usePassiveState.mockReturnValue(
       Object.assign(vi.fn(), {
         activeTabId: '1',
         openTabs: [{ id: '1', file: { name: 'test.png', path: ['src', 'test.png'] } }],
@@ -120,7 +120,7 @@ describe('ImageViewer', () => {
 
   it('zoom in button calls state update', async () => {
     const tabUpdater = vi.fn();
-    TabState.useState.mockReturnValue(
+    TabState.usePassiveState.mockReturnValue(
       Object.assign(tabUpdater, {
         activeTabId: '1',
         openTabs: [{ id: '1', file: { name: 'test.png', path: ['test.png'] } }],
@@ -202,7 +202,7 @@ describe('ImageViewer', () => {
 
   it('toolbar button triggers handleSelectView', async () => {
     const tabUpdater = vi.fn();
-    TabState.useState.mockReturnValue(
+    TabState.usePassiveState.mockReturnValue(
       Object.assign(tabUpdater, {
         activeTabId: '1',
         openTabs: [{ id: '1', file: { name: 'test.png', path: ['test.png'] } }],

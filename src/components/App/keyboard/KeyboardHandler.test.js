@@ -16,19 +16,19 @@ function TestComponent() {
 }
 
 vi.mock('@/components/App/AppState', () => ({
-  AppState: { useState: vi.fn() },
+  AppState: { usePassiveState: vi.fn() },
 }));
 vi.mock('@/components/App/Panes/Sidebar', () => ({
-  SidebarState: { useState: vi.fn() },
+  SidebarState: { usePassiveState: vi.fn() },
 }));
 vi.mock('@/components/App/Panes/TabBar', () => ({
-  TabState: { useState: vi.fn() },
+  TabState: { usePassiveState: vi.fn() },
 }));
 vi.mock('@/components/App/Views/EditorArea', () => ({
-  EditorState: { useState: vi.fn() },
+  EditorState: { usePassiveState: vi.fn() },
 }));
 vi.mock('@/components/App/Views/LogArea', () => ({
-  LogState: { useState: vi.fn() },
+  LogState: { usePassiveState: vi.fn() },
 }));
 vi.mock('@/components/ui/Notification', () => ({
   useNotification: vi.fn(),
@@ -65,11 +65,11 @@ describe('KeyboardHandler', () => {
     editorState = vi.fn();
     addNotification = vi.fn();
 
-    SidebarState.useState.mockReturnValue(sidebarState);
-    TabState.useState.mockReturnValue(tabState);
-    AppState.useState.mockReturnValue(appState);
-    LogState.useState.mockReturnValue(logState);
-    EditorState.useState.mockReturnValue(editorState);
+    SidebarState.usePassiveState.mockReturnValue(sidebarState);
+    TabState.usePassiveState.mockReturnValue(tabState);
+    AppState.usePassiveState.mockReturnValue(appState);
+    LogState.usePassiveState.mockReturnValue(logState);
+    EditorState.usePassiveState.mockReturnValue(editorState);
     useNotification.mockReturnValue({ addNotification });
   });
 

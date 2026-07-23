@@ -18,7 +18,7 @@ vi.mock('@/components/ui/Icons', () => ({
 
 describe('NavigationControls', () => {
   it('disables back and forward when history empty', () => {
-    vi.spyOn(TabState, 'useState').mockReturnValue(vi.fn());
+    vi.spyOn(TabState, 'usePassiveState').mockReturnValue(vi.fn());
     vi.spyOn(EditorState, 'useState').mockReturnValue({
       navigationHistory: { stack: [], currentIndex: -1 },
       fileContents: {},
@@ -42,7 +42,7 @@ describe('NavigationControls', () => {
       },
       fileContents: { 'src/a.js': 'a', 'src/b.js': 'b' },
     });
-    vi.spyOn(TabState, 'useState').mockReturnValue(tabState);
+    vi.spyOn(TabState, 'usePassiveState').mockReturnValue(tabState);
     vi.spyOn(EditorState, 'useState').mockReturnValue(editorState);
 
     render(<NavigationControls />);

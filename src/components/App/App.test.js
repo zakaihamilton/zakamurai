@@ -20,14 +20,23 @@ vi.mock('./Panes', () => {
 
   const TabState = ({ children }) => <div data-testid="tabbar-state">{children}</div>;
   TabState.useState = vi.fn(() => Object.assign(vi.fn(), { openTabs: [], activeTabId: null }));
+  TabState.usePassiveState = vi.fn(() =>
+    Object.assign(vi.fn(), { openTabs: [], activeTabId: null }),
+  );
 
   const PromptState = ({ children }) => <div data-testid="prompt-state">{children}</div>;
   PromptState.useState = vi.fn(() =>
     Object.assign(vi.fn(), { promptWidth: 340, promptHistory: [] }),
   );
+  PromptState.usePassiveState = vi.fn(() =>
+    Object.assign(vi.fn(), { promptWidth: 340, promptHistory: [] }),
+  );
 
   const PromptUiState = ({ children }) => <div data-testid="prompt-ui-state">{children}</div>;
   PromptUiState.useState = vi.fn(() =>
+    Object.assign(vi.fn(), { val: '', selectedModel: 'Qwen3.5-4B-q4f16_1-MLC' }),
+  );
+  PromptUiState.usePassiveState = vi.fn(() =>
     Object.assign(vi.fn(), { val: '', selectedModel: 'Qwen3.5-4B-q4f16_1-MLC' }),
   );
 
@@ -82,6 +91,7 @@ vi.mock('@/components/ui/Notification/Notification', () => ({
 vi.mock('./Views/EditorArea', () => {
   const State = ({ children }) => <div data-testid="editor-state">{children}</div>;
   State.useState = vi.fn(() => Object.assign(vi.fn(), {}));
+  State.usePassiveState = vi.fn(() => Object.assign(vi.fn(), {}));
   return {
     default: () => <div data-testid="editor">Editor</div>,
     EditorState: State,
@@ -91,6 +101,7 @@ vi.mock('./Views/EditorArea', () => {
 vi.mock('./Views/LogArea', () => {
   const State = ({ children }) => <div data-testid="log-state">{children}</div>;
   State.useState = vi.fn(() => Object.assign(vi.fn(), { logs: [], isProcessing: false }));
+  State.usePassiveState = vi.fn(() => Object.assign(vi.fn(), { logs: [], isProcessing: false }));
   return {
     default: () => <div data-testid="logs">Logs</div>,
     LogState: State,
@@ -100,6 +111,9 @@ vi.mock('./Views/LogArea', () => {
 vi.mock('./PreviewState', () => {
   const State = ({ children }) => <div data-testid="preview-state">{children}</div>;
   State.useState = vi.fn(() => Object.assign(vi.fn(), { htmlContent: '', isCompilerReady: false }));
+  State.usePassiveState = vi.fn(() =>
+    Object.assign(vi.fn(), { htmlContent: '', isCompilerReady: false }),
+  );
   return {
     PreviewState: State,
   };
@@ -114,6 +128,31 @@ vi.mock('@/components/App/Views/PreviewArea/PreviewRestorer', () => ({
 }));
 vi.mock('@/components/Storage/ContentSaver', () => ({ useContentSaver: vi.fn() }));
 vi.mock('@/components/Storage/SettingsSync', () => ({ useSettingsSync: vi.fn() }));
+vi.mock('@/components/Storage/Settings', () => ({
+  default: {
+    hydrate: vi.fn(async () => true),
+    getTemplate: vi.fn(() => 'default'),
+    getFileContents: vi.fn(() => null),
+    getPendingDiffs: vi.fn(() => ({})),
+    getProjectName: vi.fn(() => 'Test'),
+    getTheme: vi.fn(() => 'dark'),
+    getOpenTabs: vi.fn(() => []),
+    getActiveTabId: vi.fn(() => null),
+    getLastCodeTabId: vi.fn(() => null),
+    getAILogs: vi.fn(() => []),
+    getSidebarWidth: vi.fn(() => 260),
+    getPromptWidth: vi.fn(() => 340),
+    getIsSidebarOpen: vi.fn(() => true),
+    getShowAIInput: vi.fn(() => true),
+    getExpandedFolders: vi.fn(() => ({})),
+    getAICompletionEnabled: vi.fn(() => true),
+    getEditorReadOnly: vi.fn(() => false),
+    getPromptHistory: vi.fn(() => []),
+    getPreviewHtml: vi.fn(() => null),
+    getAgentSessions: vi.fn(() => null),
+    getActiveAgentSessionId: vi.fn(() => null),
+  },
+}));
 vi.mock('./WindowResize', () => ({ useWindowResize: vi.fn() }));
 
 vi.mock('@/components/Storage', () => ({
@@ -133,14 +172,14 @@ vi.mock('@/components/ui/Notification', () => ({
 }));
 
 describe('App', () => {
-  it('renders all main components', () => {
+  it('renders all main components', async () => {
     const appStateMock = Object.assign(vi.fn(), {
       theme: 'dark',
       fs: { mode: null, mountLocal: vi.fn() },
     });
     vi.spyOn(AppState, 'useState').mockReturnValue(appStateMock);
     render(<App />);
-    expect(screen.getByTestId('sidebar')).toBeDefined();
+    expect(await screen.findByTestId('sidebar')).toBeDefined();
     expect(screen.getByTestId('topbar')).toBeDefined();
     expect(screen.getByTestId('tabbar')).toBeDefined();
     expect(screen.getByTestId('prompt')).toBeDefined();

@@ -114,8 +114,8 @@ const checkTokenReportMatch = (code, report) => {
 };
 
 export default function TokenBreakdown({ tab }) {
-  const editorState = EditorState.useState();
-  const tabState = TabState.useState();
+  const editorState = EditorState.useState(['fileContents', 'pendingDiffs']);
+  const tabState = TabState.useState(['activeTabId', 'openTabs']);
   const [copied, setCopied] = useState(false);
   const [copiedCombined, setCopiedCombined] = useState(false);
   const [activeSection, setActiveSection] = useState('tokens');
