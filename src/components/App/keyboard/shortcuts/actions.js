@@ -176,5 +176,3 @@ export const switchTabAction = ({ tabState }, direction) => {
     draft.activeTabId = openTabs[nextIndex].id;
   });
 };
-
-

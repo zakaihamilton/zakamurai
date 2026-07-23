@@ -690,5 +690,3 @@ export const SHORTCUTS = [
     },
   },
 ];
-
-

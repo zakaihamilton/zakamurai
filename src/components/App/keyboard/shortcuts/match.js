@@ -69,4 +69,3 @@ export const getShortcutsByGroup = () => {
 
   return order.filter((name) => groups[name]).map((name) => ({ group: name, items: groups[name] }));
 };
-

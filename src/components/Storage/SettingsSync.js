@@ -18,19 +18,20 @@ export function useSettingsSync(
   promptUiState,
 ) {
   const { addNotification } = useNotification();
+  const addNotificationRef = useRef(addNotification);
+  addNotificationRef.current = addNotification;
   const saveFailureNotifiedRef = useRef(false);
 
-  const notifySaveFailure = () => {
-    if (saveFailureNotifiedRef.current) return;
-    saveFailureNotifiedRef.current = true;
-    addNotification(SAVE_FAIL_MESSAGE, 'error', 8000);
-  };
-
-  const persist = (ok) => {
-    if (ok === false) notifySaveFailure();
-    else if (ok === true) saveFailureNotifiedRef.current = false;
+  const persistRef = useRef((ok) => {
+    if (ok === false) {
+      if (saveFailureNotifiedRef.current) return ok;
+      saveFailureNotifiedRef.current = true;
+      addNotificationRef.current(SAVE_FAIL_MESSAGE, 'error', 8000);
+    } else if (ok === true) {
+      saveFailureNotifiedRef.current = false;
+    }
     return ok;
-  };
+  });
 
   const { theme, projectName } = appState;
   const { sidebarWidth, isSidebarOpen, showAIInput, expandedFolders } = sidebarState;
@@ -98,7 +99,7 @@ export function useSettingsSync(
   useEffect(() => {
     if (!Array.isArray(promptHistory)) return undefined;
     const timer = setTimeout(() => {
-      persist(Settings.setPromptHistory(promptHistory));
+      persistRef.current(Settings.setPromptHistory(promptHistory));
     }, 400);
     return () => clearTimeout(timer);
   }, [promptHistory]);
@@ -106,7 +107,7 @@ export function useSettingsSync(
   useEffect(() => {
     if (!Array.isArray(openTabs)) return undefined;
     const timer = setTimeout(() => {
-      persist(Settings.setOpenTabs(openTabs));
+      persistRef.current(Settings.setOpenTabs(openTabs));
     }, 400);
     return () => clearTimeout(timer);
   }, [openTabs]);
@@ -122,7 +123,7 @@ export function useSettingsSync(
   useEffect(() => {
     if (!Array.isArray(logs)) return undefined;
     const timer = setTimeout(() => {
-      persist(Settings.setAILogs(logs));
+      persistRef.current(Settings.setAILogs(logs));
     }, 500);
     return () => clearTimeout(timer);
   }, [logs]);
@@ -130,7 +131,7 @@ export function useSettingsSync(
   useEffect(() => {
     if (htmlContent === undefined) return undefined;
     const timer = setTimeout(() => {
-      persist(Settings.setPreviewHtml(htmlContent || null));
+      persistRef.current(Settings.setPreviewHtml(htmlContent || null));
     }, 500);
     return () => clearTimeout(timer);
   }, [htmlContent]);
@@ -138,7 +139,7 @@ export function useSettingsSync(
   useEffect(() => {
     if (!fileContents || typeof fileContents !== 'object') return undefined;
     const timer = setTimeout(() => {
-      persist(Settings.setFileContents({ ...fileContents }));
+      persistRef.current(Settings.setFileContents({ ...fileContents }));
     }, 1000);
     return () => clearTimeout(timer);
   }, [fileContents]);
@@ -154,7 +155,7 @@ export function useSettingsSync(
           modifiedContent: fileContents?.[path] ?? diff.modifiedContent ?? '',
         };
       }
-      persist(Settings.setPendingDiffs(diffsToSave));
+      persistRef.current(Settings.setPendingDiffs(diffsToSave));
     }, 1000);
     return () => clearTimeout(timer);
   }, [pendingDiffs, fileContents]);
@@ -163,7 +164,7 @@ export function useSettingsSync(
     if (!sessions || !activeSessionId) return undefined;
     const timer = setTimeout(() => {
       const payload = serializeAgentSessions({ sessions, activeSessionId });
-      persist(Settings.setAgentSessions(payload));
+      persistRef.current(Settings.setAgentSessions(payload));
       Settings.setActiveAgentSessionId(payload.activeSessionId);
     }, 500);
     return () => clearTimeout(timer);
