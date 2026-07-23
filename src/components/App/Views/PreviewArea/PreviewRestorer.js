@@ -10,12 +10,12 @@ import { useEffect, useRef } from 'react';
  * Trigger a silent recompile so preview can serve real production output again.
  */
 export function usePreviewRestorer() {
-  const previewState = PreviewState.useState();
+  const previewState = PreviewState.useState(['htmlContent', 'isCompilerReady', 'restoreError']);
   const { htmlContent } = previewState;
   const appState = AppState.useState(['silentCompileRequest']);
   const fs = useFileSystem();
-  const sidebarState = SidebarState.useState();
-  const editorState = EditorState.useState();
+  const sidebarState = SidebarState.useState(['folderTree']);
+  const editorState = EditorState.useState(['fileContents']);
   const restoredRef = useRef(false);
 
   useEffect(() => {

@@ -7,7 +7,7 @@ import { useContentSaver } from './ContentSaver';
 vi.mock('@/components/App/Views/EditorArea', () => {
   return {
     EditorState: {
-      useState: vi.fn(),
+      usePassiveState: vi.fn(),
     },
   };
 });
@@ -37,7 +37,7 @@ describe('useContentSaver', () => {
         },
       },
     };
-    EditorState.useState.mockReturnValue(mockState);
+    EditorState.usePassiveState.mockReturnValue(mockState);
 
     renderHook(() => useContentSaver());
 
@@ -68,7 +68,7 @@ describe('useContentSaver', () => {
         },
       },
     };
-    EditorState.useState.mockReturnValue(mockState);
+    EditorState.usePassiveState.mockReturnValue(mockState);
 
     renderHook(() => useContentSaver());
 

@@ -8,8 +8,8 @@ import HistoryDropdown from './HistoryDropdown';
 import styles from './NavigationControls.module.css';
 
 export default function NavigationControls() {
-  const tabState = TabState.useState();
-  const editorState = EditorState.useState();
+  const tabState = TabState.usePassiveState();
+  const editorState = EditorState.useState(['navigationHistory', 'fileContents']);
 
   const history = editorState.navigationHistory || { stack: [], currentIndex: -1 };
   const canGoBack = history.currentIndex > 0;
@@ -40,6 +40,7 @@ export default function NavigationControls() {
   };
 
   const handleItemClick = (index) => {
+    if (!tabState) return;
     navigateToHistoryItem(index);
     setShowHistoryDropdown(false);
   };
@@ -53,7 +54,7 @@ export default function NavigationControls() {
     : 'Go Forward';
 
   const navigateToHistoryItem = (nextIndex) => {
-    const history = editorState.navigationHistory;
+    if (!tabState || !editorState) return;
     if (!history || !history.stack) return;
     const item = history.stack[nextIndex];
     if (!item) return;

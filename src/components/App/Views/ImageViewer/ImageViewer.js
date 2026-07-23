@@ -19,7 +19,7 @@ export default function ImageViewer({ tab }) {
 }
 
 function ImageViewerInner({ tab }) {
-  const tabState = TabState.useState();
+  const tabState = TabState.usePassiveState();
   const imageViewerState = ImageViewerState.useState(null, {
     imageUrl: null,
     error: null,

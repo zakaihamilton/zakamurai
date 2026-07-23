@@ -39,7 +39,7 @@ export { PromptState, PromptUiState } from './PromptState';
 export default function Prompt() {
   const { isMobile } = AppState.useState(['isMobile']);
   const fs = useFileSystem();
-  const promptState = PromptState.useState();
+  const promptState = PromptState.useState(['promptWidth']);
   const { promptWidth } = promptState;
   const promptUiState = PromptUiState.useState(null, {
     ...getInitialPromptUiState(),
@@ -78,10 +78,10 @@ export default function Prompt() {
     'isSystemProcessing',
     'isAIProcessing',
   ]);
-  const sidebarState = SidebarState.useState();
+  const sidebarState = SidebarState.useState(['showAIInput', 'isAIInputPopupOpen']);
   const { showAIInput } = sidebarState;
-  const tabState = TabState.useState();
-  const editorState = EditorState.useState();
+  const tabState = TabState.useState(['activeTabId', 'openTabs']);
+  const editorState = EditorState.useState(['selectedLines', 'fileContents', 'pendingDiffs']);
   const agentSessionState = AgentSessionState.useState(['sessions', 'activeSessionId']);
 
   useEffect(() => {

@@ -19,13 +19,18 @@ export const SidebarUiState = createState('SidebarUiState');
 const COLLAPSED_DESKTOP_WIDTH = 0;
 
 export default function Sidebar() {
-  const sidebarState = SidebarState.useState();
+  const sidebarState = SidebarState.useState([
+    'isSidebarOpen',
+    'folderTree',
+    'sidebarWidth',
+    'expandedFolders',
+  ]);
   const { isSidebarOpen, folderTree = [], sidebarWidth, expandedFolders = {} } = sidebarState;
   const { projectName, isMobile } = AppState.useState(['projectName', 'isMobile']);
   const appState = AppState.usePassiveState();
   const fs = useFileSystem();
-  const tabState = TabState.useState();
-  const editorState = EditorState.useState();
+  const tabState = TabState.useState(['activeTabId', 'openTabs']);
+  const editorState = EditorState.usePassiveState();
   const sidebarUiState = SidebarUiState.useState(null, {
     filterText: '',
     loadingPaths: {},

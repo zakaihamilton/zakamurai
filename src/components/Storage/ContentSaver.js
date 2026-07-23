@@ -7,9 +7,11 @@ import { useEffect } from 'react';
  * this keeps a synchronous last-chance write when the tab closes.
  */
 export function useContentSaver() {
-  const state = EditorState.useState();
+  const state = EditorState.usePassiveState();
 
   useEffect(() => {
+    if (!state) return undefined;
+
     const saveContents = () => {
       // Read directly from the Proxy to bypass React closure staleness
       // in the event of a synchronous beforeunload firing.

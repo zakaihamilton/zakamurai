@@ -1,6 +1,10 @@
 import { serializeAgentSessions } from '@/components/App/Panes/Prompt/AgentSessions';
 import Settings from '@/components/Storage/Settings';
-import { useEffect } from 'react';
+import { useNotification } from '@/components/ui/Notification';
+import { useEffect, useRef } from 'react';
+
+const SAVE_FAIL_MESSAGE =
+  'Could not save project data — browser storage is full. Export or free space to avoid data loss.';
 
 export function useSettingsSync(
   appState,
@@ -13,6 +17,21 @@ export function useSettingsSync(
   previewState,
   promptUiState,
 ) {
+  const { addNotification } = useNotification();
+  const saveFailureNotifiedRef = useRef(false);
+
+  const notifySaveFailure = () => {
+    if (saveFailureNotifiedRef.current) return;
+    saveFailureNotifiedRef.current = true;
+    addNotification(SAVE_FAIL_MESSAGE, 'error', 8000);
+  };
+
+  const persist = (ok) => {
+    if (ok === false) notifySaveFailure();
+    else if (ok === true) saveFailureNotifiedRef.current = false;
+    return ok;
+  };
+
   const { theme, projectName } = appState;
   const { sidebarWidth, isSidebarOpen, showAIInput, expandedFolders } = sidebarState;
   const { promptWidth, promptHistory } = promptState;
@@ -77,15 +96,19 @@ export function useSettingsSync(
   }, [promptDraft]);
 
   useEffect(() => {
-    if (Array.isArray(promptHistory)) {
-      Settings.setPromptHistory(promptHistory);
-    }
+    if (!Array.isArray(promptHistory)) return undefined;
+    const timer = setTimeout(() => {
+      persist(Settings.setPromptHistory(promptHistory));
+    }, 400);
+    return () => clearTimeout(timer);
   }, [promptHistory]);
 
   useEffect(() => {
-    if (Array.isArray(openTabs)) {
-      Settings.setOpenTabs(openTabs);
-    }
+    if (!Array.isArray(openTabs)) return undefined;
+    const timer = setTimeout(() => {
+      persist(Settings.setOpenTabs(openTabs));
+    }, 400);
+    return () => clearTimeout(timer);
   }, [openTabs]);
 
   useEffect(() => {
@@ -97,19 +120,25 @@ export function useSettingsSync(
   }, [lastCodeTabId]);
 
   useEffect(() => {
-    if (Array.isArray(logs)) {
-      Settings.setAILogs(logs);
-    }
+    if (!Array.isArray(logs)) return undefined;
+    const timer = setTimeout(() => {
+      persist(Settings.setAILogs(logs));
+    }, 500);
+    return () => clearTimeout(timer);
   }, [logs]);
 
   useEffect(() => {
-    Settings.setPreviewHtml(htmlContent || null);
+    if (htmlContent === undefined) return undefined;
+    const timer = setTimeout(() => {
+      persist(Settings.setPreviewHtml(htmlContent || null));
+    }, 500);
+    return () => clearTimeout(timer);
   }, [htmlContent]);
 
   useEffect(() => {
     if (!fileContents || typeof fileContents !== 'object') return undefined;
     const timer = setTimeout(() => {
-      Settings.setFileContents({ ...fileContents });
+      persist(Settings.setFileContents({ ...fileContents }));
     }, 1000);
     return () => clearTimeout(timer);
   }, [fileContents]);
@@ -125,15 +154,18 @@ export function useSettingsSync(
           modifiedContent: fileContents?.[path] ?? diff.modifiedContent ?? '',
         };
       }
-      Settings.setPendingDiffs(diffsToSave);
+      persist(Settings.setPendingDiffs(diffsToSave));
     }, 1000);
     return () => clearTimeout(timer);
   }, [pendingDiffs, fileContents]);
 
   useEffect(() => {
-    if (!sessions || !activeSessionId) return;
-    const payload = serializeAgentSessions({ sessions, activeSessionId });
-    Settings.setAgentSessions(payload);
-    Settings.setActiveAgentSessionId(payload.activeSessionId);
+    if (!sessions || !activeSessionId) return undefined;
+    const timer = setTimeout(() => {
+      const payload = serializeAgentSessions({ sessions, activeSessionId });
+      persist(Settings.setAgentSessions(payload));
+      Settings.setActiveAgentSessionId(payload.activeSessionId);
+    }, 500);
+    return () => clearTimeout(timer);
   }, [sessions, activeSessionId]);
 }

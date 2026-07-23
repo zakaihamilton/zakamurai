@@ -10,15 +10,18 @@ import { useEffect } from 'react';
 import { SHORTCUTS, SHORTCUT_HIGHLIGHT_EVENT, isMatch } from './Shortcuts';
 
 export function useKeyboardHandler() {
-  const sidebarState = SidebarState.useState();
-  const logState = LogState.useState();
-  const appState = AppState.useState();
-  const tabState = TabState.useState();
+  // Passive: shortcuts only mutate stores; avoid re-renders on every key change.
+  const sidebarState = SidebarState.usePassiveState();
+  const logState = LogState.usePassiveState();
+  const appState = AppState.usePassiveState();
+  const tabState = TabState.usePassiveState();
   const fs = useFileSystem();
   const { addNotification: showNotification } = useNotification();
-  const editorState = EditorState.useState();
+  const editorState = EditorState.usePassiveState();
 
   useEffect(() => {
+    if (!sidebarState || !logState || !appState || !tabState || !editorState) return undefined;
+
     const handleKeyDown = (e) => {
       if (e.repeat) return;
       if (!e.isComposing) markKeyboardActivity();

@@ -51,12 +51,17 @@ const Settings = {
 
   set(key, value) {
     const storage = getStorage();
-    if (storage) {
+    if (!storage) return false;
+    try {
       if (value === null || value === undefined) {
         storage.removeItem(key);
       } else {
         storage.setItem(key, value);
       }
+      return true;
+    } catch (e) {
+      console.warn(`Failed to save ${key} to localStorage`, e);
+      return false;
     }
   },
 
@@ -96,7 +101,7 @@ const Settings = {
       ...(t.file ? { file: { name: t.file.name, path: t.file.path } } : {}),
       ...(t.sourceFilePath ? { sourceFilePath: t.sourceFilePath } : {}),
     }));
-    this.set(KEYS.OPEN_TABS, JSON.stringify(tabsToSave));
+    return this.set(KEYS.OPEN_TABS, JSON.stringify(tabsToSave));
   },
 
   getActiveTabId() {
@@ -142,7 +147,7 @@ const Settings = {
           .filter((p, index, arr) => arr.indexOf(p) === index)
           .slice(0, 50)
       : [];
-    this.set(KEYS.PROMPT_HISTORY, next.length ? JSON.stringify(next) : null);
+    return this.set(KEYS.PROMPT_HISTORY, next.length ? JSON.stringify(next) : null);
   },
 
   getPromptDraft(defaultValue = '') {
@@ -167,7 +172,7 @@ const Settings = {
   setAILogs(logs) {
     // Keep only the last 50 logs
     const logsToSave = logs.slice(-50);
-    this.set(KEYS.AI_LOGS, JSON.stringify(logsToSave));
+    return this.set(KEYS.AI_LOGS, JSON.stringify(logsToSave));
   },
 
   getFileContents() {
@@ -182,12 +187,12 @@ const Settings = {
   },
 
   setFileContents(contents) {
-    // We only save contents that are not too large to avoid localStorage limits
-    // For a real app, we'd use IndexedDB or OPFS
+    // Prefer IndexedDB/OPFS for large projects; localStorage is a best-effort cache.
     try {
-      this.set(KEYS.FILE_CONTENTS, JSON.stringify(contents));
+      return this.set(KEYS.FILE_CONTENTS, JSON.stringify(contents));
     } catch (e) {
       console.warn('Failed to save file contents to localStorage (likely size limit)', e);
+      return false;
     }
   },
 
@@ -221,9 +226,13 @@ const Settings = {
 
   setPendingDiffs(diffs) {
     try {
-      this.set(KEYS.PENDING_DIFFS, Object.keys(diffs || {}).length ? JSON.stringify(diffs) : null);
+      return this.set(
+        KEYS.PENDING_DIFFS,
+        Object.keys(diffs || {}).length ? JSON.stringify(diffs) : null,
+      );
     } catch (e) {
       console.warn('Failed to save pending diffs to localStorage (likely size limit)', e);
+      return false;
     }
   },
 
@@ -233,9 +242,10 @@ const Settings = {
 
   setPreviewHtml(html) {
     try {
-      this.set(KEYS.PREVIEW_HTML, html);
+      return this.set(KEYS.PREVIEW_HTML, html);
     } catch (e) {
       console.warn('Failed to save preview HTML to localStorage (likely size limit)', e);
+      return false;
     }
   },
 
@@ -355,12 +365,12 @@ const Settings = {
   setAgentSessions(payload) {
     try {
       if (!payload || typeof payload !== 'object') {
-        this.set(KEYS.AGENT_SESSIONS, null);
-        return;
+        return this.set(KEYS.AGENT_SESSIONS, null);
       }
-      this.set(KEYS.AGENT_SESSIONS, JSON.stringify(payload));
+      return this.set(KEYS.AGENT_SESSIONS, JSON.stringify(payload));
     } catch (e) {
       console.warn('Failed to save agent sessions to localStorage (likely size limit)', e);
+      return false;
     }
   },
 

@@ -9,7 +9,7 @@ export const LogState = createState('LogState');
 export const LogAreaUiState = createState('LogAreaUiState');
 
 export default function LogArea() {
-  const logState = LogState.useState();
+  const logState = LogState.useState(['logs', 'isSystemProcessing', 'isAIProcessing']);
   const { logs = [], isSystemProcessing, isAIProcessing } = logState;
   const isProcessing = isSystemProcessing || isAIProcessing;
   const logAreaUiState = LogAreaUiState.useState(null, {

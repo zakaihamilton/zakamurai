@@ -468,10 +468,6 @@ async function handleVirtualRequest(request, port, path) {
         const bytes = base64ToBytes(response.bodyBase64);
         DEBUG && console.log('[SW] Decoded body length:', bytes.length);
 
-        // Use Blob to ensure proper body handling
-        const blob = new Blob([bytes], { type: response.headers['Content-Type'] || 'application/octet-stream' });
-        DEBUG && console.log('[SW] Created blob size:', blob.size);
-
         // Merge response headers with CORP/COEP headers to allow iframe embedding
         // The parent page has COEP: credentialless, so we need matching headers
         const respHeaders = new Headers(response.headers);
@@ -480,6 +476,30 @@ async function handleVirtualRequest(request, port, path) {
         respHeaders.set('Cross-Origin-Resource-Policy', 'cross-origin');
         // Remove any headers that might block iframe loading
         respHeaders.delete('X-Frame-Options');
+
+        const contentType = String(response.headers['Content-Type'] || response.headers['content-type'] || '');
+        let responseBody = bytes;
+        if (contentType.includes('text/html')) {
+          try {
+            const html = new TextDecoder().decode(bytes);
+            if (!html.includes('__zakamuraiPreviewBridge')) {
+              const bridge = `<script>(function(){if(window.__zakamuraiPreviewBridge)return;window.__zakamuraiPreviewBridge=true;var S='zakamurai-preview';function p(t,m,e){try{parent.postMessage(Object.assign({source:S,type:t,message:m||''},e||{}), '*');}catch(_e){}}window.addEventListener('error',function(ev){var msg=ev&&ev.message?ev.message:'Script error';if(ev&&ev.filename)msg+=' at '+ev.filename+':'+(ev.lineno||0);p('runtime-error',msg);},true);window.addEventListener('unhandledrejection',function(ev){var r=ev&&ev.reason;p('unhandled-rejection',r&&r.message?r.message:String(r||'Unhandled rejection'));});try{p('navigate','',{path:location.pathname||''});}catch(_e){}})();</script>`;
+              let injected = html;
+              if (/<\/head>/i.test(html)) injected = html.replace(/<\/head>/i, `${bridge}</head>`);
+              else if (/<\/body>/i.test(html)) injected = html.replace(/<\/body>/i, `${bridge}</body>`);
+              else injected = html + bridge;
+              responseBody = new TextEncoder().encode(injected);
+              respHeaders.set('Content-Length', String(responseBody.length));
+            }
+          } catch (injectErr) {
+            console.warn('[SW] Failed to inject preview bridge:', injectErr);
+          }
+        }
+
+        const blob = new Blob([responseBody], {
+          type: response.headers['Content-Type'] || 'application/octet-stream',
+        });
+        DEBUG && console.log('[SW] Created blob size:', blob.size);
 
         finalResponse = new Response(blob, {
           status: response.statusCode,

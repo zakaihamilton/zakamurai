@@ -8,8 +8,19 @@ import styles from './AppContent.module.css';
 import WorkspaceArea from './WorkspaceArea';
 
 export default function AppContent() {
-  const appState = AppState.useState();
-  const sidebarState = SidebarState.useState();
+  const appState = AppState.useState([
+    'theme',
+    'showShortcuts',
+    'showCompletionDebug',
+    'isResizing',
+    'isMobile',
+  ]);
+  const sidebarState = SidebarState.useState([
+    'isSidebarOpen',
+    'isSidebarPopupOpen',
+    'isAIInputPopupOpen',
+    'sidebarWidth',
+  ]);
   const { theme, showShortcuts, showCompletionDebug, isResizing = false, isMobile } = appState;
   const { isSidebarOpen, isSidebarPopupOpen, isAIInputPopupOpen, sidebarWidth } = sidebarState;
 

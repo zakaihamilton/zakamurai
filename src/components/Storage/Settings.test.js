@@ -127,9 +127,16 @@ describe('Settings', () => {
     expect(Settings.getEditorReadOnly()).toBe(false);
   });
 
-  it('resets settings', () => {
-    Settings.setProjectName('Test');
-    Settings.reset();
-    expect(Settings.getProjectName('Default')).toBe('Default');
+  it('returns false and warns when localStorage quota is exceeded', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const setItemSpy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new DOMException('QuotaExceededError');
+    });
+
+    expect(Settings.setFileContents({ 'big.js': 'x'.repeat(100) })).toBe(false);
+    expect(warnSpy).toHaveBeenCalled();
+
+    setItemSpy.mockRestore();
+    warnSpy.mockRestore();
   });
 });

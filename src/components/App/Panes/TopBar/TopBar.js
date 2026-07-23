@@ -69,11 +69,11 @@ export default function TopBar() {
   const appState = AppState.useState(['projectName', 'isMobile', 'theme']);
   const { projectName, isMobile } = appState;
   const fs = useFileSystem();
-  const tabState = TabState.useState();
+  const tabState = TabState.useState(['openTabs', 'activeTabId']);
   const { openTabs = [], activeTabId } = tabState;
-  const sidebarState = SidebarState.useState();
+  const sidebarState = SidebarState.useState(['isSidebarOpen', 'isSidebarPopupOpen']);
   const { isSidebarOpen, isSidebarPopupOpen } = sidebarState;
-  const editorState = EditorState.useState();
+  const editorState = EditorState.usePassiveState();
   const previewState = PreviewState.usePassiveState();
   const promptUiState = PromptUiState.usePassiveState();
 

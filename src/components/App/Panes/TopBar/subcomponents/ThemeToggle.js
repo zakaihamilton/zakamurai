@@ -6,7 +6,7 @@ import React from 'react';
 import styles from './ThemeToggle.module.css';
 
 export default function ThemeToggle() {
-  const appState = AppState.useState();
+  const appState = AppState.useState(['theme']);
   const { theme } = appState;
 
   const toggleTheme = () => {

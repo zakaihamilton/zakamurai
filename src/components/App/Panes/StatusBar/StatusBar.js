@@ -13,8 +13,14 @@ import styles from './StatusBar.module.css';
 export default function StatusBar() {
   const { theme, projectName } = AppState.useState(['theme', 'projectName']);
   const fs = useFileSystem();
-  const editorState = EditorState.useState();
-  const tabState = TabState.useState();
+  const editorState = EditorState.useState([
+    'cursorPos',
+    'isCompleting',
+    'aiCompletionEnabled',
+    'aiCompletionDebug',
+    'completionActivity',
+  ]);
+  const tabState = TabState.useState(['activeTabId', 'openTabs']);
   const { status: ragStatus } = RagState.useState(['status']);
   const { activeTabId, openTabs = [] } = tabState;
   const activeTab = openTabs.find((t) => t.id === activeTabId);
