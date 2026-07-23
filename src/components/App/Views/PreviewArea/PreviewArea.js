@@ -14,10 +14,11 @@ import {
   resolveMissingExportError,
 } from './previewErrorUtils';
 import {
-  parsePreviewMessage,
+  PREVIEW_IFRAME_SANDBOX,
   PREVIEW_MESSAGE_TYPES,
-  sanitizePreviewPath,
   isTrustedPreviewMessage,
+  parsePreviewMessage,
+  sanitizePreviewPath,
 } from './previewSandbox';
 
 const SW_INIT_TIMEOUT_MS = 15000;
@@ -497,8 +498,11 @@ export default function PreviewArea() {
               title="Preview"
               className={styles.iframe}
               onLoad={handleLoad}
-              sandbox="allow-scripts allow-forms allow-popups"
-              referrerPolicy="no-referrer"
+              // allow-same-origin is required: browsers skip service-worker
+              // interception for opaque sandboxed frames, so /preview would
+              // never leave the Next.js loading fallback. Keep scripts+forms
+              // sandboxed; preview content is the user's own project build.
+              sandbox={PREVIEW_IFRAME_SANDBOX}
               style={{ '--iframe-size': scale !== 1 ? `${100 / scale}%` : '100%' }}
             />
           )}

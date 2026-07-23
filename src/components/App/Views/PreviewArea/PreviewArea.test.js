@@ -3,6 +3,7 @@ import { act, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import PreviewArea, { PreviewAreaUiState } from './PreviewArea';
+import { PREVIEW_IFRAME_SANDBOX } from './previewSandbox';
 
 vi.mock('@/components/ui/Tooltip', () => ({
   __esModule: true,
@@ -266,5 +267,34 @@ describe('PreviewArea', () => {
     // Open in new tab
     fireEvent.click(screen.getByTitle('Open in new tab'));
     expect(window.open).toHaveBeenCalledWith('/preview/', '_blank');
+  });
+
+  it('keeps allow-same-origin so the host service worker can intercept preview', () => {
+    const preview = createStateHook({
+      htmlContent: '<html><body>Hello</body></html>',
+      isCompilerReady: true,
+      restoreError: null,
+    });
+    const ui = createStateHook({
+      isLoading: false,
+      scale: 1,
+      error: null,
+      refreshKey: 1,
+      isSwReady: true,
+      isMaximized: false,
+      address: '/preview/dist/index.html',
+      host: 'localhost',
+    });
+
+    vi.spyOn(PreviewState, 'useState').mockReturnValue(preview.hook);
+    vi.spyOn(PreviewAreaUiState, 'useState').mockReturnValue(ui.hook);
+
+    render(<PreviewArea />);
+
+    const iframe = screen.getByTitle('Preview');
+    expect(iframe.getAttribute('sandbox')).toBe(PREVIEW_IFRAME_SANDBOX);
+    expect(iframe.getAttribute('sandbox')).toContain('allow-same-origin');
+    expect(iframe.getAttribute('referrerpolicy')).toBeNull();
+    expect(iframe.getAttribute('src')).toBe('/preview/dist/index.html');
   });
 });
