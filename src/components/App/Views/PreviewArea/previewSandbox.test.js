@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  PREVIEW_IFRAME_SANDBOX,
   PREVIEW_MESSAGE_SOURCE,
   PREVIEW_MESSAGE_TYPES,
   injectPreviewErrorBridge,
@@ -9,6 +10,12 @@ import {
 } from './previewSandbox';
 
 describe('previewSandbox', () => {
+  it('requires allow-same-origin so the service worker can intercept /preview', () => {
+    expect(PREVIEW_IFRAME_SANDBOX.split(/\s+/)).toEqual(
+      expect.arrayContaining(['allow-scripts', 'allow-same-origin', 'allow-forms', 'allow-popups']),
+    );
+  });
+
   it('injects the error bridge before </head>', () => {
     const html = '<html><head><title>t</title></head><body></body></html>';
     const next = injectPreviewErrorBridge(html);

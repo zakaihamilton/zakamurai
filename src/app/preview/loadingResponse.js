@@ -22,8 +22,9 @@ export function createPreviewLoadingResponse() {
     const maxAttempts = 20;
     const WAIT_PARAM = '_preview_wait';
 
-    // Opaque sandboxed iframes (no allow-same-origin) throw SecurityError on
-    // navigator.serviceWorker access — never read it without try/catch.
+    // Guard SW access: opaque sandboxed documents throw SecurityError on
+    // navigator.serviceWorker. Preview iframes should include allow-same-origin
+    // so the host SW can intercept; this path remains for odd environments.
     function getServiceWorker() {
       try {
         return 'serviceWorker' in navigator ? navigator.serviceWorker : null;
