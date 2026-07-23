@@ -62,6 +62,15 @@ const largeCache = {
 let hydratePromise = null;
 let isHydrated = false;
 
+/** Per-key write generation — bumped on every writeLarge / unload flush to fence clears. */
+const largeWriteGen = {
+  fileContents: 0,
+  pendingDiffs: 0,
+  previewHtml: 0,
+  agentSessions: 0,
+  aiLogs: 0,
+};
+
 const parseJson = (val, fallback) => {
   if (val == null || val === '') return fallback;
   if (typeof val !== 'string') return val;
@@ -105,7 +114,14 @@ const writeLocalFallback = (key, value) => {
 const writeLarge = async (cacheKey, value) => {
   largeCache[cacheKey] = value;
   const idbKey = LARGE_IDB_KEYS[cacheKey];
+  const myGen = ++largeWriteGen[cacheKey];
   const durable = await idbSet(idbKey, value);
+
+  // A newer writeLarge or unload flush happened — do not clear a fresher localStorage snapshot.
+  if (myGen !== largeWriteGen[cacheKey]) {
+    return durable;
+  }
+
   if (durable) {
     clearLegacyLocal(idbKey);
     return true;
@@ -127,6 +143,8 @@ const writeLarge = async (cacheKey, value) => {
  */
 const persistLargeSync = (cacheKey, value) => {
   largeCache[cacheKey] = value;
+  // Invalidate in-flight writeLarge so it cannot clear this fresher unload snapshot.
+  largeWriteGen[cacheKey] += 1;
   const idbKey = LARGE_IDB_KEYS[cacheKey];
   const serialized =
     value === null || value === undefined
@@ -508,6 +526,11 @@ const Settings = {
     largeCache.previewHtml = null;
     largeCache.agentSessions = null;
     largeCache.aiLogs = [];
+    largeWriteGen.fileContents = 0;
+    largeWriteGen.pendingDiffs = 0;
+    largeWriteGen.previewHtml = 0;
+    largeWriteGen.agentSessions = 0;
+    largeWriteGen.aiLogs = 0;
   },
 
   async reset(template = 'default') {

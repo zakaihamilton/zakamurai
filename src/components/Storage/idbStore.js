@@ -1,7 +1,8 @@
 /**
  * Minimal IndexedDB key-value store for large project blobs.
- * Uses an in-memory Map as a same-session cache when IndexedDB is unavailable,
- * but only reports durable success when IndexedDB (or an explicit durable fallback) wins.
+ * Uses an in-memory Map as a same-session cache when IndexedDB is unavailable.
+ * Returns durable success only when IndexedDB accepts the write; callers may
+ * fall back to localStorage themselves.
  */
 
 const DB_NAME = 'zakamurai-project';
@@ -11,6 +12,8 @@ const STORE_NAME = 'kv';
 /** @type {Promise<IDBDatabase>|null} */
 let dbPromise = null;
 const memoryStore = new Map();
+/** @type {Map<string, Promise<unknown>>} */
+const writeQueues = new Map();
 
 function openDb() {
   if (typeof indexedDB === 'undefined') {
@@ -27,6 +30,10 @@ function openDb() {
         }
       };
       request.onsuccess = () => resolve(request.result);
+    }).catch((err) => {
+      // Allow a later open attempt after a failed first open.
+      dbPromise = null;
+      throw err;
     });
   }
   return dbPromise;
@@ -58,27 +65,44 @@ export async function idbGet(key) {
  * Persist a value. Returns true only when IndexedDB accepted the write.
  * On failure, mirrors into memory for same-session reads and returns false
  * so callers can fall back to a durable store (e.g. localStorage).
+ * Writes to the same key are serialized so older puts cannot commit after newer ones.
  */
 export async function idbSet(key, value) {
+  const previous = writeQueues.get(key) || Promise.resolve();
+  let release = () => {};
+  const gate = new Promise((resolve) => {
+    release = resolve;
+  });
+  const queued = previous.catch(() => {}).then(() => gate);
+  writeQueues.set(key, queued);
+
   try {
-    const db = await openDb();
-    await new Promise((resolve, reject) => {
-      const tx = db.transaction(STORE_NAME, 'readwrite');
-      const store = tx.objectStore(STORE_NAME);
-      if (value === null || value === undefined) {
-        store.delete(key);
-      } else {
-        store.put(value, key);
-      }
-      tx.oncomplete = () => resolve();
-      tx.onerror = () => reject(tx.error);
-      tx.onabort = () => reject(tx.error || new Error('IndexedDB transaction aborted'));
-    });
-    mirrorMemory(key, value);
-    return true;
-  } catch {
-    mirrorMemory(key, value);
-    return false;
+    await previous.catch(() => {});
+    try {
+      const db = await openDb();
+      await new Promise((resolve, reject) => {
+        const tx = db.transaction(STORE_NAME, 'readwrite');
+        const store = tx.objectStore(STORE_NAME);
+        if (value === null || value === undefined) {
+          store.delete(key);
+        } else {
+          store.put(value, key);
+        }
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+        tx.onabort = () => reject(tx.error || new Error('IndexedDB transaction aborted'));
+      });
+      mirrorMemory(key, value);
+      return true;
+    } catch {
+      mirrorMemory(key, value);
+      return false;
+    }
+  } finally {
+    release();
+    if (writeQueues.get(key) === queued) {
+      writeQueues.delete(key);
+    }
   }
 }
 
@@ -105,6 +129,7 @@ export async function idbClear() {
 export function resetIdbConnection() {
   dbPromise = null;
   memoryStore.clear();
+  writeQueues.clear();
 }
 
 export function isIdbAvailable() {

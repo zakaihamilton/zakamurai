@@ -78,7 +78,7 @@ function buildInitialValues() {
       const stored = Settings.getAgentSessions();
       const activeId = Settings.getActiveAgentSessionId();
       return normalizeAgentSessions(
-        stored ? { ...stored, activeSessionId: activeId || stored.activeSessionId } : null,
+        stored ? { ...stored, activeSessionId: stored.activeSessionId || activeId } : null,
       );
     })(),
   };

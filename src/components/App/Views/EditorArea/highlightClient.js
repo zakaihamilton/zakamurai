@@ -16,6 +16,45 @@ const pending = new Map();
 
 const stylePayload = () => ({ ...highlighterStyles });
 
+function runSync(
+  code,
+  filePath,
+  state,
+  styles,
+  showFind,
+  findQuery,
+  matchIndex,
+  suggestion,
+  cursorPos,
+  navigationLinksEnabled,
+  isOriginal,
+) {
+  return highlightCode(
+    code,
+    filePath,
+    state,
+    styles,
+    showFind,
+    findQuery,
+    matchIndex,
+    suggestion,
+    cursorPos,
+    navigationLinksEnabled,
+    isOriginal,
+  );
+}
+
+function settlePendingWithFallback() {
+  for (const [, entry] of pending) {
+    try {
+      entry.resolve(entry.fallback());
+    } catch {
+      entry.resolve('');
+    }
+  }
+  pending.clear();
+}
+
 function getWorker() {
   if (workerFailed || typeof Worker === 'undefined') return null;
   if (worker) return worker;
@@ -26,15 +65,23 @@ function getWorker() {
       const entry = pending.get(id);
       if (!entry) return;
       pending.delete(id);
-      if (error) entry.reject(new Error(error));
-      else entry.resolve(html);
+      if (entry.cancelled) {
+        entry.resolve(null);
+        return;
+      }
+      if (error) {
+        try {
+          entry.resolve(entry.fallback());
+        } catch {
+          entry.resolve('');
+        }
+        return;
+      }
+      entry.resolve(html);
     };
     worker.onerror = () => {
       workerFailed = true;
-      for (const [, entry] of pending) {
-        entry.reject(new Error('Highlight worker failed'));
-      }
-      pending.clear();
+      settlePendingWithFallback();
       try {
         worker?.terminate();
       } catch {
@@ -62,7 +109,7 @@ export function highlightCodeSync(
   navigationLinksEnabled,
   isOriginal = false,
 ) {
-  return highlightCode(
+  return runSync(
     code,
     filePath,
     state,
@@ -78,7 +125,8 @@ export function highlightCodeSync(
 }
 
 /**
- * @returns {Promise<string>}
+ * @returns {Promise<string|null> & { cancel?: () => void }}
+ * Resolves to HTML, or null when cancelled. Never rejects — falls back to sync on worker failure.
  */
 export function highlightCodeAsync(
   code,
@@ -93,45 +141,43 @@ export function highlightCodeAsync(
   navigationLinksEnabled,
   isOriginal = false,
 ) {
-  if (!code) return Promise.resolve('');
-  if (code.length <= HIGHLIGHT_WORKER_THRESHOLD) {
-    return Promise.resolve(
-      highlightCodeSync(
-        code,
-        filePath,
-        state,
-        styles,
-        showFind,
-        findQuery,
-        matchIndex,
-        suggestion,
-        cursorPos,
-        navigationLinksEnabled,
-        isOriginal,
-      ),
+  if (!code) {
+    const empty = Promise.resolve('');
+    empty.cancel = () => {};
+    return empty;
+  }
+
+  const fallback = () =>
+    runSync(
+      code,
+      filePath,
+      state,
+      styles,
+      showFind,
+      findQuery,
+      matchIndex,
+      suggestion,
+      cursorPos,
+      navigationLinksEnabled,
+      isOriginal,
     );
+
+  if (code.length <= HIGHLIGHT_WORKER_THRESHOLD) {
+    const syncResult = Promise.resolve(fallback());
+    syncResult.cancel = () => {};
+    return syncResult;
   }
 
   const w = getWorker();
   if (!w) {
-    return Promise.resolve(
-      highlightCodeSync(
-        code,
-        filePath,
-        state,
-        styles,
-        showFind,
-        findQuery,
-        matchIndex,
-        suggestion,
-        cursorPos,
-        navigationLinksEnabled,
-        isOriginal,
-      ),
-    );
+    const syncResult = Promise.resolve(fallback());
+    syncResult.cancel = () => {};
+    return syncResult;
   }
 
   const id = ++requestSeq;
+  // Avoid cloning the entire project into the worker unless navigation links need it.
+  const fileContentsForWorker = navigationLinksEnabled ? state?.fileContents || {} : {};
   const payload = {
     id,
     code,
@@ -139,7 +185,7 @@ export function highlightCodeAsync(
     state: {
       pendingDiffs: state?.pendingDiffs || {},
       selectedLines: state?.selectedLines || {},
-      fileContents: navigationLinksEnabled ? state?.fileContents || {} : {},
+      fileContents: fileContentsForWorker,
     },
     styles: styles ?? stylePayload(),
     showFind,
@@ -151,27 +197,44 @@ export function highlightCodeAsync(
     isOriginal,
   };
 
-  return new Promise((resolve, reject) => {
-    pending.set(id, { resolve, reject });
+  let cancelled = false;
+  const promise = new Promise((resolve) => {
+    pending.set(id, {
+      resolve,
+      fallback,
+      get cancelled() {
+        return cancelled;
+      },
+    });
     try {
       w.postMessage(payload);
     } catch (_e) {
       pending.delete(id);
-      resolve(
-        highlightCodeSync(
-          code,
-          filePath,
-          state,
-          styles,
-          showFind,
-          findQuery,
-          matchIndex,
-          suggestion,
-          cursorPos,
-          navigationLinksEnabled,
-          isOriginal,
-        ),
-      );
+      resolve(cancelled ? null : fallback());
     }
   });
+
+  promise.cancel = () => {
+    cancelled = true;
+    const entry = pending.get(id);
+    if (entry) {
+      pending.delete(id);
+      entry.resolve(null);
+    }
+  };
+
+  return promise;
+}
+
+/** Test helper */
+export function _resetHighlightWorkerForTests() {
+  try {
+    worker?.terminate();
+  } catch {
+    // ignore
+  }
+  worker = null;
+  workerFailed = false;
+  requestSeq = 0;
+  pending.clear();
 }

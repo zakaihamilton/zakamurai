@@ -21,9 +21,11 @@ const COLLAPSED_DESKTOP_WIDTH = 0;
 export default function Sidebar() {
   const sidebarState = SidebarState.useState([
     'isSidebarOpen',
+    'isSidebarPopupOpen',
     'folderTree',
     'sidebarWidth',
     'expandedFolders',
+    'draggedItem',
   ]);
   const { isSidebarOpen, folderTree = [], sidebarWidth, expandedFolders = {} } = sidebarState;
   const { projectName, isMobile } = AppState.useState(['projectName', 'isMobile']);

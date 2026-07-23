@@ -42,4 +42,11 @@ describe('idbStore', () => {
     globalThis.indexedDB = original;
     resetIdbConnection();
   });
+
+  it('serializes writes to the same key so the latest value wins', async () => {
+    const first = idbSet('ordered', { n: 1 });
+    const second = idbSet('ordered', { n: 2 });
+    await Promise.all([first, second]);
+    expect(await idbGet('ordered')).toEqual({ n: 2 });
+  });
 });

@@ -55,21 +55,33 @@ export function parsePreviewMessage(data) {
   if (!Object.values(PREVIEW_MESSAGE_TYPES).includes(data.type)) {
     return null;
   }
-  return data;
+  return {
+    ...data,
+    message: data.message == null ? '' : String(data.message),
+    path: data.path == null ? data.path : String(data.path),
+  };
 }
 
 /**
  * Allow only same-app preview paths. Reject absolute URLs, protocol-relative,
- * traversal, and anything outside a `/preview` namespace (optionally under a base path).
+ * traversal (including encoded forms), and anything outside a `/preview` namespace.
  */
 export function sanitizePreviewPath(path) {
   if (typeof path !== 'string' || !path) return null;
-  const trimmed = path.trim();
+  let trimmed = path.trim();
   if (!trimmed.startsWith('/')) return null;
   if (trimmed.startsWith('//')) return null;
   if (trimmed.includes('\\')) return null;
-  if (trimmed.includes('..')) return null;
   if (/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(trimmed)) return null;
+
+  try {
+    trimmed = decodeURIComponent(trimmed);
+  } catch {
+    return null;
+  }
+
+  if (trimmed.includes('\\') || trimmed.includes('..')) return null;
+  if (!trimmed.startsWith('/') || trimmed.startsWith('//')) return null;
   // /preview, /preview/..., or /{base}/preview/...
   if (!/^(?:\/[^/]+)*\/preview(?:\/.*)?$/.test(trimmed)) return null;
   return trimmed;

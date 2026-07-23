@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
+  PREVIEW_MESSAGE_SOURCE,
+  PREVIEW_MESSAGE_TYPES,
   injectPreviewErrorBridge,
   isTrustedPreviewMessage,
   parsePreviewMessage,
-  PREVIEW_MESSAGE_SOURCE,
-  PREVIEW_MESSAGE_TYPES,
   sanitizePreviewPath,
 } from './previewSandbox';
 
@@ -37,6 +37,13 @@ describe('previewSandbox', () => {
       type: PREVIEW_MESSAGE_TYPES.RUNTIME_ERROR,
       message: 'boom',
     });
+    expect(
+      parsePreviewMessage({
+        source: PREVIEW_MESSAGE_SOURCE,
+        type: PREVIEW_MESSAGE_TYPES.RUNTIME_ERROR,
+        message: { nested: true },
+      }).message,
+    ).toBe('[object Object]');
   });
 
   it('sanitizes navigate paths to /preview only', () => {
@@ -49,6 +56,7 @@ describe('previewSandbox', () => {
     expect(sanitizePreviewPath('//evil.example/x')).toBeNull();
     expect(sanitizePreviewPath('/dist/index.html')).toBeNull();
     expect(sanitizePreviewPath('/preview/../etc/passwd')).toBeNull();
+    expect(sanitizePreviewPath('/preview/%2e%2e/etc/passwd')).toBeNull();
     expect(sanitizePreviewPath('\\preview\\x')).toBeNull();
   });
 

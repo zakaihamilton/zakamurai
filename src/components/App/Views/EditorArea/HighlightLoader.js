@@ -38,7 +38,7 @@ export default function useHighlightLoader({
   // biome-ignore lint/correctness/useExhaustiveDependencies: intentional narrow deps; avoid re-highlight on unrelated editor state churn
   useEffect(() => {
     let cancelled = false;
-    void highlightCodeAsync(
+    const request = highlightCodeAsync(
       primaryCode,
       filePath,
       state,
@@ -49,11 +49,31 @@ export default function useHighlightLoader({
       suggestion,
       cursorPos,
       navigationLinksEnabled,
-    ).then((html) => {
-      if (!cancelled) setHighlightedCode(html);
-    });
+    );
+    void request
+      .then((html) => {
+        if (!cancelled && html != null) setHighlightedCode(html);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setHighlightedCode(
+          highlightCodeSync(
+            primaryCode,
+            filePath,
+            state,
+            undefined,
+            showFind,
+            findQuery,
+            matchIndex,
+            suggestion,
+            cursorPos,
+            navigationLinksEnabled,
+          ),
+        );
+      });
     return () => {
       cancelled = true;
+      request.cancel?.();
     };
   }, [
     primaryCode,
@@ -76,7 +96,7 @@ export default function useHighlightLoader({
       return undefined;
     }
     let cancelled = false;
-    void highlightCodeAsync(
+    const request = highlightCodeAsync(
       diffData.originalContent,
       filePath,
       state,
@@ -88,11 +108,32 @@ export default function useHighlightLoader({
       state.cursorPos?.[filePath],
       navigationLinksEnabled,
       true,
-    ).then((html) => {
-      if (!cancelled) setOriginalHighlightedCode(html);
-    });
+    );
+    void request
+      .then((html) => {
+        if (!cancelled && html != null) setOriginalHighlightedCode(html);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setOriginalHighlightedCode(
+          highlightCodeSync(
+            diffData.originalContent,
+            filePath,
+            state,
+            undefined,
+            showFind,
+            findQuery,
+            matchIndex,
+            undefined,
+            state.cursorPos?.[filePath],
+            navigationLinksEnabled,
+            true,
+          ),
+        );
+      });
     return () => {
       cancelled = true;
+      request.cancel?.();
     };
   }, [
     showSideBySide,

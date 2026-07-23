@@ -161,6 +161,27 @@ describe('Settings', () => {
     expect(localStorage.getItem('zakamurai_file_contents')).toContain('a.js');
   });
 
+  it('does not let an in-flight durable write clear a newer unload snapshot', async () => {
+    const writePromise = Settings.setFileContents({ stale: true });
+    expect(
+      Settings.flushEditorBuffersSync(
+        { fresh: true },
+        {
+          'a.js': {
+            originalContent: 'old',
+            modifiedContent: 'fresh',
+            diffs: [{ start: 0, end: 1, origStart: 0, origEnd: 1 }],
+          },
+        },
+      ),
+    ).toBe(true);
+
+    await writePromise;
+
+    expect(Settings.getFileContents()).toEqual({ fresh: true });
+    expect(JSON.parse(localStorage.getItem('zakamurai_file_contents'))).toEqual({ fresh: true });
+  });
+
   it('gets and sets sidebar width', () => {
     expect(Settings.getSidebarWidth(260)).toBe(260);
     Settings.setSidebarWidth(300);
