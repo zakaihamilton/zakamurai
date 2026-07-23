@@ -1,3 +1,5 @@
+import { idbClear, idbGet, idbSet } from './idbStore';
+
 const KEYS = {
   PROJECT_NAME: 'zakamurai_project_name',
   THEME: 'zakamurai-theme',
@@ -38,6 +40,111 @@ const getStorage = () => {
   }
 
   return localStorage;
+};
+
+/** Keys stored primarily in IndexedDB (too large for reliable localStorage). */
+const LARGE_IDB_KEYS = {
+  fileContents: KEYS.FILE_CONTENTS,
+  pendingDiffs: KEYS.PENDING_DIFFS,
+  previewHtml: KEYS.PREVIEW_HTML,
+  agentSessions: KEYS.AGENT_SESSIONS,
+  aiLogs: KEYS.AI_LOGS,
+};
+
+const largeCache = {
+  fileContents: null,
+  pendingDiffs: {},
+  previewHtml: null,
+  agentSessions: null,
+  aiLogs: [],
+};
+
+let hydratePromise = null;
+let isHydrated = false;
+
+const parseJson = (val, fallback) => {
+  if (val == null || val === '') return fallback;
+  if (typeof val !== 'string') return val;
+  try {
+    return JSON.parse(val);
+  } catch {
+    return fallback;
+  }
+};
+
+const readLegacyLocal = (key, fallback, { raw = false } = {}) => {
+  const storage = getStorage();
+  if (!storage) return fallback;
+  const val = storage.getItem(key);
+  if (val == null) return fallback;
+  if (raw) return val;
+  return parseJson(val, fallback);
+};
+
+const clearLegacyLocal = (key) => {
+  const storage = getStorage();
+  if (storage) storage.removeItem(key);
+};
+
+const writeLocalFallback = (key, value) => {
+  const storage = getStorage();
+  if (!storage) return false;
+  try {
+    if (value === null || value === undefined) {
+      storage.removeItem(key);
+    } else {
+      storage.setItem(key, value);
+    }
+    return true;
+  } catch (e) {
+    console.warn(`Failed to save ${key} to localStorage`, e);
+    return false;
+  }
+};
+
+const writeLarge = async (cacheKey, value) => {
+  largeCache[cacheKey] = value;
+  const idbKey = LARGE_IDB_KEYS[cacheKey];
+  try {
+    await idbSet(idbKey, value);
+    clearLegacyLocal(idbKey);
+    return true;
+  } catch (e) {
+    console.warn(`Failed to save ${cacheKey} to IndexedDB`, e);
+    // Best-effort localStorage fallback for small payloads / private mode.
+    try {
+      const serialized =
+        value === null || value === undefined
+          ? null
+          : typeof value === 'string'
+            ? value
+            : JSON.stringify(value);
+      return writeLocalFallback(idbKey, serialized);
+    } catch (fallbackError) {
+      console.warn(`Failed to fall back ${cacheKey} to localStorage`, fallbackError);
+      return false;
+    }
+  }
+};
+
+const normalizePendingDiffs = (parsed) => {
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {};
+  return Object.fromEntries(
+    Object.entries(parsed).filter(([, diff]) => {
+      if (!diff || typeof diff !== 'object' || typeof diff.originalContent !== 'string') {
+        return false;
+      }
+      if (typeof diff.modifiedContent !== 'string' || !Array.isArray(diff.diffs)) return false;
+      return diff.diffs.every(
+        (range) =>
+          range &&
+          Number.isFinite(range.start) &&
+          Number.isFinite(range.end) &&
+          Number.isFinite(range.origStart) &&
+          Number.isFinite(range.origEnd),
+      );
+    }),
+  );
 };
 
 const Settings = {
@@ -159,94 +266,37 @@ const Settings = {
   },
 
   getAILogs() {
-    const val = this.get(KEYS.AI_LOGS);
-    if (!val) return [];
-    try {
-      return JSON.parse(val);
-    } catch (e) {
-      console.error('Failed to parse AI logs from localStorage', e);
-      return [];
-    }
+    return Array.isArray(largeCache.aiLogs) ? largeCache.aiLogs : [];
   },
 
-  setAILogs(logs) {
-    // Keep only the last 50 logs
-    const logsToSave = logs.slice(-50);
-    return this.set(KEYS.AI_LOGS, JSON.stringify(logsToSave));
+  async setAILogs(logs) {
+    const logsToSave = (logs || []).slice(-50);
+    return writeLarge('aiLogs', logsToSave);
   },
 
   getFileContents() {
-    const val = this.get(KEYS.FILE_CONTENTS);
-    if (!val) return null;
-    try {
-      return JSON.parse(val);
-    } catch (e) {
-      console.error('Failed to parse file contents from localStorage', e);
-      return null;
-    }
+    return largeCache.fileContents;
   },
 
-  setFileContents(contents) {
-    // Prefer IndexedDB/OPFS for large projects; localStorage is a best-effort cache.
-    try {
-      return this.set(KEYS.FILE_CONTENTS, JSON.stringify(contents));
-    } catch (e) {
-      console.warn('Failed to save file contents to localStorage (likely size limit)', e);
-      return false;
-    }
+  async setFileContents(contents) {
+    return writeLarge('fileContents', contents && typeof contents === 'object' ? contents : {});
   },
 
   getPendingDiffs() {
-    const val = this.get(KEYS.PENDING_DIFFS);
-    if (!val) return {};
-    try {
-      const parsed = JSON.parse(val);
-      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {};
-      return Object.fromEntries(
-        Object.entries(parsed).filter(([, diff]) => {
-          if (!diff || typeof diff !== 'object' || typeof diff.originalContent !== 'string') {
-            return false;
-          }
-          if (typeof diff.modifiedContent !== 'string' || !Array.isArray(diff.diffs)) return false;
-          return diff.diffs.every(
-            (range) =>
-              range &&
-              Number.isFinite(range.start) &&
-              Number.isFinite(range.end) &&
-              Number.isFinite(range.origStart) &&
-              Number.isFinite(range.origEnd),
-          );
-        }),
-      );
-    } catch (e) {
-      console.error('Failed to parse pending diffs from localStorage', e);
-      return {};
-    }
+    return normalizePendingDiffs(largeCache.pendingDiffs);
   },
 
-  setPendingDiffs(diffs) {
-    try {
-      return this.set(
-        KEYS.PENDING_DIFFS,
-        Object.keys(diffs || {}).length ? JSON.stringify(diffs) : null,
-      );
-    } catch (e) {
-      console.warn('Failed to save pending diffs to localStorage (likely size limit)', e);
-      return false;
-    }
+  async setPendingDiffs(diffs) {
+    const next = normalizePendingDiffs(diffs);
+    return writeLarge('pendingDiffs', next);
   },
 
   getPreviewHtml() {
-    return this.get(KEYS.PREVIEW_HTML);
+    return largeCache.previewHtml;
   },
 
-  setPreviewHtml(html) {
-    try {
-      return this.set(KEYS.PREVIEW_HTML, html);
-    } catch (e) {
-      console.warn('Failed to save preview HTML to localStorage (likely size limit)', e);
-      return false;
-    }
+  async setPreviewHtml(html) {
+    return writeLarge('previewHtml', html || null);
   },
 
   getSidebarWidth(defaultValue = 280) {
@@ -350,28 +400,16 @@ const Settings = {
   },
 
   getAgentSessions() {
-    const val = this.get(KEYS.AGENT_SESSIONS);
-    if (!val) return null;
-    try {
-      const parsed = JSON.parse(val);
-      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return null;
-      return parsed;
-    } catch (e) {
-      console.error('Failed to parse agent sessions from localStorage', e);
-      return null;
-    }
+    const parsed = largeCache.agentSessions;
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return null;
+    return parsed;
   },
 
-  setAgentSessions(payload) {
-    try {
-      if (!payload || typeof payload !== 'object') {
-        return this.set(KEYS.AGENT_SESSIONS, null);
-      }
-      return this.set(KEYS.AGENT_SESSIONS, JSON.stringify(payload));
-    } catch (e) {
-      console.warn('Failed to save agent sessions to localStorage (likely size limit)', e);
-      return false;
+  async setAgentSessions(payload) {
+    if (!payload || typeof payload !== 'object') {
+      return writeLarge('agentSessions', null);
     }
+    return writeLarge('agentSessions', payload);
   },
 
   getActiveAgentSessionId(defaultValue = null) {
@@ -382,15 +420,83 @@ const Settings = {
     this.set(KEYS.ACTIVE_AGENT_SESSION, id || null);
   },
 
-  reset(template = 'default') {
+  /**
+   * Load large project blobs from IndexedDB (migrating legacy localStorage once).
+   * Call before reading fileContents / pendingDiffs / previewHtml / sessions / logs.
+   */
+  async hydrate() {
+    if (isHydrated) return true;
+    if (hydratePromise) return hydratePromise;
+
+    hydratePromise = (async () => {
+      const loadOne = async (cacheKey, fallback, { raw = false } = {}) => {
+        const idbKey = LARGE_IDB_KEYS[cacheKey];
+        let value = await idbGet(idbKey);
+        if (value == null) {
+          value = readLegacyLocal(idbKey, fallback, { raw });
+          if (value != null && value !== fallback) {
+            try {
+              await idbSet(idbKey, value);
+              clearLegacyLocal(idbKey);
+            } catch {
+              // Keep legacy localStorage value if migration fails.
+            }
+          }
+        }
+        largeCache[cacheKey] = value == null ? fallback : value;
+      };
+
+      await Promise.all([
+        loadOne('fileContents', null),
+        loadOne('pendingDiffs', {}),
+        loadOne('previewHtml', null, { raw: true }),
+        loadOne('agentSessions', null),
+        loadOne('aiLogs', []),
+      ]);
+
+      largeCache.pendingDiffs = normalizePendingDiffs(largeCache.pendingDiffs);
+      if (!Array.isArray(largeCache.aiLogs)) largeCache.aiLogs = [];
+      isHydrated = true;
+      return true;
+    })().catch((e) => {
+      console.warn('Settings.hydrate failed; using empty large-store defaults', e);
+      isHydrated = true;
+      return false;
+    });
+
+    return hydratePromise;
+  },
+
+  isHydrated() {
+    return isHydrated;
+  },
+
+  /** Test helper: reset in-memory hydration state. */
+  _resetHydrationForTests() {
+    hydratePromise = null;
+    isHydrated = false;
+    largeCache.fileContents = null;
+    largeCache.pendingDiffs = {};
+    largeCache.previewHtml = null;
+    largeCache.agentSessions = null;
+    largeCache.aiLogs = [];
+  },
+
+  async reset(template = 'default') {
     const storage = getStorage();
     if (storage) {
       for (const key of Object.values(KEYS)) {
         storage.removeItem(key);
       }
-      if (template) {
-        this.setTemplate(template);
-      }
+    }
+    await idbClear();
+    largeCache.fileContents = null;
+    largeCache.pendingDiffs = {};
+    largeCache.previewHtml = null;
+    largeCache.agentSessions = null;
+    largeCache.aiLogs = [];
+    if (template) {
+      this.setTemplate(template);
     }
   },
 };

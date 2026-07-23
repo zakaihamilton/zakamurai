@@ -84,7 +84,7 @@ export default function TopBar() {
 
   const handleStartOver = async (template = 'default') => {
     await fs.unlinkProject();
-    Settings.reset(template);
+    await Settings.reset(template);
     resetNewProjectState({
       template,
       appState,

@@ -123,7 +123,7 @@ export function useSettingsSync(
   useEffect(() => {
     if (!Array.isArray(logs)) return undefined;
     const timer = setTimeout(() => {
-      persistRef.current(Settings.setAILogs(logs));
+      void Promise.resolve(Settings.setAILogs(logs)).then((ok) => persistRef.current(ok));
     }, 500);
     return () => clearTimeout(timer);
   }, [logs]);
@@ -131,7 +131,9 @@ export function useSettingsSync(
   useEffect(() => {
     if (htmlContent === undefined) return undefined;
     const timer = setTimeout(() => {
-      persistRef.current(Settings.setPreviewHtml(htmlContent || null));
+      void Promise.resolve(Settings.setPreviewHtml(htmlContent || null)).then((ok) =>
+        persistRef.current(ok),
+      );
     }, 500);
     return () => clearTimeout(timer);
   }, [htmlContent]);
@@ -139,7 +141,9 @@ export function useSettingsSync(
   useEffect(() => {
     if (!fileContents || typeof fileContents !== 'object') return undefined;
     const timer = setTimeout(() => {
-      persistRef.current(Settings.setFileContents({ ...fileContents }));
+      void Promise.resolve(Settings.setFileContents({ ...fileContents })).then((ok) =>
+        persistRef.current(ok),
+      );
     }, 1000);
     return () => clearTimeout(timer);
   }, [fileContents]);
@@ -155,7 +159,9 @@ export function useSettingsSync(
           modifiedContent: fileContents?.[path] ?? diff.modifiedContent ?? '',
         };
       }
-      persistRef.current(Settings.setPendingDiffs(diffsToSave));
+      void Promise.resolve(Settings.setPendingDiffs(diffsToSave)).then((ok) =>
+        persistRef.current(ok),
+      );
     }, 1000);
     return () => clearTimeout(timer);
   }, [pendingDiffs, fileContents]);
@@ -164,8 +170,10 @@ export function useSettingsSync(
     if (!sessions || !activeSessionId) return undefined;
     const timer = setTimeout(() => {
       const payload = serializeAgentSessions({ sessions, activeSessionId });
-      persistRef.current(Settings.setAgentSessions(payload));
-      Settings.setActiveAgentSessionId(payload.activeSessionId);
+      void Promise.resolve(Settings.setAgentSessions(payload)).then((ok) => {
+        persistRef.current(ok);
+        Settings.setActiveAgentSessionId(payload.activeSessionId);
+      });
     }, 500);
     return () => clearTimeout(timer);
   }, [sessions, activeSessionId]);

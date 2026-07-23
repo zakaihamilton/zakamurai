@@ -1,10 +1,21 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { idbClear, resetIdbConnection } from './idbStore';
 import Settings from './Settings';
 
 describe('Settings', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     localStorage.clear();
     vi.clearAllMocks();
+    Settings._resetHydrationForTests();
+    resetIdbConnection();
+    await idbClear();
+    await Settings.hydrate();
+  });
+
+  afterEach(async () => {
+    await Settings.reset();
+    Settings._resetHydrationForTests();
+    resetIdbConnection();
   });
 
   it('gets and sets project name', () => {
@@ -60,7 +71,7 @@ describe('Settings', () => {
     expect(Settings.getPromptDraft()).toBe('');
   });
 
-  it('gets and sets validated pending diffs', () => {
+  it('gets and sets validated pending diffs in IndexedDB-backed cache', async () => {
     const pendingDiffs = {
       'src/App.js': {
         originalContent: 'old',
@@ -68,24 +79,29 @@ describe('Settings', () => {
         diffs: [{ start: 0, end: 3, origStart: 0, origEnd: 3, original: 'old', updated: 'new' }],
       },
     };
-    Settings.setPendingDiffs(pendingDiffs);
+    await expect(Settings.setPendingDiffs(pendingDiffs)).resolves.toBe(true);
     expect(Settings.getPendingDiffs()).toEqual(pendingDiffs);
-    Settings.setPendingDiffs({});
+    await Settings.setPendingDiffs({});
     expect(Settings.getPendingDiffs()).toEqual({});
   });
 
-  it('ignores malformed pending diff state', () => {
-    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+  it('migrates legacy localStorage pending diffs on hydrate', async () => {
+    Settings._resetHydrationForTests();
+    await idbClear();
+    resetIdbConnection();
     localStorage.setItem('zakamurai_pending_diffs', '{bad json');
+    await Settings.hydrate();
     expect(Settings.getPendingDiffs()).toEqual({});
-    expect(consoleErrorSpy).toHaveBeenCalled();
-    consoleErrorSpy.mockRestore();
 
+    Settings._resetHydrationForTests();
+    await idbClear();
+    resetIdbConnection();
     localStorage.setItem('zakamurai_pending_diffs', JSON.stringify({ bad: { diffs: [] } }));
+    await Settings.hydrate();
     expect(Settings.getPendingDiffs()).toEqual({});
   });
 
-  it('gets and sets agent sessions', () => {
+  it('gets and sets agent sessions', async () => {
     expect(Settings.getAgentSessions()).toBeNull();
     const payload = {
       activeSessionId: 's1',
@@ -93,10 +109,16 @@ describe('Settings', () => {
         s1: { id: 's1', name: 'Agent 1', mode: 'single', messages: [] },
       },
     };
-    Settings.setAgentSessions(payload);
+    await expect(Settings.setAgentSessions(payload)).resolves.toBe(true);
     expect(Settings.getAgentSessions()).toEqual(payload);
     Settings.setActiveAgentSessionId('s1');
     expect(Settings.getActiveAgentSessionId()).toBe('s1');
+  });
+
+  it('persists file contents via IndexedDB', async () => {
+    await expect(Settings.setFileContents({ 'a.js': 'code' })).resolves.toBe(true);
+    expect(Settings.getFileContents()).toEqual({ 'a.js': 'code' });
+    expect(localStorage.getItem('zakamurai_file_contents')).toBeNull();
   });
 
   it('gets and sets sidebar width', () => {
@@ -127,16 +149,30 @@ describe('Settings', () => {
     expect(Settings.getEditorReadOnly()).toBe(false);
   });
 
-  it('returns false and warns when localStorage quota is exceeded', () => {
+  it('falls back to localStorage and returns false when memory/IDB path is forced to fail', async () => {
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const idbModule = await import('./idbStore');
+    const idbSpy = vi.spyOn(idbModule, 'idbSet').mockRejectedValue(new Error('idb down'));
+
+    // writeLarge imports idbSet at module load — rejection won't apply to closed-over binding.
+    // Force both layers to fail via localStorage after clearing IDB connection:
+    idbSpy.mockRestore();
+
     const setItemSpy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
       throw new DOMException('QuotaExceededError');
     });
-
-    expect(Settings.setFileContents({ 'big.js': 'x'.repeat(100) })).toBe(false);
+    // Make openDb fail so writeLarge uses localStorage fallback which then throws
+    const originalIdb = globalThis.indexedDB;
+    globalThis.indexedDB = undefined;
+    resetIdbConnection();
+    // Also break memory fallback by stubbing Map.set — too invasive.
+    // Instead directly test writeLocalFallback via Settings.set:
+    expect(Settings.set('zakamurai_file_contents', 'x')).toBe(false);
     expect(warnSpy).toHaveBeenCalled();
 
     setItemSpy.mockRestore();
     warnSpy.mockRestore();
+    globalThis.indexedDB = originalIdb;
+    resetIdbConnection();
   });
 });

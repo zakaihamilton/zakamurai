@@ -1,4 +1,4 @@
-import { renderHook } from '@testing-library/react';
+import { renderHook, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import useHighlightLoader from './HighlightLoader';
 
@@ -16,7 +16,7 @@ describe('useHighlightLoader', () => {
     cursorPos: {},
   };
 
-  it('highlights editor content by default', () => {
+  it('highlights editor content by default', async () => {
     const { result } = renderHook(() =>
       useHighlightLoader({
         showSideBySide: false,
@@ -37,9 +37,12 @@ describe('useHighlightLoader', () => {
 
     expect(result.current.highlightedCode).toBe('HL:editor');
     expect(result.current.originalHighlightedCode).toBe('');
+    await waitFor(() => {
+      expect(result.current.highlightedCode).toBe('HL:editor');
+    });
   });
 
-  it('highlights local and original content in side-by-side diff mode', () => {
+  it('highlights local and original content in side-by-side diff mode', async () => {
     const { result } = renderHook(() =>
       useHighlightLoader({
         showSideBySide: true,
@@ -59,6 +62,8 @@ describe('useHighlightLoader', () => {
     );
 
     expect(result.current.highlightedCode).toBe('HL:local:x');
-    expect(result.current.originalHighlightedCode).toBe('HL:original:x');
+    await waitFor(() => {
+      expect(result.current.originalHighlightedCode).toBe('HL:original:x');
+    });
   });
 });

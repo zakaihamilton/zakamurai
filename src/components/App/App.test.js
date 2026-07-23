@@ -128,6 +128,31 @@ vi.mock('@/components/App/Views/PreviewArea/PreviewRestorer', () => ({
 }));
 vi.mock('@/components/Storage/ContentSaver', () => ({ useContentSaver: vi.fn() }));
 vi.mock('@/components/Storage/SettingsSync', () => ({ useSettingsSync: vi.fn() }));
+vi.mock('@/components/Storage/Settings', () => ({
+  default: {
+    hydrate: vi.fn(async () => true),
+    getTemplate: vi.fn(() => 'default'),
+    getFileContents: vi.fn(() => null),
+    getPendingDiffs: vi.fn(() => ({})),
+    getProjectName: vi.fn(() => 'Test'),
+    getTheme: vi.fn(() => 'dark'),
+    getOpenTabs: vi.fn(() => []),
+    getActiveTabId: vi.fn(() => null),
+    getLastCodeTabId: vi.fn(() => null),
+    getAILogs: vi.fn(() => []),
+    getSidebarWidth: vi.fn(() => 260),
+    getPromptWidth: vi.fn(() => 340),
+    getIsSidebarOpen: vi.fn(() => true),
+    getShowAIInput: vi.fn(() => true),
+    getExpandedFolders: vi.fn(() => ({})),
+    getAICompletionEnabled: vi.fn(() => true),
+    getEditorReadOnly: vi.fn(() => false),
+    getPromptHistory: vi.fn(() => []),
+    getPreviewHtml: vi.fn(() => null),
+    getAgentSessions: vi.fn(() => null),
+    getActiveAgentSessionId: vi.fn(() => null),
+  },
+}));
 vi.mock('./WindowResize', () => ({ useWindowResize: vi.fn() }));
 
 vi.mock('@/components/Storage', () => ({
@@ -147,14 +172,14 @@ vi.mock('@/components/ui/Notification', () => ({
 }));
 
 describe('App', () => {
-  it('renders all main components', () => {
+  it('renders all main components', async () => {
     const appStateMock = Object.assign(vi.fn(), {
       theme: 'dark',
       fs: { mode: null, mountLocal: vi.fn() },
     });
     vi.spyOn(AppState, 'useState').mockReturnValue(appStateMock);
     render(<App />);
-    expect(screen.getByTestId('sidebar')).toBeDefined();
+    expect(await screen.findByTestId('sidebar')).toBeDefined();
     expect(screen.getByTestId('topbar')).toBeDefined();
     expect(screen.getByTestId('tabbar')).toBeDefined();
     expect(screen.getByTestId('prompt')).toBeDefined();

@@ -22,11 +22,11 @@ vi.mock('@/components/Storage/Settings', () => {
       setOpenTabs: vi.fn(() => true),
       setActiveTabId: vi.fn(),
       setLastCodeTabId: vi.fn(),
-      setAILogs: vi.fn(() => true),
-      setPreviewHtml: vi.fn(() => true),
-      setFileContents: vi.fn(() => true),
-      setPendingDiffs: vi.fn(() => true),
-      setAgentSessions: vi.fn(() => true),
+      setAILogs: vi.fn(async () => true),
+      setPreviewHtml: vi.fn(async () => true),
+      setFileContents: vi.fn(async () => true),
+      setPendingDiffs: vi.fn(async () => true),
+      setAgentSessions: vi.fn(async () => true),
       setActiveAgentSessionId: vi.fn(),
     },
   };
@@ -50,7 +50,7 @@ describe('useSettingsSync', () => {
     vi.useRealTimers();
   });
 
-  it('updates Settings when state dependencies change', () => {
+  it('updates Settings when state dependencies change', async () => {
     const appState = { theme: 'dark', projectName: 'TestProj' };
     const sidebarState = {
       sidebarWidth: 250,
@@ -149,6 +149,9 @@ describe('useSettingsSync', () => {
     expect(Settings.setAILogs).toHaveBeenCalledWith(logState.logs);
     expect(Settings.setPreviewHtml).toHaveBeenCalledWith('<html></html>');
     expect(Settings.setAgentSessions).toHaveBeenCalled();
+    await act(async () => {
+      await Promise.resolve();
+    });
     expect(Settings.setActiveAgentSessionId).toHaveBeenCalledWith('session-1');
 
     act(() => {
@@ -202,8 +205,8 @@ describe('useSettingsSync', () => {
     expect(Settings.setPendingDiffs).toHaveBeenCalledWith({});
   });
 
-  it('notifies once when a large persistence write fails', () => {
-    Settings.setFileContents.mockReturnValue(false);
+  it('notifies once when a large persistence write fails', async () => {
+    Settings.setFileContents.mockResolvedValue(false);
 
     renderHook(() =>
       useSettingsSync(
@@ -224,8 +227,10 @@ describe('useSettingsSync', () => {
       ),
     );
 
-    act(() => {
+    await act(async () => {
       vi.advanceTimersByTime(1000);
+      await Promise.resolve();
+      await Promise.resolve();
     });
 
     expect(addNotification).toHaveBeenCalledTimes(1);
