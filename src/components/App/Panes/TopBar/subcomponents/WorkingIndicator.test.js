@@ -1,6 +1,3 @@
-vi.mock('@/components/App/PreviewState', () => ({
-  PreviewState: { useState: vi.fn(() => ({ compileStatus: 'idle', compilePhase: null })) },
-}));
 import { LogState } from '@/components/App/Views/LogArea';
 import { render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -10,7 +7,6 @@ vi.mock('@/components/App/Views/LogArea', () => ({ LogState: { useState: vi.fn()
 vi.mock('@/components/ui/Icons', () => ({
   Icons: {
     BotSmall: () => <span data-testid="icon-bot" />,
-    RefreshSmall: () => <span data-testid="icon-refresh" />,
   },
 }));
 
@@ -20,20 +16,20 @@ describe('WorkingIndicator', () => {
   });
 
   it('returns null when idle', () => {
-    LogState.useState.mockReturnValue({ isSystemProcessing: false, isAIProcessing: false });
+    LogState.useState.mockReturnValue({ isAIProcessing: false });
     const { container } = render(<WorkingIndicator />);
     expect(container.firstChild).toBeNull();
   });
 
   it('shows AI working indicator', () => {
-    LogState.useState.mockReturnValue({ isSystemProcessing: false, isAIProcessing: true });
+    LogState.useState.mockReturnValue({ isAIProcessing: true });
     render(<WorkingIndicator />);
     expect(screen.getByText('AI working...')).toBeDefined();
   });
 
-  it('shows system working indicator', () => {
+  it('does not show a separate system indicator', () => {
     LogState.useState.mockReturnValue({ isSystemProcessing: true, isAIProcessing: false });
-    render(<WorkingIndicator />);
-    expect(screen.getByText('System working...')).toBeDefined();
+    const { container } = render(<WorkingIndicator />);
+    expect(container.firstChild).toBeNull();
   });
 });

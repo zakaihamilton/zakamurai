@@ -1,6 +1,7 @@
 import { AppState } from '@/components/App/AppState';
 import { SidebarState } from '@/components/App/Panes/Sidebar';
 import { TabState } from '@/components/App/Panes/TabBar';
+import { PreviewState } from '@/components/App/PreviewState';
 import { LogState } from '@/components/App/Views/LogArea';
 import { Icons } from '@/components/ui/Icons';
 import Tooltip from '@/components/ui/Tooltip';
@@ -12,6 +13,7 @@ const isViewTab = (tabId) => tabId === 'ai-logs' || tabId === 'preview';
 
 export default function ActionButtons({ onCompile, onOpenLog, onOpenPreview, onToggleAIInput }) {
   const { isSystemProcessing } = LogState.useState('isSystemProcessing');
+  const { compileStatus, compilePhase } = PreviewState.useState(['compileStatus', 'compilePhase']);
   const tabState = TabState.useState(['activeTabId', 'openTabs', 'lastCodeTabId']);
   const { activeTabId, openTabs = [], lastCodeTabId } = tabState;
   const { isMobile } = AppState.useState('isMobile');
@@ -20,6 +22,8 @@ export default function ActionButtons({ onCompile, onOpenLog, onOpenPreview, onT
     'isAIInputPopupOpen',
   ]);
   const isAIInputActive = isMobile ? isAIInputPopupOpen : showAIInput;
+  const buildTooltip =
+    compileStatus === 'building' ? compilePhase || 'Compiling…' : 'Build Project';
   const lastContentTabIdRef = useRef(lastCodeTabId);
   const lastContentTabId =
     activeTabId && !isViewTab(activeTabId) ? activeTabId : lastContentTabIdRef.current;
@@ -49,7 +53,7 @@ export default function ActionButtons({ onCompile, onOpenLog, onOpenPreview, onT
   return (
     <div className={styles.actionGroups}>
       <div className={styles.compileGroup}>
-        <Tooltip content="Build Project" shortcut={formatShortcut('⌘↵')}>
+        <Tooltip content={buildTooltip} shortcut={formatShortcut('⌘↵')}>
           <button
             type="button"
             className={styles.compileBtn}
