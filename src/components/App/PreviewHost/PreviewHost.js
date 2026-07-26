@@ -21,22 +21,6 @@ function getSessionId() {
     : null;
 }
 
-async function waitForPreviewWorkerControl() {
-  if (navigator.serviceWorker.controller) return;
-  await new Promise((resolve, reject) => {
-    const timeout = window.setTimeout(() => {
-      navigator.serviceWorker.removeEventListener('controllerchange', onControllerChange);
-      reject(new Error('Preview service worker did not take control.'));
-    }, 5000);
-    const onControllerChange = () => {
-      window.clearTimeout(timeout);
-      navigator.serviceWorker.removeEventListener('controllerchange', onControllerChange);
-      resolve();
-    };
-    navigator.serviceWorker.addEventListener('controllerchange', onControllerChange);
-  });
-}
-
 export default function PreviewHost() {
   const [error, setError] = useState(null);
 
@@ -75,15 +59,14 @@ export default function PreviewHost() {
       window.removeEventListener('message', connect);
       try {
         const registration = await navigator.serviceWorker.register(SW_URL, {
-          scope: '/',
+          scope: '/__preview/',
         });
         await navigator.serviceWorker.ready;
         const worker = registration.active || registration.waiting || registration.installing;
         if (!worker) throw new Error('Preview service worker did not activate.');
         worker.postMessage({ type: 'init', sessionId, ideOrigin }, [event.ports[0]]);
-        await waitForPreviewWorkerControl();
         if (!cancelled) {
-          window.location.replace('/');
+          window.location.replace(`/__preview/${encodeURIComponent(sessionId)}/dist/index.html`);
         }
       } catch (err) {
         if (!cancelled) setError(err instanceof Error ? err.message : String(err));
