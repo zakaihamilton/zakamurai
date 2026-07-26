@@ -31,6 +31,23 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 The `postinstall`, `predev`, and `prebuild` scripts copy almostnode and ONNX Runtime Web assets into `public/` automatically.
 
+### Isolated preview development
+
+Run `npm run dev:isolated` to start the IDE at `http://localhost:3000` and the
+preview runtime at `http://localhost:3001`. The preview executes user projects in
+the browser on the second origin; it never receives same-origin access to the IDE.
+
+For production, configure these Vercel environment variables and attach both domains
+to the same Vercel project:
+
+```bash
+NEXT_PUBLIC_IDE_ORIGIN=https://www.zakamurai.com
+NEXT_PUBLIC_PREVIEW_ORIGIN=https://preview.zakamurai.com
+```
+
+Add `preview.zakamurai.com` in **Project Settings → Domains** and create the CNAME
+record Vercel provides. The preview subdomain must not redirect to `www`.
+
 ### Production build
 
 ```bash

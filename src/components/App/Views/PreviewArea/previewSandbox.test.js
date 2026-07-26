@@ -10,7 +10,7 @@ import {
 } from './previewSandbox';
 
 describe('previewSandbox', () => {
-  it('requires allow-same-origin so the service worker can intercept /preview', () => {
+  it('preserves the isolated preview origin for its service worker', () => {
     expect(PREVIEW_IFRAME_SANDBOX.split(/\s+/)).toEqual(
       expect.arrayContaining(['allow-scripts', 'allow-same-origin', 'allow-forms', 'allow-popups']),
     );

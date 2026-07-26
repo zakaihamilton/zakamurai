@@ -2,6 +2,18 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import Settings from './Settings';
 import { idbClear, idbSet, isIdbAvailable, resetIdbConnection } from './idbStore';
 
+function stubFailingLocalStorage() {
+  const storage = localStorage;
+  vi.stubGlobal('localStorage', {
+    getItem: storage.getItem.bind(storage),
+    setItem: () => {
+      throw new DOMException('QuotaExceededError');
+    },
+    removeItem: storage.removeItem.bind(storage),
+    clear: storage.clear.bind(storage),
+  });
+}
+
 describe('Settings', () => {
   beforeEach(async () => {
     localStorage.clear();
@@ -13,6 +25,8 @@ describe('Settings', () => {
   });
 
   afterEach(async () => {
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
     await Settings.reset();
     Settings._resetHydrationForTests();
     resetIdbConnection();
@@ -210,30 +224,47 @@ describe('Settings', () => {
     expect(Settings.getEditorReadOnly()).toBe(false);
   });
 
-  it('falls back to localStorage and returns false when memory/IDB path is forced to fail', async () => {
+  it('returns false and warns when a localStorage write fails', () => {
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    const idbModule = await import('./idbStore');
-    const idbSpy = vi.spyOn(idbModule, 'idbSet').mockRejectedValue(new Error('idb down'));
+    stubFailingLocalStorage();
 
-    // writeLarge imports idbSet at module load — rejection won't apply to closed-over binding.
-    // Force both layers to fail via localStorage after clearing IDB connection:
-    idbSpy.mockRestore();
-
-    const setItemSpy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
-      throw new DOMException('QuotaExceededError');
-    });
-    // Make openDb fail so writeLarge uses localStorage fallback which then throws
-    const originalIdb = globalThis.indexedDB;
-    globalThis.indexedDB = undefined;
-    resetIdbConnection();
-    // Also break memory fallback by stubbing Map.set — too invasive.
-    // Instead directly test writeLocalFallback via Settings.set:
     expect(Settings.set('zakamurai_file_contents', 'x')).toBe(false);
     expect(warnSpy).toHaveBeenCalled();
+  });
 
-    setItemSpy.mockRestore();
-    warnSpy.mockRestore();
-    globalThis.indexedDB = originalIdb;
-    resetIdbConnection();
+  it('keeps file contents in memory when IndexedDB and localStorage both fail', async () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const originalIndexedDb = globalThis.indexedDB;
+    const contents = { 'a.js': 'code' };
+
+    try {
+      globalThis.indexedDB = undefined;
+      resetIdbConnection();
+      stubFailingLocalStorage();
+
+      await expect(Settings.setFileContents(contents)).resolves.toBe(false);
+      expect(Settings.getFileContents()).toEqual(contents);
+      expect(warnSpy).toHaveBeenCalled();
+    } finally {
+      globalThis.indexedDB = originalIndexedDb;
+      resetIdbConnection();
+    }
+  });
+
+  it('uses localStorage when IndexedDB is unavailable', async () => {
+    const originalIndexedDb = globalThis.indexedDB;
+    const contents = { 'a.js': 'fallback code' };
+
+    try {
+      globalThis.indexedDB = undefined;
+      resetIdbConnection();
+
+      await expect(Settings.setFileContents(contents)).resolves.toBe(true);
+      expect(JSON.parse(localStorage.getItem('zakamurai_file_contents'))).toEqual(contents);
+      expect(Settings.getFileContents()).toEqual(contents);
+    } finally {
+      globalThis.indexedDB = originalIndexedDb;
+      resetIdbConnection();
+    }
   });
 });

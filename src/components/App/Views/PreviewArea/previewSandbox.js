@@ -10,14 +10,10 @@ export const PREVIEW_MESSAGE_TYPES = {
 /**
  * Preview iframe sandbox tokens.
  *
- * `allow-same-origin` is mandatory for Zakamurai's architecture: the host
- * service worker must intercept `/preview/*` navigations and asset fetches.
- * Without it the frame is opaque, browsers skip SW interception, and the
- * Next.js `/preview` loading fallback retries forever.
- *
- * Do not set `referrerPolicy="no-referrer"` on the iframe — `__sw__.js` uses
- * the Referer path to keep in-preview absolute asset/navigation requests
- * inside the virtual server.
+ * The preview is hosted on a different origin and uses its own scoped service
+ * worker. `allow-same-origin` preserves that distinct preview origin so its
+ * service worker and exact-origin message checks can operate; it does not
+ * grant access to the IDE's different origin.
  */
 export const PREVIEW_IFRAME_SANDBOX = 'allow-scripts allow-same-origin allow-forms allow-popups';
 
@@ -105,12 +101,16 @@ export function sanitizePreviewPath(path) {
  * Accept preview bridge messages only from the preview iframe window.
  * Same-origin previews must match the IDE origin; opaque frames report "null".
  */
-export function isTrustedPreviewMessage(event, iframeWindow) {
+export function isTrustedPreviewMessage(event, iframeWindow, trustedOrigin = null) {
   if (!event || !iframeWindow) return false;
   if (event.source !== iframeWindow) return false;
   const origin = event.origin;
-  if (origin && origin !== 'null' && typeof window !== 'undefined') {
-    if (origin !== window.location.origin) return false;
+  if (origin && origin !== 'null') {
+    if (trustedOrigin) {
+      if (origin !== trustedOrigin) return false;
+    } else if (typeof window !== 'undefined' && origin !== window.location.origin) {
+      return false;
+    }
   }
   return !!parsePreviewMessage(event.data);
 }

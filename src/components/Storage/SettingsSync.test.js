@@ -205,26 +205,32 @@ describe('useSettingsSync', () => {
     expect(Settings.setPendingDiffs).toHaveBeenCalledWith({});
   });
 
-  it('notifies once when a large persistence write fails', async () => {
-    Settings.setFileContents.mockResolvedValue(false);
+  it('deduplicates persistence failures and allows a later failure after recovery', async () => {
+    Settings.setFileContents
+      .mockResolvedValueOnce(false)
+      .mockResolvedValueOnce(true)
+      .mockResolvedValueOnce(false);
 
-    renderHook(() =>
-      useSettingsSync(
-        { theme: 'dark', projectName: 'Test' },
-        { sidebarWidth: 250, isSidebarOpen: true, showAIInput: false, expandedFolders: {} },
-        { promptWidth: 400, promptHistory: [] },
-        {
-          aiCompletionEnabled: true,
-          isReadOnly: false,
-          fileContents: { 'a.js': 'code' },
-          pendingDiffs: {},
-        },
-        null,
-        { openTabs: [], activeTabId: null, lastCodeTabId: null },
-        { logs: [] },
-        { htmlContent: null },
-        { val: '', selectedModel: 'model' },
-      ),
+    const baseArgs = [
+      { theme: 'dark', projectName: 'Test' },
+      { sidebarWidth: 250, isSidebarOpen: true, showAIInput: false, expandedFolders: {} },
+      { promptWidth: 400, promptHistory: [] },
+      null,
+      { openTabs: [], activeTabId: null, lastCodeTabId: null },
+      { logs: [] },
+      { htmlContent: null },
+      { val: '', selectedModel: 'model' },
+    ];
+    const editorState = (fileContents) => ({
+      aiCompletionEnabled: true,
+      isReadOnly: false,
+      fileContents,
+      pendingDiffs: {},
+    });
+    const { rerender } = renderHook(
+      ({ contents }) =>
+        useSettingsSync(...baseArgs.slice(0, 3), editorState(contents), ...baseArgs.slice(3)),
+      { initialProps: { contents: { 'a.js': 'first failure' } } },
     );
 
     await act(async () => {
@@ -236,6 +242,22 @@ describe('useSettingsSync', () => {
     expect(addNotification).toHaveBeenCalledTimes(1);
     expect(addNotification.mock.calls[0][0]).toMatch(/storage is full/i);
     expect(addNotification.mock.calls[0][1]).toBe('error');
+
+    rerender({ contents: { 'a.js': 'recovered' } });
+    await act(async () => {
+      vi.advanceTimersByTime(1000);
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(addNotification).toHaveBeenCalledTimes(1);
+
+    rerender({ contents: { 'a.js': 'second failure' } });
+    await act(async () => {
+      vi.advanceTimersByTime(1000);
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(addNotification).toHaveBeenCalledTimes(2);
   });
 
   it('does not update active session id when session write fails', async () => {

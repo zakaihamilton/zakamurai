@@ -1,9 +1,9 @@
 import { PreviewState } from '@/components/App/PreviewState';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import PreviewArea, { PreviewAreaUiState } from './PreviewArea';
-import { PREVIEW_IFRAME_SANDBOX } from './previewSandbox';
+import { PREVIEW_IFRAME_SANDBOX, PREVIEW_MESSAGE_TYPES } from './previewSandbox';
 
 vi.mock('@/components/ui/Tooltip', () => ({
   __esModule: true,
@@ -24,6 +24,11 @@ function createStateHook(initialState) {
 }
 
 describe('PreviewArea', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.useRealTimers();
+  });
+
   it('renders inline error banner instead of a dialog', () => {
     const preview = createStateHook({
       htmlContent: '<html><body>Hello</body></html>',
@@ -266,10 +271,114 @@ describe('PreviewArea', () => {
 
     // Open in new tab
     fireEvent.click(screen.getByTitle('Open in new tab'));
-    expect(window.open).toHaveBeenCalledWith('/preview/', '_blank');
+    expect(window.open).toHaveBeenCalledWith(
+      expect.stringMatching(/^http:\/\/localhost:3001\/preview-host\?session=/),
+      '_blank',
+    );
   });
 
-  it('keeps allow-same-origin so the host service worker can intercept preview', () => {
+  it('reports a service-worker activation timeout', () => {
+    vi.useFakeTimers();
+    const preview = createStateHook({
+      htmlContent: '<html><body>Hello</body></html>',
+      isCompilerReady: false,
+      restoreError: null,
+    });
+    const ui = createStateHook({
+      isLoading: false,
+      scale: 1,
+      error: null,
+      refreshKey: 1,
+      isSwReady: false,
+      isMaximized: false,
+      address: '/preview/',
+      host: 'localhost',
+    });
+
+    vi.spyOn(PreviewState, 'useState').mockReturnValue(preview.hook);
+    vi.spyOn(PreviewAreaUiState, 'useState').mockReturnValue(ui.hook);
+
+    render(<PreviewArea />);
+    act(() => {
+      vi.advanceTimersByTime(15000);
+    });
+
+    expect(ui.state.error).toMatch(/service worker did not activate/i);
+  });
+
+  it('accepts runtime errors sent by the active preview iframe', () => {
+    const preview = createStateHook({
+      htmlContent: '<html><body>Hello</body></html>',
+      isCompilerReady: true,
+      restoreError: null,
+    });
+    const ui = createStateHook({
+      isLoading: false,
+      scale: 1,
+      error: null,
+      refreshKey: 1,
+      isSwReady: true,
+      isMaximized: false,
+      address: '/preview/',
+      host: 'localhost',
+    });
+
+    vi.spyOn(PreviewState, 'useState').mockReturnValue(preview.hook);
+    vi.spyOn(PreviewAreaUiState, 'useState').mockReturnValue(ui.hook);
+
+    render(<PreviewArea />);
+    const iframe = screen.getByTitle('Preview');
+    const event = new MessageEvent('message', {
+      data: {
+        source: 'zakamurai-preview',
+        type: PREVIEW_MESSAGE_TYPES.RUNTIME_ERROR,
+        message: 'Uncaught ReferenceError: app is not defined',
+      },
+      origin: 'http://localhost:3001',
+    });
+    Object.defineProperty(event, 'source', { value: iframe.contentWindow });
+
+    act(() => {
+      window.dispatchEvent(event);
+    });
+
+    expect(ui.state.error).toBe('Uncaught ReferenceError: app is not defined');
+    expect(preview.state.serverError).toBe('Uncaught ReferenceError: app is not defined');
+  });
+
+  it('renders a successful preview after an earlier compile error is cleared', () => {
+    const preview = createStateHook({
+      htmlContent: null,
+      isCompilerReady: true,
+      restoreError: null,
+      compileError: 'Build failed',
+    });
+    const ui = createStateHook({
+      isLoading: false,
+      scale: 1,
+      error: null,
+      refreshKey: 1,
+      isSwReady: true,
+      isMaximized: false,
+      address: '/preview/',
+      host: 'localhost',
+    });
+
+    vi.spyOn(PreviewState, 'useState').mockReturnValue(preview.hook);
+    vi.spyOn(PreviewAreaUiState, 'useState').mockReturnValue(ui.hook);
+
+    const { rerender } = render(<PreviewArea />);
+    expect(screen.getByText('Build failed')).toBeDefined();
+
+    preview.hook.htmlContent = '<html><body>Recovered</body></html>';
+    preview.hook.compileError = null;
+    rerender(<PreviewArea />);
+
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(screen.getByTitle('Preview')).toBeDefined();
+  });
+
+  it('loads the preview from the isolated origin with its own service-worker origin', () => {
     const preview = createStateHook({
       htmlContent: '<html><body>Hello</body></html>',
       isCompilerReady: true,
@@ -295,6 +404,6 @@ describe('PreviewArea', () => {
     expect(iframe.getAttribute('sandbox')).toBe(PREVIEW_IFRAME_SANDBOX);
     expect(iframe.getAttribute('sandbox')).toContain('allow-same-origin');
     expect(iframe.getAttribute('referrerpolicy')).toBeNull();
-    expect(iframe.getAttribute('src')).toBe('/preview/dist/index.html');
+    expect(iframe.getAttribute('src')).toMatch(/^http:\/\/localhost:3001\/preview-host\?session=/);
   });
 });

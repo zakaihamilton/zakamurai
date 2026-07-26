@@ -20,6 +20,12 @@ import {
   parsePreviewMessage,
   sanitizePreviewPath,
 } from './previewSandbox';
+import PreviewBridge from './PreviewBridge';
+import {
+  createPreviewSession,
+  getPreviewConfigurationError,
+  getPreviewOrigins,
+} from './previewOrigins';
 
 const SW_INIT_TIMEOUT_MS = 15000;
 
@@ -70,6 +76,7 @@ export default function PreviewArea() {
     previewAddress = '/preview/dist/index.html',
   } = previewState;
   const iframeRef = useRef(null);
+  const previewSessionRef = useRef(createPreviewSession());
   const listenersRef = useRef(null);
   const previewAreaUiState = PreviewAreaUiState.useState(null, {
     isLoading: false,
@@ -89,11 +96,18 @@ export default function PreviewArea() {
     isSwReady = false,
     isMaximized = false,
     address = '/preview/dist/index.html',
-    host = '',
   } = previewAreaUiState || {};
   const containerRef = useRef(null);
   const [errorCopied, setErrorCopied] = useState(false);
   const displayError = error || restoreError || compileError || serverError;
+  const origins = getPreviewOrigins({
+    windowOrigin: typeof window === 'undefined' ? '' : window.location.origin,
+  });
+  const previewConfigurationError = getPreviewConfigurationError(origins);
+  const previewUrl = origins.previewOrigin
+    ? `${origins.previewOrigin}/preview-host?session=${previewSessionRef.current}`
+    : null;
+  const previewHostLabel = origins.previewOrigin ? new URL(origins.previewOrigin).host : '';
 
   useEffect(() => {
     void displayError;
@@ -242,7 +256,7 @@ export default function PreviewArea() {
   useEffect(() => {
     const onMessage = (event) => {
       const iframeWindow = iframeRef.current?.contentWindow;
-      if (!isTrustedPreviewMessage(event, iframeWindow)) return;
+      if (!isTrustedPreviewMessage(event, iframeWindow, origins.previewOrigin)) return;
       const payload = parsePreviewMessage(event.data);
       if (!payload) return;
       if (
@@ -260,7 +274,7 @@ export default function PreviewArea() {
     };
     window.addEventListener('message', onMessage);
     return () => window.removeEventListener('message', onMessage);
-  }, [previewAreaUiState, setPreviewError]);
+  }, [origins.previewOrigin, previewAreaUiState, setPreviewError]);
 
   const handleLoad = useCallback(() => {
     previewAreaUiState((draft) => {
@@ -353,6 +367,7 @@ export default function PreviewArea() {
   ]);
 
   const handleRefresh = useCallback(() => {
+    previewSessionRef.current = createPreviewSession();
     previewAreaUiState((draft) => {
       draft.isLoading = true;
       draft.error = null;
@@ -361,8 +376,8 @@ export default function PreviewArea() {
   }, [previewAreaUiState]);
 
   const handleOpenExternal = useCallback(() => {
-    window.open(address, '_blank');
-  }, [address]);
+    window.open(previewUrl, '_blank');
+  }, [previewUrl]);
 
   const toggleMaximize = useCallback(() => {
     previewAreaUiState((draft) => {
@@ -417,17 +432,28 @@ export default function PreviewArea() {
     );
   }
 
-  const showInitOverlay = (!isSwReady || !isCompilerReady) && !displayError;
+  if (previewConfigurationError) {
+    return (
+      <div className={styles.emptyState}>
+        <div className={styles.emptyIcon}>
+          <Icons.AlertCircle size={28} />
+        </div>
+        <h2 className={styles.emptyTitle}>Preview Setup Required</h2>
+        <div className={styles.emptyError} role="alert">
+          {previewConfigurationError}
+        </div>
+      </div>
+    );
+  }
+
+  const showInitOverlay = !isCompilerReady && !displayError;
 
   return (
     <div ref={containerRef} className={`${styles.wrapper} ${isMaximized ? styles.maximized : ''}`}>
       <div className={styles.toolbar}>
         <div className={styles.addressBar}>
           <Icons.Globe />
-          <span className={styles.addressText}>
-            {host}
-            {address}
-          </span>
+          <span className={styles.addressText}>{previewHostLabel}/__preview/…</span>
           {isLoading && <span className={styles.loadingDot} />}
         </div>
 
@@ -473,9 +499,7 @@ export default function PreviewArea() {
         {showInitOverlay && (
           <div className={styles.loadingOverlay}>
             <div className={styles.spinner} />
-            <p className={styles.loadingText}>
-              {!isSwReady ? 'Initializing Service Worker...' : 'Restoring Preview...'}
-            </p>
+            <p className={styles.loadingText}>Restoring Preview...</p>
           </div>
         )}
         {displayError && (
@@ -490,24 +514,28 @@ export default function PreviewArea() {
           </div>
         )}
         <div className={styles.scaleWrapper} style={{ '--preview-scale': scale }}>
-          {isCompilerReady && isSwReady && (
+          {isCompilerReady && (
             <iframe
-              key={refreshKey}
+              key={`${refreshKey}-${previewSessionRef.current}`}
               ref={iframeRef}
-              src={address}
+              src={previewUrl}
               title="Preview"
               className={styles.iframe}
               onLoad={handleLoad}
-              // allow-same-origin is required: browsers skip service-worker
-              // interception for opaque sandboxed frames, so /preview would
-              // never leave the Next.js loading fallback. Keep scripts+forms
-              // sandboxed; preview content is the user's own project build.
+              // Generated code runs on preview.zakamurai.com and never receives
+              // same-origin access to IDE storage, DOM, or service workers.
               sandbox={PREVIEW_IFRAME_SANDBOX}
               style={{ '--iframe-size': scale !== 1 ? `${100 / scale}%` : '100%' }}
             />
           )}
         </div>
       </div>
+      <PreviewBridge
+        iframeRef={iframeRef}
+        sessionId={previewSessionRef.current}
+        previewOrigin={origins.previewOrigin}
+        onError={setPreviewError}
+      />
     </div>
   );
 }

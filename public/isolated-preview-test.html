@@ -1,0 +1,13 @@
+<!doctype html>
+<html lang="en">
+  <body>
+    <script>
+      try {
+        void parent.localStorage;
+        document.body.textContent = 'unsafe';
+      } catch (_) {
+        document.body.textContent = 'parent-access-blocked';
+      }
+    </script>
+  </body>
+</html>
