@@ -2,7 +2,11 @@
 
 import { useEffect, useState } from 'react';
 import { PREVIEW_CONNECT, PREVIEW_PROTOCOL_VERSION } from '../Views/PreviewArea/previewProtocol';
-import { getPreviewOrigins } from '../Views/PreviewArea/previewOrigins';
+import {
+  getPreviewConfigurationError,
+  getPreviewOrigins,
+  isValidPreviewHandshake,
+} from '../Views/PreviewArea/previewOrigins';
 
 const SW_URL = '/__preview_sw__.js';
 
@@ -11,7 +15,13 @@ export default function PreviewHost() {
 
   useEffect(() => {
     const sessionId = new URLSearchParams(window.location.search).get('session');
-    const { ideOrigin } = getPreviewOrigins({ windowOrigin: window.location.origin });
+    const origins = getPreviewOrigins({ windowOrigin: window.location.origin });
+    const { ideOrigin } = origins;
+    const configurationError = getPreviewConfigurationError(origins);
+    if (configurationError) {
+      setError(configurationError);
+      return undefined;
+    }
     if (!sessionId) {
       setError('Missing preview session. Return to Zakamurai and build the project again.');
       return undefined;
@@ -19,13 +29,14 @@ export default function PreviewHost() {
 
     let cancelled = false;
     const connect = async (event) => {
-      if (event.origin !== ideOrigin || event.source !== window.parent) return;
-      const message = event.data;
       if (
-        !message ||
-        message.type !== PREVIEW_CONNECT ||
-        message.version !== PREVIEW_PROTOCOL_VERSION ||
-        message.sessionId !== sessionId ||
+        !isValidPreviewHandshake(event, {
+          expectedOrigin: ideOrigin,
+          expectedSource: window.parent,
+          sessionId,
+          type: PREVIEW_CONNECT,
+          version: PREVIEW_PROTOCOL_VERSION,
+        }) ||
         !event.ports[0]
       ) {
         return;

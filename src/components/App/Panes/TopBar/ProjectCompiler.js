@@ -6,10 +6,20 @@ import { EditorState } from '@/components/App/Views/EditorArea';
 import { LogState } from '@/components/App/Views/LogArea';
 import { useFileSystem } from '@/components/Storage';
 import { useNotification } from '@/components/ui/Notification';
+import { normalizeCompilerDiagnostic } from '@/utils/compiler/diagnostics';
 import { useCallback, useEffect, useRef } from 'react';
 
 /** Lazy-load compiler (almostnode / browser-bundler) only on build / clear. */
 const loadCompiler = () => import('@/utils/compiler');
+const PHASE_LABELS = {
+  initializing: 'Initializing browser runtime…',
+  syncing: 'Syncing project files…',
+  installing: 'Installing dependencies…',
+  bundling: 'Bundling project…',
+  executing: 'Running build command…',
+  timeout: 'Build timed out',
+  error: 'Build failed',
+};
 
 export default function useProjectCompiler() {
   const appState = AppState.useState(['compileRequest', 'silentCompileRequest']);
@@ -94,9 +104,6 @@ export default function useProjectCompiler() {
 
       const onLog = (text) => {
         logQueue.push(text);
-        previewState((draft) => {
-          draft.compilePhase = text;
-        });
         if (!logTimer) {
           logTimer = setTimeout(() => {
             flushLogs();
@@ -105,12 +112,18 @@ export default function useProjectCompiler() {
         }
       };
 
+      const onPhase = (phase) => {
+        previewState((draft) => {
+          draft.compilePhase = PHASE_LABELS[phase] || phase;
+        });
+      };
+
       try {
         const { Compiler } = await loadCompiler();
         previewState((draft) => {
           draft.containerStatus = 'initializing';
         });
-        const compiler = new Compiler(onLog);
+        const compiler = new Compiler(onLog, onPhase);
         await compiler.compile(fs, folderTree, editorState.fileContents);
         flushLogs();
         addNotification('Project compiled successfully', 'success');
@@ -155,10 +168,12 @@ export default function useProjectCompiler() {
           onLog(`[WARN] Could not load preview: ${previewErr.message}`);
         }
       } catch (err) {
-        const errorMsg = err?.message || String(err);
+        const diagnostic = normalizeCompilerDiagnostic(err);
+        const errorMsg = diagnostic.message;
         onLog(`Unexpected error: ${errorMsg}`);
         previewState((draft) => {
           draft.compileError = errorMsg;
+          draft.compileDiagnostic = diagnostic.location;
           draft.compileStatus = 'error';
           draft.compilePhase = null;
           draft.containerError = errorMsg;

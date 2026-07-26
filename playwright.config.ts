@@ -35,7 +35,8 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: 'npm run dev',
+    // Build/preview regression exercises the production two-origin boundary.
+    command: 'npm run dev:isolated',
     url: 'http://127.0.0.1:3000',
     reuseExistingServer: !process.env.CI,
     stdout: 'ignore',

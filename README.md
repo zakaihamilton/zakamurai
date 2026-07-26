@@ -31,6 +31,14 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 The `postinstall`, `predev`, and `prebuild` scripts copy almostnode and ONNX Runtime Web assets into `public/` automatically.
 
+### Browser storage and recovery
+
+Zakamurai stores projects locally in IndexedDB and falls back to browser localStorage when
+IndexedDB is unavailable. If both stores cannot accept a write (for example, because quota is
+exhausted), the open workspace remains available in memory and the app offers an immediate ZIP
+export. Export before closing the tab in that state. The File System Access API is optional and
+available only in compatible browsers.
+
 ### Isolated preview development
 
 Run `npm run dev:isolated` to start the IDE at `http://localhost:3000` and the
@@ -47,6 +55,10 @@ NEXT_PUBLIC_PREVIEW_ORIGIN=https://preview.zakamurai.com
 
 Add `preview.zakamurai.com` in **Project Settings → Domains** and create the CNAME
 record Vercel provides. The preview subdomain must not redirect to `www`.
+
+The preview must remain on a different origin from the IDE. Its handshake accepts only the active
+iframe, configured origin, and current session; missing or matching origins show a setup error
+rather than falling back to same-origin execution.
 
 ### Production build
 
@@ -74,6 +86,10 @@ Press `?` in the app to view the full keyboard shortcut reference.
 | Local AI | [WebLLM](https://webllm.mlc.ai/) (`@mlc-ai/web-llm`), WebAssembly |
 | State | Custom hierarchical proxy-based state (see [ARCHITECTURE.md](./ARCHITECTURE.md)) |
 | Tooling | [Biome](https://biomejs.dev/), [Vitest](https://vitest.dev/), [Playwright](https://playwright.dev/) |
+
+Browser builds support package scripts parsed as shell-free commands joined with `&&`; pipes,
+redirects, and other shell constructs are intentionally rejected. The browser runtime supports the
+bundled TypeScript, Rollup, and esbuild paths plus browser-oriented bundling.
 
 ## Development
 

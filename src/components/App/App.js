@@ -4,6 +4,7 @@ import { computeDiff } from '@/components/AI/Processor/utils/DiffEngine';
 import { RagState } from '@/components/AI/RagState';
 import { WebLLMState, bindWebLLMStore } from '@/components/AI/WebLLMState';
 import { useFileSystem } from '@/components/Storage';
+import { StorageHealthState } from '@/components/Storage/StorageHealth';
 import {
   DEFAULT_CONTENTS,
   DEFAULT_FILES,
@@ -156,6 +157,7 @@ function AppReady({ initialValues }) {
   });
 
   NotificationState.useState(null, { notifications: [] });
+  StorageHealthState.useState(null, { status: 'healthy', layer: null, message: null });
 
   const webLLMState = WebLLMState.useState(null, {
     cachedModelIds: [],

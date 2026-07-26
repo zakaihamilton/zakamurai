@@ -10,6 +10,7 @@ import {
   isPreviewRequest,
   toBase64,
 } from './previewProtocol';
+import { isValidPreviewHandshake } from './previewOrigins';
 
 const STREAM_CHUNK_SIZE = 64 * 1024;
 
@@ -53,17 +54,16 @@ export default function PreviewBridge({ iframeRef, sessionId, previewOrigin, onE
     };
 
     const onMessage = (event) => {
-      if (event.origin !== previewOrigin || event.source !== iframeRef.current?.contentWindow)
-        return;
-      const data = event.data;
       if (
-        !data ||
-        data.type !== PREVIEW_CONNECT ||
-        data.version !== PREVIEW_PROTOCOL_VERSION ||
-        data.sessionId !== sessionId
-      ) {
+        !isValidPreviewHandshake(event, {
+          expectedOrigin: previewOrigin,
+          expectedSource: iframeRef.current?.contentWindow,
+          sessionId,
+          type: PREVIEW_CONNECT,
+          version: PREVIEW_PROTOCOL_VERSION,
+        })
+      )
         return;
-      }
       closePort();
       const channel = new MessageChannel();
       portRef.current = channel.port1;

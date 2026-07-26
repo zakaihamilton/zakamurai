@@ -23,7 +23,6 @@
   gap: 12px;
   box-shadow: var(--shadow-lg);
   animation: slide-in 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
-  cursor: pointer;
   transition: transform 0.2s, opacity 0.2s;
   font-family: inherit;
   text-align: left;
@@ -32,6 +31,22 @@
 .toast:hover {
   transform: translateY(-2px);
   background: var(--bg-surface);
+}
+
+.action,
+.dismiss {
+  border: 0;
+  background: transparent;
+  color: var(--accent);
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 4px;
+}
+
+.dismiss {
+  color: var(--text-muted);
 }
 
 .icon {

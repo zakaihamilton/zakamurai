@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { getPreviewConfigurationError, getPreviewOrigins, isPreviewHost } from './previewOrigins';
+import {
+  getPreviewConfigurationError,
+  getPreviewOrigins,
+  isPreviewHost,
+  isValidPreviewHandshake,
+} from './previewOrigins';
 import { isPreviewRequest, isSafePreviewPath } from './previewProtocol';
 
 describe('isolated preview configuration', () => {
@@ -14,6 +19,40 @@ describe('isolated preview configuration', () => {
     const origins = { previewOrigin: 'https://preview.zakamurai.com' };
     expect(isPreviewHost('preview.zakamurai.com', origins)).toBe(true);
     expect(isPreviewHost('www.zakamurai.com', origins)).toBe(false);
+  });
+});
+
+describe('isValidPreviewHandshake', () => {
+  const source = {};
+  const options = {
+    expectedOrigin: 'https://preview.example',
+    expectedSource: source,
+    sessionId: 'session',
+    type: 'connect',
+    version: 1,
+  };
+
+  it('accepts only the expected origin, source, session and protocol', () => {
+    expect(
+      isValidPreviewHandshake(
+        {
+          origin: 'https://preview.example',
+          source,
+          data: { type: 'connect', version: 1, sessionId: 'session' },
+        },
+        options,
+      ),
+    ).toBe(true);
+    expect(
+      isValidPreviewHandshake(
+        {
+          origin: 'https://attacker.example',
+          source,
+          data: { type: 'connect', version: 1, sessionId: 'session' },
+        },
+        options,
+      ),
+    ).toBe(false);
   });
 });
 

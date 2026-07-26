@@ -5,6 +5,7 @@ import { TabState } from '@/components/App/Panes/TabBar';
 import { PreviewState } from '@/components/App/PreviewState';
 import { EditorState } from '@/components/App/Views/EditorArea';
 import { useFileSystem } from '@/components/Storage';
+import { STORAGE_RECOVERY_EVENT } from '@/components/Storage/StorageHealth';
 import {
   DEFAULT_CONTENTS,
   DEFAULT_FILES,
@@ -16,7 +17,7 @@ import { setInDraft } from '@/components/state/StateUtils';
 import { Icons } from '@/components/ui/Icons';
 import Tooltip from '@/components/ui/Tooltip';
 import { formatShortcut } from '@/utils/os';
-import React from 'react';
+import React, { useEffect } from 'react';
 import useProjectCompiler from './ProjectCompiler';
 import styles from './TopBar.module.css';
 import useZipExporter from './ZipExporter';
@@ -79,6 +80,11 @@ export default function TopBar() {
 
   const { handleCompile, handleOpenLog, handleOpenPreview, handleClearFS } = useProjectCompiler();
   const { handleExportZip, handleExportCompiledZip } = useZipExporter();
+
+  useEffect(() => {
+    window.addEventListener(STORAGE_RECOVERY_EVENT, handleExportZip);
+    return () => window.removeEventListener(STORAGE_RECOVERY_EVENT, handleExportZip);
+  }, [handleExportZip]);
 
   const activeTab = openTabs.find((t) => t.id === activeTabId);
 

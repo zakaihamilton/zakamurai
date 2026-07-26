@@ -29,6 +29,26 @@ export function getPreviewConfigurationError(origins) {
   return null;
 }
 
+/**
+ * Validates the one-time cross-origin preview handshake before a MessagePort
+ * is accepted. Keep this check shared by the IDE bridge and preview host so
+ * neither side can accidentally relax the protocol independently.
+ */
+export function isValidPreviewHandshake(
+  event,
+  { expectedOrigin, expectedSource, sessionId, type, version },
+) {
+  return Boolean(
+    event &&
+      event.origin === expectedOrigin &&
+      event.source === expectedSource &&
+      event.data &&
+      event.data.type === type &&
+      event.data.version === version &&
+      event.data.sessionId === sessionId,
+  );
+}
+
 export function isPreviewHost(host, { previewOrigin } = getPreviewOrigins()) {
   if (!host || !previewOrigin) return false;
   try {

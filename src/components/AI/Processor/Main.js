@@ -1,4 +1,5 @@
 import { formatCode } from '@/utils/formatter';
+import { validateAIChanges } from '../ChangeValidator';
 import { setInDraft, updateInDraft } from '../../state/StateUtils';
 import { applyFileUpdate, computeDiff } from './utils/Applier';
 import { parseAIResponse } from './utils/Parser';
@@ -46,7 +47,24 @@ export const processAIResponse = async (
 ) => {
   if (!webLLMResult) return 0;
 
-  const fileBlocks = parseAIResponse(webLLMResult, tabState?.activeTabId);
+  const parsedBlocks = parseAIResponse(webLLMResult, tabState?.activeTabId);
+  const validation = validateAIChanges(
+    parsedBlocks.map((block) => ({ ...block, path: block.filePath, content: block.content })),
+  );
+  const fileBlocks = validation.accepted.map(({ path, ...block }) => block);
+  if (validation.rejected.length > 0 && logState) {
+    logState((draft) => {
+      updateInDraft(draft, ['logs'], (logs = []) => [
+        ...logs,
+        ...validation.rejected.map((text, index) => ({
+          id: `${Date.now()}-validation-${index}`,
+          role: 'system',
+          text: `Rejected AI change: ${text}`,
+          timestamp: new Date().toTimeString().split(' ')[0],
+        })),
+      ]);
+    });
+  }
   const selectedLines =
     editorState && typeof editorState.useState === 'function'
       ? {}

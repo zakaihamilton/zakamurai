@@ -132,6 +132,7 @@ describe('Settings', () => {
   it('persists file contents via IndexedDB or durable localStorage fallback', async () => {
     await expect(Settings.setFileContents({ 'a.js': 'code' })).resolves.toBe(true);
     expect(Settings.getFileContents()).toEqual({ 'a.js': 'code' });
+    expect(['healthy', 'fallback']).toContain(Settings.getStorageHealth().status);
   });
 
   it('hydrate prefers unload localStorage over older IndexedDB', async () => {

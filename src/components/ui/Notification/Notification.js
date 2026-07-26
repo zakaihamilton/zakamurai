@@ -27,19 +27,29 @@ export function Notification() {
   const content = (
     <div className={styles.container}>
       {notifications.map((n) => (
-        <button
-          type="button"
-          key={n.id}
-          className={`${styles.toast} ${styles[n.type]}`}
-          onClick={() => removeNotification(n.id)}
-        >
+        <div key={n.id} className={`${styles.toast} ${styles[n.type]}`}>
           <div className={styles.icon}>
             {n.type === 'success' && <Icons.Check size={16} />}
             {n.type === 'error' && <Icons.AlertCircle size={16} />}
             {n.type === 'info' && <Icons.Info size={16} />}
           </div>
           <div className={styles.message}>{n.message}</div>
-        </button>
+          {n.action && (
+            <button
+              type="button"
+              className={styles.action}
+              onClick={() => {
+                n.action.onClick();
+                removeNotification(n.id);
+              }}
+            >
+              {n.action.label}
+            </button>
+          )}
+          <button type="button" className={styles.dismiss} onClick={() => removeNotification(n.id)}>
+            Dismiss
+          </button>
+        </div>
       ))}
     </div>
   );
@@ -52,11 +62,11 @@ export function useNotification() {
   const notificationState = NotificationState.useState();
 
   const addNotification = useCallback(
-    (message, type = 'info', duration = 3000) => {
+    (message, type = 'info', duration = 3000, action = null) => {
       const id = Date.now();
       notificationState((draft) => {
         const notifications = draft.notifications || [];
-        draft.notifications = [...notifications, { id, message, type }];
+        draft.notifications = [...notifications, { id, message, type, action }];
       });
 
       setTimeout(() => {

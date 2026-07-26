@@ -1,6 +1,7 @@
 import { computeDiff } from '@/components/AI/Processor/utils/DiffEngine';
 import { setInDraft, updateInDraft } from '@/components/state/StateUtils';
 import { formatCode } from '@/utils/formatter';
+import { validateAIChanges } from '../ChangeValidator';
 
 /**
  * Ensure a file path exists in the sidebar folder tree.
@@ -40,8 +41,23 @@ export function applyAgentChanges(changes, { editorState, sidebarState, logState
     return { applied: 0, deletions: [] };
   }
 
-  const writes = changes.filter((change) => change.after !== undefined);
-  const deletions = changes
+  const validation = validateAIChanges(changes);
+  const validChanges = validation.accepted;
+  if (validation.rejected.length > 0 && logState) {
+    logState((draft) => {
+      updateInDraft(draft, ['logs'], (logs = []) => [
+        ...logs,
+        ...validation.rejected.map((text, index) => ({
+          id: `${Date.now()}-validation-${index}`,
+          role: 'system',
+          text: `Rejected agent change: ${text}`,
+          timestamp: new Date().toTimeString().split(' ')[0],
+        })),
+      ]);
+    });
+  }
+  const writes = validChanges.filter((change) => change.after !== undefined);
+  const deletions = validChanges
     .filter((change) => change.after === undefined && typeof change.before === 'string')
     .map(({ path, before }) => ({ path, before }));
 

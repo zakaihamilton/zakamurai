@@ -61,6 +61,7 @@ const largeCache = {
 
 let hydratePromise = null;
 let isHydrated = false;
+let lastStorageHealth = { status: 'healthy', layer: null };
 
 /** Per-key write generation — bumped on every writeLarge / unload flush to fence clears. */
 const largeWriteGen = {
@@ -123,6 +124,7 @@ const writeLarge = async (cacheKey, value) => {
   }
 
   if (durable) {
+    lastStorageHealth = { status: 'healthy', layer: 'indexeddb' };
     clearLegacyLocal(idbKey);
     return true;
   }
@@ -134,7 +136,11 @@ const writeLarge = async (cacheKey, value) => {
       : typeof value === 'string'
         ? value
         : JSON.stringify(value);
-  return writeLocalFallback(idbKey, serialized);
+  const fallbackSaved = writeLocalFallback(idbKey, serialized);
+  lastStorageHealth = fallbackSaved
+    ? { status: 'fallback', layer: 'localStorage' }
+    : { status: 'write-failed', layer: 'localStorage' };
+  return fallbackSaved;
 };
 
 /**
@@ -179,6 +185,9 @@ const normalizePendingDiffs = (parsed) => {
 };
 
 const Settings = {
+  getStorageHealth() {
+    return { ...lastStorageHealth };
+  },
   get(key, defaultValue) {
     const storage = getStorage();
     if (storage) {

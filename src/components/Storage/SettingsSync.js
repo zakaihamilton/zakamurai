@@ -1,5 +1,10 @@
 import { serializeAgentSessions } from '@/components/App/Panes/Prompt/AgentSessions';
 import Settings from '@/components/Storage/Settings';
+import {
+  StorageHealthState,
+  requestRecoveryExport,
+  storageFailureMessage,
+} from '@/components/Storage/StorageHealth';
 import { useNotification } from '@/components/ui/Notification';
 import { useEffect, useRef } from 'react';
 
@@ -18,6 +23,10 @@ export function useSettingsSync(
   promptUiState,
 ) {
   const { addNotification } = useNotification();
+  const storageHealthState = StorageHealthState.usePassiveState();
+  const updateStorageHealth = (update) => {
+    if (typeof storageHealthState === 'function') storageHealthState(update);
+  };
   const addNotificationRef = useRef(addNotification);
   addNotificationRef.current = addNotification;
   const saveFailureNotifiedRef = useRef(false);
@@ -26,9 +35,23 @@ export function useSettingsSync(
     if (ok === false) {
       if (saveFailureNotifiedRef.current) return ok;
       saveFailureNotifiedRef.current = true;
-      addNotificationRef.current(SAVE_FAIL_MESSAGE, 'error', 8000);
+      updateStorageHealth((draft) => {
+        draft.status = 'write-failed';
+        draft.layer = 'fallback';
+        draft.message = storageFailureMessage('fallback');
+      });
+      addNotificationRef.current(SAVE_FAIL_MESSAGE, 'error', 12000, {
+        label: 'Export ZIP',
+        onClick: requestRecoveryExport,
+      });
     } else if (ok === true) {
       saveFailureNotifiedRef.current = false;
+      const health = Settings.getStorageHealth?.() || { status: 'healthy', layer: null };
+      updateStorageHealth((draft) => {
+        draft.status = health.status;
+        draft.layer = health.layer;
+        draft.message = health.status === 'fallback' ? 'Using browser storage fallback.' : null;
+      });
     }
     return ok;
   });

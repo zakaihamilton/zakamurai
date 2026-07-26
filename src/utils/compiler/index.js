@@ -11,8 +11,9 @@ import { syncFilesToContainer } from './syncer';
 const loadBrowserBundler = () => import('./browser-bundler');
 
 export class Compiler {
-  constructor(onLog) {
+  constructor(onLog, onPhase = () => {}) {
     this.onLog = onLog;
+    this.onPhase = onPhase;
   }
 
   /** Returns the current shared container, or null if not yet initialised. */
@@ -33,6 +34,7 @@ export class Compiler {
   }
 
   async init() {
+    this.onPhase('initializing');
     const initPromise = initContainer(this.onLog, (container) =>
       setupSmartDevServer(container, this.onLog),
     );
@@ -41,6 +43,7 @@ export class Compiler {
   }
 
   async syncFiles(fs, folderTree, fileContents) {
+    this.onPhase('syncing');
     const container = await this.init();
     await syncFilesToContainer(container, fs, folderTree, fileContents, this.onLog);
   }
@@ -53,6 +56,7 @@ export class Compiler {
       await this.syncFiles(fs, folderTree, fileContents);
 
       if (vfs.existsSync('/package.json')) {
+        this.onPhase('installing');
         this.onLog('package.json found. Installing dependencies...');
 
         const content = vfs.readFileSync('/package.json', 'utf8');
@@ -75,6 +79,7 @@ export class Compiler {
         }
 
         if (packageJson.scripts?.build) {
+          this.onPhase('bundling');
           const buildCommand = packageJson.scripts.build;
           this.onLog(`Parsed build sequence: ${buildCommand}`);
 
@@ -88,6 +93,7 @@ export class Compiler {
           const subCommands = parseBuildCommand(buildCommand);
 
           for (const parts of subCommands) {
+            this.onPhase('executing');
             const cmdString = parts.join(' ');
             this.onLog(`-> Executing: ${cmdString}`);
             const cmd = parts[0];
@@ -166,6 +172,7 @@ import('${scriptPath}').catch(err => console.error('[Runner Error]', err));
           }
         }
       } else {
+        this.onPhase('executing');
         this.onLog('No package.json found. Trying to run index.js...');
         if (vfs.existsSync('/index.js')) {
           await runtime.runFileAsync('/index.js');
@@ -174,6 +181,7 @@ import('${scriptPath}').catch(err => console.error('[Runner Error]', err));
         }
       }
     } catch (err) {
+      this.onPhase(/timed out/i.test(err?.message || '') ? 'timeout' : 'error');
       this.onLog(`Compilation error: ${err.message}`);
       if (err.stack) {
         this.onLog(`Stack: ${err.stack}`);

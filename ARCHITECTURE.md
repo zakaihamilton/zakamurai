@@ -64,7 +64,16 @@ editorState((draft) => {
 
 Manual edits clear `pendingDiffs[path]`. Pending review blocks FS auto-save.
 
-## 5. Component Generation Strategy
+## 5. Reliability Boundaries
+
+- AI changes are validated as project-relative paths before entering `fileContents` or
+  `pendingDiffs`; absolute paths, traversal, duplicate targets, and malformed content are rejected.
+- Storage uses IndexedDB first and localStorage second. `StorageHealthState` is transient UI state:
+  it records `healthy`, `fallback`, or `write-failed` without changing persisted settings formats.
+- Preview bridge handshakes validate configured origin, active iframe window, protocol version, and
+  session ID before accepting a `MessagePort`. Do not use wildcard target origins for this bridge.
+
+## 6. Component Generation Strategy
 
 1. Prefer presentational components that receive props.
 2. Containers subscribe with `XState.useState(...)` / `usePassiveState` and pass primitives down.
