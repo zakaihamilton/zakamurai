@@ -4,6 +4,7 @@ import {
   getPreviewOrigins,
   isPreviewHost,
   isValidPreviewHandshake,
+  isValidPreviewReady,
 } from './previewOrigins';
 import { isPreviewRequest, isSafePreviewPath } from './previewProtocol';
 
@@ -50,6 +51,30 @@ describe('isValidPreviewHandshake', () => {
           source,
           data: { type: 'connect', version: 1, sessionId: 'session' },
         },
+        options,
+      ),
+    ).toBe(false);
+  });
+});
+
+describe('isValidPreviewReady', () => {
+  it('accepts the session-free bootstrap signal only from the expected iframe', () => {
+    const source = {};
+    const options = {
+      expectedOrigin: 'https://preview.example',
+      expectedSource: source,
+      type: 'ready',
+      version: 1,
+    };
+    expect(
+      isValidPreviewReady(
+        { origin: 'https://preview.example', source, data: { type: 'ready', version: 1 } },
+        options,
+      ),
+    ).toBe(true);
+    expect(
+      isValidPreviewReady(
+        { origin: 'https://preview.example', source: {}, data: { type: 'ready', version: 1 } },
         options,
       ),
     ).toBe(false);

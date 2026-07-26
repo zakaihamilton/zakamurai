@@ -3,6 +3,7 @@ import { useEffect, useRef } from 'react';
 import {
   PREVIEW_CONNECT,
   PREVIEW_PROTOCOL_VERSION,
+  PREVIEW_READY,
   PREVIEW_RESPONSE,
   PREVIEW_STREAM_CHUNK,
   PREVIEW_STREAM_END,
@@ -10,7 +11,7 @@ import {
   isPreviewRequest,
   toBase64,
 } from './previewProtocol';
-import { isValidPreviewHandshake } from './previewOrigins';
+import { isValidPreviewReady } from './previewOrigins';
 
 const STREAM_CHUNK_SIZE = 64 * 1024;
 
@@ -55,11 +56,10 @@ export default function PreviewBridge({ iframeRef, sessionId, previewOrigin, onE
 
     const onMessage = (event) => {
       if (
-        !isValidPreviewHandshake(event, {
+        !isValidPreviewReady(event, {
           expectedOrigin: previewOrigin,
           expectedSource: iframeRef.current?.contentWindow,
-          sessionId,
-          type: PREVIEW_CONNECT,
+          type: PREVIEW_READY,
           version: PREVIEW_PROTOCOL_VERSION,
         })
       )

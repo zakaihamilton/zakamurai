@@ -1,4 +1,5 @@
 export const PREVIEW_PROTOCOL_VERSION = 1;
+export const PREVIEW_READY = 'zakamurai-preview-ready';
 export const PREVIEW_CONNECT = 'zakamurai-preview-connect';
 export const PREVIEW_REQUEST = 'preview-request';
 export const PREVIEW_RESPONSE = 'preview-response';

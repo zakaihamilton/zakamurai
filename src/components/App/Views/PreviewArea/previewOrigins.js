@@ -49,6 +49,18 @@ export function isValidPreviewHandshake(
   );
 }
 
+/** Validates the session-free signal emitted by the preview bootstrap page. */
+export function isValidPreviewReady(event, { expectedOrigin, expectedSource, type, version }) {
+  return Boolean(
+    event &&
+      event.origin === expectedOrigin &&
+      event.source === expectedSource &&
+      event.data &&
+      event.data.type === type &&
+      event.data.version === version,
+  );
+}
+
 export function isPreviewHost(host, { previewOrigin } = getPreviewOrigins()) {
   if (!host || !previewOrigin) return false;
   try {

@@ -1,7 +1,11 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { PREVIEW_CONNECT, PREVIEW_PROTOCOL_VERSION } from '../Views/PreviewArea/previewProtocol';
+import {
+  PREVIEW_CONNECT,
+  PREVIEW_PROTOCOL_VERSION,
+  PREVIEW_READY,
+} from '../Views/PreviewArea/previewProtocol';
 import {
   getPreviewConfigurationError,
   getPreviewOrigins,
@@ -14,7 +18,6 @@ export default function PreviewHost() {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    const sessionId = new URLSearchParams(window.location.search).get('session');
     const origins = getPreviewOrigins({ windowOrigin: window.location.origin });
     const { ideOrigin } = origins;
     const configurationError = getPreviewConfigurationError(origins);
@@ -22,11 +25,6 @@ export default function PreviewHost() {
       setError(configurationError);
       return undefined;
     }
-    if (!sessionId) {
-      setError('Missing preview session. Return to Zakamurai and build the project again.');
-      return undefined;
-    }
-
     let cancelled = false;
     const connect = async (event) => {
       if (
@@ -44,14 +42,14 @@ export default function PreviewHost() {
       window.removeEventListener('message', connect);
       try {
         const registration = await navigator.serviceWorker.register(SW_URL, {
-          scope: '/__preview/',
+          scope: '/',
         });
         await navigator.serviceWorker.ready;
         const worker = registration.active || registration.waiting || registration.installing;
         if (!worker) throw new Error('Preview service worker did not activate.');
         worker.postMessage({ type: 'init', sessionId, ideOrigin }, [event.ports[0]]);
         if (!cancelled) {
-          window.location.replace(`/__preview/${encodeURIComponent(sessionId)}/dist/index.html`);
+          window.location.replace('/');
         }
       } catch (err) {
         if (!cancelled) setError(err instanceof Error ? err.message : String(err));
@@ -60,7 +58,7 @@ export default function PreviewHost() {
 
     window.addEventListener('message', connect);
     window.parent.postMessage(
-      { type: PREVIEW_CONNECT, version: PREVIEW_PROTOCOL_VERSION, sessionId },
+      { type: PREVIEW_READY, version: PREVIEW_PROTOCOL_VERSION },
       ideOrigin,
     );
     return () => {

@@ -54,6 +54,14 @@ const nextConfig = {
         headers: [
           { key: 'Cross-Origin-Embedder-Policy', value: 'require-corp' },
           { key: 'Cross-Origin-Opener-Policy', value: 'same-origin' },
+          // The IDE embeds the preview from a separate origin. This must be a
+          // route header (rather than only a middleware response header), as
+          // Vercel can serve prerendered routes from cache after a rewrite.
+          { key: 'Cross-Origin-Resource-Policy', value: 'cross-origin' },
+          {
+            key: 'Content-Security-Policy',
+            value: 'frame-ancestors https://www.zakamurai.com http://localhost:3000',
+          },
         ],
       },
       {

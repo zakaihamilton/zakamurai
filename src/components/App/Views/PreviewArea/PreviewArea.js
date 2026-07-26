@@ -104,9 +104,7 @@ export default function PreviewArea() {
     windowOrigin: typeof window === 'undefined' ? '' : window.location.origin,
   });
   const previewConfigurationError = getPreviewConfigurationError(origins);
-  const previewUrl = origins.previewOrigin
-    ? `${origins.previewOrigin}/preview-host?session=${previewSessionRef.current}`
-    : null;
+  const previewUrl = origins.previewOrigin ? `${origins.previewOrigin}/` : null;
   const previewHostLabel = origins.previewOrigin ? new URL(origins.previewOrigin).host : '';
 
   useEffect(() => {
@@ -453,7 +451,7 @@ export default function PreviewArea() {
       <div className={styles.toolbar}>
         <div className={styles.addressBar}>
           <Icons.Globe />
-          <span className={styles.addressText}>{previewHostLabel}/__preview/…</span>
+          <span className={styles.addressText}>{previewHostLabel}/</span>
           {isLoading && <span className={styles.loadingDot} />}
         </div>
 
