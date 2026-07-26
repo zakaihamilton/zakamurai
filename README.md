@@ -15,7 +15,7 @@ Zakamurai is a browser-based IDE built for editing, AI-assisted changes, in-brow
 
 ### Prerequisites
 
-- [Node.js](https://nodejs.org/) 22 (see [`.nvmrc`](./.nvmrc))
+- [Node.js](https://nodejs.org/) 24 (see [`.nvmrc`](./.nvmrc))
 - npm
 
 ### Run locally
