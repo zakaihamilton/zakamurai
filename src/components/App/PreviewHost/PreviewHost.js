@@ -8,7 +8,9 @@ import {
   isValidPreviewHandshake,
 } from '../Views/PreviewArea/previewOrigins';
 
-const SW_URL = '/__preview_sw__.js';
+// Bump this URL when the preview-routing protocol changes so browsers replace
+// an older scoped worker instead of continuing to serve its stale routes.
+const SW_URL = '/__preview_sw__.js?v=2';
 const SESSION_WINDOW_NAME_PREFIX = 'zakamurai-preview-';
 
 function getSessionId() {
