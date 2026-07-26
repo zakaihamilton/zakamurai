@@ -51,12 +51,13 @@ export default function PreviewBridge({
   previewOrigin,
   onError,
 }) {
-  const portRef = useRef(null);
+  const portsRef = useRef(new Map());
 
   useEffect(() => {
-    const closePort = () => {
-      portRef.current?.close();
-      portRef.current = null;
+    const closePort = (source) => {
+      const port = portsRef.current.get(source);
+      port?.close();
+      portsRef.current.delete(source);
     };
 
     const onMessage = (event) => {
@@ -74,9 +75,9 @@ export default function PreviewBridge({
         })
       )
         return;
-      closePort();
+      closePort(event.source);
       const channel = new MessageChannel();
-      portRef.current = channel.port1;
+      portsRef.current.set(event.source, channel.port1);
       channel.port1.onmessage = async ({ data: request }) => {
         if (!isPreviewRequest(request, sessionId)) return;
         try {
@@ -121,7 +122,7 @@ export default function PreviewBridge({
           onError?.(message);
         }
       };
-      iframeRef.current?.contentWindow?.postMessage(
+      event.source?.postMessage(
         { type: PREVIEW_CONNECT, version: PREVIEW_PROTOCOL_VERSION, sessionId },
         previewOrigin,
         [channel.port2],
@@ -131,7 +132,8 @@ export default function PreviewBridge({
     window.addEventListener('message', onMessage);
     return () => {
       window.removeEventListener('message', onMessage);
-      closePort();
+      for (const port of portsRef.current.values()) port.close();
+      portsRef.current.clear();
     };
   }, [externalPreviewRef, iframeRef, onError, previewOrigin, sessionId]);
 
