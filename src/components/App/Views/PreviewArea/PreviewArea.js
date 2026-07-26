@@ -375,11 +375,13 @@ export default function PreviewArea() {
   }, [previewAreaUiState]);
 
   const handleOpenExternal = useCallback(() => {
-    externalPreviewRef.current = window.open(
-      previewUrl,
-      `zakamurai-preview-${previewSessionRef.current}`,
-    );
-  }, [previewUrl]);
+    const previewWindow = window.open(previewUrl, `zakamurai-preview-${previewSessionRef.current}`);
+    if (!previewWindow) {
+      setPreviewError('The browser blocked the preview tab. Allow pop-ups and try again.');
+      return;
+    }
+    externalPreviewRef.current = previewWindow;
+  }, [previewUrl, setPreviewError]);
 
   const toggleMaximize = useCallback(() => {
     previewAreaUiState((draft) => {

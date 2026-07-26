@@ -53,7 +53,10 @@ const nextConfig = {
         source: '/(.*)',
         headers: [
           { key: 'Cross-Origin-Embedder-Policy', value: 'require-corp' },
-          { key: 'Cross-Origin-Opener-Policy', value: 'same-origin' },
+          // The browser-local preview can be opened in a tab and receives its
+          // in-memory project from this window over a validated MessageChannel.
+          // Preserve that opener across the two isolated origins.
+          { key: 'Cross-Origin-Opener-Policy', value: 'same-origin-allow-popups' },
           // The IDE embeds the preview from a separate origin. This must be a
           // route header (rather than only a middleware response header), as
           // Vercel can serve prerendered routes from cache after a rewrite.
@@ -70,19 +73,6 @@ const nextConfig = {
           { key: 'Service-Worker-Allowed', value: '/' },
           { key: 'Cache-Control', value: 'no-cache, no-store, must-revalidate' },
         ],
-      },
-      // The preview is intentionally cross-origin. Retaining its opener lets a
-      // separately opened preview receive its in-memory project over the
-      // validated MessageChannel, while the IDE itself remains COOP-isolated.
-      {
-        source: '/(.*)',
-        has: [{ type: 'header', key: 'host', value: 'preview\\.zakamurai\\.com' }],
-        headers: [{ key: 'Cross-Origin-Opener-Policy', value: 'same-origin-allow-popups' }],
-      },
-      {
-        source: '/(.*)',
-        has: [{ type: 'header', key: 'x-zakamurai-surface', value: 'preview' }],
-        headers: [{ key: 'Cross-Origin-Opener-Policy', value: 'same-origin-allow-popups' }],
       },
     ];
   },
