@@ -71,6 +71,19 @@ const nextConfig = {
           { key: 'Cache-Control', value: 'no-cache, no-store, must-revalidate' },
         ],
       },
+      // The preview is intentionally cross-origin. Retaining its opener lets a
+      // separately opened preview receive its in-memory project over the
+      // validated MessageChannel, while the IDE itself remains COOP-isolated.
+      {
+        source: '/(.*)',
+        has: [{ type: 'header', key: 'host', value: 'preview\\.zakamurai\\.com' }],
+        headers: [{ key: 'Cross-Origin-Opener-Policy', value: 'same-origin-allow-popups' }],
+      },
+      {
+        source: '/(.*)',
+        has: [{ type: 'header', key: 'x-zakamurai-surface', value: 'preview' }],
+        headers: [{ key: 'Cross-Origin-Opener-Policy', value: 'same-origin-allow-popups' }],
+      },
     ];
   },
 };

@@ -76,6 +76,7 @@ export default function PreviewArea() {
     previewAddress = '/preview/dist/index.html',
   } = previewState;
   const iframeRef = useRef(null);
+  const externalPreviewRef = useRef(null);
   const previewSessionRef = useRef(createPreviewSession());
   const listenersRef = useRef(null);
   const previewAreaUiState = PreviewAreaUiState.useState(null, {
@@ -104,9 +105,7 @@ export default function PreviewArea() {
     windowOrigin: typeof window === 'undefined' ? '' : window.location.origin,
   });
   const previewConfigurationError = getPreviewConfigurationError(origins);
-  const previewUrl = origins.previewOrigin
-    ? `${origins.previewOrigin}/preview-host?session=${previewSessionRef.current}`
-    : null;
+  const previewUrl = origins.previewOrigin ? `${origins.previewOrigin}/` : null;
   const previewHostLabel = origins.previewOrigin ? new URL(origins.previewOrigin).host : '';
 
   useEffect(() => {
@@ -376,7 +375,10 @@ export default function PreviewArea() {
   }, [previewAreaUiState]);
 
   const handleOpenExternal = useCallback(() => {
-    window.open(previewUrl, '_blank');
+    externalPreviewRef.current = window.open(
+      previewUrl,
+      `zakamurai-preview-${previewSessionRef.current}`,
+    );
   }, [previewUrl]);
 
   const toggleMaximize = useCallback(() => {
@@ -519,6 +521,7 @@ export default function PreviewArea() {
               key={`${refreshKey}-${previewSessionRef.current}`}
               ref={iframeRef}
               src={previewUrl}
+              name={`zakamurai-preview-${previewSessionRef.current}`}
               title="Preview"
               className={styles.iframe}
               onLoad={handleLoad}
@@ -532,6 +535,7 @@ export default function PreviewArea() {
       </div>
       <PreviewBridge
         iframeRef={iframeRef}
+        externalPreviewRef={externalPreviewRef}
         sessionId={previewSessionRef.current}
         previewOrigin={origins.previewOrigin}
         onError={setPreviewError}

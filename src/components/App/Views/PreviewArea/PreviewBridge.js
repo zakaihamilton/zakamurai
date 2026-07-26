@@ -44,7 +44,13 @@ async function handleRequest(message) {
 }
 
 /** Bridges an isolated preview service worker to the local almostnode server. */
-export default function PreviewBridge({ iframeRef, sessionId, previewOrigin, onError }) {
+export default function PreviewBridge({
+  iframeRef,
+  externalPreviewRef,
+  sessionId,
+  previewOrigin,
+  onError,
+}) {
   const portRef = useRef(null);
 
   useEffect(() => {
@@ -54,10 +60,14 @@ export default function PreviewBridge({ iframeRef, sessionId, previewOrigin, onE
     };
 
     const onMessage = (event) => {
+      const iframeWindow = iframeRef.current?.contentWindow;
+      const externalPreviewWindow = externalPreviewRef?.current;
+      const expectedSource =
+        event.source === externalPreviewWindow ? externalPreviewWindow : iframeWindow;
       if (
         !isValidPreviewHandshake(event, {
           expectedOrigin: previewOrigin,
-          expectedSource: iframeRef.current?.contentWindow,
+          expectedSource,
           sessionId,
           type: PREVIEW_CONNECT,
           version: PREVIEW_PROTOCOL_VERSION,
@@ -123,7 +133,7 @@ export default function PreviewBridge({ iframeRef, sessionId, previewOrigin, onE
       window.removeEventListener('message', onMessage);
       closePort();
     };
-  }, [iframeRef, onError, previewOrigin, sessionId]);
+  }, [externalPreviewRef, iframeRef, onError, previewOrigin, sessionId]);
 
   return null;
 }

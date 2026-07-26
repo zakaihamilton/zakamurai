@@ -9,12 +9,22 @@ import {
 } from '../Views/PreviewArea/previewOrigins';
 
 const SW_URL = '/__preview_sw__.js';
+const SESSION_WINDOW_NAME_PREFIX = 'zakamurai-preview-';
+
+function getSessionId() {
+  const querySession = new URLSearchParams(window.location.search).get('session');
+  if (querySession) return querySession;
+  return window.name.startsWith(SESSION_WINDOW_NAME_PREFIX)
+    ? window.name.slice(SESSION_WINDOW_NAME_PREFIX.length)
+    : null;
+}
 
 export default function PreviewHost() {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    const sessionId = new URLSearchParams(window.location.search).get('session');
+    const sessionId = getSessionId();
+    const peerWindow = window.opener || (window.parent !== window ? window.parent : null);
     const origins = getPreviewOrigins({ windowOrigin: window.location.origin });
     const { ideOrigin } = origins;
     const configurationError = getPreviewConfigurationError(origins);
@@ -26,12 +36,16 @@ export default function PreviewHost() {
       setError('Missing preview session. Return to Zakamurai and build the project again.');
       return undefined;
     }
+    if (!peerWindow) {
+      setError('Preview must be opened from Zakamurai so it can access the in-memory build.');
+      return undefined;
+    }
     let cancelled = false;
     const connect = async (event) => {
       if (
         !isValidPreviewHandshake(event, {
           expectedOrigin: ideOrigin,
-          expectedSource: window.parent,
+          expectedSource: peerWindow,
           sessionId,
           type: PREVIEW_CONNECT,
           version: PREVIEW_PROTOCOL_VERSION,
@@ -43,14 +57,14 @@ export default function PreviewHost() {
       window.removeEventListener('message', connect);
       try {
         const registration = await navigator.serviceWorker.register(SW_URL, {
-          scope: '/__preview/',
+          scope: '/',
         });
         await navigator.serviceWorker.ready;
         const worker = registration.active || registration.waiting || registration.installing;
         if (!worker) throw new Error('Preview service worker did not activate.');
         worker.postMessage({ type: 'init', sessionId, ideOrigin }, [event.ports[0]]);
         if (!cancelled) {
-          window.location.replace(`/__preview/${encodeURIComponent(sessionId)}/dist/index.html`);
+          window.location.replace('/');
         }
       } catch (err) {
         if (!cancelled) setError(err instanceof Error ? err.message : String(err));
@@ -58,7 +72,7 @@ export default function PreviewHost() {
     };
 
     window.addEventListener('message', connect);
-    window.parent.postMessage(
+    peerWindow.postMessage(
       { type: PREVIEW_CONNECT, version: PREVIEW_PROTOCOL_VERSION, sessionId },
       ideOrigin,
     );
