@@ -136,17 +136,14 @@ async function handleVirtualRequest(request, path) {
 
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
-  if (!activeSessionId) return;
-  if (
-    url.pathname === '/__preview_sw__.js' ||
-    url.pathname === '/preview-error-bridge.js' ||
-    url.pathname.startsWith('/_next/')
-  )
-    return;
-  const path =
-    event.request.mode === 'navigate' && url.pathname === '/'
-      ? '/dist/index.html'
-      : `${url.pathname}${url.search}`;
+  const prefix = `/__preview/${activeSessionId || ''}`;
+  const isPreviewRequest = activeSessionId && url.pathname.startsWith(prefix);
+  const referrer = event.request.referrer ? new URL(event.request.referrer) : null;
+  const isPreviewResource = referrer?.pathname.startsWith(prefix);
+  if (!isPreviewRequest && !isPreviewResource) return;
+  const path = isPreviewRequest
+    ? url.pathname.slice(prefix.length) || '/'
+    : `${url.pathname}${url.search}`;
   event.respondWith(
     handleVirtualRequest(event.request, path).catch(
       (error) => new Response(`Preview bridge error: ${error.message}`, { status: 502 }),

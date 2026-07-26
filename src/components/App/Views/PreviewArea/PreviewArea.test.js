@@ -271,7 +271,10 @@ describe('PreviewArea', () => {
 
     // Open in new tab
     fireEvent.click(screen.getByTitle('Open in new tab'));
-    expect(window.open).toHaveBeenCalledWith('http://localhost:3001/', '_blank');
+    expect(window.open).toHaveBeenCalledWith(
+      expect.stringMatching(/^http:\/\/localhost:3001\/preview-host\?session=/),
+      '_blank',
+    );
   });
 
   it('reports a service-worker activation timeout', () => {
@@ -401,6 +404,6 @@ describe('PreviewArea', () => {
     expect(iframe.getAttribute('sandbox')).toBe(PREVIEW_IFRAME_SANDBOX);
     expect(iframe.getAttribute('sandbox')).toContain('allow-same-origin');
     expect(iframe.getAttribute('referrerpolicy')).toBeNull();
-    expect(iframe.getAttribute('src')).toBe('http://localhost:3001/');
+    expect(iframe.getAttribute('src')).toMatch(/^http:\/\/localhost:3001\/preview-host\?session=/);
   });
 });
