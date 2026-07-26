@@ -4,7 +4,7 @@ const previewHost = new URL(
   process.env.NEXT_PUBLIC_PREVIEW_ORIGIN || 'https://preview.zakamurai.com',
 ).hostname;
 
-export function middleware(request) {
+export function proxy(request) {
   const host = request.headers.get('host')?.split(':')[0]?.toLowerCase();
   const isPreviewSurface =
     host === previewHost || request.headers.get('x-zakamurai-surface') === 'preview';
