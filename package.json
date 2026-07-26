@@ -22,7 +22,7 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "test:e2e": "npx playwright test --project=chromium tests/visual/basic.spec.ts tests/visual/advanced.spec.ts",
-    "test:e2e:isolated": "npx playwright test -c playwright.isolated.config.ts",
+    "test:e2e:isolated": "npx playwright test --config=playwright.isolated.config.ts",
     "test:e2e:chromium": "npm run test:e2e",
     "test:visual": "npx playwright test tests/visual/regression.spec.ts",
     "test:visual:chromium": "npx playwright test --project=chromium tests/visual/regression.spec.ts",
