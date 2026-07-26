@@ -21,6 +21,22 @@ function getSessionId() {
     : null;
 }
 
+async function waitForPreviewWorkerControl() {
+  if (navigator.serviceWorker.controller) return;
+  await new Promise((resolve, reject) => {
+    const timeout = window.setTimeout(() => {
+      navigator.serviceWorker.removeEventListener('controllerchange', onControllerChange);
+      reject(new Error('Preview service worker did not take control.'));
+    }, 5000);
+    const onControllerChange = () => {
+      window.clearTimeout(timeout);
+      navigator.serviceWorker.removeEventListener('controllerchange', onControllerChange);
+      resolve();
+    };
+    navigator.serviceWorker.addEventListener('controllerchange', onControllerChange);
+  });
+}
+
 export default function PreviewHost() {
   const [error, setError] = useState(null);
 
@@ -65,6 +81,7 @@ export default function PreviewHost() {
         const worker = registration.active || registration.waiting || registration.installing;
         if (!worker) throw new Error('Preview service worker did not activate.');
         worker.postMessage({ type: 'init', sessionId, ideOrigin }, [event.ports[0]]);
+        await waitForPreviewWorkerControl();
         if (!cancelled) {
           window.location.replace('/');
         }
