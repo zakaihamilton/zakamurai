@@ -13,8 +13,12 @@ const bytesToBase64 = (bytes) => {
 };
 const base64ToBytes = (value) => Uint8Array.from(atob(value || ''), (char) => char.charCodeAt(0));
 
-self.addEventListener('install', () => self.skipWaiting());
-self.addEventListener('activate', (event) => event.waitUntil(self.clients.claim()));
+self.addEventListener('install', (event) => {
+  event.waitUntil(self.skipWaiting());
+});
+self.addEventListener('activate', (event) => {
+  event.waitUntil(self.clients.claim());
+});
 self.addEventListener('message', (event) => {
   if (event.data?.type === 'SKIP_WAITING') {
     self.skipWaiting();
@@ -179,6 +183,22 @@ self.addEventListener('fetch', (event) => {
 
   if (url.pathname.startsWith('/__preview/')) {
     if (!activeSessionId || !mainPort) {
+      // In-memory bridge state is lost when the worker is restarted or replaced.
+      // Bounce back to PreviewHost so the IDE can re-handshake and re-init.
+      const match = url.pathname.match(/^\/__preview\/([^/]+)/);
+      const sessionFromPath = match ? decodeURIComponent(match[1]) : null;
+      if (sessionFromPath) {
+        event.respondWith(
+          previewResponse('', {
+            status: 303,
+            headers: {
+              Location: `/preview-host?session=${encodeURIComponent(sessionFromPath)}`,
+              'Content-Type': 'text/plain; charset=utf-8',
+            },
+          }),
+        );
+        return;
+      }
       event.respondWith(
         previewResponse('Preview connection is not ready yet. Return to Zakamurai and rebuild.', {
           status: 503,

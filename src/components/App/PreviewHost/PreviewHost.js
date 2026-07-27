@@ -10,7 +10,7 @@ import { PREVIEW_CONNECT, PREVIEW_PROTOCOL_VERSION } from '../Views/PreviewArea/
 
 // Bump this URL when the preview-routing protocol changes so browsers replace
 // an older scoped worker instead of continuing to serve its stale routes.
-const SW_URL = '/__preview_sw__.js?v=7';
+const SW_URL = '/__preview_sw__.js?v=10';
 const SESSION_WINDOW_NAME_PREFIX = 'zakamurai-preview-';
 
 function getSessionId() {
@@ -151,10 +151,18 @@ export default function PreviewHost() {
         const registration = await navigator.serviceWorker.register(SW_URL, {
           scope: '/',
         });
-        const worker = await ensureActiveWorker(registration);
+        await ensureActiveWorker(registration);
         await waitForPreviewWorkerControl(registration);
+        // Always init the worker that currently controls this client so fetch
+        // and init share the same in-memory session/port state.
+        const controlling =
+          navigator.serviceWorker.controller &&
+          registration.active &&
+          navigator.serviceWorker.controller.scriptURL === registration.active.scriptURL
+            ? navigator.serviceWorker.controller
+            : registration.active;
         const initAck = waitForInitAck(sessionId);
-        worker.postMessage({ type: 'init', sessionId, ideOrigin }, [event.ports[0]]);
+        controlling.postMessage({ type: 'init', sessionId, ideOrigin }, [event.ports[0]]);
         await initAck;
         if (!cancelled) {
           window.location.replace(`/__preview/${encodeURIComponent(sessionId)}/dist/index.html`);
