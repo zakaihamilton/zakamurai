@@ -71,6 +71,13 @@ vi.mock('@/components/AI/Processor', () => ({
   processAIResponse: vi.fn().mockResolvedValue(undefined),
 }));
 
+vi.mock('@/components/AI/Agent', () => ({
+  collectWorkspaceFiles: vi.fn().mockResolvedValue({}),
+  runAgent: vi.fn().mockResolvedValue({ summary: 'done', changes: [] }),
+  runCollaborativeAgent: vi.fn().mockResolvedValue({ summary: 'done', changes: [] }),
+  applyAgentChanges: vi.fn(() => ({ deletions: [], changeSet: null })),
+}));
+
 vi.mock('@/components/AI/WebLLMAPI', () => ({
   askWebLLM: vi.fn().mockResolvedValue('Mock response'),
   cacheWebLLMModel: vi.fn().mockResolvedValue(undefined),
@@ -181,7 +188,8 @@ describe('Prompt', () => {
     render(<Prompt />);
     expect(screen.getByPlaceholderText('Tell the Agent what to do...')).toBeDefined();
     expect(screen.getByTitle('Execute prompt')).toBeDefined();
-    expect(screen.getByLabelText('Agent sessions')).toBeDefined();
+    expect(screen.getByLabelText('Active agent')).toBeDefined();
+    expect(screen.getByLabelText('Open agent tree')).toBeDefined();
     expect(screen.getByRole('button', { name: 'Single' })).toBeDefined();
     expect(screen.getByRole('button', { name: 'Team' })).toBeDefined();
     const modelDropdown = screen.getByRole('button', { name: /^model /i });
@@ -252,6 +260,7 @@ describe('Prompt', () => {
   });
 
   it('calls state update when form is submitted', async () => {
+    const { runAgent } = await import('@/components/AI/Agent');
     const stateUpdate = vi.fn((fn) => {
       if (typeof fn === 'function') fn({ logs: [], isAIProcessing: false, reasoning: '' });
     });
@@ -276,15 +285,41 @@ describe('Prompt', () => {
     });
 
     expect(stateUpdate).toHaveBeenCalled();
-    expect(listAgentSessions(mockAgentSessionStore.sessions)[0].messages.length).toBeGreaterThan(0);
+    expect(listAgentSessions(mockAgentSessionStore.sessions)[0].messages).toHaveLength(1);
+    await waitFor(() => expect(runAgent).toHaveBeenCalledOnce());
   });
 
-  it('creates a new agent session from the manager', async () => {
+  it('creates a new root agent from the tree manager', async () => {
     render(<Prompt />);
     await act(async () => {
-      fireEvent.click(screen.getByLabelText('New session'));
+      fireEvent.click(screen.getByLabelText('Open agent tree'));
+    });
+    await waitFor(() => expect(screen.getByLabelText('New agent')).toBeDefined());
+    await act(async () => {
+      fireEvent.click(screen.getByLabelText('New agent'));
     });
     expect(listAgentSessions(mockAgentSessionStore.sessions)).toHaveLength(2);
+  });
+
+  it('suspends the tree dialog while a tree action dialog is open', async () => {
+    render(<Prompt />);
+    await act(async () => {
+      fireEvent.click(screen.getByLabelText('Open agent tree'));
+    });
+    await waitFor(() => expect(screen.getByLabelText('New agent')).toBeDefined());
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Rename Agent 1' }));
+    });
+    await waitFor(() => expect(screen.getByText('Rename session')).toBeDefined());
+    expect(screen.queryByRole('navigation', { name: 'Agent tree' })).toBeNull();
+
+    await act(async () => {
+      fireEvent.keyDown(document, { key: 'Escape' });
+    });
+    await waitFor(() =>
+      expect(screen.getByRole('navigation', { name: 'Agent tree' })).toBeDefined(),
+    );
   });
 
   it('shows the role graph summary in team mode and opens the editor dialog', async () => {

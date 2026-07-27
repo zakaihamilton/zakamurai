@@ -19,6 +19,9 @@ function isPreviewHostRequest(request) {
   // require it so localhost:3000 is not treated as localhost:3001.
   const portMatch = previewPort ? requestPort === previewPort : true;
   if (hostnameMatch && portMatch) return true;
+  // Local isolated preview shares hostname between IDE and preview ports.
+  // Do not fall back to hostname-only detection when the port already mismatched.
+  if (hostnameMatch && previewPort) return false;
   return isPreviewHost(hostname);
 }
 

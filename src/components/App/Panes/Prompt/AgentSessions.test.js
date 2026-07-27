@@ -3,10 +3,14 @@ import {
   MAX_AGENT_SESSIONS,
   addAgentSession,
   appendSessionMessage,
+  createAgentBranch,
   createDefaultAgentSessions,
   createSessionMessage,
   deleteAgentSession,
+  formatSessionContext,
   getActiveAgentSession,
+  getAgentSessionSubtreeIds,
+  listAgentSessionTree,
   listAgentSessions,
   normalizeAgentSessions,
   renameAgentSession,
@@ -22,6 +26,7 @@ describe('AgentSessions', () => {
     expect(sessions).toHaveLength(1);
     expect(state.activeSessionId).toBe(sessions[0].id);
     expect(sessions[0].mode).toBe('single');
+    expect(sessions[0].parentId).toBeNull();
     expect(getActiveAgentSession(state).modelId).toBe('model-a');
     expect(getActiveAgentSession(state).roleGraph.roles).toHaveLength(3);
   });
@@ -68,6 +73,81 @@ describe('AgentSessions', () => {
     expect(listAgentSessions(state.sessions)).toHaveLength(1);
     expect(getActiveAgentSession(state).modelId).toBe('keep-model');
     expect(getActiveAgentSession(state).id).not.toBe(onlyId);
+  });
+
+  it('branches a conversation with isolated copied history and configuration', () => {
+    let state = createDefaultAgentSessions('model-a');
+    const parentId = state.activeSessionId;
+    state = updateAgentSession(state, parentId, {
+      mode: 'team',
+      messages: [
+        createSessionMessage({ role: 'user', text: 'Plan an onboarding flow.' }),
+        createSessionMessage({ role: 'ai', text: 'I will inspect the app first.' }),
+      ],
+    });
+
+    state = createAgentBranch(state, parentId);
+    const child = getActiveAgentSession(state);
+    expect(child.parentId).toBe(parentId);
+    expect(child.name).toBe('Agent 1 branch');
+    expect(child.mode).toBe('team');
+    expect(child.messages).toEqual(state.sessions[parentId].messages);
+
+    state = appendSessionMessage(
+      state,
+      child.id,
+      createSessionMessage({ role: 'user', text: 'Instead, focus on accessibility.' }),
+    );
+    expect(state.sessions[parentId].messages).toHaveLength(2);
+    expect(getAgentSessionSubtreeIds(state.sessions, parentId)).toEqual(
+      new Set([parentId, child.id]),
+    );
+    expect(listAgentSessionTree(state.sessions).map(({ depth }) => depth)).toEqual([0, 1]);
+  });
+
+  it('deletes an entire branch and selects its surviving parent', () => {
+    let state = createDefaultAgentSessions();
+    const rootId = state.activeSessionId;
+    state = createAgentBranch(state, rootId);
+    const branchId = state.activeSessionId;
+    state = createAgentBranch(state, branchId);
+    const leafId = state.activeSessionId;
+
+    state = deleteAgentSession(state, branchId);
+    expect(state.sessions[branchId]).toBeUndefined();
+    expect(state.sessions[leafId]).toBeUndefined();
+    expect(state.activeSessionId).toBe(rootId);
+  });
+
+  it('repairs legacy and invalid parent links while persisting valid branches', () => {
+    const normalized = normalizeAgentSessions({
+      activeSessionId: 'child',
+      sessions: {
+        root: { id: 'root', name: 'Root', createdAt: 1 },
+        child: { id: 'child', name: 'Child', parentId: 'root', createdAt: 2 },
+        orphan: { id: 'orphan', name: 'Orphan', parentId: 'missing', createdAt: 3 },
+        a: { id: 'a', name: 'A', parentId: 'b', createdAt: 4 },
+        b: { id: 'b', name: 'B', parentId: 'a', createdAt: 5 },
+      },
+    });
+    expect(normalized.sessions.child.parentId).toBe('root');
+    expect(normalized.sessions.orphan.parentId).toBeNull();
+    expect(normalized.sessions.a.parentId).toBeNull();
+    expect(normalized.sessions.b.parentId).toBeNull();
+    expect(serializeAgentSessions(normalized).sessions.child.parentId).toBe('root');
+  });
+
+  it('formats only the newest transcript context within its character budget', () => {
+    const context = formatSessionContext(
+      [
+        createSessionMessage({ role: 'user', text: 'old context'.repeat(20) }),
+        createSessionMessage({ role: 'ai', text: 'keep this recent answer' }),
+      ],
+      80,
+    );
+    expect(context.length).toBeLessThanOrEqual(80);
+    expect(context).toContain('keep this recent answer');
+    expect(context).toContain('Earlier conversation omitted');
   });
 
   it('updates session patches including role graphs and messages', () => {

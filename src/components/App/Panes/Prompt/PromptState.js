@@ -29,5 +29,6 @@ export function getInitialPromptUiState() {
     abortController: null,
     promptScope: 'file',
     runningSessionId: null,
+    isAgentTreeOpen: false,
   };
 }

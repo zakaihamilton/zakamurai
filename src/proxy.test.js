@@ -48,6 +48,36 @@ describe('proxy', () => {
     expect(res.headers.get('Content-Security-Policy')).toBeUndefined();
   });
 
+  it('does not treat the local IDE port as the preview surface', async () => {
+    vi.stubEnv('NEXT_PUBLIC_PREVIEW_ORIGIN', 'http://localhost:3001');
+    vi.resetModules();
+    const { proxy: localProxy } = await import('./proxy');
+    const req = createMockRequest('http://localhost:3000/', {
+      host: 'localhost:3000',
+    });
+    const res = localProxy(req);
+    expect(res.type).toBe('next');
+    expect(res.headers.get('Content-Security-Policy')).toBeUndefined();
+    vi.unstubAllEnvs();
+    vi.resetModules();
+    await import('./proxy');
+  });
+
+  it('treats the local preview port as the preview surface', async () => {
+    vi.stubEnv('NEXT_PUBLIC_PREVIEW_ORIGIN', 'http://localhost:3001');
+    vi.resetModules();
+    const { proxy: localProxy } = await import('./proxy');
+    const req = createMockRequest('http://localhost:3001/', {
+      host: 'localhost:3001',
+    });
+    const res = localProxy(req);
+    expect(res.type).toBe('rewrite');
+    expect(res.url.pathname).toBe('/preview-host');
+    vi.unstubAllEnvs();
+    vi.resetModules();
+    await import('./proxy');
+  });
+
   it('handles missing or empty host header', () => {
     const req = createMockRequest('https://www.zakamurai.com/editor', {});
     const res = proxy(req);

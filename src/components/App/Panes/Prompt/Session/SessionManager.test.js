@@ -8,43 +8,23 @@ vi.mock('@/components/ui/Tooltip', () => ({
 
 vi.mock('@/components/ui/Icons', () => ({
   Icons: {
-    Plus: () => <span>plus</span>,
-    Edit: () => <span>edit</span>,
-    Trash: () => <span>trash</span>,
+    History: () => <span>history</span>,
   },
 }));
 
 describe('SessionManager', () => {
-  const sessions = [
-    { id: 'a', name: 'Agent A', status: 'idle' },
-    { id: 'b', name: 'Agent B', status: 'running' },
-  ];
-
-  it('switches sessions and triggers manage actions', () => {
-    const onSelect = vi.fn();
-    const onCreate = vi.fn();
-    const onRename = vi.fn();
-    const onDelete = vi.fn();
+  it('shows the active agent and opens the tree browser', () => {
+    const onOpenTree = vi.fn();
     render(
       <SessionManager
-        sessions={sessions}
-        activeSessionId="a"
-        onSelect={onSelect}
-        onCreate={onCreate}
-        onRename={onRename}
-        onDelete={onDelete}
+        activeSession={{ id: 'b', name: 'Agent B', status: 'running' }}
+        onOpenTree={onOpenTree}
       />,
     );
 
-    fireEvent.click(screen.getByRole('tab', { name: /Agent B/i }));
-    expect(onSelect).toHaveBeenCalledWith('b');
+    expect(screen.getByLabelText('Active agent')).toHaveTextContent('Agent B');
     expect(screen.getByLabelText('Running')).toBeDefined();
-
-    fireEvent.click(screen.getByLabelText('New session'));
-    fireEvent.click(screen.getByLabelText('Rename session'));
-    fireEvent.click(screen.getByLabelText('Delete session'));
-    expect(onCreate).toHaveBeenCalled();
-    expect(onRename).toHaveBeenCalled();
-    expect(onDelete).toHaveBeenCalled();
+    fireEvent.click(screen.getByLabelText('Open agent tree'));
+    expect(onOpenTree).toHaveBeenCalledOnce();
   });
 });

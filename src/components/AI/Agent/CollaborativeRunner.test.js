@@ -145,6 +145,28 @@ describe('runCollaborativeAgent', () => {
     expect(askWebLLM.mock.calls.every((call) => call[3].model === 'session-model')).toBe(true);
   });
 
+  it('passes inherited conversation context into the first team role', async () => {
+    askWebLLM
+      .mockResolvedValueOnce(
+        '{"action":"finish","summary":"{\\"goals\\":[],\\"files\\":[],\\"steps\\":[]}"}',
+      )
+      .mockResolvedValueOnce('{"action":"finish","summary":"noop"}')
+      .mockResolvedValueOnce(
+        '{"action":"finish","summary":"{\\"approved\\":true,\\"notes\\":\\"ok\\"}"}',
+      );
+
+    await runCollaborativeAgent({
+      request: 'continue',
+      files: { 'src/a.js': 'a' },
+      model: 'test',
+      priorContext: 'User: We already chose accessible controls.',
+    });
+
+    expect(askWebLLM.mock.calls[0][3].messages[1].content).toContain(
+      'We already chose accessible controls.',
+    );
+  });
+
   it('stops after reject retries are exhausted without a further always edge', async () => {
     const planner = createRoleNode({ id: 'p1', kind: 'planner' });
     const coder = createRoleNode({ id: 'c1', kind: 'coder' });

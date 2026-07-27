@@ -11,12 +11,11 @@ import {
   AgentSessionState,
   addAgentSession,
   appendSessionMessage,
+  createAgentBranch,
   createDefaultAgentSessions,
   createSessionMessage,
-  deleteAgentSession,
   getActiveAgentSession,
-  listAgentSessions,
-  renameAgentSession,
+  getAgentSessionSubtreeIds,
   setActiveAgentSession,
   updateAgentSession,
 } from './AgentSessions';
@@ -31,7 +30,7 @@ import usePromptHistory from './PromptHistory';
 import { PromptState, PromptUiState, getInitialPromptUiState } from './PromptState';
 import ReasoningPanel from './Reasoning';
 import { RoleGraphDialog, RoleGraphSummary } from './RoleGraph';
-import { SessionDialog, SessionManager, SessionTranscript } from './Session';
+import { SessionDialog, SessionManager, SessionTranscript, SessionTreeDialog } from './Session';
 import useAgentRunner from './useAgentRunner';
 
 export { PromptState, PromptUiState } from './PromptState';
@@ -61,6 +60,7 @@ export default function Prompt() {
     promptScope = 'file',
     runningSessionId = null,
     sessionDialog = null,
+    isAgentTreeOpen = false,
   } = promptUiState || {};
   const { cachedModelIds = [] } = WebLLMState.useState(['cachedModelIds']);
 
@@ -101,8 +101,6 @@ export default function Prompt() {
   }, [agentSessionState, selectedModel]);
 
   const activeSession = getActiveAgentSession(agentSessionState);
-  const sessionList = listAgentSessions(agentSessionState?.sessions || {});
-
   const { loadCachedModelIds, openModelManager, closeModelManager, handleModelCacheAction } =
     useModelDownloader(promptUiState);
 
@@ -274,46 +272,59 @@ export default function Prompt() {
     }
   };
 
-  const handleRenameSession = () => {
-    if (!activeSession) return;
+  const handleRenameSession = (sessionId = activeSession?.id) => {
+    const session = agentSessionState?.sessions?.[sessionId];
+    if (!session) return;
     promptUiState((draft) => {
       draft.sessionDialog = {
         type: 'rename',
-        sessionId: activeSession.id,
-        value: activeSession.name,
+        sessionId: session.id,
+        value: session.name,
       };
     });
   };
 
-  const handleDeleteSession = () => {
-    if (!activeSession) return;
-    if (activeSession.messages?.length) {
-      promptUiState((draft) => {
-        draft.sessionDialog = {
-          type: 'delete',
-          sessionId: activeSession.id,
-          name: activeSession.name,
-        };
-      });
-      return;
-    }
-    if (runningSessionId === activeSession.id && isAIProcessing) {
+  const handleDeleteSession = (sessionId = activeSession?.id) => {
+    const session = agentSessionState?.sessions?.[sessionId];
+    if (!session) return;
+    const subtreeIds = getAgentSessionSubtreeIds(agentSessionState.sessions, session.id);
+    const hasRunningAgent = [...subtreeIds].some(
+      (id) => agentSessionState.sessions[id]?.status === 'running',
+    );
+    if (hasRunningAgent) {
       promptUiState((draft) => {
         draft.sessionDialog = {
           type: 'error',
-          message: 'Stop the running agent before deleting this session.',
+          message: 'Stop the running agent before deleting it or any of its branches.',
         };
       });
       return;
     }
-    agentSessionState((draft) => {
-      const next = deleteAgentSession(
-        { sessions: draft.sessions, activeSessionId: draft.activeSessionId },
-        activeSession.id,
-      );
-      draft.sessions = next.sessions;
-      draft.activeSessionId = next.activeSessionId;
+    promptUiState((draft) => {
+      draft.sessionDialog = {
+        type: 'delete',
+        sessionId: session.id,
+        name: session.name,
+        descendantCount: Math.max(0, subtreeIds.size - 1),
+      };
     });
+  };
+
+  const handleBranchSession = (sessionId) => {
+    try {
+      agentSessionState((draft) => {
+        const next = createAgentBranch(
+          { sessions: draft.sessions, activeSessionId: draft.activeSessionId },
+          sessionId,
+        );
+        draft.sessions = next.sessions;
+        draft.activeSessionId = next.activeSessionId;
+      });
+    } catch (error) {
+      promptUiState((draft) => {
+        draft.sessionDialog = { type: 'error', message: error.message };
+      });
+    }
   };
 
   const handleSelectSession = (sessionId) => {
@@ -352,13 +363,28 @@ export default function Prompt() {
           onModeChange={handleModeChange}
         />
         <SessionManager
-          sessions={sessionList}
+          activeSession={activeSession}
+          onOpenTree={() =>
+            promptUiState((draft) => {
+              draft.isAgentTreeOpen = true;
+            })
+          }
+          isOpen={isOpen}
+        />
+        <SessionTreeDialog
+          isOpen={isAgentTreeOpen && !sessionDialog}
+          sessions={agentSessionState?.sessions || {}}
           activeSessionId={agentSessionState?.activeSessionId}
+          onCancel={() =>
+            promptUiState((draft) => {
+              draft.isAgentTreeOpen = false;
+            })
+          }
           onSelect={handleSelectSession}
           onCreate={handleCreateSession}
+          onBranch={handleBranchSession}
           onRename={handleRenameSession}
           onDelete={handleDeleteSession}
-          isOpen={isOpen}
         />
         <SessionDialog
           sessionDialog={sessionDialog}
