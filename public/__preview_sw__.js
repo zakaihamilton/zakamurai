@@ -138,12 +138,29 @@ async function requestFromIde(request) {
   });
 }
 
-function injectBridge(bytes, headers) {
-  const contentType = headers['Content-Type'] || headers['content-type'] || '';
-  if (!contentType.includes('text/html')) return bytes;
+function contentTypeForPath(path) {
+  const clean = path.split('?')[0].toLowerCase();
+  if (clean.endsWith('.js') || clean.endsWith('.mjs') || clean.endsWith('.cjs')) {
+    return 'application/javascript; charset=utf-8';
+  }
+  if (clean.endsWith('.css')) return 'text/css; charset=utf-8';
+  if (clean.endsWith('.json')) return 'application/json; charset=utf-8';
+  if (clean.endsWith('.svg')) return 'image/svg+xml';
+  if (clean.endsWith('.wasm')) return 'application/wasm';
+  if (clean.endsWith('.html') || clean.endsWith('.htm')) return 'text/html; charset=utf-8';
+  if (clean.endsWith('.map')) return 'application/json; charset=utf-8';
+  return null;
+}
+
+function injectBridge(bytes, headers, path) {
+  const cleanPath = (path || '').split('?')[0].toLowerCase();
+  const contentType = headers.get?.('Content-Type') || headers.get?.('content-type') || '';
+  const isHtmlPath = cleanPath.endsWith('.html') || cleanPath.endsWith('.htm') || cleanPath.endsWith('/');
+  if (!isHtmlPath && !String(contentType).includes('text/html')) return bytes;
+  if (!isHtmlPath) return bytes;
   const html = new TextDecoder().decode(bytes);
   if (html.includes('preview-error-bridge.js')) return bytes;
-  const bridge = `<script src="/preview-error-bridge.js"></script>`;
+  const bridge = `<script>window.__zakamuraiPreviewParentOrigin=${JSON.stringify(ideOrigin)};</script><script src="/preview-error-bridge.js"></script>`;
   const injected = /<\/head>/i.test(html)
     ? html.replace(/<\/head>/i, `${bridge}</head>`)
     : `${html}${bridge}`;
@@ -164,6 +181,8 @@ async function handleVirtualRequest(request, path) {
     streaming: request.method === 'POST' && path.startsWith('/api/'),
   });
   const responseHeaders = applyPreviewEmbedHeaders(new Headers(response.headers || {}));
+  const forcedType = contentTypeForPath(path);
+  if (forcedType) responseHeaders.set('Content-Type', forcedType);
   if (response.stream) {
     return new Response(response.stream, {
       status: response.statusCode,
@@ -171,7 +190,7 @@ async function handleVirtualRequest(request, path) {
       headers: responseHeaders,
     });
   }
-  const bytes = injectBridge(base64ToBytes(response.bodyBase64), responseHeaders);
+  const bytes = injectBridge(base64ToBytes(response.bodyBase64), responseHeaders, path);
   responseHeaders.set('Content-Length', String(bytes.length));
   return new Response(bytes, {
     status: response.statusCode,
@@ -198,9 +217,7 @@ self.addEventListener('fetch', (event) => {
 
   if (url.pathname.startsWith('/__preview/')) {
     if (!activeSessionId || !mainPort) {
-      // Direct /__preview navigations (old clients, bookmarks) cannot recover the
-      // MessageChannel. Stay on a stable error page — PreviewHost now loads the
-      // session in a nested iframe after init instead of replacing itself.
+      // Direct /__preview navigations without an inited bridge cannot recover.
       event.respondWith(lostConnectionPage());
       return;
     }
@@ -215,6 +232,25 @@ self.addEventListener('fetch', (event) => {
       return;
     }
     const path = url.pathname.slice(prefix.length) || '/';
+    event.respondWith(
+      handleVirtualRequest(event.request, path).catch((error) =>
+        previewResponse(`Preview bridge error: ${error.message}`, {
+          status: 502,
+          headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+        }),
+      ),
+    );
+    return;
+  }
+
+  // Built apps request absolute /dist/assets/* URLs. history.replaceState does not
+  // update service worker client.url, so do not rely on client/referrer matching.
+  if (
+    activeSessionId &&
+    mainPort &&
+    (url.pathname === '/dist' || url.pathname.startsWith('/dist/'))
+  ) {
+    const path = `${url.pathname}${url.search}`;
     event.respondWith(
       handleVirtualRequest(event.request, path).catch((error) =>
         previewResponse(`Preview bridge error: ${error.message}`, {

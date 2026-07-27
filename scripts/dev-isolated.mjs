@@ -37,6 +37,7 @@ const previewProxy = http.createServer((request, response) => {
   request.pipe(upstream);
 });
 previewProxy.on('upgrade', (request, socket, head) => {
+  socket.on('error', () => {});
   const upstream = http.request({
     hostname: '127.0.0.1',
     port: 3000,
@@ -45,6 +46,7 @@ previewProxy.on('upgrade', (request, socket, head) => {
     headers: { ...request.headers, host: 'localhost:3001', 'x-zakamurai-surface': 'preview' },
   });
   upstream.on('upgrade', (upstreamResponse, upstreamSocket, upstreamHead) => {
+    upstreamSocket.on('error', () => socket.destroy());
     socket.write(
       `HTTP/1.1 101 Switching Protocols\r\n${Object.entries(upstreamResponse.headers)
         .map(([key, value]) => `${key}: ${Array.isArray(value) ? value.join(', ') : value}`)

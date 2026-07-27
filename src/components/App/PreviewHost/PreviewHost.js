@@ -10,9 +10,8 @@ import { PREVIEW_CONNECT, PREVIEW_PROTOCOL_VERSION } from '../Views/PreviewArea/
 
 // Bump this URL when the preview-routing protocol changes so browsers replace
 // an older scoped worker instead of continuing to serve its stale routes.
-const SW_URL = '/__preview_sw__.js?v=13';
+const SW_URL = '/__preview_sw__.js?v=18';
 const SESSION_WINDOW_NAME_PREFIX = 'zakamurai-preview-';
-const SESSION_IFRAME_SANDBOX = 'allow-scripts allow-same-origin allow-forms allow-popups';
 
 function getSessionId() {
   const querySession = new URLSearchParams(window.location.search).get('session');
@@ -110,9 +109,18 @@ async function waitForInitAck(sessionId) {
   });
 }
 
+function installPreviewDocument(entryUrl, html) {
+  // Stay on the same controlled WindowClient. Nested iframe / about:srcdoc
+  // clients are not controlled, so their /__preview fetches hit the proxy 503.
+  window.stop();
+  window.history.replaceState(null, '', entryUrl);
+  document.open();
+  document.write(html);
+  document.close();
+}
+
 export default function PreviewHost() {
   const [error, setError] = useState(null);
-  const [previewSrc, setPreviewSrc] = useState(null);
 
   useEffect(() => {
     const sessionId = getSessionId();
@@ -132,14 +140,6 @@ export default function PreviewHost() {
       setError('Preview must be opened from Zakamurai so it can access the in-memory build.');
       return undefined;
     }
-
-    // Nested session iframe posts runtime events here; forward them to the IDE.
-    const relayPreviewEvents = (event) => {
-      if (event.data?.source !== 'zakamurai-preview') return;
-      if (event.origin !== window.location.origin) return;
-      peerWindow.postMessage(event.data, ideOrigin);
-    };
-    window.addEventListener('message', relayPreviewEvents);
 
     let cancelled = false;
     const connect = async (event) => {
@@ -176,12 +176,22 @@ export default function PreviewHost() {
             : registration.active;
         const entryUrl = getPreviewEntryUrl(sessionId);
         const initAck = waitForInitAck(sessionId);
-        // Keep this handshake document alive. Navigating it to /__preview/* races
-        // worker replacement and drops the MessageChannel. A nested iframe loads
-        // the session URL while this page (and the inited worker) stay put.
         controlling.postMessage({ type: 'init', sessionId, ideOrigin }, [event.ports[0]]);
         await initAck;
-        if (!cancelled) setPreviewSrc(entryUrl);
+        const response = await fetch(entryUrl, { credentials: 'same-origin' });
+        const html = await response.text();
+        if (!response.ok) {
+          throw new Error(
+            html
+              .replace(/<[^>]+>/g, ' ')
+              .replace(/\s+/g, ' ')
+              .trim()
+              .slice(0, 240) || `Preview failed (${response.status})`,
+          );
+        }
+        if (!cancelled) {
+          installPreviewDocument(entryUrl, html);
+        }
       } catch (err) {
         if (!cancelled) setError(err instanceof Error ? err.message : String(err));
       }
@@ -195,41 +205,8 @@ export default function PreviewHost() {
     return () => {
       cancelled = true;
       window.removeEventListener('message', connect);
-      window.removeEventListener('message', relayPreviewEvents);
     };
   }, []);
-
-  if (previewSrc) {
-    return (
-      <iframe
-        title="Isolated preview session"
-        src={previewSrc}
-        sandbox={SESSION_IFRAME_SANDBOX}
-        style={{
-          border: 0,
-          width: '100%',
-          height: '100vh',
-          display: 'block',
-          background: '#101214',
-        }}
-        onLoad={(event) => {
-          try {
-            const text = event.currentTarget.contentDocument?.body?.innerText || '';
-            if (
-              text.includes('connection was lost') ||
-              text.includes('not ready yet') ||
-              text.includes('not controlling this page')
-            ) {
-              setError(text.trim().split('\n')[0] || 'Preview connection was lost.');
-              setPreviewSrc(null);
-            }
-          } catch (_error) {
-            // Ignore opaque frame access errors.
-          }
-        }}
-      />
-    );
-  }
 
   return (
     <main style={{ color: '#e7ecef', background: '#101214', height: '100vh', padding: '2rem' }}>
