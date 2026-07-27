@@ -122,4 +122,49 @@ describe('Resizer', () => {
     expect(onResize).toHaveBeenNthCalledWith(3, 600);
     expect(onResize).toHaveBeenCalledTimes(3);
   });
+
+  it('disables interactions and applies collapsed class when isCollapsed, disabled, or hidden className is present', () => {
+    const onResizeStart = vi.fn();
+    const onDoubleClick = vi.fn();
+    const onResize = vi.fn();
+    const resizerStateUpdater = vi.fn();
+    createState().useState.mockReturnValue(
+      Object.assign(resizerStateUpdater, { isResizing: false }),
+    );
+
+    const { container, rerender } = render(
+      <Resizer
+        onResizeStart={onResizeStart}
+        onDoubleClick={onDoubleClick}
+        onResize={onResize}
+        isCollapsed={true}
+        label="Resize panel"
+      />,
+    );
+
+    const resizer = container.firstChild;
+    expect(resizer.className).toContain('collapsed');
+    expect(resizer).toHaveAttribute('aria-disabled', 'true');
+
+    fireEvent.mouseDown(resizer);
+    fireEvent.doubleClick(resizer);
+    fireEvent.keyDown(resizer, { key: 'ArrowRight' });
+
+    expect(onResizeStart).not.toHaveBeenCalled();
+    expect(onDoubleClick).not.toHaveBeenCalled();
+    expect(onResize).not.toHaveBeenCalled();
+
+    rerender(
+      <Resizer
+        onResizeStart={onResizeStart}
+        onDoubleClick={onDoubleClick}
+        onResize={onResize}
+        className="hidden"
+        label="Resize panel"
+      />,
+    );
+
+    fireEvent.mouseDown(container.firstChild);
+    expect(onResizeStart).not.toHaveBeenCalled();
+  });
 });

@@ -96,6 +96,7 @@ export default function AppContent() {
               max={600}
               label="Resize sidebar"
               className={!isSidebarOpen ? styles.hidden : ''}
+              isCollapsed={!isSidebarOpen}
             />
           </Node>
         )}

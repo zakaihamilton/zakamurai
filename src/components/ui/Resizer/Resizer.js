@@ -13,18 +13,29 @@ export default function Resizer({
   min = 160,
   max = 960,
   label = 'Resize pane',
+  className = '',
+  disabled = false,
+  isCollapsed = false,
 }) {
+  const isHiddenClass = Boolean(
+    className &&
+      (className.includes('hidden') ||
+        className.includes('collapsed') ||
+        className.includes('disabled')),
+  );
+  const isDisabled = disabled || isCollapsed || isHiddenClass;
   const resizerState = ResizerState.useState(null, { isResizing: false });
   const { isResizing = false } = resizerState || {};
 
   const startResizing = useCallback(
     (_e) => {
+      if (isDisabled) return;
       resizerState((draft) => {
         draft.isResizing = true;
       });
       if (onResizeStart) onResizeStart();
     },
-    [onResizeStart, resizerState],
+    [isDisabled, onResizeStart, resizerState],
   );
 
   const stopResizing = useCallback(() => {
@@ -36,18 +47,18 @@ export default function Resizer({
 
   const resize = useCallback(
     (e) => {
-      if (isResizing) {
+      if (isResizing && !isDisabled) {
         const clientX = e.clientX || e.touches?.[0].clientX;
         if (clientX !== undefined) {
           onResize(clientX);
         }
       }
     },
-    [isResizing, onResize],
+    [isDisabled, isResizing, onResize],
   );
 
   useEffect(() => {
-    if (isResizing) {
+    if (isResizing && !isDisabled) {
       window.addEventListener('mousemove', resize);
       window.addEventListener('mouseup', stopResizing);
       window.addEventListener('touchmove', resize, { passive: false });
@@ -65,19 +76,29 @@ export default function Resizer({
       window.removeEventListener('touchmove', resize);
       window.removeEventListener('touchend', stopResizing);
     };
-  }, [isResizing, resize, stopResizing]);
+  }, [isDisabled, isResizing, resize, stopResizing]);
+
+  const combinedClassName = [
+    styles.resizer,
+    isResizing && !isDisabled ? styles.resizing : '',
+    isDisabled ? styles.collapsed : '',
+    className,
+  ]
+    .filter(Boolean)
+    .join(' ');
 
   return (
     <div
-      className={`${styles.resizer} ${isResizing ? styles.resizing : ''}`}
+      className={combinedClassName}
       onMouseDown={(e) => {
-        if (e.detail < 2) {
+        if (!isDisabled && e.detail < 2) {
           startResizing(e);
         }
       }}
-      onTouchStart={startResizing}
-      onDoubleClick={onDoubleClick}
+      onTouchStart={isDisabled ? undefined : startResizing}
+      onDoubleClick={isDisabled ? undefined : onDoubleClick}
       onKeyDown={(event) => {
+        if (isDisabled) return;
         const step = event.shiftKey ? 48 : 16;
         let nextValue;
         if (event.key === 'ArrowLeft') nextValue = Math.max(min, value - step);
@@ -95,7 +116,8 @@ export default function Resizer({
       aria-valuemin={min}
       aria-valuemax={max}
       aria-valuenow={value}
-      tabIndex={0}
+      tabIndex={isDisabled ? -1 : 0}
+      aria-disabled={isDisabled ? true : undefined}
       data-resizer="true"
     />
   );

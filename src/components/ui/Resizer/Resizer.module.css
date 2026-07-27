@@ -51,6 +51,26 @@
   transition-delay: 0s;
 }
 
+.collapsed,
+.disabled {
+  pointer-events: none !important;
+  cursor: default !important;
+}
+
+.collapsed:hover,
+.disabled:hover {
+  background: transparent !important;
+}
+
+.collapsed::after,
+.disabled::after,
+.collapsed:hover::after,
+.disabled:hover::after {
+  background: var(--border) !important;
+  width: 1px !important;
+  box-shadow: none !important;
+}
+
 @media (width <= 768px) {
   .resizer {
     display: none;

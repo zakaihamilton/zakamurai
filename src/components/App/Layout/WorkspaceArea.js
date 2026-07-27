@@ -93,6 +93,7 @@ export default function WorkspaceArea() {
             max={600}
             label="Resize AI panel"
             className={!showAIInput ? styles.hidden : ''}
+            isCollapsed={!showAIInput}
           />
         </Node>
       )}

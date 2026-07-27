@@ -177,8 +177,14 @@ export default function PreviewArea() {
     });
   }, [previewAddress, previewAreaUiState]);
 
+  const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
+
   useEffect(() => {
-    if (!htmlContent) return;
+    if (!htmlContent) {
+      setHasLoadedOnce(false);
+      return;
+    }
+    previewSessionRef.current = createPreviewSession();
     previewAreaUiState((draft) => {
       draft.isLoading = true;
       draft.error = null;
@@ -281,6 +287,7 @@ export default function PreviewArea() {
   }, [origins.previewOrigin, previewAreaUiState, setPreviewError]);
 
   const handleLoad = useCallback(() => {
+    setHasLoadedOnce(true);
     previewAreaUiState((draft) => {
       draft.isLoading = false;
     });
@@ -500,7 +507,7 @@ export default function PreviewArea() {
       </div>
 
       <div className={styles.viewport}>
-        {isLoading && (
+        {isLoading && !hasLoadedOnce && (
           <div className={styles.loadingOverlay}>
             <div className={styles.spinner} />
           </div>
@@ -525,7 +532,7 @@ export default function PreviewArea() {
         <div className={styles.scaleWrapper} style={{ '--preview-scale': scale }}>
           {isCompilerReady && (
             <iframe
-              key={`${refreshKey}-${previewSessionRef.current}`}
+              key="preview-iframe"
               ref={iframeRef}
               src={previewUrl}
               name={`zakamurai-preview-${previewSessionRef.current}`}

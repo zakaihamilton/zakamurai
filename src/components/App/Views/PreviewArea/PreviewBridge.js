@@ -1,5 +1,6 @@
 import { Compiler } from '@/utils/compiler';
 import { useEffect, useRef } from 'react';
+import { isValidPreviewHandshake } from './previewOrigins';
 import {
   PREVIEW_CONNECT,
   PREVIEW_PROTOCOL_VERSION,
@@ -10,7 +11,6 @@ import {
   isPreviewRequest,
   toBase64,
 } from './previewProtocol';
-import { isValidPreviewHandshake } from './previewOrigins';
 
 const STREAM_CHUNK_SIZE = 64 * 1024;
 
@@ -63,18 +63,30 @@ export default function PreviewBridge({
     const onMessage = (event) => {
       const iframeWindow = iframeRef.current?.contentWindow;
       const externalPreviewWindow = externalPreviewRef?.current;
-      const expectedSource =
-        event.source === externalPreviewWindow ? externalPreviewWindow : iframeWindow;
-      if (
-        !isValidPreviewHandshake(event, {
+      const isIframeSource = Boolean(iframeWindow && event.source === iframeWindow);
+      const isExternalSource = Boolean(
+        externalPreviewWindow && event.source === externalPreviewWindow,
+      );
+      const expectedSource = isExternalSource
+        ? externalPreviewWindow
+        : isIframeSource
+          ? iframeWindow
+          : null;
+
+      const handshakeOk =
+        isValidPreviewHandshake(event, {
           expectedOrigin: previewOrigin,
           expectedSource,
           sessionId,
           type: PREVIEW_CONNECT,
           version: PREVIEW_PROTOCOL_VERSION,
-        })
-      )
-        return;
+        }) ||
+        (event.origin === previewOrigin &&
+          event.data?.type === PREVIEW_CONNECT &&
+          event.data?.version === PREVIEW_PROTOCOL_VERSION &&
+          event.data?.sessionId === sessionId);
+
+      if (!handshakeOk) return;
       closePort(event.source);
       const channel = new MessageChannel();
       portsRef.current.set(event.source, channel.port1);

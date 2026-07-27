@@ -407,4 +407,38 @@ describe('PreviewArea', () => {
     expect(iframe.getAttribute('src')).toMatch(/^http:\/\/localhost:3001\/preview-host\?session=/);
     expect(iframe.getAttribute('name')).toMatch(/^zakamurai-preview-/);
   });
+
+  it('keeps iframe element mounted and suppresses loading overlay on refresh after initial load', () => {
+    const preview = createStateHook({
+      htmlContent: '<html><body>Hello</body></html>',
+      isCompilerReady: true,
+      restoreError: null,
+    });
+    const ui = createStateHook({
+      isLoading: true,
+      scale: 1,
+      error: null,
+      refreshKey: 1,
+      isSwReady: true,
+      isMaximized: false,
+      address: '/preview/dist/index.html',
+      host: 'localhost',
+    });
+
+    vi.spyOn(PreviewState, 'useState').mockReturnValue(preview.hook);
+    vi.spyOn(PreviewAreaUiState, 'useState').mockReturnValue(ui.hook);
+
+    render(<PreviewArea />);
+    const iframe = screen.getByTitle('Preview');
+
+    // Simulate initial iframe load event
+    fireEvent.load(iframe);
+
+    // Now trigger refresh
+    fireEvent.click(screen.getByTitle('Refresh preview'));
+
+    // Loading state is active, but loading overlay element should NOT be rendered in viewport
+    expect(document.querySelector(`.${iframe.className}`)).not.toBeNull();
+    expect(document.querySelector('[class*="loadingOverlay"]')).toBeNull();
+  });
 });
