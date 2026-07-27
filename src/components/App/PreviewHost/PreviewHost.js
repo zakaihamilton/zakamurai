@@ -10,7 +10,7 @@ import { PREVIEW_CONNECT, PREVIEW_PROTOCOL_VERSION } from '../Views/PreviewArea/
 
 // Bump this URL when the preview-routing protocol changes so browsers replace
 // an older scoped worker instead of continuing to serve its stale routes.
-const SW_URL = '/__preview_sw__.js?v=10';
+const SW_URL = '/__preview_sw__.js?v=11';
 const SESSION_WINDOW_NAME_PREFIX = 'zakamurai-preview-';
 
 function getSessionId() {
@@ -19,6 +19,12 @@ function getSessionId() {
   return window.name.startsWith(SESSION_WINDOW_NAME_PREFIX)
     ? window.name.slice(SESSION_WINDOW_NAME_PREFIX.length)
     : null;
+}
+
+function getPreviewEntryUrl(sessionId) {
+  const recover = new URLSearchParams(window.location.search).get('recover');
+  const qs = recover === '1' ? '?recover=1' : '';
+  return `/__preview/${encodeURIComponent(sessionId)}/dist/index.html${qs}`;
 }
 
 async function waitForWorkerState(worker, state) {
@@ -165,7 +171,7 @@ export default function PreviewHost() {
         controlling.postMessage({ type: 'init', sessionId, ideOrigin }, [event.ports[0]]);
         await initAck;
         if (!cancelled) {
-          window.location.replace(`/__preview/${encodeURIComponent(sessionId)}/dist/index.html`);
+          window.location.replace(getPreviewEntryUrl(sessionId));
         }
       } catch (err) {
         if (!cancelled) setError(err instanceof Error ? err.message : String(err));

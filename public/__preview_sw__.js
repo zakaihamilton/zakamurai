@@ -184,26 +184,34 @@ self.addEventListener('fetch', (event) => {
   if (url.pathname.startsWith('/__preview/')) {
     if (!activeSessionId || !mainPort) {
       // In-memory bridge state is lost when the worker is restarted or replaced.
-      // Bounce back to PreviewHost so the IDE can re-handshake and re-init.
+      // Offer a single re-handshake. A second miss must not 303 again or the
+      // iframe loops preview-host ↔ __preview (white flash + "Connecting…").
       const match = url.pathname.match(/^\/__preview\/([^/]+)/);
       const sessionFromPath = match ? decodeURIComponent(match[1]) : null;
-      if (sessionFromPath) {
+      const alreadyRecovered = url.searchParams.get('recover') === '1';
+      if (sessionFromPath && !alreadyRecovered) {
         event.respondWith(
           previewResponse('', {
             status: 303,
             headers: {
-              Location: `/preview-host?session=${encodeURIComponent(sessionFromPath)}`,
-              'Content-Type': 'text/plain; charset=utf-8',
+              Location: `/preview-host?session=${encodeURIComponent(sessionFromPath)}&recover=1`,
+              'Content-Type': 'text/html; charset=utf-8',
             },
           }),
         );
         return;
       }
       event.respondWith(
-        previewResponse('Preview connection is not ready yet. Return to Zakamurai and rebuild.', {
-          status: 503,
-          headers: { 'Content-Type': 'text/plain; charset=utf-8' },
-        }),
+        previewResponse(
+          `<!doctype html><html><head><meta charset="utf-8"><title>Preview</title>
+<style>html,body{margin:0;height:100%;background:#101214;color:#e7ecef;font:14px/1.4 system-ui,sans-serif}
+main{padding:2rem}</style></head>
+<body><main><p>Preview connection was lost. Return to Zakamurai and click Build, then open Preview again.</p></main></body></html>`,
+          {
+            status: 503,
+            headers: { 'Content-Type': 'text/html; charset=utf-8' },
+          },
+        ),
       );
       return;
     }
