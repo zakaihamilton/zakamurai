@@ -8,17 +8,24 @@ const clip = (value, length = MAX_ITEM_CHARS) => {
 
 /** A bounded, serializable record of evidence shared between local agent turns. */
 export class AgentContextManager {
-  constructor({ request = '', priorContext = '' } = {}) {
+  constructor({
+    request = '',
+    priorContext = '',
+    maxContextChars = MAX_CONTEXT_CHARS,
+    maxItemChars = MAX_ITEM_CHARS,
+  } = {}) {
     this.request = request;
-    this.entries = priorContext ? [{ type: 'prior', text: clip(priorContext) }] : [];
+    this.maxContextChars = maxContextChars;
+    this.maxItemChars = maxItemChars;
+    this.entries = priorContext ? [{ type: 'prior', text: clip(priorContext, maxItemChars) }] : [];
   }
 
   record(type, value) {
     this.entries.push({
       type,
-      text: clip(typeof value === 'string' ? value : JSON.stringify(value)),
+      text: clip(typeof value === 'string' ? value : JSON.stringify(value), this.maxItemChars),
     });
-    while (this.entries.length > 1 && this.toString().length > MAX_CONTEXT_CHARS)
+    while (this.entries.length > 1 && this.toString().length > this.maxContextChars)
       this.entries.shift();
   }
 

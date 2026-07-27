@@ -23,4 +23,15 @@ describe('AgentContextManager', () => {
       '"diagnostics":""',
     );
   });
+
+  it('supports custom context bounds', () => {
+    const context = new AgentContextManager({
+      request: 'test',
+      maxContextChars: 100,
+      maxItemChars: 20,
+    });
+    context.record('data', 'this is a long string that will get clipped');
+    expect(context.toString()).toContain('…[truncated]');
+    expect(context.toString().length).toBeLessThan(100);
+  });
 });

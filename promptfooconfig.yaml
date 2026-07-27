@@ -17,6 +17,7 @@ tests:
           const hasCssModule = /import .* from ['"].*\.module\.css['"]/.test(vars.file_content);
           const hasInlineStyles = /style={{/.test(vars.file_content);
           const hasTailwind = /className=['"].*(?:bg-|text-|p-|m-|flex|grid).*['"]/.test(vars.file_content);
+          const hasGlobalStateViolation = /useState\(.*store.*\)/i.test(vars.file_content);
           
           if (!hasCssModule && /return \(/.test(vars.file_content)) {
             return { pass: false, reason: 'Missing CSS Module import in UI component' };
@@ -26,5 +27,8 @@ tests:
           }
           if (hasTailwind) {
             return { pass: false, reason: 'Utility-first frameworks like Tailwind are forbidden' };
+          }
+          if (hasGlobalStateViolation) {
+            return { pass: false, reason: 'React useState forbidden for shared domain state (use Node/Object proxy state)' };
           }
           return true;

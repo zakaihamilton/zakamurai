@@ -21,7 +21,19 @@ export {
  */
 export function applyFileUpdate(originalContent, newContent, selectedLines = []) {
   if (newContent.includes('<<<<<<< SEARCH')) {
-    return applySearchReplace(originalContent, newContent, selectedLines);
+    const srResult = applySearchReplace(originalContent, newContent, selectedLines);
+    if (srResult.diffs.length > 0) {
+      return srResult;
+    }
+    const fuzzyFallback = applyFuzzyReplacement(originalContent, newContent);
+    if (fuzzyFallback.diffs.length > 0) {
+      return fuzzyFallback;
+    }
+    return {
+      ...srResult,
+      failed: true,
+      reason: 'SEARCH block did not match original file content.',
+    };
   }
 
   const markerPattern =

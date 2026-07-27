@@ -30,4 +30,15 @@ describe('AI change validation', () => {
     expect(validateAIChanges(null).rejected).toEqual(['Changes must be an array.']);
     expect(validateAIChanges([{ after: 'code' }]).rejected[0]).toBe('A file path is required.');
   });
+
+  it('rejects malformed syntax in proposals', () => {
+    const result = validateAIChanges([
+      { path: 'src/bad.json', after: '{ invalid json }' },
+      { path: 'src/bad.js', after: 'function test() {' },
+    ]);
+    expect(result.accepted).toHaveLength(0);
+    expect(result.rejected).toHaveLength(2);
+    expect(result.rejected[0]).toContain('Invalid JSON syntax');
+    expect(result.rejected[1]).toContain('Unclosed');
+  });
 });

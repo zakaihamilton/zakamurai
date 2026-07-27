@@ -1,13 +1,18 @@
-import { describe, expect, it } from 'vitest';
 import {
   COMPLETION_SYSTEM_PROMPT,
   DEFAULT_SYSTEM_PROMPT,
+  PromptRegistry,
   SEARCH_REPLACE_INSTRUCTION,
   buildEditPrompt,
   formatCompactContext,
 } from './Prompts';
 
 describe('AI Prompts', () => {
+  it('exposes PromptRegistry with versioning', () => {
+    expect(PromptRegistry.getPrompt('edit')).toBe(DEFAULT_SYSTEM_PROMPT);
+    expect(PromptRegistry.getPrompt('completion')).toBe(COMPLETION_SYSTEM_PROMPT);
+    expect(PromptRegistry.getPrompt('unknown')).toBe(DEFAULT_SYSTEM_PROMPT);
+  });
   it('has DEFAULT_SYSTEM_PROMPT', () => {
     expect(DEFAULT_SYSTEM_PROMPT).toBeDefined();
     expect(DEFAULT_SYSTEM_PROMPT).toContain('SEARCH');

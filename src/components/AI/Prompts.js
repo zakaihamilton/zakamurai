@@ -41,6 +41,17 @@ Rules:
 5. Return only: <completion>TEXT</completion>
 `.trim();
 
+export const PromptRegistry = {
+  v1: {
+    edit: DEFAULT_SYSTEM_PROMPT,
+    completion: COMPLETION_SYSTEM_PROMPT,
+    searchReplace: SEARCH_REPLACE_INSTRUCTION,
+  },
+  getPrompt(type = 'edit', version = 'v1') {
+    return this[version]?.[type] ?? DEFAULT_SYSTEM_PROMPT;
+  },
+};
+
 const MAX_CONTEXT_FILES = 3;
 const MAX_CONTEXT_CHARS = 1400;
 const MAX_ACTIVE_FILE_CHARS = 6000;
@@ -55,22 +66,20 @@ function formatFileBlock(label, path, content) {
   return `${label}: ${path}\n\`\`\`\n${content}\n\`\`\``;
 }
 
-export function formatCompactContext(results = []) {
+export function formatCompactContext(results = [], options = {}) {
+  const maxFiles = options.maxContextFiles ?? MAX_CONTEXT_FILES;
+  const maxChars = options.maxContextChars ?? MAX_CONTEXT_CHARS;
   const blocks = [];
 
-  for (const result of results.slice(0, MAX_CONTEXT_FILES)) {
+  for (const result of results.slice(0, maxFiles)) {
     blocks.push(
-      formatFileBlock('Related file', result.filePath, trimText(result.content, MAX_CONTEXT_CHARS)),
+      formatFileBlock('Related file', result.filePath, trimText(result.content, maxChars)),
     );
 
     const cssFile = result.linkedCss?.[0];
     if (cssFile) {
       blocks.push(
-        formatFileBlock(
-          'Related CSS',
-          cssFile.filePath,
-          trimText(cssFile.content, MAX_CONTEXT_CHARS),
-        ),
+        formatFileBlock('Related CSS', cssFile.filePath, trimText(cssFile.content, maxChars)),
       );
     }
   }
@@ -84,20 +93,18 @@ export function buildEditPrompt({
   activeFileContent,
   selectedLines = [],
   relatedContext = [],
+  options = {},
 }) {
   const sections = [];
+  const maxActiveChars = options.maxActiveFileChars ?? MAX_ACTIVE_FILE_CHARS;
 
   if (activeFilePath && activeFileContent !== undefined) {
     sections.push(
-      formatFileBlock(
-        'Current file',
-        activeFilePath,
-        trimText(activeFileContent, MAX_ACTIVE_FILE_CHARS),
-      ),
+      formatFileBlock('Current file', activeFilePath, trimText(activeFileContent, maxActiveChars)),
     );
   }
 
-  const context = formatCompactContext(relatedContext);
+  const context = formatCompactContext(relatedContext, options);
   if (context) {
     sections.push(context);
   }
