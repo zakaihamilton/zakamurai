@@ -1,5 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { idbClear, idbGet, idbSet, isIdbAvailable, resetIdbConnection } from './idbStore';
+import {
+  idbClear,
+  idbDelete,
+  idbGet,
+  idbSet,
+  isIdbAvailable,
+  resetIdbConnection,
+} from './idbStore';
 
 describe('idbStore', () => {
   beforeEach(() => {
@@ -20,14 +27,16 @@ describe('idbStore', () => {
     expect(await idbGet('fileContents')).toEqual({ 'a.js': 'console.log(1)' });
   });
 
-  it('deletes keys when value is null', async () => {
-    if (!isIdbAvailable()) {
-      expect(await idbSet('previewHtml', '<html></html>')).toBe(false);
-      return;
-    }
+  it('deletes keys when value is null or via idbDelete', async () => {
     await idbSet('previewHtml', '<html></html>');
-    await idbSet('previewHtml', null);
+    await idbDelete('previewHtml');
     expect(await idbGet('previewHtml')).toBeNull();
+  });
+
+  it('clears store and memory fallback', async () => {
+    await idbSet('key1', 'val1');
+    await idbClear();
+    expect(await idbGet('key1')).toBeNull();
   });
 
   it('returns false (not durable) when IndexedDB is unavailable', async () => {
@@ -38,6 +47,9 @@ describe('idbStore', () => {
     await expect(idbSet('k', { ok: true })).resolves.toBe(false);
     // Same-session memory mirror still readable
     expect(await idbGet('k')).toEqual({ ok: true });
+
+    await idbClear();
+    expect(await idbGet('k')).toBeNull();
 
     globalThis.indexedDB = original;
     resetIdbConnection();

@@ -58,4 +58,19 @@ describe('LogToolbar', () => {
     fireEvent.click(clearFilterBtn);
     expect(onClearFilter).toHaveBeenCalled();
   });
+
+  it('renders copied state feedback when copied is true', () => {
+    render(
+      <LogToolbar
+        filterText=""
+        onFilterChange={vi.fn()}
+        onClearFilter={vi.fn()}
+        copied={true}
+        onCopyAll={vi.fn()}
+        onClearLogs={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByLabelText('Copy all logs')).toBeDefined();
+  });
 });

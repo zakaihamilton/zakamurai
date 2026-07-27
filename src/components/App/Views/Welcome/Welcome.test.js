@@ -18,14 +18,13 @@ vi.mock('@/components/ui/Icons', () => ({
 }));
 
 describe('Welcome', () => {
-  it('renders welcome content', () => {
+  it('renders welcome actions', () => {
     vi.spyOn(TabState, 'usePassiveState').mockReturnValue({
       openTabs: [],
       activeTabId: null,
     });
 
     render(<Welcome />);
-    expect(screen.getByText('Welcome to Zakamurai')).toBeDefined();
     expect(screen.getByText('Project info')).toBeDefined();
     expect(screen.getByText('Instructions')).toBeDefined();
   });

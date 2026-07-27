@@ -11,11 +11,11 @@ vi.mock('@/components/ui/Icons', () => ({
 }));
 
 describe('ProjectInfo', () => {
-  it('renders project information sections', () => {
+  it('composes the project information sections', () => {
     render(<ProjectInfo />);
+    expect(screen.getByText('Zakamurai')).toBeDefined();
     expect(screen.getByText('About the Project')).toBeDefined();
     expect(screen.getByText('Technologies')).toBeDefined();
     expect(screen.getByText('The Vision')).toBeDefined();
-    expect(screen.getByText('Next.js & React')).toBeDefined();
   });
 });

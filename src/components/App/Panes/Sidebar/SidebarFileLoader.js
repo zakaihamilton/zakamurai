@@ -6,6 +6,7 @@ import {
   addNodeAtPath,
   findNodeAtPath,
   flattenTree,
+  getInitialFileContents,
   getPathStr,
   isNodeModulesPath,
   normalizeChildren,
@@ -112,7 +113,6 @@ export default function useSidebarFileLoader({
 
       if (fs.mode !== 'local' && shouldLoadText) {
         const fileContents = editorState.fileContents || {};
-        const { getInitialFileContents } = require('./TreeUtils');
         content = fileContents[row.pathStr] ?? getInitialFileContents()[row.pathStr] ?? '';
       }
 

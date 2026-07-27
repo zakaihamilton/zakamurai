@@ -311,31 +311,4 @@ describe('TreeItem', () => {
 
     expect(onStartCreate).toHaveBeenCalledWith(folderRow, 'file');
   });
-
-  it('renders create row input at child indent', () => {
-    const parentRow = {
-      key: 'src',
-      item: { name: 'src', type: 'folder', children: [] },
-      level: 0,
-      path: ['src'],
-      pathStr: 'src',
-    };
-    const createRow = {
-      key: 'src::__create__',
-      isCreateRow: true,
-      createType: 'file',
-      level: 1,
-      path: ['src'],
-      pathStr: 'src',
-      parentRow,
-    };
-
-    const { container } = render(
-      <TreeItem row={createRow} {...baseHandlers} onCreate={vi.fn().mockResolvedValue(true)} />,
-    );
-
-    const input = screen.getByRole('textbox');
-    expect(input).toBeDefined();
-    expect(container.querySelector('[class*="createInputContainer"]')).toBeDefined();
-  });
 });

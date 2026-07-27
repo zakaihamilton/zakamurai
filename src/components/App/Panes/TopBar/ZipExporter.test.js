@@ -87,7 +87,7 @@ describe('useZipExporter', () => {
     expect(URL.createObjectURL).toHaveBeenCalled();
   });
 
-  it('reports an error if compiled files are unavailable', async () => {
+  it('reports and clears an error if compiled files are unavailable', async () => {
     Compiler.getContainer.mockReturnValue(null);
 
     const { result } = renderHook(() =>
@@ -101,6 +101,11 @@ describe('useZipExporter', () => {
     expect(result.current.exportError).toBe(
       'No compiled files found. Please compile the project first.',
     );
+
+    act(() => {
+      result.current.clearExportError();
+    });
+    expect(result.current.exportError).toBeNull();
   });
 
   it('handleExportCompiledZip processes and exports files correctly', async () => {

@@ -22,6 +22,30 @@ describe('TokenNavigationSection', () => {
     expect(screen.getByText(/react at 1:1/)).toBeDefined();
   });
 
+  it('handles fallback target names and positions', () => {
+    const targets = [
+      {
+        className: 'MyClass',
+        start: 0,
+        end: 5,
+      },
+      {
+        text: 'someText',
+        start: 10,
+        end: 15,
+      },
+      {
+        start: 20,
+        end: 25,
+      },
+    ];
+    render(<TokenNavigationSection navigationTargets={targets} navigationLinksEnabled={true} />);
+
+    expect(screen.getByText(/MyClass at -:-/)).toBeDefined();
+    expect(screen.getByText(/someText at -:-/)).toBeDefined();
+    expect(screen.getByText(/unnamed at -:-/)).toBeDefined();
+  });
+
   it('shows empty state when no targets', () => {
     render(<TokenNavigationSection navigationTargets={[]} navigationLinksEnabled={false} />);
     expect(screen.getByText('disabled')).toBeDefined();

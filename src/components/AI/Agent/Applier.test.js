@@ -33,6 +33,22 @@ describe('applyAgentChanges', () => {
     expect(editorState.pendingDiffs['src/App.js'].originalContent).toBe('const a = 1;\n');
     expect(editorState.pendingDiffs['src/App.js'].modifiedContent).toBe('const a = 2;\n');
     expect(editorState.pendingDiffs['src/App.js'].diffs.length).toBeGreaterThan(0);
+    expect(logState).toHaveBeenCalled();
+  });
+
+  it('logs rejected changes when validation fails', () => {
+    const editorState = Object.assign((cb) => cb(editorState), {
+      fileContents: {},
+      pendingDiffs: {},
+    });
+    const logState = vi.fn((cb) => cb({ logs: [] }));
+
+    applyAgentChanges([{ path: 'node_modules/react/index.js', before: '', after: 'modified' }], {
+      editorState,
+      logState,
+    });
+
+    expect(logState).toHaveBeenCalled();
   });
 
   it('returns deletions separately and skips no-op writes', () => {

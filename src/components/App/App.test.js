@@ -1,3 +1,4 @@
+import { useFileSystem } from '@/components/Storage';
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import App from './App';
@@ -175,7 +176,8 @@ describe('App', () => {
   it('renders all main components', async () => {
     const appStateMock = Object.assign(vi.fn(), {
       theme: 'dark',
-      fs: { mode: null, mountLocal: vi.fn() },
+      projectName: 'Test',
+      fs: { mode: null, mountLocal: vi.fn(), isReady: true },
     });
     vi.spyOn(AppState, 'useState').mockReturnValue(appStateMock);
     render(<App />);
@@ -183,5 +185,16 @@ describe('App', () => {
     expect(screen.getByTestId('topbar')).toBeDefined();
     expect(screen.getByTestId('tabbar')).toBeDefined();
     expect(screen.getByTestId('prompt')).toBeDefined();
+  });
+
+  it('renders AppLoading when fs is not ready', async () => {
+    vi.mocked(useFileSystem).mockReturnValue({
+      mode: null,
+      files: [],
+      isReady: false,
+      mountLocal: vi.fn(),
+    });
+    render(<App />);
+    expect(await screen.findByText('Initializing workspace...')).toBeDefined();
   });
 });

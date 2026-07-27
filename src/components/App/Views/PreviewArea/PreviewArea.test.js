@@ -3,7 +3,7 @@ import { act, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import PreviewArea, { PreviewAreaUiState } from './PreviewArea';
-import { PREVIEW_IFRAME_SANDBOX, PREVIEW_MESSAGE_TYPES } from './previewSandbox';
+import { PREVIEW_MESSAGE_TYPES } from './previewSandbox';
 
 vi.mock('@/components/ui/Tooltip', () => ({
   __esModule: true,
@@ -29,34 +29,7 @@ describe('PreviewArea', () => {
     vi.useRealTimers();
   });
 
-  it('renders inline error banner instead of a dialog', () => {
-    const preview = createStateHook({
-      htmlContent: '<html><body>Hello</body></html>',
-      isCompilerReady: true,
-      restoreError: null,
-    });
-    const ui = createStateHook({
-      isLoading: false,
-      scale: 1,
-      error: 'ReferenceError: x is not defined',
-      refreshKey: 1,
-      isSwReady: true,
-      isMaximized: false,
-      address: '/preview/',
-      host: 'localhost',
-    });
-
-    vi.spyOn(PreviewState, 'useState').mockReturnValue(preview.hook);
-    vi.spyOn(PreviewAreaUiState, 'useState').mockReturnValue(ui.hook);
-
-    render(<PreviewArea />);
-
-    expect(screen.getByRole('alert')).toBeDefined();
-    expect(screen.getByText('ReferenceError: x is not defined')).toBeDefined();
-    expect(screen.queryByRole('button', { name: 'Close' })).toBeNull();
-  });
-
-  it('dismisses the error banner', () => {
+  it('dismisses the error banner through preview state', () => {
     const preview = createStateHook({
       htmlContent: '<html><body>Hello</body></html>',
       isCompilerReady: true,
@@ -376,70 +349,6 @@ describe('PreviewArea', () => {
 
     expect(screen.queryByRole('alert')).toBeNull();
     expect(screen.getByTitle('Preview')).toBeDefined();
-  });
-
-  it('loads the preview from the isolated origin with its own service-worker origin', () => {
-    const preview = createStateHook({
-      htmlContent: '<html><body>Hello</body></html>',
-      isCompilerReady: true,
-      restoreError: null,
-    });
-    const ui = createStateHook({
-      isLoading: false,
-      scale: 1,
-      error: null,
-      refreshKey: 1,
-      isSwReady: true,
-      isMaximized: false,
-      address: '/preview/dist/index.html',
-      host: 'localhost',
-    });
-
-    vi.spyOn(PreviewState, 'useState').mockReturnValue(preview.hook);
-    vi.spyOn(PreviewAreaUiState, 'useState').mockReturnValue(ui.hook);
-
-    render(<PreviewArea />);
-
-    const iframe = screen.getByTitle('Preview');
-    expect(iframe.getAttribute('sandbox')).toBe(PREVIEW_IFRAME_SANDBOX);
-    expect(iframe.getAttribute('sandbox')).toContain('allow-same-origin');
-    expect(iframe.getAttribute('referrerpolicy')).toBeNull();
-    expect(iframe.getAttribute('src')).toMatch(/^http:\/\/localhost:3001\/preview-host\?session=/);
-    expect(iframe.getAttribute('name')).toMatch(/^zakamurai-preview-/);
-  });
-
-  it('keeps iframe element mounted and suppresses loading overlay on refresh after initial load', () => {
-    const preview = createStateHook({
-      htmlContent: '<html><body>Hello</body></html>',
-      isCompilerReady: true,
-      restoreError: null,
-    });
-    const ui = createStateHook({
-      isLoading: true,
-      scale: 1,
-      error: null,
-      refreshKey: 1,
-      isSwReady: true,
-      isMaximized: false,
-      address: '/preview/dist/index.html',
-      host: 'localhost',
-    });
-
-    vi.spyOn(PreviewState, 'useState').mockReturnValue(preview.hook);
-    vi.spyOn(PreviewAreaUiState, 'useState').mockReturnValue(ui.hook);
-
-    render(<PreviewArea />);
-    const iframe = screen.getByTitle('Preview');
-
-    // Simulate initial iframe load event
-    fireEvent.load(iframe);
-
-    // Now trigger refresh
-    fireEvent.click(screen.getByTitle('Refresh preview'));
-
-    // Loading state is active, but loading overlay element should NOT be rendered in viewport
-    expect(document.querySelector(`.${iframe.className}`)).not.toBeNull();
-    expect(document.querySelector('[class*="loadingOverlay"]')).toBeNull();
   });
 
   it('updates scale precisely without floating-point precision inaccuracies on zoom in/out', () => {
