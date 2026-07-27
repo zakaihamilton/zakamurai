@@ -116,7 +116,21 @@ export function useRagIndexer() {
   }, [editorState.fileContents, fs?.isReady, ragState]);
 }
 
-function fingerprintContents(fileContents = {}) {
+function hashString(str) {
+  let hash = 0x811c9dc5;
+  for (let i = 0; i < str.length; i++) {
+    hash ^= str.charCodeAt(i);
+    hash = Math.imul(hash, 0x01000193);
+  }
+  return (hash >>> 0).toString(16);
+}
+
+export function fingerprintContents(fileContents = {}) {
   const keys = Object.keys(fileContents).sort();
-  return keys.map((key) => `${key}:${String(fileContents[key] ?? '').length}`).join('|');
+  return keys
+    .map((key) => {
+      const content = String(fileContents[key] ?? '');
+      return `${key}:${content.length}:${hashString(content)}`;
+    })
+    .join('|');
 }

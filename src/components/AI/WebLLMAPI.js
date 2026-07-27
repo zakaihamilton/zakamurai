@@ -91,6 +91,17 @@ export const cacheWebLLMModel = async (modelId, onProgress = null) => {
  */
 export const deleteCachedWebLLMModel = async (modelId) => {
   await interruptWebLLM();
+  const enginePromise = enginePromises.get(modelId);
+  if (enginePromise) {
+    try {
+      const engine = await enginePromise;
+      if (engine && typeof engine.unload === 'function') {
+        await engine.unload();
+      }
+    } catch (error) {
+      console.warn(`Failed to unload engine ${modelId}:`, error);
+    }
+  }
   enginePromises.delete(modelId);
   updateWebLLMEngine(modelId, {
     status: 'absent',
@@ -109,16 +120,31 @@ export const deleteCachedWebLLMModel = async (modelId) => {
  * @param {string} modelId - WebLLM model id to initialize.
  * @param {function} onProgress - Optional callback for initialization progress.
  */
-const getEngine = (modelId = DEFAULT_WEB_LLM_MODEL_ID, onProgress = null, options = {}) => {
+const getEngine = async (modelId = DEFAULT_WEB_LLM_MODEL_ID, onProgress = null, options = {}) => {
   const selectedModel = modelId || DEFAULT_WEB_LLM_MODEL_ID;
 
   if (!enginePromises.has(selectedModel)) {
+    // Unload existing models to free GPU memory before initializing a new one
+    for (const [existingId, promise] of enginePromises.entries()) {
+      try {
+        const existingEngine = await promise;
+        if (existingEngine && typeof existingEngine.unload === 'function') {
+          console.info(`Unloading previous WebLLM engine ${existingId} for GPU memory safety...`);
+          await existingEngine.unload();
+        }
+      } catch (e) {
+        console.warn(`Error unloading existing WebLLM engine ${existingId}:`, e);
+      }
+      enginePromises.delete(existingId);
+    }
+
     updateWebLLMEngine(selectedModel, {
       status: 'downloading',
       progressText: 'Initializing…',
       error: null,
       generating: false,
     });
+
     // Assign an async IIFE to the promise variable to satisfy Biome's
     // no-async-promise-executor rule while maintaining the singleton pattern.
     const enginePromise = (async () => {

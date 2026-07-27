@@ -55,6 +55,12 @@ export const PromptRegistry = {
 const MAX_CONTEXT_FILES = 3;
 const MAX_CONTEXT_CHARS = 1400;
 const MAX_ACTIVE_FILE_CHARS = 6000;
+const CHARS_PER_TOKEN = 4;
+
+export function estimateTokens(text = '') {
+  if (typeof text !== 'string') return 0;
+  return Math.ceil(text.length / CHARS_PER_TOKEN);
+}
 
 function trimText(value, maxChars) {
   if (!value) return '';
@@ -71,7 +77,14 @@ export function formatCompactContext(results = [], options = {}) {
   const maxChars = options.maxContextChars ?? MAX_CONTEXT_CHARS;
   const blocks = [];
 
-  for (const result of results.slice(0, maxFiles)) {
+  // Prioritize files with linked CSS modules or direct imports
+  const sortedResults = [...results].sort((a, b) => {
+    const aScore = (a.linkedCss?.length ? 2 : 0) + (a.score ?? 0);
+    const bScore = (b.linkedCss?.length ? 2 : 0) + (b.score ?? 0);
+    return bScore - aScore;
+  });
+
+  for (const result of sortedResults.slice(0, maxFiles)) {
     blocks.push(
       formatFileBlock('Related file', result.filePath, trimText(result.content, maxChars)),
     );
@@ -117,5 +130,22 @@ export function buildEditPrompt({
 
   sections.push(`User request:\n${userRequest}`);
 
-  return sections.join('\n\n---\n\n');
+  const promptText = sections.join('\n\n---\n\n');
+
+  if (options.maxTokenBudget) {
+    const estimated = estimateTokens(promptText);
+    if (estimated > options.maxTokenBudget && relatedContext.length > 1) {
+      // Re-build with reduced context files to fit token budget
+      return buildEditPrompt({
+        userRequest,
+        activeFilePath,
+        activeFileContent,
+        selectedLines,
+        relatedContext: relatedContext.slice(0, Math.max(1, relatedContext.length - 1)),
+        options: { ...options, maxTokenBudget: undefined },
+      });
+    }
+  }
+
+  return promptText;
 }

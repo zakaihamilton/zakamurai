@@ -1,5 +1,10 @@
-import { describe, expect, it } from 'vitest';
-import { validateAIChanges, validateProjectPath } from './ChangeValidator';
+import { describe, expect, it, vi } from 'vitest';
+import {
+  validateAIChanges,
+  validateContentSyntax,
+  validateContentSyntaxAsync,
+  validateProjectPath,
+} from './ChangeValidator';
 
 describe('AI change validation', () => {
   it('accepts a project-relative multi-file change set', () => {
@@ -40,5 +45,35 @@ describe('AI change validation', () => {
     expect(result.rejected).toHaveLength(2);
     expect(result.rejected[0]).toContain('Invalid JSON syntax');
     expect(result.rejected[1]).toContain('Unclosed');
+  });
+
+  it('accepts code with comments containing unmatched brackets', () => {
+    const codeWithComments = `
+      // Single line comment with unclosed { bracket
+      /* Multi-line comment with unclosed ( bracket */
+      function valid() { return true; }
+    `;
+    expect(validateContentSyntax('src/app.js', codeWithComments)).toBeNull();
+  });
+
+  it('uses esbuildTransform when provided in validateContentSyntaxAsync', async () => {
+    const mockEsbuild = vi.fn().mockImplementation((code) => {
+      if (code.includes('syntaxError')) throw new Error('Unexpected token');
+    });
+
+    const validResult = await validateContentSyntaxAsync(
+      'src/app.jsx',
+      'const x = 1;',
+      mockEsbuild,
+    );
+    expect(validResult).toBeNull();
+    expect(mockEsbuild).toHaveBeenCalledWith('const x = 1;', { loader: 'jsx' });
+
+    const invalidResult = await validateContentSyntaxAsync(
+      'src/app.jsx',
+      'const syntaxError = ;',
+      mockEsbuild,
+    );
+    expect(invalidResult).toContain('Syntax error in src/app.jsx');
   });
 });

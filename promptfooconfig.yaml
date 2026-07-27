@@ -1,34 +1,68 @@
 # promptfoo configuration
-# For verifying AI-generated features
+# For verifying AI-generated features and AI edit output compliance
 
 prompts:
-  - "Check that all generated UI components strictly use Vanilla CSS Modules and avoid inline styles or utility-first frameworks like Tailwind CSS."
+  - "Check that all generated UI components strictly use Vanilla CSS Modules, avoid inline styles or utility-first frameworks like Tailwind CSS, and follow SEARCH/REPLACE diff formatting for edits."
 
 providers:
-  - id: openai:gpt-4o
+  - id: echo
 
 tests:
-  - vars:
-      file_content: "{{file_content}}"
+  - name: "CSS Modules and Styling Compliance"
+    vars:
+      file_content: |
+        import React from 'react';
+        import styles from './Button.module.css';
+
+        export function Button({ label }) {
+          return <button className={styles.btn}>{label}</button>;
+        }
     assert:
       - type: javascript
         value: |
-          // Basic check for CSS Modules import and absence of utility classes
           const hasCssModule = /import .* from ['"].*\.module\.css['"]/.test(vars.file_content);
           const hasInlineStyles = /style={{/.test(vars.file_content);
           const hasTailwind = /className=['"].*(?:bg-|text-|p-|m-|flex|grid).*['"]/.test(vars.file_content);
-          const hasGlobalStateViolation = /useState\(.*store.*\)/i.test(vars.file_content);
-          
           if (!hasCssModule && /return \(/.test(vars.file_content)) {
             return { pass: false, reason: 'Missing CSS Module import in UI component' };
           }
-          if (hasInlineStyles) {
-            return { pass: false, reason: 'Inline styles are forbidden' };
-          }
-          if (hasTailwind) {
-            return { pass: false, reason: 'Utility-first frameworks like Tailwind are forbidden' };
-          }
-          if (hasGlobalStateViolation) {
-            return { pass: false, reason: 'React useState forbidden for shared domain state (use Node/Object proxy state)' };
+          if (hasInlineStyles) return { pass: false, reason: 'Inline styles forbidden' };
+          if (hasTailwind) return { pass: false, reason: 'Tailwind forbidden' };
+          return true;
+
+  - name: "State Proxy Architecture Compliance"
+    vars:
+      file_content: |
+        import { EditorState } from '@/components/App/Views/EditorArea';
+        export function CodeViewer() {
+          const editorState = EditorState.useState(['fileContents']);
+          return <div>{editorState.fileContents['/app.js']}</div>;
+        }
+    assert:
+      - type: javascript
+        value: |
+          const hasForbiddenUseState = /const \[.*, set.*\] = useState\(.*State.*\)/i.test(vars.file_content);
+          if (hasForbiddenUseState) {
+            return { pass: false, reason: 'React useState is forbidden for shared domain state. Use Node/Object Proxy State.' };
           }
           return true;
+
+  - name: "SEARCH/REPLACE Block Format Integrity"
+    vars:
+      diff_content: |
+        <<<<<<< SEARCH
+        const x = 1;
+        =======
+        const x = 2;
+        >>>>>>> REPLACE
+    assert:
+      - type: javascript
+        value: |
+          const hasSearch = /<<<<<<< SEARCH/.test(vars.diff_content);
+          const hasDivider = /=======/.test(vars.diff_content);
+          const hasReplace = />>>>>>> REPLACE/.test(vars.diff_content);
+          if (!hasSearch || !hasDivider || !hasReplace) {
+            return { pass: false, reason: 'Malformed SEARCH/REPLACE diff format' };
+          }
+          return true;
+

@@ -102,4 +102,26 @@ describe('AI Prompts', () => {
     expect(withMissingContent).toBe('User request:\nContinue');
     expect(withMissingPath).toBe('User request:\nContinue');
   });
+
+  it('estimates token counts accurately', async () => {
+    const { estimateTokens } = await import('./Prompts');
+    expect(estimateTokens('12345678')).toBe(2);
+    expect(estimateTokens('')).toBe(0);
+  });
+
+  it('trims related context when exceeding token budget', () => {
+    const prompt = buildEditPrompt({
+      userRequest: 'Fix layout',
+      activeFilePath: 'src/App.js',
+      activeFileContent: 'const a = 1;',
+      relatedContext: [
+        { filePath: 'src/a.js', content: 'file a content', linkedCss: [] },
+        { filePath: 'src/b.js', content: 'file b content', linkedCss: [] },
+      ],
+      options: { maxTokenBudget: 50 },
+    });
+
+    expect(prompt).toContain('src/App.js');
+    expect(prompt).toContain('User request:\nFix layout');
+  });
 });

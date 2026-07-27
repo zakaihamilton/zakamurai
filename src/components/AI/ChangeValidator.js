@@ -10,6 +10,78 @@ export function validateProjectPath(path) {
   return null;
 }
 
+/** Strips single-line and multi-line comments from code strings for bracket matching. */
+function stripComments(content) {
+  let result = '';
+  let inSingleComment = false;
+  let inMultiComment = false;
+  let inString = null;
+  let isEscaped = false;
+
+  for (let i = 0; i < content.length; i++) {
+    const char = content[i];
+    const nextChar = content[i + 1];
+
+    if (isEscaped) {
+      isEscaped = false;
+      if (!inSingleComment && !inMultiComment) result += char;
+      continue;
+    }
+
+    if (char === '\\' && inString) {
+      isEscaped = true;
+      if (!inSingleComment && !inMultiComment) result += char;
+      continue;
+    }
+
+    if (inSingleComment) {
+      if (char === '\n' || char === '\r') {
+        inSingleComment = false;
+        result += char;
+      }
+      continue;
+    }
+
+    if (inMultiComment) {
+      if (char === '*' && nextChar === '/') {
+        inMultiComment = false;
+        i++;
+      }
+      continue;
+    }
+
+    if (inString) {
+      result += char;
+      if (char === inString) {
+        inString = null;
+      }
+      continue;
+    }
+
+    if (char === '/' && nextChar === '/') {
+      inSingleComment = true;
+      i++;
+      continue;
+    }
+
+    if (char === '/' && nextChar === '*') {
+      inMultiComment = true;
+      i++;
+      continue;
+    }
+
+    if (char === "'" || char === '"' || char === '`') {
+      inString = char;
+      result += char;
+      continue;
+    }
+
+    result += char;
+  }
+
+  return result;
+}
+
 /** Checks basic syntax validity (balanced brackets, valid JSON, unterminated strings) for proposals. */
 export function validateContentSyntax(path, content) {
   if (typeof content !== 'string' || !path) return null;
@@ -25,12 +97,13 @@ export function validateContentSyntax(path, content) {
   }
 
   if (['js', 'jsx', 'ts', 'tsx', 'css'].includes(ext)) {
+    const cleanContent = stripComments(content);
     const stack = [];
     let inString = null;
     let isEscaped = false;
 
-    for (let i = 0; i < content.length; i++) {
-      const char = content[i];
+    for (let i = 0; i < cleanContent.length; i++) {
+      const char = cleanContent[i];
       if (isEscaped) {
         isEscaped = false;
         continue;
@@ -68,6 +141,26 @@ export function validateContentSyntax(path, content) {
     }
     if (stack.length > 0) {
       return `Unclosed '${stack[stack.length - 1].char}' in ${path}`;
+    }
+  }
+
+  return null;
+}
+
+/** Async syntax validation with esbuild transform attempt if initialized. */
+export async function validateContentSyntaxAsync(path, content, esbuildTransform = null) {
+  const syncError = validateContentSyntax(path, content);
+  if (syncError) return syncError;
+
+  if (typeof esbuildTransform === 'function') {
+    const ext = path.split('.').pop()?.toLowerCase();
+    if (['js', 'jsx', 'ts', 'tsx'].includes(ext)) {
+      try {
+        const loader = ext === 'tsx' ? 'tsx' : ext === 'ts' ? 'ts' : ext === 'jsx' ? 'jsx' : 'js';
+        await esbuildTransform(content, { loader });
+      } catch (err) {
+        return `Syntax error in ${path}: ${err.message || String(err)}`;
+      }
     }
   }
 

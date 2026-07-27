@@ -107,4 +107,11 @@ describe('useRagIndexer', () => {
 
     expect(consoleErrorSpy).toHaveBeenCalled();
   });
+
+  it('generates different fingerprints for changed content with identical byte count', async () => {
+    const { fingerprintContents } = await import('./RagIndexer');
+    const fp1 = fingerprintContents({ 'a.js': 'var x = 1' });
+    const fp2 = fingerprintContents({ 'a.js': 'let y = 2' });
+    expect(fp1).not.toEqual(fp2);
+  });
 });
