@@ -1,3 +1,4 @@
+import * as fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { applySearchReplace } from './SearchReplaceParser';
 
@@ -33,5 +34,16 @@ line2-new
     // Now test with overlapping selected line
     const resultAllowed = applySearchReplace(original, blocks, [2]); // line 2 selected
     expect(resultAllowed.content).toBe('line1\nline2-new\nline3');
+  });
+
+  it('empty SEARCH blocks append replacement at end (property)', () => {
+    fc.assert(
+      fc.property(fc.string({ minLength: 0, maxLength: 40 }), (insertText) => {
+        const original = 'alpha\nbeta';
+        const blocks = `<<<<<<< SEARCH\n\n=======\n${insertText}\n>>>>>>> REPLACE`;
+        const result = applySearchReplace(original, blocks);
+        expect(result.content).toBe(`${original}${insertText}`);
+      }),
+    );
   });
 });

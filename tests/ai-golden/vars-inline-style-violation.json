@@ -1,0 +1,3 @@
+{
+  "file_content": "import React from 'react';\nimport styles from './Button.module.css';\n\nexport function BadButton({ label }) {\n  return <button className={styles.btn} style={{ color: 'red' }}>{label}</button>;\n}\n"
+}

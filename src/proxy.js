@@ -1,4 +1,8 @@
 import { NextResponse } from 'next/server';
+import {
+  getPreviewFrameAncestors,
+  isPreviewHost,
+} from './components/App/Views/PreviewArea/previewOrigins';
 
 const previewOriginUrl = new URL(
   process.env.NEXT_PUBLIC_PREVIEW_ORIGIN || 'https://preview.zakamurai.com',
@@ -14,17 +18,35 @@ function isPreviewHostRequest(request) {
   // When the preview origin includes an explicit port (local isolated preview),
   // require it so localhost:3000 is not treated as localhost:3001.
   const portMatch = previewPort ? requestPort === previewPort : true;
-  return hostnameMatch && portMatch;
+  if (hostnameMatch && portMatch) return true;
+  return isPreviewHost(hostname);
 }
 
-function withPreviewHeaders(response) {
+function withPreviewHeaders(response, request) {
+  const hostHeader = request.headers.get('host') || '';
+  const hostname = hostHeader.split(':')[0];
+  const proto = request.headers.get('x-forwarded-proto') || 'https';
+  const portSuffix = hostHeader.includes(':') ? `:${hostHeader.split(':')[1]}` : '';
+  const ideOrigin = hostname.startsWith('preview.')
+    ? `${proto}://${hostname.slice('preview.'.length)}${portSuffix}`
+    : toHostOrigin(process.env.NEXT_PUBLIC_VERCEL_BRANCH_URL);
+
   response.headers.set(
     'Content-Security-Policy',
-    'frame-ancestors https://www.zakamurai.com http://localhost:3000',
+    `frame-ancestors ${getPreviewFrameAncestors({ ideOrigin })}`,
   );
   response.headers.set('Cross-Origin-Resource-Policy', 'cross-origin');
   response.headers.set('Referrer-Policy', 'no-referrer');
   return response;
+}
+
+function toHostOrigin(host) {
+  if (typeof host !== 'string' || !host.trim()) return null;
+  try {
+    return new URL(host.includes('://') ? host : `https://${host}`).origin;
+  } catch {
+    return null;
+  }
 }
 
 export function proxy(request) {
@@ -53,17 +75,18 @@ export function proxy(request) {
         status: 503,
         headers: { 'Content-Type': 'text/plain; charset=utf-8' },
       }),
+      request,
     );
   }
 
   // Already on the handshake route — do not rewrite /preview-host → /preview-host/preview-host.
   if (pathname === '/preview-host' || pathname.startsWith('/preview-host/')) {
-    return withPreviewHeaders(NextResponse.next());
+    return withPreviewHeaders(NextResponse.next(), request);
   }
 
   const url = request.nextUrl.clone();
   url.pathname = pathname === '/' ? '/preview-host' : `/preview-host${pathname}`;
-  return withPreviewHeaders(NextResponse.rewrite(url));
+  return withPreviewHeaders(NextResponse.rewrite(url), request);
 }
 
 export const config = {

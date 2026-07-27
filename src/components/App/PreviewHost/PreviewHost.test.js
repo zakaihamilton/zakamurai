@@ -43,4 +43,34 @@ describe('PreviewHost', () => {
       'http://localhost:3000',
     );
   });
+
+  it('reads session id from window.name when query param is absent', () => {
+    window.name = 'zakamurai-preview-from-name';
+    const postMessageSpy = vi.fn();
+    window.opener = { postMessage: postMessageSpy };
+
+    render(<PreviewHost />);
+
+    expect(postMessageSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ sessionId: 'from-name' }),
+      'http://localhost:3000',
+    );
+  });
+
+  it('posts PREVIEW_CONNECT to the derived IDE origin on branch preview hosts', () => {
+    Object.defineProperty(window, 'location', {
+      configurable: true,
+      writable: true,
+      value: new URL('https://preview.example.com/preview-host?session=s123'),
+    });
+    const postMessageSpy = vi.fn();
+    window.opener = { postMessage: postMessageSpy };
+
+    render(<PreviewHost />);
+
+    expect(postMessageSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'zakamurai-preview-connect', sessionId: 's123' }),
+      'https://example.com',
+    );
+  });
 });

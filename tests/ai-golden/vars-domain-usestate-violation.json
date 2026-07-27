@@ -1,0 +1,3 @@
+{
+  "file_content": "import { useState } from 'react';\nimport { EditorState } from '@/components/App/Views/EditorArea';\n\nexport function BadViewer() {\n  const [editor, setEditor] = useState(EditorState);\n  return <div>{editor}</div>;\n}\n"
+}

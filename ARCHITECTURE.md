@@ -79,3 +79,35 @@ Manual edits clear `pendingDiffs[path]`. Pending review blocks FS auto-save.
 2. Containers subscribe with `XState.useState(...)` / `usePassiveState` and pass primitives down.
 3. Do not modify `Node.js`, `Object.js`, or `State.js` unless explicitly instructed.
 4. For nested map updates, prefer `StateUtils` helpers so Proxy notifications always fire.
+
+## 7. AI Pipeline
+
+| Module | Path | Role |
+| --- | --- | --- |
+| **Prompts** | `src/components/AI/Prompts.js` | System prompts and output format instructions |
+| **Processor** | `src/components/AI/Processor/` | Parses AI responses, SEARCH/REPLACE application |
+| **ChangeValidator** | `src/components/AI/ChangeValidator.js` | Path safety, syntax checks before staging |
+| **Agent** | `src/components/AI/Agent/` | `runAgent`, collaborative runner, applier |
+| **WebLLM** | `src/components/AI/WebLLMAPI.js` | In-browser model inference |
+
+Flow: user prompt → agent collects workspace context → model output → parser → validator → `EditorState.pendingDiffs` → user approves → applier updates `fileContents` and triggers build.
+
+AI changes must use project-relative paths. `validateAIChanges` rejects absolute paths, traversal, duplicates, and malformed content before staging.
+
+## 8. Preview Security Model
+
+- IDE and preview run on **different origins** in production (`NEXT_PUBLIC_IDE_ORIGIN`, `NEXT_PUBLIC_PREVIEW_ORIGIN`).
+- `PreviewBridge` (IDE side) and `PreviewHost` (preview origin) exchange a one-time `zakamurai-preview-connect` handshake with protocol version and session ID before transferring a `MessagePort`.
+- `isValidPreviewHandshake` in `previewOrigins.js` is shared — do not relax checks on one side only.
+- User project code never receives same-origin access to IDE storage or cookies.
+
+## 9. Testing Expectations
+
+- Unit tests: Vitest (`npm run test`, `npm run test:coverage`). Global coverage thresholds: 80%. AI modules target 85%.
+- Architecture: `npm run check:architecture` enforces styling and state patterns in `src/components/`.
+- AI golden fixtures: `tests/ai-golden/` + `npm run test:promptfoo`.
+- E2E: Playwright smoke (`test:e2e`), isolated preview security (`test:e2e:isolated`), visual regression (`test:visual:chromium` in CI).
+- Pre-commit: lint-staged runs Biome and `vitest related` on changed files.
+
+Contributors and agents should run `npm run verify` before opening a PR.
+

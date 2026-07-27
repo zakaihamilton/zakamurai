@@ -1,0 +1,3 @@
+{
+  "file_content": "import { EditorState } from '@/components/App/Views/EditorArea';\n\nexport function CodeViewer() {\n  const editorState = EditorState.useState(['fileContents']);\n  return <div>{editorState.fileContents['/app.js']}</div>;\n}\n"
+}

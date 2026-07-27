@@ -92,10 +92,10 @@ function applyPreviewEmbedHeaders(headers) {
   // their own COEP header or Chrome blocks with coep-frame-resource-needs-coep-header.
   headers.set('Cross-Origin-Embedder-Policy', 'credentialless');
   headers.set('Cross-Origin-Resource-Policy', 'cross-origin');
-  headers.set(
-    'Content-Security-Policy',
-    "frame-ancestors 'self' http://localhost:3000 https://www.zakamurai.com",
-  );
+  const frameAncestors = ideOrigin
+    ? `'self' ${ideOrigin} http://localhost:3000`
+    : "'self' http://localhost:3000 https://www.zakamurai.com";
+  headers.set('Content-Security-Policy', `frame-ancestors ${frameAncestors}`);
   headers.delete('X-Frame-Options');
   return headers;
 }

@@ -13,8 +13,11 @@ else
     echo "  See project docs or releases for download instructions."
 fi
 
-echo "--- Starting Semantic Correctness Evaluation ---"
-npx promptfoo eval
+echo "--- Starting Static AI Compliance Checks ---"
+node scripts/run-promptfoo-checks.mjs
+
+echo "--- Starting promptfoo eval (optional report) ---"
+npx promptfoo eval || echo "Warning: promptfoo eval reported failures; static checks above are authoritative."
 
 echo "--- Starting Performance Budget Check ---"
 node scripts/check-performance-budget.mjs

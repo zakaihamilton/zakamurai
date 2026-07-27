@@ -1,3 +1,7 @@
+const LOCAL_IDE_ORIGIN = 'http://localhost:3000';
+const LOCAL_PREVIEW_ORIGIN = 'http://localhost:3001';
+const PREVIEW_HOST_PREFIX = 'preview.';
+
 const trimOrigin = (value) => {
   if (typeof value !== 'string' || !value.trim()) return null;
   try {
@@ -7,16 +11,108 @@ const trimOrigin = (value) => {
   }
 };
 
+const toHostOrigin = (host) => {
+  if (typeof host !== 'string' || !host.trim()) return null;
+  return trimOrigin(host.includes('://') ? host : `https://${host}`);
+};
+
+const isLocalOrigin = (windowOrigin) =>
+  windowOrigin?.startsWith('http://localhost:') || windowOrigin?.startsWith('http://127.0.0.1:');
+
+const matchesConfiguredOrigins = (windowOrigin, ideOrigin, previewOrigin) =>
+  Boolean(
+    windowOrigin &&
+      ((ideOrigin && windowOrigin === ideOrigin) ||
+        (previewOrigin && windowOrigin === previewOrigin)),
+  );
+
+export function derivePreviewHostFromIde(ideOrigin) {
+  const url = new URL(ideOrigin);
+  if (url.hostname === 'localhost' || url.hostname === '127.0.0.1') {
+    url.port = url.port === '3000' ? '3001' : url.port || '3001';
+    return url.origin;
+  }
+  if (url.hostname.startsWith(PREVIEW_HOST_PREFIX)) return url.origin;
+  url.hostname = `${PREVIEW_HOST_PREFIX}${url.hostname}`;
+  return url.origin;
+}
+
+export function deriveIdeHostFromPreview(previewOrigin) {
+  const url = new URL(previewOrigin);
+  if (url.hostname === 'localhost' || url.hostname === '127.0.0.1') {
+    url.port = url.port === '3001' ? '3000' : url.port || '3000';
+    return url.origin;
+  }
+  if (url.hostname.startsWith(PREVIEW_HOST_PREFIX)) {
+    url.hostname = url.hostname.slice(PREVIEW_HOST_PREFIX.length);
+    return url.origin;
+  }
+  return previewOrigin;
+}
+
+function getVercelBranchOrigins() {
+  const ideOrigin = toHostOrigin(process.env.NEXT_PUBLIC_VERCEL_BRANCH_URL);
+  const previewOrigin = toHostOrigin(process.env.NEXT_PUBLIC_VERCEL_URL);
+  if (!ideOrigin || !previewOrigin || ideOrigin === previewOrigin) return null;
+  return { ideOrigin, previewOrigin, isIsolated: true };
+}
+
+function getSubdomainBranchOrigins(windowOrigin) {
+  const hostname = new URL(windowOrigin).hostname;
+  if (hostname.startsWith(PREVIEW_HOST_PREFIX)) {
+    const previewOrigin = windowOrigin;
+    const ideOrigin = deriveIdeHostFromPreview(windowOrigin);
+    return { ideOrigin, previewOrigin, isIsolated: ideOrigin !== previewOrigin };
+  }
+  const ideOrigin = windowOrigin;
+  const previewOrigin = derivePreviewHostFromIde(windowOrigin);
+  return { ideOrigin, previewOrigin, isIsolated: ideOrigin !== previewOrigin };
+}
+
 export function getPreviewOrigins({ windowOrigin } = {}) {
-  const localIdeOrigin = 'http://localhost:3000';
-  const localPreviewOrigin = 'http://localhost:3001';
-  const isLocal = windowOrigin?.startsWith('http://localhost:');
   const configuredIdeOrigin = trimOrigin(process.env.NEXT_PUBLIC_IDE_ORIGIN);
   const configuredPreviewOrigin = trimOrigin(process.env.NEXT_PUBLIC_PREVIEW_ORIGIN);
-  const ideOrigin = configuredIdeOrigin || (isLocal ? localIdeOrigin : null);
-  const previewOrigin = configuredPreviewOrigin || (isLocal ? localPreviewOrigin : null);
 
-  return { ideOrigin, previewOrigin, isIsolated: ideOrigin !== previewOrigin };
+  if (
+    matchesConfiguredOrigins(windowOrigin, configuredIdeOrigin, configuredPreviewOrigin) &&
+    configuredIdeOrigin &&
+    configuredPreviewOrigin
+  ) {
+    return {
+      ideOrigin: configuredIdeOrigin,
+      previewOrigin: configuredPreviewOrigin,
+      isIsolated: configuredIdeOrigin !== configuredPreviewOrigin,
+    };
+  }
+
+  if (isLocalOrigin(windowOrigin)) {
+    return {
+      ideOrigin: LOCAL_IDE_ORIGIN,
+      previewOrigin: LOCAL_PREVIEW_ORIGIN,
+      isIsolated: true,
+    };
+  }
+
+  const vercelOrigins = getVercelBranchOrigins();
+  if (vercelOrigins && windowOrigin) {
+    if (windowOrigin === vercelOrigins.ideOrigin || windowOrigin === vercelOrigins.previewOrigin) {
+      return vercelOrigins;
+    }
+  }
+
+  if (windowOrigin) {
+    return getSubdomainBranchOrigins(windowOrigin);
+  }
+
+  if (configuredIdeOrigin && configuredPreviewOrigin) {
+    return {
+      ideOrigin: configuredIdeOrigin,
+      previewOrigin: configuredPreviewOrigin,
+      isIsolated: configuredIdeOrigin !== configuredPreviewOrigin,
+    };
+  }
+
+  return { ideOrigin: null, previewOrigin: null, isIsolated: false };
 }
 
 export function getPreviewConfigurationError(origins) {
@@ -27,6 +123,16 @@ export function getPreviewConfigurationError(origins) {
     return 'Preview origin must be different from the IDE origin.';
   }
   return null;
+}
+
+export function getPreviewFrameAncestors({ ideOrigin } = {}) {
+  const ancestors = new Set([LOCAL_IDE_ORIGIN]);
+  const configuredIdeOrigin = trimOrigin(process.env.NEXT_PUBLIC_IDE_ORIGIN);
+  const vercelBranchOrigin = toHostOrigin(process.env.NEXT_PUBLIC_VERCEL_BRANCH_URL);
+  if (configuredIdeOrigin) ancestors.add(configuredIdeOrigin);
+  if (vercelBranchOrigin) ancestors.add(vercelBranchOrigin);
+  if (ideOrigin) ancestors.add(ideOrigin);
+  return [...ancestors].join(' ');
 }
 
 /**
@@ -50,9 +156,17 @@ export function isValidPreviewHandshake(
 }
 
 export function isPreviewHost(host, { previewOrigin } = getPreviewOrigins()) {
-  if (!host || !previewOrigin) return false;
+  if (!host) return false;
   try {
-    return host.split(':')[0].toLowerCase() === new URL(previewOrigin).hostname.toLowerCase();
+    const normalizedHost = host.split(':')[0].toLowerCase();
+
+    const vercelDeploymentHost = process.env.NEXT_PUBLIC_VERCEL_URL?.split(':')[0]?.toLowerCase();
+    if (vercelDeploymentHost && normalizedHost === vercelDeploymentHost) return true;
+
+    if (normalizedHost.startsWith(PREVIEW_HOST_PREFIX)) return true;
+
+    if (!previewOrigin) return false;
+    return normalizedHost === new URL(previewOrigin).hostname.toLowerCase();
   } catch {
     return false;
   }

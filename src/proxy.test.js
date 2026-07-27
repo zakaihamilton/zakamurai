@@ -69,9 +69,19 @@ describe('proxy', () => {
     const res = proxy(req);
     expect(res.type).toBe('rewrite');
     expect(res.url.pathname).toBe('/preview-host');
-    expect(res.headers.get('Content-Security-Policy')).toBe(
-      'frame-ancestors https://www.zakamurai.com http://localhost:3000',
-    );
+    expect(res.headers.get('Content-Security-Policy')).toContain('frame-ancestors');
+    expect(res.headers.get('Content-Security-Policy')).toContain('http://localhost:3000');
+  });
+
+  it('handles Vercel deployment URLs as preview hosts for branch deployments', () => {
+    vi.stubEnv('NEXT_PUBLIC_VERCEL_URL', 'zakamurai-abc123-team.vercel.app');
+    const req = createMockRequest('https://zakamurai-abc123-team.vercel.app/', {
+      host: 'zakamurai-abc123-team.vercel.app',
+    });
+    const res = proxy(req);
+    expect(res.type).toBe('rewrite');
+    expect(res.url.pathname).toBe('/preview-host');
+    vi.unstubAllEnvs();
   });
 
   it('handles x-zakamurai-surface preview header', () => {

@@ -1,0 +1,3 @@
+{
+  "diff_content": "<<<<<<< SEARCH\nconst x = 1;\n=======\nconst x = 2;\n>>>>>>> REPLACE\n"
+}

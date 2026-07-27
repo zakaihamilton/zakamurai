@@ -1,3 +1,4 @@
+import * as fc from 'fast-check';
 import { describe, expect, it, vi } from 'vitest';
 import {
   validateAIChanges,
@@ -95,5 +96,33 @@ describe('AI change validation', () => {
     expect(res.rejected).toHaveLength(1);
     expect(res.details[0].type).toBe('syntax');
     expect(res.details[0].path).toBe('src/bad.js');
+  });
+
+  it('rejects all generated absolute and traversal paths (property)', () => {
+    fc.assert(
+      fc.property(
+        fc.oneof(
+          fc.string({ minLength: 1 }).map((segment) => `/${segment}`),
+          fc.string({ minLength: 1 }).map((segment) => `../${segment}`),
+          fc.string({ minLength: 1 }).map((segment) => `src/../${segment}`),
+          fc.string({ minLength: 1 }).map((segment) => `C:\\${segment}`),
+        ),
+        (unsafePath) => {
+          expect(validateProjectPath(unsafePath)).toBeTruthy();
+        },
+      ),
+    );
+  });
+
+  it('accepts simple project-relative paths (property)', () => {
+    fc.assert(
+      fc.property(
+        fc.array(fc.stringMatching(/^[a-z][a-z0-9_-]*$/), { minLength: 1, maxLength: 4 }),
+        (segments) => {
+          const path = segments.join('/');
+          expect(validateProjectPath(path)).toBeNull();
+        },
+      ),
+    );
   });
 });

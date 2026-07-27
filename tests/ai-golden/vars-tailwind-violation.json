@@ -1,0 +1,3 @@
+{
+  "file_content": "import React from 'react';\n\nexport function BadButton({ label }) {\n  return <button className=\"bg-blue-500 text-white p-2 flex\">{label}</button>;\n}\n"
+}

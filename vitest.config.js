@@ -16,6 +16,7 @@ export default defineConfig({
       '**/tests/visual/**',
       '**/tests/isolated-preview/**',
     ],
+    include: ['src/**/*.{test,spec}.{js,jsx}', 'tests/**/*.{test,spec}.{js,jsx}'],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],

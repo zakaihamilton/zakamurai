@@ -40,6 +40,12 @@ jobs:
       - name: Check unused dependencies and files
         run: npm run deadcode
 
+      - name: Check architecture rules
+        run: npm run check:architecture
+
+      - name: Run static AI compliance eval
+        run: npm run test:promptfoo
+
       - name: Run unit tests with coverage
         run: npm run test:coverage
 

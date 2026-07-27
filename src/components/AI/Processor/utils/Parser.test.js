@@ -1,3 +1,4 @@
+import * as fc from 'fast-check';
 import { describe, expect, test, vi } from 'vitest';
 import { parseAIPlan, parseAIResponse } from './Parser';
 
@@ -138,6 +139,22 @@ const ready = true;
       const blocks = parseAIResponse(response);
       expect(blocks).toHaveLength(1);
       expect(blocks[0].content).toBe('const ready = true;');
+    });
+
+    test('round-trips file blocks through parseAIResponse (property)', () => {
+      fc.assert(
+        fc.property(
+          fc.stringMatching(/^[a-z][a-z0-9_-]*\.js$/),
+          fc.string({ minLength: 3, maxLength: 80 }).filter((s) => s.trim().length >= 3),
+          (filePath, content) => {
+            const response = `// --- File: ${filePath} ---\n${content}\n// --- End File ---`;
+            const blocks = parseAIResponse(response);
+            expect(blocks).toHaveLength(1);
+            expect(blocks[0].filePath).toBe(filePath);
+            expect(blocks[0].content).toContain(content.trim());
+          },
+        ),
+      );
     });
   });
 });
