@@ -1,3 +1,4 @@
+import Dialog from '@/components/ui/Dialog';
 import { findNavigationTargets } from '@/utils/navigation';
 import React, { useLayoutEffect, useRef, useCallback, useState, useMemo } from 'react';
 import styles from './CodeEditor.module.css';
@@ -57,6 +58,8 @@ export default function CodeEditor({
     isExport: false,
     isComponent: false,
   });
+  const [isJumpToLineOpen, setIsJumpToLineOpen] = useState(false);
+  const [jumpToLineValue, setJumpToLineValue] = useState('');
 
   const targets = useMemo(() => {
     const isCss = filePath?.endsWith('.css');
@@ -115,6 +118,27 @@ export default function CodeEditor({
     [onCopySelection],
   );
 
+  const handleJumpToLine = useCallback(() => {
+    const lineNum = Number.parseInt(jumpToLineValue, 10);
+    const textarea = textareaRef.current;
+    if (!textarea || Number.isNaN(lineNum) || lineNum <= 0) return;
+
+    const lines = textarea.value.split('\n');
+    const targetLine = Math.min(lineNum, lines.length);
+    const index = lines
+      .slice(0, targetLine - 1)
+      .reduce((total, line) => total + line.length + 1, 0);
+    textarea.selectionStart = textarea.selectionEnd = index;
+    textarea.focus();
+    const lineHeight = 1.6 * 14;
+    scrollContainerRef?.current?.scrollTo({
+      top: (targetLine - 1) * lineHeight + 20 - 100,
+      behavior: 'smooth',
+    });
+    setIsJumpToLineOpen(false);
+    setJumpToLineValue('');
+  }, [jumpToLineValue, scrollContainerRef]);
+
   const { handleKeyDown } = useEditorShortcuts({
     handleChange: localHandleChange,
     textareaRef,
@@ -125,6 +149,7 @@ export default function CodeEditor({
     onCancelSuggestion,
     filePath,
     onNavigateToAssociated,
+    onRequestJumpToLine: () => setIsJumpToLineOpen(true),
   });
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: localContent is required to catch browser cursor resets after sync
@@ -274,6 +299,26 @@ export default function CodeEditor({
         onClose={() => setPopup((prev) => ({ ...prev, visible: false }))}
         onJumpToTarget={onJumpToTarget}
       />
+      <Dialog
+        isOpen={isJumpToLineOpen}
+        title="Go to line"
+        confirmText="Go"
+        onConfirm={handleJumpToLine}
+        onCancel={() => {
+          setIsJumpToLineOpen(false);
+          setJumpToLineValue('');
+        }}
+      >
+        <input
+          aria-label="Line number"
+          inputMode="numeric"
+          value={jumpToLineValue}
+          onChange={(event) => setJumpToLineValue(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter') handleJumpToLine();
+          }}
+        />
+      </Dialog>
     </div>
   );
 }

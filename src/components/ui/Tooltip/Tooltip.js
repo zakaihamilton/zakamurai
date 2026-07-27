@@ -12,17 +12,34 @@ const TooltipState = createState('TooltipState');
  * Tooltip component to replace native title tooltips.
  * Uses a portal to avoid clipping and adds a smooth delay for premium feel.
  */
-export default function Tooltip({ content, shortcut, children, className = '' }) {
+export default function Tooltip({
+  content,
+  shortcut,
+  children,
+  className = '',
+  suppressInitialFocus = false,
+}) {
   return (
     <Node id="Tooltip">
-      <TooltipInner content={content} shortcut={shortcut} className={className}>
+      <TooltipInner
+        content={content}
+        shortcut={shortcut}
+        className={className}
+        suppressInitialFocus={suppressInitialFocus}
+      >
         {children}
       </TooltipInner>
     </Node>
   );
 }
 
-function TooltipInner({ content, shortcut, children, className = '' }) {
+function TooltipInner({
+  content,
+  shortcut,
+  children,
+  className = '',
+  suppressInitialFocus = false,
+}) {
   const { theme } = AppState.useState();
   const showShortcut = useShouldShowKeyboardShortcuts();
   const tooltipState = TooltipState.useState(null, {
@@ -40,13 +57,17 @@ function TooltipInner({ content, shortcut, children, className = '' }) {
   const triggerRef = useRef(null);
   const tooltipRef = useRef(null);
   const timeoutRef = useRef(null);
+  const isTriggerActiveRef = useRef(false);
+  const shouldSuppressFocusRef = useRef(suppressInitialFocus);
   const viewportMargin = 10;
   const arrowHeight = 10;
 
   const showTooltip = () => {
+    isTriggerActiveRef.current = true;
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
     timeoutRef.current = setTimeout(() => {
-      if (triggerRef.current) {
+      timeoutRef.current = null;
+      if (isTriggerActiveRef.current && triggerRef.current) {
         const rect = triggerRef.current.getBoundingClientRect();
         const topSpace = rect.top;
         const bottomSpace = window.innerHeight - rect.bottom;
@@ -54,12 +75,12 @@ function TooltipInner({ content, shortcut, children, className = '' }) {
         // Preliminary placement, will be refined in useLayoutEffect
         const newPlacement = topSpace < 100 && bottomSpace > topSpace ? 'bottom' : 'top';
 
-        const triggerCenter = rect.left + rect.width / 2 + window.scrollX;
+        const triggerCenter = rect.left + rect.width / 2;
 
         tooltipState((draft) => {
           draft.placement = newPlacement;
           draft.coords = {
-            top: newPlacement === 'top' ? rect.top + window.scrollY : rect.bottom + window.scrollY,
+            top: newPlacement === 'top' ? rect.top : rect.bottom,
             left: triggerCenter,
           };
           draft.arrowOffset = 0;
@@ -70,84 +91,109 @@ function TooltipInner({ content, shortcut, children, className = '' }) {
   };
 
   const hideTooltip = () => {
+    isTriggerActiveRef.current = false;
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    timeoutRef.current = null;
     tooltipState((draft) => {
       draft.isVisible = false;
     });
   };
 
-  useLayoutEffect(() => {
-    if (isVisible && tooltipRef.current && triggerRef.current) {
-      const tooltipRect = tooltipRef.current.getBoundingClientRect();
-      const triggerRect = triggerRef.current.getBoundingClientRect();
-      const margin = viewportMargin;
-
-      // Vertical flipping logic based on actual height
-      let newPlacement = placement;
-      const tooltipHeight = tooltipRect.height + arrowHeight + margin;
-      const spaceAbove = triggerRect.top;
-      const spaceBelow = window.innerHeight - triggerRect.bottom;
-
-      if (placement === 'top' && spaceAbove < tooltipHeight && spaceBelow > spaceAbove) {
-        newPlacement = 'bottom';
-      } else if (placement === 'bottom' && spaceBelow < tooltipHeight && spaceAbove > spaceBelow) {
-        newPlacement = 'top';
-      }
-
-      if (newPlacement !== placement) {
-        tooltipState((draft) => {
-          draft.placement = newPlacement;
-        });
-        return;
-      }
-
-      // Horizontal positioning and clamping
-      const triggerCenter = triggerRect.left + triggerRect.width / 2 + window.scrollX;
-      const halfWidth = tooltipRect.width / 2;
-
-      // Ensure we don't go off screen horizontally
-      const minLeft = window.scrollX + halfWidth + margin;
-      const maxLeft = window.scrollX + window.innerWidth - halfWidth - margin;
-
-      // Handle cases where tooltip is wider than window
-      let left = triggerCenter;
-      if (tooltipRect.width + 2 * margin > window.innerWidth) {
-        left = window.scrollX + window.innerWidth / 2;
-      } else {
-        left = Math.max(minLeft, Math.min(maxLeft, triggerCenter));
-      }
-
-      // Final vertical position
-      let top =
-        newPlacement === 'top'
-          ? triggerRect.top + window.scrollY
-          : triggerRect.bottom + window.scrollY;
-
-      // Vertical clamping (ensure it doesn't go off screen at the very top/bottom)
-      const viewportTop = window.scrollY + margin;
-      const viewportBottom = window.scrollY + window.innerHeight - margin;
-      const minTopAnchor = viewportTop + tooltipRect.height + arrowHeight;
-      const maxBottomAnchor = viewportBottom - tooltipRect.height - arrowHeight;
-
-      if (newPlacement === 'top') {
-        top = Math.max(top, minTopAnchor);
-      } else {
-        top = Math.min(top, maxBottomAnchor);
-      }
-
-      // Clamp arrow offset to stay within tooltip boundaries (considering border radius)
-      const maxArrowOffset = Math.max(0, halfWidth - 15);
-      const rawArrowOffset = triggerCenter - left;
-      tooltipState((draft) => {
-        draft.coords = { top, left };
-        draft.arrowOffset = Math.max(-maxArrowOffset, Math.min(maxArrowOffset, rawArrowOffset));
-      });
+  const showTooltipOnFocus = () => {
+    if (shouldSuppressFocusRef.current) {
+      shouldSuppressFocusRef.current = false;
+      return;
     }
+    showTooltip();
+  };
+
+  useLayoutEffect(() => {
+    const updatePosition = () => {
+      if (tooltipRef.current && triggerRef.current) {
+        const tooltipRect = tooltipRef.current.getBoundingClientRect();
+        const triggerRect = triggerRef.current.getBoundingClientRect();
+        const margin = viewportMargin;
+
+        // Vertical flipping logic based on actual height
+        let newPlacement = placement;
+        const tooltipHeight = tooltipRect.height + arrowHeight + margin;
+        const spaceAbove = triggerRect.top;
+        const spaceBelow = window.innerHeight - triggerRect.bottom;
+
+        if (placement === 'top' && spaceAbove < tooltipHeight && spaceBelow > spaceAbove) {
+          newPlacement = 'bottom';
+        } else if (
+          placement === 'bottom' &&
+          spaceBelow < tooltipHeight &&
+          spaceAbove > spaceBelow
+        ) {
+          newPlacement = 'top';
+        }
+
+        if (newPlacement !== placement) {
+          tooltipState((draft) => {
+            draft.placement = newPlacement;
+          });
+          return;
+        }
+
+        // Horizontal positioning and clamping
+        const triggerCenter = triggerRect.left + triggerRect.width / 2;
+        const halfWidth = tooltipRect.width / 2;
+
+        // Ensure we don't go off screen horizontally
+        const minLeft = halfWidth + margin;
+        const maxLeft = window.innerWidth - halfWidth - margin;
+
+        // Handle cases where tooltip is wider than window
+        let left = triggerCenter;
+        if (tooltipRect.width + 2 * margin > window.innerWidth) {
+          left = window.innerWidth / 2;
+        } else {
+          left = Math.max(minLeft, Math.min(maxLeft, triggerCenter));
+        }
+
+        // Final vertical position
+        let top = newPlacement === 'top' ? triggerRect.top : triggerRect.bottom;
+
+        // Vertical clamping (ensure it doesn't go off screen at the very top/bottom)
+        const viewportTop = margin;
+        const viewportBottom = window.innerHeight - margin;
+        const minTopAnchor = viewportTop + tooltipRect.height + arrowHeight;
+        const maxBottomAnchor = viewportBottom - tooltipRect.height - arrowHeight;
+
+        if (newPlacement === 'top') {
+          top = Math.max(top, minTopAnchor);
+        } else {
+          top = Math.min(top, maxBottomAnchor);
+        }
+
+        // Clamp arrow offset to stay within tooltip boundaries (considering border radius)
+        const maxArrowOffset = Math.max(0, halfWidth - 15);
+        const rawArrowOffset = triggerCenter - left;
+        tooltipState((draft) => {
+          draft.coords = { top, left };
+          draft.arrowOffset = Math.max(-maxArrowOffset, Math.min(maxArrowOffset, rawArrowOffset));
+        });
+      }
+    };
+
+    if (!isVisible) return;
+
+    updatePosition();
+    window.addEventListener('resize', updatePosition);
+    window.addEventListener('scroll', updatePosition, true);
+
+    return () => {
+      window.removeEventListener('resize', updatePosition);
+      window.removeEventListener('scroll', updatePosition, true);
+    };
   }, [isVisible, placement, tooltipState]);
 
   useEffect(() => {
     return () => {
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      isTriggerActiveRef.current = false;
     };
   }, []);
 
@@ -165,7 +211,7 @@ function TooltipInner({ content, shortcut, children, className = '' }) {
         className={`${styles.container} ${className}`}
         onMouseEnter={showTooltip}
         onMouseLeave={hideTooltip}
-        onFocus={showTooltip}
+        onFocus={showTooltipOnFocus}
         onBlur={hideTooltip}
       >
         {children}

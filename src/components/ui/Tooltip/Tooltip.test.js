@@ -100,6 +100,30 @@ describe('Tooltip', () => {
     expect(screen.getByText('⌘S')).toBeDefined();
   });
 
+  it('does not show a tooltip for suppressed initial focus', async () => {
+    render(
+      <Tooltip content="Helper text" suppressInitialFocus>
+        <button type="button">Focus me</button>
+      </Tooltip>,
+    );
+
+    const trigger = screen.getByText('Focus me').parentElement;
+    fireEvent.focus(trigger);
+    await act(async () => {
+      vi.advanceTimersByTime(400);
+      await Promise.resolve();
+    });
+    expect(screen.queryByRole('tooltip')).toBeNull();
+
+    fireEvent.blur(trigger);
+    fireEvent.focus(trigger);
+    await act(async () => {
+      vi.advanceTimersByTime(400);
+      await Promise.resolve();
+    });
+    expect(screen.getByRole('tooltip')).toBeDefined();
+  });
+
   it('renders multiline tooltip content with a styled header', async () => {
     render(
       <Tooltip content={'Token Breakdown\nsrc/test.js'}>
@@ -313,6 +337,44 @@ describe('Tooltip', () => {
 
     await showTooltip(trigger);
     expect(screen.getByRole('tooltip').className).toContain('bottom');
+  });
+
+  it('repositions a visible tooltip when the viewport scrolls', async () => {
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 800 });
+    Object.defineProperty(window, 'innerHeight', { configurable: true, value: 600 });
+    render(
+      <Tooltip content="Moving helper">
+        <button type="button">Moving trigger</button>
+      </Tooltip>,
+    );
+
+    const trigger = screen.getByText('Moving trigger').parentElement;
+    let triggerRect = {
+      top: 300,
+      bottom: 320,
+      left: 390,
+      right: 410,
+      width: 20,
+      height: 20,
+      x: 390,
+      y: 300,
+      toJSON: () => {},
+    };
+    vi.spyOn(trigger, 'getBoundingClientRect').mockImplementation(() => triggerRect);
+    vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function getRect() {
+      return this.getAttribute('role') === 'tooltip'
+        ? { ...triggerRect, width: 100, height: 30 }
+        : triggerRect;
+    });
+
+    await showTooltip(trigger);
+    triggerRect = { ...triggerRect, top: 200, bottom: 220, y: 200 };
+    await act(async () => {
+      window.dispatchEvent(new Event('scroll'));
+      await Promise.resolve();
+    });
+
+    expect(screen.getByRole('tooltip').style.getPropertyValue('--tooltip-top')).toBe('200px');
   });
 
   it('clamps dimensions and arrow placement in an extremely small viewport', async () => {

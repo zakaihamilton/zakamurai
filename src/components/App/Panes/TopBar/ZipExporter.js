@@ -3,13 +3,14 @@ import { SidebarState } from '@/components/App/Panes/Sidebar';
 import { EditorState } from '@/components/App/Views/EditorArea';
 import { useFileSystem } from '@/components/Storage';
 import { ZipWriter } from '@/utils/zip';
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 
 export default function useZipExporter() {
   const fs = useFileSystem();
   const { projectName } = AppState.useState(['projectName']);
   const editorState = EditorState.usePassiveState();
   const { folderTree } = SidebarState.useState(['folderTree']);
+  const [exportError, setExportError] = useState(null);
 
   const handleExportZip = useCallback(async () => {
     const zip = new ZipWriter();
@@ -63,7 +64,7 @@ export default function useZipExporter() {
     const { Compiler } = await import('@/utils/compiler');
     const container = Compiler.getContainer();
     if (!container) {
-      alert('No compiled files found. Please compile the project first.');
+      setExportError('No compiled files found. Please compile the project first.');
       return;
     }
 
@@ -190,5 +191,7 @@ export default function useZipExporter() {
   return {
     handleExportZip,
     handleExportCompiledZip,
+    exportError,
+    clearExportError: () => setExportError(null),
   };
 }

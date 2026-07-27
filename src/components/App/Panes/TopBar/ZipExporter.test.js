@@ -87,9 +87,8 @@ describe('useZipExporter', () => {
     expect(URL.createObjectURL).toHaveBeenCalled();
   });
 
-  it('handleExportCompiledZip alerts if container not found', async () => {
+  it('reports an error if compiled files are unavailable', async () => {
     Compiler.getContainer.mockReturnValue(null);
-    const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
 
     const { result } = renderHook(() =>
       useZipExporter(mockFs, mockEditorState, mockFolderTree, projectName),
@@ -99,7 +98,7 @@ describe('useZipExporter', () => {
       await result.current.handleExportCompiledZip();
     });
 
-    expect(alertSpy).toHaveBeenCalledWith(
+    expect(result.current.exportError).toBe(
       'No compiled files found. Please compile the project first.',
     );
   });

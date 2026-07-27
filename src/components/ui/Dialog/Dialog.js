@@ -28,7 +28,13 @@ export default function Dialog({
     const focusable = dialog?.querySelectorAll(
       'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
     );
-    (focusable?.[0] || dialog)?.focus();
+    (
+      dialog?.querySelector(
+        'input:not([disabled]), select:not([disabled]), textarea:not([disabled])',
+      ) ||
+      focusable?.[0] ||
+      dialog
+    )?.focus();
 
     const handleKeyDown = (event) => {
       if (event.key === 'Escape') {
@@ -74,7 +80,7 @@ export default function Dialog({
       >
         <div className={styles.header}>
           <h3 id={titleId}>{title}</h3>
-          <Tooltip content="Close">
+          <Tooltip content="Close" suppressInitialFocus>
             <button
               type="button"
               className={styles.closeBtn}

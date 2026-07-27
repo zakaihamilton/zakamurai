@@ -5,7 +5,6 @@ import { TabState } from '@/components/App/Panes/TabBar';
 import { PreviewState } from '@/components/App/PreviewState';
 import { EditorState } from '@/components/App/Views/EditorArea';
 import { useFileSystem } from '@/components/Storage';
-import { STORAGE_RECOVERY_EVENT } from '@/components/Storage/StorageHealth';
 import {
   DEFAULT_CONTENTS,
   DEFAULT_FILES,
@@ -13,7 +12,9 @@ import {
   SCRATCH_FILES,
 } from '@/components/Storage/InitialData';
 import Settings from '@/components/Storage/Settings';
+import { STORAGE_RECOVERY_EVENT } from '@/components/Storage/StorageHealth';
 import { setInDraft } from '@/components/state/StateUtils';
+import Dialog from '@/components/ui/Dialog';
 import { Icons } from '@/components/ui/Icons';
 import Tooltip from '@/components/ui/Tooltip';
 import { formatShortcut } from '@/utils/os';
@@ -79,7 +80,8 @@ export default function TopBar() {
   const promptUiState = PromptUiState.usePassiveState();
 
   const { handleCompile, handleOpenLog, handleOpenPreview, handleClearFS } = useProjectCompiler();
-  const { handleExportZip, handleExportCompiledZip } = useZipExporter();
+  const { handleExportZip, handleExportCompiledZip, exportError, clearExportError } =
+    useZipExporter();
 
   useEffect(() => {
     window.addEventListener(STORAGE_RECOVERY_EVENT, handleExportZip);
@@ -191,6 +193,14 @@ export default function TopBar() {
         />
         <ThemeToggle />
       </div>
+      <Dialog
+        isOpen={!!exportError}
+        title="Unable to export compiled files"
+        message={exportError}
+        confirmText="OK"
+        onConfirm={clearExportError}
+        onCancel={clearExportError}
+      />
     </header>
   );
 }

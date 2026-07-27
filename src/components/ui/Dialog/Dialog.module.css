@@ -102,6 +102,22 @@
   font-size: 14px;
 }
 
+.content input {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 9px 10px;
+  color: var(--text-main);
+  font: inherit;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.content input:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
 .footer {
   padding: 16px 24px;
   display: flex;

@@ -6,12 +6,12 @@ import { getNextSuggestionWord } from './completionUtils';
 export default function useEditorShortcuts({
   handleChange,
   textareaRef,
-  scrollContainerRef,
   suggestion,
   isCompleting = false,
   onAcceptSuggestion,
   onCancelSuggestion,
   filePath,
+  onRequestJumpToLine,
 }) {
   const handleKeyDown = useCallback(
     (e) => {
@@ -46,29 +46,7 @@ export default function useEditorShortcuts({
       // 0. Jump to Line (Ctrl+G)
       if (e.ctrlKey && e.key === 'g') {
         e.preventDefault();
-        const lineStr = window.prompt('Enter line number:');
-        const lineNum = Number.parseInt(lineStr, 10);
-        if (!Number.isNaN(lineNum) && lineNum > 0) {
-          const lines = value.split('\n');
-          const targetLine = Math.min(lineNum, lines.length);
-          let index = 0;
-          for (let i = 0; i < targetLine - 1; i++) {
-            index += lines[i].length + 1;
-          }
-
-          textarea.selectionStart = textarea.selectionEnd = index;
-          textarea.focus();
-
-          // Scroll to line
-          if (scrollContainerRef?.current) {
-            const lineHeight = 1.6 * 14; // Match FindHandler's approximation
-            const top = (targetLine - 1) * lineHeight + 20;
-            scrollContainerRef.current.scrollTo({
-              top: top - 100,
-              behavior: 'smooth',
-            });
-          }
-        }
+        onRequestJumpToLine?.();
         return;
       }
 
@@ -281,12 +259,12 @@ export default function useEditorShortcuts({
     [
       handleChange,
       textareaRef,
-      scrollContainerRef,
       suggestion,
       isCompleting,
       onAcceptSuggestion,
       onCancelSuggestion,
       filePath,
+      onRequestJumpToLine,
     ],
   );
 
