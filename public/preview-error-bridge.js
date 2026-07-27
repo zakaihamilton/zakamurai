@@ -1,12 +1,12 @@
 (() => {
   if (window.__zakamuraiPreviewBridge) return;
   window.__zakamuraiPreviewBridge = true;
-  const targetOrigin = window.__zakamuraiPreviewParentOrigin;
-  if (!targetOrigin) return;
   const post = (type, message, extra) => {
+    // PreviewHost may wrap this document in a nested iframe. Always notify the
+    // immediate parent; PreviewHost relays trusted messages to the IDE.
     window.parent.postMessage(
       { source: 'zakamurai-preview', type, message: message || '', ...(extra || {}) },
-      targetOrigin,
+      '*',
     );
   };
   window.addEventListener(

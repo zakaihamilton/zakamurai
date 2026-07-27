@@ -40,10 +40,6 @@ self.addEventListener('message', (event) => {
   mainPort = event.ports[0];
   activeSessionId = event.data.sessionId;
   ideOrigin = event.data.ideOrigin;
-  const entryUrl =
-    typeof event.data.entryUrl === 'string' && event.data.entryUrl.startsWith('/__preview/')
-      ? event.data.entryUrl
-      : `/__preview/${encodeURIComponent(activeSessionId)}/dist/index.html`;
 
   mainPort.onmessage = ({ data }) => {
     const pendingRequest = pending.get(data?.id);
@@ -79,15 +75,6 @@ self.addEventListener('message', (event) => {
     (async () => {
       await self.clients.claim();
       const client = event.source;
-      // Navigate from this worker so the session document is fetched by the
-      // same worker instance that holds mainPort / activeSessionId.
-      if (client && typeof client.navigate === 'function') {
-        try {
-          await client.navigate(entryUrl);
-        } catch (_error) {
-          // Fall through to init-ok; PreviewHost will replace location.
-        }
-      }
       if (client) {
         client.postMessage({ type: 'init-ok', sessionId: activeSessionId });
       } else {
@@ -156,7 +143,7 @@ function injectBridge(bytes, headers) {
   if (!contentType.includes('text/html')) return bytes;
   const html = new TextDecoder().decode(bytes);
   if (html.includes('preview-error-bridge.js')) return bytes;
-  const bridge = `<script>window.__zakamuraiPreviewParentOrigin=${JSON.stringify(ideOrigin)};</script><script src="/preview-error-bridge.js"></script>`;
+  const bridge = `<script src="/preview-error-bridge.js"></script>`;
   const injected = /<\/head>/i.test(html)
     ? html.replace(/<\/head>/i, `${bridge}</head>`)
     : `${html}${bridge}`;
@@ -211,22 +198,9 @@ self.addEventListener('fetch', (event) => {
 
   if (url.pathname.startsWith('/__preview/')) {
     if (!activeSessionId || !mainPort) {
-      // One re-handshake only — repeated 303s flash preview-host ↔ __preview.
-      const match = url.pathname.match(/^\/__preview\/([^/]+)/);
-      const sessionFromPath = match ? decodeURIComponent(match[1]) : null;
-      const alreadyRecovered = url.searchParams.get('recover') === '1';
-      if (sessionFromPath && !alreadyRecovered) {
-        event.respondWith(
-          previewResponse('', {
-            status: 303,
-            headers: {
-              Location: `/preview-host?session=${encodeURIComponent(sessionFromPath)}&recover=1`,
-              'Content-Type': 'text/html; charset=utf-8',
-            },
-          }),
-        );
-        return;
-      }
+      // Direct /__preview navigations (old clients, bookmarks) cannot recover the
+      // MessageChannel. Stay on a stable error page — PreviewHost now loads the
+      // session in a nested iframe after init instead of replacing itself.
       event.respondWith(lostConnectionPage());
       return;
     }

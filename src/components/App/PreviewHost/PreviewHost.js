@@ -10,8 +10,9 @@ import { PREVIEW_CONNECT, PREVIEW_PROTOCOL_VERSION } from '../Views/PreviewArea/
 
 // Bump this URL when the preview-routing protocol changes so browsers replace
 // an older scoped worker instead of continuing to serve its stale routes.
-const SW_URL = '/__preview_sw__.js?v=12';
+const SW_URL = '/__preview_sw__.js?v=13';
 const SESSION_WINDOW_NAME_PREFIX = 'zakamurai-preview-';
+const SESSION_IFRAME_SANDBOX = 'allow-scripts allow-same-origin allow-forms allow-popups';
 
 function getSessionId() {
   const querySession = new URLSearchParams(window.location.search).get('session');
@@ -22,9 +23,7 @@ function getSessionId() {
 }
 
 function getPreviewEntryUrl(sessionId) {
-  const recover = new URLSearchParams(window.location.search).get('recover');
-  const qs = recover === '1' ? '?recover=1' : '';
-  return `/__preview/${encodeURIComponent(sessionId)}/dist/index.html${qs}`;
+  return `/__preview/${encodeURIComponent(sessionId)}/dist/index.html`;
 }
 
 async function waitForWorkerState(worker, state) {
@@ -113,6 +112,7 @@ async function waitForInitAck(sessionId) {
 
 export default function PreviewHost() {
   const [error, setError] = useState(null);
+  const [previewSrc, setPreviewSrc] = useState(null);
 
   useEffect(() => {
     const sessionId = getSessionId();
@@ -132,6 +132,15 @@ export default function PreviewHost() {
       setError('Preview must be opened from Zakamurai so it can access the in-memory build.');
       return undefined;
     }
+
+    // Nested session iframe posts runtime events here; forward them to the IDE.
+    const relayPreviewEvents = (event) => {
+      if (event.data?.source !== 'zakamurai-preview') return;
+      if (event.origin !== window.location.origin) return;
+      peerWindow.postMessage(event.data, ideOrigin);
+    };
+    window.addEventListener('message', relayPreviewEvents);
+
     let cancelled = false;
     const connect = async (event) => {
       // COOP can make event.source identity checks fail across origins even when
@@ -167,13 +176,12 @@ export default function PreviewHost() {
             : registration.active;
         const entryUrl = getPreviewEntryUrl(sessionId);
         const initAck = waitForInitAck(sessionId);
-        controlling.postMessage({ type: 'init', sessionId, ideOrigin, entryUrl }, [event.ports[0]]);
+        // Keep this handshake document alive. Navigating it to /__preview/* races
+        // worker replacement and drops the MessageChannel. A nested iframe loads
+        // the session URL while this page (and the inited worker) stay put.
+        controlling.postMessage({ type: 'init', sessionId, ideOrigin }, [event.ports[0]]);
         await initAck;
-        // Prefer SW Client.navigate (same worker as the bridge). Fall back only
-        // if we are still on the handshake document.
-        if (!cancelled && !window.location.pathname.startsWith('/__preview/')) {
-          window.location.replace(entryUrl);
-        }
+        if (!cancelled) setPreviewSrc(entryUrl);
       } catch (err) {
         if (!cancelled) setError(err instanceof Error ? err.message : String(err));
       }
@@ -187,8 +195,41 @@ export default function PreviewHost() {
     return () => {
       cancelled = true;
       window.removeEventListener('message', connect);
+      window.removeEventListener('message', relayPreviewEvents);
     };
   }, []);
+
+  if (previewSrc) {
+    return (
+      <iframe
+        title="Isolated preview session"
+        src={previewSrc}
+        sandbox={SESSION_IFRAME_SANDBOX}
+        style={{
+          border: 0,
+          width: '100%',
+          height: '100vh',
+          display: 'block',
+          background: '#101214',
+        }}
+        onLoad={(event) => {
+          try {
+            const text = event.currentTarget.contentDocument?.body?.innerText || '';
+            if (
+              text.includes('connection was lost') ||
+              text.includes('not ready yet') ||
+              text.includes('not controlling this page')
+            ) {
+              setError(text.trim().split('\n')[0] || 'Preview connection was lost.');
+              setPreviewSrc(null);
+            }
+          } catch (_error) {
+            // Ignore opaque frame access errors.
+          }
+        }}
+      />
+    );
+  }
 
   return (
     <main style={{ color: '#e7ecef', background: '#101214', height: '100vh', padding: '2rem' }}>
