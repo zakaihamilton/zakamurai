@@ -120,6 +120,8 @@ export default function RoleGraphEditor({
                 })
               }
               onChangeModel={(modelId) => updateRole(role.id, { modelId })}
+              onChangeJoin={(join) => updateRole(role.id, { join })}
+              onChangeMaxRetries={(maxRetries) => updateRole(role.id, { maxRetries })}
               onChangeSystemPrompt={(systemPrompt) => updateRole(role.id, { systemPrompt })}
               onChangeRejectTarget={(toId, maxTimes) => setRejectTarget(role.id, toId, maxTimes)}
               onChangeRejectMaxTimes={(maxTimes) =>

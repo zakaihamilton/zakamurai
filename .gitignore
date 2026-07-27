@@ -51,3 +51,5 @@ next-env.d.ts
 /public/vite-sw.js
 /public/wasm
 /public/esbuild
+
+.cursor

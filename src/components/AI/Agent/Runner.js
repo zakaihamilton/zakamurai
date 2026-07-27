@@ -1,3 +1,5 @@
+import { AgentContextManager, formatVerificationResult } from './ContextManager';
+import { listProjectChecks, runProjectCheck } from './ProjectChecks';
 import { AGENT_SYSTEM_PROMPT, ALL_AGENT_ACTIONS, parseAgentAction } from './Protocol';
 import { AgentWorkspace } from './Workspace';
 
@@ -30,6 +32,8 @@ export async function runAgent({
   files,
   model,
   validate,
+  runProjectCheck: executeProjectCheck,
+  inspectPreview,
   retrieveContext,
   signal,
   onEvent = () => {},
@@ -42,16 +46,25 @@ export async function runAgent({
 }) {
   const askWebLLM = await loadAskWebLLM();
   const workspace = existingWorkspace || new AgentWorkspace(files);
+  const context = new AgentContextManager({ request, priorContext });
   const messages = [
     { role: 'system', content: systemPrompt },
     {
       role: 'user',
-      content: buildUserRequest({ request, scope, activeFile, selectedLines, priorContext }),
+      content: buildUserRequest({
+        request,
+        scope,
+        activeFile,
+        selectedLines,
+        priorContext: context.toString(),
+      }),
     },
   ];
   let protocolFailures = 0;
   let lastFingerprint = '';
   let repeatedActions = 0;
+  let wroteSinceVerification = false;
+  let repairAttempts = 0;
 
   for (let turn = 1; turn <= maxTurns; turn++) {
     if (signal?.aborted) throw new DOMException('Agent stopped', 'AbortError');
@@ -77,13 +90,15 @@ export async function runAgent({
     } catch (error) {
       protocolFailures++;
       if (protocolFailures >= 2)
-        throw new Error(`Local model could not follow the agent protocol: ${error.message}`);
+        throw new Error(
+          `Local model could not follow the agent protocol after recovery: ${error.message}`,
+        );
       messages.push({
         role: 'user',
         content: observation(
           'protocol',
           false,
-          `${error.message}. Return exactly one valid JSON action.`,
+          `${error.message}. Return exactly one valid JSON action. Last valid context: ${context.toString().slice(-1200)}`,
         ),
       });
       continue;
@@ -93,7 +108,9 @@ export async function runAgent({
     repeatedActions = fingerprint === lastFingerprint ? repeatedActions + 1 : 0;
     lastFingerprint = fingerprint;
     if (repeatedActions >= 2)
-      throw new Error('Agent stopped after repeating the same action without progress.');
+      throw new Error(
+        'Agent stopped after repeating the same action without progress. Inspect the latest diagnostic or choose another tool.',
+      );
     onEvent({ type: 'tool', turn, action, agentRole });
 
     try {
@@ -106,18 +123,62 @@ export async function runAgent({
       if (action.action === 'read_file') result = workspace.read(action.path);
       if (action.action === 'write_file') {
         workspace.write(action.path, action.content);
+        wroteSinceVerification = true;
         result = `Staged ${action.path} (${action.content.length} characters).`;
       }
       if (action.action === 'delete_file') {
         workspace.delete(action.path);
+        wroteSinceVerification = true;
         result = `Staged deletion of ${action.path}.`;
       }
       if (action.action === 'validate') {
-        result = validate
+        let verification = validate
           ? await validate(workspace.files)
-          : 'Validation is unavailable; inspect changes carefully.';
+          : { status: 'unavailable', check: 'build', diagnostics: 'Validation is unavailable.' };
+        if (typeof verification === 'string') {
+          verification = {
+            status: /\b(passed|success|ok)\b/i.test(verification) ? 'passed' : 'failed',
+            check: 'build',
+            diagnostics: verification,
+          };
+        }
+        result = formatVerificationResult(verification);
+        context.record('verification', verification);
+        if (verification.status === 'passed' || verification.status === 'unavailable') {
+          wroteSinceVerification = false;
+          repairAttempts = 0;
+        } else if (++repairAttempts >= 3) {
+          throw new Error(
+            'Validation failed after 3 repair attempts. Staged changes were preserved for review.',
+          );
+        }
+      }
+      if (action.action === 'list_project_checks')
+        result = listProjectChecks(workspace.files).join('\n') || 'No eligible project checks.';
+      if (action.action === 'run_project_check') {
+        const checkResult = await runProjectCheck({
+          check: action.check,
+          files: workspace.files,
+          run: executeProjectCheck,
+        });
+        result = formatVerificationResult(checkResult);
+        context.record('project-check', checkResult);
+      }
+      if (action.action === 'inspect_preview') {
+        const preview = inspectPreview
+          ? await inspectPreview(workspace.files)
+          : { status: 'unavailable', diagnostics: 'Preview inspection is unavailable.' };
+        result = JSON.stringify(preview);
+        context.record('preview', preview);
       }
       if (action.action === 'finish') {
+        if (wroteSinceVerification && validate) {
+          messages.push({
+            role: 'user',
+            content: observation('finish', false, 'Validate the staged edits before finishing.'),
+          });
+          continue;
+        }
         const changes = workspace.changes();
         onEvent({ type: 'finished', turn, changes, message: action.summary, agentRole });
         return {
@@ -129,6 +190,7 @@ export async function runAgent({
         };
       }
       messages.push({ role: 'user', content: observation(action.action, true, result) });
+      context.record(action.action, result);
       onEvent({
         type: 'observation',
         turn,

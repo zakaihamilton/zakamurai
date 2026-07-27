@@ -22,6 +22,8 @@ export default function RoleCard({
   onChangeSystemPrompt,
   onChangeRejectTarget,
   onChangeRejectMaxTimes,
+  onChangeJoin,
+  onChangeMaxRetries,
 }) {
   return (
     <div className={styles.card} data-role-id={role.id}>
@@ -148,6 +150,33 @@ export default function RoleCard({
           </label>
         </div>
       )}
+
+      <div className={styles.row}>
+        <label className={styles.field}>
+          <span>Join</span>
+          <select
+            value={role.join || 'all'}
+            disabled={disabled}
+            onChange={(e) => onChangeJoin?.(e.target.value)}
+          >
+            <option value="all">All dependencies</option>
+            <option value="any">Any dependency</option>
+          </select>
+        </label>
+        <label className={styles.field}>
+          <span>Node retries</span>
+          <input
+            type="number"
+            min={0}
+            max={3}
+            disabled={disabled}
+            value={role.maxRetries || 0}
+            onChange={(e) =>
+              onChangeMaxRetries?.(Math.max(0, Math.min(3, Number(e.target.value) || 0)))
+            }
+          />
+        </label>
+      </div>
     </div>
   );
 }

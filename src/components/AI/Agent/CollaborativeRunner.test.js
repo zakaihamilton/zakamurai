@@ -42,8 +42,8 @@ describe('runCollaborativeAgent', () => {
         '{"action":"finish","summary":"{\\"goals\\":[\\"bump\\"],\\"files\\":[\\"src/a.js\\"],\\"steps\\":[\\"edit\\"]}"}',
       )
       .mockResolvedValueOnce('{"action":"write_file","path":"src/a.js","content":"const a = 2;"}')
-      .mockResolvedValueOnce('{"action":"finish","summary":"Updated a"}')
       .mockResolvedValueOnce('{"action":"validate"}')
+      .mockResolvedValueOnce('{"action":"finish","summary":"Updated a"}')
       .mockResolvedValueOnce(
         '{"action":"finish","summary":"{\\"approved\\":true,\\"notes\\":\\"ok\\"}"}',
       );

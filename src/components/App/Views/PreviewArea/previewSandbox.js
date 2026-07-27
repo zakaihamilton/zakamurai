@@ -5,6 +5,7 @@ export const PREVIEW_MESSAGE_TYPES = {
   RUNTIME_ERROR: 'runtime-error',
   UNHANDLED_REJECTION: 'unhandled-rejection',
   NAVIGATE: 'navigate',
+  EVIDENCE: 'evidence',
 };
 
 /**
@@ -42,6 +43,28 @@ export const PREVIEW_ERROR_BRIDGE_SCRIPT = `(function(){
   });
   try {
     post(${JSON.stringify(PREVIEW_MESSAGE_TYPES.NAVIGATE)}, '', { path: location.pathname || '' });
+    setTimeout(function () {
+      var text = (document.body && document.body.innerText || '').replace(/\s+/g, ' ').slice(0, 4000);
+      var elements = Array.prototype.slice.call(document.querySelectorAll('h1,h2,h3,button,a,input,[role]'), 0, 80).map(function(el) {
+        return (el.getAttribute('role') || el.tagName.toLowerCase()) + ': ' + (el.getAttribute('aria-label') || el.innerText || el.value || '').replace(/\s+/g, ' ').slice(0, 160);
+      }).filter(Boolean);
+      post(${JSON.stringify(PREVIEW_MESSAGE_TYPES.EVIDENCE)}, '', { path: location.pathname || '', title: document.title || '', text: text, elements: elements, screenshotCaptured: false });
+      try {
+        var markup = new XMLSerializer().serializeToString(document.documentElement);
+        var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' + Math.min(window.innerWidth, 1440) + '" height="' + Math.min(window.innerHeight, 1200) + '"><foreignObject width="100%" height="100%">' + markup.replace(/&/g, '&amp;').replace(/#/g, '%23') + '</foreignObject></svg>';
+        var image = new Image();
+        image.onload = function () {
+          try {
+            var canvas = document.createElement('canvas');
+            canvas.width = Math.min(window.innerWidth, 1440); canvas.height = Math.min(window.innerHeight, 1200);
+            canvas.getContext('2d').drawImage(image, 0, 0);
+            var screenshot = canvas.toDataURL('image/png');
+            if (screenshot.length < 500000) post(${JSON.stringify(PREVIEW_MESSAGE_TYPES.EVIDENCE)}, '', { path: location.pathname || '', title: document.title || '', text: text, elements: elements, screenshotCaptured: true, screenshot: screenshot });
+          } catch (_captureError) {}
+        };
+        image.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+      } catch (_captureSetupError) {}
+    }, 250);
   } catch (_e) {}
 })();`;
 
@@ -65,11 +88,22 @@ export function parsePreviewMessage(data) {
   if (!Object.values(PREVIEW_MESSAGE_TYPES).includes(data.type)) {
     return null;
   }
-  return {
+  const parsed = {
     ...data,
     message: data.message == null ? '' : String(data.message),
     path: data.path == null ? data.path : String(data.path),
   };
+  if (data.type === PREVIEW_MESSAGE_TYPES.EVIDENCE) {
+    parsed.title = data.title == null ? '' : String(data.title).slice(0, 300);
+    parsed.text = data.text == null ? '' : String(data.text).slice(0, 4000);
+    parsed.elements = Array.isArray(data.elements) ? data.elements.slice(0, 80).map(String) : [];
+    parsed.screenshotCaptured = Boolean(data.screenshotCaptured);
+    parsed.screenshot =
+      typeof data.screenshot === 'string' && data.screenshot.startsWith('data:image/')
+        ? data.screenshot.slice(0, 500000)
+        : '';
+  }
+  return parsed;
 }
 
 /**

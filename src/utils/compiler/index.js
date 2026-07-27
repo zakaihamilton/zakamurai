@@ -3,6 +3,7 @@
  * Heavy deps (browser-bundler / esbuild-wasm, almostnode) load only when compile runs.
  */
 
+import { parseBuildCommand } from './browser-bundler';
 import { getSharedContainer, initContainer, resetContainer } from './container';
 import { setupSmartDevServer } from './dev-server';
 import { scaffoldMissingFiles } from './scaffold';
@@ -189,6 +190,37 @@ import('${scriptPath}').catch(err => console.error('[Runner Error]', err));
       console.error(err);
       throw err;
     }
+  }
+
+  /** Execute a pre-validated package script in the browser container. */
+  async runProjectCheck(fs, folderTree, fileContents, check) {
+    const container = await this.init();
+    await this.syncFiles(fs, folderTree, fileContents);
+    const packageJson = JSON.parse(container.vfs.readFileSync('/package.json', 'utf8'));
+    const command = packageJson.scripts?.[check];
+    if (!command) throw new Error(`Unknown package script: ${check}`);
+    const output = [];
+    for (const argv of parseBuildCommand(command)) {
+      const commandText = argv.join(' ');
+      const result = await withTimeout(
+        container.run(commandText, {
+          env: {
+            NODE_ENV: 'test',
+            PWD: '/',
+            PATH: '/node_modules/.bin:/usr/local/bin:/usr/bin:/bin',
+          },
+          onStdout: (data) => data && output.push(data.toString().trim()),
+          onStderr: (data) => data && output.push(`ERR: ${data.toString().trim()}`),
+        }),
+        30000,
+        `Command '${commandText}' timed out after 30s`,
+      );
+      if (result.exitCode !== 0)
+        throw new Error(
+          `${output.filter(Boolean).join('\n')}\n${commandText} exited ${result.exitCode}`,
+        );
+    }
+    return output.filter(Boolean).join('\n') || `${check} passed.`;
   }
 }
 
