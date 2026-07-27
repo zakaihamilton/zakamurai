@@ -6,6 +6,9 @@ const ACTIONS = new Set([
   'write_file',
   'delete_file',
   'validate',
+  'list_project_checks',
+  'run_project_check',
+  'inspect_preview',
   'finish',
 ]);
 
@@ -48,6 +51,9 @@ export function parseAgentAction(text, { allowedActions = ALL_AGENT_ACTIONS } = 
   if (value.action === 'search_semantic' && typeof value.query !== 'string') {
     throw new Error('search_semantic requires a query string');
   }
+  if (value.action === 'run_project_check' && (!value.check || typeof value.check !== 'string')) {
+    throw new Error('run_project_check requires a declared check name');
+  }
   return value;
 }
 
@@ -60,6 +66,9 @@ Actions:
 {"action":"write_file","path":"relative/path","content":"complete new file content","reason":"brief reason"}
 {"action":"delete_file","path":"relative/path","reason":"brief reason"}
 {"action":"validate"}
+{"action":"list_project_checks"}
+{"action":"run_project_check","check":"test"}
+{"action":"inspect_preview"}
 {"action":"finish","summary":"brief result"}
 `.trim();
 

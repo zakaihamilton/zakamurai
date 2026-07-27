@@ -168,9 +168,57 @@ export default function useAgentRunner({
               const compiler = new Compiler((line) => validationLogs.push(line));
               try {
                 await compiler.compile(fs, sidebarState.folderTree || [], stagedFiles);
-                return `Validation passed.\n${validationLogs.slice(-12).join('\n')}`;
+                return {
+                  status: 'passed',
+                  check: 'build',
+                  diagnostics: validationLogs.slice(-12).join('\n'),
+                };
               } catch (error) {
-                return `Validation failed: ${error.message}\n${validationLogs.slice(-20).join('\n')}`;
+                return {
+                  status: 'failed',
+                  check: 'build',
+                  diagnostics: `${error.message}\n${validationLogs.slice(-20).join('\n')}`,
+                };
+              }
+            },
+            runProjectCheck: async (check, stagedFiles) => {
+              const logs = [];
+              const compiler = new Compiler((line) => logs.push(line));
+              const output = await compiler.runProjectCheck(
+                fs,
+                sidebarState.folderTree || [],
+                stagedFiles,
+                check,
+              );
+              return [output, ...logs.slice(-12)].filter(Boolean).join('\n');
+            },
+            inspectPreview: async (stagedFiles) => {
+              const verificationLogs = [];
+              const compiler = new Compiler((line) => verificationLogs.push(line));
+              try {
+                await compiler.compile(fs, sidebarState.folderTree || [], stagedFiles);
+                const { getLatestPreviewEvidence } = await import(
+                  '@/components/App/Views/PreviewArea/previewEvidenceBridge'
+                );
+                const evidence = getLatestPreviewEvidence();
+                return {
+                  status: 'passed',
+                  path: evidence?.path || '/preview/',
+                  title: evidence?.title || 'Preview ready',
+                  domSummary:
+                    evidence?.text || 'Open the Preview pane to collect rendered DOM evidence.',
+                  elements: evidence?.elements || [],
+                  runtimeErrors: [],
+                  screenshotCaptured: Boolean(evidence?.screenshotCaptured),
+                  diagnostics: verificationLogs.slice(-12).join('\n'),
+                };
+              } catch (error) {
+                return {
+                  status: 'failed',
+                  runtimeErrors: [error.message],
+                  screenshotCaptured: false,
+                  diagnostics: verificationLogs.slice(-20).join('\n'),
+                };
               }
             },
             onEvent: (event) => {

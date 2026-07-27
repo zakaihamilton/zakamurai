@@ -8,6 +8,7 @@ import {
   parsePlanSummary,
   parseReviewSummary,
   resolveRoleConfig,
+  validateRoleGraph,
 } from './Roles';
 import { runAgent } from './Runner';
 import { AgentWorkspace } from './Workspace';
@@ -31,11 +32,16 @@ export async function runCollaborativeAgent({
   model,
   roleGraph = null,
   validate,
+  runProjectCheck,
+  inspectPreview,
   retrieveContext,
   signal,
   onEvent = () => {},
 }) {
   const graph = normalizeRoleGraph(roleGraph || createDefaultRoleGraph());
+  const graphValidation = validateRoleGraph(graph);
+  if (!graphValidation.valid)
+    throw new Error(`Invalid workflow graph: ${graphValidation.errors.join(' ')}`);
   const workspace = new AgentWorkspace(files);
   const shared = {
     request,
@@ -44,6 +50,8 @@ export async function runCollaborativeAgent({
     selectedLines,
     files,
     validate,
+    runProjectCheck,
+    inspectPreview,
     retrieveContext,
     signal,
     workspace,

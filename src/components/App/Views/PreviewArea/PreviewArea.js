@@ -6,6 +6,7 @@ import Tooltip from '@/components/ui/Tooltip';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { PreviewState } from '../../PreviewState';
 import styles from './PreviewArea.module.css';
+import PreviewBridge from './PreviewBridge';
 import {
   detectIframeLoadError,
   fetchScriptErrorBody,
@@ -13,6 +14,12 @@ import {
   formatUnhandledRejection,
   resolveMissingExportError,
 } from './previewErrorUtils';
+import { reportPreviewEvidence } from './previewEvidenceBridge';
+import {
+  createPreviewSession,
+  getPreviewConfigurationError,
+  getPreviewOrigins,
+} from './previewOrigins';
 import {
   PREVIEW_IFRAME_SANDBOX,
   PREVIEW_MESSAGE_TYPES,
@@ -20,12 +27,6 @@ import {
   parsePreviewMessage,
   sanitizePreviewPath,
 } from './previewSandbox';
-import PreviewBridge from './PreviewBridge';
-import {
-  createPreviewSession,
-  getPreviewConfigurationError,
-  getPreviewOrigins,
-} from './previewOrigins';
 
 const SW_INIT_TIMEOUT_MS = 15000;
 
@@ -271,6 +272,8 @@ export default function PreviewArea() {
         previewAreaUiState((draft) => {
           draft.address = safePath;
         });
+      } else if (payload.type === PREVIEW_MESSAGE_TYPES.EVIDENCE) {
+        reportPreviewEvidence(payload);
       }
     };
     window.addEventListener('message', onMessage);

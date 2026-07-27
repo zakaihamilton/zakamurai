@@ -22,6 +22,9 @@ export const CODER_ACTIONS = [
   'write_file',
   'delete_file',
   'validate',
+  'list_project_checks',
+  'run_project_check',
+  'inspect_preview',
   'finish',
 ];
 
@@ -31,10 +34,15 @@ export const REVIEWER_ACTIONS = [
   'search_semantic',
   'read_file',
   'validate',
+  'list_project_checks',
+  'run_project_check',
+  'inspect_preview',
   'finish',
 ];
 
 export const ROLE_KINDS = ['planner', 'coder', 'reviewer', 'custom'];
+export const ROLE_GRAPH_VERSION = 2;
+export const EDGE_CONDITIONS = ['always', 'approve', 'reject', 'success', 'failure'];
 
 export const ROLE_KIND_DEFAULTS = {
   planner: {
@@ -81,6 +89,8 @@ export function createRoleNode({
   systemPrompt = null,
   allowedActions = null,
   maxTurns = null,
+  join = 'all',
+  maxRetries = 0,
 } = {}) {
   const safeKind = ROLE_KINDS.includes(kind) ? kind : 'custom';
   const defaults = ROLE_KIND_DEFAULTS[safeKind];
@@ -92,6 +102,8 @@ export function createRoleNode({
     systemPrompt: typeof systemPrompt === 'string' && systemPrompt.trim() ? systemPrompt : null,
     allowedActions: Array.isArray(allowedActions) && allowedActions.length ? allowedActions : null,
     maxTurns: Number.isFinite(maxTurns) && maxTurns > 0 ? maxTurns : null,
+    join: join === 'any' ? 'any' : 'all',
+    maxRetries: Number.isFinite(maxRetries) && maxRetries > 0 ? Math.min(maxRetries, 3) : 0,
   };
 }
 
@@ -100,6 +112,7 @@ export function createDefaultRoleGraph() {
   const coder = createRoleNode({ id: 'coder', kind: 'coder' });
   const reviewer = createRoleNode({ id: 'reviewer', kind: 'reviewer' });
   return {
+    version: ROLE_GRAPH_VERSION,
     entryRoleId: planner.id,
     roles: [planner, coder, reviewer],
     edges: [
@@ -128,6 +141,7 @@ export function syncLinearAlwaysEdges(graph) {
       maxTimes: Number.isFinite(edge.maxTimes) && edge.maxTimes > 0 ? edge.maxTimes : 1,
     }));
   return {
+    version: ROLE_GRAPH_VERSION,
     entryRoleId: roles[0]?.id || null,
     roles,
     edges: [...always, ...validReject],
@@ -151,6 +165,8 @@ export function normalizeRoleGraph(raw) {
         systemPrompt: role.systemPrompt,
         allowedActions: role.allowedActions,
         maxTurns: role.maxTurns,
+        join: role.join,
+        maxRetries: role.maxRetries,
       }),
     );
 
@@ -172,7 +188,7 @@ export function normalizeRoleGraph(raw) {
         typeof edge === 'object' &&
         roleIds.has(edge.from) &&
         roleIds.has(edge.to) &&
-        ['always', 'approve', 'reject'].includes(edge.when),
+        EDGE_CONDITIONS.includes(edge.when),
     )
     .map((edge) => ({
       from: edge.from,
@@ -185,6 +201,7 @@ export function normalizeRoleGraph(raw) {
 
   const hasAlwaysPath = edges.some((edge) => edge.when === 'always');
   const graph = {
+    version: ROLE_GRAPH_VERSION,
     entryRoleId:
       typeof raw.entryRoleId === 'string' && roleIds.has(raw.entryRoleId)
         ? raw.entryRoleId
@@ -200,6 +217,40 @@ export function normalizeRoleGraph(raw) {
   return graph;
 }
 
+/** Returns user-facing structural errors without rejecting legacy retry edges. */
+export function validateRoleGraph(graph) {
+  const normalized = normalizeRoleGraph(graph);
+  const errors = [];
+  const ids = new Set(normalized.roles.map((role) => role.id));
+  if (!ids.has(normalized.entryRoleId)) errors.push('The workflow entry role is missing.');
+  for (const edge of normalized.edges) {
+    if (!ids.has(edge.from) || !ids.has(edge.to)) errors.push('Workflow contains an invalid edge.');
+  }
+  const outgoing = new Map(normalized.roles.map((role) => [role.id, []]));
+  for (const edge of normalized.edges) {
+    if (edge.when !== 'reject') outgoing.get(edge.from)?.push(edge.to);
+  }
+  const seen = new Set();
+  const visiting = new Set();
+  const visit = (id) => {
+    if (visiting.has(id)) {
+      errors.push('Workflow contains an unrestricted cycle.');
+      return;
+    }
+    if (seen.has(id)) return;
+    seen.add(id);
+    visiting.add(id);
+    (outgoing.get(id) || []).forEach(visit);
+    visiting.delete(id);
+  };
+  if (normalized.entryRoleId) visit(normalized.entryRoleId);
+  if (seen.size !== normalized.roles.length)
+    errors.push('Every workflow role must be reachable from the entry role.');
+  if (![...outgoing.values()].some((targets) => targets.length === 0))
+    errors.push('Workflow needs a terminal role.');
+  return { valid: errors.length === 0, errors, graph: normalized };
+}
+
 export function resolveRoleConfig(role) {
   const kind = ROLE_KINDS.includes(role?.kind) ? role.kind : 'custom';
   const defaults = ROLE_KIND_DEFAULTS[kind];
@@ -211,6 +262,8 @@ export function resolveRoleConfig(role) {
     systemPrompt: role.systemPrompt || defaults.systemPrompt,
     allowedActions: role.allowedActions || defaults.allowedActions,
     maxTurns: role.maxTurns || defaults.maxTurns,
+    join: role.join === 'any' ? 'any' : 'all',
+    maxRetries: Number.isFinite(role.maxRetries) ? Math.min(Math.max(role.maxRetries, 0), 3) : 0,
   };
 }
 

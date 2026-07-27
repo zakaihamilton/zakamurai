@@ -155,9 +155,9 @@ function contentTypeForPath(path) {
 function injectBridge(bytes, headers, path) {
   const cleanPath = (path || '').split('?')[0].toLowerCase();
   const contentType = headers.get?.('Content-Type') || headers.get?.('content-type') || '';
-  const isHtmlPath = cleanPath.endsWith('.html') || cleanPath.endsWith('.htm') || cleanPath.endsWith('/');
+  const isHtmlPath =
+    cleanPath.endsWith('.html') || cleanPath.endsWith('.htm') || cleanPath.endsWith('/');
   if (!isHtmlPath && !String(contentType).includes('text/html')) return bytes;
-  if (!isHtmlPath) return bytes;
   const html = new TextDecoder().decode(bytes);
   if (html.includes('preview-error-bridge.js')) return bytes;
   const bridge = `<script>window.__zakamuraiPreviewParentOrigin=${JSON.stringify(ideOrigin)};</script><script src="/preview-error-bridge.js"></script>`;

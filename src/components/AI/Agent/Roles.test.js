@@ -10,6 +10,7 @@ import {
   parseReviewSummary,
   resolveRoleConfig,
   syncLinearAlwaysEdges,
+  validateRoleGraph,
 } from './Roles';
 
 describe('role graphs', () => {
@@ -75,6 +76,27 @@ describe('role graphs', () => {
 
     expect(resolveRoleConfig({ id: 'x', kind: 'nope' }).kind).toBe('custom');
     expect(createRoleNode({ kind: 'weird' }).kind).toBe('custom');
+
+    expect(
+      createRoleNode({
+        id: 'edge-cases',
+        label: '   ',
+        modelId: '',
+        systemPrompt: '  ',
+        allowedActions: [],
+        maxTurns: 0,
+        join: 'any',
+        maxRetries: 99,
+      }),
+    ).toMatchObject({
+      label: 'Custom',
+      modelId: null,
+      systemPrompt: null,
+      allowedActions: null,
+      maxTurns: null,
+      join: 'any',
+      maxRetries: 3,
+    });
   });
 
   it('syncs linear order after reordering and drops invalid reject edges', () => {
@@ -90,6 +112,59 @@ describe('role graphs', () => {
       { from: 'planner', to: 'reviewer', when: 'always' },
     ]);
     expect(reordered.edges.some((edge) => edge.to === 'gone')).toBe(false);
+
+    expect(
+      syncLinearAlwaysEdges({
+        roles: [{ id: 'solo', kind: 'custom' }],
+        edges: [null, { from: 'solo', to: 'solo', when: 'reject', maxTimes: 0 }],
+      }),
+    ).toMatchObject({
+      entryRoleId: 'solo',
+      edges: [{ from: 'solo', to: 'solo', when: 'reject', maxTimes: 1 }],
+    });
+    expect(syncLinearAlwaysEdges({ roles: null })).toMatchObject({
+      entryRoleId: null,
+      roles: [],
+      edges: [],
+    });
+  });
+
+  it('validates role graph structure', () => {
+    const defaultGraph = createDefaultRoleGraph();
+    expect(validateRoleGraph(defaultGraph)).toEqual({
+      valid: true,
+      errors: [],
+      graph: expect.any(Object),
+    });
+
+    const cyclicGraph = {
+      entryRoleId: 'a',
+      roles: [
+        { id: 'a', kind: 'planner' },
+        { id: 'b', kind: 'coder' },
+      ],
+      edges: [
+        { from: 'a', to: 'b', when: 'always' },
+        { from: 'b', to: 'a', when: 'always' },
+      ],
+    };
+    expect(validateRoleGraph(cyclicGraph).valid).toBe(false);
+    expect(validateRoleGraph(cyclicGraph).errors).toContain(
+      'Workflow contains an unrestricted cycle.',
+    );
+
+    const disconnectedGraph = {
+      entryRoleId: 'a',
+      roles: [
+        { id: 'a', kind: 'planner' },
+        { id: 'b', kind: 'coder' },
+        { id: 'c', kind: 'reviewer' },
+      ],
+      edges: [{ from: 'a', to: 'b', when: 'always' }],
+    };
+    expect(validateRoleGraph(disconnectedGraph).errors).toContain(
+      'Every workflow role must be reachable from the entry role.',
+    );
   });
 });
 
