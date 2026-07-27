@@ -248,11 +248,27 @@ export function useFileSystem({ bootstrap = false } = {}) {
         await writable.write(content);
         await writable.close();
         await refreshDirectory(root); // Refresh from root to see changes everywhere
+        return true;
       } catch (err) {
         setFileSystemValue('error', `Failed to write file at path: ${err.message}`);
+        return false;
       }
     },
     [rootHandle, refreshDirectory, setFileSystemValue],
+  );
+
+  const readFileAtPath = useCallback(
+    async (path, root = rootHandle) => {
+      if (!root) throw new Error('No root directory mounted');
+      const parts = path.split('/').filter(Boolean);
+      let currentHandle = root;
+      for (let i = 0; i < parts.length - 1; i++) {
+        currentHandle = await currentHandle.getDirectoryHandle(parts[i]);
+      }
+      const fileHandle = await currentHandle.getFileHandle(parts[parts.length - 1]);
+      return await (await fileHandle.getFile()).text();
+    },
+    [rootHandle],
   );
 
   const deleteFileAtPath = useCallback(
@@ -266,8 +282,10 @@ export function useFileSystem({ bootstrap = false } = {}) {
         }
         await currentHandle.removeEntry(parts[parts.length - 1], { recursive: true });
         await refreshDirectory(root);
+        return true;
       } catch (err) {
         setFileSystemValue('error', `Failed to delete file at path: ${err.message}`);
+        return false;
       }
     },
     [rootHandle, refreshDirectory, setFileSystemValue],
@@ -364,6 +382,7 @@ export function useFileSystem({ bootstrap = false } = {}) {
       readFile,
       writeFile,
       writeFileAtPath,
+      readFileAtPath,
       deleteFileAtPath,
       getFileHandleAtPath,
       createFolder,
@@ -386,6 +405,7 @@ export function useFileSystem({ bootstrap = false } = {}) {
       readFile,
       writeFile,
       writeFileAtPath,
+      readFileAtPath,
       deleteFileAtPath,
       getFileHandleAtPath,
       createFolder,

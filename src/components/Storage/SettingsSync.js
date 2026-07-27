@@ -21,6 +21,8 @@ export function useSettingsSync(
   logState,
   previewState,
   promptUiState,
+  workspaceProfileState = null,
+  changeSetState = null,
 ) {
   const { addNotification } = useNotification();
   const storageHealthState = StorageHealthState.usePassiveState();
@@ -66,6 +68,8 @@ export function useSettingsSync(
   const { logs } = logState || {};
   const { htmlContent } = previewState || {};
   const { val: promptDraft, selectedModel } = promptUiState || {};
+  const workspaceProfile = workspaceProfileState || {};
+  const { activeId: changeSetActiveId = null, items: changeSetItems = [] } = changeSetState || {};
 
   useEffect(() => {
     Settings.setTheme(theme);
@@ -202,4 +206,28 @@ export function useSettingsSync(
     }, 500);
     return () => clearTimeout(timer);
   }, [sessions, activeSessionId]);
+
+  useEffect(() => {
+    if (!workspaceProfileState || typeof Settings.setWorkspaceProfile !== 'function') return;
+    Settings.setWorkspaceProfile({
+      include: workspaceProfile.include || [],
+      exclude: workspaceProfile.exclude || [],
+      maxFileBytes: workspaceProfile.maxFileBytes,
+    });
+  }, [
+    workspaceProfile.exclude,
+    workspaceProfile.include,
+    workspaceProfile.maxFileBytes,
+    workspaceProfileState,
+  ]);
+
+  useEffect(() => {
+    if (!changeSetState || typeof Settings.setChangeSets !== 'function') return undefined;
+    const timer = setTimeout(() => {
+      void Promise.resolve(
+        Settings.setChangeSets({ activeId: changeSetActiveId, items: changeSetItems }),
+      ).then((ok) => persistRef.current(ok));
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [changeSetState, changeSetActiveId, changeSetItems]);
 }

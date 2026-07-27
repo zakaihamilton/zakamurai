@@ -1,9 +1,9 @@
-import { useRagIndexer } from '@/components/AI/RagIndexer';
 import { useTabRestorer } from '@/components/App/Panes/TabBar/TabRestorer';
 import { usePreviewRestorer } from '@/components/App/Views/PreviewArea/PreviewRestorer';
 import { usePreviewErrorBridge } from '@/components/App/Views/PreviewArea/usePreviewErrorBridge';
 import { useKeyboardHandler } from '@/components/App/keyboard/KeyboardHandler';
 import { useContentSaver } from '@/components/Storage/ContentSaver';
+import { useWorkspaceIndexer } from '@/components/Workspace';
 import { useOfflineSupport } from './OfflineSupport';
 
 export function useAppBackgroundServices() {
@@ -13,5 +13,5 @@ export function useAppBackgroundServices() {
   usePreviewErrorBridge();
   useContentSaver();
   useKeyboardHandler();
-  useRagIndexer();
+  useWorkspaceIndexer();
 }

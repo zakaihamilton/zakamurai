@@ -4,7 +4,6 @@ import { computeDiff } from '@/components/AI/Processor/utils/DiffEngine';
 import { RagState } from '@/components/AI/RagState';
 import { WebLLMState, bindWebLLMStore } from '@/components/AI/WebLLMState';
 import { useFileSystem } from '@/components/Storage';
-import { StorageHealthState } from '@/components/Storage/StorageHealth';
 import {
   DEFAULT_CONTENTS,
   DEFAULT_FILES,
@@ -12,6 +11,15 @@ import {
   SCRATCH_FILES,
 } from '@/components/Storage/InitialData';
 import Settings from '@/components/Storage/Settings';
+import { StorageHealthState } from '@/components/Storage/StorageHealth';
+import {
+  ChangeSetState,
+  DEFAULT_WORKSPACE_HEALTH,
+  DEFAULT_WORKSPACE_PROFILE,
+  ProblemsState,
+  WorkspaceHealthState,
+  WorkspaceProfileState,
+} from '@/components/Workspace';
 import React, { useEffect, useRef, useState } from 'react';
 import styles from './App.module.css';
 import { PromptState, PromptUiState, SidebarState, TabState } from './Panes';
@@ -82,6 +90,8 @@ function buildInitialValues() {
         stored ? { ...stored, activeSessionId: stored.activeSessionId || activeId } : null,
       );
     })(),
+    workspaceProfile: Settings.getWorkspaceProfile?.() || {},
+    changeSets: Settings.getChangeSets?.() || { activeId: null, items: [] },
   };
 }
 
@@ -177,6 +187,19 @@ function AppReady({ initialValues }) {
     lastIndexedAt: null,
     lastFingerprint: null,
   });
+  const workspaceProfileState = WorkspaceProfileState.useState(null, {
+    ...DEFAULT_WORKSPACE_PROFILE,
+    ...initialValues.workspaceProfile,
+  });
+  WorkspaceHealthState.useState(null, DEFAULT_WORKSPACE_HEALTH);
+  ProblemsState.useState(null, { items: [] });
+  const changeSetState = ChangeSetState.useState(
+    null,
+    initialValues.changeSets || {
+      activeId: null,
+      items: [],
+    },
+  );
 
   useWindowResize(appState, sidebarState);
   useSettingsSync(
@@ -189,6 +212,8 @@ function AppReady({ initialValues }) {
     logState,
     previewState,
     promptUiState,
+    workspaceProfileState,
+    changeSetState,
   );
 
   useEffect(() => {

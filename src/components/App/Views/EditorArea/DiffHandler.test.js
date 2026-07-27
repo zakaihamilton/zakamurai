@@ -123,6 +123,29 @@ describe('DiffHandler', () => {
     expect(fs.writeFileAtPath).toHaveBeenCalledWith('a.js', 'next');
   });
 
+  it('keeps a pending diff when the mounted filesystem rejects the write', async () => {
+    state.pendingDiffs = { 'a.js': { originalContent: 'old' } };
+    fs.writeFileAtPath.mockResolvedValue(false);
+
+    render(
+      <DiffHandler
+        filePath="a.js"
+        localContent="next"
+        setLocalContent={setLocalContent}
+        state={state}
+        fs={fs}
+        onStateChange={onStateChange}
+      />,
+    );
+
+    const { handleApprove } = onStateChange.mock.calls[0][0];
+    await act(async () => {
+      await handleApprove();
+    });
+
+    expect(state.pendingDiffs['a.js']).toEqual({ originalContent: 'old' });
+  });
+
   it('undoes a pending diff and restores original content', async () => {
     state.pendingDiffs = {
       'a.js': {

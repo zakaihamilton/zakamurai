@@ -1,0 +1,29 @@
+.health {
+  padding: 0 10px 8px;
+  color: var(--text-secondary);
+  font-size: 11px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-right: 6px;
+  border-radius: 50%;
+  background: var(--text-secondary);
+}
+
+.dot[data-status="ready"] {
+  background: #36c275;
+}
+
+.dot[data-status="indexing"] {
+  background: #e6ad39;
+}
+
+.dot[data-status="error"] {
+  background: #dc5c5c;
+}

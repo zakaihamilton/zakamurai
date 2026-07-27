@@ -1,6 +1,7 @@
 import { SidebarState } from '@/components/App/Panes/Sidebar';
 import { removeNodeAtPath } from '@/components/App/Panes/Sidebar/TreeUtils';
 import { TabState } from '@/components/App/Panes/TabBar';
+import { ChangeSetState, updateChangeSetFile } from '@/components/Workspace';
 import { deleteKeysWithPrefixInDraft, setInDraft } from '@/components/state/StateUtils';
 import { useCallback, useEffect, useRef } from 'react';
 
@@ -24,10 +25,38 @@ export default function DiffHandler({
   const lastPublishedActions = useRef(null);
   const sidebarState = SidebarState.usePassiveState();
   const tabState = TabState.usePassiveState();
+  const changeSetState = ChangeSetState.usePassiveState();
+
+  const hasExternalConflict = useCallback(
+    async (expected) => {
+      if (!fs?.rootHandle || !fs?.readFileAtPath) return false;
+      try {
+        return (await fs.readFileAtPath(filePath)) !== expected;
+      } catch (_error) {
+        // A missing file is a conflict for edits and expected for a just-created file.
+        return expected !== '';
+      }
+    },
+    [filePath, fs],
+  );
 
   const handleApprove = useCallback(async () => {
     const pendingDeletion = state.pendingDeletions?.[filePath];
     if (pendingDeletion) {
+      if (await hasExternalConflict(pendingDeletion.originalContent)) {
+        updateChangeSetFile(changeSetState, pendingDeletion.changeSetId, filePath, 'conflicted');
+        console.warn('Refusing to delete externally modified file:', filePath);
+        return;
+      }
+      try {
+        if (fs?.rootHandle && fs?.deleteFileAtPath) {
+          const deleted = await fs.deleteFileAtPath(filePath);
+          if (deleted === false) return;
+        }
+      } catch (err) {
+        console.error('Failed to delete from FS on approve:', err);
+        return;
+      }
       state((draft) => {
         deleteKeysWithPrefixInDraft(draft, EDITOR_PATH_MAPS, filePath);
       });
@@ -48,27 +77,21 @@ export default function DiffHandler({
           );
         });
       }
-      try {
-        if (fs?.rootHandle && fs?.deleteFileAtPath) {
-          await fs.deleteFileAtPath(filePath);
-        }
-      } catch (err) {
-        console.error('Failed to delete from FS on approve:', err);
-      }
+      updateChangeSetFile(changeSetState, pendingDeletion.changeSetId, filePath, 'accepted');
       return;
     }
 
-    state((draft) => {
-      if (draft.pendingDiffs) {
-        const nextDiffs = { ...draft.pendingDiffs };
-        delete nextDiffs[filePath];
-        draft.pendingDiffs = nextDiffs;
-      }
-    });
+    const pendingDiff = state.pendingDiffs?.[filePath];
+    if (pendingDiff && (await hasExternalConflict(pendingDiff.originalContent))) {
+      updateChangeSetFile(changeSetState, pendingDiff.changeSetId, filePath, 'conflicted');
+      console.warn('Refusing to overwrite externally modified file:', filePath);
+      return;
+    }
 
     try {
       if (fs?.rootHandle && fs?.writeFileAtPath) {
-        await fs.writeFileAtPath(filePath, localContent);
+        const written = await fs.writeFileAtPath(filePath, localContent);
+        if (written === false) return;
         state((draft) => {
           draft.lastSaved = new Date().toLocaleTimeString([], {
             hour: '2-digit',
@@ -78,8 +101,26 @@ export default function DiffHandler({
       }
     } catch (err) {
       console.error('Failed to save to FS on approve:', err);
+      return;
     }
-  }, [filePath, localContent, state, fs, sidebarState, tabState]);
+    state((draft) => {
+      if (draft.pendingDiffs) {
+        const nextDiffs = { ...draft.pendingDiffs };
+        delete nextDiffs[filePath];
+        draft.pendingDiffs = nextDiffs;
+      }
+    });
+    updateChangeSetFile(changeSetState, pendingDiff?.changeSetId, filePath, 'accepted');
+  }, [
+    changeSetState,
+    filePath,
+    hasExternalConflict,
+    localContent,
+    state,
+    fs,
+    sidebarState,
+    tabState,
+  ]);
 
   const handleUndo = useCallback(async () => {
     const pendingDeletion = state.pendingDeletions?.[filePath];
@@ -91,6 +132,7 @@ export default function DiffHandler({
           draft.pendingDeletions = next;
         }
       });
+      updateChangeSetFile(changeSetState, pendingDeletion.changeSetId, filePath, 'rejected');
       return;
     }
 
@@ -111,6 +153,7 @@ export default function DiffHandler({
         }
       });
       setLocalContent(prevContent);
+      updateChangeSetFile(changeSetState, diff.changeSetId, filePath, 'rejected');
 
       try {
         if (fs?.rootHandle && fs?.writeFileAtPath) {
@@ -120,7 +163,7 @@ export default function DiffHandler({
         console.error('Failed to undo in FS:', err);
       }
     }
-  }, [filePath, state, fs, setLocalContent]);
+  }, [changeSetState, filePath, state, fs, setLocalContent]);
 
   const toggleLine = useCallback(
     (line) => {

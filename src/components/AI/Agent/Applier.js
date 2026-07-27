@@ -1,4 +1,5 @@
 import { computeDiff } from '@/components/AI/Processor/utils/DiffEngine';
+import { addChangeSet, createChangeSet } from '@/components/Workspace/ChangeSets';
 import { setInDraft, updateInDraft } from '@/components/state/StateUtils';
 import { formatCode } from '@/utils/formatter';
 import { validateAIChanges } from '../ChangeValidator';
@@ -36,7 +37,10 @@ function ensureFileInTree(sidebarState, filePath) {
  * @param {{ editorState: Function, sidebarState?: Function, logState?: Function }} states
  * @returns {{ applied: number, deletions: Array<{ path: string, before: string }> }}
  */
-export function applyAgentChanges(changes, { editorState, sidebarState, logState }) {
+export function applyAgentChanges(
+  changes,
+  { editorState, sidebarState, logState, changeSetState, request, validation: validationResult },
+) {
   if (!Array.isArray(changes) || !editorState) {
     return { applied: 0, deletions: [] };
   }
@@ -56,16 +60,31 @@ export function applyAgentChanges(changes, { editorState, sidebarState, logState
       ]);
     });
   }
-  const writes = validChanges.filter((change) => change.after !== undefined);
+  const writes = validChanges
+    .filter((change) => change.after !== undefined)
+    .map((change) => ({
+      ...change,
+      before: typeof change.before === 'string' ? change.before : '',
+      after: formatCode(change.after, change.path),
+    }))
+    .filter((change) => change.before !== change.after);
   const deletions = validChanges
     .filter((change) => change.after === undefined && typeof change.before === 'string')
     .map(({ path, before }) => ({ path, before }));
 
+  const stagedChanges = [
+    ...writes,
+    ...deletions.map(({ path, before }) => ({ path, before, after: undefined })),
+  ];
+  const changeSet = stagedChanges.length
+    ? createChangeSet({ request, changes: stagedChanges, validation: validationResult })
+    : null;
+  addChangeSet(changeSetState, changeSet);
   let applied = 0;
 
   for (const { path, before, after } of writes) {
-    const originalContent = typeof before === 'string' ? before : '';
-    const finalContent = formatCode(after, path);
+    const originalContent = before;
+    const finalContent = after;
     const { diffs } = computeDiff(originalContent, finalContent);
 
     if (finalContent === originalContent || !diffs || diffs.length === 0) {
@@ -97,6 +116,7 @@ export function applyAgentChanges(changes, { editorState, sidebarState, logState
         modifiedContent: finalContent,
         originalCursorPos: existingCursor !== undefined ? existingCursor : currentCursor,
         diffs,
+        changeSetId: changeSet?.id,
       });
     });
     applied += 1;
@@ -116,5 +136,5 @@ export function applyAgentChanges(changes, { editorState, sidebarState, logState
     });
   }
 
-  return { applied, deletions };
+  return { applied, deletions, changeSet };
 }

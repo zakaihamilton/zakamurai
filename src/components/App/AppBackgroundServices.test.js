@@ -8,7 +8,7 @@ const usePreviewRestorer = vi.fn();
 const usePreviewErrorBridge = vi.fn();
 const useContentSaver = vi.fn();
 const useKeyboardHandler = vi.fn();
-const useRagIndexer = vi.fn();
+const useWorkspaceIndexer = vi.fn();
 
 vi.mock('./OfflineSupport', () => ({
   useOfflineSupport: (...args) => useOfflineSupport(...args),
@@ -28,8 +28,8 @@ vi.mock('@/components/Storage/ContentSaver', () => ({
 vi.mock('@/components/App/keyboard/KeyboardHandler', () => ({
   useKeyboardHandler: (...args) => useKeyboardHandler(...args),
 }));
-vi.mock('@/components/AI/RagIndexer', () => ({
-  useRagIndexer: (...args) => useRagIndexer(...args),
+vi.mock('@/components/Workspace', () => ({
+  useWorkspaceIndexer: (...args) => useWorkspaceIndexer(...args),
 }));
 
 describe('useAppBackgroundServices', () => {
@@ -42,6 +42,6 @@ describe('useAppBackgroundServices', () => {
     expect(usePreviewErrorBridge).toHaveBeenCalled();
     expect(useContentSaver).toHaveBeenCalled();
     expect(useKeyboardHandler).toHaveBeenCalled();
-    expect(useRagIndexer).toHaveBeenCalled();
+    expect(useWorkspaceIndexer).toHaveBeenCalled();
   });
 });

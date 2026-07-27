@@ -1,0 +1,41 @@
+.panel {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 9px;
+  background: var(--bg-surface);
+  font-size: 12px;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  font-weight: 650;
+}
+
+.status {
+  color: var(--accent-light);
+  text-transform: capitalize;
+}
+
+.request,
+.summary {
+  margin: 6px 0 0;
+  color: var(--text-secondary);
+}
+
+.files {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 8px;
+}
+
+.file {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 2px 5px;
+  border-radius: 4px;
+  background: var(--bg-panel);
+}

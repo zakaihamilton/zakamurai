@@ -24,6 +24,8 @@ const KEYS = {
   EDITOR_READ_ONLY: 'zakamurai_editor_read_only',
   AGENT_SESSIONS: 'zakamurai_agent_sessions',
   ACTIVE_AGENT_SESSION: 'zakamurai_active_agent_session',
+  WORKSPACE_PROFILE: 'zakamurai_workspace_profile',
+  CHANGE_SETS: 'zakamurai_change_sets',
 };
 
 const getStorage = () => {
@@ -49,6 +51,7 @@ const LARGE_IDB_KEYS = {
   previewHtml: KEYS.PREVIEW_HTML,
   agentSessions: KEYS.AGENT_SESSIONS,
   aiLogs: KEYS.AI_LOGS,
+  changeSets: KEYS.CHANGE_SETS,
 };
 
 const largeCache = {
@@ -57,6 +60,7 @@ const largeCache = {
   previewHtml: null,
   agentSessions: null,
   aiLogs: [],
+  changeSets: { activeId: null, items: [] },
 };
 
 let hydratePromise = null;
@@ -70,6 +74,7 @@ const largeWriteGen = {
   previewHtml: 0,
   agentSessions: 0,
   aiLogs: 0,
+  changeSets: 0,
 };
 
 const parseJson = (val, fallback) => {
@@ -472,6 +477,25 @@ const Settings = {
     this.set(KEYS.ACTIVE_AGENT_SESSION, id || null);
   },
 
+  getWorkspaceProfile() {
+    const value = readLegacyLocal(KEYS.WORKSPACE_PROFILE, {});
+    return value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+  },
+
+  setWorkspaceProfile(profile) {
+    return this.set(KEYS.WORKSPACE_PROFILE, JSON.stringify(profile || {}));
+  },
+
+  getChangeSets() {
+    const value = largeCache.changeSets;
+    return value && typeof value === 'object' ? value : { activeId: null, items: [] };
+  },
+
+  async setChangeSets(changeSets) {
+    const items = Array.isArray(changeSets?.items) ? changeSets.items.slice(-20) : [];
+    return writeLarge('changeSets', { activeId: changeSets?.activeId || null, items });
+  },
+
   /**
    * Load large project blobs from IndexedDB (migrating legacy localStorage once).
    * Call before reading fileContents / pendingDiffs / previewHtml / sessions / logs.
@@ -507,10 +531,13 @@ const Settings = {
         loadOne('previewHtml', null, { raw: true }),
         loadOne('agentSessions', null),
         loadOne('aiLogs', []),
+        loadOne('changeSets', { activeId: null, items: [] }),
       ]);
 
       largeCache.pendingDiffs = normalizePendingDiffs(largeCache.pendingDiffs);
       if (!Array.isArray(largeCache.aiLogs)) largeCache.aiLogs = [];
+      if (!largeCache.changeSets || typeof largeCache.changeSets !== 'object')
+        largeCache.changeSets = { activeId: null, items: [] };
       isHydrated = true;
       return true;
     })().catch((e) => {
@@ -535,11 +562,13 @@ const Settings = {
     largeCache.previewHtml = null;
     largeCache.agentSessions = null;
     largeCache.aiLogs = [];
+    largeCache.changeSets = { activeId: null, items: [] };
     largeWriteGen.fileContents = 0;
     largeWriteGen.pendingDiffs = 0;
     largeWriteGen.previewHtml = 0;
     largeWriteGen.agentSessions = 0;
     largeWriteGen.aiLogs = 0;
+    largeWriteGen.changeSets = 0;
   },
 
   async reset(template = 'default') {
@@ -555,6 +584,7 @@ const Settings = {
     largeCache.previewHtml = null;
     largeCache.agentSessions = null;
     largeCache.aiLogs = [];
+    largeCache.changeSets = { activeId: null, items: [] };
     if (template) {
       this.setTemplate(template);
     }

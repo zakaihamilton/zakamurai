@@ -12,6 +12,7 @@ import { flattenTree, insertCreateRow, isNodeModulesPath, normalizeChildren } fr
 import SidebarFilter from './subcomponents/SidebarFilter';
 import SidebarMountSection from './subcomponents/SidebarMountSection';
 import SidebarTree from './subcomponents/SidebarTree';
+import WorkspaceHealth from './subcomponents/WorkspaceHealth';
 
 export const SidebarState = createState('SidebarState');
 export const SidebarUiState = createState('SidebarUiState');
@@ -276,6 +277,7 @@ export default function Sidebar() {
             })
           }
         />
+        <WorkspaceHealth />
         <SidebarTree
           rows={rows}
           activeTabId={tabState.activeTabId}

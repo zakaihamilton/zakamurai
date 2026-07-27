@@ -35,6 +35,7 @@ export async function runCollaborativeAgent({
   runProjectCheck,
   inspectPreview,
   retrieveContext,
+  workspaceIndex = null,
   signal,
   onEvent = () => {},
 }) {
@@ -42,7 +43,7 @@ export async function runCollaborativeAgent({
   const graphValidation = validateRoleGraph(graph);
   if (!graphValidation.valid)
     throw new Error(`Invalid workflow graph: ${graphValidation.errors.join(' ')}`);
-  const workspace = new AgentWorkspace(files);
+  const workspace = new AgentWorkspace(files, workspaceIndex);
   const shared = {
     request,
     scope,
@@ -53,6 +54,7 @@ export async function runCollaborativeAgent({
     runProjectCheck,
     inspectPreview,
     retrieveContext,
+    workspaceIndex,
     signal,
     workspace,
   };

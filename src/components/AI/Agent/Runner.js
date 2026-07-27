@@ -43,9 +43,10 @@ export async function runAgent({
   priorContext = '',
   workspace: existingWorkspace = null,
   agentRole = null,
+  workspaceIndex = null,
 }) {
   const askWebLLM = await loadAskWebLLM();
-  const workspace = existingWorkspace || new AgentWorkspace(files);
+  const workspace = existingWorkspace || new AgentWorkspace(files, workspaceIndex);
   const context = new AgentContextManager({ request, priorContext });
   const messages = [
     { role: 'system', content: systemPrompt },
@@ -117,7 +118,7 @@ export async function runAgent({
       let result;
       if (action.action === 'list_files') result = workspace.list(action.query).join('\n');
       if (action.action === 'search_workspace')
-        result = workspace.search(action.query, action.glob);
+        result = await workspace.search(action.query, action.glob);
       if (action.action === 'search_semantic')
         result = await workspace.semanticSearch(action.query, retrieveContext, action.k);
       if (action.action === 'read_file') result = workspace.read(action.path);

@@ -5,12 +5,15 @@
 // The virtual container is intentionally shared between builds. Remember which
 // project files we wrote so removing a file in the editor removes it there too.
 const syncedFiles = new WeakMap();
+const syncedContents = new WeakMap();
 
 export async function syncFilesToContainer(container, fs, folderTree, fileContents, onLog) {
   onLog('Synchronizing files to virtual environment...');
 
   let syncCount = 0;
   const currentFiles = new Set();
+  const previousContents = syncedContents.get(container) || new Map();
+  const nextContents = new Map(previousContents);
   const syncFile = async (fullPath, contentPromise) => {
     syncCount++;
     if (syncCount % 50 === 0) {
@@ -32,7 +35,12 @@ export async function syncFilesToContainer(container, fs, folderTree, fileConten
         content = '';
       }
     }
-    container.vfs.writeFileSync(vfsPath, content);
+    // The virtual container is long-lived. Rewriting unchanged files makes large
+    // project builds needlessly expensive and invalidates tool caches.
+    if (previousContents.get(vfsPath) !== content) {
+      container.vfs.writeFileSync(vfsPath, content);
+    }
+    nextContents.set(vfsPath, content);
   };
 
   if (fs.mode === 'local' && fs.rootHandle) {
@@ -109,11 +117,13 @@ export async function syncFilesToContainer(container, fs, folderTree, fileConten
     if (currentFiles.has(path)) continue;
     try {
       container.vfs.unlinkSync(path);
+      nextContents.delete(path);
       onLog(`Removed deleted file from virtual environment: ${path}`);
     } catch (err) {
       onLog(`Warning: Failed to remove deleted file ${path}: ${err.message}`);
     }
   }
   syncedFiles.set(container, currentFiles);
+  syncedContents.set(container, nextContents);
   onLog('File synchronization complete.');
 }

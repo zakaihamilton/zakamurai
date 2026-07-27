@@ -1,3 +1,4 @@
+import { ChangeSetState, getWorkspaceIndex } from '@/components/Workspace';
 import { useCallback } from 'react';
 
 const ROLE_LABELS = {
@@ -46,6 +47,7 @@ export default function useAgentRunner({
   sidebarState,
   logState,
 }) {
+  const changeSetState = ChangeSetState.usePassiveState();
   const handleStop = useCallback(
     (e) => {
       e.preventDefault();
@@ -160,9 +162,17 @@ export default function useAgentRunner({
             roleGraph: activeSession.roleGraph,
             signal: controller.signal,
             retrieveContext: async (query, k) => {
-              const { ragSearch } = await import('@/utils/rag/search-utility');
-              return ragSearch.retrieveContext(query, k);
+              const lexical = await getWorkspaceIndex()
+                .queryText(query, k)
+                .catch(() => []);
+              return lexical.map((item) => ({
+                filePath: item.path,
+                content: item.preview || '',
+                score: item.score || 0,
+                linkedCss: [],
+              }));
             },
+            workspaceIndex: getWorkspaceIndex(),
             validate: async (stagedFiles) => {
               const validationLogs = [];
               const compiler = new Compiler((line) => validationLogs.push(line));
@@ -272,16 +282,27 @@ export default function useAgentRunner({
             draft.isAIProcessing = false;
           });
 
-          const { deletions } = applyAgentChanges(result.changes, {
+          const { deletions, changeSet } = applyAgentChanges(result.changes, {
             editorState,
             sidebarState,
             logState,
+            changeSetState,
+            request: userMsg,
           });
+          if (changeSet) {
+            pushSessionMessage(
+              sessionId,
+              createSessionMessage({
+                role: 'system',
+                text: `Change set ${changeSet.id} is ready for explicit review.`,
+              }),
+            );
+          }
           if (deletions.length > 0) {
             editorState((draft) => {
               const next = { ...(draft.pendingDeletions || {}) };
               for (const { path, before } of deletions) {
-                next[path] = { originalContent: before };
+                next[path] = { originalContent: before, changeSetId: changeSet?.id };
               }
               draft.pendingDeletions = next;
             });
@@ -332,6 +353,7 @@ export default function useAgentRunner({
       activeSession,
       addToHistory,
       createSessionMessage,
+      changeSetState,
       editorState,
       fs,
       isAIProcessing,

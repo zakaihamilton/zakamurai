@@ -25,6 +25,7 @@ import useModelDownloader from './ModelDownloader';
 import styles from './Prompt.module.css';
 import usePromptHistory from './PromptHistory';
 import { PromptState, PromptUiState, getInitialPromptUiState } from './PromptState';
+import ChangeSetPanel from './subcomponents/ChangeSetPanel';
 import ModelDownloader from './subcomponents/ModelManager';
 import PromptComposer from './subcomponents/PromptComposer';
 import PromptContextPanel from './subcomponents/PromptContextPanel';
@@ -455,6 +456,7 @@ export default function Prompt() {
           selectedLineText={selectedLineText}
           runState={runState}
         />
+        <ChangeSetPanel />
         <SessionTranscript messages={activeSession?.messages || []} />
         <ModelDownloader
           isOpen={isModelManagerOpen}

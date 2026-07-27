@@ -1,6 +1,6 @@
 const SKIP = new Set(['node_modules', '.git', 'dist', '.next', '.npm']);
 
-export async function collectWorkspaceFiles(fs, knownFiles = {}) {
+export async function collectWorkspaceFiles(fs, knownFiles = {}, options = {}) {
   const files = { ...knownFiles };
   if (fs?.mode !== 'local' || !fs.rootHandle) return files;
 
@@ -14,6 +14,8 @@ export async function collectWorkspaceFiles(fs, knownFiles = {}) {
       } else if (!(path in files)) {
         const file = await entry.getFile();
         if (file.size <= 500000) files[path] = await file.text();
+        else
+          options.onSkipped?.({ path, size: file.size, reason: 'file exceeds index size limit' });
       }
     }
   };

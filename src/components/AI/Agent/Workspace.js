@@ -4,9 +4,10 @@ const MAX_FILE_CHARS = 20000;
 const MAX_RESULT_CHARS = 12000;
 
 export class AgentWorkspace {
-  constructor(files = {}) {
+  constructor(files = {}, workspaceIndex = null) {
     this.original = { ...files };
     this.files = { ...files };
+    this.workspaceIndex = workspaceIndex;
   }
 
   list(query = '') {
@@ -28,6 +29,23 @@ export class AgentWorkspace {
 
   search(query, glob = '') {
     if (!query) throw new Error('search_workspace requires a query');
+    if (this.workspaceIndex) {
+      return this.workspaceIndex
+        .queryText(query, 100)
+        .then((indexed) => {
+          const lines = indexed
+            .filter((item) => !glob || item.path.endsWith(glob))
+            .map((item) => `${item.path}:${item.preview.replace(/\n/g, ' ').slice(0, 240)}`);
+          return lines.length
+            ? lines.join('\n').slice(0, MAX_RESULT_CHARS)
+            : this.searchFallback(query, glob);
+        })
+        .catch(() => this.searchFallback(query, glob));
+    }
+    return this.searchFallback(query, glob);
+  }
+
+  searchFallback(query, glob = '') {
     let matcher;
     if (query.startsWith('/') && query.endsWith('/') && query.length > 2) {
       matcher = new RegExp(query.slice(1, -1), 'i');

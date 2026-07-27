@@ -45,16 +45,39 @@ describe('applyAgentChanges', () => {
       { fileContents: { 'a.js': 'same' }, pendingDiffs: {} },
     );
 
-    const { applied, deletions } = applyAgentChanges(
+    const changeSetState = Object.assign(
+      vi.fn((updater) => updater(changeSetState)),
+      {
+        items: [],
+        activeId: null,
+      },
+    );
+    const { applied, deletions, changeSet } = applyAgentChanges(
       [
         { path: 'a.js', before: 'same', after: 'same' },
         { path: 'b.js', before: 'gone', after: undefined },
       ],
-      { editorState },
+      { editorState, changeSetState },
     );
 
     expect(applied).toBe(0);
     expect(deletions).toEqual([{ path: 'b.js', before: 'gone' }]);
+    expect(changeSet.files).toHaveLength(1);
+    expect(changeSet.files[0].path).toBe('b.js');
+  });
+
+  it('does not create a change set when every accepted write is a no-op', () => {
+    const editorState = Object.assign((cb) => cb(editorState), {
+      fileContents: { 'a.js': 'same' },
+      pendingDiffs: {},
+    });
+    const changeSetState = vi.fn();
+    const result = applyAgentChanges([{ path: 'a.js', before: 'same', after: 'same' }], {
+      editorState,
+      changeSetState,
+    });
+    expect(result.changeSet).toBeNull();
+    expect(changeSetState).not.toHaveBeenCalled();
   });
 
   it('creates new files in the sidebar tree', () => {

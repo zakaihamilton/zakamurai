@@ -5,6 +5,7 @@ import { PreviewState } from '@/components/App/PreviewState';
 import { EditorState } from '@/components/App/Views/EditorArea';
 import { LogState } from '@/components/App/Views/LogArea';
 import { useFileSystem } from '@/components/Storage';
+import { ProblemsState } from '@/components/Workspace';
 import { useNotification } from '@/components/ui/Notification';
 import { normalizeCompilerDiagnostic } from '@/utils/compiler/diagnostics';
 import { useCallback, useEffect, useRef } from 'react';
@@ -30,6 +31,7 @@ export default function useProjectCompiler() {
   const editorState = EditorState.usePassiveState();
   const logState = LogState.usePassiveState();
   const previewState = PreviewState.usePassiveState();
+  const problemsState = ProblemsState.usePassiveState();
   const { isSystemProcessing } = LogState.useState(['isSystemProcessing']);
   const { addNotification } = useNotification();
   const isCompilingRef = useRef(false);
@@ -125,6 +127,9 @@ export default function useProjectCompiler() {
         });
         const compiler = new Compiler(onLog, onPhase);
         await compiler.compile(fs, folderTree, editorState.fileContents);
+        problemsState((draft) => {
+          draft.items = [];
+        });
         flushLogs();
         addNotification('Project compiled successfully', 'success');
         previewState((draft) => {
@@ -169,6 +174,17 @@ export default function useProjectCompiler() {
         }
       } catch (err) {
         const diagnostic = normalizeCompilerDiagnostic(err);
+        problemsState((draft) => {
+          draft.items = [
+            {
+              source: 'build',
+              severity: 'error',
+              message: diagnostic.message,
+              location: diagnostic.location,
+              createdAt: Date.now(),
+            },
+          ];
+        });
         const errorMsg = diagnostic.message;
         onLog(`Unexpected error: ${errorMsg}`);
         previewState((draft) => {
@@ -195,6 +211,7 @@ export default function useProjectCompiler() {
       editorState,
       logState,
       previewState,
+      problemsState,
       tabState,
       addNotification,
       handleOpenLog,
