@@ -76,6 +76,27 @@ describe('role graphs', () => {
 
     expect(resolveRoleConfig({ id: 'x', kind: 'nope' }).kind).toBe('custom');
     expect(createRoleNode({ kind: 'weird' }).kind).toBe('custom');
+
+    expect(
+      createRoleNode({
+        id: 'edge-cases',
+        label: '   ',
+        modelId: '',
+        systemPrompt: '  ',
+        allowedActions: [],
+        maxTurns: 0,
+        join: 'any',
+        maxRetries: 99,
+      }),
+    ).toMatchObject({
+      label: 'Custom',
+      modelId: null,
+      systemPrompt: null,
+      allowedActions: null,
+      maxTurns: null,
+      join: 'any',
+      maxRetries: 3,
+    });
   });
 
   it('syncs linear order after reordering and drops invalid reject edges', () => {
@@ -115,6 +136,19 @@ describe('role graphs', () => {
     expect(validateRoleGraph(cyclicGraph).valid).toBe(false);
     expect(validateRoleGraph(cyclicGraph).errors).toContain(
       'Workflow contains an unrestricted cycle.',
+    );
+
+    const disconnectedGraph = {
+      entryRoleId: 'a',
+      roles: [
+        { id: 'a', kind: 'planner' },
+        { id: 'b', kind: 'coder' },
+        { id: 'c', kind: 'reviewer' },
+      ],
+      edges: [{ from: 'a', to: 'b', when: 'always' }],
+    };
+    expect(validateRoleGraph(disconnectedGraph).errors).toContain(
+      'Every workflow role must be reachable from the entry role.',
     );
   });
 });
