@@ -13,9 +13,10 @@ const bytesToBase64 = (bytes) => {
 };
 const base64ToBytes = (value) => Uint8Array.from(atob(value || ''), (char) => char.charCodeAt(0));
 
-self.addEventListener('install', (event) => {
-  event.waitUntil(self.skipWaiting());
-});
+// Do not skipWaiting on install. PreviewHost activates the worker explicitly
+// before init so a freshly installed empty worker cannot claim clients and
+// serve /__preview/* without a MessageChannel.
+self.addEventListener('install', () => {});
 self.addEventListener('activate', (event) => {
   event.waitUntil(self.clients.claim());
 });
@@ -39,6 +40,11 @@ self.addEventListener('message', (event) => {
   mainPort = event.ports[0];
   activeSessionId = event.data.sessionId;
   ideOrigin = event.data.ideOrigin;
+  const entryUrl =
+    typeof event.data.entryUrl === 'string' && event.data.entryUrl.startsWith('/__preview/')
+      ? event.data.entryUrl
+      : `/__preview/${encodeURIComponent(activeSessionId)}/dist/index.html`;
+
   mainPort.onmessage = ({ data }) => {
     const pendingRequest = pending.get(data?.id);
     if (!pendingRequest || data.sessionId !== activeSessionId) return;
@@ -73,6 +79,15 @@ self.addEventListener('message', (event) => {
     (async () => {
       await self.clients.claim();
       const client = event.source;
+      // Navigate from this worker so the session document is fetched by the
+      // same worker instance that holds mainPort / activeSessionId.
+      if (client && typeof client.navigate === 'function') {
+        try {
+          await client.navigate(entryUrl);
+        } catch (_error) {
+          // Fall through to init-ok; PreviewHost will replace location.
+        }
+      }
       if (client) {
         client.postMessage({ type: 'init-ok', sessionId: activeSessionId });
       } else {
@@ -178,14 +193,25 @@ async function handleVirtualRequest(request, path) {
   });
 }
 
+function lostConnectionPage() {
+  return previewResponse(
+    `<!doctype html><html><head><meta charset="utf-8"><title>Preview</title>
+<style>html,body{margin:0;height:100%;background:#101214;color:#e7ecef;font:14px/1.4 system-ui,sans-serif}
+main{padding:2rem}</style></head>
+<body><main><p>Preview connection was lost. Return to Zakamurai and click Build, then open Preview again.</p></main></body></html>`,
+    {
+      status: 503,
+      headers: { 'Content-Type': 'text/html; charset=utf-8' },
+    },
+  );
+}
+
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
   if (url.pathname.startsWith('/__preview/')) {
     if (!activeSessionId || !mainPort) {
-      // In-memory bridge state is lost when the worker is restarted or replaced.
-      // Offer a single re-handshake. A second miss must not 303 again or the
-      // iframe loops preview-host ↔ __preview (white flash + "Connecting…").
+      // One re-handshake only — repeated 303s flash preview-host ↔ __preview.
       const match = url.pathname.match(/^\/__preview\/([^/]+)/);
       const sessionFromPath = match ? decodeURIComponent(match[1]) : null;
       const alreadyRecovered = url.searchParams.get('recover') === '1';
@@ -201,18 +227,7 @@ self.addEventListener('fetch', (event) => {
         );
         return;
       }
-      event.respondWith(
-        previewResponse(
-          `<!doctype html><html><head><meta charset="utf-8"><title>Preview</title>
-<style>html,body{margin:0;height:100%;background:#101214;color:#e7ecef;font:14px/1.4 system-ui,sans-serif}
-main{padding:2rem}</style></head>
-<body><main><p>Preview connection was lost. Return to Zakamurai and click Build, then open Preview again.</p></main></body></html>`,
-          {
-            status: 503,
-            headers: { 'Content-Type': 'text/html; charset=utf-8' },
-          },
-        ),
-      );
+      event.respondWith(lostConnectionPage());
       return;
     }
     const prefix = `/__preview/${activeSessionId}`;

@@ -10,7 +10,7 @@ import { PREVIEW_CONNECT, PREVIEW_PROTOCOL_VERSION } from '../Views/PreviewArea/
 
 // Bump this URL when the preview-routing protocol changes so browsers replace
 // an older scoped worker instead of continuing to serve its stale routes.
-const SW_URL = '/__preview_sw__.js?v=11';
+const SW_URL = '/__preview_sw__.js?v=12';
 const SESSION_WINDOW_NAME_PREFIX = 'zakamurai-preview-';
 
 function getSessionId() {
@@ -159,19 +159,20 @@ export default function PreviewHost() {
         });
         await ensureActiveWorker(registration);
         await waitForPreviewWorkerControl(registration);
-        // Always init the worker that currently controls this client so fetch
-        // and init share the same in-memory session/port state.
         const controlling =
           navigator.serviceWorker.controller &&
           registration.active &&
           navigator.serviceWorker.controller.scriptURL === registration.active.scriptURL
             ? navigator.serviceWorker.controller
             : registration.active;
+        const entryUrl = getPreviewEntryUrl(sessionId);
         const initAck = waitForInitAck(sessionId);
-        controlling.postMessage({ type: 'init', sessionId, ideOrigin }, [event.ports[0]]);
+        controlling.postMessage({ type: 'init', sessionId, ideOrigin, entryUrl }, [event.ports[0]]);
         await initAck;
-        if (!cancelled) {
-          window.location.replace(getPreviewEntryUrl(sessionId));
+        // Prefer SW Client.navigate (same worker as the bridge). Fall back only
+        // if we are still on the handshake document.
+        if (!cancelled && !window.location.pathname.startsWith('/__preview/')) {
+          window.location.replace(entryUrl);
         }
       } catch (err) {
         if (!cancelled) setError(err instanceof Error ? err.message : String(err));
