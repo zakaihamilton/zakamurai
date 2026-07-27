@@ -1,18 +1,29 @@
 import {
   COMPLETION_SYSTEM_PROMPT,
   DEFAULT_SYSTEM_PROMPT,
+  PATCH_SYSTEM_PROMPT,
+  PLANNING_SYSTEM_PROMPT,
   PromptRegistry,
+  REPAIR_SYSTEM_PROMPT,
   SEARCH_REPLACE_INSTRUCTION,
+  allocateTokenBudget,
   buildEditPrompt,
+  buildPatchPrompt,
+  buildPlanningPrompt,
+  buildRepairPrompt,
   formatCompactContext,
 } from './Prompts';
 
 describe('AI Prompts', () => {
-  it('exposes PromptRegistry with versioning', () => {
-    expect(PromptRegistry.getPrompt('edit')).toBe(DEFAULT_SYSTEM_PROMPT);
+  it('exposes PromptRegistry with v2 versioning', () => {
+    expect(PromptRegistry.getPrompt('edit', 'v2')).toBe(DEFAULT_SYSTEM_PROMPT);
+    expect(PromptRegistry.getPrompt('planning', 'v2')).toBe(PLANNING_SYSTEM_PROMPT);
+    expect(PromptRegistry.getPrompt('patch', 'v2')).toBe(PATCH_SYSTEM_PROMPT);
+    expect(PromptRegistry.getPrompt('repair', 'v2')).toBe(REPAIR_SYSTEM_PROMPT);
     expect(PromptRegistry.getPrompt('completion')).toBe(COMPLETION_SYSTEM_PROMPT);
     expect(PromptRegistry.getPrompt('unknown')).toBe(DEFAULT_SYSTEM_PROMPT);
   });
+
   it('has DEFAULT_SYSTEM_PROMPT', () => {
     expect(DEFAULT_SYSTEM_PROMPT).toBeDefined();
     expect(DEFAULT_SYSTEM_PROMPT).toContain('SEARCH');
@@ -27,6 +38,46 @@ describe('AI Prompts', () => {
   it('has COMPLETION_SYSTEM_PROMPT', () => {
     expect(COMPLETION_SYSTEM_PROMPT).toBeDefined();
     expect(COMPLETION_SYSTEM_PROMPT).toContain('<completion>');
+  });
+
+  it('builds planning, patch, and repair prompts', () => {
+    const planPrompt = buildPlanningPrompt({
+      userRequest: 'Refactor state',
+      activeFilePath: 'src/State.js',
+      activeFileContent: 'const state = {};',
+    });
+    expect(planPrompt).toContain('Current file: src/State.js');
+    expect(planPrompt).toContain('User request:\nRefactor state');
+
+    const patchPrompt = buildPatchPrompt({
+      userRequest: 'Refactor state',
+      plan: '- Objective: Clean up state',
+      activeFilePath: 'src/State.js',
+      activeFileContent: 'const state = {};',
+    });
+    expect(patchPrompt).toContain('Implementation Plan:\n- Objective: Clean up state');
+
+    const repairPrompt = buildRepairPrompt({
+      userRequest: 'Fix syntax',
+      filePath: 'src/State.js',
+      originalContent: 'const state = {};',
+      failedPatch: 'invalid patch',
+      diagnosticError: 'Unclosed bracket on line 1',
+    });
+    expect(repairPrompt).toContain('Diagnostic Error Trace:\nUnclosed bracket on line 1');
+  });
+
+  it('allocates token budget efficiently', () => {
+    const allocated = allocateTokenBudget({
+      systemPrompt: 'System',
+      userRequest: 'Request',
+      activeFileContent: 'x'.repeat(2000),
+      relatedContext: [{ filePath: 'a.js', content: 'y'.repeat(2000) }],
+      maxTokenBudget: 400,
+    });
+
+    expect(allocated.estimatedTokens).toBeLessThanOrEqual(450);
+    expect(allocated.activeFileContent).toContain('[truncated]');
   });
 
   it('formats compact context with a small number of files', () => {

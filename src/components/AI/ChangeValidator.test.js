@@ -76,4 +76,24 @@ describe('AI change validation', () => {
     );
     expect(invalidResult).toContain('Syntax error in src/app.jsx');
   });
+
+  it('supports validateAIChangesAsync with structured details', async () => {
+    const { validateAIChangesAsync } = await import('./ChangeValidator');
+    const mockEsbuild = vi.fn().mockImplementation((code) => {
+      if (code.includes('bad')) throw new Error('Transform failed');
+    });
+
+    const res = await validateAIChangesAsync(
+      [
+        { path: 'src/good.js', content: 'const a = 1;' },
+        { path: 'src/bad.js', content: 'const bad = ;' },
+      ],
+      mockEsbuild,
+    );
+
+    expect(res.accepted).toHaveLength(1);
+    expect(res.rejected).toHaveLength(1);
+    expect(res.details[0].type).toBe('syntax');
+    expect(res.details[0].path).toBe('src/bad.js');
+  });
 });

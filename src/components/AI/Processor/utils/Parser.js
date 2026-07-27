@@ -1,4 +1,47 @@
 /**
+ * Extracts structured plan information from Stage 1 reasoning responses.
+ *
+ * @param {string} response
+ * @returns {{ objective: string, filesToModify: string[], keyChanges: string[] }}
+ */
+export function parseAIPlan(response = '') {
+  if (typeof response !== 'string') {
+    return { objective: '', filesToModify: [], keyChanges: [] };
+  }
+
+  const planRegex = /\/\/\s*---\s*Plan\s*---([\s\S]*?)(?:\/\/\s*---\s*End Plan\s*---|$)/i;
+  const match = planRegex.exec(response);
+  const planBody = match ? match[1] : response;
+
+  const objectiveMatch = planBody.match(/-\s*Objective:\s*(.*)/i);
+  const filesMatch = planBody.match(/-\s*Files to modify:\s*(.*)/i);
+  const changes = [];
+
+  const changeLines = planBody.split('\n');
+  let recordingChanges = false;
+  for (const line of changeLines) {
+    if (/-\s*Key changes:/i.test(line)) {
+      recordingChanges = true;
+      continue;
+    }
+    if (recordingChanges && line.trim().startsWith('-')) {
+      changes.push(line.trim().replace(/^-\s*/, ''));
+    }
+  }
+
+  return {
+    objective: objectiveMatch ? objectiveMatch[1].trim() : '',
+    filesToModify: filesMatch
+      ? filesMatch[1]
+          .split(',')
+          .map((f) => f.trim())
+          .filter(Boolean)
+      : [],
+    keyChanges: changes,
+  };
+}
+
+/**
  * Extracts file blocks from the AI response.
  *
  * @param {string} response - The raw string from the AI.

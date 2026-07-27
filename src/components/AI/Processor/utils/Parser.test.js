@@ -1,7 +1,25 @@
-import { describe, expect, test } from 'vitest';
-import { parseAIResponse } from './Parser';
+import { describe, expect, test, vi } from 'vitest';
+import { parseAIPlan, parseAIResponse } from './Parser';
 
 describe('Parser', () => {
+  describe('parseAIPlan', () => {
+    test('parses structured planning output', () => {
+      const planText = `
+// --- Plan ---
+- Objective: Modernize button styling
+- Files to modify: src/Button.js, src/Button.css
+- Key changes:
+  - Add primary variant
+  - Update hover state
+// --- End Plan ---
+`;
+      const parsed = parseAIPlan(planText);
+      expect(parsed.objective).toBe('Modernize button styling');
+      expect(parsed.filesToModify).toEqual(['src/Button.js', 'src/Button.css']);
+      expect(parsed.keyChanges).toEqual(['Add primary variant', 'Update hover state']);
+    });
+  });
+
   describe('parseAIResponse', () => {
     test('extracts multiple files', () => {
       const response = `

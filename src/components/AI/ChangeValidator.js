@@ -168,6 +168,61 @@ export async function validateContentSyntaxAsync(path, content, esbuildTransform
 }
 
 /**
+ * Async validation for structured AI changes including esbuild transform checks.
+ */
+export async function validateAIChangesAsync(changes, esbuildTransform = null) {
+  if (!Array.isArray(changes)) {
+    return { accepted: [], rejected: ['Changes must be an array.'], details: [] };
+  }
+  const seen = new Set();
+  const accepted = [];
+  const rejected = [];
+  const details = [];
+
+  for (const change of changes) {
+    const path = change?.path ?? change?.filePath;
+    const pathError = validateProjectPath(path);
+    if (pathError) {
+      rejected.push(pathError);
+      details.push({ path, error: pathError, type: 'path' });
+      continue;
+    }
+    if (seen.has(path)) {
+      const conflictErr = `Conflicting operations target ${path}.`;
+      rejected.push(conflictErr);
+      details.push({ path, error: conflictErr, type: 'conflict' });
+      continue;
+    }
+
+    const content = change.content ?? change.after;
+    if (
+      typeof change.content !== 'string' &&
+      typeof change.after !== 'string' &&
+      change.after !== undefined
+    ) {
+      const contentErr = `Invalid change content for ${path}.`;
+      rejected.push(contentErr);
+      details.push({ path, error: contentErr, type: 'content' });
+      continue;
+    }
+
+    if (typeof content === 'string') {
+      const syntaxError = await validateContentSyntaxAsync(path, content, esbuildTransform);
+      if (syntaxError) {
+        rejected.push(syntaxError);
+        details.push({ path, error: syntaxError, type: 'syntax', failedContent: content });
+        continue;
+      }
+    }
+
+    seen.add(path);
+    accepted.push(change);
+  }
+
+  return { accepted, rejected, details };
+}
+
+/**
  * Returns structured accepted/rejected operations so callers can preserve the
  * staged review flow while explaining why unsafe proposals were ignored.
  */

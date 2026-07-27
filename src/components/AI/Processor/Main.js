@@ -1,6 +1,6 @@
 import { formatCode } from '@/utils/formatter';
-import { validateAIChanges } from '../ChangeValidator';
 import { setInDraft, updateInDraft } from '../../state/StateUtils';
+import { validateAIChangesAsync } from '../ChangeValidator';
 import { applyFileUpdate, computeDiff } from './utils/Applier';
 import { parseAIResponse } from './utils/Parser';
 import { resolveFilePath } from './utils/PathResolver';
@@ -27,6 +27,7 @@ import { resolveFilePath } from './utils/PathResolver';
 
 /**
  * Main utility to process AI responses and apply changes to the state.
+ * Supports automated auto-repair loop when esbuildTransform or diff validation fails.
  *
  * @param {string} webLLMResult
  * @param {Object} fs
@@ -34,6 +35,11 @@ import { resolveFilePath } from './utils/PathResolver';
  * @param {Function} sidebarState
  * @param {Function} editorState
  * @param {Object} tabState
+ * @param {Object} [originalContents]
+ * @param {Object} [options]
+ * @param {Function} [options.esbuildTransform]
+ * @param {Function} [options.repairRunner]
+ * @param {number} [options.maxRepairRetries=2]
  * @returns {Promise<number>} Number of files updated.
  */
 export const processAIResponse = async (
@@ -44,13 +50,53 @@ export const processAIResponse = async (
   editorState,
   tabState,
   originalContents = {},
+  options = {},
 ) => {
   if (!webLLMResult) return 0;
 
-  const parsedBlocks = parseAIResponse(webLLMResult, tabState?.activeTabId);
-  const validation = validateAIChanges(
+  const { esbuildTransform = null, repairRunner = null, maxRepairRetries = 2 } = options;
+
+  let currentResult = webLLMResult;
+  let attempt = 0;
+  let parsedBlocks = parseAIResponse(currentResult, tabState?.activeTabId);
+  let validation = await validateAIChangesAsync(
     parsedBlocks.map((block) => ({ ...block, path: block.filePath, content: block.content })),
+    esbuildTransform,
   );
+
+  while (
+    validation.rejected.length > 0 &&
+    typeof repairRunner === 'function' &&
+    attempt < maxRepairRetries
+  ) {
+    attempt++;
+    const firstRejection = validation.rejected[0];
+    if (logState) {
+      logState((draft) => {
+        updateInDraft(draft, ['logs'], (logs = []) => [
+          ...logs,
+          {
+            id: `${Date.now()}-repair-${attempt}`,
+            role: 'system',
+            text: `[Auto-Repair Attempt ${attempt}/${maxRepairRetries}] Repairing error: ${firstRejection}`,
+            timestamp: new Date().toTimeString().split(' ')[0],
+          },
+        ]);
+      });
+    }
+
+    const repairPrompt = `Diagnostic Error Trace: ${firstRejection}\nOriginal Patch:\n${currentResult}`;
+    const repairedResult = await repairRunner(repairPrompt);
+    if (!repairedResult) break;
+
+    currentResult = repairedResult;
+    parsedBlocks = parseAIResponse(currentResult, tabState?.activeTabId);
+    validation = await validateAIChangesAsync(
+      parsedBlocks.map((block) => ({ ...block, path: block.filePath, content: block.content })),
+      esbuildTransform,
+    );
+  }
+
   const fileBlocks = validation.accepted.map(({ path, ...block }) => block);
   if (validation.rejected.length > 0 && logState) {
     logState((draft) => {

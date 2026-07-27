@@ -250,5 +250,30 @@ new content
 
       expect(result).toBe(1);
     });
+
+    test('invokes repairRunner auto-repair loop on syntax error', async () => {
+      const invalidResponse = `// --- File: bad.js ---
+function unclosed() {
+// --- End File ---`;
+      const validRepairedResponse = `// --- File: test.js ---
+repaired content
+// --- End File ---`;
+
+      const mockRepairRunner = vi.fn().mockResolvedValue(validRepairedResponse);
+
+      const result = await processAIResponse(
+        invalidResponse,
+        mockFS,
+        mockLogState,
+        mockSidebarState,
+        mockEditorState,
+        mockTabState,
+        {},
+        { repairRunner: mockRepairRunner, maxRepairRetries: 2 },
+      );
+
+      expect(mockRepairRunner).toHaveBeenCalledOnce();
+      expect(result).toBe(1);
+    });
   });
 });
