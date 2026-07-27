@@ -28,34 +28,11 @@ import {
   sanitizePreviewPath,
 } from './previewSandbox';
 
-const SW_INIT_TIMEOUT_MS = 15000;
+import { PreviewErrorActions } from './subcomponents/PreviewErrorOverlay';
+import PreviewIframeContainer from './subcomponents/PreviewIframeContainer';
+import PreviewToolbar from './subcomponents/PreviewToolbar';
 
-function PreviewErrorActions({ copied, onCopy, onDismiss }) {
-  return (
-    <div className={styles.errorActions}>
-      <Tooltip content={copied ? 'Copied!' : 'Copy error'}>
-        <button
-          type="button"
-          className={styles.errorActionBtn}
-          onClick={onCopy}
-          aria-label={copied ? 'Copied!' : 'Copy error'}
-        >
-          {copied ? <Icons.Check /> : <Icons.Copy />}
-        </button>
-      </Tooltip>
-      <Tooltip content="Dismiss error">
-        <button
-          type="button"
-          className={styles.errorActionBtn}
-          onClick={onDismiss}
-          aria-label="Dismiss error"
-        >
-          <Icons.Close />
-        </button>
-      </Tooltip>
-    </div>
-  );
-}
+const SW_INIT_TIMEOUT_MS = 15000;
 
 export const PreviewAreaUiState = createState('PreviewAreaUiState');
 
@@ -466,87 +443,34 @@ export default function PreviewArea() {
 
   return (
     <div ref={containerRef} className={`${styles.wrapper} ${isMaximized ? styles.maximized : ''}`}>
-      <div className={styles.toolbar}>
-        <div className={styles.addressBar}>
-          <Icons.Globe />
-          <span className={styles.addressText}>{previewHostLabel}/</span>
-          {isLoading && <span className={styles.loadingDot} />}
-        </div>
+      <PreviewToolbar
+        previewHostLabel={previewHostLabel}
+        isLoading={isLoading}
+        scale={scale}
+        isMaximized={isMaximized}
+        onZoomIn={handleZoomIn}
+        onZoomOut={handleZoomOut}
+        onZoomReset={handleZoomReset}
+        onRefresh={handleRefresh}
+        onOpenExternal={handleOpenExternal}
+        onToggleMaximize={toggleMaximize}
+      />
 
-        <div className={styles.toolbarActions}>
-          <Tooltip content="Zoom out">
-            <button type="button" className={styles.toolBtn} onClick={handleZoomOut}>
-              −
-            </button>
-          </Tooltip>
-          <button type="button" className={styles.zoomLevel} onClick={handleZoomReset}>
-            {Math.round(scale * 100)}%
-          </button>
-          <Tooltip content="Zoom in">
-            <button type="button" className={styles.toolBtn} onClick={handleZoomIn}>
-              +
-            </button>
-          </Tooltip>
-          <div className={styles.separator} />
-          <Tooltip content="Refresh preview">
-            <button type="button" className={styles.toolBtn} onClick={handleRefresh}>
-              <Icons.Refresh />
-            </button>
-          </Tooltip>
-          <Tooltip content="Open in new tab">
-            <button type="button" className={styles.toolBtn} onClick={handleOpenExternal}>
-              <Icons.ExternalLink />
-            </button>
-          </Tooltip>
-          <Tooltip content={isMaximized ? 'Exit maximize' : 'Maximize preview'}>
-            <button type="button" className={styles.toolBtn} onClick={toggleMaximize}>
-              {isMaximized ? <Icons.Minimize /> : <Icons.Maximize />}
-            </button>
-          </Tooltip>
-        </div>
-      </div>
-
-      <div className={styles.viewport}>
-        {isLoading && !hasLoadedOnce && (
-          <div className={styles.loadingOverlay}>
-            <div className={styles.spinner} />
-          </div>
-        )}
-        {showInitOverlay && (
-          <div className={styles.loadingOverlay}>
-            <div className={styles.spinner} />
-            <p className={styles.loadingText}>Restoring Preview...</p>
-          </div>
-        )}
-        {displayError && (
-          <div className={styles.errorBanner} role="alert">
-            <Icons.AlertCircle size={14} />
-            <span className={styles.errorText}>{displayError}</span>
-            <PreviewErrorActions
-              copied={errorCopied}
-              onCopy={handleCopyError}
-              onDismiss={handleDismissError}
-            />
-          </div>
-        )}
-        <div className={styles.scaleWrapper} style={{ '--preview-scale': scale }}>
-          {isCompilerReady && (
-            <iframe
-              key="preview-iframe"
-              ref={iframeRef}
-              src={previewUrl}
-              name={`zakamurai-preview-${previewSessionRef.current}`}
-              title="Preview"
-              className={styles.iframe}
-              onLoad={handleLoad}
-              // Generated code runs on preview.zakamurai.com and never receives
-              // same-origin access to IDE storage, DOM, or service workers.
-              sandbox={PREVIEW_IFRAME_SANDBOX}
-              style={{ '--iframe-size': scale !== 1 ? `${100 / scale}%` : '100%' }}
-            />
-          )}
-        </div>
-      </div>
+      <PreviewIframeContainer
+        isLoading={isLoading}
+        hasLoadedOnce={hasLoadedOnce}
+        showInitOverlay={showInitOverlay}
+        displayError={displayError}
+        errorCopied={errorCopied}
+        onCopyError={handleCopyError}
+        onDismissError={handleDismissError}
+        scale={scale}
+        isCompilerReady={isCompilerReady}
+        iframeRef={iframeRef}
+        previewUrl={previewUrl}
+        previewSessionId={previewSessionRef.current}
+        onLoad={handleLoad}
+      />
       <PreviewBridge
         iframeRef={iframeRef}
         externalPreviewRef={externalPreviewRef}

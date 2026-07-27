@@ -6,7 +6,6 @@ import { TabState } from '@/components/App/Panes/TabBar';
 import { EditorState } from '@/components/App/Views/EditorArea';
 import { LogState } from '@/components/App/Views/LogArea';
 import { useFileSystem } from '@/components/Storage';
-import Dialog from '@/components/ui/Dialog';
 import React, { useCallback, useEffect } from 'react';
 import {
   AgentSessionState,
@@ -32,6 +31,7 @@ import PromptContextPanel from './subcomponents/PromptContextPanel';
 import PromptHeader from './subcomponents/PromptHeader';
 import ReasoningPanel from './subcomponents/ReasoningPanel';
 import { RoleGraphDialog, RoleGraphSummary } from './subcomponents/RoleGraph';
+import SessionDialog from './subcomponents/SessionDialog';
 import SessionManager from './subcomponents/SessionManager';
 import SessionTranscript from './subcomponents/SessionTranscript';
 import useAgentRunner from './useAgentRunner';
@@ -362,80 +362,13 @@ export default function Prompt() {
           onDelete={handleDeleteSession}
           isOpen={isOpen}
         />
-        <Dialog
-          isOpen={!!sessionDialog}
-          title={
-            sessionDialog?.type === 'rename'
-              ? 'Rename session'
-              : sessionDialog?.type === 'delete'
-                ? 'Delete session?'
-                : 'Session error'
-          }
-          message={
-            sessionDialog?.type === 'delete'
-              ? `Delete session "${sessionDialog.name}"?`
-              : sessionDialog?.message
-          }
-          confirmText={
-            sessionDialog?.type === 'rename'
-              ? 'Rename'
-              : sessionDialog?.type === 'delete'
-                ? 'Delete'
-                : 'OK'
-          }
-          cancelText={sessionDialog?.type === 'error' ? 'Close' : 'Cancel'}
-          type={sessionDialog?.type === 'delete' ? 'danger' : 'default'}
-          onConfirm={() => {
-            if (sessionDialog?.type === 'rename') {
-              agentSessionState((draft) => {
-                const next = renameAgentSession(
-                  { sessions: draft.sessions, activeSessionId: draft.activeSessionId },
-                  sessionDialog.sessionId,
-                  sessionDialog.value,
-                );
-                draft.sessions = next.sessions;
-              });
-            } else if (sessionDialog?.type === 'delete') {
-              if (runningSessionId === sessionDialog.sessionId && isAIProcessing) {
-                promptUiState((draft) => {
-                  draft.sessionDialog = {
-                    type: 'error',
-                    message: 'Stop the running agent before deleting this session.',
-                  };
-                });
-                return;
-              }
-              agentSessionState((draft) => {
-                const next = deleteAgentSession(
-                  { sessions: draft.sessions, activeSessionId: draft.activeSessionId },
-                  sessionDialog.sessionId,
-                );
-                draft.sessions = next.sessions;
-                draft.activeSessionId = next.activeSessionId;
-              });
-            }
-            promptUiState((draft) => {
-              draft.sessionDialog = null;
-            });
-          }}
-          onCancel={() =>
-            promptUiState((draft) => {
-              draft.sessionDialog = null;
-            })
-          }
-        >
-          {sessionDialog?.type === 'rename' && (
-            <input
-              aria-label="Session name"
-              value={sessionDialog.value}
-              onChange={(event) =>
-                promptUiState((draft) => {
-                  draft.sessionDialog.value = event.target.value;
-                })
-              }
-            />
-          )}
-        </Dialog>
+        <SessionDialog
+          sessionDialog={sessionDialog}
+          runningSessionId={runningSessionId}
+          isAIProcessing={isAIProcessing}
+          agentSessionState={agentSessionState}
+          promptUiState={promptUiState}
+        />
         {activeSession?.mode === 'team' && (
           <RoleGraphSummary
             roleGraph={activeSession.roleGraph}
