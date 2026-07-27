@@ -10,6 +10,7 @@ import {
   parseReviewSummary,
   resolveRoleConfig,
   syncLinearAlwaysEdges,
+  validateRoleGraph,
 } from './Roles';
 
 describe('role graphs', () => {
@@ -90,6 +91,31 @@ describe('role graphs', () => {
       { from: 'planner', to: 'reviewer', when: 'always' },
     ]);
     expect(reordered.edges.some((edge) => edge.to === 'gone')).toBe(false);
+  });
+
+  it('validates role graph structure', () => {
+    const defaultGraph = createDefaultRoleGraph();
+    expect(validateRoleGraph(defaultGraph)).toEqual({
+      valid: true,
+      errors: [],
+      graph: expect.any(Object),
+    });
+
+    const cyclicGraph = {
+      entryRoleId: 'a',
+      roles: [
+        { id: 'a', kind: 'planner' },
+        { id: 'b', kind: 'coder' },
+      ],
+      edges: [
+        { from: 'a', to: 'b', when: 'always' },
+        { from: 'b', to: 'a', when: 'always' },
+      ],
+    };
+    expect(validateRoleGraph(cyclicGraph).valid).toBe(false);
+    expect(validateRoleGraph(cyclicGraph).errors).toContain(
+      'Workflow contains an unrestricted cycle.',
+    );
   });
 });
 
