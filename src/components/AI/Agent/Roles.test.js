@@ -112,6 +112,21 @@ describe('role graphs', () => {
       { from: 'planner', to: 'reviewer', when: 'always' },
     ]);
     expect(reordered.edges.some((edge) => edge.to === 'gone')).toBe(false);
+
+    expect(
+      syncLinearAlwaysEdges({
+        roles: [{ id: 'solo', kind: 'custom' }],
+        edges: [null, { from: 'solo', to: 'solo', when: 'reject', maxTimes: 0 }],
+      }),
+    ).toMatchObject({
+      entryRoleId: 'solo',
+      edges: [{ from: 'solo', to: 'solo', when: 'reject', maxTimes: 1 }],
+    });
+    expect(syncLinearAlwaysEdges({ roles: null })).toMatchObject({
+      entryRoleId: null,
+      roles: [],
+      edges: [],
+    });
   });
 
   it('validates role graph structure', () => {
