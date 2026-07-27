@@ -1,7 +1,8 @@
 import { TabState } from '@/components/App/Panes';
-import { Icons } from '@/components/ui/Icons';
-import Tooltip from '@/components/ui/Tooltip';
 import styles from './Welcome.module.css';
+import WelcomeActions from './subcomponents/WelcomeActions';
+import WelcomeFooter from './subcomponents/WelcomeFooter';
+import WelcomeHero from './subcomponents/WelcomeHero';
 
 export default function Welcome() {
   const tabState = TabState.usePassiveState();
@@ -41,71 +42,9 @@ export default function Welcome() {
   return (
     <div className={styles.welcome}>
       <div className={styles.hero}>
-        <div className={styles.logoMark}>
-          <Icons.ZLogo size={56} className={styles.logo} />
-        </div>
-        <p className={styles.eyebrow}>Welcome to Zakamurai</p>
-        <h1 className={styles.title}>Your AI coding workspace in the browser.</h1>
-        <p className={styles.subtitle}>
-          A focused browser workspace for editing, AI-assisted changes, builds, logs, and live
-          preview.
-        </p>
-
-        <div className={styles.intro}>
-          <span>Code</span>
-          <span>Prompt</span>
-          <span>Build</span>
-          <span>Preview</span>
-        </div>
-
-        <div className={styles.supportingActions}>
-          <Tooltip content="Project Information">
-            <button
-              type="button"
-              className={styles.textAction}
-              onClick={handleShowInfo}
-              aria-label="Show project information"
-            >
-              <Icons.Info size={18} />
-              <span>Project info</span>
-            </button>
-          </Tooltip>
-          <Tooltip content="Instructions">
-            <button
-              type="button"
-              className={styles.textAction}
-              onClick={handleShowInstructions}
-              aria-label="Show instructions"
-            >
-              <Icons.Code size={18} />
-              <span>Instructions</span>
-            </button>
-          </Tooltip>
-        </div>
-
-        <footer className={styles.footer}>
-          <span className={styles.footerText}>Zakai Hamilton</span>
-          <Tooltip content="GitHub Repository">
-            <a
-              href="https://github.com/zakaihamilton/zakamurai"
-              target="_blank"
-              rel="noopener noreferrer"
-              className={styles.githubLink}
-            >
-              <Icons.Github size={18} />
-            </a>
-          </Tooltip>
-          <Tooltip content="LinkedIn Profile">
-            <a
-              href="https://www.linkedin.com/in/zakai-hamilton"
-              target="_blank"
-              rel="noopener noreferrer"
-              className={styles.linkedinLink}
-            >
-              <Icons.Linkedin size={18} />
-            </a>
-          </Tooltip>
-        </footer>
+        <WelcomeHero />
+        <WelcomeActions onShowInfo={handleShowInfo} onShowInstructions={handleShowInstructions} />
+        <WelcomeFooter />
       </div>
     </div>
   );
