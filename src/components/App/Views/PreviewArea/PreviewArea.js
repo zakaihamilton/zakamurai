@@ -28,9 +28,9 @@ import {
   sanitizePreviewPath,
 } from './previewSandbox';
 
-import { PreviewErrorActions } from './subcomponents/PreviewErrorOverlay';
-import PreviewIframeContainer from './subcomponents/PreviewIframeContainer';
-import PreviewToolbar from './subcomponents/PreviewToolbar';
+import { PreviewErrorActions } from './ErrorOverlay';
+import PreviewIframeContainer from './IframeContainer';
+import PreviewToolbar from './Toolbar';
 
 const SW_INIT_TIMEOUT_MS = 15000;
 

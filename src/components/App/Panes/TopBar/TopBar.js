@@ -19,15 +19,15 @@ import { Icons } from '@/components/ui/Icons';
 import Tooltip from '@/components/ui/Tooltip';
 import { formatShortcut } from '@/utils/os';
 import React, { useEffect } from 'react';
+import ActionButtons from './ActionButtons';
+import Breadcrumb from './Breadcrumb';
+import TopBarMenu from './Menu';
+import NavigationControls from './NavigationControls';
 import useProjectCompiler from './ProjectCompiler';
+import ThemeToggle from './ThemeToggle';
 import styles from './TopBar.module.css';
+import WorkingIndicator from './WorkingIndicator';
 import useZipExporter from './ZipExporter';
-import ActionButtons from './subcomponents/ActionButtons';
-import Breadcrumb from './subcomponents/Breadcrumb';
-import NavigationControls from './subcomponents/NavigationControls';
-import ThemeToggle from './subcomponents/ThemeToggle';
-import TopBarMenu from './subcomponents/TopBarMenu';
-import WorkingIndicator from './subcomponents/WorkingIndicator';
 
 export function resetNewProjectState({
   template = 'default',

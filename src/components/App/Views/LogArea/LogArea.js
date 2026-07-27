@@ -1,9 +1,9 @@
 import { createState } from '@/components/state/State';
 import React, { useEffect, useRef } from 'react';
+import LogList from './List';
 import styles from './LogArea.module.css';
-import LogList from './subcomponents/LogList';
-import LogScrollButton from './subcomponents/LogScrollButton';
-import LogToolbar from './subcomponents/LogToolbar';
+import LogScrollButton from './ScrollButton';
+import LogToolbar from './Toolbar';
 
 export const LogState = createState('LogState');
 export const LogAreaUiState = createState('LogAreaUiState');

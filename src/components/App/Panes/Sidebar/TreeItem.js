@@ -6,9 +6,9 @@ import Tooltip from '@/components/ui/Tooltip';
 import { isMediaFile } from '@/utils/file';
 import { useLongPress } from '@/utils/touch';
 import React, { useEffect, useRef } from 'react';
+import CreateRowInput from './CreateRowInput';
 import SidebarContextMenu from './SidebarContextMenu';
 import styles from './TreeItem.module.css';
-import CreateRowInput from './subcomponents/CreateRowInput';
 
 export const TreeItemState = createState('TreeItemState');
 

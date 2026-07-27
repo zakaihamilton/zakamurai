@@ -20,20 +20,18 @@ import {
   setActiveAgentSession,
   updateAgentSession,
 } from './AgentSessions';
+import ChangeSetPanel from './ChangeSet';
+import PromptComposer from './Composer';
+import PromptContextPanel from './Context';
+import PromptHeader from './Header';
 import useModelDownloader from './ModelDownloader';
+import ModelDownloader from './ModelManager';
 import styles from './Prompt.module.css';
 import usePromptHistory from './PromptHistory';
 import { PromptState, PromptUiState, getInitialPromptUiState } from './PromptState';
-import ChangeSetPanel from './subcomponents/ChangeSetPanel';
-import ModelDownloader from './subcomponents/ModelManager';
-import PromptComposer from './subcomponents/PromptComposer';
-import PromptContextPanel from './subcomponents/PromptContextPanel';
-import PromptHeader from './subcomponents/PromptHeader';
-import ReasoningPanel from './subcomponents/ReasoningPanel';
-import { RoleGraphDialog, RoleGraphSummary } from './subcomponents/RoleGraph';
-import SessionDialog from './subcomponents/SessionDialog';
-import SessionManager from './subcomponents/SessionManager';
-import SessionTranscript from './subcomponents/SessionTranscript';
+import ReasoningPanel from './Reasoning';
+import { RoleGraphDialog, RoleGraphSummary } from './RoleGraph';
+import { SessionDialog, SessionManager, SessionTranscript } from './Session';
 import useAgentRunner from './useAgentRunner';
 
 export { PromptState, PromptUiState } from './PromptState';

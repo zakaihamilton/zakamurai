@@ -1,9 +1,9 @@
 import React from 'react';
+import ProjectAbout from './About';
+import ProjectHeader from './Header';
 import styles from './ProjectInfo.module.css';
-import ProjectAbout from './subcomponents/ProjectAbout';
-import ProjectHeader from './subcomponents/ProjectHeader';
-import ProjectTechnologies from './subcomponents/ProjectTechnologies';
-import ProjectVision from './subcomponents/ProjectVision';
+import ProjectTechnologies from './Technologies';
+import ProjectVision from './Vision';
 
 export default function ProjectInfo() {
   return (

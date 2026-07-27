@@ -5,14 +5,14 @@ import { useFileSystem } from '@/components/Storage';
 import { createState } from '@/components/state/State';
 import { useNotification } from '@/components/ui/Notification';
 import React, { useCallback, useDeferredValue, useEffect, useMemo, useRef } from 'react';
+import SidebarFilter from './Filter';
+import SidebarMountSection from './MountSection';
 import styles from './Sidebar.module.css';
 import useSidebarDragAndDrop from './SidebarDragAndDrop';
 import useSidebarFileLoader from './SidebarFileLoader';
+import SidebarTree from './Tree';
 import { flattenTree, insertCreateRow, isNodeModulesPath, normalizeChildren } from './TreeUtils';
-import SidebarFilter from './subcomponents/SidebarFilter';
-import SidebarMountSection from './subcomponents/SidebarMountSection';
-import SidebarTree from './subcomponents/SidebarTree';
-import WorkspaceHealth from './subcomponents/WorkspaceHealth';
+import WorkspaceHealth from './WorkspaceHealth';
 
 export const SidebarState = createState('SidebarState');
 export const SidebarUiState = createState('SidebarUiState');

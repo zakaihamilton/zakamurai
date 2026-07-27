@@ -1,8 +1,8 @@
 import { TabState } from '@/components/App/Panes';
+import WelcomeActions from './Actions';
+import WelcomeFooter from './Footer';
+import WelcomeHero from './Hero';
 import styles from './Welcome.module.css';
-import WelcomeActions from './subcomponents/WelcomeActions';
-import WelcomeFooter from './subcomponents/WelcomeFooter';
-import WelcomeHero from './subcomponents/WelcomeHero';
 
 export default function Welcome() {
   const tabState = TabState.usePassiveState();
