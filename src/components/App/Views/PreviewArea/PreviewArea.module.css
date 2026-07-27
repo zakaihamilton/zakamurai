@@ -158,13 +158,12 @@
   position: relative;
   flex: 1;
   overflow: auto;
-  background: #fff;
+  background: var(--bg-base);
 }
 
 .scaleWrapper {
   width: 100%;
   height: 100%;
-  transition: transform 0.15s ease;
   transform: scale(var(--preview-scale, 1));
   transform-origin: top left;
 }
@@ -174,6 +173,7 @@
   border: none;
   width: var(--iframe-size, 100%);
   height: var(--iframe-size, 100%);
+  background: var(--bg-base);
 }
 
 /* ---- Loading overlay ---- */

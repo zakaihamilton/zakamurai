@@ -403,11 +403,11 @@ export default function PreviewArea() {
 
   const handleZoomIn = () =>
     previewAreaUiState((draft) => {
-      draft.scale = Math.min(draft.scale + 0.1, 2);
+      draft.scale = Math.round(Math.min(draft.scale + 0.1, 2) * 10) / 10;
     });
   const handleZoomOut = () =>
     previewAreaUiState((draft) => {
-      draft.scale = Math.max(draft.scale - 0.1, 0.3);
+      draft.scale = Math.round(Math.max(draft.scale - 0.1, 0.3) * 10) / 10;
     });
   const handleZoomReset = () =>
     previewAreaUiState((draft) => {

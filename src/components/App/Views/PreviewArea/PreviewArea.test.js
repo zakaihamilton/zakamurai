@@ -441,4 +441,39 @@ describe('PreviewArea', () => {
     expect(document.querySelector(`.${iframe.className}`)).not.toBeNull();
     expect(document.querySelector('[class*="loadingOverlay"]')).toBeNull();
   });
+
+  it('updates scale precisely without floating-point precision inaccuracies on zoom in/out', () => {
+    const preview = createStateHook({
+      htmlContent: '<html><body>Hello</body></html>',
+      isCompilerReady: true,
+      restoreError: null,
+    });
+    const ui = createStateHook({
+      isLoading: false,
+      scale: 1.1,
+      error: null,
+      refreshKey: 1,
+      isSwReady: true,
+      isMaximized: false,
+      address: '/preview/dist/index.html',
+      host: 'localhost',
+    });
+
+    vi.spyOn(PreviewState, 'useState').mockReturnValue(preview.hook);
+    vi.spyOn(PreviewAreaUiState, 'useState').mockReturnValue(ui.hook);
+
+    render(<PreviewArea />);
+
+    fireEvent.click(screen.getByTitle('Zoom in'));
+    const zoomInUpdater = ui.hook.mock.calls[ui.hook.mock.calls.length - 1][0];
+    const draftIn = { scale: 1.1 };
+    zoomInUpdater(draftIn);
+    expect(draftIn.scale).toBe(1.2);
+
+    fireEvent.click(screen.getByTitle('Zoom out'));
+    const zoomOutUpdater = ui.hook.mock.calls[ui.hook.mock.calls.length - 1][0];
+    const draftOut = { scale: 1.3 };
+    zoomOutUpdater(draftOut);
+    expect(draftOut.scale).toBe(1.2);
+  });
 });

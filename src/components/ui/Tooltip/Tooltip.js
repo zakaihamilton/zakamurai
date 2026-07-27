@@ -2,11 +2,26 @@ import { AppState } from '@/components/App/AppState';
 import Node from '@/components/state/Node';
 import { createState } from '@/components/state/State';
 import { useShouldShowKeyboardShortcuts } from '@/utils/keyboard';
-import React, { useRef, useEffect, useLayoutEffect } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import styles from './Tooltip.module.css';
 
 const TooltipState = createState('TooltipState');
+
+let activeTooltipHide = null;
+
+function registerActiveTooltip(hideFn) {
+  if (activeTooltipHide && activeTooltipHide !== hideFn) {
+    activeTooltipHide();
+  }
+  activeTooltipHide = hideFn;
+}
+
+function unregisterActiveTooltip(hideFn) {
+  if (activeTooltipHide === hideFn) {
+    activeTooltipHide = null;
+  }
+}
 
 /**
  * Tooltip component to replace native title tooltips.
@@ -62,7 +77,17 @@ function TooltipInner({
   const viewportMargin = 10;
   const arrowHeight = 10;
 
-  const showTooltip = () => {
+  const hideTooltip = useCallback(() => {
+    isTriggerActiveRef.current = false;
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    timeoutRef.current = null;
+    unregisterActiveTooltip(hideTooltip);
+    tooltipState((draft) => {
+      draft.isVisible = false;
+    });
+  }, [tooltipState]);
+
+  const showTooltip = useCallback(() => {
     isTriggerActiveRef.current = true;
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
     timeoutRef.current = setTimeout(() => {
@@ -77,6 +102,8 @@ function TooltipInner({
 
         const triggerCenter = rect.left + rect.width / 2;
 
+        registerActiveTooltip(hideTooltip);
+
         tooltipState((draft) => {
           draft.placement = newPlacement;
           draft.coords = {
@@ -88,24 +115,15 @@ function TooltipInner({
         });
       }
     }, 400);
-  };
+  }, [hideTooltip, tooltipState]);
 
-  const hideTooltip = () => {
-    isTriggerActiveRef.current = false;
-    if (timeoutRef.current) clearTimeout(timeoutRef.current);
-    timeoutRef.current = null;
-    tooltipState((draft) => {
-      draft.isVisible = false;
-    });
-  };
-
-  const showTooltipOnFocus = () => {
+  const showTooltipOnFocus = useCallback(() => {
     if (shouldSuppressFocusRef.current) {
       shouldSuppressFocusRef.current = false;
       return;
     }
     showTooltip();
-  };
+  }, [showTooltip]);
 
   useLayoutEffect(() => {
     const updatePosition = () => {
@@ -191,11 +209,28 @@ function TooltipInner({
   }, [isVisible, placement, tooltipState]);
 
   useEffect(() => {
+    if (!isVisible) return;
+
+    const handleWindowBlurOrHide = () => {
+      hideTooltip();
+    };
+
+    window.addEventListener('blur', handleWindowBlurOrHide);
+    document.addEventListener('visibilitychange', handleWindowBlurOrHide);
+
+    return () => {
+      window.removeEventListener('blur', handleWindowBlurOrHide);
+      document.removeEventListener('visibilitychange', handleWindowBlurOrHide);
+    };
+  }, [isVisible, hideTooltip]);
+
+  useEffect(() => {
     return () => {
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
       isTriggerActiveRef.current = false;
+      unregisterActiveTooltip(hideTooltip);
     };
-  }, []);
+  }, [hideTooltip]);
 
   if (!content) return children;
 

@@ -409,4 +409,58 @@ describe('Tooltip', () => {
     expect(tooltip.style.getPropertyValue('--tooltip-max-height')).toBe('0px');
     expect(tooltip.style.getPropertyValue('--arrow-offset')).toBe('0px');
   });
+
+  it('ensures only one tooltip is ever displayed at once', async () => {
+    render(
+      <>
+        <Tooltip content="First helper">
+          <button type="button">First</button>
+        </Tooltip>
+        <Tooltip content="Second helper">
+          <button type="button">Second</button>
+        </Tooltip>
+      </>,
+    );
+
+    const firstTrigger = screen.getByText('First').parentElement;
+    const secondTrigger = screen.getByText('Second').parentElement;
+
+    await showTooltip(firstTrigger);
+    expect(screen.getByText('First helper')).toBeDefined();
+    expect(screen.queryByText('Second helper')).toBeNull();
+
+    await showTooltip(secondTrigger);
+    expect(screen.queryByText('First helper')).toBeNull();
+    expect(screen.getByText('Second helper')).toBeDefined();
+    expect(screen.getAllByRole('tooltip').length).toBe(1);
+  });
+
+  it('hides active tooltip on window blur and visibility change', async () => {
+    render(
+      <Tooltip content="Helper text">
+        <button type="button">Hover me</button>
+      </Tooltip>,
+    );
+
+    const trigger = screen.getByText('Hover me').parentElement;
+    await showTooltip(trigger);
+    expect(screen.getByRole('tooltip')).toBeDefined();
+
+    await act(async () => {
+      window.dispatchEvent(new Event('blur'));
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(screen.queryByRole('tooltip')).toBeNull();
+
+    await showTooltip(trigger);
+    expect(screen.getByRole('tooltip')).toBeDefined();
+
+    await act(async () => {
+      document.dispatchEvent(new Event('visibilitychange'));
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(screen.queryByRole('tooltip')).toBeNull();
+  });
 });
