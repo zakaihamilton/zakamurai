@@ -16,6 +16,14 @@ const base64ToBytes = (value) => Uint8Array.from(atob(value || ''), (char) => ch
 self.addEventListener('install', () => self.skipWaiting());
 self.addEventListener('activate', (event) => event.waitUntil(self.clients.claim()));
 self.addEventListener('message', (event) => {
+  if (event.data?.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+    return;
+  }
+  if (event.data?.type === 'claim') {
+    event.waitUntil(self.clients.claim());
+    return;
+  }
   if (
     event.data?.type !== 'init' ||
     !event.ports[0] ||
@@ -23,6 +31,7 @@ self.addEventListener('message', (event) => {
     !event.data.ideOrigin
   )
     return;
+
   mainPort = event.ports[0];
   activeSessionId = event.data.sessionId;
   ideOrigin = event.data.ideOrigin;
@@ -55,7 +64,40 @@ self.addEventListener('message', (event) => {
       data.error ? pendingRequest.reject(new Error(data.error)) : pendingRequest.resolve(data);
     }
   };
+
+  event.waitUntil(
+    (async () => {
+      await self.clients.claim();
+      const client = event.source;
+      if (client) {
+        client.postMessage({ type: 'init-ok', sessionId: activeSessionId });
+      } else {
+        const windows = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+        for (const windowClient of windows) {
+          windowClient.postMessage({ type: 'init-ok', sessionId: activeSessionId });
+        }
+      }
+    })(),
+  );
 });
+
+function applyPreviewEmbedHeaders(headers) {
+  // Parent IDE uses COEP require-corp. Cross-origin iframe documents must send
+  // their own COEP header or Chrome blocks with coep-frame-resource-needs-coep-header.
+  headers.set('Cross-Origin-Embedder-Policy', 'credentialless');
+  headers.set('Cross-Origin-Resource-Policy', 'cross-origin');
+  headers.set(
+    'Content-Security-Policy',
+    "frame-ancestors 'self' http://localhost:3000 https://www.zakamurai.com",
+  );
+  headers.delete('X-Frame-Options');
+  return headers;
+}
+
+function previewResponse(body, init = {}) {
+  const headers = applyPreviewEmbedHeaders(new Headers(init.headers || {}));
+  return new Response(body, { ...init, headers });
+}
 
 async function requestFromIde(request) {
   if (!mainPort || !activeSessionId) throw new Error('Isolated preview connection is not ready');
@@ -115,9 +157,7 @@ async function handleVirtualRequest(request, path) {
     bodyBase64: body,
     streaming: request.method === 'POST' && path.startsWith('/api/'),
   });
-  const responseHeaders = new Headers(response.headers || {});
-  responseHeaders.set('Cross-Origin-Resource-Policy', 'cross-origin');
-  responseHeaders.delete('X-Frame-Options');
+  const responseHeaders = applyPreviewEmbedHeaders(new Headers(response.headers || {}));
   if (response.stream) {
     return new Response(response.stream, {
       status: response.statusCode,
@@ -136,17 +176,50 @@ async function handleVirtualRequest(request, path) {
 
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
+
+  if (url.pathname.startsWith('/__preview/')) {
+    if (!activeSessionId || !mainPort) {
+      event.respondWith(
+        previewResponse('Preview connection is not ready yet. Return to Zakamurai and rebuild.', {
+          status: 503,
+          headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+        }),
+      );
+      return;
+    }
+    const prefix = `/__preview/${activeSessionId}`;
+    if (!url.pathname.startsWith(prefix)) {
+      event.respondWith(
+        previewResponse('Preview session mismatch.', {
+          status: 404,
+          headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+        }),
+      );
+      return;
+    }
+    const path = url.pathname.slice(prefix.length) || '/';
+    event.respondWith(
+      handleVirtualRequest(event.request, path).catch((error) =>
+        previewResponse(`Preview bridge error: ${error.message}`, {
+          status: 502,
+          headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+        }),
+      ),
+    );
+    return;
+  }
+
   const prefix = `/__preview/${activeSessionId || ''}`;
-  const isPreviewRequest = activeSessionId && url.pathname.startsWith(prefix);
   const referrer = event.request.referrer ? new URL(event.request.referrer) : null;
-  const isPreviewResource = referrer?.pathname.startsWith(prefix);
-  if (!isPreviewRequest && !isPreviewResource) return;
-  const path = isPreviewRequest
-    ? url.pathname.slice(prefix.length) || '/'
-    : `${url.pathname}${url.search}`;
+  const isPreviewResource = Boolean(activeSessionId && referrer?.pathname.startsWith(prefix));
+  if (!isPreviewResource) return;
+  const path = `${url.pathname}${url.search}`;
   event.respondWith(
-    handleVirtualRequest(event.request, path).catch(
-      (error) => new Response(`Preview bridge error: ${error.message}`, { status: 502 }),
+    handleVirtualRequest(event.request, path).catch((error) =>
+      previewResponse(`Preview bridge error: ${error.message}`, {
+        status: 502,
+        headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+      }),
     ),
   );
 });

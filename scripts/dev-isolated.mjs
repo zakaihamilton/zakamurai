@@ -18,7 +18,9 @@ const previewProxy = http.createServer((request, response) => {
       port: 3000,
       path: request.url,
       method: request.method,
-      headers: { ...request.headers, host: 'localhost:3000', 'x-zakamurai-surface': 'preview' },
+      // Keep Host as localhost:3001 so Next.js client hydration matches the
+      // browser origin. Surface detection uses x-zakamurai-surface instead.
+      headers: { ...request.headers, host: 'localhost:3001', 'x-zakamurai-surface': 'preview' },
     },
     (upstreamResponse) => {
       response.writeHead(upstreamResponse.statusCode || 502, {
@@ -33,6 +35,27 @@ const previewProxy = http.createServer((request, response) => {
     response.end('Preview runtime is waiting for the IDE dev server.');
   });
   request.pipe(upstream);
+});
+previewProxy.on('upgrade', (request, socket, head) => {
+  const upstream = http.request({
+    hostname: '127.0.0.1',
+    port: 3000,
+    path: request.url,
+    method: request.method,
+    headers: { ...request.headers, host: 'localhost:3001', 'x-zakamurai-surface': 'preview' },
+  });
+  upstream.on('upgrade', (upstreamResponse, upstreamSocket, upstreamHead) => {
+    socket.write(
+      `HTTP/1.1 101 Switching Protocols\r\n${Object.entries(upstreamResponse.headers)
+        .map(([key, value]) => `${key}: ${Array.isArray(value) ? value.join(', ') : value}`)
+        .join('\r\n')}\r\n\r\n`,
+    );
+    if (upstreamHead.length) socket.write(upstreamHead);
+    upstreamSocket.pipe(socket);
+    socket.pipe(upstreamSocket);
+  });
+  upstream.on('error', () => socket.destroy());
+  upstream.end(head);
 });
 previewProxy.listen(3001, '127.0.0.1', () => {
   console.log('Isolated preview proxy ready at http://localhost:3001');

@@ -10,7 +10,7 @@ import { PREVIEW_CONNECT, PREVIEW_PROTOCOL_VERSION } from '../Views/PreviewArea/
 
 // Bump this URL when the preview-routing protocol changes so browsers replace
 // an older scoped worker instead of continuing to serve its stale routes.
-const SW_URL = '/__preview_sw__.js?v=3';
+const SW_URL = '/__preview_sw__.js?v=7';
 const SESSION_WINDOW_NAME_PREFIX = 'zakamurai-preview-';
 
 function getSessionId() {
@@ -21,19 +21,87 @@ function getSessionId() {
     : null;
 }
 
-async function waitForPreviewWorkerControl() {
-  if (navigator.serviceWorker.controller) return;
+async function waitForWorkerState(worker, state) {
+  if (!worker || worker.state === state) return;
+  await new Promise((resolve, reject) => {
+    const timeout = window.setTimeout(() => {
+      worker.removeEventListener('statechange', onStateChange);
+      reject(new Error(`Preview service worker did not reach ${state}.`));
+    }, 5000);
+    const onStateChange = () => {
+      if (worker.state !== state) return;
+      window.clearTimeout(timeout);
+      worker.removeEventListener('statechange', onStateChange);
+      resolve();
+    };
+    worker.addEventListener('statechange', onStateChange);
+  });
+}
+
+async function ensureActiveWorker(registration) {
+  const activateWorker = async (worker) => {
+    if (!worker) return;
+    if (worker.state === 'activated') return;
+    if (worker.state === 'installing') {
+      await waitForWorkerState(worker, 'installed');
+    }
+    if (worker.state === 'installed') {
+      worker.postMessage({ type: 'SKIP_WAITING' });
+    }
+    if (worker.state !== 'activated') {
+      await waitForWorkerState(worker, 'activated');
+    }
+  };
+
+  await activateWorker(registration.installing);
+  await activateWorker(registration.waiting);
+  await navigator.serviceWorker.ready;
+  if (!registration.active) throw new Error('Preview service worker did not activate.');
+  return registration.active;
+}
+
+async function waitForPreviewWorkerControl(registration) {
+  const controllingThisWorker = () =>
+    Boolean(
+      navigator.serviceWorker.controller &&
+        registration.active &&
+        navigator.serviceWorker.controller.scriptURL === registration.active.scriptURL,
+    );
+  if (controllingThisWorker()) return;
+  registration.active?.postMessage({ type: 'claim' });
   await new Promise((resolve, reject) => {
     const timeout = window.setTimeout(() => {
       navigator.serviceWorker.removeEventListener('controllerchange', onControllerChange);
       reject(new Error('Preview service worker did not take control.'));
     }, 5000);
     const onControllerChange = () => {
+      if (!controllingThisWorker()) return;
       window.clearTimeout(timeout);
       navigator.serviceWorker.removeEventListener('controllerchange', onControllerChange);
       resolve();
     };
     navigator.serviceWorker.addEventListener('controllerchange', onControllerChange);
+    if (controllingThisWorker()) {
+      window.clearTimeout(timeout);
+      navigator.serviceWorker.removeEventListener('controllerchange', onControllerChange);
+      resolve();
+    }
+  });
+}
+
+async function waitForInitAck(sessionId) {
+  await new Promise((resolve, reject) => {
+    const timeout = window.setTimeout(() => {
+      navigator.serviceWorker.removeEventListener('message', onMessage);
+      reject(new Error('Preview service worker did not acknowledge init.'));
+    }, 5000);
+    const onMessage = (event) => {
+      if (event.data?.type !== 'init-ok' || event.data?.sessionId !== sessionId) return;
+      window.clearTimeout(timeout);
+      navigator.serviceWorker.removeEventListener('message', onMessage);
+      resolve();
+    };
+    navigator.serviceWorker.addEventListener('message', onMessage);
   });
 }
 
@@ -80,16 +148,14 @@ export default function PreviewHost() {
       }
       window.removeEventListener('message', connect);
       try {
-        // Root scope so this handshake document can become controlled before we
-        // navigate into the session URL. Session isolation is enforced in the SW.
         const registration = await navigator.serviceWorker.register(SW_URL, {
           scope: '/',
         });
-        await navigator.serviceWorker.ready;
-        const worker = registration.active || registration.waiting || registration.installing;
-        if (!worker) throw new Error('Preview service worker did not activate.');
+        const worker = await ensureActiveWorker(registration);
+        await waitForPreviewWorkerControl(registration);
+        const initAck = waitForInitAck(sessionId);
         worker.postMessage({ type: 'init', sessionId, ideOrigin }, [event.ports[0]]);
-        await waitForPreviewWorkerControl();
+        await initAck;
         if (!cancelled) {
           window.location.replace(`/__preview/${encodeURIComponent(sessionId)}/dist/index.html`);
         }
