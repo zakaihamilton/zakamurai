@@ -1,5 +1,6 @@
 import { RagState } from '@/components/AI/RagState';
 import { EditorState } from '@/components/App/Views/EditorArea';
+import { reportDiagnostic } from '@/components/Diagnostics';
 import { useFileSystem } from '@/components/Storage';
 import { useEffect, useRef } from 'react';
 
@@ -66,6 +67,11 @@ export function useRagIndexer() {
         }
       } catch (error) {
         console.error('[RAG] Failed to initialize indexer:', error);
+        reportDiagnostic({
+          source: 'rag',
+          severity: 'error',
+          message: error?.message || String(error),
+        });
         ragState((draft) => {
           draft.status = 'error';
           draft.error = error?.message || String(error);
@@ -103,6 +109,11 @@ export function useRagIndexer() {
         });
       } catch (error) {
         console.error('[RAG] Failed to sync workspace index:', error);
+        reportDiagnostic({
+          source: 'rag',
+          severity: 'error',
+          message: error?.message || String(error),
+        });
         ragState((draft) => {
           draft.status = 'error';
           draft.error = error?.message || String(error);

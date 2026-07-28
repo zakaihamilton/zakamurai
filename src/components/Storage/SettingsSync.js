@@ -1,9 +1,11 @@
 import { serializeAgentSessions } from '@/components/App/Panes/Prompt/AgentSessions';
+import { reportDiagnostic } from '@/components/Diagnostics';
 import Settings from '@/components/Storage/Settings';
 import {
   StorageHealthState,
   requestRecoveryExport,
   storageFailureMessage,
+  storageHealthMessage,
 } from '@/components/Storage/StorageHealth';
 import { useNotification } from '@/components/ui/Notification';
 import { useEffect, useRef } from 'react';
@@ -32,6 +34,7 @@ export function useSettingsSync(
   const addNotificationRef = useRef(addNotification);
   addNotificationRef.current = addNotification;
   const saveFailureNotifiedRef = useRef(false);
+  const quotaWarningNotifiedRef = useRef(false);
 
   const persistRef = useRef((ok) => {
     if (ok === false) {
@@ -46,14 +49,27 @@ export function useSettingsSync(
         label: 'Export ZIP',
         onClick: requestRecoveryExport,
       });
+      reportDiagnostic({ source: 'storage', severity: 'error', message: SAVE_FAIL_MESSAGE });
     } else if (ok === true) {
       saveFailureNotifiedRef.current = false;
       const health = Settings.getStorageHealth?.() || { status: 'healthy', layer: null };
       updateStorageHealth((draft) => {
         draft.status = health.status;
         draft.layer = health.layer;
-        draft.message = health.status === 'fallback' ? 'Using browser storage fallback.' : null;
+        draft.usage = health.usage ?? null;
+        draft.quota = health.quota ?? null;
+        draft.lastSuccessfulPersistAt = health.lastSuccessfulPersistAt ?? null;
+        draft.message = storageHealthMessage(health);
       });
+      if (health.quotaWarning && !quotaWarningNotifiedRef.current) {
+        quotaWarningNotifiedRef.current = true;
+        addNotificationRef.current(storageHealthMessage(health), 'warning', 12000, {
+          label: 'Export ZIP',
+          onClick: requestRecoveryExport,
+        });
+      } else if (!health.quotaWarning) {
+        quotaWarningNotifiedRef.current = false;
+      }
     }
     return ok;
   });
@@ -192,6 +208,20 @@ export function useSettingsSync(
     }, 1000);
     return () => clearTimeout(timer);
   }, [pendingDiffs, fileContents]);
+
+  useEffect(() => {
+    if (!fileContents || typeof fileContents !== 'object') return undefined;
+    const timer = setTimeout(() => {
+      void Settings.saveRecoveryCheckpoint({
+        projectName,
+        fileContents: { ...fileContents },
+        pendingDiffs: pendingDiffs || {},
+        openTabs: Array.isArray(openTabs) ? openTabs : [],
+        activeTabId: activeTabId || null,
+      });
+    }, 1500);
+    return () => clearTimeout(timer);
+  }, [activeTabId, fileContents, openTabs, pendingDiffs, projectName]);
 
   useEffect(() => {
     if (!sessions || !activeSessionId) return undefined;

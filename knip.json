@@ -6,7 +6,13 @@
     "src/components/AI/Agent/index.js",
     "src/utils/empty.js"
   ],
-  "ignoreDependencies": ["almostnode", "fast-check", "promptfoo", "esbuild-wasm"],
+  "ignoreDependencies": [
+    "@types/json-schema",
+    "almostnode",
+    "fast-check",
+    "promptfoo",
+    "esbuild-wasm"
+  ],
   "ignoreExportsUsedInFile": true,
   "rules": {
     "exports": "off"

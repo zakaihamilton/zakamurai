@@ -5,6 +5,7 @@ import styles from './CodeEditor.module.css';
 
 import useEditorShortcuts from './EditorShortcuts';
 import NavigationPopup from './NavigationPopup';
+import { shouldDeferEditorAnalysis } from './largeFile';
 import useScrollSync from './useScrollSync';
 
 const getCursorPosition = (content, index) => {
@@ -62,6 +63,7 @@ export default function CodeEditor({
   const [jumpToLineValue, setJumpToLineValue] = useState('');
 
   const targets = useMemo(() => {
+    if (shouldDeferEditorAnalysis(localContent)) return [];
     const isCss = filePath?.endsWith('.css');
     return findNavigationTargets(localContent, isCss, fileContents, filePath);
   }, [localContent, filePath, fileContents]);

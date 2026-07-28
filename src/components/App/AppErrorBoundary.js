@@ -1,5 +1,6 @@
 'use client';
 
+import { reportDiagnostic } from '@/components/Diagnostics';
 import React from 'react';
 import styles from './AppErrorBoundary.module.css';
 
@@ -16,6 +17,12 @@ export default class AppErrorBoundary extends React.Component {
 
   componentDidCatch(error, info) {
     console.error('[AppErrorBoundary]', error, info?.componentStack);
+    reportDiagnostic({
+      source: 'app',
+      severity: 'error',
+      message: error instanceof Error ? error.message : String(error),
+      details: info?.componentStack || '',
+    });
   }
 
   focusFallback() {

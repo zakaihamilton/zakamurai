@@ -83,7 +83,7 @@ export function injectPreviewErrorBridge(html) {
 }
 
 export function parsePreviewMessage(data) {
-  if (!data || typeof data !== 'object' || data.source !== PREVIEW_MESSAGE_SOURCE) {
+  if (!isPreviewMessageShape(data)) {
     return null;
   }
   if (!Object.values(PREVIEW_MESSAGE_TYPES).includes(data.type)) {
@@ -149,3 +149,4 @@ export function isTrustedPreviewMessage(event, iframeWindow, trustedOrigin = nul
   }
   return !!parsePreviewMessage(event.data);
 }
+import { isPreviewMessageShape } from '@/contracts/preview';

@@ -12,6 +12,7 @@ const SHORTCUTS = getShortcutsByGroup();
 export default function ShortcutsHelp({ isOpen, onClose }) {
   const showShortcuts = useShouldShowKeyboardShortcuts();
   const itemRefs = useRef({});
+  const closeButtonRef = useRef(null);
   const [highlightedShortcutId, setHighlightedShortcutId] = useState(null);
 
   useEffect(() => {
@@ -39,6 +40,10 @@ export default function ShortcutsHelp({ isOpen, onClose }) {
     if (!isOpen) setHighlightedShortcutId(null);
   }, [isOpen]);
 
+  useEffect(() => {
+    if (isOpen && showShortcuts) closeButtonRef.current?.focus();
+  }, [isOpen, showShortcuts]);
+
   if (!isOpen || !showShortcuts) return null;
 
   const mac = isMac();
@@ -53,12 +58,18 @@ export default function ShortcutsHelp({ isOpen, onClose }) {
         tabIndex={-1}
         aria-label="Close shortcuts"
       />
-      <div className={styles.modal}>
+      <dialog
+        open
+        className={styles.modal}
+        aria-modal="true"
+        aria-labelledby="shortcuts-help-title"
+      >
         <div className={styles.header}>
-          <h2>Keyboard Shortcuts</h2>
+          <h2 id="shortcuts-help-title">Keyboard Shortcuts</h2>
           <Tooltip content="Close">
             <button
               type="button"
+              ref={closeButtonRef}
               className={styles.closeBtn}
               onClick={onClose}
               aria-label="Close shortcuts"
@@ -111,7 +122,7 @@ export default function ShortcutsHelp({ isOpen, onClose }) {
             anytime to open this view
           </span>
         </div>
-      </div>
+      </dialog>
     </div>,
     document.body,
   );

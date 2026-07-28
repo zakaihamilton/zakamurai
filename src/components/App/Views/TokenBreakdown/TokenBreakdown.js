@@ -1,6 +1,7 @@
 import { TabState } from '@/components/App/Panes/TabBar';
 import { EditorState } from '@/components/App/Views/EditorArea';
 import { getHighlightBreakdown } from '@/components/App/Views/EditorArea/highlighter';
+import { shouldDeferEditorAnalysis } from '@/components/App/Views/EditorArea/largeFile';
 import { Icons } from '@/components/ui/Icons';
 import { useMemo, useState } from 'react';
 import styles from './TokenBreakdown.module.css';
@@ -76,12 +77,14 @@ export default function TokenBreakdown({ tab }) {
       styles,
       navigationLinksEnabled: true,
     });
-    const folds = getFolds(code, filePath);
+    const analysisDeferred = shouldDeferEditorAnalysis(code);
+    const folds = analysisDeferred ? [] : getFolds(code, filePath);
     return {
       ...breakdown,
       foldLabel: getFoldLabel(filePath),
       collapsedFoldIds,
       folds,
+      analysisDeferred,
     };
   }, [code, filePath, editorState, collapsedFoldIds]);
 
@@ -184,7 +187,7 @@ ${JSON.stringify(conciseReport, null, 2)}`;
           <div className={styles.notice}>
             <Icons.Info size={16} />
             <span>
-              This file is above the highlighter limit and is rendered as escaped plain text.
+              This file is large, so syntax, folds, token, and navigation analysis are deferred.
             </span>
           </div>
         )}

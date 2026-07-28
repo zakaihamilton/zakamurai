@@ -3,6 +3,8 @@
 import { computeDiff } from '@/components/AI/Processor/utils/DiffEngine';
 import { RagState } from '@/components/AI/RagState';
 import { WebLLMState, bindWebLLMStore } from '@/components/AI/WebLLMState';
+import { DiagnosticsState, bindDiagnosticsState } from '@/components/Diagnostics';
+import { markPerformance, measurePerformance } from '@/components/Performance';
 import { useFileSystem } from '@/components/Storage';
 import {
   DEFAULT_CONTENTS,
@@ -41,11 +43,12 @@ import { useSettingsSync } from '@/components/Storage/SettingsSync';
 import { useWindowResize } from './WindowResize';
 
 function buildInitialValues() {
+  const recoveryCheckpoint = Settings.getRecoveryCheckpoint?.();
   const template = Settings.getTemplate();
   const isScratch = template === 'scratch';
   const defaultFiles = isScratch ? SCRATCH_FILES : DEFAULT_FILES;
   const defaultContents = isScratch ? SCRATCH_CONTENTS : DEFAULT_CONTENTS;
-  const storedContents = Settings.getFileContents();
+  const storedContents = Settings.getFileContents() || recoveryCheckpoint?.fileContents;
   const pendingDiffs = Object.fromEntries(
     Object.entries(Settings.getPendingDiffs()).map(([path, diff]) => [
       path,
@@ -65,12 +68,12 @@ function buildInitialValues() {
   };
 
   return {
-    projectName: Settings.getProjectName(),
+    projectName: Settings.getProjectName(recoveryCheckpoint?.projectName || 'My App'),
     files: defaultFiles,
     contents: restoredContents,
     theme: Settings.getTheme(),
-    tabs: Settings.getOpenTabs() || [],
-    activeTabId: Settings.getActiveTabId() || null,
+    tabs: Settings.getOpenTabs() || recoveryCheckpoint?.openTabs || [],
+    activeTabId: Settings.getActiveTabId() || recoveryCheckpoint?.activeTabId || null,
     lastCodeTabId: Settings.getLastCodeTabId() || null,
     aiLogs: Settings.getAILogs() || [],
     sidebarWidth: Settings.getSidebarWidth(),
@@ -82,7 +85,9 @@ function buildInitialValues() {
     isReadOnly: Settings.getEditorReadOnly(false),
     promptHistory: Settings.getPromptHistory() || [],
     previewHtml: Settings.getPreviewHtml(),
-    pendingDiffs,
+    pendingDiffs: Object.keys(pendingDiffs).length
+      ? pendingDiffs
+      : recoveryCheckpoint?.pendingDiffs || {},
     agentSessions: (() => {
       const stored = Settings.getAgentSessions();
       const activeId = Settings.getActiveAgentSessionId();
@@ -169,6 +174,17 @@ function AppReady({ initialValues }) {
 
   NotificationState.useState(null, { notifications: [] });
   StorageHealthState.useState(null, { status: 'healthy', layer: null, message: null });
+  const diagnosticsState = DiagnosticsState.useState(null, { events: [] });
+
+  useEffect(() => {
+    bindDiagnosticsState(diagnosticsState);
+    return () => bindDiagnosticsState(null);
+  }, [diagnosticsState]);
+
+  useEffect(() => {
+    markPerformance('app-ready');
+    measurePerformance('app-hydration', 'app-hydration-start', 'app-ready');
+  }, []);
 
   const webLLMState = WebLLMState.useState(null, {
     cachedModelIds: [],
@@ -252,6 +268,7 @@ export default function App() {
   useEffect(() => {
     let cancelled = false;
     (async () => {
+      markPerformance('app-hydration-start');
       await Settings.hydrate();
       if (cancelled) return;
       setInitialValues(buildInitialValues());

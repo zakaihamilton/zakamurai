@@ -1,3 +1,5 @@
+import { reportDiagnostic } from '@/components/Diagnostics';
+
 let listener = null;
 
 export function setPreviewErrorListener(fn) {
@@ -5,6 +7,7 @@ export function setPreviewErrorListener(fn) {
 }
 
 export function reportPreviewError(message) {
+  if (message) reportDiagnostic({ source: 'preview', severity: 'error', message });
   if (!message || !listener) return;
   listener(message);
 }

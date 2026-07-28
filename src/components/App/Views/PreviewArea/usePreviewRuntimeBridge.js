@@ -1,3 +1,4 @@
+import { markPerformance, measurePerformance } from '@/components/Performance';
 import { useCallback, useEffect, useRef } from 'react';
 import {
   detectIframeLoadError,
@@ -89,6 +90,8 @@ export default function usePreviewRuntimeBridge({
   }, [iframeRef, previewAreaUiState, previewOrigin, previewUrl, setPreviewError]);
 
   return useCallback(() => {
+    markPerformance('preview-ready');
+    measurePerformance('preview-load', 'build-ready', 'preview-ready');
     setHasLoadedOnce(true);
     previewAreaUiState((draft) => {
       draft.isLoading = false;

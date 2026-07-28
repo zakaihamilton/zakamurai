@@ -8,16 +8,16 @@ import React, { useCallback, useDeferredValue, useEffect, useMemo, useRef } from
 import SidebarFilter from './Filter';
 import SidebarMountSection from './MountSection';
 import styles from './Sidebar.module.css';
+import SidebarContent from './SidebarContent';
 import useSidebarDragAndDrop from './SidebarDragAndDrop';
 import useSidebarFileLoader from './SidebarFileLoader';
 import SidebarTree from './Tree';
 import { flattenTree, insertCreateRow, isNodeModulesPath, normalizeChildren } from './TreeUtils';
 import WorkspaceHealth from './WorkspaceHealth';
+import useSidebarLayout from './useSidebarLayout';
 
 export const SidebarState = createState('SidebarState');
 export const SidebarUiState = createState('SidebarUiState');
-
-const COLLAPSED_DESKTOP_WIDTH = 0;
 
 export default function Sidebar() {
   const sidebarState = SidebarState.useState([
@@ -246,26 +246,16 @@ export default function Sidebar() {
   }, [sidebarUiState]);
 
   const isOpen = isMobile ? sidebarState.isSidebarPopupOpen : isSidebarOpen;
-
-  useEffect(() => {
-    if (isMobile) return undefined;
-    if (isOpen) {
-      const frame = window.requestAnimationFrame(() => setAnimatedWidth(sidebarWidth));
-      return () => window.cancelAnimationFrame(frame);
-    }
-    setAnimatedWidth(sidebarWidth);
-    const frame = window.requestAnimationFrame(() => setAnimatedWidth(0));
-    return () => window.cancelAnimationFrame(frame);
-  }, [isMobile, isOpen, sidebarWidth, setAnimatedWidth]);
-
-  const desktopWidth = `${isOpen ? animatedWidth : COLLAPSED_DESKTOP_WIDTH}px`;
+  const { desktopWidth } = useSidebarLayout({
+    isMobile,
+    isOpen,
+    sidebarWidth,
+    animatedWidth,
+    setAnimatedWidth,
+  });
 
   return (
-    <aside
-      className={`${styles.sidebar} ${isOpen ? styles.isOpen : ''}`}
-      aria-hidden={!isOpen}
-      style={isMobile ? undefined : { '--panel-width': desktopWidth }}
-    >
+    <SidebarContent isMobile={isMobile} isOpen={isOpen} desktopWidth={desktopWidth}>
       <div className={styles.contentWrapper}>
         <SidebarMountSection hasFileSystem={Boolean(fs.mode)} onMountLocal={fs.mountLocal} />
         <SidebarFilter
@@ -309,6 +299,6 @@ export default function Sidebar() {
           }}
         />
       </div>
-    </aside>
+    </SidebarContent>
   );
 }
