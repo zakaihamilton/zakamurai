@@ -477,6 +477,7 @@ export default function PreviewArea() {
         iframeRef={iframeRef}
         externalPreviewRef={externalPreviewRef}
         externalPreviewNonce={externalPreviewNonce}
+        iframeHandshakeNonce={refreshKey}
         sessionId={previewSessionRef.current}
         previewOrigin={origins.previewOrigin}
         onError={setPreviewError}

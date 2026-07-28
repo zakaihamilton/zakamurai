@@ -2,11 +2,13 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   deriveIdeHostFromPreview,
   derivePreviewHostFromIde,
+  expandOriginAliases,
   getPreviewConfigurationError,
   getPreviewFrameAncestors,
   getPreviewOrigins,
   isPreviewHost,
   isValidPreviewHandshake,
+  originMatches,
 } from './previewOrigins';
 import { isPreviewRequest, isSafePreviewPath } from './previewProtocol';
 
@@ -27,6 +29,18 @@ describe('isolated preview configuration', () => {
     vi.stubEnv('NEXT_PUBLIC_PREVIEW_ORIGIN', 'https://preview.zakamurai.com');
 
     const origins = getPreviewOrigins({ windowOrigin: 'https://www.zakamurai.com' });
+    expect(origins).toEqual({
+      ideOrigin: 'https://www.zakamurai.com',
+      previewOrigin: 'https://preview.zakamurai.com',
+      isIsolated: true,
+    });
+  });
+
+  it('treats apex and www IDE hosts as configured production origins', () => {
+    vi.stubEnv('NEXT_PUBLIC_IDE_ORIGIN', 'https://www.zakamurai.com');
+    vi.stubEnv('NEXT_PUBLIC_PREVIEW_ORIGIN', 'https://preview.zakamurai.com');
+
+    const origins = getPreviewOrigins({ windowOrigin: 'https://zakamurai.com' });
     expect(origins).toEqual({
       ideOrigin: 'https://www.zakamurai.com',
       previewOrigin: 'https://preview.zakamurai.com',
@@ -106,6 +120,15 @@ describe('preview host derivation helpers', () => {
     expect(deriveIdeHostFromPreview('https://preview.branch.example.com')).toBe(
       'https://branch.example.com',
     );
+  });
+
+  it('treats apex and www hosts as aliases', () => {
+    expect(expandOriginAliases('https://www.zakamurai.com')).toEqual([
+      'https://www.zakamurai.com',
+      'https://zakamurai.com',
+    ]);
+    expect(originMatches('https://zakamurai.com', 'https://www.zakamurai.com')).toBe(true);
+    expect(originMatches('https://preview.zakamurai.com', 'https://www.zakamurai.com')).toBe(false);
   });
 });
 

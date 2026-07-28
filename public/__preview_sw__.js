@@ -87,15 +87,31 @@ self.addEventListener('message', (event) => {
   );
 });
 
+function expandOriginAliases(origin) {
+  if (!origin) return [];
+  try {
+    const url = new URL(origin);
+    const aliases = new Set([url.origin]);
+    const portSuffix = url.port ? `:${url.port}` : '';
+    if (url.hostname.startsWith('www.')) {
+      aliases.add(`${url.protocol}//${url.hostname.slice(4)}${portSuffix}`);
+    } else if (!url.hostname.includes('localhost') && url.hostname.includes('.')) {
+      aliases.add(`${url.protocol}//www.${url.hostname}${portSuffix}`);
+    }
+    return [...aliases];
+  } catch {
+    return [origin];
+  }
+}
+
 function applyPreviewEmbedHeaders(headers) {
   // Parent IDE uses COEP require-corp. Cross-origin iframe documents must send
   // their own COEP header or Chrome blocks with coep-frame-resource-needs-coep-header.
   headers.set('Cross-Origin-Embedder-Policy', 'credentialless');
   headers.set('Cross-Origin-Resource-Policy', 'cross-origin');
-  const frameAncestors = ideOrigin
-    ? `'self' ${ideOrigin} http://localhost:3000`
-    : "'self' http://localhost:3000 https://www.zakamurai.com";
-  headers.set('Content-Security-Policy', `frame-ancestors ${frameAncestors}`);
+  const ancestors = new Set(["'self'", 'http://localhost:3000']);
+  for (const origin of expandOriginAliases(ideOrigin)) ancestors.add(origin);
+  headers.set('Content-Security-Policy', `frame-ancestors ${[...ancestors].join(' ')}`);
   headers.delete('X-Frame-Options');
   return headers;
 }

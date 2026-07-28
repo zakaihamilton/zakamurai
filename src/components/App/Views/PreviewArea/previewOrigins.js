@@ -16,15 +16,44 @@ const toHostOrigin = (host) => {
   return trimOrigin(host.includes('://') ? host : `https://${host}`);
 };
 
+export function expandOriginAliases(origin) {
+  const normalized = trimOrigin(origin);
+  if (!normalized) return [];
+  try {
+    const url = new URL(normalized);
+    const aliases = new Set([url.origin]);
+    const { hostname, protocol, port } = url;
+    const portSuffix = port ? `:${port}` : '';
+    if (hostname.startsWith('www.')) {
+      aliases.add(`${protocol}//${hostname.slice(4)}${portSuffix}`);
+    } else if (!hostname.includes('localhost') && hostname.includes('.')) {
+      aliases.add(`${protocol}//www.${hostname}${portSuffix}`);
+    }
+    return [...aliases];
+  } catch {
+    return [normalized];
+  }
+}
+
+export function originMatches(candidate, expected) {
+  if (!candidate || !expected) return false;
+  if (candidate === expected) return true;
+  const expectedAliases = new Set(expandOriginAliases(expected));
+  return expectedAliases.has(candidate);
+}
+
 const isLocalOrigin = (windowOrigin) =>
   windowOrigin?.startsWith('http://localhost:') || windowOrigin?.startsWith('http://127.0.0.1:');
 
-const matchesConfiguredOrigins = (windowOrigin, ideOrigin, previewOrigin) =>
-  Boolean(
-    windowOrigin &&
-      ((ideOrigin && windowOrigin === ideOrigin) ||
-        (previewOrigin && windowOrigin === previewOrigin)),
-  );
+const matchesConfiguredOrigins = (windowOrigin, ideOrigin, previewOrigin) => {
+  if (!windowOrigin) return false;
+  const windowAliases = expandOriginAliases(windowOrigin);
+  const configuredAliases = new Set([
+    ...expandOriginAliases(ideOrigin),
+    ...expandOriginAliases(previewOrigin),
+  ]);
+  return windowAliases.some((alias) => configuredAliases.has(alias));
+};
 
 export function derivePreviewHostFromIde(ideOrigin) {
   const url = new URL(ideOrigin);
@@ -129,9 +158,16 @@ export function getPreviewFrameAncestors({ ideOrigin } = {}) {
   const ancestors = new Set([LOCAL_IDE_ORIGIN]);
   const configuredIdeOrigin = trimOrigin(process.env.NEXT_PUBLIC_IDE_ORIGIN);
   const vercelBranchOrigin = toHostOrigin(process.env.NEXT_PUBLIC_VERCEL_BRANCH_URL);
-  if (configuredIdeOrigin) ancestors.add(configuredIdeOrigin);
-  if (vercelBranchOrigin) ancestors.add(vercelBranchOrigin);
-  if (ideOrigin) ancestors.add(ideOrigin);
+  for (const origin of [
+    configuredIdeOrigin,
+    vercelBranchOrigin,
+    ideOrigin,
+    ...expandOriginAliases(configuredIdeOrigin),
+    ...expandOriginAliases(vercelBranchOrigin),
+    ...expandOriginAliases(ideOrigin),
+  ]) {
+    if (origin) ancestors.add(origin);
+  }
   return [...ancestors].join(' ');
 }
 

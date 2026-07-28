@@ -253,4 +253,27 @@ describe('PreviewBridge', () => {
       expect.any(Array),
     );
   });
+
+  it('pushes handshake to the preview iframe when iframeHandshakeNonce changes', () => {
+    const iframeWindow = { postMessage: vi.fn() };
+    const iframeRef = { current: { contentWindow: iframeWindow } };
+    const externalPreviewRef = { current: null };
+
+    render(
+      <PreviewBridge
+        iframeRef={iframeRef}
+        externalPreviewRef={externalPreviewRef}
+        iframeHandshakeNonce={1}
+        sessionId="test-session-123"
+        previewOrigin="http://localhost:3001"
+        onError={vi.fn()}
+      />,
+    );
+
+    expect(iframeWindow.postMessage).toHaveBeenCalledWith(
+      expect.objectContaining({ type: PREVIEW_CONNECT, sessionId: 'test-session-123' }),
+      'http://localhost:3001',
+      expect.any(Array),
+    );
+  });
 });

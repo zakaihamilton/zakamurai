@@ -1,6 +1,6 @@
 import { Compiler } from '@/utils/compiler';
 import { useEffect, useRef } from 'react';
-import { isValidPreviewHandshake } from './previewOrigins';
+import { isValidPreviewHandshake, originMatches } from './previewOrigins';
 import {
   PREVIEW_CONNECT,
   PREVIEW_PROTOCOL_VERSION,
@@ -100,11 +100,33 @@ function attachBridgePort({ portsRef, source, port, sessionId, onError }) {
   };
 }
 
+function pushHandshake(target, { portsRef, sessionId, previewOrigin, onError }) {
+  if (!target || portsRef.current.has(target)) return;
+  const channel = new MessageChannel();
+  attachBridgePort({
+    portsRef,
+    source: target,
+    port: channel.port1,
+    sessionId,
+    onError,
+  });
+  try {
+    target.postMessage(
+      { type: PREVIEW_CONNECT, version: PREVIEW_PROTOCOL_VERSION, sessionId },
+      previewOrigin,
+      [channel.port2],
+    );
+  } catch {
+    // Preview surface may not be ready yet.
+  }
+}
+
 /** Bridges an isolated preview service worker to the local almostnode server. */
 export default function PreviewBridge({
   iframeRef,
   externalPreviewRef,
   externalPreviewNonce = 0,
+  iframeHandshakeNonce = 0,
   sessionId,
   previewOrigin,
   onError,
@@ -133,7 +155,7 @@ export default function PreviewBridge({
           type: PREVIEW_CONNECT,
           version: PREVIEW_PROTOCOL_VERSION,
         }) ||
-        (event.origin === previewOrigin &&
+        (originMatches(event.origin, previewOrigin) &&
           event.data?.type === PREVIEW_CONNECT &&
           event.data?.version === PREVIEW_PROTOCOL_VERSION &&
           event.data?.sessionId === sessionId);
@@ -166,29 +188,10 @@ export default function PreviewBridge({
     const externalWindow = externalPreviewRef?.current;
     if (!externalWindow || !externalPreviewNonce) return undefined;
 
-    const pushHandshake = () => {
-      if (portsRef.current.has(externalWindow)) return;
-      const channel = new MessageChannel();
-      attachBridgePort({
-        portsRef,
-        source: externalWindow,
-        port: channel.port1,
-        sessionId,
-        onError,
-      });
-      try {
-        externalWindow.postMessage(
-          { type: PREVIEW_CONNECT, version: PREVIEW_PROTOCOL_VERSION, sessionId },
-          previewOrigin,
-          [channel.port2],
-        );
-      } catch {
-        // Tab may have been closed.
-      }
-    };
-
-    pushHandshake();
-    const interval = window.setInterval(pushHandshake, EXTERNAL_HANDSHAKE_INTERVAL_MS);
+    const push = () =>
+      pushHandshake(externalWindow, { portsRef, sessionId, previewOrigin, onError });
+    push();
+    const interval = window.setInterval(push, EXTERNAL_HANDSHAKE_INTERVAL_MS);
     const timeout = window.setTimeout(
       () => window.clearInterval(interval),
       EXTERNAL_HANDSHAKE_TIMEOUT_MS,
@@ -198,6 +201,23 @@ export default function PreviewBridge({
       window.clearTimeout(timeout);
     };
   }, [externalPreviewNonce, externalPreviewRef, onError, previewOrigin, sessionId]);
+
+  useEffect(() => {
+    const iframeWindow = iframeRef.current?.contentWindow;
+    if (!iframeWindow || !iframeHandshakeNonce) return undefined;
+
+    const push = () => pushHandshake(iframeWindow, { portsRef, sessionId, previewOrigin, onError });
+    push();
+    const interval = window.setInterval(push, EXTERNAL_HANDSHAKE_INTERVAL_MS);
+    const timeout = window.setTimeout(
+      () => window.clearInterval(interval),
+      EXTERNAL_HANDSHAKE_TIMEOUT_MS,
+    );
+    return () => {
+      window.clearInterval(interval);
+      window.clearTimeout(timeout);
+    };
+  }, [iframeHandshakeNonce, iframeRef, onError, previewOrigin, sessionId]);
 
   return null;
 }

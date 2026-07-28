@@ -58,6 +58,9 @@ jobs:
       - name: Run isolated preview security tests
         run: npm run test:e2e:isolated
 
+      - name: Check production preview surface headers
+        run: npm run check:preview
+
       - name: Run Chromium visual regression tests
         run: npm run test:visual:chromium
 

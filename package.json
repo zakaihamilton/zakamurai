@@ -35,6 +35,7 @@
     "prebuild": "\"$npm_execpath\" run setup:almostnode && \"$npm_execpath\" run setup:wasm",
     "perf": "node scripts/check-performance-budget.mjs",
     "check:architecture": "node scripts/check-architecture.mjs",
+    "check:preview": "node scripts/check-preview-surfaces.mjs",
     "test:promptfoo": "node scripts/run-promptfoo-checks.mjs",
     "audit": "npm audit --audit-level=critical",
     "verify": "npm run format:check && npm run lint && npm run stylelint && npm run deadcode && npm run check:architecture && npm run test:promptfoo && npm run test:coverage && npm run build && npm run perf && npm run test:e2e && npm run test:e2e:isolated && npm run test:visual:chromium && npm run audit",

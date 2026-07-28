@@ -5,12 +5,13 @@ import {
   getPreviewConfigurationError,
   getPreviewOrigins,
   isValidPreviewHandshake,
+  originMatches,
 } from '../Views/PreviewArea/previewOrigins';
 import { PREVIEW_CONNECT, PREVIEW_PROTOCOL_VERSION } from '../Views/PreviewArea/previewProtocol';
 
 // Bump this URL when the preview-routing protocol changes so browsers replace
 // an older scoped worker instead of continuing to serve its stale routes.
-const SW_URL = '/__preview_sw__.js?v=20';
+const SW_URL = '/__preview_sw__.js?v=21';
 const SESSION_WINDOW_NAME_PREFIX = 'zakamurai-preview-';
 const CONNECT_TIMEOUT_MS = 15000;
 
@@ -156,7 +157,7 @@ export default function PreviewHost() {
           type: PREVIEW_CONNECT,
           version: PREVIEW_PROTOCOL_VERSION,
         }) ||
-        (event.origin === ideOrigin &&
+        (originMatches(event.origin, ideOrigin) &&
           event.data?.type === PREVIEW_CONNECT &&
           event.data?.version === PREVIEW_PROTOCOL_VERSION &&
           event.data?.sessionId === sessionId &&
