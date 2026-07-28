@@ -8,7 +8,11 @@ import {
   isValidPreviewHandshake,
   originMatches,
 } from '../Views/PreviewArea/previewOrigins';
-import { PREVIEW_CONNECT, PREVIEW_PROTOCOL_VERSION } from '../Views/PreviewArea/previewProtocol';
+import {
+  PREVIEW_CONNECT,
+  PREVIEW_CONNECT_ACK,
+  PREVIEW_PROTOCOL_VERSION,
+} from '../Views/PreviewArea/previewProtocol';
 
 // Bump this URL when the preview-routing protocol changes so browsers replace
 // an older scoped worker instead of continuing to serve its stale routes.
@@ -168,6 +172,20 @@ export default function PreviewHost() {
       }
       window.clearTimeout(connectTimeout);
       window.removeEventListener('message', connect);
+      // Tell the IDE to stop replacing MessagePorts on its retry interval.
+      try {
+        event.source?.postMessage(
+          {
+            type: PREVIEW_CONNECT_ACK,
+            version: PREVIEW_PROTOCOL_VERSION,
+            sessionId,
+            surface: window.parent !== window ? 'iframe' : 'external',
+          },
+          ideOrigin,
+        );
+      } catch {
+        // Opener may be gone; the transferred port is what matters.
+      }
       try {
         const swScope = getPreviewServiceWorkerScope(origins);
         const registration = await navigator.serviceWorker.register(SW_URL, {

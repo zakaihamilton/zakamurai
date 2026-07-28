@@ -2,7 +2,7 @@ import { act, render } from '@testing-library/react';
 import React from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import PreviewBridge from './PreviewBridge';
-import { PREVIEW_CONNECT, PREVIEW_PROTOCOL_VERSION } from './previewProtocol';
+import { PREVIEW_CONNECT, PREVIEW_CONNECT_ACK, PREVIEW_PROTOCOL_VERSION } from './previewProtocol';
 
 describe('PreviewBridge', () => {
   afterEach(() => {
@@ -252,6 +252,55 @@ describe('PreviewBridge', () => {
       'http://localhost:3001',
       expect.any(Array),
     );
+  });
+
+  it('retries external handshake until the preview host acknowledges', () => {
+    vi.useFakeTimers();
+    const externalWindow = { postMessage: vi.fn() };
+    const externalPreviewRef = { current: externalWindow };
+    const iframeRef = { current: { contentWindow: null } };
+
+    render(
+      <PreviewBridge
+        iframeRef={iframeRef}
+        externalPreviewRef={externalPreviewRef}
+        externalPreviewNonce={1}
+        sessionId="test-session-123"
+        previewOrigin="http://localhost:3001"
+        onError={vi.fn()}
+      />,
+    );
+
+    expect(externalWindow.postMessage).toHaveBeenCalledTimes(1);
+
+    act(() => {
+      vi.advanceTimersByTime(400);
+    });
+    expect(externalWindow.postMessage).toHaveBeenCalledTimes(2);
+
+    const callsAfterRetry = externalWindow.postMessage.mock.calls.length;
+    act(() => {
+      const ackEvent = new MessageEvent('message', {
+        data: {
+          type: PREVIEW_CONNECT_ACK,
+          version: PREVIEW_PROTOCOL_VERSION,
+          sessionId: 'test-session-123',
+          surface: 'external',
+        },
+        origin: 'http://localhost:3001',
+      });
+      Object.defineProperty(ackEvent, 'source', { value: externalWindow });
+      window.dispatchEvent(ackEvent);
+    });
+
+    const callsAfterAck = externalWindow.postMessage.mock.calls.length;
+    expect(callsAfterAck).toBe(callsAfterRetry);
+    act(() => {
+      vi.advanceTimersByTime(800);
+    });
+    expect(externalWindow.postMessage).toHaveBeenCalledTimes(callsAfterAck);
+
+    vi.useRealTimers();
   });
 
   it('pushes handshake to the preview iframe when iframeHandshakeNonce changes', () => {

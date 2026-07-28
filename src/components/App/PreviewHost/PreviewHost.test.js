@@ -61,6 +61,48 @@ describe('PreviewHost', () => {
     );
   });
 
+  it('acknowledges the IDE after accepting a MessagePort handshake', () => {
+    window.location = new URL('http://localhost:3001/?session=s123');
+    const ideWindow = { postMessage: vi.fn() };
+    window.opener = ideWindow;
+
+    Object.defineProperty(navigator, 'serviceWorker', {
+      configurable: true,
+      value: {
+        register: vi.fn(() => new Promise(() => {})),
+        ready: new Promise(() => {}),
+        controller: null,
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+      },
+    });
+
+    render(<PreviewHost />);
+
+    act(() => {
+      const event = new MessageEvent('message', {
+        data: {
+          type: 'zakamurai-preview-connect',
+          version: 1,
+          sessionId: 's123',
+        },
+        origin: 'http://localhost:3000',
+      });
+      Object.defineProperty(event, 'source', { value: ideWindow });
+      Object.defineProperty(event, 'ports', { value: [{}] });
+      window.dispatchEvent(event);
+    });
+
+    expect(ideWindow.postMessage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'zakamurai-preview-connect-ack',
+        sessionId: 's123',
+        surface: 'external',
+      }),
+      'http://localhost:3000',
+    );
+  });
+
   it('reads session id from window.name when query param is absent', () => {
     window.name = 'zakamurai-preview-from-name';
     const postMessageSpy = vi.fn();

@@ -1,5 +1,7 @@
 export const PREVIEW_PROTOCOL_VERSION = 1;
 export const PREVIEW_CONNECT = 'zakamurai-preview-connect';
+/** Preview host → IDE: MessagePort was accepted; stop replacing handshake ports. */
+export const PREVIEW_CONNECT_ACK = 'zakamurai-preview-connect-ack';
 export const PREVIEW_REQUEST = 'preview-request';
 export const PREVIEW_RESPONSE = 'preview-response';
 export const PREVIEW_STREAM_START = 'preview-stream-start';
