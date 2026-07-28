@@ -1,15 +1,14 @@
 import React from 'react';
-import logoStyles from '../Icons.module.css';
+import styles from './ZLogo.module.css';
 
-export default function ZLogo({ size = 32, className = '', style = {} }) {
+export default function ZLogo({ size = 32, className = '' }) {
   return (
     <div
-      className={`${logoStyles.zLogo} ${className}`}
+      className={`${styles.zLogo} ${className}`}
       style={{
         '--logo-size': `${size}px`,
         '--logo-radius': `${Math.max(2, Math.round(size * 0.25))}px`,
         '--logo-font-size': `${Math.round(size * 0.56)}px`,
-        ...style,
       }}
     >
       Z

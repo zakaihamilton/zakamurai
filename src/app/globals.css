@@ -178,28 +178,6 @@ a {
   background: transparent;
 }
 
-.scrollHide::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-
-.scrollHide::-webkit-scrollbar-thumb {
-  background: var(--bg-surface);
-  border-radius: 10px;
-}
-
-.scrollHide::-webkit-scrollbar-thumb:hover {
-  background: var(--border-light);
-}
-
-.scrollHide::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.scrollHide::-webkit-scrollbar-corner {
-  background: transparent;
-}
-
 #root {
   height: 100%;
 }

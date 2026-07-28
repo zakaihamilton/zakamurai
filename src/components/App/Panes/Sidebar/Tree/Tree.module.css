@@ -5,6 +5,28 @@
   transition: opacity 0.2s;
 }
 
+.treeArea::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.treeArea::-webkit-scrollbar-thumb {
+  background: var(--bg-surface);
+  border-radius: 10px;
+}
+
+.treeArea::-webkit-scrollbar-thumb:hover {
+  background: var(--border-light);
+}
+
+.treeArea::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.treeArea::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
 .treeAreaInteractive {
   pointer-events: auto;
 }

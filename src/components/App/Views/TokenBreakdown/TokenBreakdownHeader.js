@@ -3,7 +3,7 @@ import { Icons } from '@/components/ui/Icons';
 import Tooltip from '@/components/ui/Tooltip';
 import { FILE_VIEW_TYPES } from '@/utils/fileViews';
 import React from 'react';
-import styles from './TokenBreakdown.module.css';
+import styles from './TokenBreakdownHeader.module.css';
 
 export default function TokenBreakdownHeader({
   filePath,

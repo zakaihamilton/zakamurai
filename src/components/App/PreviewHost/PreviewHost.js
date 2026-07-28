@@ -14,6 +14,7 @@ import {
   PREVIEW_CONNECT_ACK,
   PREVIEW_PROTOCOL_VERSION,
 } from '../Views/PreviewArea/previewProtocol';
+import styles from './PreviewHost.module.css';
 
 // Bump this URL when the preview-routing protocol changes so browsers replace
 // an older scoped worker instead of continuing to serve its stale routes.
@@ -263,7 +264,7 @@ export default function PreviewHost() {
   }, []);
 
   return (
-    <main style={{ color: '#e7ecef', background: '#101214', height: '100vh', padding: '2rem' }}>
+    <main className={styles.main}>
       <p>{error || 'Connecting isolated preview…'}</p>
     </main>
   );

@@ -1,6 +1,6 @@
 import { Icons } from '@/components/ui/Icons';
 import React from 'react';
-import styles from '../ProjectInfo.module.css';
+import styles from './Technologies.module.css';
 
 export const technologies = [
   {

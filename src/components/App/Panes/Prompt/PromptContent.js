@@ -4,7 +4,7 @@ import PromptComposer from './Composer';
 import PromptContextPanel from './Context';
 import PromptHeader from './Header';
 import ModelDownloader from './ModelManager';
-import styles from './Prompt.module.css';
+import styles from './PromptContent.module.css';
 import ReasoningPanel from './Reasoning';
 import { RoleGraphDialog, RoleGraphSummary } from './RoleGraph';
 import { SessionDialog, SessionManager, SessionTranscript, SessionTreeDialog } from './Session';

@@ -1,7 +1,7 @@
 import { Icons } from '@/components/ui/Icons';
 import Tooltip from '@/components/ui/Tooltip';
 import React from 'react';
-import styles from '../Welcome.module.css';
+import styles from './Actions.module.css';
 
 export default function WelcomeActions({ onShowInfo, onShowInstructions }) {
   return (

@@ -1,7 +1,7 @@
 import { Icons } from '@/components/ui/Icons';
 import React, { useEffect, useRef } from 'react';
+import styles from './CreateRowInput.module.css';
 import { TreeItemState } from './TreeItem';
-import styles from './TreeItem.module.css';
 
 export default function CreateRowInput({ row, onCreate, onCancelCreate }) {
   const { level, createType, parentRow } = row;

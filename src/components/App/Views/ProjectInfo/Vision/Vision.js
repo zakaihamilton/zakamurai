@@ -1,6 +1,6 @@
 import { Icons } from '@/components/ui/Icons';
 import React from 'react';
-import styles from '../ProjectInfo.module.css';
+import styles from './Vision.module.css';
 
 export default function ProjectVision() {
   return (

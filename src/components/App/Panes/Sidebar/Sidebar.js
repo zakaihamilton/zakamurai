@@ -7,7 +7,6 @@ import { useNotification } from '@/components/ui/Notification';
 import React, { useCallback, useDeferredValue, useEffect, useMemo, useRef } from 'react';
 import SidebarFilter from './Filter';
 import SidebarMountSection from './MountSection';
-import styles from './Sidebar.module.css';
 import SidebarContent from './SidebarContent';
 import useSidebarDragAndDrop from './SidebarDragAndDrop';
 import useSidebarFileLoader from './SidebarFileLoader';
@@ -256,49 +255,47 @@ export default function Sidebar() {
 
   return (
     <SidebarContent isMobile={isMobile} isOpen={isOpen} desktopWidth={desktopWidth}>
-      <div className={styles.contentWrapper}>
-        <SidebarMountSection hasFileSystem={Boolean(fs.mode)} onMountLocal={fs.mountLocal} />
-        <SidebarFilter
-          inputRef={searchInputRef}
-          value={filterText}
-          onChange={(event) =>
-            sidebarUiState((draft) => {
-              draft.filterText = event.target.value;
-            })
-          }
-        />
-        <WorkspaceHealth />
-        <SidebarTree
-          rows={rows}
-          activeTabId={tabState.activeTabId}
-          scrollToIndex={scrollToIndex}
-          filterText={deferredFilterText}
-          expandedFolders={expandedFolders}
-          loadingPaths={loadingPaths}
-          draggedPath={sidebarState.draggedItem?.path?.join('/')}
-          dropTargetPath={dropTargetPath}
-          isOpen={isOpen}
-          hasFileSystem={Boolean(fs.mode)}
-          onToggle={handleToggle}
-          onOpenFile={handleOpenFile}
-          onRename={handleRename}
-          onCreate={handleCreate}
-          onStartCreate={handleStartCreate}
-          onCancelCreate={handleCancelCreate}
-          onDelete={handleDelete}
-          onDragStart={handleDragStart}
-          onDragOver={handleDragOver}
-          onDragEnter={handleDragEnter}
-          onDragLeave={() => setDropTargetPath(null)}
-          onDrop={handleDrop}
-          onDragEnd={() => {
-            setDropTargetPath(null);
-            sidebarState((draft) => {
-              draft.draggedItem = null;
-            });
-          }}
-        />
-      </div>
+      <SidebarMountSection hasFileSystem={Boolean(fs.mode)} onMountLocal={fs.mountLocal} />
+      <SidebarFilter
+        inputRef={searchInputRef}
+        value={filterText}
+        onChange={(event) =>
+          sidebarUiState((draft) => {
+            draft.filterText = event.target.value;
+          })
+        }
+      />
+      <WorkspaceHealth />
+      <SidebarTree
+        rows={rows}
+        activeTabId={tabState.activeTabId}
+        scrollToIndex={scrollToIndex}
+        filterText={deferredFilterText}
+        expandedFolders={expandedFolders}
+        loadingPaths={loadingPaths}
+        draggedPath={sidebarState.draggedItem?.path?.join('/')}
+        dropTargetPath={dropTargetPath}
+        isOpen={isOpen}
+        hasFileSystem={Boolean(fs.mode)}
+        onToggle={handleToggle}
+        onOpenFile={handleOpenFile}
+        onRename={handleRename}
+        onCreate={handleCreate}
+        onStartCreate={handleStartCreate}
+        onCancelCreate={handleCancelCreate}
+        onDelete={handleDelete}
+        onDragStart={handleDragStart}
+        onDragOver={handleDragOver}
+        onDragEnter={handleDragEnter}
+        onDragLeave={() => setDropTargetPath(null)}
+        onDrop={handleDrop}
+        onDragEnd={() => {
+          setDropTargetPath(null);
+          sidebarState((draft) => {
+            draft.draggedItem = null;
+          });
+        }}
+      />
     </SidebarContent>
   );
 }

@@ -33,7 +33,7 @@ export default function SidebarTree({
   return (
     <>
       <VirtualList
-        className={`${styles.treeArea} scrollHide ${
+        className={`${styles.treeArea} ${
           isOpen ? styles.treeAreaInteractive : styles.treeAreaInactive
         }`}
         items={rows}

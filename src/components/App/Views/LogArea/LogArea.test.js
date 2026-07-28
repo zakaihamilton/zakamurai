@@ -153,10 +153,7 @@ describe('LogArea', () => {
     );
 
     render(<LogArea />);
-    const container =
-      document.querySelector('[class*="logArea"]') ||
-      document.querySelector('div.scrollHide') ||
-      document.querySelector('div');
+    const container = document.querySelector('[class*="logArea"]') || document.querySelector('div');
     if (container) {
       Object.defineProperty(container, 'scrollTop', { value: 0, writable: true });
       Object.defineProperty(container, 'scrollHeight', { value: 100, writable: true });

@@ -1,5 +1,5 @@
 import React from 'react';
-import styles from './TokenBreakdown.module.css';
+import styles from './TokenSectionTabs.module.css';
 
 export default function TokenSectionTabs({ activeSection, report, onSelect }) {
   const sections = [

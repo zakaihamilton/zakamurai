@@ -19,7 +19,7 @@ export default function SessionTranscript({ messages = [] }) {
   }
 
   return (
-    <div className={`${styles.transcript} scrollHide`} aria-label="Session transcript">
+    <div className={styles.transcript} aria-label="Session transcript">
       {messages.map((message) => {
         const roleClass =
           message.role === 'user' ? styles.user : message.role === 'ai' ? styles.ai : styles.system;

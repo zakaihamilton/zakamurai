@@ -1,0 +1,58 @@
+.scrollButtonContainer {
+  position: absolute;
+  bottom: 24px;
+  right: 32px;
+  z-index: 20;
+  animation: slide-up 0.3s ease-out;
+}
+
+.jumpBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  color: var(--accent);
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgb(0 0 0 / 30%), 0 0 0 1px rgb(255 255 255 / 5%);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  backdrop-filter: blur(8px);
+}
+
+.jumpBtn:hover {
+  transform: translateY(-2px);
+  background: var(--bg-panel);
+  border-color: var(--accent);
+  box-shadow: 0 6px 16px rgb(0 0 0 / 40%), 0 0 0 1px var(--accent);
+}
+
+.jumpBtn:active {
+  transform: translateY(0);
+}
+
+@keyframes slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (width <= 768px) {
+  .jumpBtn {
+    width: 40px;
+    height: 40px;
+  }
+
+  .scrollButtonContainer {
+    bottom: 16px;
+    right: 16px;
+  }
+}

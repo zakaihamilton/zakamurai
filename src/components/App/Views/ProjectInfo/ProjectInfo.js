@@ -7,7 +7,7 @@ import ProjectVision from './Vision';
 
 export default function ProjectInfo() {
   return (
-    <div className={`${styles.wrapper} scrollHide`}>
+    <div className={styles.wrapper}>
       <div className={styles.container}>
         <ProjectHeader />
         <ProjectAbout />

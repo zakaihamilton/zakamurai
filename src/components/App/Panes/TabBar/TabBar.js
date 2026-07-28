@@ -187,7 +187,7 @@ export default function TabBar() {
       }
       onDrop={handleDropOnBar}
     >
-      <div className={`${styles.tabBar} scrollHide`} role="tablist" aria-label="Open files">
+      <div className={styles.tabBar} role="tablist" aria-label="Open files">
         {openTabs.map((tab) => (
           <TabItem
             key={tab.id}

@@ -1,0 +1,6 @@
+.main {
+  height: 100vh;
+  padding: 2rem;
+  color: var(--text-main);
+  background: var(--bg-base);
+}

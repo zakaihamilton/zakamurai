@@ -1,7 +1,7 @@
 import { Icons } from '@/components/ui/Icons';
 import React from 'react';
 import { PreviewErrorActions } from './ErrorOverlay';
-import styles from './PreviewArea.module.css';
+import styles from './PreviewEmptyState.module.css';
 
 export function PreviewErrorState({ title, message, copied, onCopy, onDismiss }) {
   return (

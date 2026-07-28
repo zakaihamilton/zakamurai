@@ -12,6 +12,28 @@
   gap: 8px;
 }
 
+.transcript::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.transcript::-webkit-scrollbar-thumb {
+  background: var(--bg-surface);
+  border-radius: 10px;
+}
+
+.transcript::-webkit-scrollbar-thumb:hover {
+  background: var(--border-light);
+}
+
+.transcript::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.transcript::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
 .empty {
   flex: 0 0 auto;
   border: 1px dashed var(--border-light);

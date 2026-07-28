@@ -1,7 +1,7 @@
 import { Icons } from '@/components/ui/Icons';
 import Tooltip from '@/components/ui/Tooltip';
 import React from 'react';
-import styles from '../LogArea.module.css';
+import styles from './ScrollButton.module.css';
 
 export default function LogScrollButton({ onScrollToBottom }) {
   return (

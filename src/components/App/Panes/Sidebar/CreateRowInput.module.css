@@ -1,0 +1,41 @@
+.createInputContainer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 8px;
+  min-height: 34px;
+  box-sizing: border-box;
+  padding: 8px 16px 8px var(--tree-indent, 16px);
+}
+
+.iconContainer {
+  width: 14px;
+  height: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+}
+
+.typeIcon {
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.editInput {
+  flex: 1;
+  min-width: 100px;
+  box-sizing: border-box;
+  background: var(--bg-input);
+  border: 1px solid var(--accent);
+  color: var(--text-main);
+  outline: none;
+  font-size: 13px;
+  padding: 4px 8px;
+  margin: 0;
+  border-radius: 4px;
+  font-family: inherit;
+}

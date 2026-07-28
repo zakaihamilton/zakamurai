@@ -1,5 +1,5 @@
 import React from 'react';
-import styles from '../ProjectInfo.module.css';
+import styles from './Header.module.css';
 
 export default function ProjectHeader() {
   return (

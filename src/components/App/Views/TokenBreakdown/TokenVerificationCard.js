@@ -1,6 +1,6 @@
 import { Icons } from '@/components/ui/Icons';
 import React from 'react';
-import styles from './TokenBreakdown.module.css';
+import styles from './TokenVerificationCard.module.css';
 
 export default function TokenVerificationCard({ result, onClose }) {
   if (!result) return null;
