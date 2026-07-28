@@ -97,12 +97,12 @@ test.describe('Zakamurai Navigation Tests', () => {
 
   test('should toggle Agent panel', async ({ page }) => {
     const textarea = page.getByPlaceholder('Tell the Agent what to do...');
-    await expect(textarea).toBeVisible();
-
-    await page.getByTestId('ai-prompt-toggle').filter({ visible: true }).click();
-    await expect(textarea).not.toBeVisible({ timeout: 5000 });
+    await expect(textarea).not.toBeVisible();
 
     await page.getByTestId('ai-prompt-toggle').filter({ visible: true }).click();
     await expect(textarea).toBeVisible({ timeout: 5000 });
+
+    await page.getByTestId('ai-prompt-toggle').filter({ visible: true }).click();
+    await expect(textarea).not.toBeVisible({ timeout: 5000 });
   });
 });

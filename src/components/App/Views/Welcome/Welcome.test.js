@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 import Welcome from './Welcome';
 
 vi.mock('@/components/App/Panes', () => ({ TabState: { usePassiveState: vi.fn() } }));
+vi.mock('./Prompt', () => ({ default: () => <div data-testid="welcome-prompt" /> }));
 vi.mock('@/components/ui/Tooltip', () => ({
   default: ({ children }) => <div>{children}</div>,
 }));

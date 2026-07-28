@@ -28,6 +28,7 @@ export function getInitialPromptUiState() {
     animatedWidth: 0,
     abortController: null,
     promptScope: 'file',
+    welcomeRequest: null,
     runningSessionId: null,
     isAgentTreeOpen: false,
   };

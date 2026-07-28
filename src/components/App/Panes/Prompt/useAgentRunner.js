@@ -95,11 +95,12 @@ export default function useAgentRunner({
   );
 
   const send = useCallback(
-    (e) => {
-      e.preventDefault();
-      if (!val.trim() || isAIProcessing || !activeSession) return;
+    (e, request = null, scope = null) => {
+      e?.preventDefault?.();
+      const userMsg = typeof request === 'string' ? request : val;
+      const effectiveScope = scope || promptScope;
+      if (!userMsg.trim() || isAIProcessing || !activeSession) return;
 
-      const userMsg = val;
       const sessionId = activeSession.id;
       const sessionMode = activeSession.mode === 'team' ? 'team' : 'single';
       addToHistory(userMsg);
@@ -154,12 +155,12 @@ export default function useAgentRunner({
           const runOptions = {
             request: userMsg,
             priorContext,
-            scope: promptScope,
+            scope: effectiveScope,
             activeFile:
-              promptScope === 'file' && currentActiveTab?.type === 'file'
+              effectiveScope === 'file' && currentActiveTab?.type === 'file'
                 ? currentActiveTabId
                 : undefined,
-            selectedLines: promptScope === 'file' ? selectedLines : [],
+            selectedLines: effectiveScope === 'file' ? selectedLines : [],
             files: workspaceFiles,
             model: selectedModel,
             roleGraph: activeSession.roleGraph,

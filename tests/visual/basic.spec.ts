@@ -42,9 +42,19 @@ test.describe('Zakamurai Basic Tests', () => {
   test('should interact with the Agent', async ({ page }) => {
     const textarea = page.getByPlaceholder('Tell the Agent what to do...');
 
-    // In the screenshot, Agent is already open
+    await expect(textarea).not.toBeVisible();
+    await page.getByTestId('ai-prompt-toggle').filter({ visible: true }).click();
     await expect(textarea).toBeVisible({ timeout: 10000 });
     await textarea.fill('Hello AI, help me code!');
     await expect(textarea).toHaveValue('Hello AI, help me code!');
+  });
+
+  test('should select an AI model from the Welcome composer', async ({ page }) => {
+    const modelSelect = page.locator('#welcome-model-select');
+    await expect(modelSelect).toBeVisible({ timeout: 10000 });
+    await modelSelect.click();
+
+    await page.getByRole('button', { name: /Qwen2\.5 Coder 3B/ }).click();
+    await expect(modelSelect).toContainText('Qwen2.5 Coder 3B');
   });
 });

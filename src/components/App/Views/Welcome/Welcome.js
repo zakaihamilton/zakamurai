@@ -2,6 +2,7 @@ import { TabState } from '@/components/App/Panes';
 import WelcomeActions from './Actions';
 import WelcomeFooter from './Footer';
 import WelcomeHero from './Hero';
+import WelcomePrompt from './Prompt';
 import styles from './Welcome.module.css';
 
 export default function Welcome() {
@@ -43,6 +44,7 @@ export default function Welcome() {
     <div className={styles.welcome}>
       <div className={styles.hero}>
         <WelcomeHero />
+        <WelcomePrompt />
         <WelcomeActions onShowInfo={handleShowInfo} onShowInstructions={handleShowInstructions} />
         <WelcomeFooter />
       </div>

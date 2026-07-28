@@ -6,7 +6,7 @@ import { TabState } from '@/components/App/Panes/TabBar';
 import { EditorState } from '@/components/App/Views/EditorArea';
 import { LogState } from '@/components/App/Views/LogArea';
 import { useFileSystem } from '@/components/Storage';
-import { useCallback } from 'react';
+import { useCallback, useEffect } from 'react';
 import { AgentSessionState, createSessionMessage } from './AgentSessions';
 import useModelDownloader from './ModelDownloader';
 import PromptContent from './PromptContent';
@@ -41,6 +41,7 @@ export default function Prompt() {
     animatedWidth = promptState?.promptWidth ?? 0,
     abortController = null,
     promptScope = 'file',
+    welcomeRequest = null,
     runningSessionId = null,
     sessionDialog = null,
     isAgentTreeOpen = false,
@@ -111,6 +112,15 @@ export default function Prompt() {
     sidebarState,
     logState,
   });
+
+  useEffect(() => {
+    if (!welcomeRequest || isAIProcessing || !activeSession) return;
+
+    promptUiState((draft) => {
+      draft.welcomeRequest = null;
+    });
+    send(null, welcomeRequest.text, welcomeRequest.scope);
+  }, [activeSession, isAIProcessing, promptUiState, send, welcomeRequest]);
 
   const handleKeyDown = (event) => {
     const mac = navigator.platform.toUpperCase().includes('MAC');
