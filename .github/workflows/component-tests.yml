@@ -49,8 +49,8 @@ jobs:
       - name: Run unit tests with coverage
         run: npm run test:coverage
 
-      - name: Build production app and check asset budget
-        run: npm run build && npm run perf
+      - name: Build production app and check performance budgets
+        run: npm run build && npm run perf && npm run test:performance
 
       - name: Run Chromium and WebKit end-to-end tests
         run: npm run test:e2e && npm run test:e2e:webkit
