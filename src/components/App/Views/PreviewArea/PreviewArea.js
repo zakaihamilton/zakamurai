@@ -368,7 +368,13 @@ export default function PreviewArea() {
   }, [previewAreaUiState]);
 
   const handleOpenExternal = useCallback(() => {
-    const previewWindow = window.open(previewUrl, `zakamurai-preview-${previewSessionRef.current}`);
+    // Must not reuse the iframe's browsing-context name
+    // (`zakamurai-preview-${sessionId}`), or window.open navigates the iframe
+    // instead of opening a tab.
+    const previewWindow = window.open(
+      previewUrl,
+      `zakamurai-preview-tab-${previewSessionRef.current}`,
+    );
     if (!previewWindow) {
       setPreviewError('The browser blocked the preview tab. Allow pop-ups and try again.');
       return;

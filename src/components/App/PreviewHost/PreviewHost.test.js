@@ -116,6 +116,19 @@ describe('PreviewHost', () => {
     );
   });
 
+  it('reads session id from external-tab window.name prefix', () => {
+    window.name = 'zakamurai-preview-tab-external-session';
+    const postMessageSpy = vi.fn();
+    window.opener = { postMessage: postMessageSpy };
+
+    render(<PreviewHost />);
+
+    expect(postMessageSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ sessionId: 'external-session' }),
+      'http://localhost:3000',
+    );
+  });
+
   it('posts PREVIEW_CONNECT to the derived IDE origin on branch preview hosts', () => {
     Object.defineProperty(window, 'location', {
       configurable: true,

@@ -242,11 +242,12 @@ describe('PreviewArea', () => {
     fireEvent.click(screen.getByTitle('Maximize preview'));
     expect(ui.hook).toHaveBeenCalled();
 
-    // Open in new tab
+    // Open in new tab — target must not match the iframe name, or the browser
+    // navigates the iframe instead of opening a tab.
     fireEvent.click(screen.getByTitle('Open in new tab'));
     expect(window.open).toHaveBeenCalledWith(
       expect.stringMatching(/^http:\/\/localhost:3001\/\?session=/),
-      expect.stringMatching(/^zakamurai-preview-/),
+      expect.stringMatching(/^zakamurai-preview-tab-/),
     );
   });
 

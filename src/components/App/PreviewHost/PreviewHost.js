@@ -17,15 +17,21 @@ import {
 // Bump this URL when the preview-routing protocol changes so browsers replace
 // an older scoped worker instead of continuing to serve its stale routes.
 const SW_URL = '/__preview_sw__.js?v=24';
-const SESSION_WINDOW_NAME_PREFIX = 'zakamurai-preview-';
+// Longer / more specific prefixes first — `zakamurai-preview-` matches tabs too.
+const SESSION_WINDOW_NAME_PREFIXES = ['zakamurai-preview-tab-', 'zakamurai-preview-'];
 const CONNECT_TIMEOUT_MS = 15000;
+
+function getSessionIdFromWindowName(name) {
+  for (const prefix of SESSION_WINDOW_NAME_PREFIXES) {
+    if (name.startsWith(prefix)) return name.slice(prefix.length);
+  }
+  return null;
+}
 
 function getSessionId() {
   const querySession = new URLSearchParams(window.location.search).get('session');
   if (querySession) return querySession;
-  return window.name.startsWith(SESSION_WINDOW_NAME_PREFIX)
-    ? window.name.slice(SESSION_WINDOW_NAME_PREFIX.length)
-    : null;
+  return getSessionIdFromWindowName(window.name);
 }
 
 function getPreviewEntryUrl(sessionId) {
