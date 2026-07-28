@@ -16,6 +16,28 @@
   gap: 1px;
 }
 
+.tabBar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.tabBar::-webkit-scrollbar-thumb {
+  background: var(--bg-surface);
+  border-radius: 10px;
+}
+
+.tabBar::-webkit-scrollbar-thumb:hover {
+  background: var(--border-light);
+}
+
+.tabBar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.tabBar::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
 .tabActions {
   display: flex;
   align-items: center;

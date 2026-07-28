@@ -1,7 +1,7 @@
 import { Icons } from '@/components/ui/Icons';
 import Tooltip from '@/components/ui/Tooltip';
 import React from 'react';
-import styles from '../PreviewArea.module.css';
+import styles from './ErrorOverlay.module.css';
 
 export function PreviewErrorActions({ copied, onCopy, onDismiss }) {
   return (

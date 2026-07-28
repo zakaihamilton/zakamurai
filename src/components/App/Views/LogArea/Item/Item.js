@@ -1,5 +1,16 @@
 import React from 'react';
-import styles from '../LogArea.module.css';
+import styles from './Item.module.css';
+
+export function ProcessingLogItem({ lineNumber, message, processingClassName }) {
+  return (
+    <div className={styles.logItem}>
+      <span className={styles.lineNumber}>{lineNumber}</span>
+      <span className={styles.timestamp}>--:--:--</span>
+      <span className={styles.prompt}>&gt;</span>
+      <div className={`${styles.logContent} ${processingClassName}`}>{message}</div>
+    </div>
+  );
+}
 
 export default function LogItem({ log, displayIndex }) {
   const isError =

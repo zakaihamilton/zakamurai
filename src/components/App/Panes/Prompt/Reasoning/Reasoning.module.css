@@ -101,6 +101,28 @@
   min-height: 0;
 }
 
+.reasoningContent::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.reasoningContent::-webkit-scrollbar-thumb {
+  background: var(--bg-surface);
+  border-radius: 10px;
+}
+
+.reasoningContent::-webkit-scrollbar-thumb:hover {
+  background: var(--border-light);
+}
+
+.reasoningContent::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.reasoningContent::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
 .reasoningContent * {
   max-width: 100%;
 }

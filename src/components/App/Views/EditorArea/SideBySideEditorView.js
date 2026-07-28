@@ -81,7 +81,7 @@ export default function SideBySideEditorView({
         <div
           ref={leftScrollRef}
           onScroll={() => handleScroll(leftScrollRef, rightScrollRef)}
-          className={`${styles.sideBySideScroll} scrollHide`}
+          className={styles.sideBySideScroll}
         >
           <Gutter linesCount={countLines(diffData.originalContent)} scrollRef={leftScrollRef} />
           <CodeEditor
@@ -118,7 +118,7 @@ export default function SideBySideEditorView({
         <div
           ref={rightScrollRef}
           onScroll={() => handleScroll(rightScrollRef, leftScrollRef)}
-          className={`${styles.sideBySideScroll} scrollHide`}
+          className={styles.sideBySideScroll}
         >
           <Gutter
             linesCount={linesCount}

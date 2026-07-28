@@ -1,0 +1,55 @@
+.errorBanner {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 14px;
+  background: rgb(239 68 68 / 15%);
+  border-bottom: 1px solid rgb(239 68 68 / 40%);
+  color: #f87171;
+  font-size: 12px;
+  z-index: 20;
+}
+
+.errorBanner svg {
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.errorText {
+  flex: 1;
+  min-width: 0;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  font-family: "JetBrains Mono", "Fira Code", monospace;
+  line-height: 1.5;
+}
+
+.errorActions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.errorActionBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  flex-shrink: 0;
+  padding: 0;
+}
+
+.errorActionBtn:hover {
+  background: rgb(239 68 68 / 20%);
+}

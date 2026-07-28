@@ -1,0 +1,66 @@
+.footer {
+  margin-top: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: var(--text-muted);
+  animation: rise-in 0.48s ease 0.52s both;
+}
+
+.footerText {
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.linkedinLink,
+.githubLink {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  border: 1px solid transparent;
+  border-radius: 7px;
+  text-decoration: none;
+  transition: color 0.2s ease, background 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+}
+
+.githubLink:hover {
+  color: var(--text-main);
+  background: var(--bg-surface);
+  border-color: var(--border);
+  transform: translateY(-1px);
+}
+
+.linkedinLink:hover {
+  color: #0077b5;
+  background: rgb(0 119 181 / 8%);
+  border-color: rgb(0 119 181 / 20%);
+  transform: translateY(-1px);
+}
+
+.linkedinLink:focus-visible,
+.githubLink:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .footer {
+    animation: none;
+  }
+}

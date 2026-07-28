@@ -63,3 +63,25 @@
   align-items: flex-start;
   position: relative;
 }
+
+.sideBySideScroll::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.sideBySideScroll::-webkit-scrollbar-thumb {
+  background: var(--bg-surface);
+  border-radius: 10px;
+}
+
+.sideBySideScroll::-webkit-scrollbar-thumb:hover {
+  background: var(--border-light);
+}
+
+.sideBySideScroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.sideBySideScroll::-webkit-scrollbar-corner {
+  background: transparent;
+}

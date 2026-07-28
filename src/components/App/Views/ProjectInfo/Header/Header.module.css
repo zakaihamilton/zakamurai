@@ -1,0 +1,32 @@
+.header {
+  margin-bottom: 48px;
+  text-align: center;
+}
+
+.title {
+  font-size: 2.5rem;
+  font-weight: 800;
+  margin-bottom: 16px;
+  background: linear-gradient(135deg, var(--text) 0%, var(--accent) 100%);
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.pitch {
+  font-size: 1.25rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  max-width: 700px;
+  margin: 0 auto;
+  font-style: italic;
+}
+
+@media (width <= 768px) {
+  .title {
+    font-size: 1.75rem;
+  }
+
+  .pitch {
+    font-size: 1.1rem;
+  }
+}

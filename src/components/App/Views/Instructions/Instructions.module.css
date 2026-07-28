@@ -4,6 +4,28 @@
   overflow-y: auto;
 }
 
+.wrapper::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.wrapper::-webkit-scrollbar-thumb {
+  background: var(--bg-surface);
+  border-radius: 10px;
+}
+
+.wrapper::-webkit-scrollbar-thumb:hover {
+  background: var(--border-light);
+}
+
+.wrapper::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.wrapper::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
 .container {
   padding: 40px;
   max-width: 900px;

@@ -2,7 +2,7 @@ import { Icons } from '@/components/ui/Icons';
 import Tooltip from '@/components/ui/Tooltip';
 import { formatShortcut } from '@/utils/os';
 import React from 'react';
-import styles from '../LogArea.module.css';
+import styles from './Toolbar.module.css';
 
 export default function LogToolbar({
   filterText,

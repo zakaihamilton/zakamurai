@@ -69,7 +69,7 @@ function ReasoningPanelInner() {
             </Tooltip>
           </div>
         </div>
-        <div ref={reasoningRef} className={`${styles.reasoningContent} scrollHide`}>
+        <div ref={reasoningRef} className={styles.reasoningContent}>
           <ReactMarkdown
             components={{
               a: ({ node, ...props }) => <a className={styles.reasoningLink} {...props} />,

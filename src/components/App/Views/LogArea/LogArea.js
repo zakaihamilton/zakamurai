@@ -90,7 +90,7 @@ export default function LogArea() {
 
   return (
     <div className={styles.logAreaWrapper}>
-      <div ref={containerRef} className={`${styles.logArea} scrollHide`} onScroll={handleScroll}>
+      <div ref={containerRef} className={styles.logArea} onScroll={handleScroll}>
         {logs.length > 0 && (
           <LogToolbar
             filterText={filterText}

@@ -1,7 +1,7 @@
 import React from 'react';
 import { PreviewErrorBanner } from '../ErrorOverlay';
-import styles from '../PreviewArea.module.css';
 import { PREVIEW_IFRAME_SANDBOX } from '../previewSandbox';
+import styles from './IframeContainer.module.css';
 
 export default function PreviewIframeContainer({
   isLoading,

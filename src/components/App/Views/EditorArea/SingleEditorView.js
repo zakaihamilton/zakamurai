@@ -62,7 +62,7 @@ export default function SingleEditorView({
   }, [scrollContainerRef, highlightedCode]);
 
   return (
-    <div ref={scrollContainerRef} className={`${styles.scrollContainer} scrollHide`}>
+    <div ref={scrollContainerRef} className={styles.scrollContainer}>
       <Gutter
         linesCount={linesCount}
         lineItems={editorLineItems}

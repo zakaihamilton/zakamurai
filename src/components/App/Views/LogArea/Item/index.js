@@ -1,1 +1,1 @@
-export { default, default as LogItem } from './Item';
+export { default, default as LogItem, ProcessingLogItem } from './Item';

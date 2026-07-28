@@ -1,0 +1,46 @@
+.sectionTabs {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  border-bottom: 1px solid var(--panel-border);
+  padding: 0 4px;
+  margin-bottom: 16px;
+  overflow-x: auto;
+}
+
+.sectionTabs::-webkit-scrollbar {
+  display: none;
+}
+
+.sectionTab {
+  border: none;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--text-secondary);
+  padding: 8px 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+
+.sectionTab:hover {
+  color: var(--text-primary);
+}
+
+.sectionTabActive {
+  border-bottom-color: var(--border-focus);
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.sectionTab strong {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-muted);
+  margin-left: 2px;
+}

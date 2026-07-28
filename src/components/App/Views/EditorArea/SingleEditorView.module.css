@@ -5,3 +5,25 @@
   align-items: flex-start;
   position: relative;
 }
+
+.scrollContainer::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.scrollContainer::-webkit-scrollbar-thumb {
+  background: var(--bg-surface);
+  border-radius: 10px;
+}
+
+.scrollContainer::-webkit-scrollbar-thumb:hover {
+  background: var(--border-light);
+}
+
+.scrollContainer::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scrollContainer::-webkit-scrollbar-corner {
+  background: transparent;
+}

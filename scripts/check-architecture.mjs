@@ -1,4 +1,4 @@
-import { readFile, readdir, stat } from 'node:fs/promises';
+import { readFile, readdir } from 'node:fs/promises';
 import path from 'node:path';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
@@ -11,18 +11,8 @@ const FORBIDDEN_IMPORTS = [
   { pattern: /from\s+['"]tailwindcss['"]/, reason: 'Tailwind is forbidden; use CSS Modules.' },
 ];
 
-const INLINE_STYLE_ALLOWLIST = new Set([
-  'src/components/App/PreviewHost/PreviewHost.js',
-  'src/components/App/Panes/Sidebar/VirtualList.js',
-  'src/components/App/Views/EditorArea/NavigationPopup.js',
-  'src/components/ui/icons/ZLogo.js',
-  'src/components/App/Panes/Sidebar/TreeItem.js',
-  'src/components/ui/ContextMenu/ContextMenu.js',
-  'src/components/App/Panes/Sidebar/CreateRowInput.js',
-  'src/components/ui/Tooltip/Tooltip.js',
-  'src/components/App/Views/ImageViewer/ImageViewer.js',
-  'src/components/App/Views/PreviewArea/IframeContainer/IframeContainer.js',
-]);
+const COLOCATION_EXEMPT =
+  /\/(icons|state)\/|(?:Handler|Bridge|Restorer|Sync|Diff|FindHandler|Node|InitialData|highlighter|highlightClient)\.js$/;
 
 async function collectSourceFiles(directory) {
   const entries = await readdir(directory, { withFileTypes: true });
@@ -40,6 +30,84 @@ async function collectSourceFiles(directory) {
 
 function relativePath(filePath) {
   return path.relative(ROOT, filePath).split(path.sep).join('/');
+}
+
+function expectedModuleBase(filePath) {
+  const fileName = path.basename(filePath, path.extname(filePath));
+  if (fileName === 'index') {
+    return path.basename(path.dirname(filePath));
+  }
+  return fileName;
+}
+
+function checkCssModuleColocation(filePath, content) {
+  const rel = relativePath(filePath);
+  if (COLOCATION_EXEMPT.test(rel)) return [];
+
+  const expectedModulePath = path.join(
+    path.dirname(filePath),
+    `${expectedModuleBase(filePath)}.module.css`,
+  );
+  const violations = [];
+
+  for (const match of content.matchAll(
+    /import\s+(?:\*\s+as\s+\w+|\w+)\s+from\s+['"]([^'"]+\.module\.css)['"]/g,
+  )) {
+    const importPath = match[1];
+    const importedModulePath = path.resolve(path.dirname(filePath), importPath);
+    if (importedModulePath !== expectedModulePath) {
+      violations.push({
+        file: rel,
+        reason: `CSS module must be co-located: expected ./${expectedModuleBase(filePath)}.module.css, found ${importPath}.`,
+      });
+    }
+  }
+
+  return violations;
+}
+
+function inlineStyleKeysAreCssVarsOnly(content) {
+  const styleBlocks = [...content.matchAll(/style=\{\{([\s\S]*?)\}\}/g)];
+  for (const [, body] of styleBlocks) {
+    // A spread can carry arbitrary style keys, so it cannot be proved CSS-variable-only.
+    if (/\.\.\./.test(body)) return false;
+
+    const keys = [...body.matchAll(/['"]?([-\w]+)['"]?\s*:/g)]
+      .map((match) => match[1])
+      .filter((key) => key !== 'style');
+    for (const key of keys) {
+      if (!key.startsWith('--')) {
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
+function checkGlobalClassNames(content) {
+  for (const match of content.matchAll(/className=\{(`[^`]*`)\}/g)) {
+    const stripped = match[1].replace(/\$\{styles\.[^}]+\}/g, '').replace(/\$\{[^}]+\}/g, '');
+    if (/\b[a-zA-Z][\w-]*\b/.test(stripped)) {
+      return true;
+    }
+  }
+
+  for (const match of content.matchAll(/className=['"]([^'"]+)['"]/g)) {
+    if (match[1].trim()) {
+      return true;
+    }
+  }
+
+  // Catch ordinary JSX expressions such as:
+  // className={isOpen ? 'open' : styles.closed}
+  // className={isOpen && 'open'}
+  for (const match of content.matchAll(/className=\{([^{}]*)\}/g)) {
+    for (const stringLiteral of match[1].matchAll(/['"]([^'"]+)['"]/g)) {
+      if (stringLiteral[1].trim()) return true;
+    }
+  }
+
+  return false;
 }
 
 function checkFile(filePath, content) {
@@ -65,11 +133,21 @@ function checkFile(filePath, content) {
     });
   }
 
+  violations.push(...checkCssModuleColocation(filePath, content));
+
   const importsCssModule = /from\s+['"].*\.module\.css['"]/.test(content);
-  if (importsCssModule && /style=\{\{/.test(content) && !INLINE_STYLE_ALLOWLIST.has(rel)) {
+  if (importsCssModule && /style=\{\{/.test(content) && !inlineStyleKeysAreCssVarsOnly(content)) {
     violations.push({
       file: rel,
-      reason: 'Inline styles are forbidden in components that use CSS Modules.',
+      reason:
+        'Inline styles are forbidden in components that use CSS Modules (CSS custom properties only).',
+    });
+  }
+
+  if (importsCssModule && checkGlobalClassNames(content)) {
+    violations.push({
+      file: rel,
+      reason: 'Global className strings are forbidden; use CSS module classes only.',
     });
   }
 

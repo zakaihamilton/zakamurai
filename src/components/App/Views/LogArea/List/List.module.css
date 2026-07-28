@@ -1,0 +1,22 @@
+.logContainer {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-surface);
+  overflow: hidden;
+}
+
+.emptyState {
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.5;
+  padding: 12px;
+  text-align: center;
+}
+
+.processing {
+  color: var(--accent);
+  font-style: italic;
+  opacity: 0.8;
+}

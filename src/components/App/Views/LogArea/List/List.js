@@ -1,6 +1,6 @@
 import React from 'react';
-import LogItem from '../Item';
-import styles from '../LogArea.module.css';
+import LogItem, { ProcessingLogItem } from '../Item';
+import styles from './List.module.css';
 
 export default function LogList({
   visibleLogs,
@@ -19,18 +19,17 @@ export default function LogList({
         <div className={styles.emptyState}>No logs match "{filterText}"</div>
       )}
       {isProcessing && (
-        <div className={styles.logItem}>
-          <span className={styles.lineNumber}>{totalLogsCount + 1}</span>
-          <span className={styles.timestamp}>--:--:--</span>
-          <span className={styles.prompt}>&gt;</span>
-          <div className={`${styles.logContent} ${styles.processing}`}>
-            {isAIProcessing && isSystemProcessing
+        <ProcessingLogItem
+          lineNumber={totalLogsCount + 1}
+          processingClassName={styles.processing}
+          message={
+            isAIProcessing && isSystemProcessing
               ? 'AI & System working...'
               : isAIProcessing
                 ? 'AI is working...'
-                : 'System is working...'}
-          </div>
-        </div>
+                : 'System is working...'
+          }
+        />
       )}
     </div>
   );

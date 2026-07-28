@@ -1,0 +1,138 @@
+.verificationCard {
+  border: 1px solid var(--panel-border);
+  background: var(--panel-bg);
+  border-radius: 6px;
+  padding: 16px;
+  margin-bottom: 20px;
+  transition: all 0.2s ease;
+}
+
+.verificationCardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.verificationTitleGroup {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.verificationTitle {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.verificationStatus {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 999px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.statusSuccess {
+  color: var(--success);
+  background: var(--success-light);
+  border: 1px solid rgb(var(--success-rgb), 0.2);
+}
+
+.statusError {
+  color: var(--danger);
+  background: var(--danger-light);
+  border: 1px solid rgb(var(--danger-rgb), 0.2);
+}
+
+.verificationClose {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  padding: 4px;
+  border-radius: 4px;
+  transition: all 0.15s ease;
+}
+
+.verificationClose:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.verificationDetails {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.verificationMetrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 12px;
+  background: var(--bg-hover);
+  padding: 10px 12px;
+  border-radius: 4px;
+  border: 1px solid var(--panel-border);
+}
+
+.verificationMetric {
+  display: flex;
+  flex-direction: column;
+}
+
+.metricLabel {
+  font-size: 9px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 2px;
+}
+
+.metricValue {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.mismatchList {
+  list-style: none;
+  padding: 0;
+  margin: 8px 0 0;
+  max-height: 160px;
+  overflow-y: auto;
+  border: 1px solid var(--panel-border);
+  border-radius: 4px;
+  font-size: 11px;
+}
+
+.mismatchItem {
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--panel-border);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.mismatchItem:last-child {
+  border-bottom: none;
+}
+
+.mismatchItemReason {
+  color: var(--danger);
+  font-weight: 500;
+}
+
+.mismatchItemDetails {
+  font-family: var(--font-mono);
+  color: var(--text-secondary);
+}

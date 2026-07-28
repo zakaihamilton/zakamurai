@@ -132,16 +132,6 @@
   overflow: hidden;
 }
 
-.createInputContainer {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin: 0 8px;
-  min-height: 34px;
-  box-sizing: border-box;
-  padding: 8px 16px 8px var(--tree-indent, 16px);
-}
-
 .dragging {
   opacity: 0.4;
   background-color: var(--accent-light);
