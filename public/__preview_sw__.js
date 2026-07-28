@@ -1,7 +1,6 @@
 const pending = new Map();
-let mainPort = null;
-let activeSessionId = null;
-let ideOrigin = null;
+/** @type {Map<string, { ports: MessagePort[], ideOrigin: string }>} */
+const bridges = new Map();
 let nextId = 0;
 // Keep in sync with PREVIEW_HOST_PATH in previewOrigins.js
 const PREVIEW_BOOTSTRAP_PATH = '/__preview/host';
@@ -19,37 +18,42 @@ const bytesToBase64 = (bytes) => {
 };
 const base64ToBytes = (value) => Uint8Array.from(atob(value || ''), (char) => char.charCodeAt(0));
 
-// Do not skipWaiting on install. PreviewHost activates the worker explicitly
-// before init so a freshly installed empty worker cannot claim clients and
-// serve /__preview/* without a MessageChannel.
-self.addEventListener('install', () => {});
-self.addEventListener('activate', (event) => {
-  event.waitUntil(self.clients.claim());
-});
-self.addEventListener('message', (event) => {
-  if (event.data?.type === 'SKIP_WAITING') {
-    self.skipWaiting();
-    return;
-  }
-  if (event.data?.type === 'claim') {
-    event.waitUntil(self.clients.claim());
-    return;
-  }
-  if (
-    event.data?.type !== 'init' ||
-    !event.ports[0] ||
-    !event.data.sessionId ||
-    !event.data.ideOrigin
-  )
-    return;
+function getBridge(sessionId) {
+  return sessionId ? bridges.get(sessionId) : null;
+}
 
-  mainPort = event.ports[0];
-  activeSessionId = event.data.sessionId;
-  ideOrigin = event.data.ideOrigin;
+function pickPort(bridge) {
+  return bridge?.ports?.length ? bridge.ports[bridge.ports.length - 1] : null;
+}
 
-  mainPort.onmessage = ({ data }) => {
+function rememberPort(sessionId, port, ideOrigin) {
+  let bridge = bridges.get(sessionId);
+  if (!bridge) {
+    bridge = { ports: [], ideOrigin };
+    bridges.set(sessionId, bridge);
+  }
+  bridge.ideOrigin = ideOrigin;
+  // Keep prior ports alive so an iframe re-handshake does not kill an open
+  // external preview tab that still holds an older MessagePort for this session.
+  if (!bridge.ports.includes(port)) {
+    bridge.ports.push(port);
+    // Bound growth from reconnect storms.
+    if (bridge.ports.length > 4) {
+      const removed = bridge.ports.shift();
+      try {
+        removed.close();
+      } catch (_e) {
+        /* ignore */
+      }
+    }
+  }
+  return bridge;
+}
+
+function bindPortMessages(port, sessionId) {
+  port.onmessage = ({ data }) => {
     const pendingRequest = pending.get(data?.id);
-    if (!pendingRequest || data.sessionId !== activeSessionId) return;
+    if (!pendingRequest || data.sessionId !== sessionId) return;
     if (data.type === 'preview-stream-start') {
       pendingRequest.statusCode = data.statusCode;
       pendingRequest.statusMessage = data.statusMessage;
@@ -76,17 +80,47 @@ self.addEventListener('message', (event) => {
       data.error ? pendingRequest.reject(new Error(data.error)) : pendingRequest.resolve(data);
     }
   };
+}
+
+// Do not skipWaiting on install. PreviewHost activates the worker explicitly
+// before init so a freshly installed empty worker cannot claim clients and
+// serve /__preview/* without a MessageChannel.
+self.addEventListener('install', () => {});
+self.addEventListener('activate', (event) => {
+  event.waitUntil(self.clients.claim());
+});
+self.addEventListener('message', (event) => {
+  if (event.data?.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+    return;
+  }
+  if (event.data?.type === 'claim') {
+    event.waitUntil(self.clients.claim());
+    return;
+  }
+  if (
+    event.data?.type !== 'init' ||
+    !event.ports[0] ||
+    !event.data.sessionId ||
+    !event.data.ideOrigin
+  )
+    return;
+
+  const sessionId = event.data.sessionId;
+  const port = event.ports[0];
+  rememberPort(sessionId, port, event.data.ideOrigin);
+  bindPortMessages(port, sessionId);
 
   event.waitUntil(
     (async () => {
       await self.clients.claim();
       const client = event.source;
       if (client) {
-        client.postMessage({ type: 'init-ok', sessionId: activeSessionId });
+        client.postMessage({ type: 'init-ok', sessionId });
       } else {
         const windows = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
         for (const windowClient of windows) {
-          windowClient.postMessage({ type: 'init-ok', sessionId: activeSessionId });
+          windowClient.postMessage({ type: 'init-ok', sessionId });
         }
       }
     })(),
@@ -110,7 +144,7 @@ function expandOriginAliases(origin) {
   }
 }
 
-function applyPreviewEmbedHeaders(headers) {
+function applyPreviewEmbedHeaders(headers, ideOrigin) {
   // Parent IDE uses COEP require-corp. Cross-origin iframe documents must send
   // their own COEP header or Chrome blocks with coep-frame-resource-needs-coep-header.
   headers.set('Cross-Origin-Embedder-Policy', 'credentialless');
@@ -122,13 +156,15 @@ function applyPreviewEmbedHeaders(headers) {
   return headers;
 }
 
-function previewResponse(body, init = {}) {
-  const headers = applyPreviewEmbedHeaders(new Headers(init.headers || {}));
+function previewResponse(body, init = {}, ideOrigin = null) {
+  const headers = applyPreviewEmbedHeaders(new Headers(init.headers || {}), ideOrigin);
   return new Response(body, { ...init, headers });
 }
 
-async function requestFromIde(request) {
-  if (!mainPort || !activeSessionId) throw new Error('Isolated preview connection is not ready');
+async function requestFromIde(sessionId, request) {
+  const bridge = getBridge(sessionId);
+  const port = pickPort(bridge);
+  if (!bridge || !port) throw new Error('Isolated preview connection is not ready');
   const id = ++nextId;
   return new Promise((resolve, reject) => {
     const timeout = setTimeout(() => {
@@ -156,7 +192,26 @@ async function requestFromIde(request) {
       });
     }
     pending.set(id, pendingRequest);
-    mainPort.postMessage({ ...request, type: 'preview-request', id, sessionId: activeSessionId });
+    try {
+      port.postMessage({ ...request, type: 'preview-request', id, sessionId });
+    } catch (_error) {
+      // Drop a dead port and retry once with an older port for this session.
+      bridge.ports = bridge.ports.filter((candidate) => candidate !== port);
+      const fallback = pickPort(bridge);
+      if (!fallback) {
+        pending.delete(id);
+        clearTimeout(timeout);
+        reject(new Error('Isolated preview connection is not ready'));
+        return;
+      }
+      try {
+        fallback.postMessage({ ...request, type: 'preview-request', id, sessionId });
+      } catch (retryError) {
+        pending.delete(id);
+        clearTimeout(timeout);
+        reject(retryError instanceof Error ? retryError : new Error(String(retryError)));
+      }
+    }
   });
 }
 
@@ -174,7 +229,7 @@ function contentTypeForPath(path) {
   return null;
 }
 
-function injectBridge(bytes, headers, path) {
+function injectBridge(bytes, headers, path, ideOrigin) {
   const cleanPath = (path || '').split('?')[0].toLowerCase();
   const contentType = headers.get?.('Content-Type') || headers.get?.('content-type') || '';
   const isHtmlPath =
@@ -189,20 +244,24 @@ function injectBridge(bytes, headers, path) {
   return new TextEncoder().encode(injected);
 }
 
-async function handleVirtualRequest(request, path) {
+async function handleVirtualRequest(sessionId, request, path) {
+  const bridge = getBridge(sessionId);
   const headers = Object.fromEntries(request.headers.entries());
   const body =
     request.method === 'GET' || request.method === 'HEAD'
       ? null
       : bytesToBase64(new Uint8Array(await request.arrayBuffer()));
-  const response = await requestFromIde({
+  const response = await requestFromIde(sessionId, {
     method: request.method,
     path,
     headers,
     bodyBase64: body,
     streaming: request.method === 'POST' && path.startsWith('/api/'),
   });
-  const responseHeaders = applyPreviewEmbedHeaders(new Headers(response.headers || {}));
+  const responseHeaders = applyPreviewEmbedHeaders(
+    new Headers(response.headers || {}),
+    bridge?.ideOrigin,
+  );
   const forcedType = contentTypeForPath(path);
   if (forcedType) responseHeaders.set('Content-Type', forcedType);
   if (response.stream) {
@@ -212,7 +271,12 @@ async function handleVirtualRequest(request, path) {
       headers: responseHeaders,
     });
   }
-  const bytes = injectBridge(base64ToBytes(response.bodyBase64), responseHeaders, path);
+  const bytes = injectBridge(
+    base64ToBytes(response.bodyBase64),
+    responseHeaders,
+    path,
+    bridge?.ideOrigin,
+  );
   responseHeaders.set('Content-Length', String(bytes.length));
   return new Response(bytes, {
     status: response.statusCode,
@@ -221,18 +285,28 @@ async function handleVirtualRequest(request, path) {
   });
 }
 
-function lostConnectionPage() {
+function lostConnectionPage(sessionId = null) {
+  // Top-level external tabs cannot talk to the IDE via parent.postMessage.
+  // Send them back through the handshake route for the same session id.
+  const reconnectToHandshake =
+    sessionId &&
+    `<script>(function(){try{if(window.parent!==window)return;location.replace('/?session='+encodeURIComponent(${JSON.stringify(sessionId)}));}catch(_e){}})();</script>`;
   const reconnectScript = `<script>(function(){try{var m=location.pathname.match(/^\\/(__preview\\/)([^/]+)/);var sessionId=m&&m[2];if(!sessionId||window.parent===window)return;window.parent.postMessage({source:'zakamurai-preview',type:'reconnect',sessionId:decodeURIComponent(sessionId),message:'Preview connection was lost.'},'*');}catch(_e){}})();</script>`;
   return previewResponse(
     `<!doctype html><html><head><meta charset="utf-8"><title>Preview</title>
 <style>html,body{margin:0;height:100%;background:#101214;color:#e7ecef;font:14px/1.4 system-ui,sans-serif}
-main{padding:2rem}</style>${reconnectScript}</head>
+main{padding:2rem}</style>${reconnectScript}${reconnectToHandshake || ''}</head>
 <body><main><p>Preview connection was lost. Return to Zakamurai and click Build, then open Preview again.</p></main></body></html>`,
     {
       status: 503,
       headers: { 'Content-Type': 'text/html; charset=utf-8' },
     },
   );
+}
+
+function sessionIdFromPreviewPath(pathname) {
+  const match = pathname.match(/^\/__preview\/([^/]+)/);
+  return match ? decodeURIComponent(match[1]) : null;
 }
 
 self.addEventListener('fetch', (event) => {
@@ -244,28 +318,24 @@ self.addEventListener('fetch', (event) => {
   }
 
   if (url.pathname.startsWith('/__preview/')) {
-    if (!activeSessionId || !mainPort) {
-      // Direct /__preview navigations without an inited bridge cannot recover.
-      event.respondWith(lostConnectionPage());
+    const sessionId = sessionIdFromPreviewPath(url.pathname);
+    const bridge = getBridge(sessionId);
+    if (!sessionId || !bridge || !pickPort(bridge)) {
+      event.respondWith(lostConnectionPage(sessionId));
       return;
     }
-    const prefix = `/__preview/${activeSessionId}`;
-    if (!url.pathname.startsWith(prefix)) {
-      event.respondWith(
-        previewResponse('Preview session mismatch.', {
-          status: 404,
-          headers: { 'Content-Type': 'text/plain; charset=utf-8' },
-        }),
-      );
-      return;
-    }
+    const prefix = `/__preview/${sessionId}`;
     const path = url.pathname.slice(prefix.length) || '/';
     event.respondWith(
-      handleVirtualRequest(event.request, path).catch((error) =>
-        previewResponse(`Preview bridge error: ${error.message}`, {
-          status: 502,
-          headers: { 'Content-Type': 'text/plain; charset=utf-8' },
-        }),
+      handleVirtualRequest(sessionId, event.request, path).catch((error) =>
+        previewResponse(
+          `Preview bridge error: ${error.message}`,
+          {
+            status: 502,
+            headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+          },
+          bridge.ideOrigin,
+        ),
       ),
     );
     return;
@@ -273,34 +343,45 @@ self.addEventListener('fetch', (event) => {
 
   // Built apps request absolute /dist/assets/* URLs. history.replaceState does not
   // update service worker client.url, so do not rely on client/referrer matching.
-  if (
-    activeSessionId &&
-    mainPort &&
-    (url.pathname === '/dist' || url.pathname.startsWith('/dist/'))
-  ) {
+  if (url.pathname === '/dist' || url.pathname.startsWith('/dist/')) {
+    // Prefer the session from the document referrer / client URL when present.
+    const referrer = event.request.referrer ? new URL(event.request.referrer) : null;
+    const sessionId = sessionIdFromPreviewPath(referrer?.pathname || '');
+    const bridge = getBridge(sessionId) || [...bridges.values()].at(-1);
+    const resolvedSessionId =
+      sessionId || [...bridges.keys()].find((id) => bridges.get(id) === bridge);
+    if (!bridge || !resolvedSessionId || !pickPort(bridge)) return;
     const path = `${url.pathname}${url.search}`;
     event.respondWith(
-      handleVirtualRequest(event.request, path).catch((error) =>
-        previewResponse(`Preview bridge error: ${error.message}`, {
-          status: 502,
-          headers: { 'Content-Type': 'text/plain; charset=utf-8' },
-        }),
+      handleVirtualRequest(resolvedSessionId, event.request, path).catch((error) =>
+        previewResponse(
+          `Preview bridge error: ${error.message}`,
+          {
+            status: 502,
+            headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+          },
+          bridge.ideOrigin,
+        ),
       ),
     );
     return;
   }
 
-  const prefix = `/__preview/${activeSessionId || ''}`;
   const referrer = event.request.referrer ? new URL(event.request.referrer) : null;
-  const isPreviewResource = Boolean(activeSessionId && referrer?.pathname.startsWith(prefix));
-  if (!isPreviewResource) return;
+  const sessionId = sessionIdFromPreviewPath(referrer?.pathname || '');
+  const bridge = getBridge(sessionId);
+  if (!bridge || !sessionId) return;
   const path = `${url.pathname}${url.search}`;
   event.respondWith(
-    handleVirtualRequest(event.request, path).catch((error) =>
-      previewResponse(`Preview bridge error: ${error.message}`, {
-        status: 502,
-        headers: { 'Content-Type': 'text/plain; charset=utf-8' },
-      }),
+    handleVirtualRequest(sessionId, event.request, path).catch((error) =>
+      previewResponse(
+        `Preview bridge error: ${error.message}`,
+        {
+          status: 502,
+          headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+        },
+        bridge.ideOrigin,
+      ),
     ),
   );
 });

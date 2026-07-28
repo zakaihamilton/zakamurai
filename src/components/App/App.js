@@ -159,6 +159,7 @@ function AppReady({ initialValues }) {
     htmlContent: initialValues.previewHtml,
     isCompilerReady: false,
     previewAddress: '/preview/dist/index.html',
+    previewSessionId: null,
     containerStatus: 'idle',
     compileStatus: 'idle',
     compilePhase: null,

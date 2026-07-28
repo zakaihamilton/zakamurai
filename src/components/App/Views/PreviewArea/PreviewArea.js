@@ -46,6 +46,7 @@ export default function PreviewArea() {
     'compileError',
     'serverError',
     'previewAddress',
+    'previewSessionId',
   ]);
   const {
     htmlContent,
@@ -54,11 +55,15 @@ export default function PreviewArea() {
     compileError = null,
     serverError = null,
     previewAddress = '/preview/dist/index.html',
+    previewSessionId = null,
   } = previewState;
   const iframeRef = useRef(null);
   const externalPreviewRef = useRef(null);
   const [externalPreviewNonce, setExternalPreviewNonce] = useState(0);
-  const previewSessionRef = useRef(createPreviewSession());
+  const previewSessionRef = useRef(previewSessionId || createPreviewSession());
+  if (previewSessionId && previewSessionRef.current !== previewSessionId) {
+    previewSessionRef.current = previewSessionId;
+  }
   const isLoadingRef = useRef(false);
   const listenersRef = useRef(null);
   const previewAreaUiState = PreviewAreaUiState.useState(null, {
@@ -166,6 +171,14 @@ export default function PreviewArea() {
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
 
   useEffect(() => {
+    if (previewSessionId) return;
+    const sessionId = previewSessionRef.current;
+    previewState((draft) => {
+      if (!draft.previewSessionId) draft.previewSessionId = sessionId;
+    });
+  }, [previewSessionId, previewState]);
+
+  useEffect(() => {
     if (!htmlContent) {
       setHasLoadedOnce(false);
       return;
@@ -180,21 +193,23 @@ export default function PreviewArea() {
     previewState((draft) => {
       draft.serverError = null;
     });
+    // Reload the external tab in place. Re-entering /?session= is unnecessary
+    // when the service worker keeps the existing session MessagePort(s).
     const externalWindow = externalPreviewRef.current;
     if (externalWindow && !externalWindow.closed) {
-      const nextUrl = buildPreviewUrl(
-        getPreviewOrigins({
-          windowOrigin: typeof window === 'undefined' ? '' : window.location.origin,
-        }),
-        previewSessionRef.current,
-      );
       try {
-        if (nextUrl) externalWindow.location.href = nextUrl;
+        externalWindow.location.reload();
       } catch {
+        const nextUrl = buildPreviewUrl(
+          getPreviewOrigins({
+            windowOrigin: typeof window === 'undefined' ? '' : window.location.origin,
+          }),
+          previewSessionRef.current,
+        );
         try {
-          externalWindow.location.reload();
+          if (nextUrl) externalWindow.location.href = nextUrl;
         } catch {
-          // Cross-origin reload may be blocked; user can refresh the tab.
+          // Cross-origin navigation may be blocked; user can refresh the tab.
         }
       }
       setExternalPreviewNonce((nonce) => nonce + 1);

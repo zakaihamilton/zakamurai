@@ -17,7 +17,7 @@ import {
 
 // Bump this URL when the preview-routing protocol changes so browsers replace
 // an older scoped worker instead of continuing to serve its stale routes.
-const SW_URL = '/__preview_sw__.js?v=24';
+const SW_URL = '/__preview_sw__.js?v=25';
 // Longer / more specific prefixes first — `zakamurai-preview-` matches tabs too.
 const SESSION_WINDOW_NAME_PREFIXES = ['zakamurai-preview-tab-', 'zakamurai-preview-'];
 const CONNECT_TIMEOUT_MS = 15000;
