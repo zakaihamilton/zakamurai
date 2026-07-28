@@ -17,7 +17,8 @@
 
 .composer:focus-within {
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 20%, transparent), 0 16px 36px rgb(0 0 0 / 14%);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 20%, transparent), 0 16px 36px
+    rgb(0 0 0 / 14%);
 }
 
 .input {
