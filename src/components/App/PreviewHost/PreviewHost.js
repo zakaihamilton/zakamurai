@@ -10,8 +10,9 @@ import { PREVIEW_CONNECT, PREVIEW_PROTOCOL_VERSION } from '../Views/PreviewArea/
 
 // Bump this URL when the preview-routing protocol changes so browsers replace
 // an older scoped worker instead of continuing to serve its stale routes.
-const SW_URL = '/__preview_sw__.js?v=19';
+const SW_URL = '/__preview_sw__.js?v=20';
 const SESSION_WINDOW_NAME_PREFIX = 'zakamurai-preview-';
+const CONNECT_TIMEOUT_MS = 15000;
 
 function getSessionId() {
   const querySession = new URLSearchParams(window.location.search).get('session');
@@ -136,12 +137,14 @@ export default function PreviewHost() {
       setError('Missing preview session. Return to Zakamurai and build the project again.');
       return undefined;
     }
-    if (!peerWindow) {
-      setError('Preview must be opened from Zakamurai so it can access the in-memory build.');
-      return undefined;
-    }
 
     let cancelled = false;
+    const connectTimeout = window.setTimeout(() => {
+      if (!cancelled) {
+        setError('Preview must be opened from Zakamurai so it can access the in-memory build.');
+      }
+    }, CONNECT_TIMEOUT_MS);
+
     const connect = async (event) => {
       // COOP can make event.source identity checks fail across origins even when
       // the message truly came from the IDE. Origin + session + port are enough.
@@ -161,6 +164,7 @@ export default function PreviewHost() {
       if (!handshakeOk || !event.ports[0]) {
         return;
       }
+      window.clearTimeout(connectTimeout);
       window.removeEventListener('message', connect);
       try {
         const registration = await navigator.serviceWorker.register(SW_URL, {
@@ -198,12 +202,15 @@ export default function PreviewHost() {
     };
 
     window.addEventListener('message', connect);
-    peerWindow.postMessage(
+    // Cross-origin external tabs often lose window.opener in production. The IDE
+    // also initiates the handshake when it opens the tab; only ping when we can.
+    peerWindow?.postMessage(
       { type: PREVIEW_CONNECT, version: PREVIEW_PROTOCOL_VERSION, sessionId },
       ideOrigin,
     );
     return () => {
       cancelled = true;
+      window.clearTimeout(connectTimeout);
       window.removeEventListener('message', connect);
     };
   }, []);

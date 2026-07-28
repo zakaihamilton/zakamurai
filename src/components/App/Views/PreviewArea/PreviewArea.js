@@ -55,6 +55,7 @@ export default function PreviewArea() {
   } = previewState;
   const iframeRef = useRef(null);
   const externalPreviewRef = useRef(null);
+  const [externalPreviewNonce, setExternalPreviewNonce] = useState(0);
   const previewSessionRef = useRef(createPreviewSession());
   const listenersRef = useRef(null);
   const previewAreaUiState = PreviewAreaUiState.useState(null, {
@@ -84,7 +85,7 @@ export default function PreviewArea() {
   });
   const previewConfigurationError = getPreviewConfigurationError(origins);
   const previewUrl = origins.previewOrigin
-    ? `${origins.previewOrigin}/preview-host?session=${previewSessionRef.current}`
+    ? `${origins.previewOrigin}/?session=${previewSessionRef.current}`
     : null;
   const previewHostLabel = origins.previewOrigin ? new URL(origins.previewOrigin).host : '';
 
@@ -370,6 +371,7 @@ export default function PreviewArea() {
       return;
     }
     externalPreviewRef.current = previewWindow;
+    setExternalPreviewNonce((nonce) => nonce + 1);
   }, [previewUrl, setPreviewError]);
 
   const toggleMaximize = useCallback(() => {
@@ -474,6 +476,7 @@ export default function PreviewArea() {
       <PreviewBridge
         iframeRef={iframeRef}
         externalPreviewRef={externalPreviewRef}
+        externalPreviewNonce={externalPreviewNonce}
         sessionId={previewSessionRef.current}
         previewOrigin={origins.previewOrigin}
         onError={setPreviewError}

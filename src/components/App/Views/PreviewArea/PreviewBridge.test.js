@@ -230,4 +230,27 @@ describe('PreviewBridge', () => {
     vi.unstubAllGlobals();
     vi.restoreAllMocks();
   });
+
+  it('pushes handshake to an external preview tab when externalPreviewNonce changes', () => {
+    const externalWindow = { postMessage: vi.fn() };
+    const externalPreviewRef = { current: externalWindow };
+    const iframeRef = { current: { contentWindow: null } };
+
+    render(
+      <PreviewBridge
+        iframeRef={iframeRef}
+        externalPreviewRef={externalPreviewRef}
+        externalPreviewNonce={1}
+        sessionId="test-session-123"
+        previewOrigin="http://localhost:3001"
+        onError={vi.fn()}
+      />,
+    );
+
+    expect(externalWindow.postMessage).toHaveBeenCalledWith(
+      expect.objectContaining({ type: PREVIEW_CONNECT, sessionId: 'test-session-123' }),
+      'http://localhost:3001',
+      expect.any(Array),
+    );
+  });
 });

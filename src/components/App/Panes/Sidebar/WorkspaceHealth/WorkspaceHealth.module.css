@@ -1,5 +1,5 @@
 .health {
-  padding: 0 10px 8px;
+  padding: 6px 14px 10px;
   color: var(--text-secondary);
   font-size: 11px;
   white-space: nowrap;
@@ -26,4 +26,11 @@
 
 .dot[data-status="error"] {
   background: #dc5c5c;
+}
+
+@media (width <= 380px) {
+  .health {
+    padding-right: 12px;
+    padding-left: 12px;
+  }
 }
