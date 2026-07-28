@@ -4,6 +4,8 @@ import { TabState } from '@/components/App/Panes/TabBar';
 import { PreviewState } from '@/components/App/PreviewState';
 import { EditorState } from '@/components/App/Views/EditorArea';
 import { LogState } from '@/components/App/Views/LogArea';
+import { reportDiagnostic } from '@/components/Diagnostics';
+import { markPerformance, measurePerformance } from '@/components/Performance';
 import { useFileSystem } from '@/components/Storage';
 import { ProblemsState } from '@/components/Workspace';
 import { useNotification } from '@/components/ui/Notification';
@@ -68,6 +70,7 @@ export default function useProjectCompiler() {
       const isSilent = silent === true;
       if (isSystemProcessingRef.current || isCompilingRef.current) return;
       isCompilingRef.current = true;
+      markPerformance('build-start');
 
       logState((draft) => {
         draft.isSystemProcessing = true;
@@ -167,6 +170,8 @@ export default function useProjectCompiler() {
                 }
               });
               onLog(`Preview ready.${!isSilent ? ' Opened preview tab.' : ''}`);
+              markPerformance('build-ready');
+              measurePerformance('build-to-preview', 'build-start', 'build-ready');
             }
           }
         } catch (previewErr) {
@@ -174,6 +179,11 @@ export default function useProjectCompiler() {
         }
       } catch (err) {
         const diagnostic = normalizeCompilerDiagnostic(err);
+        reportDiagnostic({
+          source: 'compiler',
+          severity: 'error',
+          message: diagnostic.message,
+        });
         problemsState((draft) => {
           draft.items = [
             {
@@ -254,6 +264,7 @@ export default function useProjectCompiler() {
       handleOpenLog();
     } catch (err) {
       const errorMsg = err?.message || String(err);
+      reportDiagnostic({ source: 'compiler', severity: 'error', message: errorMsg });
       addNotification(`Failed to clear filesystem: ${errorMsg}`, 'error');
       logState((draft) => {
         draft.logs = [

@@ -3,6 +3,7 @@ import { getCssBlockFolds, isCssPath } from './CssFolding';
 import { getFoldStarts, getVisibleFoldedContent } from './Folding';
 import { getJavaScriptBlockFolds, isJavaScriptPath } from './JavaScriptFolding';
 import { getJsonObjectFolds, isJsonPath } from './JsonFolding';
+import { shouldDeferEditorAnalysis } from './largeFile';
 
 export default function useCodeFolding({
   filePath,
@@ -10,18 +11,23 @@ export default function useCodeFolding({
   collapsedFolds,
   setCollapsedFolds,
 }) {
+  const analysisDeferred = shouldDeferEditorAnalysis(localContent);
   const folds = useMemo(() => {
+    if (analysisDeferred) return [];
     if (isJsonPath(filePath)) return getJsonObjectFolds(localContent, filePath);
     if (isCssPath(filePath)) return getCssBlockFolds(localContent, filePath);
     return getJavaScriptBlockFolds(localContent, filePath);
-  }, [localContent, filePath]);
+  }, [analysisDeferred, localContent, filePath]);
 
   const foldStarts = useMemo(() => getFoldStarts(folds), [folds]);
   const collapsedFoldIds = collapsedFolds[filePath] || [];
 
   const visibleFoldedContent = useMemo(
-    () => getVisibleFoldedContent(localContent, folds, collapsedFoldIds),
-    [localContent, folds, collapsedFoldIds],
+    () =>
+      analysisDeferred
+        ? { content: localContent, lineItems: null, hasCollapsedFolds: false }
+        : getVisibleFoldedContent(localContent, folds, collapsedFoldIds),
+    [analysisDeferred, localContent, folds, collapsedFoldIds],
   );
 
   const toggleFold = useCallback(
@@ -54,5 +60,6 @@ export default function useCodeFolding({
     visibleFoldedContent,
     toggleFold,
     foldLabel,
+    analysisDeferred,
   };
 }

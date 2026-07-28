@@ -1,0 +1,7 @@
+{
+  "version": 1,
+  "calibrationRelease": "0.1.0",
+  "tolerancePercent": 10,
+  "highlighterMedianMs": 120,
+  "largeFileGateMedianMs": 12
+}

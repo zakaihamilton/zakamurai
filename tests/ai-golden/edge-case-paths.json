@@ -1,0 +1,17 @@
+{
+  "unsafePaths": [
+    "/etc/passwd",
+    "../secret.js",
+    "src/../secret.js",
+    "C:\\\\secret.js",
+    "src\\\\windows.js",
+    "src//double.js"
+  ],
+  "safePaths": [
+    "src/App.jsx",
+    "styles/main.css",
+    "public/index.html",
+    "src/éclair.js",
+    "src/组件.jsx"
+  ]
+}

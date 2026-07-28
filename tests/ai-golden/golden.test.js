@@ -42,4 +42,15 @@ describe('AI golden fixtures', () => {
     expect(result.accepted).toHaveLength(1);
     expect(result.rejected).toHaveLength(1);
   });
+
+  it('accepts Unicode relative paths and rejects ambiguous path separators', async () => {
+    const raw = await readGolden('edge-case-paths.json');
+    const { unsafePaths, safePaths } = JSON.parse(raw);
+    for (const pathValue of unsafePaths) {
+      expect(validateProjectPath(pathValue)).toBeTruthy();
+    }
+    for (const pathValue of safePaths) {
+      expect(validateProjectPath(pathValue)).toBeNull();
+    }
+  });
 });

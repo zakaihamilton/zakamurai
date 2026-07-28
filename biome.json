@@ -4,6 +4,7 @@
     "ignore": [
       ".next/**",
       "node_modules/**",
+      "next-env.d.ts",
       "public/lib/**",
       "public/assets/**",
       "public/wasm/**",

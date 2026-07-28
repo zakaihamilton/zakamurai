@@ -159,6 +159,21 @@ describe('Settings', () => {
     expect(Settings.getFileContents()).toEqual({ onlyIdb: true });
   });
 
+  it('recovers a valid workspace checkpoint when primary buffers are unavailable', async () => {
+    await Settings.saveRecoveryCheckpoint({
+      projectName: 'Recovered project',
+      fileContents: { 'src/App.js': 'export default 1;' },
+      pendingDiffs: {},
+      openTabs: [],
+      activeTabId: 'src/App.js',
+    });
+    Settings._resetHydrationForTests();
+    await Settings.hydrate();
+
+    expect(Settings.getFileContents()).toEqual({ 'src/App.js': 'export default 1;' });
+    expect(Settings.getRecoveryCheckpoint()?.projectName).toBe('Recovered project');
+  });
+
   it('flushes editor buffers synchronously for unload', () => {
     expect(
       Settings.flushEditorBuffersSync(

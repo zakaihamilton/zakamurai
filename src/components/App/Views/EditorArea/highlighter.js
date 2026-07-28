@@ -1,38 +1,18 @@
 import { findNavigationTargets } from '@/utils/navigation';
 import highlighterStyles from './Highlighter.module.css';
-
-const encodeIdx = (num) => String(num).replace(/\d/g, (d) => String.fromCharCode(97 + Number(d)));
-const decodeIdx = (str) => Number(str.replace(/[a-j]/g, (c) => String(c.charCodeAt(0) - 97)));
+import {
+  countLines,
+  decodeIdx,
+  encodeIdx,
+  escapeHtml,
+  getLineColumn,
+  isJsonPath,
+} from './highlightUtils';
+import { MAX_EDITOR_ANALYSIS_CHARS, shouldDeferEditorAnalysis } from './largeFile';
 
 const highlightCache = new Map();
 const MAX_CACHE_SIZE = 50;
-const MAX_HIGHLIGHT_CHARS = 250000;
-
-const escapeHtml = (value) =>
-  value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-
-const isJsonPath = (filePath = '') =>
-  filePath.endsWith('.json') ||
-  filePath.endsWith('.jsonc') ||
-  filePath.endsWith('.webmanifest') ||
-  filePath === 'json';
-
-const countLines = (value = '') => (value ? value.split('\n').length : 1);
-
-const getLineColumn = (code = '', index = 0) => {
-  const safeIndex = Math.max(0, Math.min(index, code.length));
-  let line = 1;
-  let column = 1;
-  for (let i = 0; i < safeIndex; i++) {
-    if (code.charCodeAt(i) === 10) {
-      line++;
-      column = 1;
-    } else {
-      column++;
-    }
-  }
-  return { line, column };
-};
+const MAX_HIGHLIGHT_CHARS = MAX_EDITOR_ANALYSIS_CHARS;
 
 const resolveDebugTokenRanges = (highlighted, code, debugTokens) => {
   let highlightIdx = 0;
@@ -160,8 +140,8 @@ const createHighlightAnalysis = ({
     sourceLength: code?.length || 0,
     lineCount: countLines(code || ''),
     maxHighlightChars: MAX_HIGHLIGHT_CHARS,
-    cacheable: !!code && code.length <= MAX_HIGHLIGHT_CHARS,
-    largeFileFallback: !!code && code.length > MAX_HIGHLIGHT_CHARS,
+    cacheable: !!code && !shouldDeferEditorAnalysis(code),
+    largeFileFallback: !!code && shouldDeferEditorAnalysis(code),
     selectedLines: state.selectedLines?.[filePath] || [],
     diffs: state.pendingDiffs?.[filePath]?.diffs || [],
     suggestion: suggestion
@@ -187,7 +167,7 @@ const createHighlightAnalysis = ({
     return { html: '', debug };
   }
 
-  if (code.length > MAX_HIGHLIGHT_CHARS) {
+  if (shouldDeferEditorAnalysis(code)) {
     return { html: escapeHtml(code), debug };
   }
 
