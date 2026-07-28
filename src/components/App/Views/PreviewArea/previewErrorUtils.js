@@ -320,6 +320,20 @@ export function formatUnhandledRejection(event) {
   return 'An unhandled promise rejection occurred in the preview.';
 }
 
+/**
+ * Browsers sanitize cross-origin script failures to a useless "Script error."
+ * Those banners are noise during preview reload; real same-origin failures
+ * still arrive with a full message via the preview error bridge.
+ */
+export function isOpaqueScriptError(message) {
+  if (typeof message !== 'string') return false;
+  const trimmed = message.trim();
+  if (!trimmed) return false;
+  if (trimmed === 'Script error.' || trimmed === 'Script error') return true;
+  // Bridge may append " at :" or " at :0" when filename/lineno are empty.
+  return /^Script error\.?(?:\s+at\s+:?\d*)?$/i.test(trimmed);
+}
+
 function extractViteOverlayError(doc) {
   const overlay = doc.querySelector('#vite-error-overlay, vite-error-overlay');
   const overlayText = overlay?.innerText?.trim();

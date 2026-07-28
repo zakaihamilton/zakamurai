@@ -12,6 +12,7 @@ import {
   fetchScriptErrorBody,
   formatRuntimeError,
   formatUnhandledRejection,
+  isOpaqueScriptError,
   resolveMissingExportError,
 } from './previewErrorUtils';
 import { reportPreviewEvidence } from './previewEvidenceBridge';
@@ -58,6 +59,7 @@ export default function PreviewArea() {
   const externalPreviewRef = useRef(null);
   const [externalPreviewNonce, setExternalPreviewNonce] = useState(0);
   const previewSessionRef = useRef(createPreviewSession());
+  const isLoadingRef = useRef(false);
   const listenersRef = useRef(null);
   const previewAreaUiState = PreviewAreaUiState.useState(null, {
     isLoading: false,
@@ -78,6 +80,7 @@ export default function PreviewArea() {
     isMaximized = false,
     address = '/preview/dist/index.html',
   } = previewAreaUiState || {};
+  isLoadingRef.current = isLoading;
   const containerRef = useRef(null);
   const [errorCopied, setErrorCopied] = useState(false);
   const displayError = error || restoreError || compileError || serverError;
@@ -86,6 +89,12 @@ export default function PreviewArea() {
   });
   const previewConfigurationError = getPreviewConfigurationError(origins);
   const previewUrl = buildPreviewUrl(origins, previewSessionRef.current);
+  // Cache-bust the iframe src on rebuild without changing the stable session URL
+  // used by "Open in new tab".
+  const previewIframeUrl =
+    previewUrl && refreshKey
+      ? `${previewUrl}${previewUrl.includes('?') ? '&' : '?'}r=${refreshKey}`
+      : previewUrl;
   const previewHostLabel = origins.previewOrigin ? new URL(origins.previewOrigin).host : '';
 
   useEffect(() => {
@@ -161,13 +170,36 @@ export default function PreviewArea() {
       setHasLoadedOnce(false);
       return;
     }
-    previewSessionRef.current = createPreviewSession();
+    // Keep the session id stable across rebuilds so open preview tabs keep the
+    // same URL. The iframe reloads via refreshKey / cache-busting query param.
     previewAreaUiState((draft) => {
       draft.isLoading = true;
       draft.error = null;
       draft.refreshKey = Date.now();
     });
-  }, [htmlContent, previewAreaUiState]);
+    previewState((draft) => {
+      draft.serverError = null;
+    });
+    const externalWindow = externalPreviewRef.current;
+    if (externalWindow && !externalWindow.closed) {
+      const nextUrl = buildPreviewUrl(
+        getPreviewOrigins({
+          windowOrigin: typeof window === 'undefined' ? '' : window.location.origin,
+        }),
+        previewSessionRef.current,
+      );
+      try {
+        if (nextUrl) externalWindow.location.href = nextUrl;
+      } catch {
+        try {
+          externalWindow.location.reload();
+        } catch {
+          // Cross-origin reload may be blocked; user can refresh the tab.
+        }
+      }
+      setExternalPreviewNonce((nonce) => nonce + 1);
+    }
+  }, [htmlContent, previewAreaUiState, previewState]);
 
   useEffect(() => {
     if (!htmlContent || isSwReady) return;
@@ -199,6 +231,9 @@ export default function PreviewArea() {
   const setPreviewError = useCallback(
     (message) => {
       if (!message) return;
+      // Opaque cross-origin "Script error." is useless and common during reload.
+      if (isOpaqueScriptError(message)) return;
+      if (isLoadingRef.current) return;
       previewAreaUiState((draft) => {
         draft.error = message;
       });
@@ -359,7 +394,7 @@ export default function PreviewArea() {
   ]);
 
   const handleRefresh = useCallback(() => {
-    previewSessionRef.current = createPreviewSession();
+    // Keep the session id stable so the external preview URL stays the same.
     previewAreaUiState((draft) => {
       draft.isLoading = true;
       draft.error = null;
@@ -478,8 +513,9 @@ export default function PreviewArea() {
         scale={scale}
         isCompilerReady={isCompilerReady}
         iframeRef={iframeRef}
-        previewUrl={previewUrl}
+        previewUrl={previewIframeUrl}
         previewSessionId={previewSessionRef.current}
+        refreshKey={refreshKey}
         onLoad={handleLoad}
       />
       <PreviewBridge

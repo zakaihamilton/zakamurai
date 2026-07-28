@@ -8,6 +8,7 @@ import {
   formatRuntimeError,
   formatUnhandledRejection,
   isHtmlErrorDocument,
+  isOpaqueScriptError,
   normalizeTransformError,
   resolveMissingExportError,
   toPreviewFetchUrl,
@@ -154,6 +155,16 @@ console.error("Transform failed with 2 errors");`);
 
     it('returns string reasons as-is', () => {
       expect(formatUnhandledRejection({ reason: 'broken promise' })).toBe('broken promise');
+    });
+  });
+
+  describe('isOpaqueScriptError', () => {
+    it('detects sanitized cross-origin script errors', () => {
+      expect(isOpaqueScriptError('Script error.')).toBe(true);
+      expect(isOpaqueScriptError('Script error')).toBe(true);
+      expect(isOpaqueScriptError('Script error. at :0')).toBe(true);
+      expect(isOpaqueScriptError('TypeError: boom')).toBe(false);
+      expect(isOpaqueScriptError('Script error. at app.js:10')).toBe(false);
     });
   });
 

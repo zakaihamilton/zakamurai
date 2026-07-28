@@ -16,6 +16,7 @@ export default function PreviewIframeContainer({
   iframeRef,
   previewUrl,
   previewSessionId,
+  refreshKey = 0,
   onLoad,
 }) {
   return (
@@ -40,7 +41,7 @@ export default function PreviewIframeContainer({
       <div className={styles.scaleWrapper} style={{ '--preview-scale': scale }}>
         {isCompilerReady && (
           <iframe
-            key={`preview-${previewSessionId}`}
+            key={`preview-${previewSessionId}-${refreshKey}`}
             ref={iframeRef}
             src={previewUrl}
             name={`zakamurai-preview-${previewSessionId}`}

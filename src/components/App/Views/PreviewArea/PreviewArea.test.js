@@ -320,6 +320,46 @@ describe('PreviewArea', () => {
     expect(preview.state.serverError).toBe('Uncaught ReferenceError: app is not defined');
   });
 
+  it('ignores opaque Script error messages from the preview bridge', () => {
+    const preview = createStateHook({
+      htmlContent: '<html><body>Hello</body></html>',
+      isCompilerReady: true,
+      restoreError: null,
+    });
+    const ui = createStateHook({
+      isLoading: false,
+      scale: 1,
+      error: null,
+      refreshKey: 1,
+      isSwReady: true,
+      isMaximized: false,
+      address: '/preview/',
+      host: 'localhost',
+    });
+
+    vi.spyOn(PreviewState, 'useState').mockReturnValue(preview.hook);
+    vi.spyOn(PreviewAreaUiState, 'useState').mockReturnValue(ui.hook);
+
+    render(<PreviewArea />);
+    const iframe = screen.getByTitle('Preview');
+    const event = new MessageEvent('message', {
+      data: {
+        source: 'zakamurai-preview',
+        type: PREVIEW_MESSAGE_TYPES.RUNTIME_ERROR,
+        message: 'Script error.',
+      },
+      origin: 'http://localhost:3001',
+    });
+    Object.defineProperty(event, 'source', { value: iframe.contentWindow });
+
+    act(() => {
+      window.dispatchEvent(event);
+    });
+
+    expect(ui.state.error).toBeNull();
+    expect(preview.state.serverError).toBeNull();
+  });
+
   it('renders a successful preview after an earlier compile error is cleared', () => {
     const preview = createStateHook({
       htmlContent: null,
