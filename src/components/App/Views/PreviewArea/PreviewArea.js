@@ -16,6 +16,7 @@ import {
 } from './previewErrorUtils';
 import { reportPreviewEvidence } from './previewEvidenceBridge';
 import {
+  buildPreviewUrl,
   createPreviewSession,
   getPreviewConfigurationError,
   getPreviewOrigins,
@@ -55,6 +56,7 @@ export default function PreviewArea() {
   } = previewState;
   const iframeRef = useRef(null);
   const externalPreviewRef = useRef(null);
+  const [externalPreviewNonce, setExternalPreviewNonce] = useState(0);
   const previewSessionRef = useRef(createPreviewSession());
   const listenersRef = useRef(null);
   const previewAreaUiState = PreviewAreaUiState.useState(null, {
@@ -83,9 +85,7 @@ export default function PreviewArea() {
     windowOrigin: typeof window === 'undefined' ? '' : window.location.origin,
   });
   const previewConfigurationError = getPreviewConfigurationError(origins);
-  const previewUrl = origins.previewOrigin
-    ? `${origins.previewOrigin}/preview-host?session=${previewSessionRef.current}`
-    : null;
+  const previewUrl = buildPreviewUrl(origins, previewSessionRef.current);
   const previewHostLabel = origins.previewOrigin ? new URL(origins.previewOrigin).host : '';
 
   useEffect(() => {
@@ -257,11 +257,15 @@ export default function PreviewArea() {
         });
       } else if (payload.type === PREVIEW_MESSAGE_TYPES.EVIDENCE) {
         reportPreviewEvidence(payload);
+      } else if (payload.type === PREVIEW_MESSAGE_TYPES.RECONNECT) {
+        if (iframeRef.current && previewUrl) {
+          iframeRef.current.src = previewUrl;
+        }
       }
     };
     window.addEventListener('message', onMessage);
     return () => window.removeEventListener('message', onMessage);
-  }, [origins.previewOrigin, previewAreaUiState, setPreviewError]);
+  }, [origins.previewOrigin, previewAreaUiState, previewUrl, setPreviewError]);
 
   const handleLoad = useCallback(() => {
     setHasLoadedOnce(true);
@@ -370,6 +374,7 @@ export default function PreviewArea() {
       return;
     }
     externalPreviewRef.current = previewWindow;
+    setExternalPreviewNonce((nonce) => nonce + 1);
   }, [previewUrl, setPreviewError]);
 
   const toggleMaximize = useCallback(() => {
@@ -474,6 +479,8 @@ export default function PreviewArea() {
       <PreviewBridge
         iframeRef={iframeRef}
         externalPreviewRef={externalPreviewRef}
+        externalPreviewNonce={externalPreviewNonce}
+        iframeHandshakeNonce={refreshKey}
         sessionId={previewSessionRef.current}
         previewOrigin={origins.previewOrigin}
         onError={setPreviewError}

@@ -38,7 +38,12 @@ function isCacheableAppRequest(request, url) {
     return false;
   }
 
-  if (url.pathname === '/__sw__.js' || url.pathname.startsWith('/__virtual__')) {
+  if (
+    url.pathname === '/__sw__.js' ||
+    url.pathname === '/__preview_sw__.js' ||
+    url.pathname.startsWith('/__virtual__') ||
+    url.pathname.startsWith('/__preview/')
+  ) {
     return false;
   }
 
@@ -347,6 +352,11 @@ async function sendStreamingRequest(port, method, url, headers, body) {
  */
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
+
+  // Isolated preview uses its own scoped worker under /__preview/.
+  if (url.pathname.startsWith('/__preview/') || url.pathname === '/__preview_sw__.js') {
+    return;
+  }
 
   DEBUG && console.log('[SW] Fetch:', url.pathname, 'mainPort:', !!mainPort);
 

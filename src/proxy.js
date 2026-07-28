@@ -1,5 +1,8 @@
 import { NextResponse } from 'next/server';
 import {
+  PREVIEW_HOST_PATH,
+  PREVIEW_SURFACE_PARAM,
+  PREVIEW_SURFACE_VALUE,
   getPreviewFrameAncestors,
   isPreviewHost,
 } from './components/App/Views/PreviewArea/previewOrigins';
@@ -19,17 +22,28 @@ function isPreviewHostRequest(request) {
   // require it so localhost:3000 is not treated as localhost:3001.
   const portMatch = previewPort ? requestPort === previewPort : true;
   if (hostnameMatch && portMatch) return true;
+  // Local isolated preview shares hostname between IDE and preview ports.
+  // Do not fall back to hostname-only detection when the port already mismatched.
+  if (hostnameMatch && previewPort) return false;
   return isPreviewHost(hostname);
 }
 
-function withPreviewHeaders(response, request) {
+function resolveIdeOriginForPreviewHeaders(request) {
   const hostHeader = request.headers.get('host') || '';
   const hostname = hostHeader.split(':')[0];
   const proto = request.headers.get('x-forwarded-proto') || 'https';
   const portSuffix = hostHeader.includes(':') ? `:${hostHeader.split(':')[1]}` : '';
-  const ideOrigin = hostname.startsWith('preview.')
-    ? `${proto}://${hostname.slice('preview.'.length)}${portSuffix}`
-    : toHostOrigin(process.env.NEXT_PUBLIC_VERCEL_BRANCH_URL);
+  if (hostname.startsWith('preview.')) {
+    return `${proto}://${hostname.slice('preview.'.length)}${portSuffix}`;
+  }
+  if (request.nextUrl.searchParams.get(PREVIEW_SURFACE_PARAM) === PREVIEW_SURFACE_VALUE) {
+    return `${proto}://${hostname}${portSuffix}`;
+  }
+  return toHostOrigin(process.env.NEXT_PUBLIC_VERCEL_BRANCH_URL);
+}
+
+function withPreviewHeaders(response, request) {
+  const ideOrigin = resolveIdeOriginForPreviewHeaders(request);
 
   response.headers.set(
     'Content-Security-Policy',
@@ -49,12 +63,23 @@ function toHostOrigin(host) {
   }
 }
 
-export function proxy(request) {
-  const isPreviewSurface =
-    isPreviewHostRequest(request) || request.headers.get('x-zakamurai-surface') === 'preview';
-  if (!isPreviewSurface) return NextResponse.next();
+function isPreviewBootstrapPath(pathname) {
+  return pathname === PREVIEW_HOST_PATH || pathname.startsWith(`${PREVIEW_HOST_PATH}/`);
+}
 
+function isPreviewVirtualPath(pathname) {
+  return pathname.startsWith('/__preview/') && !isPreviewBootstrapPath(pathname);
+}
+
+export function proxy(request) {
   const { pathname } = request.nextUrl;
+  const isPreviewSurface =
+    isPreviewHostRequest(request) ||
+    request.headers.get('x-zakamurai-surface') === 'preview' ||
+    request.nextUrl.searchParams.get(PREVIEW_SURFACE_PARAM) === PREVIEW_SURFACE_VALUE ||
+    isPreviewBootstrapPath(pathname) ||
+    isPreviewVirtualPath(pathname);
+  if (!isPreviewSurface) return NextResponse.next();
   if (
     pathname === '/__preview_sw__.js' ||
     pathname === '/preview-error-bridge.js' ||
@@ -69,7 +94,7 @@ export function proxy(request) {
   // Session preview documents are served by the preview service worker. If the
   // worker missed the navigation, do not rewrite into PreviewHost (that looped
   // "Connecting isolated preview…").
-  if (pathname.startsWith('/__preview/')) {
+  if (isPreviewVirtualPath(pathname)) {
     return withPreviewHeaders(
       new NextResponse('Preview service worker is not controlling this page. Rebuild to retry.', {
         status: 503,
@@ -85,7 +110,11 @@ export function proxy(request) {
   }
 
   const url = request.nextUrl.clone();
-  url.pathname = pathname === '/' ? '/preview-host' : `/preview-host${pathname}`;
+  if (pathname === '/' || isPreviewBootstrapPath(pathname)) {
+    url.pathname = '/preview-host';
+  } else {
+    url.pathname = `/preview-host${pathname}`;
+  }
   return withPreviewHeaders(NextResponse.rewrite(url), request);
 }
 

@@ -1,5 +1,6 @@
 import { ChangeSetState, getWorkspaceIndex } from '@/components/Workspace';
 import { useCallback } from 'react';
+import { formatSessionContext } from './AgentSessions';
 
 const ROLE_LABELS = {
   planner: 'Planner',
@@ -138,6 +139,7 @@ export default function useAgentRunner({
             draft.abortController = controller;
           });
           const events = [];
+          const priorContext = formatSessionContext(activeSession.messages || []);
           const roleLabelById = Object.fromEntries(
             (activeSession.roleGraph?.roles || []).map((role) => [
               role.id,
@@ -151,6 +153,7 @@ export default function useAgentRunner({
           const workspaceFiles = await collectWorkspaceFiles(fs, editorState.fileContents || {});
           const runOptions = {
             request: userMsg,
+            priorContext,
             scope: promptScope,
             activeFile:
               promptScope === 'file' && currentActiveTab?.type === 'file'

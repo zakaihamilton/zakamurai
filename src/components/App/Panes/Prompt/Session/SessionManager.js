@@ -3,71 +3,28 @@ import Tooltip from '@/components/ui/Tooltip';
 import React from 'react';
 import styles from './SessionManager.module.css';
 
-export default function SessionManager({
-  sessions = [],
-  activeSessionId,
-  onSelect,
-  onCreate,
-  onRename,
-  onDelete,
-  isOpen = true,
-}) {
+export default function SessionManager({ activeSession, onOpenTree, isOpen = true }) {
   return (
     <div className={styles.manager}>
-      <div className={styles.list} role="tablist" aria-label="Agent sessions">
-        {sessions.map((session) => {
-          const isActive = session.id === activeSessionId;
-          return (
-            <button
-              key={session.id}
-              type="button"
-              role="tab"
-              aria-selected={isActive}
-              className={`${styles.tab} ${isActive ? styles.tabActive : ''}`}
-              onClick={() => onSelect(session.id)}
-              disabled={!isOpen}
-              title={session.name}
-            >
-              <span className={styles.tabName}>{session.name}</span>
-              {session.status === 'running' && (
-                <span className={styles.runningDot} aria-label="Running" />
-              )}
-            </button>
-          );
-        })}
+      <div className={styles.activeAgent} aria-label="Active agent">
+        <span className={styles.activeLabel}>Agent</span>
+        <span className={styles.activeName} title={activeSession?.name}>
+          {activeSession?.name || 'No agent selected'}
+        </span>
+        {activeSession?.status === 'running' && (
+          <span className={styles.runningDot} aria-label="Running" />
+        )}
       </div>
       <div className={styles.actions}>
-        <Tooltip content="New session">
+        <Tooltip content="Open agent tree">
           <button
             type="button"
             className={styles.iconBtn}
-            onClick={onCreate}
+            onClick={onOpenTree}
             disabled={!isOpen}
-            aria-label="New session"
+            aria-label="Open agent tree"
           >
-            <Icons.Plus />
-          </button>
-        </Tooltip>
-        <Tooltip content="Rename session">
-          <button
-            type="button"
-            className={styles.iconBtn}
-            onClick={onRename}
-            disabled={!isOpen || !activeSessionId}
-            aria-label="Rename session"
-          >
-            <Icons.Edit />
-          </button>
-        </Tooltip>
-        <Tooltip content="Delete session">
-          <button
-            type="button"
-            className={styles.iconBtn}
-            onClick={onDelete}
-            disabled={!isOpen || !activeSessionId}
-            aria-label="Delete session"
-          >
-            <Icons.Trash />
+            <Icons.History />
           </button>
         </Tooltip>
       </div>

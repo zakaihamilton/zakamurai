@@ -1,4 +1,4 @@
-export function assertCssModules(output, context) {
+export function assertCssModules(_output, context) {
   const vars = context?.vars || {};
   const content = vars.file_content || '';
   const hasCssModule = /import .* from ['"].*\.module\.css['"]/.test(content);
@@ -12,7 +12,7 @@ export function assertCssModules(output, context) {
   return true;
 }
 
-export function assertStateProxy(output, context) {
+export function assertStateProxy(_output, context) {
   const vars = context?.vars || {};
   const content = vars.file_content || '';
   const hasForbiddenUseState = /const \[.*, set.*\] = useState\(.*State.*\)/i.test(content);
@@ -25,7 +25,7 @@ export function assertStateProxy(output, context) {
   return true;
 }
 
-export function assertSearchReplace(output, context) {
+export function assertSearchReplace(_output, context) {
   const vars = context?.vars || {};
   const content = vars.diff_content || '';
   const hasSearch = /<<<<<<< SEARCH/.test(content);
@@ -37,7 +37,7 @@ export function assertSearchReplace(output, context) {
   return true;
 }
 
-export function assertValidGoldenDiff(output, context) {
+export function assertValidGoldenDiff(_output, context) {
   const vars = context?.vars || {};
   const content = vars.diff_content || '';
   const hasSearch = /<<<<<<< SEARCH/.test(content);
@@ -49,7 +49,7 @@ export function assertValidGoldenDiff(output, context) {
   return true;
 }
 
-export function assertMalformedGoldenDiff(output, context) {
+export function assertMalformedGoldenDiff(_output, context) {
   const vars = context?.vars || {};
   const content = vars.diff_content || '';
   const hasReplace = />>>>>>> REPLACE/.test(content);
@@ -59,7 +59,7 @@ export function assertMalformedGoldenDiff(output, context) {
   return true;
 }
 
-export function assertUnsafePaths(output, context) {
+export function assertUnsafePaths(_output, context) {
   const vars = context?.vars || {};
   const data = JSON.parse(vars.paths_json || '{}');
   const absolute = /^(?:\/|\\|[A-Za-z]:)/;
@@ -77,7 +77,7 @@ export function assertUnsafePaths(output, context) {
   return true;
 }
 
-export function assertTailwindViolation(output, context) {
+export function assertTailwindViolation(_output, context) {
   const vars = context?.vars || {};
   const content = vars.file_content || '';
   const hasTailwind = /className=['"].*(?:bg-|text-|p-|m-|flex|grid).*['"]/.test(content);
@@ -87,7 +87,7 @@ export function assertTailwindViolation(output, context) {
   return true;
 }
 
-export function assertInlineStyleViolation(output, context) {
+export function assertInlineStyleViolation(_output, context) {
   const vars = context?.vars || {};
   const content = vars.file_content || '';
   const hasCssModule = /import .* from ['"].*\.module\.css['"]/.test(content);
@@ -101,7 +101,7 @@ export function assertInlineStyleViolation(output, context) {
   return true;
 }
 
-export function assertDomainUseStateViolation(output, context) {
+export function assertDomainUseStateViolation(_output, context) {
   const vars = context?.vars || {};
   const content = vars.file_content || '';
   const hasForbiddenUseState = /const\s+\[[^\]]+\]\s*=\s*useState\s*\(/.test(content);

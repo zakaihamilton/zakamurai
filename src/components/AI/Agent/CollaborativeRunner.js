@@ -38,6 +38,7 @@ export async function runCollaborativeAgent({
   workspaceIndex = null,
   signal,
   onEvent = () => {},
+  priorContext = '',
 }) {
   const graph = normalizeRoleGraph(roleGraph || createDefaultRoleGraph());
   const graphValidation = validateRoleGraph(graph);
@@ -66,7 +67,7 @@ export async function runCollaborativeAgent({
     message: `Starting team pipeline: ${describeRoleGraph(graph)}`,
   });
 
-  const priorParts = [];
+  const priorParts = priorContext ? [priorContext] : [];
   const roleSummaries = {};
   const rejectCounts = {};
   let currentRoleId = graph.entryRoleId;

@@ -29,7 +29,7 @@ describe('PreviewIframeContainer', () => {
     scale: 1,
     isCompilerReady: true,
     iframeRef: createRef(),
-    previewUrl: 'http://localhost:3001/preview-host?session=test',
+    previewUrl: 'http://localhost:3001/?session=test',
     previewSessionId: 'session-1',
     onLoad: vi.fn(),
   };

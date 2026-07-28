@@ -1,8 +1,8 @@
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
-import { describe, expect, it } from 'vitest';
 import { validateAIChanges, validateProjectPath } from '@/components/AI/ChangeValidator';
 import { applySearchReplace } from '@/components/AI/Processor/utils/SearchReplaceParser';
+import { describe, expect, it } from 'vitest';
 
 const goldenDir = path.resolve(import.meta.dirname);
 

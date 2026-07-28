@@ -3,6 +3,12 @@ let mainPort = null;
 let activeSessionId = null;
 let ideOrigin = null;
 let nextId = 0;
+// Keep in sync with PREVIEW_HOST_PATH in previewOrigins.js
+const PREVIEW_BOOTSTRAP_PATH = '/__preview/host';
+
+function isPreviewBootstrapPath(pathname) {
+  return pathname === PREVIEW_BOOTSTRAP_PATH || pathname.startsWith(`${PREVIEW_BOOTSTRAP_PATH}/`);
+}
 
 const bytesToBase64 = (bytes) => {
   let binary = '';
@@ -87,15 +93,31 @@ self.addEventListener('message', (event) => {
   );
 });
 
+function expandOriginAliases(origin) {
+  if (!origin) return [];
+  try {
+    const url = new URL(origin);
+    const aliases = new Set([url.origin]);
+    const portSuffix = url.port ? `:${url.port}` : '';
+    if (url.hostname.startsWith('www.')) {
+      aliases.add(`${url.protocol}//${url.hostname.slice(4)}${portSuffix}`);
+    } else if (!url.hostname.includes('localhost') && url.hostname.includes('.')) {
+      aliases.add(`${url.protocol}//www.${url.hostname}${portSuffix}`);
+    }
+    return [...aliases];
+  } catch {
+    return [origin];
+  }
+}
+
 function applyPreviewEmbedHeaders(headers) {
   // Parent IDE uses COEP require-corp. Cross-origin iframe documents must send
   // their own COEP header or Chrome blocks with coep-frame-resource-needs-coep-header.
   headers.set('Cross-Origin-Embedder-Policy', 'credentialless');
   headers.set('Cross-Origin-Resource-Policy', 'cross-origin');
-  const frameAncestors = ideOrigin
-    ? `'self' ${ideOrigin} http://localhost:3000`
-    : "'self' http://localhost:3000 https://www.zakamurai.com";
-  headers.set('Content-Security-Policy', `frame-ancestors ${frameAncestors}`);
+  const ancestors = new Set(["'self'", 'http://localhost:3000']);
+  for (const origin of expandOriginAliases(ideOrigin)) ancestors.add(origin);
+  headers.set('Content-Security-Policy', `frame-ancestors ${[...ancestors].join(' ')}`);
   headers.delete('X-Frame-Options');
   return headers;
 }
@@ -200,10 +222,11 @@ async function handleVirtualRequest(request, path) {
 }
 
 function lostConnectionPage() {
+  const reconnectScript = `<script>(function(){try{var m=location.pathname.match(/^\\/(__preview\\/)([^/]+)/);var sessionId=m&&m[2];if(!sessionId||window.parent===window)return;window.parent.postMessage({source:'zakamurai-preview',type:'reconnect',sessionId:decodeURIComponent(sessionId),message:'Preview connection was lost.'},'*');}catch(_e){}})();</script>`;
   return previewResponse(
     `<!doctype html><html><head><meta charset="utf-8"><title>Preview</title>
 <style>html,body{margin:0;height:100%;background:#101214;color:#e7ecef;font:14px/1.4 system-ui,sans-serif}
-main{padding:2rem}</style></head>
+main{padding:2rem}</style>${reconnectScript}</head>
 <body><main><p>Preview connection was lost. Return to Zakamurai and click Build, then open Preview again.</p></main></body></html>`,
     {
       status: 503,
@@ -214,6 +237,11 @@ main{padding:2rem}</style></head>
 
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
+
+  // Bootstrap handshake page must reach Next.js PreviewHost, not the virtual server.
+  if (isPreviewBootstrapPath(url.pathname)) {
+    return;
+  }
 
   if (url.pathname.startsWith('/__preview/')) {
     if (!activeSessionId || !mainPort) {

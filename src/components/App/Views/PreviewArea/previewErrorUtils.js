@@ -115,10 +115,28 @@ export function normalizeTransformError(text) {
   if (trimmed.startsWith('Transform failed')) {
     return truncatePreviewError(trimmed);
   }
-  if (/\bERROR:/i.test(trimmed) || trimmed.includes('Unexpected closing')) {
+  // Esbuild diagnostics use file:line:col: ERROR: — avoid matching minified bundles.
+  if (/^\/[^\n]+:\d+:\d+:\s*ERROR:/m.test(trimmed)) {
+    return truncatePreviewError(trimmed);
+  }
+  if (
+    trimmed.includes('Unexpected closing') &&
+    (trimmed.startsWith('Transform failed') || /^\/[^\n]+:\d+:\d+/m.test(trimmed))
+  ) {
     return truncatePreviewError(trimmed);
   }
   return null;
+}
+
+function isJavaScriptModuleResponse(url, contentType = '') {
+  if (/javascript|ecmascript/i.test(contentType)) return true;
+  if (typeof url !== 'string') return false;
+  try {
+    const pathname = new URL(url, 'http://localhost').pathname.toLowerCase();
+    return pathname.endsWith('.js') || pathname.endsWith('.mjs') || pathname.endsWith('.cjs');
+  } catch {
+    return /\.m?js(?:\?|$)/i.test(url);
+  }
 }
 
 export function decodeResponseBody(body) {
@@ -205,6 +223,15 @@ export async function fetchScriptErrorBody(url, fetchImpl = fetch) {
 
     const transformHeader =
       response.headers.get('X-Transform-Error') || response.headers.get('x-transform-error');
+    if (
+      response.ok &&
+      isJavaScriptModuleResponse(url, contentType) &&
+      transformHeader !== 'true' &&
+      !extractTransformErrorFromStub(text)
+    ) {
+      return null;
+    }
+
     const extracted = extractTransformErrorMessage(text);
     if (extracted) return extracted;
     if (transformHeader === 'true' && text.trim()) {

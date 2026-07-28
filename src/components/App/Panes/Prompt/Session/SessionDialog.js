@@ -31,14 +31,21 @@ export default function SessionDialog({
         });
         return;
       }
-      agentSessionState((draft) => {
-        const next = deleteAgentSession(
-          { sessions: draft.sessions, activeSessionId: draft.activeSessionId },
-          sessionDialog.sessionId,
-        );
-        draft.sessions = next.sessions;
-        draft.activeSessionId = next.activeSessionId;
-      });
+      try {
+        agentSessionState((draft) => {
+          const next = deleteAgentSession(
+            { sessions: draft.sessions, activeSessionId: draft.activeSessionId },
+            sessionDialog.sessionId,
+          );
+          draft.sessions = next.sessions;
+          draft.activeSessionId = next.activeSessionId;
+        });
+      } catch (error) {
+        promptUiState((draft) => {
+          draft.sessionDialog = { type: 'error', message: error.message };
+        });
+        return;
+      }
     }
     promptUiState((draft) => {
       draft.sessionDialog = null;
@@ -63,7 +70,7 @@ export default function SessionDialog({
       }
       message={
         sessionDialog.type === 'delete'
-          ? `Delete session "${sessionDialog.name}"?`
+          ? `Delete "${sessionDialog.name}" and ${sessionDialog.descendantCount || 0} branch${sessionDialog.descendantCount === 1 ? '' : 'es'}? This cannot be undone.`
           : sessionDialog.message
       }
       confirmText={

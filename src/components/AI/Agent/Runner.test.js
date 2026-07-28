@@ -69,7 +69,7 @@ describe('runAgent', () => {
     });
     expect(result.summary).toBe('done');
     expect(askWebLLM.mock.calls[0][3].messages[0].content).toBe('planner only');
-    expect(askWebLLM.mock.calls[0][3].messages[1].content).toContain('Prior context from teammate');
+    expect(askWebLLM.mock.calls[0][3].messages[1].content).toContain('Prior conversation context');
     expect(events[0].agentRole).toBe('planner');
   });
 

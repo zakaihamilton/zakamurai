@@ -40,7 +40,7 @@ export default function PreviewIframeContainer({
       <div className={styles.scaleWrapper} style={{ '--preview-scale': scale }}>
         {isCompilerReady && (
           <iframe
-            key="preview-iframe"
+            key={`preview-${previewSessionId}`}
             ref={iframeRef}
             src={previewUrl}
             name={`zakamurai-preview-${previewSessionId}`}

@@ -1,0 +1,150 @@
+.dialog {
+  max-width: 680px;
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.toolbar p {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.newRootButton,
+.nodeActions button,
+.expandButton,
+.selectButton {
+  font: inherit;
+}
+
+.newRootButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  padding: 7px 10px;
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  background: var(--accent);
+  color: white;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.tree {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  max-height: min(52vh, 480px);
+  overflow: auto;
+}
+
+.treeRegion {
+  min-height: 0;
+}
+
+.tree ul {
+  margin: 0;
+  padding: 0 0 0 18px;
+  list-style: none;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  min-height: 38px;
+  padding: 0 6px;
+  border-radius: 6px;
+  gap: 4px;
+}
+
+.row:hover,
+.row.active {
+  background: var(--bg-hover);
+}
+
+.row.active {
+  box-shadow: inset 2px 0 var(--accent);
+}
+
+.expandButton,
+.expandSpacer {
+  width: 22px;
+  height: 22px;
+  flex: 0 0 22px;
+}
+
+.expandButton,
+.nodeActions button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.nodeActions {
+  display: flex;
+  gap: 2px;
+}
+
+.nodeActions button {
+  width: 26px;
+  height: 26px;
+}
+
+.nodeActions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+.expandButton:hover,
+.nodeActions button:hover:not(:disabled) {
+  background: var(--bg-surface);
+  color: var(--text-main);
+}
+
+.selectButton {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 2px;
+  border: 0;
+  background: transparent;
+  color: var(--text-main);
+  cursor: pointer;
+  text-align: left;
+}
+
+.name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.mode {
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.running {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+}

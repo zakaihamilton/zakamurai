@@ -245,7 +245,7 @@ describe('PreviewArea', () => {
     // Open in new tab
     fireEvent.click(screen.getByTitle('Open in new tab'));
     expect(window.open).toHaveBeenCalledWith(
-      expect.stringMatching(/^http:\/\/localhost:3001\/preview-host\?session=/),
+      expect.stringMatching(/^http:\/\/localhost:3001\/\?session=/),
       expect.stringMatching(/^zakamurai-preview-/),
     );
   });

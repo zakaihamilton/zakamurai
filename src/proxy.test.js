@@ -30,6 +30,7 @@ function createMockRequest(urlStr, headersObj = {}) {
   return {
     nextUrl: {
       pathname: url.pathname,
+      searchParams: url.searchParams,
       clone: () => new URL(urlStr),
     },
     headers: {
@@ -46,6 +47,36 @@ describe('proxy', () => {
     const res = proxy(req);
     expect(res.type).toBe('next');
     expect(res.headers.get('Content-Security-Policy')).toBeUndefined();
+  });
+
+  it('does not treat the local IDE port as the preview surface', async () => {
+    vi.stubEnv('NEXT_PUBLIC_PREVIEW_ORIGIN', 'http://localhost:3001');
+    vi.resetModules();
+    const { proxy: localProxy } = await import('./proxy');
+    const req = createMockRequest('http://localhost:3000/', {
+      host: 'localhost:3000',
+    });
+    const res = localProxy(req);
+    expect(res.type).toBe('next');
+    expect(res.headers.get('Content-Security-Policy')).toBeUndefined();
+    vi.unstubAllEnvs();
+    vi.resetModules();
+    await import('./proxy');
+  });
+
+  it('treats the local preview port as the preview surface', async () => {
+    vi.stubEnv('NEXT_PUBLIC_PREVIEW_ORIGIN', 'http://localhost:3001');
+    vi.resetModules();
+    const { proxy: localProxy } = await import('./proxy');
+    const req = createMockRequest('http://localhost:3001/', {
+      host: 'localhost:3001',
+    });
+    const res = localProxy(req);
+    expect(res.type).toBe('rewrite');
+    expect(res.url.pathname).toBe('/preview-host');
+    vi.unstubAllEnvs();
+    vi.resetModules();
+    await import('./proxy');
   });
 
   it('handles missing or empty host header', () => {
@@ -73,15 +104,27 @@ describe('proxy', () => {
     expect(res.headers.get('Content-Security-Policy')).toContain('http://localhost:3000');
   });
 
-  it('handles Vercel deployment URLs as preview hosts for branch deployments', () => {
-    vi.stubEnv('NEXT_PUBLIC_VERCEL_URL', 'zakamurai-abc123-team.vercel.app');
-    const req = createMockRequest('https://zakamurai-abc123-team.vercel.app/', {
-      host: 'zakamurai-abc123-team.vercel.app',
-    });
+  it('handles zakamurai-surface preview query on Vercel branch hosts', () => {
+    const req = createMockRequest(
+      'https://zakamurai-git-feature-team.vercel.app/__preview/host?session=test&zakamurai-surface=preview',
+      { host: 'zakamurai-git-feature-team.vercel.app' },
+    );
     const res = proxy(req);
     expect(res.type).toBe('rewrite');
     expect(res.url.pathname).toBe('/preview-host');
-    vi.unstubAllEnvs();
+    expect(res.headers.get('Content-Security-Policy')).toContain(
+      'https://zakamurai-git-feature-team.vercel.app',
+    );
+  });
+
+  it('returns 503 for uncached /__preview virtual paths on Vercel branch hosts', () => {
+    const req = createMockRequest(
+      'https://zakamurai-git-feature-team.vercel.app/__preview/session-123/dist/index.html',
+      { host: 'zakamurai-git-feature-team.vercel.app' },
+    );
+    const res = proxy(req);
+    expect(res.status).toBe(503);
+    expect(res.body).toContain('Preview service worker is not controlling this page');
   });
 
   it('handles x-zakamurai-surface preview header', () => {

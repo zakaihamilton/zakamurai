@@ -17,7 +17,7 @@ const buildUserRequest = ({ request, scope, activeFile, selectedLines, priorCont
       ? `Request: ${request}\nScope: whole project\nStart by inspecting the entire workspace. Do not assume any file is the primary target.`
       : `Request: ${request}\nScope: current file\nActive file: ${activeFile || 'none'}\nSelected lines: ${selectedLines.join(', ') || 'none'}\nStart by inspecting the workspace.`;
   if (!priorContext) return scopeBlock;
-  return `${scopeBlock}\n\nPrior context from teammate:\n${priorContext}`;
+  return `${scopeBlock}\n\nPrior conversation context:\n${priorContext}`;
 };
 
 /**

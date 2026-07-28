@@ -63,7 +63,8 @@ const nextConfig = {
           { key: 'Cross-Origin-Resource-Policy', value: 'cross-origin' },
           {
             key: 'Content-Security-Policy',
-            value: 'frame-ancestors https://www.zakamurai.com http://localhost:3000',
+            value:
+              'frame-ancestors https://www.zakamurai.com https://zakamurai.com http://localhost:3000',
           },
         ],
       },

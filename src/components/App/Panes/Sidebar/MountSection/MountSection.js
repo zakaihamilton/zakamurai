@@ -14,10 +14,6 @@ export default function SidebarMountSection({ hasFileSystem, onMountLocal }) {
         <Icons.FolderPlus />
         <span>{hasFileSystem ? 'Relink Project' : 'Open Folder'}</span>
       </button>
-      <p className={styles.hint}>
-        Projects save in browser storage by default. Open a local folder for larger projects (File
-        System Access API).
-      </p>
     </div>
   );
 }
