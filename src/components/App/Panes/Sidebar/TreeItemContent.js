@@ -4,7 +4,7 @@ import Tooltip from '@/components/ui/Tooltip';
 import { isMediaFile } from '@/utils/file';
 import React from 'react';
 import SidebarContextMenu from './SidebarContextMenu';
-import styles from './TreeItem.module.css';
+import styles from './TreeItemContent.module.css';
 
 const getNameHighlightRanges = (name, pathStr, filterText) => {
   const query = filterText.trim().toLowerCase();
