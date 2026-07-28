@@ -32,4 +32,11 @@ if (corp !== 'cross-origin') {
   );
 }
 
+const coop = response.headers.get('cross-origin-opener-policy');
+if (coop !== 'unsafe-none') {
+  throw new Error(
+    `Preview surface ${previewUrl} must send Cross-Origin-Opener-Policy: unsafe-none (got ${coop}) so the IDE can retain window.open for the MessagePort handshake`,
+  );
+}
+
 console.log(`Preview surface check passed for ${previewUrl}`);

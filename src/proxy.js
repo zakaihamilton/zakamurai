@@ -42,6 +42,13 @@ function resolveIdeOriginForPreviewHeaders(request) {
   return toHostOrigin(process.env.NEXT_PUBLIC_VERCEL_BRANCH_URL);
 }
 
+function withIdeHeaders(response) {
+  // Retain WindowProxy references to preview popups that opt out with
+  // Cross-Origin-Opener-Policy: unsafe-none (see withPreviewHeaders).
+  response.headers.set('Cross-Origin-Opener-Policy', 'same-origin-allow-popups');
+  return response;
+}
+
 function withPreviewHeaders(response, request) {
   const ideOrigin = resolveIdeOriginForPreviewHeaders(request);
 
@@ -51,6 +58,10 @@ function withPreviewHeaders(response, request) {
   );
   response.headers.set('Cross-Origin-Resource-Policy', 'cross-origin');
   response.headers.set('Referrer-Policy', 'no-referrer');
+  // IDE uses COOP: same-origin-allow-popups. That only retains popup references
+  // when the popup opts out with unsafe-none — otherwise window.open's
+  // WindowProxy is severed and the MessagePort handshake never arrives.
+  response.headers.set('Cross-Origin-Opener-Policy', 'unsafe-none');
   return response;
 }
 
@@ -79,7 +90,7 @@ export function proxy(request) {
     request.nextUrl.searchParams.get(PREVIEW_SURFACE_PARAM) === PREVIEW_SURFACE_VALUE ||
     isPreviewBootstrapPath(pathname) ||
     isPreviewVirtualPath(pathname);
-  if (!isPreviewSurface) return NextResponse.next();
+  if (!isPreviewSurface) return withIdeHeaders(NextResponse.next());
   if (
     pathname === '/__preview_sw__.js' ||
     pathname === '/preview-error-bridge.js' ||
@@ -88,6 +99,8 @@ export function proxy(request) {
   ) {
     const response = NextResponse.next();
     response.headers.set('Cross-Origin-Resource-Policy', 'cross-origin');
+    // Preview asset responses should not re-isolate the tab if a document
+    // navigation somehow shares this path; COOP only matters on documents.
     return response;
   }
 

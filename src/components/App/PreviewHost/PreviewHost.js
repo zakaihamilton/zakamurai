@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import {
+  expandOriginAliases,
   getPreviewConfigurationError,
   getPreviewOrigins,
   getPreviewServiceWorkerScope,
@@ -32,6 +33,19 @@ function getSessionId() {
   const querySession = new URLSearchParams(window.location.search).get('session');
   if (querySession) return querySession;
   return getSessionIdFromWindowName(window.name);
+}
+
+/** postMessage without transferables; try aliases because a wrong targetOrigin is dropped silently. */
+function postMessageToOriginAliases(target, message, preferredOrigin) {
+  if (!target?.postMessage || !preferredOrigin) return;
+  const origins = new Set([preferredOrigin, ...expandOriginAliases(preferredOrigin)]);
+  for (const origin of origins) {
+    try {
+      target.postMessage(message, origin);
+    } catch {
+      // Cross-origin WindowProxy may reject some targets under COOP.
+    }
+  }
 }
 
 function getPreviewEntryUrl(sessionId) {
@@ -180,15 +194,17 @@ export default function PreviewHost() {
       window.removeEventListener('message', connect);
       // Tell the IDE to stop replacing MessagePorts on its retry interval.
       try {
-        event.source?.postMessage(
-          {
-            type: PREVIEW_CONNECT_ACK,
-            version: PREVIEW_PROTOCOL_VERSION,
-            sessionId,
-            surface: window.parent !== window ? 'iframe' : 'external',
-          },
-          ideOrigin,
-        );
+        const ack = {
+          type: PREVIEW_CONNECT_ACK,
+          version: PREVIEW_PROTOCOL_VERSION,
+          sessionId,
+          surface: window.parent !== window ? 'iframe' : 'external',
+        };
+        // Prefer the concrete sender origin (www vs apex), then configured aliases.
+        postMessageToOriginAliases(event.source, ack, event.origin || ideOrigin);
+        if (event.origin && ideOrigin && !originMatches(event.origin, ideOrigin)) {
+          postMessageToOriginAliases(event.source, ack, ideOrigin);
+        }
       } catch {
         // Opener may be gone; the transferred port is what matters.
       }
@@ -231,9 +247,11 @@ export default function PreviewHost() {
     };
 
     window.addEventListener('message', connect);
-    // Cross-origin external tabs often lose window.opener in production. The IDE
-    // also initiates the handshake when it opens the tab; only ping when we can.
-    peerWindow?.postMessage(
+    // Cross-origin external tabs often lose window.opener when the preview
+    // document is COOP-isolated. The IDE also initiates the handshake when it
+    // opens the tab; only ping when we still have a peer.
+    postMessageToOriginAliases(
+      peerWindow,
       { type: PREVIEW_CONNECT, version: PREVIEW_PROTOCOL_VERSION, sessionId },
       ideOrigin,
     );

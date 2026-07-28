@@ -102,6 +102,16 @@ describe('proxy', () => {
     expect(res.url.pathname).toBe('/preview-host');
     expect(res.headers.get('Content-Security-Policy')).toContain('frame-ancestors');
     expect(res.headers.get('Content-Security-Policy')).toContain('http://localhost:3000');
+    expect(res.headers.get('Cross-Origin-Opener-Policy')).toBe('unsafe-none');
+  });
+
+  it('sets same-origin-allow-popups COOP on IDE surfaces', () => {
+    const req = createMockRequest('https://www.zakamurai.com/editor', {
+      host: 'www.zakamurai.com',
+    });
+    const res = proxy(req);
+    expect(res.type).toBe('next');
+    expect(res.headers.get('Cross-Origin-Opener-Policy')).toBe('same-origin-allow-popups');
   });
 
   it('handles zakamurai-surface preview query on Vercel branch hosts', () => {

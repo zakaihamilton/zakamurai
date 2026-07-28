@@ -53,10 +53,9 @@ const nextConfig = {
         source: '/(.*)',
         headers: [
           { key: 'Cross-Origin-Embedder-Policy', value: 'require-corp' },
-          // The browser-local preview can be opened in a tab and receives its
-          // in-memory project from this window over a validated MessageChannel.
-          // Preserve that opener across the two isolated origins.
-          { key: 'Cross-Origin-Opener-Policy', value: 'same-origin-allow-popups' },
+          // Cross-Origin-Opener-Policy is set in src/proxy.js so the IDE can use
+          // same-origin-allow-popups while the preview surface uses unsafe-none
+          // (required for window.open MessagePort handshakes into a new tab).
           // The IDE embeds the preview from a separate origin. This must be a
           // route header (rather than only a middleware response header), as
           // Vercel can serve prerendered routes from cache after a rewrite.
