@@ -27,7 +27,7 @@
     "test:e2e:isolated": "npx playwright test --config=playwright.isolated.config.ts",
     "test:e2e:isolated:webkit": "npx playwright test --config=playwright.isolated.config.ts --project=webkit",
     "test:e2e:chromium": "npm run test:e2e",
-    "test:visual": "npx playwright test tests/visual/regression.spec.ts tests/visual/accessibility.spec.ts",
+    "test:visual": "npx playwright test --project=chromium tests/visual/regression.spec.ts && npx playwright test tests/visual/accessibility.spec.ts",
     "test:visual:chromium": "npx playwright test --project=chromium tests/visual/regression.spec.ts",
     "test:visual:regression": "npm run test:visual:chromium",
     "setup:almostnode": "mkdir -p public/lib/almostnode public/assets && cp -r node_modules/almostnode/dist/* public/lib/almostnode/ && cp node_modules/almostnode/dist/assets/* public/assets/",
