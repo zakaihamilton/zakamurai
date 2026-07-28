@@ -155,6 +155,40 @@ describe('EditorArea', () => {
     });
   });
 
+  it('updates the local buffer and clears a pending AI diff after a manual edit', async () => {
+    const mockState = {
+      fileContents: { 'test.js': 'const answer = 1;' },
+      pendingDiffs: {
+        'test.js': {
+          originalContent: 'const answer = 0;',
+          modifiedContent: 'const answer = 1;',
+          diffs: [],
+        },
+      },
+      cursorPos: {},
+      isCompleting: {},
+    };
+    const stateHook = vi.fn((producer) => {
+      if (typeof producer === 'function') producer(mockState);
+      Object.assign(stateHook, mockState);
+      return stateHook;
+    });
+    Object.assign(stateHook, mockState);
+
+    vi.spyOn(EditorState, 'useState').mockReturnValue(stateHook);
+    useFileSystem.mockReturnValue({ mode: null });
+    vi.spyOn(AppState, 'useState').mockReturnValue({});
+    vi.spyOn(TabState, 'useState').mockReturnValue({ openTabs: [] });
+
+    render(<EditorArea file={{ path: ['test.js'], name: 'test.js' }} />);
+    await act(async () => {
+      fireEvent.change(screen.getByRole('textbox'), { target: { value: 'const answer = 2;' } });
+    });
+
+    expect(mockState.fileContents['test.js']).toBe('const answer = 2;');
+    expect(mockState.pendingDiffs['test.js']).toBeUndefined();
+  });
+
   it('memoizes syntax highlighting', async () => {
     const mockState = {
       fileContents: { 'test.js': 'content' },

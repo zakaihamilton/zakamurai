@@ -6,32 +6,15 @@ import { TabState } from '@/components/App/Panes/TabBar';
 import { EditorState } from '@/components/App/Views/EditorArea';
 import { LogState } from '@/components/App/Views/LogArea';
 import { useFileSystem } from '@/components/Storage';
-import React, { useCallback, useEffect } from 'react';
-import {
-  AgentSessionState,
-  addAgentSession,
-  appendSessionMessage,
-  createAgentBranch,
-  createDefaultAgentSessions,
-  createSessionMessage,
-  getActiveAgentSession,
-  getAgentSessionSubtreeIds,
-  setActiveAgentSession,
-  updateAgentSession,
-} from './AgentSessions';
-import ChangeSetPanel from './ChangeSet';
-import PromptComposer from './Composer';
-import PromptContextPanel from './Context';
-import PromptHeader from './Header';
+import { useCallback } from 'react';
+import { AgentSessionState, createSessionMessage } from './AgentSessions';
 import useModelDownloader from './ModelDownloader';
-import ModelDownloader from './ModelManager';
-import styles from './Prompt.module.css';
+import PromptContent from './PromptContent';
 import usePromptHistory from './PromptHistory';
 import { PromptState, PromptUiState, getInitialPromptUiState } from './PromptState';
-import ReasoningPanel from './Reasoning';
-import { RoleGraphDialog, RoleGraphSummary } from './RoleGraph';
-import { SessionDialog, SessionManager, SessionTranscript, SessionTreeDialog } from './Session';
 import useAgentRunner from './useAgentRunner';
+import usePromptLayout from './usePromptLayout';
+import usePromptSessionControls from './usePromptSessionControls';
 
 export { PromptState, PromptUiState } from './PromptState';
 
@@ -63,95 +46,51 @@ export default function Prompt() {
     isAgentTreeOpen = false,
   } = promptUiState || {};
   const { cachedModelIds = [] } = WebLLMState.useState(['cachedModelIds']);
-
-  const setAnimatedWidth = useCallback(
-    (nextValue) => {
-      promptUiState((draft) => {
-        draft.animatedWidth =
-          typeof nextValue === 'function' ? nextValue(draft.animatedWidth) : nextValue;
-      });
-    },
-    [promptUiState],
-  );
-
   const logState = LogState.usePassiveState();
   const { isSystemProcessing, isAIProcessing } = LogState.useState([
     'isSystemProcessing',
     'isAIProcessing',
   ]);
   const sidebarState = SidebarState.useState(['showAIInput', 'isAIInputPopupOpen']);
-  const { showAIInput } = sidebarState;
   const tabState = TabState.useState(['activeTabId', 'openTabs']);
   const editorState = EditorState.useState(['selectedLines']);
   const agentSessionState = AgentSessionState.useState(['sessions', 'activeSessionId']);
+  const isOpen = isMobile ? sidebarState.isAIInputPopupOpen : sidebarState.showAIInput;
 
-  useEffect(() => {
-    if (!agentSessionState) return;
-    if (
-      agentSessionState.activeSessionId &&
-      agentSessionState.sessions?.[agentSessionState.activeSessionId]
-    ) {
-      return;
-    }
-    const defaults = createDefaultAgentSessions(selectedModel);
-    agentSessionState((draft) => {
-      draft.sessions = defaults.sessions;
-      draft.activeSessionId = defaults.activeSessionId;
-    });
-  }, [agentSessionState, selectedModel]);
-
-  const activeSession = getActiveAgentSession(agentSessionState);
+  const {
+    activeSession,
+    patchSession,
+    pushSessionMessage,
+    openRoleGraph,
+    closeRoleGraph,
+    handleCreateSession,
+    handleRenameSession,
+    handleDeleteSession,
+    handleBranchSession,
+    handleSelectSession,
+    handleModeChange,
+  } = usePromptSessionControls({
+    agentSessionState,
+    promptUiState,
+    selectedModel,
+    isAIProcessing,
+    isRoleGraphOpen,
+  });
+  const { desktopWidth } = usePromptLayout({
+    isMobile,
+    isOpen,
+    promptWidth,
+    animatedWidth,
+    promptUiState,
+  });
   const { loadCachedModelIds, openModelManager, closeModelManager, handleModelCacheAction } =
     useModelDownloader(promptUiState);
-
-  const openRoleGraph = useCallback(() => {
-    promptUiState((draft) => {
-      draft.isRoleGraphOpen = true;
-    });
-  }, [promptUiState]);
-
-  const closeRoleGraph = useCallback(() => {
-    promptUiState((draft) => {
-      draft.isRoleGraphOpen = false;
-    });
-  }, [promptUiState]);
-
   const { handleArrowUp, handleArrowDown, addToHistory } = usePromptHistory(
     val,
     historyIndex,
     draftVal,
     promptUiState,
   );
-
-  const patchSession = useCallback(
-    (sessionId, patch) => {
-      agentSessionState((draft) => {
-        const next = updateAgentSession(
-          { sessions: draft.sessions, activeSessionId: draft.activeSessionId },
-          sessionId,
-          patch,
-        );
-        draft.sessions = next.sessions;
-        draft.activeSessionId = next.activeSessionId;
-      });
-    },
-    [agentSessionState],
-  );
-
-  const pushSessionMessage = useCallback(
-    (sessionId, message) => {
-      agentSessionState((draft) => {
-        const next = appendSessionMessage(
-          { sessions: draft.sessions, activeSessionId: draft.activeSessionId },
-          sessionId,
-          message,
-        );
-        draft.sessions = next.sessions;
-      });
-    },
-    [agentSessionState],
-  );
-
   const { send, handleStop } = useAgentRunner({
     val,
     isAIProcessing,
@@ -173,45 +112,77 @@ export default function Prompt() {
     logState,
   });
 
-  const handleKeyDown = (e) => {
-    const mac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
-    const cmdKey = mac ? e.metaKey : e.ctrlKey;
-
-    if (cmdKey && e.key === '.') {
-      handleStop(e);
+  const handleKeyDown = (event) => {
+    const mac = navigator.platform.toUpperCase().includes('MAC');
+    if ((mac ? event.metaKey : event.ctrlKey) && event.key === '.') {
+      handleStop(event);
       return;
     }
-
-    if (e.key === 'Enter') {
-      if (e.metaKey || e.ctrlKey) {
-        e.preventDefault();
-        e.stopPropagation();
-        const { selectionStart, selectionEnd, value } = e.target;
-        const newValue = `${value.substring(0, selectionStart)}\n${value.substring(selectionEnd)}`;
+    if (event.key === 'Enter') {
+      if (event.metaKey || event.ctrlKey) {
+        event.preventDefault();
+        event.stopPropagation();
+        const { selectionStart, selectionEnd, value } = event.target;
+        const nextValue = `${value.substring(0, selectionStart)}\n${value.substring(selectionEnd)}`;
         promptUiState((draft) => {
-          draft.val = newValue;
+          draft.val = nextValue;
         });
-
         requestAnimationFrame(() => {
-          e.target.selectionStart = e.target.selectionEnd = selectionStart + 1;
+          event.target.selectionStart = event.target.selectionEnd = selectionStart + 1;
         });
         return;
       }
-
-      if (!e.shiftKey) {
-        send(e);
-      }
-    } else if (e.key === 'ArrowUp') {
+      if (!event.shiftKey) send(event);
+    } else if (event.key === 'ArrowUp') {
       handleArrowUp();
-    } else if (e.key === 'ArrowDown') {
+    } else if (event.key === 'ArrowDown') {
       handleArrowDown();
     }
   };
 
-  const isBtnActive = val.trim() && !isAIProcessing;
+  const handleComposerChange = useCallback(
+    (event) => {
+      promptUiState((draft) => {
+        draft.val = event.target.value;
+        if (historyIndex === -1) draft.draftVal = event.target.value;
+      });
+    },
+    [historyIndex, promptUiState],
+  );
+  const setPromptScope = useCallback(
+    (scope) => {
+      promptUiState((draft) => {
+        draft.promptScope = scope;
+      });
+    },
+    [promptUiState],
+  );
+  const toggleReasoning = useCallback(() => {
+    promptUiState((draft) => {
+      draft.isReasoningVisible = !draft.isReasoningVisible;
+    });
+  }, [promptUiState]);
+  const openSessionTree = useCallback(() => {
+    promptUiState((draft) => {
+      draft.isAgentTreeOpen = true;
+    });
+  }, [promptUiState]);
+  const closeSessionTree = useCallback(() => {
+    promptUiState((draft) => {
+      draft.isAgentTreeOpen = false;
+    });
+  }, [promptUiState]);
+  const setSelectedModel = useCallback(
+    (modelId) => {
+      promptUiState((draft) => {
+        draft.selectedModel = modelId;
+      });
+    },
+    [promptUiState],
+  );
 
   const currentActiveTabId = tabState.activeTabId;
-  const currentActiveTab = tabState.openTabs.find((t) => t.id === currentActiveTabId);
+  const currentActiveTab = tabState.openTabs.find((tab) => tab.id === currentActiveTabId);
   const selectedLines = editorState.selectedLines?.[currentActiveTabId] || [];
   const selectedLineText =
     selectedLines.length > 0 ? [...selectedLines].sort((a, b) => a - b).join(', ') : 'None';
@@ -231,240 +202,60 @@ export default function Prompt() {
     ].filter(Boolean),
   }));
 
-  const isOpen = isMobile ? sidebarState.isAIInputPopupOpen : showAIInput;
-  const sessionReasoning = activeSession?.reasoning || '';
-
-  useEffect(() => {
-    if (isMobile) return undefined;
-
-    if (isOpen) {
-      const frame = window.requestAnimationFrame(() => setAnimatedWidth(promptWidth));
-      return () => window.cancelAnimationFrame(frame);
-    }
-
-    setAnimatedWidth(promptWidth);
-    const frame = window.requestAnimationFrame(() => setAnimatedWidth(0));
-    return () => window.cancelAnimationFrame(frame);
-  }, [isMobile, isOpen, promptWidth, setAnimatedWidth]);
-
-  useEffect(() => {
-    if (activeSession?.mode !== 'team' && isRoleGraphOpen) {
-      closeRoleGraph();
-    }
-  }, [activeSession?.mode, closeRoleGraph, isRoleGraphOpen]);
-
-  const desktopWidth = `${animatedWidth}px`;
-
-  const handleCreateSession = () => {
-    try {
-      agentSessionState((draft) => {
-        const next = addAgentSession(
-          { sessions: draft.sessions, activeSessionId: draft.activeSessionId },
-          { modelId: selectedModel },
-        );
-        draft.sessions = next.sessions;
-        draft.activeSessionId = next.activeSessionId;
-      });
-    } catch (error) {
-      promptUiState((draft) => {
-        draft.sessionDialog = { type: 'error', message: error.message };
-      });
-    }
-  };
-
-  const handleRenameSession = (sessionId = activeSession?.id) => {
-    const session = agentSessionState?.sessions?.[sessionId];
-    if (!session) return;
-    promptUiState((draft) => {
-      draft.sessionDialog = {
-        type: 'rename',
-        sessionId: session.id,
-        value: session.name,
-      };
-    });
-  };
-
-  const handleDeleteSession = (sessionId = activeSession?.id) => {
-    const session = agentSessionState?.sessions?.[sessionId];
-    if (!session) return;
-    const subtreeIds = getAgentSessionSubtreeIds(agentSessionState.sessions, session.id);
-    const hasRunningAgent = [...subtreeIds].some(
-      (id) => agentSessionState.sessions[id]?.status === 'running',
-    );
-    if (hasRunningAgent) {
-      promptUiState((draft) => {
-        draft.sessionDialog = {
-          type: 'error',
-          message: 'Stop the running agent before deleting it or any of its branches.',
-        };
-      });
-      return;
-    }
-    promptUiState((draft) => {
-      draft.sessionDialog = {
-        type: 'delete',
-        sessionId: session.id,
-        name: session.name,
-        descendantCount: Math.max(0, subtreeIds.size - 1),
-      };
-    });
-  };
-
-  const handleBranchSession = (sessionId) => {
-    try {
-      agentSessionState((draft) => {
-        const next = createAgentBranch(
-          { sessions: draft.sessions, activeSessionId: draft.activeSessionId },
-          sessionId,
-        );
-        draft.sessions = next.sessions;
-        draft.activeSessionId = next.activeSessionId;
-      });
-    } catch (error) {
-      promptUiState((draft) => {
-        draft.sessionDialog = { type: 'error', message: error.message };
-      });
-    }
-  };
-
-  const handleSelectSession = (sessionId) => {
-    agentSessionState((draft) => {
-      const next = setActiveAgentSession(
-        { sessions: draft.sessions, activeSessionId: draft.activeSessionId },
-        sessionId,
-      );
-      draft.activeSessionId = next.activeSessionId;
-    });
-  };
-
-  const handleModeChange = (mode) => {
-    if (!activeSession || isAIProcessing) return;
-    patchSession(activeSession.id, { mode });
-  };
-
   return (
-    <aside
-      className={`${styles.prompt} ${isOpen ? '' : styles.closed}`}
-      aria-hidden={!isOpen}
-      style={isMobile ? undefined : { '--panel-width': desktopWidth }}
-    >
-      <div className={styles.content}>
-        <PromptHeader
-          isAIProcessing={isAIProcessing}
-          isSystemProcessing={isSystemProcessing}
-          hasReasoning={Boolean(sessionReasoning)}
-          isReasoningVisible={isReasoningVisible}
-          onToggleReasoning={() =>
-            promptUiState((draft) => {
-              draft.isReasoningVisible = !draft.isReasoningVisible;
-            })
-          }
-          mode={activeSession?.mode || 'single'}
-          onModeChange={handleModeChange}
-        />
-        <SessionManager
-          activeSession={activeSession}
-          onOpenTree={() =>
-            promptUiState((draft) => {
-              draft.isAgentTreeOpen = true;
-            })
-          }
-          isOpen={isOpen}
-        />
-        <SessionTreeDialog
-          isOpen={isAgentTreeOpen && !sessionDialog}
-          sessions={agentSessionState?.sessions || {}}
-          activeSessionId={agentSessionState?.activeSessionId}
-          onCancel={() =>
-            promptUiState((draft) => {
-              draft.isAgentTreeOpen = false;
-            })
-          }
-          onSelect={handleSelectSession}
-          onCreate={handleCreateSession}
-          onBranch={handleBranchSession}
-          onRename={handleRenameSession}
-          onDelete={handleDeleteSession}
-        />
-        <SessionDialog
-          sessionDialog={sessionDialog}
-          runningSessionId={runningSessionId}
-          isAIProcessing={isAIProcessing}
-          agentSessionState={agentSessionState}
-          promptUiState={promptUiState}
-        />
-        {activeSession?.mode === 'team' && (
-          <RoleGraphSummary
-            roleGraph={activeSession.roleGraph}
-            disabled={!isOpen || isAIProcessing}
-            onEdit={openRoleGraph}
-          />
-        )}
-        <PromptContextPanel
-          scope={promptScope}
-          onScopeChange={(scope) =>
-            promptUiState((draft) => {
-              draft.promptScope = scope;
-            })
-          }
-          activeFileName={activeFileName}
-          activeFilePath={activeFilePath}
-          selectedLines={selectedLines}
-          selectedLineText={selectedLineText}
-          runState={runState}
-        />
-        <ChangeSetPanel />
-        <SessionTranscript messages={activeSession?.messages || []} />
-        <ModelDownloader
-          isOpen={isModelManagerOpen}
-          selectedModelId={selectedModelInfo.id}
-          cachedModelIds={cachedModelIds}
-          onCancel={closeModelManager}
-          onModelCacheAction={handleModelCacheAction}
-          modelCacheWork={modelCacheWork}
-          modelCacheProgress={modelCacheProgress}
-          modelCacheError={modelCacheError}
-        />
-        <RoleGraphDialog
-          isOpen={isRoleGraphOpen}
-          onCancel={closeRoleGraph}
-          roleGraph={activeSession?.roleGraph}
-          modelOptions={modelOptions}
-          defaultModelId={selectedModel}
-          disabled={isAIProcessing}
-          onChange={(nextGraph) => {
-            if (!activeSession) return;
-            patchSession(activeSession.id, { roleGraph: nextGraph });
-          }}
-        />
-        <ReasoningPanel />
-        <PromptComposer
-          value={val}
-          onChange={(e) => {
-            promptUiState((draft) => {
-              draft.val = e.target.value;
-              if (historyIndex === -1) {
-                draft.draftVal = e.target.value;
-              }
-            });
-          }}
-          onKeyDown={handleKeyDown}
-          onSubmit={send}
-          onStop={handleStop}
-          isAIProcessing={isAIProcessing}
-          isButtonActive={isBtnActive}
-          isOpen={isOpen}
-          selectedModelInfo={selectedModelInfo}
-          modelOptions={modelOptions}
-          onChangeModel={(modelId) =>
-            promptUiState((draft) => {
-              draft.selectedModel = modelId;
-            })
-          }
-          onLoadCachedModelIds={loadCachedModelIds}
-          onOpenModelManager={openModelManager}
-        />
-      </div>
-    </aside>
+    <PromptContent
+      isMobile={isMobile}
+      isOpen={isOpen}
+      desktopWidth={desktopWidth}
+      isAIProcessing={isAIProcessing}
+      isSystemProcessing={isSystemProcessing}
+      activeSession={activeSession}
+      sessionReasoning={activeSession?.reasoning || ''}
+      isReasoningVisible={isReasoningVisible}
+      onToggleReasoning={toggleReasoning}
+      onModeChange={handleModeChange}
+      onOpenTree={openSessionTree}
+      isAgentTreeOpen={isAgentTreeOpen}
+      sessionDialog={sessionDialog}
+      agentSessionState={agentSessionState}
+      onCloseTree={closeSessionTree}
+      onSelectSession={handleSelectSession}
+      onCreateSession={handleCreateSession}
+      onBranchSession={handleBranchSession}
+      onRenameSession={handleRenameSession}
+      onDeleteSession={handleDeleteSession}
+      runningSessionId={runningSessionId}
+      promptUiState={promptUiState}
+      isRoleGraphOpen={isRoleGraphOpen}
+      onOpenRoleGraph={openRoleGraph}
+      onCloseRoleGraph={closeRoleGraph}
+      modelOptions={modelOptions}
+      selectedModel={selectedModel}
+      promptScope={promptScope}
+      onScopeChange={setPromptScope}
+      activeFileName={activeFileName}
+      activeFilePath={activeFilePath}
+      selectedLines={selectedLines}
+      selectedLineText={selectedLineText}
+      runState={runState}
+      isModelManagerOpen={isModelManagerOpen}
+      selectedModelInfo={selectedModelInfo}
+      cachedModelIds={cachedModelIds}
+      onCloseModelManager={closeModelManager}
+      onModelCacheAction={handleModelCacheAction}
+      modelCacheWork={modelCacheWork}
+      modelCacheProgress={modelCacheProgress}
+      modelCacheError={modelCacheError}
+      value={val}
+      onChange={handleComposerChange}
+      onKeyDown={handleKeyDown}
+      onSubmit={send}
+      onStop={handleStop}
+      isButtonActive={Boolean(val.trim()) && !isAIProcessing}
+      onChangeModel={setSelectedModel}
+      onLoadCachedModelIds={loadCachedModelIds}
+      onOpenModelManager={openModelManager}
+      patchSession={patchSession}
+    />
   );
 }

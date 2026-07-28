@@ -1,22 +1,6 @@
 import { Icons } from '@/components/ui/Icons';
 import styles from './TokenTableSection.module.css';
-
-const TOKEN_LABELS = {
-  hlAttr: 'Attribute',
-  hlComment: 'Comment',
-  hlFunc: 'Function',
-  hlJsonBool: 'JSON Literal',
-  hlJsonKey: 'JSON Key',
-  hlJsonPunc: 'JSON Punctuation',
-  hlKw: 'Keyword',
-  hlNum: 'Number',
-  hlProp: 'Property',
-  hlStr: 'String',
-  hlTag: 'Tag',
-  hlVal: 'Value',
-};
-
-const getTokenLabel = (type = '') => TOKEN_LABELS[type] || type.replace(/^hl/, '') || 'Token';
+import { getTokenLabel } from './tokenUtils';
 
 const getTokenTone = (type = '') => {
   if (type.includes('Json')) return styles.toneJson;

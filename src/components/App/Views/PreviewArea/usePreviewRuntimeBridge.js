@@ -1,0 +1,171 @@
+import { useCallback, useEffect, useRef } from 'react';
+import {
+  detectIframeLoadError,
+  fetchScriptErrorBody,
+  formatRuntimeError,
+  formatUnhandledRejection,
+  resolveMissingExportError,
+} from './previewErrorUtils';
+import { reportPreviewEvidence } from './previewEvidenceBridge';
+import {
+  PREVIEW_MESSAGE_TYPES,
+  isTrustedPreviewMessage,
+  parsePreviewMessage,
+  sanitizePreviewPath,
+} from './previewSandbox';
+
+/** Bridges trusted preview events and same-origin iframe diagnostics into the preview controller. */
+export default function usePreviewRuntimeBridge({
+  iframeRef,
+  previewAreaUiState,
+  previewUrl,
+  previewOrigin,
+  setPreviewError,
+  setHasLoadedOnce,
+}) {
+  const listenersRef = useRef(null);
+  const removeIframeListeners = useCallback(() => {
+    if (!listenersRef.current) return;
+    const { win, onError, onRejection } = listenersRef.current;
+    win.removeEventListener('error', onError, true);
+    win.removeEventListener('unhandledrejection', onRejection);
+    listenersRef.current = null;
+  }, []);
+
+  useEffect(() => () => removeIframeListeners(), [removeIframeListeners]);
+
+  const scanModuleScriptsForErrors = useCallback(async () => {
+    if (!iframeRef.current) return;
+    try {
+      const doc = iframeRef.current.contentDocument;
+      const scripts = doc?.querySelectorAll('script[type="module"][src]') || [];
+      for (const script of scripts) {
+        const fetched = await fetchScriptErrorBody(script.src);
+        if (fetched) {
+          setPreviewError(fetched);
+          return;
+        }
+      }
+    } catch (_e) {
+      // Ignore cross-origin errors.
+    }
+  }, [iframeRef, setPreviewError]);
+
+  const scanIframeForErrors = useCallback(() => {
+    if (!iframeRef.current) return;
+    try {
+      const loadError = detectIframeLoadError(iframeRef.current.contentDocument);
+      if (loadError) setPreviewError(loadError);
+    } catch (_e) {
+      // Ignore cross-origin errors.
+    }
+  }, [iframeRef, setPreviewError]);
+
+  useEffect(() => {
+    const onMessage = (event) => {
+      const iframeWindow = iframeRef.current?.contentWindow;
+      if (!isTrustedPreviewMessage(event, iframeWindow, previewOrigin)) return;
+      const payload = parsePreviewMessage(event.data);
+      if (!payload) return;
+      if (
+        payload.type === PREVIEW_MESSAGE_TYPES.RUNTIME_ERROR ||
+        payload.type === PREVIEW_MESSAGE_TYPES.UNHANDLED_REJECTION
+      ) {
+        if (payload.message) setPreviewError(payload.message);
+      } else if (payload.type === PREVIEW_MESSAGE_TYPES.NAVIGATE && payload.path) {
+        const safePath = sanitizePreviewPath(payload.path);
+        if (!safePath) return;
+        previewAreaUiState((draft) => {
+          draft.address = safePath;
+        });
+      } else if (payload.type === PREVIEW_MESSAGE_TYPES.EVIDENCE) {
+        reportPreviewEvidence(payload);
+      } else if (payload.type === PREVIEW_MESSAGE_TYPES.RECONNECT) {
+        if (iframeRef.current && previewUrl) iframeRef.current.src = previewUrl;
+      }
+    };
+    window.addEventListener('message', onMessage);
+    return () => window.removeEventListener('message', onMessage);
+  }, [iframeRef, previewAreaUiState, previewOrigin, previewUrl, setPreviewError]);
+
+  return useCallback(() => {
+    setHasLoadedOnce(true);
+    previewAreaUiState((draft) => {
+      draft.isLoading = false;
+    });
+    removeIframeListeners();
+    if (!iframeRef.current) return;
+
+    try {
+      const win = iframeRef.current.contentWindow;
+      const doc = iframeRef.current.contentDocument;
+      if (!win || !doc) return;
+      const path = win.location.pathname;
+      if (path && path !== 'blank') {
+        previewAreaUiState((draft) => {
+          draft.address = path;
+        });
+      }
+      const loadError = detectIframeLoadError(doc);
+      if (loadError) {
+        setPreviewError(loadError);
+        return;
+      }
+
+      const onError = (event) => {
+        void (async () => {
+          const missingExportError = await resolveMissingExportError(event);
+          if (missingExportError) {
+            setPreviewError(missingExportError);
+            return;
+          }
+          let message = formatRuntimeError(event);
+          const scriptUrl = event.target?.src || event.filename;
+          if (scriptUrl) {
+            const fetched = await fetchScriptErrorBody(scriptUrl);
+            if (fetched) message = fetched;
+          }
+          setPreviewError(message);
+        })();
+      };
+      const onRejection = (event) => {
+        void (async () => {
+          const reason = event.reason;
+          const missingExportError =
+            reason instanceof Error
+              ? await resolveMissingExportError({
+                  message: reason.message,
+                  filename: reason.fileName,
+                })
+              : typeof reason === 'object' && reason?.message
+                ? await resolveMissingExportError(reason)
+                : null;
+          if (missingExportError) {
+            setPreviewError(missingExportError);
+            return;
+          }
+          setPreviewError(formatUnhandledRejection(event));
+        })();
+      };
+      win.addEventListener('error', onError, true);
+      win.addEventListener('unhandledrejection', onRejection);
+      listenersRef.current = { win, onError, onRejection };
+      for (const delay of [500, 2000]) {
+        window.setTimeout(() => {
+          scanIframeForErrors();
+          void scanModuleScriptsForErrors();
+        }, delay);
+      }
+    } catch (_e) {
+      // Opaque sandboxed preview — runtime errors arrive via postMessage bridge.
+    }
+  }, [
+    iframeRef,
+    previewAreaUiState,
+    removeIframeListeners,
+    scanIframeForErrors,
+    scanModuleScriptsForErrors,
+    setHasLoadedOnce,
+    setPreviewError,
+  ]);
+}
