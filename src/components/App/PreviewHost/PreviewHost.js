@@ -12,7 +12,7 @@ import { PREVIEW_CONNECT, PREVIEW_PROTOCOL_VERSION } from '../Views/PreviewArea/
 
 // Bump this URL when the preview-routing protocol changes so browsers replace
 // an older scoped worker instead of continuing to serve its stale routes.
-const SW_URL = '/__preview_sw__.js?v=23';
+const SW_URL = '/__preview_sw__.js?v=24';
 const SESSION_WINDOW_NAME_PREFIX = 'zakamurai-preview-';
 const CONNECT_TIMEOUT_MS = 15000;
 

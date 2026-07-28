@@ -3,6 +3,12 @@ let mainPort = null;
 let activeSessionId = null;
 let ideOrigin = null;
 let nextId = 0;
+// Keep in sync with PREVIEW_HOST_PATH in previewOrigins.js
+const PREVIEW_BOOTSTRAP_PATH = '/__preview/host';
+
+function isPreviewBootstrapPath(pathname) {
+  return pathname === PREVIEW_BOOTSTRAP_PATH || pathname.startsWith(`${PREVIEW_BOOTSTRAP_PATH}/`);
+}
 
 const bytesToBase64 = (bytes) => {
   let binary = '';
@@ -231,6 +237,11 @@ main{padding:2rem}</style>${reconnectScript}</head>
 
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
+
+  // Bootstrap handshake page must reach Next.js PreviewHost, not the virtual server.
+  if (isPreviewBootstrapPath(url.pathname)) {
+    return;
+  }
 
   if (url.pathname.startsWith('/__preview/')) {
     if (!activeSessionId || !mainPort) {
