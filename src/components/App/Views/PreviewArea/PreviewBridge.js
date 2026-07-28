@@ -1,6 +1,11 @@
 import { Compiler } from '@/utils/compiler';
 import { useEffect, useRef } from 'react';
-import { isValidPreviewHandshake, originMatches } from './previewOrigins';
+import {
+  getPreviewOrigins,
+  getPreviewServiceWorkerScope,
+  isValidPreviewHandshake,
+  originMatches,
+} from './previewOrigins';
 import {
   PREVIEW_CONNECT,
   PREVIEW_PROTOCOL_VERSION,
@@ -15,6 +20,8 @@ import {
 const STREAM_CHUNK_SIZE = 64 * 1024;
 const EXTERNAL_HANDSHAKE_INTERVAL_MS = 400;
 const EXTERNAL_HANDSHAKE_TIMEOUT_MS = 12000;
+const WORKER_BRIDGE_MAINTENANCE_MS = 8000;
+const WORKER_BRIDGE_KEY = Symbol('preview-worker-bridge');
 
 function toResponsePayload(response) {
   const body =
@@ -121,6 +128,29 @@ function pushHandshake(target, { portsRef, sessionId, previewOrigin, onError }) 
   }
 }
 
+async function attachWorkerBridge({ portsRef, sessionId, ideOrigin, previewScope, onError }) {
+  if (!previewScope || typeof navigator === 'undefined' || !('serviceWorker' in navigator)) {
+    return false;
+  }
+  try {
+    const registration = await navigator.serviceWorker.getRegistration(previewScope);
+    const worker = registration?.active;
+    if (!worker) return false;
+    const channel = new MessageChannel();
+    attachBridgePort({
+      portsRef,
+      source: WORKER_BRIDGE_KEY,
+      port: channel.port1,
+      sessionId,
+      onError,
+    });
+    worker.postMessage({ type: 'init', sessionId, ideOrigin }, [channel.port2]);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 /** Bridges an isolated preview service worker to the local almostnode server. */
 export default function PreviewBridge({
   iframeRef,
@@ -218,6 +248,24 @@ export default function PreviewBridge({
       window.clearTimeout(timeout);
     };
   }, [iframeHandshakeNonce, iframeRef, onError, previewOrigin, sessionId]);
+
+  useEffect(() => {
+    if (!sessionId || !previewOrigin) return undefined;
+    const origins = getPreviewOrigins({
+      windowOrigin: typeof window === 'undefined' ? '' : window.location.origin,
+    });
+    const canInitWorkerFromParent = origins.ideOrigin === origins.previewOrigin;
+    if (!canInitWorkerFromParent) return undefined;
+
+    const previewScope = getPreviewServiceWorkerScope(origins);
+    const ideOrigin = origins.ideOrigin || window.location.origin;
+    const maintain = () => {
+      void attachWorkerBridge({ portsRef, sessionId, ideOrigin, previewScope, onError });
+    };
+    maintain();
+    const interval = window.setInterval(maintain, WORKER_BRIDGE_MAINTENANCE_MS);
+    return () => window.clearInterval(interval);
+  }, [onError, previewOrigin, sessionId]);
 
   return null;
 }

@@ -257,11 +257,15 @@ export default function PreviewArea() {
         });
       } else if (payload.type === PREVIEW_MESSAGE_TYPES.EVIDENCE) {
         reportPreviewEvidence(payload);
+      } else if (payload.type === PREVIEW_MESSAGE_TYPES.RECONNECT) {
+        if (iframeRef.current && previewUrl) {
+          iframeRef.current.src = previewUrl;
+        }
       }
     };
     window.addEventListener('message', onMessage);
     return () => window.removeEventListener('message', onMessage);
-  }, [origins.previewOrigin, previewAreaUiState, setPreviewError]);
+  }, [origins.previewOrigin, previewAreaUiState, previewUrl, setPreviewError]);
 
   const handleLoad = useCallback(() => {
     setHasLoadedOnce(true);

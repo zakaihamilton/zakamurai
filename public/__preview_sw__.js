@@ -216,10 +216,11 @@ async function handleVirtualRequest(request, path) {
 }
 
 function lostConnectionPage() {
+  const reconnectScript = `<script>(function(){try{var m=location.pathname.match(/^\\/(__preview\\/)([^/]+)/);var sessionId=m&&m[2];if(!sessionId||window.parent===window)return;window.parent.postMessage({source:'zakamurai-preview',type:'reconnect',sessionId:decodeURIComponent(sessionId),message:'Preview connection was lost.'},'*');}catch(_e){}})();</script>`;
   return previewResponse(
     `<!doctype html><html><head><meta charset="utf-8"><title>Preview</title>
 <style>html,body{margin:0;height:100%;background:#101214;color:#e7ecef;font:14px/1.4 system-ui,sans-serif}
-main{padding:2rem}</style></head>
+main{padding:2rem}</style>${reconnectScript}</head>
 <body><main><p>Preview connection was lost. Return to Zakamurai and click Build, then open Preview again.</p></main></body></html>`,
     {
       status: 503,

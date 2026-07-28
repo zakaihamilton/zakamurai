@@ -6,6 +6,7 @@ export const PREVIEW_MESSAGE_TYPES = {
   UNHANDLED_REJECTION: 'unhandled-rejection',
   NAVIGATE: 'navigate',
   EVIDENCE: 'evidence',
+  RECONNECT: 'reconnect',
 };
 
 /**
