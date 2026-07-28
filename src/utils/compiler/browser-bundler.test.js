@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   __testables,
   assertBrowserBuildSupported,
@@ -14,6 +14,17 @@ function vfs(files) {
 }
 
 describe('browser-bundler', () => {
+  beforeEach(() => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        arrayBuffer: vi.fn().mockResolvedValue(new ArrayBuffer(0)),
+      }),
+    );
+    vi.stubGlobal('WebAssembly', { compile: vi.fn().mockResolvedValue({}) });
+  });
+
   afterEach(() => {
     __testables.resetInitialize();
     vi.unstubAllGlobals();
@@ -336,6 +347,13 @@ describe('browser-bundler', () => {
       .fn()
       .mockRejectedValueOnce(new Error('wasm missing'))
       .mockResolvedValueOnce(undefined);
+    const wasmModule = {};
+    const fetchCompilerAsset = vi.fn().mockResolvedValue({
+      ok: true,
+      arrayBuffer: vi.fn().mockResolvedValue(new ArrayBuffer(0)),
+    });
+    vi.stubGlobal('fetch', fetchCompilerAsset);
+    vi.stubGlobal('WebAssembly', { compile: vi.fn().mockResolvedValue(wasmModule) });
 
     vi.doMock('esbuild-wasm/lib/browser', () => ({
       initialize,
@@ -347,6 +365,21 @@ describe('browser-bundler', () => {
     await expect(fresh.initialize()).rejects.toThrow('wasm missing');
     await expect(fresh.initialize()).resolves.toBeUndefined();
     expect(initialize).toHaveBeenCalledTimes(2);
+    expect(initialize).toHaveBeenLastCalledWith({ wasmModule, worker: true });
+    expect(fetchCompilerAsset).toHaveBeenCalledWith('/esbuild/esbuild.wasm', {
+      credentials: 'same-origin',
+    });
+  });
+
+  it('reports a missing compiler asset with its response status', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 404 }));
+    vi.doMock('esbuild-wasm/lib/browser', () => ({ initialize: vi.fn(), build: vi.fn() }));
+
+    const { __testables: fresh } = await import('./browser-bundler');
+
+    await expect(fresh.initialize()).rejects.toThrow(
+      'Unable to load the esbuild compiler asset (404)',
+    );
   });
 
   it('bundles with the automatic JSX runtime', async () => {
