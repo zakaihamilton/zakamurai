@@ -174,7 +174,7 @@ export default function PreviewHost() {
           scope: swScope,
         });
         await ensureActiveWorker(registration);
-        if (origins.isIsolated) {
+        if (swScope !== '/') {
           await waitForPreviewWorkerControl(registration);
         }
         const controlling =

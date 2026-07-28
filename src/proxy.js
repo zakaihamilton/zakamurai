@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import {
+  PREVIEW_HOST_PATH,
   PREVIEW_SURFACE_PARAM,
   PREVIEW_SURFACE_VALUE,
   getPreviewFrameAncestors,
@@ -62,14 +63,23 @@ function toHostOrigin(host) {
   }
 }
 
+function isPreviewBootstrapPath(pathname) {
+  return pathname === PREVIEW_HOST_PATH || pathname.startsWith(`${PREVIEW_HOST_PATH}/`);
+}
+
+function isPreviewVirtualPath(pathname) {
+  return pathname.startsWith('/__preview/') && !isPreviewBootstrapPath(pathname);
+}
+
 export function proxy(request) {
+  const { pathname } = request.nextUrl;
   const isPreviewSurface =
     isPreviewHostRequest(request) ||
     request.headers.get('x-zakamurai-surface') === 'preview' ||
-    request.nextUrl.searchParams.get(PREVIEW_SURFACE_PARAM) === PREVIEW_SURFACE_VALUE;
+    request.nextUrl.searchParams.get(PREVIEW_SURFACE_PARAM) === PREVIEW_SURFACE_VALUE ||
+    isPreviewBootstrapPath(pathname) ||
+    isPreviewVirtualPath(pathname);
   if (!isPreviewSurface) return NextResponse.next();
-
-  const { pathname } = request.nextUrl;
   if (
     pathname === '/__preview_sw__.js' ||
     pathname === '/preview-error-bridge.js' ||
@@ -84,7 +94,7 @@ export function proxy(request) {
   // Session preview documents are served by the preview service worker. If the
   // worker missed the navigation, do not rewrite into PreviewHost (that looped
   // "Connecting isolated preview…").
-  if (pathname.startsWith('/__preview/')) {
+  if (isPreviewVirtualPath(pathname)) {
     return withPreviewHeaders(
       new NextResponse('Preview service worker is not controlling this page. Rebuild to retry.', {
         status: 503,
@@ -100,7 +110,11 @@ export function proxy(request) {
   }
 
   const url = request.nextUrl.clone();
-  url.pathname = pathname === '/' ? '/preview-host' : `/preview-host${pathname}`;
+  if (pathname === '/' || isPreviewBootstrapPath(pathname)) {
+    url.pathname = '/preview-host';
+  } else {
+    url.pathname = `/preview-host${pathname}`;
+  }
   return withPreviewHeaders(NextResponse.rewrite(url), request);
 }
 

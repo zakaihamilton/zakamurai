@@ -106,7 +106,7 @@ describe('proxy', () => {
 
   it('handles zakamurai-surface preview query on Vercel branch hosts', () => {
     const req = createMockRequest(
-      'https://zakamurai-git-feature-team.vercel.app/?session=test&zakamurai-surface=preview',
+      'https://zakamurai-git-feature-team.vercel.app/__preview/host?session=test&zakamurai-surface=preview',
       { host: 'zakamurai-git-feature-team.vercel.app' },
     );
     const res = proxy(req);
@@ -115,6 +115,16 @@ describe('proxy', () => {
     expect(res.headers.get('Content-Security-Policy')).toContain(
       'https://zakamurai-git-feature-team.vercel.app',
     );
+  });
+
+  it('returns 503 for uncached /__preview virtual paths on Vercel branch hosts', () => {
+    const req = createMockRequest(
+      'https://zakamurai-git-feature-team.vercel.app/__preview/session-123/dist/index.html',
+      { host: 'zakamurai-git-feature-team.vercel.app' },
+    );
+    const res = proxy(req);
+    expect(res.status).toBe(503);
+    expect(res.body).toContain('Preview service worker is not controlling this page');
   });
 
   it('handles x-zakamurai-surface preview header', () => {

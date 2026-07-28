@@ -64,7 +64,7 @@ describe('isolated preview configuration', () => {
     });
     expect(getPreviewConfigurationError(origins)).toBeNull();
     expect(buildPreviewUrl(origins, 'session-123')).toBe(
-      'https://zakamurai-git-feature-team.vercel.app/?session=session-123&zakamurai-surface=preview',
+      'https://zakamurai-git-feature-team.vercel.app/__preview/host?session=session-123&zakamurai-surface=preview',
     );
     expect(getPreviewServiceWorkerScope(origins)).toBe('/__preview/');
   });

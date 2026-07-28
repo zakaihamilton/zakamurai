@@ -4,6 +4,7 @@ const PREVIEW_HOST_PREFIX = 'preview.';
 export const PREVIEW_SURFACE_PARAM = 'zakamurai-surface';
 export const PREVIEW_SURFACE_VALUE = 'preview';
 const PREVIEW_SERVICE_WORKER_SCOPE = '/__preview/';
+export const PREVIEW_HOST_PATH = '/__preview/host';
 
 const trimOrigin = (value) => {
   if (typeof value !== 'string' || !value.trim()) return null;
@@ -74,7 +75,7 @@ function getVercelSurfaceOrigins(windowOrigin) {
 
 export function buildPreviewUrl(origins, sessionId) {
   if (!origins?.previewOrigin || !sessionId) return null;
-  const url = new URL('/', origins.previewOrigin);
+  const url = new URL(origins.useSurfaceQuery ? PREVIEW_HOST_PATH : '/', origins.previewOrigin);
   url.searchParams.set('session', sessionId);
   if (origins.useSurfaceQuery) {
     url.searchParams.set(PREVIEW_SURFACE_PARAM, PREVIEW_SURFACE_VALUE);
