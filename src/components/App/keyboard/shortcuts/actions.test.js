@@ -85,4 +85,157 @@ describe('shortcuts/actions', () => {
     switchTabAction({ tabState }, 1);
     expect(tabUpdater).toHaveBeenCalled();
   });
+
+  it('toggleCssJsAction toggles sidebar when no associated file exists', () => {
+    const sidebarUpdater = vi.fn((cb) => cb({ isSidebarOpen: true }));
+    const states = {
+      editorState: {
+        fileContents: { '/src/Only.js': 'export const x = 1;' },
+        cursorPos: { '/src/Only.js': { index: 0 } },
+      },
+      tabState: { activeTabId: '/src/Only.js' },
+      sidebarState: sidebarUpdater,
+    };
+
+    toggleCssJsAction(states);
+    expect(sidebarUpdater).toHaveBeenCalled();
+  });
+
+  it('toggleCssJsAction navigates from CSS to associated JS with class match', () => {
+    const tabUpdater = vi.fn((cb) => cb({ openTabs: [] }));
+    const editorUpdater = vi.fn((cb) => cb({ cursorPos: {}, shouldScrollTo: null }));
+    const sidebarUpdater = vi.fn();
+
+    const states = {
+      editorState: Object.assign(editorUpdater, {
+        fileContents: {
+          '/src/Button.js': 'import "./Button.css"; function Button() {}',
+          '/src/Button.css': '.btn { color: red; }\n.primary { color: blue; }',
+        },
+        cursorPos: { '/src/Button.css': { index: 1 } },
+      }),
+      tabState: Object.assign(tabUpdater, { activeTabId: '/src/Button.css', openTabs: [] }),
+      sidebarState: sidebarUpdater,
+    };
+
+    toggleCssJsAction(states);
+    expect(tabUpdater).toHaveBeenCalled();
+    expect(editorUpdater).toHaveBeenCalled();
+    expect(sidebarUpdater).not.toHaveBeenCalled();
+  });
+
+  it('toggleCssJsAction opens existing tab without duplicating', () => {
+    const capturedDraft = {
+      openTabs: [{ id: '/src/Button.css' }],
+      activeTabId: '/src/Button.js',
+    };
+    const tabUpdater = vi.fn((cb) => {
+      cb(capturedDraft);
+    });
+    const editorUpdater = vi.fn((cb) => cb({ cursorPos: {}, shouldScrollTo: null }));
+
+    const states = {
+      editorState: Object.assign(editorUpdater, {
+        fileContents: {
+          '/src/Button.js': 'import "./Button.css";',
+          '/src/Button.css': '.btn { color: red; }',
+        },
+        cursorPos: { '/src/Button.js': { index: 0 } },
+      }),
+      tabState: Object.assign(tabUpdater, {
+        activeTabId: '/src/Button.js',
+        openTabs: [{ id: '/src/Button.css' }],
+      }),
+      sidebarState: vi.fn(),
+    };
+
+    toggleCssJsAction(states);
+    expect(capturedDraft.openTabs).toHaveLength(1);
+    expect(capturedDraft.activeTabId).toBe('/src/Button.css');
+  });
+
+  it('navigateBackAction does nothing at start of history', () => {
+    const tabUpdater = vi.fn();
+    const states = {
+      editorState: {
+        fileContents: { '/a.js': 'a' },
+        navigationHistory: { currentIndex: 0, stack: [{ filePath: '/a.js', loc: { line: 1 } }] },
+      },
+      tabState: Object.assign(tabUpdater, { activeTabId: '/a.js', openTabs: [] }),
+    };
+
+    navigateBackAction(states);
+    expect(tabUpdater).not.toHaveBeenCalled();
+  });
+
+  it('navigateForwardAction does nothing at end of history', () => {
+    const tabUpdater = vi.fn();
+    const states = {
+      editorState: {
+        fileContents: { '/a.js': 'a', '/b.js': 'b' },
+        navigationHistory: {
+          currentIndex: 1,
+          stack: [
+            { filePath: '/a.js', loc: { line: 1 } },
+            { filePath: '/b.js', loc: { line: 2 } },
+          ],
+        },
+      },
+      tabState: Object.assign(tabUpdater, { activeTabId: '/b.js', openTabs: [] }),
+    };
+
+    navigateForwardAction(states);
+    expect(tabUpdater).not.toHaveBeenCalled();
+  });
+
+  it('navigateBackAction does nothing when history is missing', () => {
+    const tabUpdater = vi.fn();
+    navigateBackAction({
+      editorState: { fileContents: {}, navigationHistory: null },
+      tabState: Object.assign(tabUpdater, { openTabs: [] }),
+    });
+    expect(tabUpdater).not.toHaveBeenCalled();
+  });
+
+  it('switchTabAction wraps backward from first tab', () => {
+    const capturedDraft = { activeTabId: 'a.js' };
+    const tabUpdater = vi.fn((cb) => {
+      cb(capturedDraft);
+    });
+    const tabState = Object.assign(tabUpdater, {
+      openTabs: [{ id: 'a.js' }, { id: 'b.js' }, { id: 'c.js' }],
+      activeTabId: 'a.js',
+    });
+
+    switchTabAction({ tabState }, -1);
+    expect(capturedDraft.activeTabId).toBe('c.js');
+  });
+
+  it('switchTabAction does nothing with fewer than two tabs', () => {
+    const tabUpdater = vi.fn();
+    switchTabAction(
+      {
+        tabState: Object.assign(tabUpdater, {
+          openTabs: [{ id: 'only.js' }],
+          activeTabId: 'only.js',
+        }),
+      },
+      1,
+    );
+    expect(tabUpdater).not.toHaveBeenCalled();
+  });
+
+  it('switchTabAction uses fallback when active tab is missing from openTabs', () => {
+    const capturedDraft = { activeTabId: 'missing.js' };
+    const tabUpdater = vi.fn((cb) => {
+      cb(capturedDraft);
+    });
+    const tabState = Object.assign(tabUpdater, {
+      openTabs: [{ id: 'a.js' }, { id: 'b.js' }],
+      activeTabId: 'missing.js',
+    });
+
+    switchTabAction({ tabState }, 1);
+    expect(capturedDraft.activeTabId).toBe('a.js');
+  });
 });

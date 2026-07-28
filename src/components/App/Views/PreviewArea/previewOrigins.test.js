@@ -110,6 +110,10 @@ describe('preview host derivation helpers', () => {
   it('maps localhost IDE and preview ports', () => {
     expect(derivePreviewHostFromIde('http://localhost:3000')).toBe('http://localhost:3001');
     expect(deriveIdeHostFromPreview('http://localhost:3001')).toBe('http://localhost:3000');
+    expect(derivePreviewHostFromIde('http://127.0.0.1:4000')).toBe('http://127.0.0.1:4000');
+    expect(deriveIdeHostFromPreview('http://127.0.0.1:4000')).toBe('http://127.0.0.1:4000');
+    expect(derivePreviewHostFromIde('http://localhost')).toBe('http://localhost:3001');
+    expect(deriveIdeHostFromPreview('http://localhost')).toBe('http://localhost:3000');
   });
 
   it('maps preview subdomains back to IDE hosts', () => {
@@ -119,6 +123,10 @@ describe('preview host derivation helpers', () => {
     expect(deriveIdeHostFromPreview('https://preview.branch.example.com')).toBe(
       'https://branch.example.com',
     );
+    expect(derivePreviewHostFromIde('https://preview.example.com')).toBe(
+      'https://preview.example.com',
+    );
+    expect(deriveIdeHostFromPreview('https://example.com')).toBe('https://example.com');
   });
 
   it('treats apex and www hosts as aliases', () => {
@@ -126,8 +134,47 @@ describe('preview host derivation helpers', () => {
       'https://www.zakamurai.com',
       'https://zakamurai.com',
     ]);
+    expect(expandOriginAliases('')).toEqual([]);
+    expect(expandOriginAliases('not a url')).toEqual([]);
+    expect(expandOriginAliases('https://zakamurai.com:443')).toEqual([
+      'https://zakamurai.com',
+      'https://www.zakamurai.com',
+    ]);
     expect(originMatches('https://zakamurai.com', 'https://www.zakamurai.com')).toBe(true);
     expect(originMatches('https://preview.zakamurai.com', 'https://www.zakamurai.com')).toBe(false);
+    expect(originMatches(null, 'https://www.zakamurai.com')).toBe(false);
+    expect(originMatches('https://www.zakamurai.com', null)).toBe(false);
+    expect(originMatches('https://a.com', 'https://a.com')).toBe(true);
+  });
+
+  it('handles buildPreviewUrl and configuration error edges', () => {
+    expect(buildPreviewUrl(null, 's')).toBeNull();
+    expect(buildPreviewUrl({ previewOrigin: 'https://p.example' }, '')).toBeNull();
+    expect(buildPreviewUrl({ previewOrigin: 'https://p.example' }, 'abc')).toBe(
+      'https://p.example/?session=abc',
+    );
+    expect(getPreviewConfigurationError(null)).toContain('not configured');
+    expect(
+      getPreviewConfigurationError({
+        ideOrigin: 'https://a.com',
+        previewOrigin: 'https://a.com',
+        isIsolated: false,
+      }),
+    ).toContain('must be different');
+    expect(getPreviewServiceWorkerScope({})).toBe('/');
+  });
+
+  it('falls back to configured origins and rejects invalid hosts', () => {
+    vi.stubEnv('NEXT_PUBLIC_IDE_ORIGIN', 'https://ide.example.com');
+    vi.stubEnv('NEXT_PUBLIC_PREVIEW_ORIGIN', 'https://preview.example.com');
+    expect(getPreviewOrigins({})).toEqual({
+      ideOrigin: 'https://ide.example.com',
+      previewOrigin: 'https://preview.example.com',
+      isIsolated: true,
+    });
+    expect(isPreviewHost('', { previewOrigin: 'https://preview.example.com' })).toBe(false);
+    expect(isPreviewHost('www.example.com', {})).toBe(false);
+    expect(isPreviewHost('::::', { previewOrigin: 'not-a-url' })).toBe(false);
   });
 });
 

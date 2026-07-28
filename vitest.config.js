@@ -30,7 +30,7 @@ export default defineConfig({
       exclude: ['src/setupTests.js', 'src/**/*.test.{js,jsx}', 'src/**/*.spec.{js,jsx}'],
       thresholds: {
         statements: 80,
-        branches: 80,
+        branches: 85,
         functions: 80,
         lines: 80,
       },

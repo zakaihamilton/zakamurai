@@ -1,0 +1,119 @@
+.form {
+  width: min(100%, 680px);
+  margin-top: 16px;
+  animation: rise-in 0.48s ease 0.42s both;
+}
+
+.composer {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 9px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: 0 16px 36px rgb(0 0 0 / 14%);
+}
+
+.composer:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 20%, transparent), 0 16px 36px
+    rgb(0 0 0 / 14%);
+}
+
+.input {
+  width: 100%;
+  min-height: 42px;
+  min-width: 0;
+  padding: 7px 9px;
+  resize: none;
+  color: var(--text-main);
+  font: inherit;
+  line-height: 1.45;
+  background: transparent;
+  border: 0;
+  outline: 0;
+}
+
+.input::placeholder {
+  color: var(--text-muted);
+}
+
+.sendButton {
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0 14px;
+  color: #fff;
+  font: inherit;
+  font-weight: 700;
+  background: var(--accent);
+  border: 0;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.privacy {
+  margin: 8px 0 0;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.composerFooter {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.modelSelect {
+  width: min(100%, 190px);
+}
+
+.sendButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.sendButton:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+.sendButton:not(:disabled):hover {
+  filter: brightness(1.08);
+}
+
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (width <= 520px) {
+  .composerFooter {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .sendButton {
+    justify-content: center;
+  }
+
+  .modelSelect {
+    width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .form {
+    animation: none;
+  }
+}

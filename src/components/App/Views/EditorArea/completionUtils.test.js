@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
+  COMPLETION_PHASES,
   buildCompletionPrompt,
   buildCompletionRagQuery,
   getCompletionActivityMessage,
   getCompletionStatusMessage,
+  getCurrentToken,
   getNextSuggestionWord,
   normalizeCompletion,
   normalizeStreamingCompletion,
@@ -41,6 +43,22 @@ describe('completionUtils', () => {
     it('strips completion prefix label', () => {
       expect(normalizeCompletion('completion: foo()', '', '')).toBe('foo()');
     });
+
+    it('trims repeated prefix and suffix overlap with surrounding code', () => {
+      expect(normalizeCompletion('const value = 1;', 'const value = ', ' = 2;')).toBe(' 1;');
+    });
+
+    it('fixes JSX className and opening-tag completions', () => {
+      expect(normalizeCompletion('MyClass}', 'return <div className={', '')).toBe('MyClass}');
+      const before = '<ul><li><Button /> first</li><li><Button /> second</li><li><';
+      expect(normalizeCompletion('next item', before, '')).toContain('Button />');
+    });
+
+    it('skips explanatory prose before the first code-like line', () => {
+      expect(normalizeCompletion('I think we should add:\nconst x = 1;', '', '')).toBe(
+        'const x = 1;',
+      );
+    });
   });
 
   describe('buildCompletionPrompt', () => {
@@ -67,6 +85,31 @@ describe('completionUtils', () => {
         ragContext: 'Related: foo',
       });
       expect(prompt).toContain('Related: foo');
+    });
+
+    it('labels each supported language extension', () => {
+      expect(buildCompletionPrompt({ filePath: 'a.jsx', before: '', after: '' })).toContain(
+        'JavaScript JSX',
+      );
+      expect(buildCompletionPrompt({ filePath: 'a.tsx', before: '', after: '' })).toContain(
+        'TypeScript JSX',
+      );
+      expect(buildCompletionPrompt({ filePath: 'a.ts', before: '', after: '' })).toContain(
+        'TypeScript',
+      );
+      expect(buildCompletionPrompt({ filePath: 'a.css', before: '', after: '' })).toContain('CSS');
+      expect(buildCompletionPrompt({ filePath: 'a.html', before: '', after: '' })).toContain(
+        'HTML',
+      );
+      expect(buildCompletionPrompt({ filePath: 'a.json', before: '', after: '' })).toContain(
+        'JSON',
+      );
+      expect(buildCompletionPrompt({ filePath: 'a.md', before: '', after: '' })).toContain(
+        'Markdown',
+      );
+      expect(buildCompletionPrompt({ filePath: 'a.txt', before: '', after: '' })).toContain(
+        'Plain text',
+      );
     });
   });
 
@@ -105,11 +148,22 @@ describe('completionUtils', () => {
 
   describe('getCompletionActivityMessage', () => {
     it('describes each completion phase', () => {
+      expect(getCompletionActivityMessage(null)).toBeNull();
+      expect(getCompletionActivityMessage({})).toBeNull();
       expect(getCompletionActivityMessage({ phase: 'debouncing' })).toBe(
         'Waiting for you to pause typing…',
       );
       expect(getCompletionActivityMessage({ phase: 'retrieving-context' })).toBe(
         'Searching project context…',
+      );
+      expect(getCompletionActivityMessage({ phase: 'resolving-model' })).toBe(
+        'Loading completion model…',
+      );
+      expect(getCompletionActivityMessage({ phase: 'resolving-model', model: 'm1' })).toBe(
+        'Loading m1…',
+      );
+      expect(getCompletionActivityMessage({ phase: 'generating' })).toBe(
+        'Generating code completion…',
       );
       expect(
         getCompletionActivityMessage({
@@ -117,12 +171,63 @@ describe('completionUtils', () => {
           model: 'Qwen2.5-Coder-3B-Instruct-q4f16_1-MLC',
         }),
       ).toBe('Generating completion with Qwen2.5-Coder-3B-Instruct-q4f16_1-MLC…');
+      expect(getCompletionActivityMessage({ phase: 'unknown' })).toBeNull();
     });
   });
 
   describe('getCompletionStatusMessage', () => {
     it('falls back to debouncing when thinking without a recorded phase', () => {
+      expect(getCompletionStatusMessage({}, false)).toBeNull();
       expect(getCompletionStatusMessage({}, true)).toBe('Waiting for you to pause typing…');
+    });
+  });
+
+  describe('language-aware prompts and polishing', () => {
+    it('labels languages by extension', () => {
+      expect(buildCompletionPrompt({ filePath: 'a.jsx', before: '', after: '' })).toContain(
+        'Language: JavaScript JSX',
+      );
+      expect(buildCompletionPrompt({ filePath: 'a.tsx', before: '', after: '' })).toContain(
+        'Language: TypeScript JSX',
+      );
+      expect(buildCompletionPrompt({ filePath: 'a.ts', before: '', after: '' })).toContain(
+        'Language: TypeScript',
+      );
+      expect(buildCompletionPrompt({ filePath: 'a.css', before: '', after: '' })).toContain(
+        'Language: CSS',
+      );
+      expect(buildCompletionPrompt({ filePath: 'a.html', before: '', after: '' })).toContain(
+        'Language: HTML',
+      );
+      expect(buildCompletionPrompt({ filePath: 'a.json', before: '', after: '' })).toContain(
+        'Language: JSON',
+      );
+      expect(buildCompletionPrompt({ filePath: 'a.md', before: '', after: '' })).toContain(
+        'Language: Markdown',
+      );
+      expect(buildCompletionPrompt({ filePath: 'a.txt', before: '', after: '' })).toContain(
+        'Language: Plain text',
+      );
+    });
+
+    it('fixes jsx className and opening-tag completions', () => {
+      expect(normalizeCompletion('className={styles.card}', 'className={', '')).toBe(
+        'styles.card}',
+      );
+      expect(normalizeCompletion('{styles.card}}', 'className={', '')).toBe('styles.card}');
+      expect(normalizeCompletion('more text', '<li><Icon /> label</li>\n<li><', '')).toContain(
+        'Icon',
+      );
+      expect(normalizeCompletion('Button />', '<div><', '')).toBe('Button />');
+    });
+
+    it('trims overlapping before/after text and streaming edges', () => {
+      expect(normalizeCompletion('foo bar', 'foo ', ' bar').trim()).toBe('');
+      expect(normalizeCompletion('answer: const x = 1;', '', '')).toBe('const x = 1;');
+      expect(normalizeStreamingCompletion('</completion>', '', '')).toBe('');
+      expect(normalizeStreamingCompletion('<completion></completion>', '', '')).toBe('');
+      expect(getNextSuggestionWord('')).toBe('');
+      expect(getNextSuggestionWord('   ')).toBe('   ');
     });
   });
 });

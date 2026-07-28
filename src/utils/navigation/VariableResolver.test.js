@@ -17,6 +17,11 @@ describe('VariableResolver', () => {
   });
 
   describe('resolveVariables', () => {
+    it('returns empty array for empty or missing code', () => {
+      expect(resolveVariables('', 'test.js')).toEqual([]);
+      expect(resolveVariables(null, 'test.js')).toEqual([]);
+    });
+
     it('creates targets for simple variables and their usages', () => {
       const code = 'const x = 10;\nconsole.log(x);';
       const targets = resolveVariables(code, 'test.js');
@@ -404,6 +409,164 @@ describe('VariableResolver', () => {
         .slice(0, code.search(/const generationOptions\s*=/))
         .split('\n').length;
       expect(generationOptionsUse.targets[0].loc.line).toBe(generationOptionsDeclLine);
+    });
+
+    it('registers rest parameters in destructuring and function params', () => {
+      const code = [
+        'function collect(first, ...rest) {',
+        '  console.log(rest);',
+        '}',
+        'const { head, ...tail } = list;',
+        'console.log(tail);',
+      ].join('\n');
+      const targets = resolveVariables(code, 'test.js');
+
+      const restDef = targets.find(
+        (t) => t.name === 'rest' && t.targets.some((u) => u.loc.line === 2),
+      );
+      expect(restDef).toBeDefined();
+
+      const tailDef = targets.find(
+        (t) => t.name === 'tail' && t.targets.some((u) => u.loc.line === 5),
+      );
+      expect(tailDef).toBeDefined();
+    });
+
+    it('registers default parameter bindings and initializer usages', () => {
+      const code = [
+        'const fallback = 1;',
+        'function greet(name = fallback) {',
+        '  return name;',
+        '}',
+        'console.log(greet());',
+      ].join('\n');
+      const targets = resolveVariables(code, 'test.js');
+
+      const fallbackUse = targets.find(
+        (t) => t.name === 'fallback' && t.start === code.indexOf('fallback)'),
+      );
+      expect(fallbackUse).toBeDefined();
+      expect(fallbackUse.targets[0].loc.line).toBe(1);
+
+      const nameDef = targets.find(
+        (t) => t.name === 'name' && t.targets.some((u) => u.loc.line === 3),
+      );
+      expect(nameDef).toBeDefined();
+    });
+
+    it('registers namespace import bindings from import * as', () => {
+      const code = ["import * as models from './models';", 'const id = models.selected.id;'].join(
+        '\n',
+      );
+      const targets = resolveVariables(code, 'test.js');
+
+      const modelsUse = targets.find(
+        (t) => t.name === 'models' && t.start === code.indexOf('models.selected'),
+      );
+      expect(modelsUse).toBeDefined();
+      expect(modelsUse.targets[0].loc.line).toBe(1);
+    });
+
+    it('registers trailing-comma named import bindings', () => {
+      const code = ["import { Alpha, Beta, } from './symbols';", 'Alpha(Beta);'].join('\n');
+      const targets = resolveVariables(code, 'test.js');
+
+      const betaUse = targets.find((t) => t.name === 'Beta' && t.start === code.indexOf('Beta)'));
+      expect(betaUse).toBeDefined();
+      expect(betaUse.targets[0].loc.line).toBe(1);
+    });
+
+    it('registers class declarations', () => {
+      const code = [
+        'class Widget {',
+        '  render() {',
+        '    return this;',
+        '  }',
+        '}',
+        'const w = new Widget();',
+      ].join('\n');
+      const targets = resolveVariables(code, 'test.js');
+
+      const widgetDef = targets.find(
+        (t) => t.name === 'Widget' && t.targets.some((u) => u.loc.line === 6),
+      );
+      expect(widgetDef).toBeDefined();
+    });
+
+    it('resolves variables inside nested template literals', () => {
+      const code = [
+        'const outer = 1;',
+        'const label = `a-${`inner-${outer}`}-b`;',
+        'console.log(label);',
+      ].join('\n');
+      const targets = resolveVariables(code, 'test.js');
+
+      const outerUse = targets.find(
+        (t) => t.name === 'outer' && t.targets.some((u) => u.loc.line === 2),
+      );
+      expect(outerUse).toBeDefined();
+
+      const labelDef = targets.find(
+        (t) => t.name === 'label' && t.targets.some((u) => u.loc.line === 3),
+      );
+      expect(labelDef).toBeDefined();
+    });
+
+    it('registers destructuring defaults and scans default initializer usages', () => {
+      const code = [
+        'const fallback = 10;',
+        'const { value = fallback, other = 2 } = input;',
+        'console.log(value, other);',
+      ].join('\n');
+      const targets = resolveVariables(code, 'test.js');
+
+      const fallbackUse = targets.find(
+        (t) => t.name === 'fallback' && t.start === code.indexOf('fallback,'),
+      );
+      expect(fallbackUse).toBeDefined();
+      expect(fallbackUse.targets[0].loc.line).toBe(1);
+
+      const valueDef = targets.find(
+        (t) => t.name === 'value' && t.targets.some((u) => u.loc.line === 3),
+      );
+      expect(valueDef).toBeDefined();
+    });
+
+    it('handles for-in loops with var, let, and const bindings', () => {
+      const code = [
+        'const keys = [];',
+        'for (var a in obj) keys.push(a);',
+        'for (let b in obj) keys.push(b);',
+        'for (const c in obj) keys.push(c);',
+      ].join('\n');
+      const targets = resolveVariables(code, 'test.js');
+
+      const keysDef = targets.find(
+        (t) => t.name === 'keys' && t.targets.some((u) => u.loc.line === 4),
+      );
+      expect(keysDef).toBeDefined();
+
+      const bDef = targets.find((t) => t.name === 'b' && t.targets.some((u) => u.loc.line === 3));
+      expect(bDef).toBeDefined();
+    });
+
+    it('pops nested parenthesized arrow scopes at matching depth', () => {
+      const code = [
+        'const outer = 1;',
+        'const run = ((value) => ((inner) => inner + value)(2));',
+        'console.log(outer, run);',
+      ].join('\n');
+      const targets = resolveVariables(code, 'test.js');
+
+      const valueUse = targets.find(
+        (t) => t.name === 'value' && t.targets.some((u) => u.loc.line === 2),
+      );
+      expect(valueUse).toBeDefined();
+
+      const outerUse = targets.find(
+        (t) => t.name === 'outer' && t.targets.some((u) => u.loc.line === 3),
+      );
+      expect(outerUse).toBeDefined();
     });
   });
 });

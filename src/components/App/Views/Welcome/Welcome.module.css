@@ -4,7 +4,7 @@
   align-items: center;
   justify-content: center;
   width: 100%;
-  padding: 48px 28px;
+  padding: 24px 28px;
   background: var(--bg-base);
   overflow-y: auto;
   animation: page-in 0.35s ease both;

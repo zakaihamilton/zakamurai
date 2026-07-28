@@ -197,4 +197,57 @@ describe('useZipExporter', () => {
     expect(mockVfs.readFileSync).toHaveBeenCalledWith('/App.jsx');
     expect(URL.createObjectURL).toHaveBeenCalled();
   });
+
+  it('reads local files from disk when they are not in editor memory', async () => {
+    const diskContent = new Uint8Array([1, 2, 3]);
+    const mockFileEntry = {
+      kind: 'file',
+      getFile: vi.fn().mockResolvedValue({
+        arrayBuffer: async () => diskContent.buffer,
+      }),
+    };
+    const localFs = {
+      mode: 'local',
+      rootHandle: {
+        entries: async function* () {
+          yield ['disk.js', mockFileEntry];
+        },
+      },
+    };
+    useFileSystem.mockReturnValue(localFs);
+    EditorState.usePassiveState.mockReturnValue({ fileContents: {} });
+
+    const { result } = renderHook(() => useZipExporter());
+
+    await act(async () => {
+      await result.current.handleExportZip();
+    });
+
+    expect(mockFileEntry.getFile).toHaveBeenCalled();
+    expect(URL.createObjectURL).toHaveBeenCalled();
+  });
+
+  it('exports non-text compiled assets as binary blobs', async () => {
+    const mockVfs = {
+      readdirSync: vi.fn().mockImplementation((path) => {
+        if (path === '/') return ['logo.png'];
+        throw new Error('Not a directory');
+      }),
+      readFileSync: vi.fn(),
+    };
+    Compiler.getContainer.mockReturnValue({ vfs: mockVfs });
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+      ok: true,
+      headers: { get: () => 'image/png' },
+      arrayBuffer: async () => new Uint8Array([9, 8, 7]).buffer,
+    });
+
+    const { result } = renderHook(() => useZipExporter());
+
+    await act(async () => {
+      await result.current.handleExportCompiledZip();
+    });
+
+    expect(URL.createObjectURL).toHaveBeenCalled();
+  });
 });

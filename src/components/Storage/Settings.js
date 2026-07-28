@@ -396,7 +396,7 @@ const Settings = {
     this.set(KEYS.IS_SIDEBAR_OPEN, isOpen.toString());
   },
 
-  getShowAIInput(defaultValue = true) {
+  getShowAIInput(defaultValue = false) {
     const val = this.get(KEYS.SHOW_AI_INPUT, defaultValue.toString());
     return val === 'true';
   },

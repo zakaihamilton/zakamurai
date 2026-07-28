@@ -37,6 +37,38 @@ describe('AI change validation', () => {
     expect(validateAIChanges([{ after: 'code' }]).rejected[0]).toBe('A file path is required.');
   });
 
+  it('rejects empty and non-string paths', () => {
+    expect(validateProjectPath('')).toBe('A file path is required.');
+    expect(validateProjectPath('   ')).toBe('A file path is required.');
+    expect(validateProjectPath(null)).toBe('A file path is required.');
+    expect(validateProjectPath(42)).toBe('A file path is required.');
+  });
+
+  it('accepts changes using the filePath alias', () => {
+    const result = validateAIChanges([{ filePath: 'src/alias.js', after: 'export default 1' }]);
+    expect(result.rejected).toEqual([]);
+    expect(result.accepted).toHaveLength(1);
+  });
+
+  it('reports CSS brace and parenthesis errors', () => {
+    expect(validateContentSyntax('src/style.css', '.class { color: red;')).toContain('Unclosed');
+    expect(validateContentSyntax('src/style.css', '.class { background: url(; }')).toContain(
+      'Unmatched',
+    );
+  });
+
+  it('ignores brackets inside template literals and comments', () => {
+    const withTemplate = 'const x = `value { not a brace`; function ok() { return 1; }';
+    expect(validateContentSyntax('src/app.js', withTemplate)).toBeNull();
+    const withBacktickComment = 'const s = `// fake comment {`; const ok = () => {};';
+    expect(validateContentSyntax('src/app.ts', withBacktickComment)).toBeNull();
+  });
+
+  it('returns null for non-string content or missing path in sync validation', () => {
+    expect(validateContentSyntax('src/app.js', null)).toBeNull();
+    expect(validateContentSyntax('', 'const x = 1;')).toBeNull();
+  });
+
   it('rejects malformed syntax in proposals', () => {
     const result = validateAIChanges([
       { path: 'src/bad.json', after: '{ invalid json }' },
@@ -76,6 +108,19 @@ describe('AI change validation', () => {
       mockEsbuild,
     );
     expect(invalidResult).toContain('Syntax error in src/app.jsx');
+
+    await validateContentSyntaxAsync('src/app.ts', 'const n: number = 1;', mockEsbuild);
+    expect(mockEsbuild).toHaveBeenCalledWith('const n: number = 1;', { loader: 'ts' });
+
+    await validateContentSyntaxAsync(
+      'src/app.tsx',
+      'export const El = () => <div />;',
+      mockEsbuild,
+    );
+    expect(mockEsbuild).toHaveBeenCalledWith('export const El = () => <div />;', { loader: 'tsx' });
+
+    await validateContentSyntaxAsync('src/app.js', 'const x = 1;', mockEsbuild);
+    expect(mockEsbuild).toHaveBeenCalledWith('const x = 1;', { loader: 'js' });
   });
 
   it('supports validateAIChangesAsync with structured details', async () => {
@@ -96,6 +141,30 @@ describe('AI change validation', () => {
     expect(res.rejected).toHaveLength(1);
     expect(res.details[0].type).toBe('syntax');
     expect(res.details[0].path).toBe('src/bad.js');
+  });
+
+  it('validateAIChangesAsync reports path, conflict, and content errors', async () => {
+    const { validateAIChangesAsync } = await import('./ChangeValidator');
+
+    const res = await validateAIChangesAsync([
+      { filePath: '/absolute.js', content: 'x' },
+      { path: 'src/a.js', content: 'first' },
+      { path: 'src/a.js', content: 'second' },
+      { path: 'src/b.js', after: 42 },
+    ]);
+
+    expect(res.accepted).toHaveLength(1);
+    expect(res.rejected).toHaveLength(3);
+    expect(res.details.map((d) => d.type)).toEqual(['path', 'conflict', 'content']);
+    expect(res.details[0].path).toBe('/absolute.js');
+  });
+
+  it('validateAIChangesAsync rejects non-array input', async () => {
+    const { validateAIChangesAsync } = await import('./ChangeValidator');
+    const res = await validateAIChangesAsync('not-array');
+    expect(res.accepted).toEqual([]);
+    expect(res.rejected).toEqual(['Changes must be an array.']);
+    expect(res.details).toEqual([]);
   });
 
   it('rejects all generated absolute and traversal paths (property)', () => {

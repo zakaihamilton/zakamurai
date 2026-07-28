@@ -33,6 +33,18 @@ test.describe('Zakamurai Visual Regression', () => {
     await expect(page).toHaveScreenshot('welcome-screen.png');
   });
 
+  test('Welcome prompt download confirmation', async ({ page }) => {
+    await page
+      .getByRole('textbox', { name: 'Describe what you want to build' })
+      .fill('Create a private local task list.');
+    await page.getByRole('button', { name: 'Start building with AI' }).click();
+
+    await expect(page.getByRole('heading', { name: 'Download local AI model?' })).toBeVisible({
+      timeout: 30000,
+    });
+    await expect(page).toHaveScreenshot('welcome-model-download-confirmation.png');
+  });
+
   test('Sidebar States', async ({ page }) => {
     // Always use the visible toggle
     const getToggle = () => page.getByTestId('sidebar-toggle').filter({ visible: true });

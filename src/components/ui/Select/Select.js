@@ -12,6 +12,7 @@ export default function Select({
   value,
   options = [],
   onChange,
+  ariaLabel,
   disabled = false,
   tabIndex,
   className = '',
@@ -24,6 +25,7 @@ export default function Select({
         value={value}
         options={options}
         onChange={onChange}
+        ariaLabel={ariaLabel}
         disabled={disabled}
         tabIndex={tabIndex}
         className={className}
@@ -38,6 +40,7 @@ function SelectInner({
   value,
   options = [],
   onChange,
+  ariaLabel,
   disabled = false,
   tabIndex,
   className = '',
@@ -82,6 +85,7 @@ function SelectInner({
           type="button"
           aria-haspopup="menu"
           aria-expanded={isOpen}
+          aria-label={ariaLabel}
           aria-labelledby={id && label ? `${id}-label ${id}` : undefined}
           disabled={disabled}
           className={styles.trigger}

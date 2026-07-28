@@ -198,4 +198,80 @@ describe('WebLLMAPI', () => {
     expect(consoleWarnSpy).toHaveBeenCalled();
     consoleWarnSpy.mockRestore();
   });
+
+  it('throws AbortError when the signal is already aborted', async () => {
+    const controller = new AbortController();
+    controller.abort();
+    await expect(
+      askWebLLM('hello', '', null, { model: 'test-model', signal: controller.signal }),
+    ).rejects.toMatchObject({ name: 'AbortError' });
+  });
+
+  it('supports custom messages, max tokens, and Qwen3 generation options', async () => {
+    mockEngine.chat.completions.create.mockResolvedValue({
+      choices: [{ message: { content: 'Custom response' } }],
+    });
+
+    const messages = [
+      { role: 'system', content: 'sys' },
+      { role: 'user', content: 'user' },
+    ];
+    await askWebLLM('ignored', '', null, {
+      model: 'Qwen3-4B-test',
+      messages,
+      max_tokens: 128,
+    });
+
+    expect(mockEngine.chat.completions.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        messages,
+        max_tokens: 128,
+        extra_body: { enable_thinking: false },
+      }),
+    );
+  });
+
+  it('returns a fallback message when the engine response is empty', async () => {
+    mockEngine.chat.completions.create.mockResolvedValue({ choices: [{ message: {} }] });
+    const response = await askWebLLM('hello', '', null, { model: 'test-model' });
+    expect(response).toBe('No response generated.');
+  });
+
+  it('wraps non-abort failures in a Local AI failed error', async () => {
+    mockEngine.chat.completions.create.mockRejectedValue(new Error('boom'));
+    await expect(askWebLLM('hello', '', null, { model: 'test-model' })).rejects.toThrow(
+      /Local AI failed/,
+    );
+  });
+
+  it('reports cache lookup failures and init progress callbacks', async () => {
+    hasModelInCache.mockRejectedValueOnce(new Error('cache down'));
+    const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const cached = await getCachedWebLLMModelIds();
+    expect(cached).toEqual([]);
+    consoleWarnSpy.mockRestore();
+
+    const onProgress = vi.fn();
+    await cacheWebLLMModel('progress-model', onProgress);
+    const progressCallback = CreateMLCEngine.mock.calls.at(-1)[1].initProgressCallback;
+    progressCallback({ text: '50%' });
+    expect(onProgress).toHaveBeenCalledWith('50%');
+  });
+
+  it('resets failed engine initialization so retries can succeed', async () => {
+    CreateMLCEngine.mockRejectedValueOnce(new Error('init failed'));
+    await expect(cacheWebLLMModel('retry-model')).rejects.toThrow(/init failed/);
+    CreateMLCEngine.mockResolvedValue(mockEngine);
+    await cacheWebLLMModel('retry-model');
+    expect(CreateMLCEngine).toHaveBeenCalledTimes(2);
+  });
+
+  it('warns when unloading a cached model fails', async () => {
+    mockEngine.unload = vi.fn().mockRejectedValue(new Error('unload failed'));
+    await cacheWebLLMModel('unload-model');
+    const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    await deleteCachedWebLLMModel('unload-model');
+    expect(consoleWarnSpy).toHaveBeenCalled();
+    consoleWarnSpy.mockRestore();
+  });
 });

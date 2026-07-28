@@ -19,6 +19,22 @@ describe('Parser', () => {
       expect(parsed.filesToModify).toEqual(['src/Button.js', 'src/Button.css']);
       expect(parsed.keyChanges).toEqual(['Add primary variant', 'Update hover state']);
     });
+
+    test('returns empty plan for non-string input', () => {
+      expect(parseAIPlan(null)).toEqual({
+        objective: '',
+        filesToModify: [],
+        keyChanges: [],
+      });
+    });
+
+    test('parses plan fields from unstructured text', () => {
+      const parsed = parseAIPlan(
+        '- Objective: Ship feature\n- Files to modify: src/a.js, src/b.js',
+      );
+      expect(parsed.objective).toBe('Ship feature');
+      expect(parsed.filesToModify).toEqual(['src/a.js', 'src/b.js']);
+    });
   });
 
   describe('parseAIResponse', () => {
@@ -139,6 +155,95 @@ const ready = true;
       const blocks = parseAIResponse(response);
       expect(blocks).toHaveLength(1);
       expect(blocks[0].content).toBe('const ready = true;');
+    });
+
+    test('keeps SEARCH blocks when internal restart markers are present', () => {
+      const response = `
+// --- File: app.js ---
+<<<<<<< SEARCH
+old line
+=======
+new line
+>>>>>>> REPLACE
+// --- End File ---
+`;
+      const blocks = parseAIResponse(response);
+      expect(blocks[0].content).toContain('<<<<<<< SEARCH');
+      expect(blocks[0].content).toContain('new line');
+    });
+
+    test('uses last segment after separator when apology precedes correction', () => {
+      const response = `
+// --- File: app.js ---
+sorry I made a mistake here
+---
+export const fixed = true;
+// --- End File ---
+`;
+      const blocks = parseAIResponse(response);
+      expect(blocks[0].content).toBe('export const fixed = true;');
+    });
+
+    test('cleans restart keywords from unstructured code blocks', () => {
+      const consoleInfo = vi.spyOn(console, 'info').mockImplementation(() => {});
+      const response = `
+// --- File: app.js ---
+Sorry for the confusion. Here is the correct implementation
+export const value = 1;
+// --- End File ---
+`;
+      const blocks = parseAIResponse(response);
+      expect(blocks[0].content).toBe('export const value = 1;');
+      expect(consoleInfo).toHaveBeenCalled();
+      consoleInfo.mockRestore();
+    });
+
+    test('skips structured markdown files from truncation heuristics', () => {
+      const response = '// --- File: notes.md ---\nShort\n// --- File ---';
+      const blocks = parseAIResponse(response);
+      expect(blocks).toHaveLength(1);
+      expect(blocks[0].filePath).toBe('notes.md');
+    });
+
+    test('skips abbreviation placeholders like REPLACE_WITH_ACTUAL_CONTENT', () => {
+      const consoleWarn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const response = `
+// --- File: stub.js ---
+const x = REPLACE_WITH_ACTUAL_CONTENT;
+// --- End File ---
+`;
+      const blocks = parseAIResponse(response);
+      expect(blocks).toHaveLength(0);
+      consoleWarn.mockRestore();
+    });
+
+    test('filters apology chatter and hallucinated labels from code', () => {
+      const response = `
+// --- File: app.js ---
+s
+sorry about that
+Vendor A: fake label
+- [teacher]
+const real = 1;
+// --- End File ---
+`;
+      const blocks = parseAIResponse(response);
+      expect(blocks[0].content).toBe('const real = 1;');
+    });
+
+    test('preserves lines containing NEW LINE in comment stripping', () => {
+      const response = `
+// --- File: app.js ---
+const a = 1; // NEW LINE marker kept
+// --- End File ---
+`;
+      const blocks = parseAIResponse(response);
+      expect(blocks[0].content).toContain('NEW LINE marker kept');
+    });
+
+    test('does not fallback when active tab content is too short', () => {
+      const blocks = parseAIResponse('short', 'active.js');
+      expect(blocks).toHaveLength(0);
     });
 
     test('round-trips file blocks through parseAIResponse (property)', () => {

@@ -325,4 +325,150 @@ describe('PreviewBridge', () => {
       expect.any(Array),
     );
   });
+
+  it('streams large preview responses in chunks', async () => {
+    const largeBody = new Uint8Array(70 * 1024).fill(65);
+    const handleRequest = vi.fn().mockResolvedValue({
+      statusCode: 200,
+      statusMessage: 'OK',
+      headers: { 'Content-Type': 'application/octet-stream' },
+      body: largeBody,
+    });
+
+    let bridgePort;
+    vi.stubGlobal(
+      'MessageChannel',
+      class {
+        constructor() {
+          this.port1 = {
+            postMessage: vi.fn(),
+            onmessage: null,
+            close: vi.fn(),
+          };
+          this.port2 = { postMessage: vi.fn(), close: vi.fn() };
+          bridgePort = this.port1;
+        }
+      },
+    );
+
+    const { Compiler } = await import('@/utils/compiler');
+    vi.spyOn(Compiler, 'getContainer').mockReturnValue({
+      serverBridge: { handleRequest },
+    });
+
+    const externalWindow = { postMessage: vi.fn() };
+    render(
+      <PreviewBridge
+        iframeRef={{ current: { contentWindow: null } }}
+        externalPreviewRef={{ current: externalWindow }}
+        sessionId="test-session-123"
+        previewOrigin="http://localhost:3001"
+        onError={vi.fn()}
+      />,
+    );
+
+    act(() => {
+      const connectEvent = new MessageEvent('message', {
+        data: {
+          type: PREVIEW_CONNECT,
+          version: PREVIEW_PROTOCOL_VERSION,
+          sessionId: 'test-session-123',
+        },
+        origin: 'http://localhost:3001',
+      });
+      Object.defineProperty(connectEvent, 'source', { value: externalWindow });
+      window.dispatchEvent(connectEvent);
+    });
+
+    await act(async () => {
+      await bridgePort.onmessage({
+        data: {
+          type: 'preview-request',
+          id: 2,
+          sessionId: 'test-session-123',
+          method: 'GET',
+          path: '/big.bin',
+          headers: {},
+          streaming: true,
+        },
+      });
+    });
+
+    expect(bridgePort.postMessage).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'preview-stream-start', id: 2 }),
+    );
+    expect(bridgePort.postMessage).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'preview-stream-end', id: 2 }),
+    );
+
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
+  it('reports preview request failures through onError', async () => {
+    const onError = vi.fn();
+    let bridgePort;
+    vi.stubGlobal(
+      'MessageChannel',
+      class {
+        constructor() {
+          this.port1 = {
+            postMessage: vi.fn(),
+            onmessage: null,
+            close: vi.fn(),
+          };
+          this.port2 = { postMessage: vi.fn(), close: vi.fn() };
+          bridgePort = this.port1;
+        }
+      },
+    );
+
+    const { Compiler } = await import('@/utils/compiler');
+    vi.spyOn(Compiler, 'getContainer').mockReturnValue({ serverBridge: null });
+
+    const externalWindow = { postMessage: vi.fn() };
+    render(
+      <PreviewBridge
+        iframeRef={{ current: { contentWindow: null } }}
+        externalPreviewRef={{ current: externalWindow }}
+        sessionId="test-session-123"
+        previewOrigin="http://localhost:3001"
+        onError={onError}
+      />,
+    );
+
+    act(() => {
+      const connectEvent = new MessageEvent('message', {
+        data: {
+          type: PREVIEW_CONNECT,
+          version: PREVIEW_PROTOCOL_VERSION,
+          sessionId: 'test-session-123',
+        },
+        origin: 'http://localhost:3001',
+      });
+      Object.defineProperty(connectEvent, 'source', { value: externalWindow });
+      window.dispatchEvent(connectEvent);
+    });
+
+    await act(async () => {
+      await bridgePort.onmessage({
+        data: {
+          type: 'preview-request',
+          id: 3,
+          sessionId: 'test-session-123',
+          method: 'GET',
+          path: '/fail',
+          headers: {},
+        },
+      });
+    });
+
+    expect(onError).toHaveBeenCalledWith(expect.stringContaining('not ready'));
+    expect(bridgePort.postMessage).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'preview-response', error: expect.any(String) }),
+    );
+
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
 });

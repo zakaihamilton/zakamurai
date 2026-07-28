@@ -28,12 +28,23 @@ vi.mock('@/components/Storage/Settings', () => {
       setPendingDiffs: vi.fn(async () => true),
       setAgentSessions: vi.fn(async () => true),
       setActiveAgentSessionId: vi.fn(),
+      saveRecoveryCheckpoint: vi.fn(async () => true),
+      setWorkspaceProfile: vi.fn(),
+      setChangeSets: vi.fn(async () => true),
+      getStorageHealth: vi.fn(() => ({ status: 'healthy', layer: 'indexeddb' })),
     },
   };
 });
 
 vi.mock('@/components/ui/Notification', () => ({
   useNotification: vi.fn(() => ({ addNotification: vi.fn() })),
+}));
+
+vi.mock('@/components/Storage/StorageHealth', () => ({
+  StorageHealthState: { usePassiveState: vi.fn(() => vi.fn()) },
+  requestRecoveryExport: vi.fn(),
+  storageFailureMessage: vi.fn(() => 'Storage write failed'),
+  storageHealthMessage: vi.fn((health) => health?.message || 'Storage healthy'),
 }));
 
 describe('useSettingsSync', () => {
@@ -308,5 +319,155 @@ describe('useSettingsSync', () => {
     expect(Settings.setAgentSessions).toHaveBeenCalled();
     expect(Settings.setActiveAgentSessionId).not.toHaveBeenCalled();
     expect(addNotification).toHaveBeenCalledTimes(1);
+  });
+
+  it('syncs workspace profiles, change sets, and recovery checkpoints', async () => {
+    const workspaceProfileState = { include: ['src'], exclude: ['dist'], maxFileBytes: 1024 };
+    const changeSetState = { activeId: 'cs-1', items: [{ id: 'cs-1', files: {} }] };
+
+    renderHook(() =>
+      useSettingsSync(
+        { theme: 'dark', projectName: 'Checkpoint' },
+        { sidebarWidth: 250, isSidebarOpen: true, showAIInput: false, expandedFolders: {} },
+        { promptWidth: 400, promptHistory: [] },
+        {
+          aiCompletionEnabled: true,
+          isReadOnly: false,
+          fileContents: { 'a.js': 'code' },
+          pendingDiffs: {
+            'a.js': { originalContent: 'old', diffs: [], modifiedContent: 'saved' },
+          },
+        },
+        {
+          sessions: {
+            'session-1': {
+              id: 'session-1',
+              name: 'Agent 1',
+              createdAt: 1,
+              updatedAt: 1,
+              mode: 'single',
+              modelId: null,
+              messages: [],
+              reasoning: '',
+              status: 'idle',
+            },
+          },
+          activeSessionId: 'session-1',
+        },
+        { openTabs: ['a.js'], activeTabId: 'a.js', lastCodeTabId: 'a.js' },
+        { logs: [] },
+        { htmlContent: null },
+        { val: 'draft', selectedModel: 'model' },
+        workspaceProfileState,
+        changeSetState,
+      ),
+    );
+
+    await act(async () => {
+      vi.advanceTimersByTime(2000);
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(Settings.setWorkspaceProfile).toHaveBeenCalledWith({
+      include: ['src'],
+      exclude: ['dist'],
+      maxFileBytes: 1024,
+    });
+    expect(Settings.setChangeSets).toHaveBeenCalledWith({
+      activeId: 'cs-1',
+      items: changeSetState.items,
+    });
+    expect(Settings.saveRecoveryCheckpoint).toHaveBeenCalled();
+    expect(Settings.setPendingDiffs).toHaveBeenCalledWith({
+      'a.js': expect.objectContaining({ modifiedContent: 'code' }),
+    });
+  });
+
+  it('warns once when storage quota is nearly full', async () => {
+    Settings.getStorageHealth.mockReturnValue({
+      status: 'warning',
+      layer: 'indexeddb',
+      quotaWarning: true,
+      message: 'Storage almost full',
+    });
+    Settings.setFileContents.mockResolvedValue(true);
+
+    const { rerender } = renderHook(
+      ({ contents }) =>
+        useSettingsSync(
+          { theme: 'dark', projectName: 'Test' },
+          { sidebarWidth: 250, isSidebarOpen: true, showAIInput: false, expandedFolders: {} },
+          { promptWidth: 400, promptHistory: [] },
+          {
+            aiCompletionEnabled: true,
+            isReadOnly: false,
+            fileContents: contents,
+            pendingDiffs: {},
+          },
+          null,
+          { openTabs: [], activeTabId: null, lastCodeTabId: null },
+          { logs: [] },
+          { htmlContent: null },
+          { val: '', selectedModel: 'model' },
+        ),
+      { initialProps: { contents: { 'a.js': 'first' } } },
+    );
+
+    await act(async () => {
+      vi.advanceTimersByTime(1000);
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(addNotification).toHaveBeenCalledWith(
+      'Storage almost full',
+      'warning',
+      12000,
+      expect.objectContaining({ label: 'Export ZIP' }),
+    );
+
+    rerender({ contents: { 'a.js': 'second' } });
+    await act(async () => {
+      vi.advanceTimersByTime(1000);
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(addNotification).toHaveBeenCalledTimes(1);
+  });
+
+  it('skips invalid type guards and optional model/read-only sync', async () => {
+    renderHook(() =>
+      useSettingsSync(
+        { theme: 'dark', projectName: 'Test' },
+        { sidebarWidth: 250, isSidebarOpen: true, showAIInput: false, expandedFolders: {} },
+        { promptWidth: 400, promptHistory: 'not-an-array' },
+        {
+          aiCompletionEnabled: true,
+          isReadOnly: 'maybe',
+          fileContents: null,
+          pendingDiffs: null,
+        },
+        null,
+        { openTabs: 'bad', activeTabId: null, lastCodeTabId: null },
+        { logs: 'bad' },
+        { htmlContent: undefined },
+        { val: 42, selectedModel: null },
+      ),
+    );
+
+    act(() => {
+      vi.advanceTimersByTime(2000);
+    });
+
+    expect(Settings.setPromptHistory).not.toHaveBeenCalled();
+    expect(Settings.setOpenTabs).not.toHaveBeenCalled();
+    expect(Settings.setAILogs).not.toHaveBeenCalled();
+    expect(Settings.setFileContents).not.toHaveBeenCalled();
+    expect(Settings.setPendingDiffs).not.toHaveBeenCalled();
+    expect(Settings.setPromptDraft).not.toHaveBeenCalled();
+    expect(Settings.setPreviewHtml).not.toHaveBeenCalled();
+    expect(Settings.setEditorReadOnly).not.toHaveBeenCalled();
+    expect(Settings.setAIPromptModel).not.toHaveBeenCalled();
   });
 });
