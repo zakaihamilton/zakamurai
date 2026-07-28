@@ -4,6 +4,7 @@ import {
   createRoleNode,
   describeRoleGraph,
   findEdge,
+  formatPlanContext,
   getRoleById,
   normalizeRoleGraph,
   parsePlanSummary,
@@ -164,6 +165,28 @@ describe('role graphs', () => {
     };
     expect(validateRoleGraph(disconnectedGraph).errors).toContain(
       'Every workflow role must be reachable from the entry role.',
+    );
+
+    const noTerminal = {
+      entryRoleId: 'a',
+      roles: [
+        { id: 'a', kind: 'planner' },
+        { id: 'b', kind: 'coder' },
+      ],
+      edges: [
+        { from: 'a', to: 'b', when: 'always' },
+        { from: 'b', to: 'a', when: 'always' },
+      ],
+    };
+    expect(validateRoleGraph(noTerminal).errors.length).toBeGreaterThan(0);
+    expect(findEdge(null, 'a', 'always')).toBeNull();
+    expect(getRoleById(null, 'a')).toBeNull();
+    expect(formatPlanContext({ goals: ['g'], files: [], steps: ['s'], raw: 'raw' })).toContain(
+      'Plan goals',
+    );
+    expect(formatPlanContext({})).toContain('(none listed)');
+    expect(resolveRoleConfig({ id: 'x', kind: 'coder', join: 'any', maxRetries: -1 }).join).toBe(
+      'any',
     );
   });
 });

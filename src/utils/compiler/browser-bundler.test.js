@@ -36,6 +36,162 @@ describe('browser-bundler', () => {
     expect(__testables.findEntryPoint(vfs({ '/src/index.jsx': '' }))).toBe('/src/index.jsx');
   });
 
+  it('throws when no SPA entry point exists', () => {
+    expect(() => __testables.findEntryPoint(vfs({}))).toThrow('No SPA entry point found');
+  });
+
+  it('maps file extensions to esbuild loaders including extensionless paths', () => {
+    expect(__testables.getLoader('/src/app.ts')).toBe('ts');
+    expect(__testables.getLoader('/src/app.tsx')).toBe('tsx');
+    expect(__testables.getLoader('/src/app.jsx')).toBe('jsx');
+    expect(__testables.getLoader('/src/app.css')).toBe('css');
+    expect(__testables.getLoader('/public/logo.png')).toBe('file');
+    expect(__testables.getLoader('/src/noextension')).toBe('js');
+  });
+
+  it('normalizes paths with parent traversal and resolves index files', () => {
+    const fs = vfs({
+      '/src/outside/foo.js': '',
+    });
+    expect(__testables.resolveSpecifier(fs, './../outside/foo', '/src/nested')).toBe(
+      '/src/outside/foo.js',
+    );
+    const indexFs = {
+      existsSync: (path) => path === '/src/components/index.tsx',
+    };
+    expect(__testables.resolveFile(indexFs, '/src/components')).toBe('/src/components/index.tsx');
+  });
+
+  it('resolves absolute imports against /public when not a source file', () => {
+    const fs = vfs({ '/public/logo.png': '' });
+    expect(__testables.resolveSpecifier(fs, '/logo.png', '/src')).toBe('/public/logo.png');
+  });
+
+  it('resolves package subpaths without package.json and throws when nothing resolves', () => {
+    const subpathFs = {
+      existsSync: (path) =>
+        path === '/node_modules/legacy' || path === '/node_modules/legacy/utils.js',
+      readFileSync: () => '',
+    };
+    expect(__testables.resolvePackage(subpathFs, 'legacy/utils')).toBe(
+      '/node_modules/legacy/utils.js',
+    );
+
+    const emptyFs = {
+      existsSync: (path) => path === '/node_modules/legacy',
+      readFileSync: () => '',
+    };
+    expect(() => __testables.resolvePackage(emptyFs, 'legacy/missing')).toThrow(
+      'no package.json or resolvable entry',
+    );
+  });
+
+  it('falls through when package.json is unreadable during relative resolve', () => {
+    const fs = vfs({
+      '/node_modules/pkg/package.json': '{ invalid',
+      '/node_modules/pkg/foo.js': '',
+    });
+    expect(__testables.resolveSpecifier(fs, './foo.js', '/node_modules/pkg')).toBe(
+      '/node_modules/pkg/foo.js',
+    );
+  });
+
+  it('covers selectExport and exportTarget edge cases', () => {
+    expect(__testables.selectExport(['./first.js', './second.js'])).toBe('./first.js');
+    expect(__testables.selectExport(null)).toBeNull();
+    expect(__testables.selectExport({ browser: './browser.js', import: './esm.js' })).toBe(
+      './browser.js',
+    );
+    expect(__testables.exportTarget('./only.js', '')).toBe('./only.js');
+    expect(__testables.exportTarget(['./arr.js'], '')).toBe('./arr.js');
+    expect(__testables.exportTarget({ import: './esm.js' }, '')).toBe('./esm.js');
+    expect(__testables.exportTarget({ './*': './*.mjs' }, 'icons/check')).toBe('./icons/check.mjs');
+    expect(__testables.exportTarget({ '.': './index.js' }, 'missing')).toBeNull();
+  });
+
+  it('rejects non-object package.json manifests', () => {
+    expect(() =>
+      __testables.resolvePackage(vfs({ '/node_modules/bad/package.json': 'null' }), 'bad'),
+    ).toThrow('malformed');
+  });
+
+  it('builds HTML for JS-only output, missing head/body closers, and default template', () => {
+    const jsOnly = __testables.createHtml(
+      vfs({ '/index.html': '<html><head></head><body></body></html>' }),
+      {},
+      '/src/main.js',
+      [{ path: '/dist/assets/main.js', contents: new Uint8Array() }],
+    );
+    expect(jsOnly).toContain('src="/dist/assets/main.js"');
+    expect(jsOnly).not.toContain('stylesheet');
+
+    const noClosers = __testables.createHtml(
+      vfs({ '/index.html': '<html><div>bare document</div>' }),
+      { name: 'demo' },
+      '/src/main.js',
+      [
+        { path: '/dist/assets/main.js', contents: new Uint8Array() },
+        { path: '/dist/assets/main.css', contents: new Uint8Array() },
+      ],
+    );
+    expect(noClosers).toContain('rel="stylesheet"');
+    expect(noClosers).toContain('<script');
+    expect(noClosers).not.toContain('</head>');
+
+    const defaultHtml = __testables.createHtml(vfs({}), { name: 'MyApp' }, '/src/main.js', []);
+    expect(defaultHtml).toContain('<title>MyApp</title>');
+    expect(defaultHtml).toContain('<div id="root"></div>');
+  });
+
+  it('removes trees and copies nested public assets', () => {
+    const files = {
+      '/dist/old/file.js': 'stale',
+      '/public/nested/logo.svg': '<svg/>',
+    };
+    const removed = [];
+    const fs = {
+      existsSync: (path) =>
+        Object.hasOwn(files, path) ||
+        Object.keys(files).some((file) => file.startsWith(`${path}/`)),
+      readFileSync: (path) => files[path],
+      writeFileSync: (path, contents) => {
+        files[path] = contents;
+      },
+      readdirSync: (path) => {
+        if (Object.hasOwn(files, path)) throw new Error('ENOTDIR');
+        return Object.keys(files)
+          .filter((file) => file.startsWith(`${path}/`))
+          .map((file) => file.slice(path.length + 1).split('/')[0])
+          .filter((name, index, names) => names.indexOf(name) === index);
+      },
+      unlinkSync: (path) => {
+        removed.push(path);
+        delete files[path];
+      },
+      rmdirSync: () => {},
+    };
+    __testables.removeTree(fs, '/dist');
+    expect(removed).toContain('/dist/old/file.js');
+    const copied = __testables.copyPublicFiles(fs);
+    expect(copied).toContain('nested/logo.svg');
+    expect(files['/dist/nested/logo.svg']).toBe('<svg/>');
+  });
+
+  it('detects npm exec and bunx runner variants', () => {
+    expect(isBrowserBundleCommand('npm', ['exec', 'vite', 'build'])).toBe(true);
+    expect(isBrowserBundleCommand('bunx', ['vite', 'build'])).toBe(true);
+    expect(isBrowserBundleCommand('npx', [])).toBe(false);
+  });
+
+  it('rejects additional unsupported shell operators in build commands', () => {
+    expect(() => __testables.parseBuildCommand('vite build; rm -rf')).toThrow(
+      'Unsupported shell operator',
+    );
+    expect(() => __testables.parseBuildCommand('vite build & sleep')).toThrow(
+      'Unsupported shell operator',
+    );
+  });
+
   it('resolves project files, package roots, and package subpaths', () => {
     const fs = vfs({
       '/src/components/App.tsx': '',

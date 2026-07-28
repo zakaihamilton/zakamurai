@@ -1,3 +1,4 @@
+import * as Diagnostics from '@/components/Diagnostics';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import Settings from './Settings';
 import { idbClear, idbSet, isIdbAvailable, resetIdbConnection } from './idbStore';
@@ -282,5 +283,129 @@ describe('Settings', () => {
       globalThis.indexedDB = originalIndexedDb;
       resetIdbConnection();
     }
+  });
+
+  it('gets and sets active tab id', () => {
+    expect(Settings.getActiveTabId()).toBeUndefined();
+    Settings.setActiveTabId('src/App.js');
+    expect(Settings.getActiveTabId()).toBe('src/App.js');
+  });
+
+  it('gets and sets AI logs and truncates to 50 entries', async () => {
+    expect(Settings.getAILogs()).toEqual([]);
+    const logs = Array.from({ length: 55 }, (_, index) => ({ id: index }));
+    await Settings.setAILogs(logs);
+    expect(Settings.getAILogs()).toHaveLength(50);
+    expect(Settings.getAILogs()[0].id).toBe(5);
+    expect(Settings.getAILogs()[49].id).toBe(54);
+  });
+
+  it('gets and sets preview html', async () => {
+    expect(Settings.getPreviewHtml()).toBeNull();
+    await Settings.setPreviewHtml('<html></html>');
+    expect(Settings.getPreviewHtml()).toBe('<html></html>');
+    await Settings.setPreviewHtml(null);
+    expect(Settings.getPreviewHtml()).toBeNull();
+  });
+
+  it('gets and sets prompt width', () => {
+    expect(Settings.getPromptWidth(360)).toBe(360);
+    Settings.setPromptWidth(400);
+    expect(Settings.getPromptWidth()).toBe(400);
+  });
+
+  it('gets and sets sidebar open state', () => {
+    expect(Settings.getIsSidebarOpen(true)).toBe(true);
+    Settings.setIsSidebarOpen(false);
+    expect(Settings.getIsSidebarOpen()).toBe(false);
+    Settings.setIsSidebarOpen(true);
+    expect(Settings.getIsSidebarOpen()).toBe(true);
+  });
+
+  it('gets and sets show AI input defaulting to false', () => {
+    expect(Settings.getShowAIInput()).toBe(false);
+    expect(Settings.getShowAIInput(true)).toBe(true);
+    Settings.setShowAIInput(true);
+    expect(Settings.getShowAIInput()).toBe(true);
+    Settings.setShowAIInput(false);
+    expect(Settings.getShowAIInput()).toBe(false);
+  });
+
+  it('gets and sets expanded folders and handles corrupt JSON', () => {
+    expect(Settings.getExpandedFolders()).toEqual({});
+    Settings.setExpandedFolders({ src: true });
+    expect(Settings.getExpandedFolders()).toEqual({ src: true });
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    localStorage.setItem('zakamurai_expanded_folders', '{bad');
+    expect(Settings.getExpandedFolders()).toEqual({});
+    expect(errorSpy).toHaveBeenCalled();
+  });
+
+  it('gets and sets AI model expanded state and handles corrupt JSON', () => {
+    expect(Settings.getAIModelExpanded()).toEqual({});
+    Settings.setAIModelExpanded({ model1: true });
+    expect(Settings.getAIModelExpanded()).toEqual({ model1: true });
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    localStorage.setItem('zakamurai_ai_model_expanded', '{bad');
+    expect(Settings.getAIModelExpanded()).toEqual({});
+    expect(errorSpy).toHaveBeenCalled();
+  });
+
+  it('gets and sets template', () => {
+    expect(Settings.getTemplate('default')).toBe('default');
+    Settings.setTemplate('react');
+    expect(Settings.getTemplate()).toBe('react');
+  });
+
+  it('refreshes storage health and warns when quota is at least 80% full', async () => {
+    const diagnosticSpy = vi.spyOn(Diagnostics, 'reportDiagnostic').mockImplementation(() => {});
+
+    vi.stubGlobal('navigator', {
+      ...navigator,
+      storage: {
+        estimate: vi.fn().mockResolvedValue({ usage: 8500, quota: 10000 }),
+      },
+    });
+
+    const health = await Settings.refreshStorageHealth();
+    expect(health.quotaWarning).toBe(true);
+    expect(health.usage).toBe(8500);
+    expect(health.quota).toBe(10000);
+    expect(diagnosticSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        source: 'storage',
+        severity: 'warning',
+        message: 'Browser storage is at least 80% full.',
+      }),
+    );
+  });
+
+  it('does not add empty or whitespace prompt history entries', () => {
+    Settings.addPromptHistory('');
+    Settings.addPromptHistory('   ');
+    Settings.addPromptHistory(null);
+    expect(Settings.getPromptHistory()).toEqual([]);
+  });
+
+  it('returns empty array for corrupt prompt history JSON', () => {
+    localStorage.setItem('zakamurai_prompt_history', '{bad');
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    expect(Settings.getPromptHistory()).toEqual([]);
+    expect(errorSpy).toHaveBeenCalled();
+  });
+
+  it('clears agent sessions when set to null', async () => {
+    await Settings.setAgentSessions({
+      activeSessionId: 's1',
+      sessions: { s1: { id: 's1', name: 'Agent 1', mode: 'single', messages: [] } },
+    });
+    expect(Settings.getAgentSessions()).not.toBeNull();
+    await Settings.setAgentSessions(null);
+    expect(Settings.getAgentSessions()).toBeNull();
+  });
+
+  it('returns default when localStorage is unavailable', () => {
+    vi.stubGlobal('localStorage', undefined);
+    expect(Settings.get('zakamurai-theme', 'dark')).toBe('dark');
   });
 });

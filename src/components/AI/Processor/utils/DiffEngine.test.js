@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { computeDiff } from './DiffEngine';
+import { applyMarkerReplacement, applyTargetedReplacement, computeDiff } from './DiffEngine';
 
 describe('computeDiff metadata', () => {
   it.each([
@@ -25,9 +25,44 @@ describe('computeDiff metadata', () => {
     expect(diffs.map(({ original: value }) => value)).toEqual(['one', 'five']);
     expect(diffs.map(({ updated: value }) => value)).toEqual(['ONE', 'FIVE']);
   });
+
+  it('returns empty diffs when content is unchanged', () => {
+    const result = computeDiff('same\ncontent', 'same\ncontent');
+    expect(result.content).toBe('same\ncontent');
+    expect(result.diffs).toEqual([]);
+  });
+
+  it('filters diffs to selected line ranges and reconstructs partial content', () => {
+    const original = 'line one\nline two\nline three\nline four';
+    const updated = 'LINE ONE\nline two\nLINE THREE\nline four';
+    const result = computeDiff(original, updated, [1, 3]);
+    expect(result.content).toBe('LINE ONE\nline two\nLINE THREE\nline four');
+    expect(result.diffs.length).toBeGreaterThan(0);
+  });
+
+  it('returns original when selected lines exclude all changes', () => {
+    const original = 'alpha\nbeta\ngamma';
+    const updated = 'ALPHA\nbeta\nGAMMA';
+    const result = computeDiff(original, updated, [2]);
+    expect(result.content).toBe(original);
+    expect(result.diffs).toEqual([]);
+  });
 });
 
-import { applyMarkerReplacement } from './DiffEngine';
+describe('applyTargetedReplacement', () => {
+  it('returns original when no lines are selected', () => {
+    const result = applyTargetedReplacement('one\ntwo', 'snippet', []);
+    expect(result.content).toBe('one\ntwo');
+    expect(result.diffs).toEqual([]);
+  });
+
+  it('replaces the selected line range with a snippet', () => {
+    const original = 'first\nsecond\nthird\nfourth';
+    const result = applyTargetedReplacement(original, 'REPLACED', [2, 3]);
+    expect(result.content).toBe('first\nREPLACED\nfourth');
+    expect(result.diffs[0].original).toBe('second\nthird');
+  });
+});
 
 describe('applyMarkerReplacement', () => {
   it('replaces marked lines using context heuristics', () => {
@@ -47,6 +82,26 @@ describe('applyMarkerReplacement', () => {
 
     const result = applyMarkerReplacement(original, updated);
     expect(result.content).toBe(updated);
+    expect(result.diffs.length).toBeGreaterThan(0);
+  });
+
+  it('supports block and JSX NEW LINE marker variants', () => {
+    const original = 'header\nold body\nfooter';
+    const updated = 'header\nnew body /* NEW LINE */\nfooter';
+    const blockResult = applyMarkerReplacement(original, updated);
+    expect(blockResult.content).toBe('header\nnew body\nfooter');
+
+    const jsxOriginal = 'wrap\nold\nend';
+    const jsxUpdated = 'wrap\nnew <!-- NEW LINE -->\nend';
+    const jsxResult = applyMarkerReplacement(jsxOriginal, jsxUpdated);
+    expect(jsxResult.content).toBe('wrap\nnew\nend');
+  });
+
+  it('falls back to computeDiff when markers have no matching context', () => {
+    const original = 'alpha\nbeta';
+    const updated = 'alpha\n// <<< NEW LINE >>>\ngamma';
+    const result = applyMarkerReplacement(original, updated);
+    expect(result.content).toContain('gamma');
     expect(result.diffs.length).toBeGreaterThan(0);
   });
 });

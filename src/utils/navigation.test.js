@@ -118,6 +118,13 @@ describe('navigation utils', () => {
         expect(getStyleAtCursor(jsCode, 6, false)).toBe(null);
       });
     });
+
+    it('returns null for invalid cursor positions', () => {
+      expect(getStyleAtCursor('.btn { }', undefined, true)).toBe(null);
+      expect(getStyleAtCursor('.btn { }', -1, true)).toBe(null);
+      expect(getStyleAtCursor('.btn { }', 100, true)).toBe(null);
+      expect(getStyleAtCursor('', 0, true)).toBe(null);
+    });
   });
 
   describe('resolveRelativePath', () => {

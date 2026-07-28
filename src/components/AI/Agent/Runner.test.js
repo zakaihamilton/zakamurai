@@ -8,6 +8,7 @@ describe('runAgent', () => {
 
   beforeEach(async () => {
     vi.clearAllMocks();
+    vi.resetAllMocks();
     ({ askWebLLM } = await import('../WebLLMAPI'));
   });
 
@@ -91,5 +92,147 @@ describe('runAgent', () => {
     expect(
       result.changes.some((change) => change.path === 'src/a.js' && change.after === undefined),
     ).toBe(true);
+  });
+
+  it('aborts when the signal is already set', async () => {
+    const controller = new AbortController();
+    controller.abort();
+    await expect(
+      runAgent({
+        request: 'stop',
+        files: { 'src/a.js': 'a' },
+        model: 'test',
+        signal: controller.signal,
+      }),
+    ).rejects.toMatchObject({ name: 'AbortError' });
+    expect(askWebLLM).not.toHaveBeenCalled();
+  });
+
+  it('stops after repeated actions and max turn limits', async () => {
+    askWebLLM
+      .mockResolvedValueOnce('{"action":"list_files"}')
+      .mockResolvedValueOnce('{"action":"list_files"}')
+      .mockResolvedValueOnce('{"action":"list_files"}');
+
+    await expect(
+      runAgent({
+        request: 'loop',
+        files: { 'src/a.js': 'a' },
+        model: 'test',
+        maxTurns: 5,
+      }),
+    ).rejects.toThrow(/repeating the same action/);
+
+    askWebLLM.mockResolvedValue('{"action":"list_files"}');
+    await expect(
+      runAgent({
+        request: 'loop',
+        files: { 'src/a.js': 'a' },
+        model: 'test',
+        maxTurns: 2,
+      }),
+    ).rejects.toThrow(/2-step safety limit/);
+  });
+
+  it('recovers from tool errors and enforces validation before finish', async () => {
+    askWebLLM
+      .mockResolvedValueOnce('{"action":"read_file","path":"missing.js"}')
+      .mockResolvedValueOnce('{"action":"write_file","path":"src/a.js","content":"next"}')
+      .mockResolvedValueOnce('{"action":"finish","summary":"done"}')
+      .mockResolvedValueOnce('{"action":"validate"}')
+      .mockResolvedValueOnce('{"action":"finish","summary":"done"}');
+
+    const events = [];
+    const validate = vi
+      .fn()
+      .mockResolvedValue({ status: 'passed', check: 'build', diagnostics: '' });
+    const result = await runAgent({
+      request: 'edit',
+      files: { 'src/a.js': 'old' },
+      model: 'test',
+      validate,
+      onEvent: (event) => events.push(event),
+    });
+
+    expect(result.summary).toBe('done');
+    expect(events.some((event) => event.error)).toBe(true);
+    expect(validate).toHaveBeenCalled();
+  });
+
+  it('throws after repeated protocol failures', async () => {
+    askWebLLM.mockResolvedValueOnce('bad').mockResolvedValueOnce('still bad');
+    await expect(
+      runAgent({
+        request: 'broken',
+        files: { 'src/a.js': 'a' },
+        model: 'test',
+      }),
+    ).rejects.toThrow(/could not follow the agent protocol/);
+  });
+
+  it('records validation repair failures as tool observations', async () => {
+    askWebLLM
+      .mockResolvedValueOnce('{"action":"write_file","path":"src/a.js","content":"v1"}')
+      .mockResolvedValueOnce('{"action":"validate"}')
+      .mockResolvedValueOnce('{"action":"list_files"}')
+      .mockResolvedValueOnce('{"action":"validate"}')
+      .mockResolvedValueOnce('{"action":"list_files"}')
+      .mockResolvedValueOnce('{"action":"validate"}')
+      .mockResolvedValueOnce('{"action":"finish","summary":"done"}')
+      .mockResolvedValueOnce('{"action":"validate"}')
+      .mockResolvedValueOnce('{"action":"finish","summary":"done"}');
+
+    const events = [];
+    const validate = vi
+      .fn()
+      .mockResolvedValueOnce('failed checks')
+      .mockResolvedValueOnce('failed checks')
+      .mockResolvedValueOnce('failed checks')
+      .mockResolvedValueOnce('Checks passed.');
+    const result = await runAgent({
+      request: 'repair',
+      files: { 'src/a.js': 'a' },
+      model: 'test',
+      validate,
+      onEvent: (event) => events.push(event),
+    });
+
+    expect(result.summary).toBe('done');
+    expect(
+      events.some((event) => event.message?.includes('Validation failed after 3 repair')),
+    ).toBe(true);
+  });
+
+  it('covers semantic search, preview inspection, and project checks', async () => {
+    askWebLLM
+      .mockResolvedValueOnce('{"action":"search_semantic","query":"auth","k":2}')
+      .mockResolvedValueOnce('{"action":"list_project_checks"}')
+      .mockResolvedValueOnce('{"action":"run_project_check","check":"lint"}')
+      .mockResolvedValueOnce('{"action":"inspect_preview"}')
+      .mockResolvedValueOnce('{"action":"finish","summary":"reviewed"}');
+
+    const retrieveContext = vi
+      .fn()
+      .mockResolvedValue([{ filePath: 'src/a.js', content: 'auth', score: 1, linkedCss: [] }]);
+    const inspectPreview = vi.fn().mockResolvedValue({ status: 'passed', diagnostics: 'ok' });
+    const executeProjectCheck = vi.fn().mockResolvedValue('lint ok');
+    const files = {
+      'src/a.js': 'auth code',
+      'package.json': JSON.stringify({ scripts: { lint: 'eslint .' } }),
+    };
+
+    const result = await runAgent({
+      request: 'audit',
+      files,
+      model: 'test',
+      retrieveContext,
+      inspectPreview,
+      runProjectCheck: executeProjectCheck,
+    });
+
+    expect(result.summary).toBe('reviewed');
+    expect(retrieveContext).toHaveBeenCalled();
+    expect(inspectPreview).toHaveBeenCalled();
+    expect(executeProjectCheck).toHaveBeenCalledWith('lint', files);
   });
 });

@@ -176,4 +176,36 @@ cleanup();`);
     ]);
     expect(result.hasCollapsedFolds).toBe(true);
   });
+
+  it('covers self-closing JSX, comments, regex, and empty inputs', () => {
+    expect(getJavaScriptBlockFolds('', 'App.jsx')).toEqual([]);
+    expect(getJavaScriptBlockFolds('const x = 1;', 'readme.md')).toEqual([]);
+
+    const code = `function App() {
+  const pattern = /\\{/;
+  /* { ignored } */
+  return (
+    <>
+      <img src="x" />
+      <Custom.Item />
+      <div>
+        text
+      </div>
+    </>
+  );
+}`;
+    const folds = getJavaScriptBlockFolds(code, 'App.jsx');
+    expect(folds.some((fold) => fold.id.includes('div'))).toBe(true);
+    expect(folds.length).toBeGreaterThan(0);
+
+    const arrow = `const run = (
+  a,
+  b
+) => {
+  return a + b;
+};`;
+    expect(
+      getJavaScriptBlockFolds(arrow, 'run.js').some((fold) => fold.endLine > fold.startLine),
+    ).toBe(true);
+  });
 });

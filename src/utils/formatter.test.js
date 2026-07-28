@@ -93,4 +93,44 @@ describe('formatter', () => {
       '<svg\n  width="100"\n  height="100"\n>\n  <path\n    d="M10 10"\n    fill="none"\n  />\n</svg>',
     );
   });
+
+  it('returns empty code unchanged', () => {
+    expect(formatCode('', 'test.js')).toBe('');
+  });
+
+  it('formats TypeScript and TSX files', () => {
+    const tsInput = 'function greet(name: string) {\nreturn name;\n}';
+    expect(formatCode(tsInput, 'greet.ts')).toBe(
+      'function greet(name: string) {\n  return name;\n}',
+    );
+
+    const tsxInput = 'export const App = () => {\nreturn <div>Hi</div>;\n};';
+    expect(formatCode(tsxInput, 'App.tsx')).toBe(
+      'export const App = () => {\n  return <div>Hi</div>;\n};',
+    );
+  });
+
+  it('formats HTML comments inside SVG', () => {
+    const input = '<svg><!-- comment --><rect /></svg>';
+    const output = formatCode(input, 'icon.svg');
+    expect(output).toContain('<!-- comment -->');
+    expect(output).toContain('<rect />');
+  });
+
+  it('does not treat braces inside backtick strings as code blocks', () => {
+    const input = 'const tpl = `value is ${obj.prop}`;\nif (true) {\nconsole.log(tpl);\n}';
+    const output = formatCode(input, 'test.js');
+    expect(output).toBe('const tpl = `value is ${obj.prop}`;\nif (true) {\n  console.log(tpl);\n}');
+  });
+
+  it('returns invalid JSON unchanged when parse fails', () => {
+    const invalid = '{ invalid json }';
+    expect(formatCode(invalid, 'broken.json')).toBe(invalid);
+  });
+
+  it('handles block comments spanning multiple lines', () => {
+    const input = 'if (true) {\n/* {\nblock\n} */\nconsole.log(1);\n}';
+    const output = formatCode(input, 'test.js');
+    expect(output).toBe('if (true) {\n  /* {\n  block\n  } */\n  console.log(1);\n}');
+  });
 });

@@ -32,6 +32,7 @@ describe('runCollaborativeAgent', () => {
 
   beforeEach(async () => {
     vi.clearAllMocks();
+    vi.resetAllMocks();
     ({ askWebLLM } = await import('../WebLLMAPI'));
   });
 
@@ -251,5 +252,77 @@ describe('runCollaborativeAgent', () => {
         signal: controller.signal,
       }),
     ).rejects.toMatchObject({ name: 'AbortError' });
+  });
+
+  it('rejects invalid role graphs before running', async () => {
+    const planner = createRoleNode({ id: 'p1', kind: 'planner' });
+    const coder = createRoleNode({ id: 'c1', kind: 'coder' });
+    const reviewer = createRoleNode({ id: 'r1', kind: 'reviewer' });
+    await expect(
+      runCollaborativeAgent({
+        request: 'x',
+        files: { 'a.js': 'a' },
+        model: 'test',
+        roleGraph: {
+          entryRoleId: 'p1',
+          roles: [planner, coder, reviewer],
+          edges: [{ from: 'c1', to: 'r1', when: 'always' }],
+        },
+      }),
+    ).rejects.toThrow(/Invalid workflow graph/);
+  });
+
+  it('approves review notes when reviewer approves without fixes', async () => {
+    askWebLLM
+      .mockResolvedValueOnce(
+        '{"action":"finish","summary":"{\\"goals\\":[],\\"files\\":[],\\"steps\\":[]}"}',
+      )
+      .mockResolvedValueOnce('{"action":"finish","summary":"done"}')
+      .mockResolvedValueOnce(
+        '{"action":"finish","summary":"{\\"approved\\":true,\\"notes\\":\\"ship it\\"}"}',
+      );
+
+    const result = await runCollaborativeAgent({
+      request: 'ship',
+      files: { 'src/a.js': 'a' },
+      model: 'test',
+    });
+
+    expect(result.summary).toContain('Review approved.');
+    expect(result.summary).toContain('ship it');
+  });
+
+  it('falls back to reviewer notes when fixes are absent on reject', async () => {
+    const planner = createRoleNode({ id: 'p1', kind: 'planner' });
+    const coder = createRoleNode({ id: 'c1', kind: 'coder' });
+    const reviewer = createRoleNode({ id: 'r1', kind: 'reviewer' });
+    const graph = {
+      entryRoleId: 'p1',
+      roles: [planner, coder, reviewer],
+      edges: [
+        { from: 'p1', to: 'c1', when: 'always' },
+        { from: 'c1', to: 'r1', when: 'always' },
+      ],
+    };
+
+    askWebLLM
+      .mockResolvedValueOnce(
+        '{"action":"finish","summary":"{\\"goals\\":[\\"g\\"],\\"files\\":[\\"src/a.js\\"],\\"steps\\":[\\"s\\"]}"}',
+      )
+      .mockResolvedValueOnce('{"action":"finish","summary":"coded without writes"}')
+      .mockResolvedValueOnce(
+        '{"action":"finish","summary":"{\\"approved\\":false,\\"notes\\":\\"needs work\\"}"}',
+      );
+
+    const result = await runCollaborativeAgent({
+      request: 'update a',
+      files: { 'src/a.js': 'old' },
+      model: 'test',
+      roleGraph: graph,
+    });
+
+    expect(result.review.approved).toBe(false);
+    expect(result.summary).toContain('unresolved notes');
+    expect(result.summary).toContain('needs work');
   });
 });

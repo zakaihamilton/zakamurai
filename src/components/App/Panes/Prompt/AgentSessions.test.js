@@ -3,12 +3,15 @@ import {
   MAX_AGENT_SESSIONS,
   addAgentSession,
   appendSessionMessage,
+  capSessionMessages,
   createAgentBranch,
+  createAgentSession,
   createDefaultAgentSessions,
   createSessionMessage,
   deleteAgentSession,
   formatSessionContext,
   getActiveAgentSession,
+  getAgentSessionChildren,
   getAgentSessionSubtreeIds,
   listAgentSessionTree,
   listAgentSessions,
@@ -197,6 +200,37 @@ describe('AgentSessions', () => {
     expect(() => addAgentSession(state)).toThrow(/Maximum/);
   });
 
+  it('covers create/list/branch/delete edge cases', () => {
+    expect(createAgentSession({ parentId: 12 }).parentId).toBeNull();
+    expect(createAgentSession({ mode: 'other' }).mode).toBe('single');
+    expect(createAgentSession({ name: '' }).name).toBe('Agent 1');
+    expect(capSessionMessages(null)).toEqual([]);
+    expect(listAgentSessions()).toEqual([]);
+    expect(getAgentSessionSubtreeIds({}, 'missing').size).toBe(0);
+    expect(formatSessionContext([{ role: 'user', text: 'x' }], 0)).toBe('');
+    expect(
+      formatSessionContext([{ role: 'system', text: 'sys', agentRole: 'planner' }], 200),
+    ).toContain('System (planner)');
+    expect(
+      formatSessionContext([createSessionMessage({ role: 'user', text: 'huge'.repeat(40) })], 120),
+    ).toContain('[Message truncated]');
+
+    let state = createDefaultAgentSessions();
+    const rootId = state.activeSessionId;
+    state = updateAgentSession(state, rootId, { status: 'running' });
+    expect(() => createAgentBranch(state, rootId)).toThrow(/Stop the running agent/);
+    expect(() => createAgentBranch(state, 'missing')).toThrow(/not found/);
+    expect(() => deleteAgentSession(state, rootId)).toThrow(/Stop the running agent/);
+
+    state = updateAgentSession(state, rootId, { status: 'idle' });
+    state = createAgentBranch(state, rootId);
+    const branchId = state.activeSessionId;
+    state = setActiveAgentSession(state, rootId);
+    state = deleteAgentSession(state, branchId);
+    expect(state.activeSessionId).toBe(rootId);
+    expect(state.sessions[branchId]).toBeUndefined();
+  });
+
   it('normalizes and serializes persisted payloads', () => {
     expect(normalizeAgentSessions(null).activeSessionId).toBeTruthy();
     expect(normalizeAgentSessions([]).activeSessionId).toBeTruthy();
@@ -234,5 +268,103 @@ describe('AgentSessions', () => {
     expect(serialized.sessions.a.messages).toHaveLength(2);
     expect(serialized.sessions.a.status).toBeUndefined();
     expect(serialized.sessions.a.roleGraph.roles[0].id).toBe('p');
+  });
+
+  it('creates sessions with defaults and optional parent links', () => {
+    const session = createAgentSession({ parentId: 42 });
+    expect(session.name).toBe('Agent 1');
+    expect(session.parentId).toBeNull();
+    expect(createAgentSession({ name: 'Custom', mode: 'team' }).mode).toBe('team');
+    expect(createSessionMessage({ role: 'ai', text: 'hi', agentRole: 'coder' }).agentRole).toBe(
+      'coder',
+    );
+    expect(capSessionMessages(null)).toEqual([]);
+  });
+
+  it('skips cyclic branches when listing the session tree', () => {
+    const sessions = {
+      a: { id: 'a', name: 'A', parentId: 'b', createdAt: 1 },
+      b: { id: 'b', name: 'B', parentId: 'a', createdAt: 2 },
+      root: { id: 'root', name: 'Root', parentId: null, createdAt: 0 },
+    };
+    const tree = listAgentSessionTree(sessions);
+    expect(tree.map(({ session }) => session.id)).toContain('root');
+    expect(getAgentSessionChildren(sessions, 'root')).toHaveLength(0);
+  });
+
+  it('rejects branching or deleting running sessions', () => {
+    let state = createDefaultAgentSessions();
+    const id = state.activeSessionId;
+    state = updateAgentSession(state, id, { status: 'running' });
+    expect(() => createAgentBranch(state, id)).toThrow(/running/);
+    expect(() => deleteAgentSession(state, id)).toThrow(/running/);
+  });
+
+  it('selects the parent session when deleting the active branch', () => {
+    let state = createDefaultAgentSessions();
+    const rootId = state.activeSessionId;
+    state = createAgentBranch(state, rootId);
+    const branchId = state.activeSessionId;
+    state = deleteAgentSession(state, branchId);
+    expect(state.activeSessionId).toBe(rootId);
+  });
+
+  it('formats context with agent roles and truncates oversized first messages', () => {
+    const withRole = formatSessionContext([
+      createSessionMessage({ role: 'ai', text: 'done', agentRole: 'coder' }),
+    ]);
+    expect(withRole).toContain('Agent (coder)');
+
+    const truncated = formatSessionContext(
+      [createSessionMessage({ role: 'user', text: 'x'.repeat(200) })],
+      120,
+    );
+    expect(truncated).toContain('[Message truncated]');
+    expect(truncated.length).toBeLessThanOrEqual(120);
+    expect(formatSessionContext([], 0)).toBe('');
+  });
+
+  it('normalizes empty session stores and caps persisted session count', () => {
+    const emptySessions = normalizeAgentSessions({ sessions: { bad: null }, activeSessionId: 'x' });
+    expect(emptySessions.sessions).toBeTruthy();
+    expect(
+      normalizeAgentSessions({ sessions: null }, { modelId: 'm1' }).activeSessionId,
+    ).toBeTruthy();
+    expect(
+      normalizeAgentSessions({
+        sessions: {
+          a: { id: 12, name: '  ', parentId: 3, createdAt: 'x', updatedAt: 'y', modelId: 9 },
+        },
+      }).sessions,
+    ).toBeTruthy();
+
+    const many = { sessions: {}, activeSessionId: null };
+    for (let i = 0; i < MAX_AGENT_SESSIONS + 5; i++) {
+      many.sessions[`s${i}`] = {
+        id: `s${i}`,
+        name: `Agent ${i}`,
+        createdAt: i,
+        updatedAt: i,
+      };
+    }
+    expect(Object.keys(normalizeAgentSessions(many).sessions)).toHaveLength(MAX_AGENT_SESSIONS);
+
+    let state = createDefaultAgentSessions();
+    for (let i = 1; i < MAX_AGENT_SESSIONS; i++) {
+      state = addAgentSession(state, { name: `Agent ${i + 1}` });
+    }
+    expect(() => createAgentBranch(state, state.activeSessionId)).toThrow(/Maximum/);
+    expect(
+      updateAgentSession(state, state.activeSessionId, {}).sessions[state.activeSessionId],
+    ).toBeTruthy();
+    expect(
+      appendSessionMessage(
+        state,
+        state.activeSessionId,
+        createSessionMessage({ role: 'user', text: 'x' }),
+      ).sessions[state.activeSessionId].messages.at(-1).text,
+    ).toBe('x');
+    expect(formatSessionContext([null, { role: 'ai', text: 'ok' }], 'bad')).toBe('');
+    expect(formatSessionContext([{ role: 'system', text: 'note' }], 200)).toContain('System:');
   });
 });

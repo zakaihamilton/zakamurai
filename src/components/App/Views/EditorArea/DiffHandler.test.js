@@ -197,4 +197,158 @@ describe('DiffHandler', () => {
     handleCursorUpdate({ line: 2, col: 4, index: 5 });
     expect(state.cursorPos['a.js']).toEqual({ line: 2, col: 4, index: 5 });
   });
+
+  it('approves pending deletions and clears related editor state', async () => {
+    state.pendingDeletions = {
+      'a.js': { originalContent: 'old', changeSetId: 'cs-1' },
+    };
+    fs.readFileAtPath = vi.fn().mockResolvedValue('old');
+    fs.deleteFileAtPath.mockResolvedValue(true);
+
+    render(
+      <DiffHandler
+        filePath="a.js"
+        localContent="next"
+        setLocalContent={setLocalContent}
+        state={state}
+        fs={fs}
+        onStateChange={onStateChange}
+      />,
+    );
+
+    const { handleApprove } = onStateChange.mock.calls[0][0];
+    await act(async () => {
+      await handleApprove();
+    });
+
+    expect(fs.deleteFileAtPath).toHaveBeenCalledWith('a.js');
+    expect(state.pendingDeletions['a.js']).toBeUndefined();
+    expect(tabState.openTabs).toEqual([{ id: 'b.js' }]);
+  });
+
+  it('marks a diff conflicted when the filesystem changed externally', async () => {
+    const updateChangeSetFile = vi.fn();
+    vi.doMock('@/components/Workspace', () => ({
+      ChangeSetState: { usePassiveState: () => ({}) },
+      updateChangeSetFile,
+    }));
+
+    state.pendingDiffs = {
+      'a.js': { originalContent: 'old', changeSetId: 'cs-1' },
+    };
+    fs.readFileAtPath = vi.fn().mockResolvedValue('changed on disk');
+
+    render(
+      <DiffHandler
+        filePath="a.js"
+        localContent="next"
+        setLocalContent={setLocalContent}
+        state={state}
+        fs={fs}
+        onStateChange={onStateChange}
+      />,
+    );
+
+    const { handleApprove } = onStateChange.mock.calls[0][0];
+    await act(async () => {
+      await handleApprove();
+    });
+
+    expect(fs.writeFileAtPath).not.toHaveBeenCalled();
+    expect(state.pendingDiffs['a.js']).toBeDefined();
+  });
+
+  it('undoes pending deletions without touching the filesystem', async () => {
+    state.pendingDeletions = {
+      'a.js': { originalContent: 'old', changeSetId: 'cs-1' },
+    };
+
+    render(
+      <DiffHandler
+        filePath="a.js"
+        localContent="next"
+        setLocalContent={setLocalContent}
+        state={state}
+        fs={fs}
+        onStateChange={onStateChange}
+      />,
+    );
+
+    const { handleUndo } = onStateChange.mock.calls[0][0];
+    await act(async () => {
+      await handleUndo();
+    });
+
+    expect(state.pendingDeletions['a.js']).toBeUndefined();
+    expect(fs.writeFileAtPath).not.toHaveBeenCalled();
+  });
+
+  it('treats missing files and write failures as non-destructive conflicts', async () => {
+    state.pendingDiffs = { 'a.js': { originalContent: 'old', changeSetId: 'cs-1' } };
+    fs.readFileAtPath = vi.fn().mockRejectedValue(new Error('missing'));
+    fs.writeFileAtPath.mockRejectedValue(new Error('disk full'));
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    render(
+      <DiffHandler
+        filePath="a.js"
+        localContent="next"
+        setLocalContent={setLocalContent}
+        state={state}
+        fs={fs}
+        onStateChange={onStateChange}
+      />,
+    );
+
+    const { handleApprove, handleCursorUpdate } = onStateChange.mock.calls[0][0];
+    await act(async () => {
+      await handleApprove();
+    });
+    expect(warn).toHaveBeenCalled();
+
+    state.pendingDiffs = { 'a.js': { originalContent: '', changeSetId: 'cs-1' } };
+    await act(async () => {
+      await handleApprove();
+    });
+    expect(error).toHaveBeenCalled();
+
+    handleCursorUpdate({ line: 2, col: 4, index: 5 });
+    handleCursorUpdate({ line: 2, col: 4, index: 5 });
+    expect(state.cursorPos['a.js']).toEqual({ line: 2, col: 4, index: 5 });
+
+    warn.mockRestore();
+    error.mockRestore();
+  });
+
+  it('skips filesystem work when no root handle is present', async () => {
+    state.pendingDiffs = {
+      'a.js': { originalContent: 'old', originalCursorPos: null, changeSetId: 'cs-1' },
+    };
+    const fsWithoutRoot = { rootHandle: null, writeFileAtPath: vi.fn(), readFileAtPath: vi.fn() };
+
+    render(
+      <DiffHandler
+        filePath="a.js"
+        localContent="next"
+        setLocalContent={setLocalContent}
+        state={state}
+        fs={fsWithoutRoot}
+        onStateChange={onStateChange}
+      />,
+    );
+
+    const { handleApprove, handleUndo } = onStateChange.mock.calls[0][0];
+    await act(async () => {
+      await handleApprove();
+    });
+    expect(state.pendingDiffs['a.js']).toBeUndefined();
+    expect(fsWithoutRoot.writeFileAtPath).not.toHaveBeenCalled();
+
+    state.pendingDiffs = { 'a.js': { originalContent: 'old', changeSetId: 'cs-1' } };
+    await act(async () => {
+      await handleUndo();
+    });
+    expect(setLocalContent).toHaveBeenCalledWith('old');
+  });
 });
