@@ -1,5 +1,7 @@
 const previewOrigin = process.env.PREVIEW_SMOKE_ORIGIN || 'https://preview.zakamurai.com';
-const ideOrigins = (process.env.PREVIEW_SMOKE_IDE_ORIGINS || 'https://www.zakamurai.com,https://zakamurai.com')
+const ideOrigins = (
+  process.env.PREVIEW_SMOKE_IDE_ORIGINS || 'https://www.zakamurai.com,https://zakamurai.com'
+)
   .split(',')
   .map((value) => value.trim())
   .filter(Boolean);
@@ -25,7 +27,9 @@ for (const ideOrigin of ideOrigins) {
 
 const corp = response.headers.get('cross-origin-resource-policy');
 if (corp !== 'cross-origin') {
-  throw new Error(`Preview surface ${previewUrl} must send Cross-Origin-Resource-Policy: cross-origin`);
+  throw new Error(
+    `Preview surface ${previewUrl} must send Cross-Origin-Resource-Policy: cross-origin`,
+  );
 }
 
 console.log(`Preview surface check passed for ${previewUrl}`);
