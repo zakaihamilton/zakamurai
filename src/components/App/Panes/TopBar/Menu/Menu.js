@@ -14,6 +14,7 @@ export default function TopBarMenu({
   onExportCompiledZip,
   onNewProject,
   onClearFS,
+  onExportSupportReport,
   onToggleShortcuts,
 }) {
   const { isSystemProcessing, isAIProcessing } = LogState.useState([
@@ -110,6 +111,17 @@ export default function TopBarMenu({
         >
           <Icons.Download />
           <span>Export compiled files</span>
+        </button>
+        <button
+          type="button"
+          className={styles.menuItem}
+          onClick={() => {
+            onExportSupportReport();
+            handleMenuClose();
+          }}
+        >
+          <Icons.Download />
+          <span>Export support report</span>
         </button>
 
         <div className={styles.menuSeparator} />

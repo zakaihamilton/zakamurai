@@ -1,10 +1,12 @@
+import { hasValidAiChangeContent, isProjectRelativePath } from '@/contracts/ai';
+
 /** Shared safety checks for AI-proposed workspace changes. */
 export function validateProjectPath(path) {
   if (typeof path !== 'string' || !path.trim()) return 'A file path is required.';
   if (path.startsWith('/') || path.startsWith('\\') || /^[A-Za-z]:[\\/]/.test(path)) {
     return `Path must be project-relative: ${path}`;
   }
-  if (path.includes('\\') || path.split('/').some((part) => part === '..' || !part)) {
+  if (!isProjectRelativePath(path)) {
     return `Unsafe project path: ${path}`;
   }
   return null;
@@ -195,11 +197,7 @@ export async function validateAIChangesAsync(changes, esbuildTransform = null) {
     }
 
     const content = change.content ?? change.after;
-    if (
-      typeof change.content !== 'string' &&
-      typeof change.after !== 'string' &&
-      change.after !== undefined
-    ) {
+    if (!hasValidAiChangeContent(change)) {
       const contentErr = `Invalid change content for ${path}.`;
       rejected.push(contentErr);
       details.push({ path, error: contentErr, type: 'content' });
@@ -244,11 +242,7 @@ export function validateAIChanges(changes) {
     }
 
     const content = change.content ?? change.after;
-    if (
-      typeof change.content !== 'string' &&
-      typeof change.after !== 'string' &&
-      change.after !== undefined
-    ) {
+    if (!hasValidAiChangeContent(change)) {
       rejected.push(`Invalid change content for ${path}.`);
       continue;
     }

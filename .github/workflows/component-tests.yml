@@ -13,7 +13,7 @@ jobs:
   quality:
     name: Quality gates
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 35
 
     steps:
       - name: Checkout
@@ -31,8 +31,8 @@ jobs:
       - name: Prepare browser build assets
         run: npm run setup:almostnode && npm run setup:wasm
 
-      - name: Install Chromium
-        run: npx playwright install chromium
+      - name: Install Chromium and WebKit
+        run: npx playwright install --with-deps chromium webkit
 
       - name: Check formatting, linting, and styles
         run: npm run format:check && npm run lint && npm run stylelint
@@ -49,20 +49,20 @@ jobs:
       - name: Run unit tests with coverage
         run: npm run test:coverage
 
-      - name: Build production app and check asset budget
-        run: npm run build && npm run perf
+      - name: Build production app and check performance budgets
+        run: npm run build && npm run perf && npm run test:performance
 
-      - name: Run Chromium end-to-end tests
-        run: npm run test:e2e
+      - name: Run Chromium and WebKit end-to-end tests
+        run: npm run test:e2e && npm run test:e2e:webkit
 
-      - name: Run isolated preview security tests
-        run: npm run test:e2e:isolated
+      - name: Run isolated preview security tests in Chromium and WebKit
+        run: npm run test:e2e:isolated && npm run test:e2e:isolated:webkit
 
       - name: Check production preview surface headers
         run: npm run check:preview
 
-      - name: Run Chromium visual regression tests
-        run: npm run test:visual:chromium
+      - name: Run Chromium and WebKit visual/accessibility regression tests
+        run: npm run test:visual
 
       - name: Audit production dependencies
         run: npm run audit

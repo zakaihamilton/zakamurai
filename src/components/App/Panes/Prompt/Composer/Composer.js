@@ -68,6 +68,7 @@ export default function PromptComposer({
               <Tooltip content="Stop Agent" shortcut={formatShortcut('⌘.')}>
                 <button
                   type="button"
+                  aria-label="Stop agent"
                   onClick={onStop}
                   className={`${styles.button} ${styles.stopButton}`}
                   tabIndex={isOpen ? undefined : -1}
@@ -79,6 +80,7 @@ export default function PromptComposer({
             <Tooltip content="Execute prompt" shortcut="↵">
               <button
                 type="submit"
+                aria-label="Execute prompt"
                 disabled={!isButtonActive || !isOpen}
                 className={`${styles.button} ${
                   isButtonActive ? styles.buttonActive : styles.buttonDisabled

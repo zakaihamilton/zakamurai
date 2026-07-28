@@ -1,3 +1,11 @@
+import { reportDiagnostic } from '@/components/Diagnostics';
+import { isStringRecord, normalizeRecoveryCheckpoint } from '@/contracts/runtime';
+import {
+  normalizePendingDiffs,
+  normalizePromptHistory,
+  parseStoredJson,
+  serializeOpenTabs,
+} from './SettingsSerialization';
 import { idbClear, idbGet, idbSet } from './idbStore';
 
 const KEYS = {
@@ -53,6 +61,7 @@ const LARGE_IDB_KEYS = {
   aiLogs: KEYS.AI_LOGS,
   changeSets: KEYS.CHANGE_SETS,
 };
+const RECOVERY_CHECKPOINT_KEY = 'zakamurai_recovery_checkpoint_v1';
 
 const largeCache = {
   fileContents: null,
@@ -65,7 +74,52 @@ const largeCache = {
 
 let hydratePromise = null;
 let isHydrated = false;
-let lastStorageHealth = { status: 'healthy', layer: null };
+let lastStorageHealth = {
+  status: 'healthy',
+  layer: null,
+  usage: null,
+  quota: null,
+  quotaWarning: false,
+  lastSuccessfulPersistAt: null,
+};
+let recoveryCheckpoint = null;
+
+const refreshStorageEstimate = async () => {
+  if (typeof navigator === 'undefined' || typeof navigator.storage?.estimate !== 'function') {
+    return lastStorageHealth;
+  }
+  try {
+    const { usage = null, quota = null } = await navigator.storage.estimate();
+    const quotaWarning =
+      Number.isFinite(usage) && Number.isFinite(quota) && quota > 0 && usage / quota >= 0.8;
+    lastStorageHealth = { ...lastStorageHealth, usage, quota, quotaWarning };
+    if (quotaWarning) {
+      reportDiagnostic({
+        source: 'storage',
+        severity: 'warning',
+        message: 'Browser storage is at least 80% full.',
+      });
+    }
+  } catch {
+    // Storage estimates are advisory and unsupported in some privacy modes.
+  }
+  return lastStorageHealth;
+};
+
+const recordStorageSuccess = async (layer) => {
+  lastStorageHealth = {
+    ...lastStorageHealth,
+    status: layer === 'localStorage' ? 'fallback' : 'healthy',
+    layer,
+    lastSuccessfulPersistAt: Date.now(),
+  };
+  await refreshStorageEstimate();
+};
+
+const recordStorageFailure = (message) => {
+  lastStorageHealth = { ...lastStorageHealth, status: 'write-failed', layer: 'localStorage' };
+  reportDiagnostic({ source: 'storage', severity: 'error', message });
+};
 
 /** Per-key write generation — bumped on every writeLarge / unload flush to fence clears. */
 const largeWriteGen = {
@@ -77,23 +131,13 @@ const largeWriteGen = {
   changeSets: 0,
 };
 
-const parseJson = (val, fallback) => {
-  if (val == null || val === '') return fallback;
-  if (typeof val !== 'string') return val;
-  try {
-    return JSON.parse(val);
-  } catch {
-    return fallback;
-  }
-};
-
 const readLegacyLocal = (key, fallback, { raw = false } = {}) => {
   const storage = getStorage();
   if (!storage) return fallback;
   const val = storage.getItem(key);
   if (val == null) return fallback;
   if (raw) return val;
-  return parseJson(val, fallback);
+  return parseStoredJson(val, fallback);
 };
 
 const clearLegacyLocal = (key) => {
@@ -129,7 +173,7 @@ const writeLarge = async (cacheKey, value) => {
   }
 
   if (durable) {
-    lastStorageHealth = { status: 'healthy', layer: 'indexeddb' };
+    await recordStorageSuccess('indexeddb');
     clearLegacyLocal(idbKey);
     return true;
   }
@@ -142,9 +186,8 @@ const writeLarge = async (cacheKey, value) => {
         ? value
         : JSON.stringify(value);
   const fallbackSaved = writeLocalFallback(idbKey, serialized);
-  lastStorageHealth = fallbackSaved
-    ? { status: 'fallback', layer: 'localStorage' }
-    : { status: 'write-failed', layer: 'localStorage' };
+  if (fallbackSaved) await recordStorageSuccess('localStorage');
+  else recordStorageFailure(`Could not persist ${cacheKey} in IndexedDB or localStorage.`);
   return fallbackSaved;
 };
 
@@ -169,29 +212,12 @@ const persistLargeSync = (cacheKey, value) => {
   return ok;
 };
 
-const normalizePendingDiffs = (parsed) => {
-  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {};
-  return Object.fromEntries(
-    Object.entries(parsed).filter(([, diff]) => {
-      if (!diff || typeof diff !== 'object' || typeof diff.originalContent !== 'string') {
-        return false;
-      }
-      if (typeof diff.modifiedContent !== 'string' || !Array.isArray(diff.diffs)) return false;
-      return diff.diffs.every(
-        (range) =>
-          range &&
-          Number.isFinite(range.start) &&
-          Number.isFinite(range.end) &&
-          Number.isFinite(range.origStart) &&
-          Number.isFinite(range.origEnd),
-      );
-    }),
-  );
-};
-
 const Settings = {
   getStorageHealth() {
     return { ...lastStorageHealth };
+  },
+  async refreshStorageHealth() {
+    return refreshStorageEstimate();
   },
   get(key, defaultValue) {
     const storage = getStorage();
@@ -245,14 +271,7 @@ const Settings = {
   },
 
   setOpenTabs(tabs) {
-    const tabsToSave = tabs.map((t) => ({
-      id: t.id,
-      type: t.type,
-      label: t.label,
-      ...(t.viewType ? { viewType: t.viewType } : {}),
-      ...(t.file ? { file: { name: t.file.name, path: t.file.path } } : {}),
-      ...(t.sourceFilePath ? { sourceFilePath: t.sourceFilePath } : {}),
-    }));
+    const tabsToSave = serializeOpenTabs(tabs);
     return this.set(KEYS.OPEN_TABS, JSON.stringify(tabsToSave));
   },
 
@@ -292,13 +311,7 @@ const Settings = {
   },
 
   setPromptHistory(history) {
-    const next = Array.isArray(history)
-      ? history
-          .map((p) => (typeof p === 'string' ? p.trim() : ''))
-          .filter(Boolean)
-          .filter((p, index, arr) => arr.indexOf(p) === index)
-          .slice(0, 50)
-      : [];
+    const next = normalizePromptHistory(history);
     return this.set(KEYS.PROMPT_HISTORY, next.length ? JSON.stringify(next) : null);
   },
 
@@ -496,6 +509,29 @@ const Settings = {
     return writeLarge('changeSets', { activeId: changeSets?.activeId || null, items });
   },
 
+  getRecoveryCheckpoint() {
+    return recoveryCheckpoint ? { ...recoveryCheckpoint } : null;
+  },
+
+  async saveRecoveryCheckpoint(snapshot) {
+    const checkpoint = normalizeRecoveryCheckpoint({
+      version: 1,
+      savedAt: Date.now(),
+      ...snapshot,
+    });
+    if (!checkpoint) return false;
+    const saved = await idbSet(RECOVERY_CHECKPOINT_KEY, checkpoint);
+    if (saved) recoveryCheckpoint = checkpoint;
+    else {
+      reportDiagnostic({
+        source: 'storage',
+        severity: 'warning',
+        message: 'Recovery checkpoint could not be written to IndexedDB.',
+      });
+    }
+    return saved;
+  },
+
   /**
    * Load large project blobs from IndexedDB (migrating legacy localStorage once).
    * Call before reading fileContents / pendingDiffs / previewHtml / sessions / logs.
@@ -508,6 +544,7 @@ const Settings = {
     if (hydratePromise) return hydratePromise;
 
     hydratePromise = (async () => {
+      recoveryCheckpoint = normalizeRecoveryCheckpoint(await idbGet(RECOVERY_CHECKPOINT_KEY));
       const loadOne = async (cacheKey, fallback, { raw = false } = {}) => {
         const idbKey = LARGE_IDB_KEYS[cacheKey];
         const legacy = readLegacyLocal(idbKey, fallback, { raw });
@@ -535,6 +572,15 @@ const Settings = {
       ]);
 
       largeCache.pendingDiffs = normalizePendingDiffs(largeCache.pendingDiffs);
+      if (!isStringRecord(largeCache.fileContents) && recoveryCheckpoint) {
+        largeCache.fileContents = recoveryCheckpoint.fileContents;
+        largeCache.pendingDiffs = normalizePendingDiffs(recoveryCheckpoint.pendingDiffs);
+        reportDiagnostic({
+          source: 'storage',
+          severity: 'warning',
+          message: 'Recovered workspace buffers from the last valid recovery checkpoint.',
+        });
+      }
       if (!Array.isArray(largeCache.aiLogs)) largeCache.aiLogs = [];
       if (!largeCache.changeSets || typeof largeCache.changeSets !== 'object')
         largeCache.changeSets = { activeId: null, items: [] };
@@ -563,6 +609,7 @@ const Settings = {
     largeCache.agentSessions = null;
     largeCache.aiLogs = [];
     largeCache.changeSets = { activeId: null, items: [] };
+    recoveryCheckpoint = null;
     largeWriteGen.fileContents = 0;
     largeWriteGen.pendingDiffs = 0;
     largeWriteGen.previewHtml = 0;
@@ -585,6 +632,7 @@ const Settings = {
     largeCache.agentSessions = null;
     largeCache.aiLogs = [];
     largeCache.changeSets = { activeId: null, items: [] };
+    recoveryCheckpoint = null;
     if (template) {
       this.setTemplate(template);
     }

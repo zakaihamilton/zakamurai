@@ -1,3 +1,4 @@
+import * as fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import {
   PREVIEW_IFRAME_SANDBOX,
@@ -65,6 +66,15 @@ describe('previewSandbox', () => {
     expect(sanitizePreviewPath('/preview/../etc/passwd')).toBeNull();
     expect(sanitizePreviewPath('/preview/%2e%2e/etc/passwd')).toBeNull();
     expect(sanitizePreviewPath('\\preview\\x')).toBeNull();
+  });
+
+  it('never accepts generated external or traversal navigation paths (property)', () => {
+    fc.assert(
+      fc.property(fc.string(), (suffix) => {
+        expect(sanitizePreviewPath(`https://attacker.test/${suffix}`)).toBeNull();
+        expect(sanitizePreviewPath(`/preview/../${suffix}`)).toBeNull();
+      }),
+    );
   });
 
   it('requires event.source to match the preview iframe window', () => {

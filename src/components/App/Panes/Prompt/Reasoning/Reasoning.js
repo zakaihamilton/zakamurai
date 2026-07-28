@@ -61,6 +61,7 @@ function ReasoningPanelInner() {
             <Tooltip content={isCopied ? 'Copied!' : 'Copy Reasoning'}>
               <button
                 type="button"
+                aria-label={isCopied ? 'Reasoning copied' : 'Copy reasoning'}
                 className={`${styles.iconButton} ${isCopied ? styles.copySuccess : ''}`}
                 onClick={handleCopy}
               >

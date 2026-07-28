@@ -18,6 +18,8 @@ const ASSET_EXTENSIONS = new Set([
 let initializePromise;
 let esbuildApi;
 
+const ESBUILD_WASM_URL = '/esbuild/esbuild.wasm';
+
 function dirname(path) {
   const index = path.lastIndexOf('/');
   return index > 0 ? path.slice(0, index) : '/';
@@ -344,7 +346,15 @@ async function initialize() {
     initializePromise = import('esbuild-wasm/lib/browser')
       .then(async (module) => {
         esbuildApi = module;
-        await esbuildApi.initialize({ wasmURL: '/esbuild/esbuild.wasm', worker: true });
+        // Fetch from the page before handing the compiled module to esbuild's
+        // Blob worker. Deployment-protection cookies are available here but
+        // are not consistently forwarded by Blob-worker fetches.
+        const response = await fetch(ESBUILD_WASM_URL, { credentials: 'same-origin' });
+        if (!response.ok) {
+          throw new Error(`Unable to load the esbuild compiler asset (${response.status}).`);
+        }
+        const wasmModule = await WebAssembly.compile(await response.arrayBuffer());
+        await esbuildApi.initialize({ wasmModule, worker: true });
       })
       .catch((error) => {
         initializePromise = undefined;
