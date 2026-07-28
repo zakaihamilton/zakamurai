@@ -267,6 +267,19 @@ console.error("Transform failed with 1 error");`,
 
       await expect(fetchScriptErrorBody('/dist/assets/main.js', fetchImpl)).resolves.toBeNull();
     });
+
+    it('ignores successful JavaScript bundles that contain ERROR: substrings', async () => {
+      const fetchImpl = vi.fn(async () => ({
+        ok: true,
+        headers: { get: (name) => (name === 'content-type' ? 'application/javascript' : null) },
+        text: async () =>
+          'var React={};throw Error("Objects are not valid as a React child");details.push(`${where}: ERROR: ${text}`);',
+      }));
+
+      await expect(
+        fetchScriptErrorBody('/dist/assets/index-abc123.js', fetchImpl),
+      ).resolves.toBeNull();
+    });
   });
 
   describe('toPreviewFetchUrl', () => {
