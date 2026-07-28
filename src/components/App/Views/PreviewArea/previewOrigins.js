@@ -1,6 +1,9 @@
 const LOCAL_IDE_ORIGIN = 'http://localhost:3000';
 const LOCAL_PREVIEW_ORIGIN = 'http://localhost:3001';
 const PREVIEW_HOST_PREFIX = 'preview.';
+export const PREVIEW_SURFACE_PARAM = 'zakamurai-surface';
+export const PREVIEW_SURFACE_VALUE = 'preview';
+const PREVIEW_SERVICE_WORKER_SCOPE = '/__preview/';
 
 const trimOrigin = (value) => {
   if (typeof value !== 'string' || !value.trim()) return null;
@@ -55,6 +58,34 @@ const matchesConfiguredOrigins = (windowOrigin, ideOrigin, previewOrigin) => {
   return windowAliases.some((alias) => configuredAliases.has(alias));
 };
 
+export function isVercelAppHost(hostname) {
+  return typeof hostname === 'string' && hostname.toLowerCase().endsWith('.vercel.app');
+}
+
+function getVercelSurfaceOrigins(windowOrigin) {
+  if (!windowOrigin || !isVercelAppHost(new URL(windowOrigin).hostname)) return null;
+  return {
+    ideOrigin: windowOrigin,
+    previewOrigin: windowOrigin,
+    isIsolated: false,
+    useSurfaceQuery: true,
+  };
+}
+
+export function buildPreviewUrl(origins, sessionId) {
+  if (!origins?.previewOrigin || !sessionId) return null;
+  const url = new URL('/', origins.previewOrigin);
+  url.searchParams.set('session', sessionId);
+  if (origins.useSurfaceQuery) {
+    url.searchParams.set(PREVIEW_SURFACE_PARAM, PREVIEW_SURFACE_VALUE);
+  }
+  return url.toString();
+}
+
+export function getPreviewServiceWorkerScope(origins) {
+  return origins?.useSurfaceQuery ? PREVIEW_SERVICE_WORKER_SCOPE : '/';
+}
+
 export function derivePreviewHostFromIde(ideOrigin) {
   const url = new URL(ideOrigin);
   if (url.hostname === 'localhost' || url.hostname === '127.0.0.1') {
@@ -79,15 +110,9 @@ export function deriveIdeHostFromPreview(previewOrigin) {
   return previewOrigin;
 }
 
-function getVercelBranchOrigins() {
-  const ideOrigin = toHostOrigin(process.env.NEXT_PUBLIC_VERCEL_BRANCH_URL);
-  const previewOrigin = toHostOrigin(process.env.NEXT_PUBLIC_VERCEL_URL);
-  if (!ideOrigin || !previewOrigin || ideOrigin === previewOrigin) return null;
-  return { ideOrigin, previewOrigin, isIsolated: true };
-}
-
 function getSubdomainBranchOrigins(windowOrigin) {
   const hostname = new URL(windowOrigin).hostname;
+  if (isVercelAppHost(hostname)) return null;
   if (hostname.startsWith(PREVIEW_HOST_PREFIX)) {
     const previewOrigin = windowOrigin;
     const ideOrigin = deriveIdeHostFromPreview(windowOrigin);
@@ -122,15 +147,14 @@ export function getPreviewOrigins({ windowOrigin } = {}) {
     };
   }
 
-  const vercelOrigins = getVercelBranchOrigins();
-  if (vercelOrigins && windowOrigin) {
-    if (windowOrigin === vercelOrigins.ideOrigin || windowOrigin === vercelOrigins.previewOrigin) {
-      return vercelOrigins;
-    }
+  const vercelSurfaceOrigins = getVercelSurfaceOrigins(windowOrigin);
+  if (vercelSurfaceOrigins) {
+    return vercelSurfaceOrigins;
   }
 
   if (windowOrigin) {
-    return getSubdomainBranchOrigins(windowOrigin);
+    const subdomainOrigins = getSubdomainBranchOrigins(windowOrigin);
+    if (subdomainOrigins) return subdomainOrigins;
   }
 
   if (configuredIdeOrigin && configuredPreviewOrigin) {
@@ -148,7 +172,7 @@ export function getPreviewConfigurationError(origins) {
   if (!origins?.ideOrigin || !origins?.previewOrigin) {
     return 'Preview origins are not configured. Set NEXT_PUBLIC_IDE_ORIGIN and NEXT_PUBLIC_PREVIEW_ORIGIN.';
   }
-  if (!origins.isIsolated) {
+  if (!origins.isIsolated && !origins.useSurfaceQuery) {
     return 'Preview origin must be different from the IDE origin.';
   }
   return null;
@@ -195,9 +219,6 @@ export function isPreviewHost(host, { previewOrigin } = getPreviewOrigins()) {
   if (!host) return false;
   try {
     const normalizedHost = host.split(':')[0].toLowerCase();
-
-    const vercelDeploymentHost = process.env.NEXT_PUBLIC_VERCEL_URL?.split(':')[0]?.toLowerCase();
-    if (vercelDeploymentHost && normalizedHost === vercelDeploymentHost) return true;
 
     if (normalizedHost.startsWith(PREVIEW_HOST_PREFIX)) return true;
 

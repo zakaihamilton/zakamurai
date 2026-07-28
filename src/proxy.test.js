@@ -30,6 +30,7 @@ function createMockRequest(urlStr, headersObj = {}) {
   return {
     nextUrl: {
       pathname: url.pathname,
+      searchParams: url.searchParams,
       clone: () => new URL(urlStr),
     },
     headers: {
@@ -103,15 +104,17 @@ describe('proxy', () => {
     expect(res.headers.get('Content-Security-Policy')).toContain('http://localhost:3000');
   });
 
-  it('handles Vercel deployment URLs as preview hosts for branch deployments', () => {
-    vi.stubEnv('NEXT_PUBLIC_VERCEL_URL', 'zakamurai-abc123-team.vercel.app');
-    const req = createMockRequest('https://zakamurai-abc123-team.vercel.app/', {
-      host: 'zakamurai-abc123-team.vercel.app',
-    });
+  it('handles zakamurai-surface preview query on Vercel branch hosts', () => {
+    const req = createMockRequest(
+      'https://zakamurai-git-feature-team.vercel.app/?session=test&zakamurai-surface=preview',
+      { host: 'zakamurai-git-feature-team.vercel.app' },
+    );
     const res = proxy(req);
     expect(res.type).toBe('rewrite');
     expect(res.url.pathname).toBe('/preview-host');
-    vi.unstubAllEnvs();
+    expect(res.headers.get('Content-Security-Policy')).toContain(
+      'https://zakamurai-git-feature-team.vercel.app',
+    );
   });
 
   it('handles x-zakamurai-surface preview header', () => {

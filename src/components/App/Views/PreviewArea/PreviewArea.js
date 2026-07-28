@@ -16,6 +16,7 @@ import {
 } from './previewErrorUtils';
 import { reportPreviewEvidence } from './previewEvidenceBridge';
 import {
+  buildPreviewUrl,
   createPreviewSession,
   getPreviewConfigurationError,
   getPreviewOrigins,
@@ -84,9 +85,7 @@ export default function PreviewArea() {
     windowOrigin: typeof window === 'undefined' ? '' : window.location.origin,
   });
   const previewConfigurationError = getPreviewConfigurationError(origins);
-  const previewUrl = origins.previewOrigin
-    ? `${origins.previewOrigin}/?session=${previewSessionRef.current}`
-    : null;
+  const previewUrl = buildPreviewUrl(origins, previewSessionRef.current);
   const previewHostLabel = origins.previewOrigin ? new URL(origins.previewOrigin).host : '';
 
   useEffect(() => {

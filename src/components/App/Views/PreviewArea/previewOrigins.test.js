@@ -1,11 +1,13 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
+  buildPreviewUrl,
   deriveIdeHostFromPreview,
   derivePreviewHostFromIde,
   expandOriginAliases,
   getPreviewConfigurationError,
   getPreviewFrameAncestors,
   getPreviewOrigins,
+  getPreviewServiceWorkerScope,
   isPreviewHost,
   isValidPreviewHandshake,
   originMatches,
@@ -48,31 +50,31 @@ describe('isolated preview configuration', () => {
     });
   });
 
-  it('uses Vercel branch and deployment URLs when the current domain does not match production', () => {
+  it('uses same-origin surface routing for Vercel branch deployments', () => {
     vi.stubEnv('NEXT_PUBLIC_IDE_ORIGIN', 'https://www.zakamurai.com');
     vi.stubEnv('NEXT_PUBLIC_PREVIEW_ORIGIN', 'https://preview.zakamurai.com');
-    vi.stubEnv('NEXT_PUBLIC_VERCEL_BRANCH_URL', 'zakamurai-git-feature-team.vercel.app');
-    vi.stubEnv('NEXT_PUBLIC_VERCEL_URL', 'zakamurai-abc123-team.vercel.app');
 
-    const origins = getPreviewOrigins({
-      windowOrigin: 'https://zakamurai-git-feature-team.vercel.app',
-    });
+    const windowOrigin = 'https://zakamurai-git-feature-team.vercel.app';
+    const origins = getPreviewOrigins({ windowOrigin });
     expect(origins).toEqual({
-      ideOrigin: 'https://zakamurai-git-feature-team.vercel.app',
-      previewOrigin: 'https://zakamurai-abc123-team.vercel.app',
-      isIsolated: true,
+      ideOrigin: windowOrigin,
+      previewOrigin: windowOrigin,
+      isIsolated: false,
+      useSurfaceQuery: true,
     });
+    expect(getPreviewConfigurationError(origins)).toBeNull();
+    expect(buildPreviewUrl(origins, 'session-123')).toBe(
+      'https://zakamurai-git-feature-team.vercel.app/?session=session-123&zakamurai-surface=preview',
+    );
+    expect(getPreviewServiceWorkerScope(origins)).toBe('/__preview/');
   });
 
-  it('treats the Vercel deployment URL as the preview surface for branch deployments', () => {
-    vi.stubEnv('NEXT_PUBLIC_VERCEL_BRANCH_URL', 'zakamurai-git-feature-team.vercel.app');
-    vi.stubEnv('NEXT_PUBLIC_VERCEL_URL', 'zakamurai-abc123-team.vercel.app');
-
-    const origins = getPreviewOrigins({
-      windowOrigin: 'https://zakamurai-abc123-team.vercel.app',
-    });
-    expect(origins.previewOrigin).toBe('https://zakamurai-abc123-team.vercel.app');
-    expect(origins.ideOrigin).toBe('https://zakamurai-git-feature-team.vercel.app');
+  it('does not invent preview subdomains for Vercel deployment URLs', () => {
+    const windowOrigin = 'https://zakamurai-nlxp189a3-zakai-hamiltons-projects.vercel.app';
+    const origins = getPreviewOrigins({ windowOrigin });
+    expect(origins.previewOrigin).toBe(windowOrigin);
+    expect(origins.useSurfaceQuery).toBe(true);
+    expect(origins.previewOrigin).not.toContain('preview.');
   });
 
   it('derives preview and IDE hosts from a preview subdomain when no Vercel URLs exist', () => {
@@ -84,13 +86,10 @@ describe('isolated preview configuration', () => {
     });
   });
 
-  it('recognizes configured, Vercel deployment, and preview-prefixed hosts', () => {
-    vi.stubEnv('NEXT_PUBLIC_VERCEL_URL', 'zakamurai-abc123-team.vercel.app');
-
+  it('recognizes configured and preview-prefixed hosts', () => {
     const origins = { previewOrigin: 'https://preview.zakamurai.com' };
     expect(isPreviewHost('preview.zakamurai.com', origins)).toBe(true);
     expect(isPreviewHost('www.zakamurai.com', origins)).toBe(false);
-    expect(isPreviewHost('zakamurai-abc123-team.vercel.app', origins)).toBe(true);
     expect(isPreviewHost('preview.branch.example.com', origins)).toBe(true);
   });
 

@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import {
   getPreviewConfigurationError,
   getPreviewOrigins,
+  getPreviewServiceWorkerScope,
   isValidPreviewHandshake,
   originMatches,
 } from '../Views/PreviewArea/previewOrigins';
@@ -11,7 +12,7 @@ import { PREVIEW_CONNECT, PREVIEW_PROTOCOL_VERSION } from '../Views/PreviewArea/
 
 // Bump this URL when the preview-routing protocol changes so browsers replace
 // an older scoped worker instead of continuing to serve its stale routes.
-const SW_URL = '/__preview_sw__.js?v=21';
+const SW_URL = '/__preview_sw__.js?v=22';
 const SESSION_WINDOW_NAME_PREFIX = 'zakamurai-preview-';
 const CONNECT_TIMEOUT_MS = 15000;
 
@@ -168,11 +169,14 @@ export default function PreviewHost() {
       window.clearTimeout(connectTimeout);
       window.removeEventListener('message', connect);
       try {
+        const swScope = getPreviewServiceWorkerScope(origins);
         const registration = await navigator.serviceWorker.register(SW_URL, {
-          scope: '/',
+          scope: swScope,
         });
         await ensureActiveWorker(registration);
-        await waitForPreviewWorkerControl(registration);
+        if (origins.isIsolated) {
+          await waitForPreviewWorkerControl(registration);
+        }
         const controlling =
           navigator.serviceWorker.controller &&
           registration.active &&

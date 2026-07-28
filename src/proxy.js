@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 import {
+  PREVIEW_SURFACE_PARAM,
+  PREVIEW_SURFACE_VALUE,
   getPreviewFrameAncestors,
   isPreviewHost,
 } from './components/App/Views/PreviewArea/previewOrigins';
@@ -25,14 +27,22 @@ function isPreviewHostRequest(request) {
   return isPreviewHost(hostname);
 }
 
-function withPreviewHeaders(response, request) {
+function resolveIdeOriginForPreviewHeaders(request) {
   const hostHeader = request.headers.get('host') || '';
   const hostname = hostHeader.split(':')[0];
   const proto = request.headers.get('x-forwarded-proto') || 'https';
   const portSuffix = hostHeader.includes(':') ? `:${hostHeader.split(':')[1]}` : '';
-  const ideOrigin = hostname.startsWith('preview.')
-    ? `${proto}://${hostname.slice('preview.'.length)}${portSuffix}`
-    : toHostOrigin(process.env.NEXT_PUBLIC_VERCEL_BRANCH_URL);
+  if (hostname.startsWith('preview.')) {
+    return `${proto}://${hostname.slice('preview.'.length)}${portSuffix}`;
+  }
+  if (request.nextUrl.searchParams.get(PREVIEW_SURFACE_PARAM) === PREVIEW_SURFACE_VALUE) {
+    return `${proto}://${hostname}${portSuffix}`;
+  }
+  return toHostOrigin(process.env.NEXT_PUBLIC_VERCEL_BRANCH_URL);
+}
+
+function withPreviewHeaders(response, request) {
+  const ideOrigin = resolveIdeOriginForPreviewHeaders(request);
 
   response.headers.set(
     'Content-Security-Policy',
@@ -54,7 +64,9 @@ function toHostOrigin(host) {
 
 export function proxy(request) {
   const isPreviewSurface =
-    isPreviewHostRequest(request) || request.headers.get('x-zakamurai-surface') === 'preview';
+    isPreviewHostRequest(request) ||
+    request.headers.get('x-zakamurai-surface') === 'preview' ||
+    request.nextUrl.searchParams.get(PREVIEW_SURFACE_PARAM) === PREVIEW_SURFACE_VALUE;
   if (!isPreviewSurface) return NextResponse.next();
 
   const { pathname } = request.nextUrl;
