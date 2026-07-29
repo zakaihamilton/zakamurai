@@ -279,3 +279,14 @@ export function validateAIChanges(changes: AgentChange[]): ValidatedAIChanges {
   }
   return { accepted, rejected };
 }
+
+/**
+ * Validates component modularity and CSS module co-location across staged files.
+ */
+export function validateWorkspaceModularity(files: Record<string, string>): {
+  passed: boolean;
+  errors: string[];
+} {
+  const { checkComponentModularity } = require('./Agent/ProjectChecks');
+  return checkComponentModularity(files);
+}

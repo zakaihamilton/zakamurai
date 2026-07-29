@@ -46,6 +46,9 @@
   flex: 1;
   min-height: 0;
   overflow-y: auto;
+  scroll-behavior: smooth;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-light) transparent;
   padding: 4px 0;
   display: flex;
   flex-direction: column;
@@ -58,12 +61,12 @@
 }
 
 .transcript::-webkit-scrollbar-thumb {
-  background: var(--bg-surface);
+  background: var(--border-light);
   border-radius: 10px;
 }
 
 .transcript::-webkit-scrollbar-thumb:hover {
-  background: var(--border-light);
+  background: var(--text-muted);
 }
 
 .transcript::-webkit-scrollbar-track {

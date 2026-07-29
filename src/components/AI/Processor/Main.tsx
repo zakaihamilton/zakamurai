@@ -11,6 +11,7 @@ import type {
 } from '@/components/AI/types';
 import { formatCode } from '@/utils/formatter';
 import { setInDraft, updateInDraft } from '../../state/StateUtils';
+import { ensureFileInTree } from '../Agent/Applier';
 import { validateAIChangesAsync } from '../ChangeValidator';
 import { applyFileUpdate, computeDiff } from './utils/Applier';
 import { parseAIResponse } from './utils/Parser';
@@ -147,23 +148,7 @@ export const processAIResponse = async (
       }
 
       if (sidebarState) {
-        sidebarState((draft) => {
-          const parts = filePath.split('/').filter(Boolean);
-          const fileName = parts[parts.length - 1];
-          if (!draft.folderTree) draft.folderTree = [];
-          let currentLevel = draft.folderTree;
-          for (const seg of parts.slice(0, -1)) {
-            let node = currentLevel.find((n) => n.name === seg && n.type === 'folder');
-            if (!node) {
-              node = { name: seg, type: 'folder', children: [] };
-              currentLevel.push(node);
-            }
-            currentLevel = node.children || [];
-          }
-          if (!currentLevel.find((n) => n.name === fileName && n.type === 'file')) {
-            currentLevel.push({ name: fileName, type: 'file' });
-          }
-        });
+        ensureFileInTree(sidebarState, filePath);
       }
 
       if (editorState) {

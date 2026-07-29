@@ -45,6 +45,30 @@
   list-style: none;
   max-height: min(52vh, 480px);
   overflow: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-light) transparent;
+}
+
+.tree::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.tree::-webkit-scrollbar-thumb {
+  background: var(--border-light);
+  border-radius: 10px;
+}
+
+.tree::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
+
+.tree::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.tree::-webkit-scrollbar-corner {
+  background: transparent;
 }
 
 .treeRegion {

@@ -3,4 +3,5 @@ export {
   getOptionalMemoryMeasurement,
   markPerformance,
   measurePerformance,
+  purgeSystemMemory,
 } from './Performance';

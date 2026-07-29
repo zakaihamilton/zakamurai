@@ -190,6 +190,29 @@ const getEngine = async (
   return enginePromises.get(selectedModel) as Promise<WebLLMEngine>;
 };
 
+export function pruneWebLLMMessages<T extends { role: string; content?: string }>(
+  messages: T[],
+  maxTokens = 2800,
+): T[] {
+  if (!Array.isArray(messages) || messages.length <= 2) return messages;
+
+  const systemMsg = messages[0];
+  const initialUserMsg = messages[1];
+  let tailMessages = messages.slice(2);
+
+  const calculateTokens = (msgs: Array<{ role: string; content?: string }>) =>
+    msgs.reduce((sum, m) => sum + Math.ceil((m.content?.length || 0) / 4), 0);
+
+  let currentTokens = calculateTokens([systemMsg, initialUserMsg, ...tailMessages]);
+
+  while (currentTokens > maxTokens && tailMessages.length > 2) {
+    tailMessages = tailMessages.slice(2);
+    currentTokens = calculateTokens([systemMsg, initialUserMsg, ...tailMessages]);
+  }
+
+  return [systemMsg, initialUserMsg, ...tailMessages] as T[];
+}
+
 export const askWebLLM = async (
   prompt: string,
   systemPrompt = '',
@@ -215,10 +238,14 @@ export const askWebLLM = async (
 
     const defaultSystemPrompt = DEFAULT_SYSTEM_PROMPT;
 
-    const messages = options.messages || [
+    const rawMessages = options.messages || [
       { role: 'system', content: systemPrompt || defaultSystemPrompt },
       { role: 'user', content: prompt },
     ];
+    const messages = pruneWebLLMMessages(
+      rawMessages,
+      (options.contextWindowSize ?? 4096) - (options.max_tokens ?? 1200),
+    );
 
     const generationOptions: Record<string, unknown> = {
       temperature: options.temperature ?? 0.7,
@@ -294,5 +321,28 @@ export const interruptWebLLM = async (): Promise<void> => {
     } catch (e) {
       console.warn('Failed to interrupt WebLLM:', e);
     }
+  }
+};
+
+export const unloadAllWebLLMEngines = async (): Promise<void> => {
+  await interruptWebLLM();
+  const entries = Array.from(enginePromises.entries());
+  for (const [modelId, enginePromise] of entries) {
+    try {
+      const engine = await enginePromise;
+      if (engine && typeof engine.unload === 'function') {
+        console.info(`[WebLLM] Unloading engine ${modelId} to free memory...`);
+        await engine.unload();
+      }
+    } catch (error) {
+      console.warn(`Failed to unload WebLLM engine ${modelId}:`, error);
+    }
+    enginePromises.delete(modelId);
+    updateWebLLMEngine(modelId, {
+      status: 'absent',
+      progressText: '',
+      error: null,
+      generating: false,
+    });
   }
 };

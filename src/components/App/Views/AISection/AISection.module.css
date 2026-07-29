@@ -58,6 +58,8 @@
   flex: 1;
   margin: 0;
   overflow: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-light) transparent;
   padding: 16px;
   border: 1px solid var(--border);
   border-radius: 8px;
@@ -69,4 +71,26 @@
   white-space: pre-wrap;
   overflow-wrap: anywhere;
   box-sizing: border-box;
+}
+
+.content::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.content::-webkit-scrollbar-thumb {
+  background: var(--border-light);
+  border-radius: 10px;
+}
+
+.content::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
+
+.content::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.content::-webkit-scrollbar-corner {
+  background: transparent;
 }

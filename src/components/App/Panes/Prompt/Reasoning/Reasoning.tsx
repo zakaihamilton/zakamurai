@@ -38,7 +38,10 @@ function ReasoningPanelInner({ modelDownloadStatus, onOpenInTab = () => {} }: Re
 
   useEffect(() => {
     if ((reasoning || modelDownloadStatus) && reasoningRef.current) {
-      reasoningRef.current.scrollTop = reasoningRef.current.scrollHeight;
+      reasoningRef.current.scrollTo?.({
+        top: reasoningRef.current.scrollHeight,
+        behavior: 'smooth',
+      });
     }
   }, [modelDownloadStatus, reasoning]);
 

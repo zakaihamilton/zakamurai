@@ -93,6 +93,9 @@
   line-height: 1.5;
   color: var(--text-muted);
   overflow-y: auto;
+  scroll-behavior: smooth;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-light) transparent;
   overflow-wrap: anywhere;
   padding: 4px;
   opacity: 0.9;
@@ -105,12 +108,12 @@
 }
 
 .reasoningContent::-webkit-scrollbar-thumb {
-  background: var(--bg-surface);
+  background: var(--border-light);
   border-radius: 10px;
 }
 
 .reasoningContent::-webkit-scrollbar-thumb:hover {
-  background: var(--border-light);
+  background: var(--text-muted);
 }
 
 .reasoningContent::-webkit-scrollbar-track {

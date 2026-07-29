@@ -68,6 +68,34 @@ export default function PromptContent({
   onOpenModelManager,
   patchSession,
 }: PromptContentProps) {
+  const transcriptText = activeSession?.messages?.length
+    ? activeSession.messages
+        .map(
+          (m) =>
+            `[${m.timestamp || 'now'}] ${m.role}${m.agentRole ? ` (${m.agentRole})` : ''}: ${m.text}`,
+        )
+        .join('\n\n')
+    : '';
+
+  const reasoningText = [
+    isModelDownloading
+      ? `Downloading ${selectedModelInfo.name || 'AI model'}${
+          modelDownloadProgress ? ` — ${modelDownloadProgress}` : '…'
+        }`
+      : '',
+    sessionReasoning,
+  ]
+    .filter(Boolean)
+    .join('\n\n');
+
+  const agentPaneContent =
+    [
+      transcriptText ? `--- Transcript ---\n${transcriptText}` : null,
+      reasoningText ? `--- Reasoning ---\n${reasoningText}` : null,
+    ]
+      .filter(Boolean)
+      .join('\n\n') || 'Start a conversation with this agent session.';
+
   return (
     <aside
       className={`${styles.prompt} ${isOpen ? '' : styles.closed}`}
@@ -83,6 +111,7 @@ export default function PromptContent({
           onToggleReasoning={onToggleReasoning}
           mode={activeSession?.mode || 'single'}
           onModeChange={onModeChange}
+          copyContent={agentPaneContent}
         />
         <SessionManager activeSession={activeSession} onOpenTree={onOpenTree} isOpen={isOpen} />
         <SessionTreeDialog

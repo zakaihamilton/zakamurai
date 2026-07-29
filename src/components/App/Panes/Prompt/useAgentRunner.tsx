@@ -1,3 +1,4 @@
+import { applyAgentChanges } from '@/components/AI/Agent';
 import type { AgentEvent } from '@/components/AI/types';
 import { ChangeSetState, getWorkspaceIndex } from '@/components/Workspace';
 import type { FormEvent } from 'react';
@@ -159,7 +160,14 @@ export default function useAgentRunner({
             (roleGraph?.roles || []).map((role) => [role.id, role.label || role.kind || role.id]),
           );
           const [
-            { collectWorkspaceFiles, runAgent, runCollaborativeAgent, applyAgentChanges },
+            {
+              collectWorkspaceFiles,
+              runAgent,
+              runCollaborativeAgent,
+              applyAgentChanges,
+              ensureFileInTree,
+              removeFileFromTree,
+            },
             { Compiler },
           ] = await Promise.all([import('@/components/AI/Agent'), import('@/utils/compiler')]);
           const workspaceFiles = await collectWorkspaceFiles(
@@ -267,6 +275,15 @@ export default function useAgentRunner({
               logState((draft) => {
                 (draft as typeof draft & { reasoning?: string }).reasoning = reasoning;
               });
+
+              if (event.type === 'tool' && event.action && typeof event.action === 'object') {
+                const actionObj = event.action;
+                if (actionObj.action === 'write_file' && actionObj.path) {
+                  ensureFileInTree(sidebarState, actionObj.path);
+                } else if (actionObj.action === 'delete_file' && actionObj.path) {
+                  removeFileFromTree(sidebarState, actionObj.path);
+                }
+              }
             },
           };
 
@@ -356,6 +373,25 @@ export default function useAgentRunner({
           }
         } catch (err) {
           const message = `Agent error: ${err instanceof Error ? err.message : String(err)}`;
+          const errChanges =
+            err &&
+            typeof err === 'object' &&
+            'changes' in err &&
+            Array.isArray((err as { changes?: unknown }).changes)
+              ? (err as { changes: import('@/components/AI/types').AgentChange[] }).changes
+              : [];
+
+          if (errChanges.length > 0) {
+            applyAgentChanges(errChanges, {
+              editorState: editorState as never,
+              sidebarState: sidebarState as never,
+              logState: logState as never,
+              changeSetState: changeSetState as never,
+              request: userMsg,
+              autoApprove: autoApproveInitialProject,
+            });
+          }
+
           logState((draft) => {
             if (!draft.isAIProcessing) return;
             draft.logs = [

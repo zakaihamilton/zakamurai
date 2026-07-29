@@ -2,8 +2,32 @@
   flex: 1;
   min-height: 0;
   overflow: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-light) transparent;
   border: 1px solid var(--border);
   border-radius: 7px;
+}
+
+.modelTableWrap::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.modelTableWrap::-webkit-scrollbar-thumb {
+  background: var(--border-light);
+  border-radius: 10px;
+}
+
+.modelTableWrap::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
+
+.modelTableWrap::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.modelTableWrap::-webkit-scrollbar-corner {
+  background: transparent;
 }
 
 .modelTable {

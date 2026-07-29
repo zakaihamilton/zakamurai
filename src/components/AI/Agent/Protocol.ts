@@ -68,8 +68,8 @@ export function parseAgentAction(
 
 const ACTION_CATALOG = `
 Actions:
-{"action":"list_files","query":"optional path fragment"}
-{"action":"search_workspace","query":"text or /regex/","glob":"optional extension such as .js"}
+{"action":"list_files","query":"optional path or extension fragment (e.g. '.module.css', 'src/components')"}
+{"action":"search_workspace","query":"text content or /regex/ to search inside file contents","glob":"optional extension such as .js"}
 {"action":"search_semantic","query":"natural language concept","k":5}
 {"action":"read_file","path":"relative/path"}
 {"action":"write_file","path":"relative/path","content":"complete new file content","reason":"brief reason"}
@@ -87,8 +87,13 @@ Reply with exactly one JSON action per turn, without markdown or hidden reasonin
 
 ${ACTION_CATALOG}
 
-Use search_workspace for exact symbols/strings. Use search_semantic for concepts ("where is auth handled", "routing setup").
-Inspect before editing. You may edit any relevant workspace file. Validate after meaningful changes. Fix validation failures when possible. Never claim success without either validation or a clear explanation.
+Use list_files to check file existence or list paths by extension (e.g., list_files query: ".module.css"). Use search_workspace to search text inside file contents. Do not repeatedly search_workspace for file extensions.
+Inspect before editing. You may edit any relevant workspace file. Validate after meaningful changes. Always run validate before calling finish when edits have been made. Fix validation failures when possible. Never claim success without either validation or a clear explanation.
+
+Architecture Rules:
+- Decompose UI applications into modular sub-components inside src/components/.
+- Co-locate a CSS Module (*.module.css) with each component (e.g., src/components/Header.jsx and src/components/Header.module.css).
+- Avoid putting all state, logic, and JSX inside a single monolithic App.jsx file.
 `.trim();
 
 export const PLANNER_SYSTEM_PROMPT = `
@@ -103,8 +108,10 @@ Allowed actions only:
 {"action":"read_file","path":"relative/path"}
 {"action":"finish","summary":"JSON plan string"}
 
+Architecture requirement: Break down UI into sub-components in src/components/, listing each sub-component file and its matching CSS Module (*.module.css) in the files array.
+
 When finished, call finish with summary set to a compact JSON object:
-{"goals":["..."],"files":["path"],"steps":["..."]}
+{"goals":["..."],"files":["src/components/SubComp.jsx","src/components/SubComp.module.css"],"steps":["..."]}
 `.trim();
 
 export const CODER_SYSTEM_PROMPT = `
@@ -114,7 +121,12 @@ Reply with exactly one JSON action per turn, without markdown or hidden reasonin
 
 ${ACTION_CATALOG}
 
-Inspect before editing. Prefer the files listed in the plan. Validate after meaningful changes. Never claim success without either validation or a clear explanation.
+Inspect before editing. Prefer the files listed in the plan. Validate after meaningful changes. Always run validate before calling finish when edits have been made. Never claim success without either validation or a clear explanation.
+
+Architecture Rules:
+1. Break down UI into reusable sub-components in src/components/.
+2. Style each component using co-located CSS Modules (*.module.css) imported inside the component (e.g., import styles from './SubComp.module.css').
+3. Keep App.jsx clean, using it primarily to compose sub-components.
 `.trim();
 
 export const REVIEWER_SYSTEM_PROMPT = `
@@ -129,6 +141,10 @@ Allowed actions only:
 {"action":"read_file","path":"relative/path"}
 {"action":"validate"}
 {"action":"finish","summary":"review result"}
+
+Architecture Quality Gate:
+1. Reject proposals (approved: false) if application logic/UI is crammed into a single monolithic App.jsx/App.tsx (>150 lines or multiple visual components without sub-components).
+2. Reject proposals (approved: false) if newly created React components lack matching imported CSS Modules (*.module.css).
 
 When finished, call finish with summary set to a compact JSON object:
 {"approved":true,"notes":"..."}

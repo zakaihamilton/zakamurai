@@ -1,9 +1,19 @@
 import type {
+  AgentChange,
   RunAgentOptions,
   RunAgentResult,
   VerificationResult,
   WebLLMMessage,
 } from '@/components/AI/types';
+
+export class AgentExecutionError extends Error {
+  changes: AgentChange[];
+  constructor(message: string, changes: AgentChange[]) {
+    super(message);
+    this.name = 'AgentExecutionError';
+    this.changes = changes;
+  }
+}
 import { AgentContextManager, formatVerificationResult } from './ContextManager';
 import { listProjectChecks, runProjectCheck } from './ProjectChecks';
 import { AGENT_SYSTEM_PROMPT, ALL_AGENT_ACTIONS, parseAgentAction } from './Protocol';
@@ -169,8 +179,9 @@ export async function runAgent({
           wroteSinceVerification = false;
           repairAttempts = 0;
         } else if (++repairAttempts >= 3) {
-          throw new Error(
+          throw new AgentExecutionError(
             'Validation failed after 3 repair attempts. Staged changes were preserved for review.',
+            workspace.changes(),
           );
         }
       }
@@ -196,7 +207,11 @@ export async function runAgent({
         if (wroteSinceVerification && validate) {
           messages.push({
             role: 'user',
-            content: observation('finish', false, 'Validate the staged edits before finishing.'),
+            content: observation(
+              'finish',
+              false,
+              'Validate the staged edits by running action "validate" before finishing.',
+            ),
           });
           continue;
         }
@@ -232,5 +247,8 @@ export async function runAgent({
       });
     }
   }
-  throw new Error(`Agent reached its ${maxTurns}-step safety limit.`);
+  throw new AgentExecutionError(
+    `Agent reached its ${maxTurns}-step safety limit.`,
+    workspace.changes(),
+  );
 }

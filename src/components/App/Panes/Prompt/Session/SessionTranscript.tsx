@@ -20,7 +20,7 @@ export default function SessionTranscript({
 
   useEffect(() => {
     if (lastMessageId == null) return;
-    endRef.current?.scrollIntoView?.({ block: 'nearest' });
+    endRef.current?.scrollIntoView?.({ behavior: 'smooth', block: 'nearest' });
   }, [lastMessageId]);
 
   const content = !messages.length ? (

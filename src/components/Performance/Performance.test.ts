@@ -1,5 +1,14 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { getLocalPerformanceMeasures, markPerformance, measurePerformance } from './Performance';
+import {
+  getLocalPerformanceMeasures,
+  markPerformance,
+  measurePerformance,
+  purgeSystemMemory,
+} from './Performance';
+
+vi.mock('@/components/AI/WebLLMAPI', () => ({
+  unloadAllWebLLMEngines: vi.fn().mockResolvedValue(undefined),
+}));
 
 describe('Performance service', () => {
   afterEach(() => vi.restoreAllMocks());
@@ -26,5 +35,15 @@ describe('Performance service', () => {
     expect(getLocalPerformanceMeasures()).toEqual([
       { name: 'zakamurai:app-ready', duration: 12, startTime: 1 },
     ]);
+  });
+
+  it('purges system memory and invokes WebLLM unload', async () => {
+    const gcMock = vi.fn();
+    vi.stubGlobal('window', { gc: gcMock });
+
+    const result = await purgeSystemMemory();
+    expect(result.webllmUnloaded).toBe(true);
+    expect(result.gcTriggered).toBe(true);
+    expect(gcMock).toHaveBeenCalled();
   });
 });

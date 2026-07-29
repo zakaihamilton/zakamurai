@@ -37,11 +37,18 @@ export function createEditorStateMock(
 export function createSidebarStateMock(
   initial: SidebarStateDraft = { folderTree: [] },
 ): StateHandle<SidebarStateDraft> {
-  const state: SidebarStateDraft = { ...initial };
+  const state: SidebarStateDraft = initial;
+  const syncProps = () => {
+    for (const key of Object.keys(state) as (keyof SidebarStateDraft)[]) {
+      (updater as unknown as Record<string, unknown>)[key as string] = state[key];
+    }
+  };
   const updater = vi.fn((cb: (draft: SidebarStateDraft) => void) => {
     cb(state);
+    syncProps();
   }) as unknown as StateHandle<SidebarStateDraft>;
   Object.assign(updater, state);
+  syncProps();
   return updater;
 }
 

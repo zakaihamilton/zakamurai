@@ -1,3 +1,5 @@
+import { unloadAllWebLLMEngines } from '@/components/AI/WebLLMAPI';
+
 const MARK_PREFIX = 'zakamurai:';
 
 export function markPerformance(name: string): void {
@@ -38,4 +40,30 @@ export function getLocalPerformanceMeasures() {
     .getEntriesByType('measure')
     .filter((entry) => entry.name.startsWith(MARK_PREFIX))
     .map(({ name, duration, startTime }) => ({ name, duration, startTime }));
+}
+
+export async function purgeSystemMemory(): Promise<{
+  webllmUnloaded: boolean;
+  gcTriggered: boolean;
+}> {
+  let webllmUnloaded = false;
+  try {
+    await unloadAllWebLLMEngines();
+    webllmUnloaded = true;
+  } catch (error) {
+    console.warn('[Performance] Failed to unload WebLLM engines:', error);
+  }
+
+  let gcTriggered = false;
+  const win = typeof window !== 'undefined' ? (window as unknown as { gc?: () => void }) : null;
+  if (win && typeof win.gc === 'function') {
+    try {
+      win.gc();
+      gcTriggered = true;
+    } catch {
+      gcTriggered = false;
+    }
+  }
+
+  return { webllmUnloaded, gcTriggered };
 }

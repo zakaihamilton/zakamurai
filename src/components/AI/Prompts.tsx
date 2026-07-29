@@ -39,6 +39,7 @@ Rules:
 3. No chat.
 4. Use SEARCH/REPLACE for most edits.
 5. If providing a snippet WITHOUT SEARCH/REPLACE, you MUST include 1-2 lines of existing code as context (anchors) so the change can be located.
+6. Architecture: Decompose UI into modular sub-components in src/components/ with co-located CSS Modules (*.module.css). Avoid single-file App.jsx monoliths.
 `.trim();
 
 export const SEARCH_REPLACE_INSTRUCTION = `
@@ -65,10 +66,12 @@ export const PLANNING_SYSTEM_PROMPT = `
 You are a software architect planning a codebase modification.
 Analyze the user request and provided code files.
 Produce a concise, structured action plan.
+Architecture requirement: Decompose UI applications into modular sub-components in src/components/ with matching co-located CSS Modules (*.module.css).
+
 Format your output as:
 // --- Plan ---
 - Objective: [1-sentence summary]
-- Files to modify: [comma-separated paths]
+- Files to modify: [comma-separated paths including src/components/* and *.module.css]
 - Key changes: [bullet points of precise modifications]
 // --- End Plan ---
 `.trim();

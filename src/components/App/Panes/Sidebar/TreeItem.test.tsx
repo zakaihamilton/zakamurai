@@ -1,5 +1,5 @@
-import { requireElement } from '@/test-utils/domMocks';
 import { AppState } from '@/components/App/AppState';
+import { requireElement } from '@/test-utils/domMocks';
 import { makeAppState } from '@/test-utils/stateMocks';
 import { asNormalizedTreeNode, makeFlatTreeRow } from '@/test-utils/treeMocks';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';

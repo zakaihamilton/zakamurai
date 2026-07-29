@@ -6,7 +6,7 @@ import {
 } from '@/test-utils/agentMocks';
 import { makeChangeSetState } from '@/test-utils/stateMocks';
 import { describe, expect, it } from 'vitest';
-import { applyAgentChanges } from './Applier';
+import { applyAgentChanges, ensureFileInTree, removeFileFromTree } from './Applier';
 
 describe('applyAgentChanges', () => {
   it('stages full-file writes as pendingDiffs without fuzzy matching', () => {
@@ -118,5 +118,42 @@ describe('applyAgentChanges', () => {
     expect(changeSetState).not.toHaveBeenCalled();
     expect(editorState.fileContents?.['src/App.js']).toContain('function App');
     expect(editorState.pendingDiffs).toEqual({});
+  });
+
+  it('ensureFileInTree immutably updates folderTree and auto-expands parent directories', () => {
+    const sidebarState = createSidebarStateMock({ folderTree: [], expandedFolders: {} });
+    const initialTreeRef = sidebarState.folderTree;
+
+    ensureFileInTree(sidebarState, 'src/components/TodoForm.jsx');
+
+    expect(sidebarState.folderTree).not.toBe(initialTreeRef);
+    expect(sidebarState.expandedFolders).toEqual({
+      src: true,
+      'src/components': true,
+    });
+    const srcNode = sidebarState.folderTree?.find((n) => n.name === 'src');
+    expect(srcNode?.type).toBe('folder');
+    const compNode = srcNode?.children?.find((n) => n.name === 'components');
+    expect(compNode?.type).toBe('folder');
+    expect(compNode?.children?.find((n) => n.name === 'TodoForm.jsx')?.type).toBe('file');
+  });
+
+  it('removeFileFromTree immutably removes a file from folderTree', () => {
+    const sidebarState = createSidebarStateMock({
+      folderTree: [
+        {
+          name: 'src',
+          type: 'folder',
+          children: [{ name: 'Old.js', type: 'file' }],
+        },
+      ],
+    });
+    const initialTreeRef = sidebarState.folderTree;
+
+    removeFileFromTree(sidebarState, 'src/Old.js');
+
+    expect(sidebarState.folderTree).not.toBe(initialTreeRef);
+    const srcNode = sidebarState.folderTree?.find((n) => n.name === 'src');
+    expect(srcNode?.children).toHaveLength(0);
   });
 });

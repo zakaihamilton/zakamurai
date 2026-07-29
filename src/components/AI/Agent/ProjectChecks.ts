@@ -63,6 +63,50 @@ export const unavailableProjectCheck = (check = 'project'): VerificationResult =
   output: '',
 });
 
+export function checkComponentModularity(files: FileMap = {}): {
+  passed: boolean;
+  errors: string[];
+} {
+  const errors: string[] = [];
+
+  const appPath = Object.keys(files).find((p) => /^src\/App\.(jsx|tsx|js|ts)$/.test(p));
+  if (appPath) {
+    const content = files[appPath] || '';
+    const lineCount = content.split('\n').length;
+    const hasSubComponents = Object.keys(files).some((p) => p.startsWith('src/components/'));
+
+    if (lineCount > 150 && !hasSubComponents) {
+      errors.push(
+        `Monolithic ${appPath} detected (${lineCount} lines) without sub-components in src/components/. Split UI into modular components.`,
+      );
+    }
+  }
+
+  const componentPaths = Object.keys(files).filter(
+    (p) => p.startsWith('src/components/') && /\.(jsx|tsx)$/.test(p),
+  );
+
+  for (const compPath of componentPaths) {
+    const baseName = compPath.replace(/\.(jsx|tsx)$/, '');
+    const hasMatchingModuleCss =
+      Boolean(files[`${baseName}.module.css`]) ||
+      Object.keys(files).some((p) => p.endsWith('.module.css'));
+    const content = files[compPath] || '';
+    const importsModuleCss = /\.module\.css['"]/.test(content);
+
+    if (!hasMatchingModuleCss && !importsModuleCss) {
+      errors.push(
+        `Component ${compPath} lacks a co-located *.module.css style file or CSS module import.`,
+      );
+    }
+  }
+
+  return {
+    passed: errors.length === 0,
+    errors,
+  };
+}
+
 const clip = (value: unknown): string => {
   const text = String(value || '');
   return text.length > MAX_OUTPUT ? `${text.slice(0, MAX_OUTPUT)}\n…[truncated]` : text;

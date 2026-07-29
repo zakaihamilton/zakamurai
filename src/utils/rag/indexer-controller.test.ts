@@ -337,4 +337,16 @@ describe('IndexerController', () => {
     await controller.search('query');
     expect(controller.init).toHaveBeenCalled();
   });
+
+  it('sends UNLOAD_MODEL and PURGE_INDEX messages when called', async () => {
+    const controller = new IndexerController();
+    controller.worker = { postMessage: vi.fn() } as unknown as Worker;
+    controller.sendMessage = vi.fn().mockResolvedValue('ok');
+
+    await controller.unloadModel();
+    expect(controller.sendMessage).toHaveBeenCalledWith('UNLOAD_MODEL', {});
+
+    await controller.purgeIndex();
+    expect(controller.sendMessage).toHaveBeenCalledWith('PURGE_INDEX', {});
+  });
 });

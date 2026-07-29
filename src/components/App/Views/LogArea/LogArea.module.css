@@ -20,12 +20,12 @@
 }
 
 .logArea::-webkit-scrollbar-thumb {
-  background: var(--bg-surface);
+  background: var(--border-light);
   border-radius: 10px;
 }
 
 .logArea::-webkit-scrollbar-thumb:hover {
-  background: var(--border-light);
+  background: var(--text-muted);
 }
 
 .logArea::-webkit-scrollbar-track {

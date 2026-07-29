@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  checkComponentModularity,
   isEligibleProjectCheck,
   listProjectChecks,
   runProjectCheck,
@@ -66,5 +67,35 @@ describe('project checks', () => {
       run: async () => Promise.reject('failed as text'),
     });
     expect(stringFailure.diagnostics).toBe('failed as text');
+  });
+
+  it('checks component modularity and CSS module co-location', () => {
+    // Case 1: Monolithic App.jsx without subcomponents
+    const monolithic = {
+      'src/App.jsx': '// line\n'.repeat(160),
+    };
+    const monoResult = checkComponentModularity(monolithic);
+    expect(monoResult.passed).toBe(false);
+    expect(monoResult.errors[0]).toContain('Monolithic src/App.jsx detected');
+
+    // Case 2: Subcomponent without CSS module
+    const missingCss = {
+      'src/App.jsx': 'import Header from "./components/Header";',
+      'src/components/Header.jsx': 'export default function Header() { return <header />; }',
+    };
+    const missingResult = checkComponentModularity(missingCss);
+    expect(missingResult.passed).toBe(false);
+    expect(missingResult.errors[0]).toContain('Header.jsx lacks a co-located *.module.css');
+
+    // Case 3: Proper modular components with CSS module
+    const validModular = {
+      'src/App.jsx': 'import Header from "./components/Header";',
+      'src/components/Header.jsx':
+        "import styles from './Header.module.css'; export default function Header() { return <header className={styles.header} />; }",
+      'src/components/Header.module.css': '.header { background: red; }',
+    };
+    const validResult = checkComponentModularity(validModular);
+    expect(validResult.passed).toBe(true);
+    expect(validResult.errors).toHaveLength(0);
   });
 });

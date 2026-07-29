@@ -13,27 +13,80 @@ import { setInDraft, updateInDraft } from '@/components/state/StateUtils';
 import { formatCode } from '@/utils/formatter';
 import { validateAIChanges } from '../ChangeValidator';
 
-function ensureFileInTree(
+export function ensureFileInTree(
   sidebarState: StateHandle<SidebarStateDraft> | null | undefined,
   filePath: string,
 ): void {
   if (!sidebarState) return;
   sidebarState((draft) => {
     const parts = filePath.split('/').filter(Boolean);
-    const fileName = parts[parts.length - 1];
-    if (!draft.folderTree) draft.folderTree = [];
-    let currentLevel = draft.folderTree;
+    if (parts.length === 0) return;
+
+    const folderTree = draft.folderTree ? [...draft.folderTree] : [];
+
+    const nextExpanded = { ...(draft.expandedFolders || {}) };
+    let pathAcc = '';
     for (const seg of parts.slice(0, -1)) {
-      let node = currentLevel.find((n: FolderTreeNode) => n.name === seg && n.type === 'folder');
-      if (!node) {
-        node = { name: seg, type: 'folder', children: [] };
-        currentLevel.push(node);
+      pathAcc = pathAcc ? `${pathAcc}/${seg}` : seg;
+      nextExpanded[pathAcc] = true;
+    }
+
+    const ensureInLevel = (level: FolderTreeNode[], pathSegments: string[]): FolderTreeNode[] => {
+      const nextLevel = [...level];
+      if (pathSegments.length === 1) {
+        const seg = pathSegments[0];
+        if (!nextLevel.some((n) => n.name === seg && n.type === 'file')) {
+          nextLevel.push({ name: seg, type: 'file' });
+        }
+        return nextLevel;
       }
-      currentLevel = node.children || [];
-    }
-    if (!currentLevel.find((n: FolderTreeNode) => n.name === fileName && n.type === 'file')) {
-      currentLevel.push({ name: fileName, type: 'file' });
-    }
+      const seg = pathSegments[0];
+      let folderIdx = nextLevel.findIndex((n) => n.name === seg && n.type === 'folder');
+      let folderNode: FolderTreeNode;
+      if (folderIdx === -1) {
+        folderNode = { name: seg, type: 'folder', children: [] };
+        nextLevel.push(folderNode);
+        folderIdx = nextLevel.length - 1;
+      } else {
+        folderNode = { ...nextLevel[folderIdx] };
+        nextLevel[folderIdx] = folderNode;
+      }
+      folderNode.children = ensureInLevel(folderNode.children || [], pathSegments.slice(1));
+      return nextLevel;
+    };
+
+    draft.folderTree = ensureInLevel(folderTree, parts);
+    draft.expandedFolders = nextExpanded;
+  });
+}
+
+export function removeFileFromTree(
+  sidebarState: StateHandle<SidebarStateDraft> | null | undefined,
+  filePath: string,
+): void {
+  if (!sidebarState) return;
+  sidebarState((draft) => {
+    const parts = filePath.split('/').filter(Boolean);
+    if (!draft.folderTree || parts.length === 0) return;
+
+    const removeFromLevel = (level: FolderTreeNode[], pathSegments: string[]): FolderTreeNode[] => {
+      if (pathSegments.length === 1) {
+        const fileName = pathSegments[0];
+        return level.filter((n) => !(n.name === fileName && n.type === 'file'));
+      }
+      const seg = pathSegments[0];
+      return level.map((node) => {
+        if (node.name === seg && node.type === 'folder' && node.children) {
+          return {
+            ...node,
+            children: removeFromLevel(node.children, pathSegments.slice(1)),
+          };
+        }
+        return node;
+      });
+    };
+
+    draft.folderTree = removeFromLevel(draft.folderTree, parts);
   });
 }
 

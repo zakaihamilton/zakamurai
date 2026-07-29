@@ -231,6 +231,7 @@ export type PromptHeaderProps = {
   onToggleReasoning: () => void;
   mode?: string;
   onModeChange?: (mode: string) => void;
+  copyContent?: string;
 };
 
 export type SessionDialogState =

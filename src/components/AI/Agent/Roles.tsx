@@ -76,7 +76,7 @@ export const ROLE_KIND_DEFAULTS: RoleKindDefaults = {
     label: 'Coder',
     systemPrompt: CODER_SYSTEM_PROMPT,
     allowedActions: CODER_ACTIONS,
-    maxTurns: 20,
+    maxTurns: 35,
   },
   reviewer: {
     label: 'Reviewer',
@@ -362,7 +362,10 @@ export function parseReviewSummary(summary: string | null | undefined): ReviewSu
     };
   } catch {
     const lower = summary.toLowerCase();
-    const rejected = /\b(not approved|needs? fixes?|reject)\b/.test(lower);
+    const rejected =
+      /\b(not approved|needs? fixes?|reject|monolithic|missing css module|lacks css module|split into sub-components)\b/.test(
+        lower,
+      );
     return {
       approved: !rejected,
       fixes: rejected ? [summary] : [],

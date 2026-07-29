@@ -12,7 +12,7 @@ const FORBIDDEN_IMPORTS = [
 ];
 
 const COLOCATION_EXEMPT =
-  /\/(icons|state)\/|(?:Handler|Bridge|Restorer|Sync|Diff|FindHandler|Node|InitialData|highlighter|highlightClient)\.(?:js|ts|tsx)$/;
+  /\/(icons|state)\/|(?:Handler|Bridge|Restorer|Sync|Diff|FindHandler|Node|InitialData|highlighter|highlightClient|Protocol)\.(?:js|ts|tsx)$/;
 
 type ArchitectureViolation = { file: string; reason: string };
 

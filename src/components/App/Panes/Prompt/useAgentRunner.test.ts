@@ -15,10 +15,21 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { UseAgentRunnerParams } from './prompt-types';
 import useAgentRunner, { formatAgentEvent } from './useAgentRunner';
 
-const runAgent = vi.fn();
-const runCollaborativeAgent = vi.fn();
-const applyAgentChanges = vi.fn(() => ({ deletions: [], changeSet: null }));
-const collectWorkspaceFiles = vi.fn(async (_fs, files) => files);
+const {
+  runAgent,
+  runCollaborativeAgent,
+  applyAgentChanges,
+  collectWorkspaceFiles,
+  ensureFileInTree,
+  removeFileFromTree,
+} = vi.hoisted(() => ({
+  runAgent: vi.fn(),
+  runCollaborativeAgent: vi.fn(),
+  applyAgentChanges: vi.fn(() => ({ deletions: [], changeSet: null })),
+  collectWorkspaceFiles: vi.fn(async (_fs: unknown, files: unknown) => files),
+  ensureFileInTree: vi.fn(),
+  removeFileFromTree: vi.fn(),
+}));
 
 vi.mock('@/components/Workspace', () => ({
   ChangeSetState: { usePassiveState: () => ({}) },
@@ -30,6 +41,8 @@ vi.mock('@/components/AI/Agent', () => ({
   runAgent,
   runCollaborativeAgent,
   applyAgentChanges,
+  ensureFileInTree,
+  removeFileFromTree,
 }));
 
 vi.mock('@/utils/compiler', () => ({
@@ -268,7 +281,13 @@ describe('useAgentRunner', () => {
     await waitFor(() => {
       expect(applyAgentChanges).toHaveBeenCalled();
     });
-    expect(applyAgentChanges.mock.calls[0][1]).toMatchObject({ autoApprove: true });
+    expect(
+      (
+        applyAgentChanges as unknown as {
+          mock: { calls: Array<[unknown, Record<string, unknown>]> };
+        }
+      ).mock.calls[0][1],
+    ).toMatchObject({ autoApprove: true });
   });
 
   it('keeps review enabled when the project already has files', async () => {
@@ -287,7 +306,13 @@ describe('useAgentRunner', () => {
     await waitFor(() => {
       expect(applyAgentChanges).toHaveBeenCalled();
     });
-    expect(applyAgentChanges.mock.calls[0][1]).toMatchObject({ autoApprove: false });
+    expect(
+      (
+        applyAgentChanges as unknown as {
+          mock: { calls: Array<[unknown, Record<string, unknown>]> };
+        }
+      ).mock.calls[0][1],
+    ).toMatchObject({ autoApprove: false });
   });
 
   it('records agent failures and skips duplicate sends while processing', async () => {
@@ -323,5 +348,31 @@ describe('useAgentRunner', () => {
 
     expect(runAgent).not.toHaveBeenCalled();
     expect(runCollaborativeAgent).not.toHaveBeenCalled();
+  });
+
+  it('updates sidebar file tree live during write_file and delete_file tool events', async () => {
+    runAgent.mockImplementationOnce(async (options) => {
+      options.onEvent({
+        type: 'tool',
+        action: { action: 'write_file', path: 'src/components/Live.jsx' },
+      });
+      options.onEvent({
+        type: 'tool',
+        action: { action: 'delete_file', path: 'src/old.js' },
+      });
+      return { changes: [], summary: 'done' };
+    });
+
+    const props = createRunnerProps();
+    const { result } = renderHook(() => useAgentRunner(props));
+
+    act(() => {
+      result.current.send(mockFormEvent());
+    });
+
+    await waitFor(() => {
+      expect(ensureFileInTree).toHaveBeenCalledWith(props.sidebarState, 'src/components/Live.jsx');
+      expect(removeFileFromTree).toHaveBeenCalledWith(props.sidebarState, 'src/old.js');
+    });
   });
 });

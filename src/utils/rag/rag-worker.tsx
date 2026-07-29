@@ -233,6 +233,16 @@ self.addEventListener('message', async (event: MessageEvent) => {
     } else if (type === 'SEARCH') {
       const results = await search({ query: payload.query || '', k: payload.k });
       self.postMessage({ id, type: 'SEARCH_SUCCESS', payload: results });
+    } else if (type === 'UNLOAD_MODEL') {
+      extractor = undefined;
+      transformersPromise = undefined;
+      self.postMessage({ id, type: 'UNLOAD_MODEL_SUCCESS' });
+    } else if (type === 'PURGE_INDEX') {
+      index = [];
+      hashes = new Set();
+      extractor = undefined;
+      transformersPromise = undefined;
+      self.postMessage({ id, type: 'PURGE_INDEX_SUCCESS' });
     }
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);

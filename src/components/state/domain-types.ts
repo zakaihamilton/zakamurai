@@ -450,10 +450,6 @@ export interface CompletionStateShape {
   loading: boolean;
 }
 
-export interface ReasoningPanelStateShape {
-  isCopied: boolean;
-}
-
 export interface CompletionDebugStateShape {
   copied: boolean;
 }

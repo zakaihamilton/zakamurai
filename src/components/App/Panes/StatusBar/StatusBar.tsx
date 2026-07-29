@@ -3,17 +3,29 @@ import { AppState } from '@/components/App/AppState';
 import { TabState } from '@/components/App/Panes/TabBar';
 import { EditorState } from '@/components/App/Views/EditorArea';
 import { getCompletionStatusMessage } from '@/components/App/Views/EditorArea/completionUtils';
+import { purgeSystemMemory } from '@/components/Performance';
 import { useFileSystem } from '@/components/Storage';
 import { setInDraft } from '@/components/state/StateUtils';
 import { Icons } from '@/components/ui/Icons';
 import Tooltip from '@/components/ui/Tooltip';
-import React from 'react';
+import React, { useState } from 'react';
 import { requireStore } from '../../types';
 import styles from './StatusBar.module.css';
 
 export default function StatusBar() {
+  const [isPurging, setIsPurging] = useState(false);
   const { theme, projectName } = requireStore(AppState.useState(['theme', 'projectName']));
   const fs = useFileSystem();
+
+  const handleFreeMemory = async () => {
+    setIsPurging(true);
+    try {
+      await purgeSystemMemory();
+    } finally {
+      setTimeout(() => setIsPurging(false), 1200);
+    }
+  };
+
   const editorState = requireStore(
     EditorState.useState([
       'cursorPos',
@@ -136,6 +148,21 @@ export default function StatusBar() {
             </div>
           </Tooltip>
         )}
+        <Tooltip
+          content="Unload local LLMs, purge vector models and free browser RAM"
+          className={styles.tooltipWrapper}
+        >
+          <button
+            type="button"
+            className={styles.item}
+            onClick={handleFreeMemory}
+            disabled={isPurging}
+            aria-label="Free browser memory"
+          >
+            <Icons.Trash size={14} />
+            <span>{isPurging ? 'Purging…' : 'Free Memory'}</span>
+          </button>
+        </Tooltip>
       </div>
 
       <div className={styles.right}>

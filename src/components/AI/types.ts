@@ -272,6 +272,7 @@ export type EditorStateDraft = {
 
 export type SidebarStateDraft = {
   folderTree?: FolderTreeNode[];
+  expandedFolders?: Record<string, boolean>;
 };
 
 export type LogStateDraft = {

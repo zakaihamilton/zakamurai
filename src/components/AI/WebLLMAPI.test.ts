@@ -6,6 +6,7 @@ import {
   deleteCachedWebLLMModel,
   getCachedWebLLMModelIds,
   interruptWebLLM,
+  pruneWebLLMMessages,
 } from './WebLLMAPI';
 import type { WebLLMMessage } from './types';
 
@@ -286,5 +287,33 @@ describe('WebLLMAPI', () => {
     await deleteCachedWebLLMModel('unload-model');
     expect(consoleWarnSpy).toHaveBeenCalled();
     consoleWarnSpy.mockRestore();
+  });
+
+  it('prunes long message histories to keep tokens within context budget', () => {
+    const messages = [
+      { role: 'system', content: 'system prompt' },
+      { role: 'user', content: 'initial request' },
+      { role: 'assistant', content: 'a'.repeat(2000) },
+      { role: 'user', content: 'b'.repeat(2000) },
+      { role: 'assistant', content: 'c'.repeat(2000) },
+      { role: 'user', content: 'd'.repeat(2000) },
+      { role: 'assistant', content: 'latest assistant' },
+      { role: 'user', content: 'latest observation' },
+    ];
+
+    const pruned = pruneWebLLMMessages(messages, 1500);
+    expect(pruned[0]).toEqual({ role: 'system', content: 'system prompt' });
+    expect(pruned[1]).toEqual({ role: 'user', content: 'initial request' });
+    expect(pruned.at(-1)).toEqual({ role: 'user', content: 'latest observation' });
+    expect(pruned.length).toBeLessThan(messages.length);
+  });
+
+  it('unloads all WebLLM engines to reclaim browser RAM/GPU memory', async () => {
+    const { unloadAllWebLLMEngines } = await import('./WebLLMAPI');
+    mockEngine.unload = vi.fn().mockResolvedValue(undefined);
+    await cacheWebLLMModel('engine-1');
+
+    await unloadAllWebLLMEngines();
+    expect(mockEngine.unload).toHaveBeenCalled();
   });
 });

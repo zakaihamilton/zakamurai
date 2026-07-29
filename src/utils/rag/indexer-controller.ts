@@ -196,6 +196,16 @@ export class IndexerController {
     return this.sendMessage('SEARCH', { query, k });
   }
 
+  async unloadModel(): Promise<unknown> {
+    if (!this.worker) return;
+    return this.sendMessage('UNLOAD_MODEL', {});
+  }
+
+  async purgeIndex(): Promise<unknown> {
+    if (!this.worker) return;
+    return this.sendMessage('PURGE_INDEX', {});
+  }
+
   dispose(): void {
     if (this.observer?.disconnect) {
       this.observer.disconnect();
