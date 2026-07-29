@@ -1,3 +1,7 @@
+import type { SidebarCreateRow } from '@/components/App/Panes/Sidebar/sidebar-types';
+import type { TreeItemStateShape } from '@/components/state/domain-types';
+import { createMockStateStore } from '@/test-utils/stateMocks';
+import { makeFlatTreeRow, makeNormalizedTreeNode } from '@/test-utils/treeMocks';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import CreateRowInput from './CreateRowInput';
@@ -11,33 +15,37 @@ vi.mock('@/components/ui/Icons', () => ({
 }));
 
 describe('CreateRowInput', () => {
-  const parentRow = {
+  const parentRow = makeFlatTreeRow({
     key: 'src',
-    item: { name: 'src', type: 'folder', children: [] },
+    item: makeNormalizedTreeNode('src', 'folder', ['src'], []),
     level: 0,
     path: ['src'],
     pathStr: 'src',
-  };
+  });
 
   const baseRow = {
-    key: 'src::__create__',
+    ...makeFlatTreeRow({
+      key: 'src::__create__',
+      item: makeNormalizedTreeNode('', 'file', ['src']),
+      level: 1,
+      path: ['src'],
+      pathStr: 'src',
+    }),
     isCreateRow: true,
     createType: 'file',
-    level: 1,
-    path: ['src'],
-    pathStr: 'src',
     parentRow,
-  };
+  } as SidebarCreateRow;
 
   function mockCreateState(createValue = '') {
-    const state = { createValue };
-    const hook = vi.fn((updater) => {
-      if (typeof updater === 'function') updater(state);
-      Object.assign(hook, state);
+    const state = createMockStateStore<TreeItemStateShape>({
+      isEditing: false,
+      editValue: '',
+      createValue,
+      contextMenu: null,
+      showDeleteDialog: false,
     });
-    Object.assign(hook, state);
-    vi.spyOn(TreeItemState, 'useState').mockReturnValue(hook);
-    return { hook, state };
+    vi.spyOn(TreeItemState, 'useState').mockReturnValue(state);
+    return { hook: state, state: { createValue } };
   }
 
   it('renders a file create input with child indent', () => {

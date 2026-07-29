@@ -3,6 +3,15 @@ import { describe, expect, it, vi } from 'vitest';
 import PreviewToolbar from './Toolbar';
 
 describe('PreviewToolbar', () => {
+  const noopHandlers = {
+    onZoomIn: vi.fn(),
+    onZoomOut: vi.fn(),
+    onZoomReset: vi.fn(),
+    onRefresh: vi.fn(),
+    onOpenExternal: vi.fn(),
+    onToggleMaximize: vi.fn(),
+  };
+
   it('renders toolbar with label and loading indicator', () => {
     const { rerender } = render(
       <PreviewToolbar
@@ -10,6 +19,7 @@ describe('PreviewToolbar', () => {
         isLoading={true}
         scale={1}
         isMaximized={false}
+        {...noopHandlers}
       />,
     );
     expect(screen.getByText('http://localhost:3001/')).toBeDefined();
@@ -20,6 +30,7 @@ describe('PreviewToolbar', () => {
         isLoading={false}
         scale={1}
         isMaximized={true}
+        {...noopHandlers}
       />,
     );
   });

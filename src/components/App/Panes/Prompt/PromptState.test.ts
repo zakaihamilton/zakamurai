@@ -22,16 +22,16 @@ describe('PromptState helpers', () => {
   });
 
   it('getInitialPromptSelectedModel falls back to recommended model', () => {
-    Settings.getAIPromptModel.mockReturnValue(undefined);
-    resolveWebLLMModelId.mockImplementation((id) => id);
+    vi.mocked(Settings.getAIPromptModel).mockReturnValue(null);
+    vi.mocked(resolveWebLLMModelId).mockImplementation((id) => id);
     expect(getInitialPromptSelectedModel()).toBe('recommended-model');
     expect(Settings.getAIPromptModel).toHaveBeenCalledWith('recommended-model');
   });
 
   it('getInitialPromptUiState hydrates draft and selected model', () => {
-    Settings.getPromptDraft.mockReturnValue('hello draft');
-    Settings.getAIPromptModel.mockReturnValue('custom-model');
-    resolveWebLLMModelId.mockReturnValue('custom-model');
+    vi.mocked(Settings.getPromptDraft).mockReturnValue('hello draft');
+    vi.mocked(Settings.getAIPromptModel).mockReturnValue('custom-model');
+    vi.mocked(resolveWebLLMModelId).mockReturnValue('custom-model');
 
     expect(getInitialPromptUiState()).toMatchObject({
       val: 'hello draft',

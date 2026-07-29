@@ -1,23 +1,15 @@
 import { act, renderHook } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
+import { requireSessionId } from '@/test-utils/agentSessionMocks';
+import { makeAgentSessionState, makePromptUiState } from '@/test-utils/stateMocks';
 import { createDefaultAgentSessions } from './AgentSessions';
 import usePromptSessionControls from './usePromptSessionControls';
-
-function createStore(initial) {
-  const value = { ...initial };
-  const store = vi.fn((updater) => {
-    updater(value);
-    Object.assign(store, value);
-  });
-  Object.assign(store, value);
-  return store;
-}
 
 describe('usePromptSessionControls', () => {
   it('branches an active session and opens a review dialog for deletion', () => {
     const defaults = createDefaultAgentSessions('test-model');
-    const agentSessionState = createStore(defaults);
-    const promptUiState = createStore({ isRoleGraphOpen: false });
+    const agentSessionState = makeAgentSessionState(defaults);
+    const promptUiState = makePromptUiState({ isRoleGraphOpen: false });
     const { result } = renderHook(() =>
       usePromptSessionControls({
         agentSessionState,
@@ -27,7 +19,7 @@ describe('usePromptSessionControls', () => {
         isRoleGraphOpen: false,
       }),
     );
-    const activeSessionId = defaults.activeSessionId;
+    const activeSessionId = requireSessionId(defaults.activeSessionId);
 
     act(() => {
       result.current.handleBranchSession(activeSessionId);

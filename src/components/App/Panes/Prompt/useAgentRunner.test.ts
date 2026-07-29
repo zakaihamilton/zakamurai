@@ -1,6 +1,19 @@
+import type { AgentEvent } from '@/components/AI/types';
+import type { FormEvent, MouseEvent } from 'react';
+import { makeAgentSession } from '@/test-utils/agentSessionMocks';
+import { createMockEditorState, createMockTab } from '@/test-utils/editorMocks';
+import { makeFileSystemApi } from '@/test-utils/fsMocks';
+import {
+  makeAgentSessionState,
+  makeLogState,
+  makePromptUiState,
+  makeSidebarState,
+  makeTabState,
+} from '@/test-utils/stateMocks';
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import useAgentRunner, { formatAgentEvent } from './useAgentRunner';
+import type { UseAgentRunnerParams } from './prompt-types';
 
 const runAgent = vi.fn();
 const runCollaborativeAgent = vi.fn();
@@ -30,38 +43,53 @@ vi.mock('@/components/App/Views/PreviewArea/previewEvidenceBridge', () => ({
   getLatestPreviewEvidence: vi.fn(() => null),
 }));
 
-function createRunnerProps(overrides = {}) {
-  const patchSession = vi.fn();
-  const pushSessionMessage = vi.fn();
-  const createSessionMessage = vi.fn((message) => ({ ...message, id: 'msg-1' }));
-  const promptUiState = vi.fn();
-  const logState = vi.fn();
-  const addToHistory = vi.fn();
+function mockFormEvent(): FormEvent<Element> {
+  return { preventDefault: vi.fn() } as unknown as FormEvent<Element>;
+}
+
+function mockMouseEvent(): MouseEvent<HTMLButtonElement> {
+  return { preventDefault: vi.fn() } as unknown as MouseEvent<HTMLButtonElement>;
+}
+
+function createRunnerProps(overrides: Partial<UseAgentRunnerParams> = {}): UseAgentRunnerParams {
+  const activeSession = makeAgentSession({
+    id: 'session-1',
+    name: 'Default',
+    mode: 'single',
+    roleGraph: null,
+  });
 
   return {
     val: 'hello',
     isAIProcessing: false,
-    activeSession: {
-      id: 'session-1',
-      name: 'Default',
-      mode: 'single',
-      roleGraph: { roles: [] },
-    },
-    agentSessionState: { activeSessionId: 'session-1' },
-    promptUiState,
+    activeSession,
+    agentSessionState: makeAgentSessionState({
+      activeSessionId: 'session-1',
+      sessions: { 'session-1': activeSession },
+    }),
+    promptUiState: makePromptUiState(),
     promptScope: 'project',
     selectedModel: 'test-model',
-    abortController: { abort: vi.fn() },
+    abortController: new AbortController(),
     runningSessionId: 'session-1',
-    addToHistory,
-    patchSession,
-    pushSessionMessage,
-    createSessionMessage,
-    fs: {},
-    tabState: { activeTabId: 'app.js', openTabs: [{ id: 'app.js', type: 'file' }] },
-    editorState: { fileContents: {}, selectedLines: {} },
-    sidebarState: { folderTree: [] },
-    logState,
+    addToHistory: vi.fn(),
+    patchSession: vi.fn(),
+    pushSessionMessage: vi.fn(),
+    createSessionMessage: vi.fn((message) => ({
+      ...message,
+      id: 1,
+      timestamp: '2024-01-01T00:00:00.000Z',
+    })),
+    fs: makeFileSystemApi(),
+    tabState: makeTabState({
+      activeTabId: 'app.js',
+      openTabs: [
+        createMockTab({ id: 'app.js', type: 'file', label: 'app.js', file: { name: 'app.js', path: ['app.js'] } }),
+      ],
+    }),
+    editorState: createMockEditorState({ fileContents: {}, selectedLines: {} }),
+    sidebarState: makeSidebarState({ folderTree: [] }),
+    logState: makeLogState(),
     ...overrides,
   };
 }
@@ -79,14 +107,16 @@ describe('formatAgentEvent', () => {
         action: { action: 'read_file', path: 'a.js' },
       }),
     ).toContain('read_file');
-    expect(formatAgentEvent({ type: 'observation', message: 'ok', agentRole: 'coder' })).toContain(
-      'ok',
-    );
-    expect(formatAgentEvent({ type: 'observation', message: 'bad', error: true })).toContain('⚠');
     expect(
-      formatAgentEvent({ type: 'finished', message: 'done', agentRole: 'reviewer' }),
+      formatAgentEvent({ type: 'observation', turn: 1, message: 'ok', agentRole: 'coder' }),
+    ).toContain('ok');
+    expect(
+      formatAgentEvent({ type: 'observation', turn: 1, message: 'bad', error: true }),
+    ).toContain('⚠');
+    expect(
+      formatAgentEvent({ type: 'finished', turn: 1, message: 'done', agentRole: 'reviewer' }),
     ).toContain('Ready for review');
-    expect(formatAgentEvent({ type: 'unknown' })).toBe('');
+    expect(formatAgentEvent({ type: 'unknown', turn: 0 } as unknown as AgentEvent)).toBe('');
   });
 
   it('formats tool actions without a target path', () => {
@@ -95,9 +125,9 @@ describe('formatAgentEvent', () => {
         type: 'tool',
         turn: 1,
         agentRole: 'coder',
-        action: { action: 'search', query: 'auth flow' },
+        action: { action: 'search_workspace', query: 'auth flow' },
       }),
-    ).toContain('search');
+    ).toContain('search_workspace');
     expect(
       formatAgentEvent({
         type: 'tool',
@@ -109,7 +139,9 @@ describe('formatAgentEvent', () => {
   });
 
   it('uses the finished fallback message when summary is missing', () => {
-    expect(formatAgentEvent({ type: 'finished', agentRole: 'coder' })).toContain('Agent finished.');
+    expect(formatAgentEvent({ type: 'finished', turn: 1, agentRole: 'coder' })).toContain(
+      'Agent finished.',
+    );
   });
 
   it('prefers custom role labels from the graph map', () => {
@@ -137,7 +169,7 @@ describe('useAgentRunner', () => {
     const { result } = renderHook(() => useAgentRunner(props));
 
     act(() => {
-      result.current.send({ preventDefault: vi.fn() });
+      result.current.send(mockFormEvent());
     });
 
     expect(props.patchSession).not.toHaveBeenCalled();
@@ -158,17 +190,14 @@ describe('useAgentRunner', () => {
   });
 
   it('stops generation and clears running session state', async () => {
-    const interruptWebLLM = vi.fn();
-    vi.doMock('@/components/AI/WebLLMAPI', () => ({ interruptWebLLM }));
-
     const props = createRunnerProps({ isAIProcessing: true });
     const { result } = renderHook(() => useAgentRunner(props));
 
     await act(async () => {
-      result.current.handleStop({ preventDefault: vi.fn() });
+      result.current.handleStop(mockMouseEvent());
     });
 
-    expect(props.abortController.abort).toHaveBeenCalled();
+    expect(props.abortController?.abort).toHaveBeenCalled();
     expect(props.patchSession).toHaveBeenCalledWith('session-1', { status: 'idle', reasoning: '' });
     expect(props.pushSessionMessage).toHaveBeenCalled();
     expect(props.promptUiState).toHaveBeenCalled();
@@ -177,27 +206,29 @@ describe('useAgentRunner', () => {
 
   it('runs team mode and file-scoped prompts with selected lines', async () => {
     const props = createRunnerProps({
-      activeSession: {
+      activeSession: makeAgentSession({
         id: 'session-1',
         name: 'Team',
         mode: 'team',
         roleGraph: { roles: [{ id: 'coder', label: 'Coder', kind: 'coder' }] },
         messages: [],
-      },
+      }),
       promptScope: 'file',
-      tabState: {
+      tabState: makeTabState({
         activeTabId: 'app.js',
-        openTabs: [{ id: 'app.js', type: 'file' }],
-      },
-      editorState: {
+        openTabs: [
+          createMockTab({ id: 'app.js', type: 'file', label: 'app.js', file: { name: 'app.js', path: ['app.js'] } }),
+        ],
+      }),
+      editorState: createMockEditorState({
         fileContents: { 'app.js': 'code' },
         selectedLines: { 'app.js': [3, 4] },
-      },
+      }),
     });
     const { result } = renderHook(() => useAgentRunner(props));
 
     act(() => {
-      result.current.send({ preventDefault: vi.fn() });
+      result.current.send(mockFormEvent());
     });
 
     await waitFor(() => {
@@ -219,7 +250,7 @@ describe('useAgentRunner', () => {
     });
 
     act(() => {
-      result.current.send({ preventDefault: vi.fn() });
+      result.current.send(mockFormEvent());
     });
 
     await waitFor(() => {
@@ -229,7 +260,7 @@ describe('useAgentRunner', () => {
     const processingProps = createRunnerProps({ isAIProcessing: true });
     rerender(processingProps);
     act(() => {
-      result.current.send({ preventDefault: vi.fn() });
+      result.current.send(mockFormEvent());
     });
     expect(runAgent).toHaveBeenCalledTimes(1);
   });
@@ -239,7 +270,7 @@ describe('useAgentRunner', () => {
     const { result } = renderHook(() => useAgentRunner(props));
 
     act(() => {
-      result.current.send({ preventDefault: vi.fn() });
+      result.current.send(mockFormEvent());
     });
 
     expect(runAgent).not.toHaveBeenCalled();

@@ -1,6 +1,8 @@
 import type { ReactNode } from 'react';
 import { TabState } from '@/components/App/Panes/TabBar';
 import { EditorState } from '@/components/App/Views/EditorArea';
+import { createMockEditorState, createMockTabState } from '@/test-utils/editorMocks';
+import { makeTokenBreakdownTab } from '@/test-utils/tokenMocks';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import TokenBreakdown from './TokenBreakdown';
@@ -26,27 +28,29 @@ vi.mock('@/components/ui/Icons', () => ({
   },
 }));
 
+const editorFixture = () =>
+  createMockEditorState({
+    fileContents: {
+      'src/test.js': 'export const answer = 42;',
+    },
+    selectedLines: {},
+    pendingDiffs: {},
+  });
+
 describe('TokenBreakdown', () => {
   beforeEach(() => {
-    vi.spyOn(TabState, 'useState').mockReturnValue(vi.fn());
+    vi.spyOn(TabState, 'useState').mockReturnValue(createMockTabState());
   });
 
   it('renders a token breakdown for the source file tab', () => {
-    vi.spyOn(EditorState, 'useState').mockReturnValue({
-      fileContents: {
-        'src/test.js': 'export const answer = 42;',
-      },
-      selectedLines: {},
-      pendingDiffs: {},
-    });
+    vi.spyOn(EditorState, 'useState').mockReturnValue(editorFixture());
 
     render(
       <TokenBreakdown
-        tab={{
+        tab={makeTokenBreakdownTab({
           id: 'token-breakdown:src/test.js',
           sourceFilePath: 'src/test.js',
-          collapsedFoldIds: [],
-        }}
+        })}
       />,
     );
 
@@ -69,31 +73,27 @@ describe('TokenBreakdown', () => {
           {
             id: 'src/test.js',
             type: 'file',
+            label: 'test.js',
             file: { name: 'test.js', path: ['src', 'test.js'] },
             viewType: 'token-breakdown',
           },
         ],
       };
       updater(draft);
-      expect(draft.openTabs[0].viewType).toBe('editor');
+      expect(draft.openTabs[0]?.viewType).toBe('editor');
     });
-    vi.spyOn(TabState, 'useState').mockReturnValue(tabState);
-    vi.spyOn(EditorState, 'useState').mockReturnValue({
-      fileContents: {
-        'src/test.js': 'export const answer = 42;',
-      },
-      selectedLines: {},
-      pendingDiffs: {},
-    });
+    vi.spyOn(TabState, 'useState').mockReturnValue(tabState as never);
+    vi.spyOn(EditorState, 'useState').mockReturnValue(editorFixture());
 
     render(
       <TokenBreakdown
-        tab={{
+        tab={makeTokenBreakdownTab({
           id: 'src/test.js',
           type: 'file',
+          label: 'test.js',
           file: { name: 'test.js', path: ['src', 'test.js'] },
           viewType: 'token-breakdown',
-        }}
+        })}
       />,
     );
 
@@ -123,23 +123,14 @@ describe('TokenBreakdown', () => {
       });
       expect(draft.activeTabId).toBe('src/test.js');
     });
-    vi.spyOn(TabState, 'useState').mockReturnValue(tabState);
-    vi.spyOn(EditorState, 'useState').mockReturnValue({
-      fileContents: {
-        'src/test.js': 'export const answer = 42;',
-      },
-      selectedLines: {},
-      pendingDiffs: {},
-    });
+    vi.spyOn(TabState, 'useState').mockReturnValue(tabState as never);
+    vi.spyOn(EditorState, 'useState').mockReturnValue(editorFixture());
 
     render(
       <TokenBreakdown
-        tab={{
-          id: 'token-breakdown:src/test.js',
-          type: 'token-breakdown',
-          sourceFilePath: 'src/test.js',
+        tab={makeTokenBreakdownTab({
           content: 'export const answer = 42;',
-        }}
+        })}
       />,
     );
 
@@ -148,22 +139,10 @@ describe('TokenBreakdown', () => {
   });
 
   it('lists tokens in source order instead of highlight-pass order', () => {
-    vi.spyOn(EditorState, 'useState').mockReturnValue({
-      fileContents: {
-        'src/test.js': 'export const answer = 42;',
-      },
-      selectedLines: {},
-      pendingDiffs: {},
-    });
+    vi.spyOn(EditorState, 'useState').mockReturnValue(editorFixture());
 
     const { container } = render(
-      <TokenBreakdown
-        tab={{
-          id: 'token-breakdown:src/test.js',
-          sourceFilePath: 'src/test.js',
-          collapsedFoldIds: [],
-        }}
-      />,
+      <TokenBreakdown tab={makeTokenBreakdownTab()} />,
     );
 
     const values = Array.from(container.querySelectorAll('tbody tr td:last-child code')).map(
@@ -176,65 +155,41 @@ describe('TokenBreakdown', () => {
   });
 
   it('filters tokens when user types in the search field or clicks type pills', () => {
-    vi.spyOn(EditorState, 'useState').mockReturnValue({
-      fileContents: {
-        'src/test.js': 'export const answer = 42; // some comment',
-      },
-      selectedLines: {},
-      pendingDiffs: {},
-    });
-
-    render(
-      <TokenBreakdown
-        tab={{
-          id: 'token-breakdown:src/test.js',
-          sourceFilePath: 'src/test.js',
-          collapsedFoldIds: [],
-        }}
-      />,
+    vi.spyOn(EditorState, 'useState').mockReturnValue(
+      createMockEditorState({
+        fileContents: {
+          'src/test.js': 'export const answer = 42; // some comment',
+        },
+        selectedLines: {},
+        pendingDiffs: {},
+      }),
     );
 
-    // Initial check
+    render(<TokenBreakdown tab={makeTokenBreakdownTab()} />);
+
     expect(screen.getByText('export')).toBeDefined();
     expect(screen.getByText('const')).toBeDefined();
 
-    // Type in search field
     const searchInput = screen.getByPlaceholderText(/Filter tokens/i);
     fireEvent.change(searchInput, { target: { value: 'const' } });
 
     expect(screen.getByText('const')).toBeDefined();
     expect(screen.queryByText('export')).toBeNull();
 
-    // Click "All Types" pill to clear type filter (though it's default)
     const allPill = screen.getByRole('button', { name: /All Types/i });
     expect(allPill).toBeDefined();
   });
 
   it('renders and allows copying combined file and token breakdown in development mode', async () => {
-    const originalNodeEnv = process.env.NODE_ENV;
-    process.env.NODE_ENV = 'development';
+    vi.stubEnv('NODE_ENV', 'development');
     vi.useFakeTimers();
 
-    const writeText = vi.fn(async () => {});
+    const writeText = vi.fn<(text: string) => Promise<void>>();
     Object.assign(navigator, { clipboard: { writeText } });
 
-    vi.spyOn(EditorState, 'useState').mockReturnValue({
-      fileContents: {
-        'src/test.js': 'export const answer = 42;',
-      },
-      selectedLines: {},
-      pendingDiffs: {},
-    });
+    vi.spyOn(EditorState, 'useState').mockReturnValue(editorFixture());
 
-    render(
-      <TokenBreakdown
-        tab={{
-          id: 'token-breakdown:src/test.js',
-          sourceFilePath: 'src/test.js',
-          collapsedFoldIds: [],
-        }}
-      />,
-    );
+    render(<TokenBreakdown tab={makeTokenBreakdownTab()} />);
 
     const combinedBtn = screen.getByRole('button', { name: /Copy troubleshooting prompt/i });
     expect(combinedBtn).toBeDefined();
@@ -244,7 +199,7 @@ describe('TokenBreakdown', () => {
     });
     expect(writeText).toHaveBeenCalled();
 
-    const rawCopiedText = writeText.mock.calls[0][0];
+    const rawCopiedText = writeText.mock.calls[0]![0];
     expect(rawCopiedText).toContain(
       'Explain why the tokens in the token breakdown do not match the source file. Here is the source file:',
     );
@@ -259,31 +214,16 @@ describe('TokenBreakdown', () => {
       vi.advanceTimersByTime(1200);
     });
 
-    process.env.NODE_ENV = originalNodeEnv;
+    vi.unstubAllEnvs();
     vi.useRealTimers();
   });
 
   it('performs alignment check and displays success check results', async () => {
-    const originalNodeEnv = process.env.NODE_ENV;
-    process.env.NODE_ENV = 'development';
+    vi.stubEnv('NODE_ENV', 'development');
 
-    vi.spyOn(EditorState, 'useState').mockReturnValue({
-      fileContents: {
-        'src/test.js': 'export const answer = 42;',
-      },
-      selectedLines: {},
-      pendingDiffs: {},
-    });
+    vi.spyOn(EditorState, 'useState').mockReturnValue(editorFixture());
 
-    render(
-      <TokenBreakdown
-        tab={{
-          id: 'token-breakdown:src/test.js',
-          sourceFilePath: 'src/test.js',
-          collapsedFoldIds: [],
-        }}
-      />,
-    );
+    render(<TokenBreakdown tab={makeTokenBreakdownTab()} />);
 
     const checkBtn = screen.getByRole('button', { name: /Verify token report match/i });
     expect(checkBtn).toBeDefined();
@@ -293,6 +233,6 @@ describe('TokenBreakdown', () => {
     expect(screen.getByText('Match Success')).toBeDefined();
     expect(screen.getByText('Original Length')).toBeDefined();
 
-    process.env.NODE_ENV = originalNodeEnv;
+    vi.unstubAllEnvs();
   });
 });

@@ -1,3 +1,4 @@
+import { createMockEditorState, createMockTabState } from '@/test-utils/editorMocks';
 import type { ReactNode } from 'react';
 import { TabState } from '@/components/App/Panes/TabBar';
 import { EditorState } from '@/components/App/Views/EditorArea';
@@ -19,11 +20,13 @@ vi.mock('@/components/ui/Icons', () => ({
 
 describe('NavigationControls', () => {
   it('disables back and forward when history empty', () => {
-    vi.spyOn(TabState, 'usePassiveState').mockReturnValue(vi.fn());
-    vi.spyOn(EditorState, 'useState').mockReturnValue({
-      navigationHistory: { stack: [], currentIndex: -1 },
-      fileContents: {},
-    });
+    vi.spyOn(TabState, 'usePassiveState').mockReturnValue(createMockTabState());
+    vi.spyOn(EditorState, 'useState').mockReturnValue(
+      createMockEditorState({
+        navigationHistory: { stack: [], currentIndex: -1 },
+        fileContents: {},
+      }),
+    );
 
     render(<NavigationControls />);
     expect(screen.getByTestId('go-back-button')).toHaveProperty('disabled', true);
@@ -32,12 +35,12 @@ describe('NavigationControls', () => {
   });
 
   it('enables back when history has prior entries', () => {
-    const tabState = vi.fn();
-    const editorState = Object.assign(vi.fn(), {
+    const tabState = createMockTabState();
+    const editorState = createMockEditorState({
       navigationHistory: {
         stack: [
-          { filePath: 'src/a.js', label: 'a.js', loc: { line: 1, col: 1 } },
-          { filePath: 'src/b.js', label: 'b.js', loc: { line: 2, col: 1 } },
+          { filePath: 'src/a.js', label: 'a.js', loc: { line: 1, column: 1 } },
+          { filePath: 'src/b.js', label: 'b.js', loc: { line: 2, column: 1 } },
         ],
         currentIndex: 1,
       },

@@ -14,8 +14,8 @@ describe('SessionTranscript', () => {
         messages={[
           { id: 1, role: 'user', text: 'hello', timestamp: '10:00:00' },
           { id: 2, role: 'ai', text: 'hi', agentRole: 'planner', timestamp: '10:00:01' },
-          { id: 3, role: 'system', text: 'stopped' },
-          { id: 4, role: 'ai', text: 'done' },
+          { id: 3, role: 'system', text: 'stopped', timestamp: '10:00:02' },
+          { id: 4, role: 'ai', text: 'done', timestamp: '10:00:03' },
         ]}
       />,
     );

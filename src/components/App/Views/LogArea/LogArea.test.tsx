@@ -1,30 +1,30 @@
+import { makeLogAreaUiState, makeLogState } from '@/test-utils/stateMocks';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { LogAreaUiState, LogState } from './LogArea';
 import LogArea from './LogArea';
 
 vi.mock('@/utils/os', () => ({
-  formatShortcut: vi.fn((s) => s),
+  formatShortcut: vi.fn((s: string) => s),
   isMac: vi.fn(() => true),
 }));
 
 window.HTMLElement.prototype.scrollIntoView = vi.fn();
 window.HTMLElement.prototype.scrollTo = vi.fn();
 
+const logTimestamp = '2024-01-01T00:00:00Z';
+
 describe('LogArea', () => {
   it('renders logs through the composed list', () => {
-    vi.spyOn(LogState, 'useState').mockReturnValue({
-      logs: [
-        { id: 1, role: 'ai', text: 'Hello human' },
-        { id: 2, role: 'user', text: 'Hello bot' },
-      ],
-      isProcessing: false,
-    });
-    vi.spyOn(LogAreaUiState, 'useState').mockReturnValue({
-      copied: false,
-      autoScroll: true,
-      filterText: '',
-    });
+    vi.spyOn(LogState, 'useState').mockReturnValue(
+      makeLogState({
+        logs: [
+          { id: 1, role: 'ai', text: 'Hello human', timestamp: logTimestamp },
+          { id: 2, role: 'user', text: 'Hello bot', timestamp: logTimestamp },
+        ],
+      }),
+    );
+    vi.spyOn(LogAreaUiState, 'useState').mockReturnValue(makeLogAreaUiState());
 
     render(<LogArea />);
     expect(screen.getByText('Hello human')).toBeDefined();
@@ -32,67 +32,46 @@ describe('LogArea', () => {
   });
 
   it('filters logs by partial matches', async () => {
-    vi.spyOn(LogState, 'useState').mockReturnValue({
-      logs: [
-        { id: 1, role: 'system', text: 'Project compiled successfully', timestamp: '12:00:00' },
-        { id: 2, role: 'ai', text: 'Updated Header.jsx', timestamp: '12:00:01' },
-      ],
-      isAIProcessing: false,
-      isSystemProcessing: false,
-    });
-    const uiStateUpdater = vi.fn();
-    vi.spyOn(LogAreaUiState, 'useState').mockReturnValue(
-      Object.assign(uiStateUpdater, {
-        copied: false,
-        autoScroll: true,
-        filterText: '',
+    vi.spyOn(LogState, 'useState').mockReturnValue(
+      makeLogState({
+        logs: [
+          { id: 1, role: 'system', text: 'Project compiled successfully', timestamp: '12:00:00' },
+          { id: 2, role: 'ai', text: 'Updated Header.jsx', timestamp: '12:00:01' },
+        ],
       }),
     );
+    const uiState = makeLogAreaUiState();
+    vi.spyOn(LogAreaUiState, 'useState').mockReturnValue(uiState);
 
     render(<LogArea />);
     fireEvent.change(screen.getByLabelText('Filter logs'), { target: { value: 'header' } });
-    expect(uiStateUpdater).toHaveBeenCalled();
+    expect(uiState).toHaveBeenCalled();
   });
 
   it('allows clearing filter when filterText is not empty', () => {
-    vi.spyOn(LogState, 'useState').mockReturnValue({
-      logs: [{ id: 1, role: 'ai', text: 'Log entry' }],
-      isAIProcessing: false,
-      isSystemProcessing: false,
-    });
-    const uiStateUpdater = vi.fn((cb) => {
-      const draft = { filterText: 'some-filter' };
-      cb(draft);
-    });
-    vi.spyOn(LogAreaUiState, 'useState').mockReturnValue(
-      Object.assign(uiStateUpdater, {
-        copied: false,
-        autoScroll: true,
-        filterText: 'some-filter',
+    vi.spyOn(LogState, 'useState').mockReturnValue(
+      makeLogState({
+        logs: [{ id: 1, role: 'ai', text: 'Log entry', timestamp: logTimestamp }],
       }),
     );
+    const uiState = makeLogAreaUiState({ filterText: 'some-filter' });
+    vi.spyOn(LogAreaUiState, 'useState').mockReturnValue(uiState);
 
     render(<LogArea />);
     fireEvent.click(screen.getByRole('button', { name: 'Clear log filter' }));
-    expect(uiStateUpdater).toHaveBeenCalled();
+    expect(uiState).toHaveBeenCalled();
   });
 
   it('handleClear clears all logs', () => {
-    const logStateObj = {
-      logs: [{ id: 1, role: 'ai', text: 'Entry 1' }],
-      isAIProcessing: false,
-      isSystemProcessing: false,
-    };
-    vi.spyOn(LogState, 'useState').mockReturnValue(logStateObj);
-    vi.spyOn(LogAreaUiState, 'useState').mockReturnValue({
-      copied: false,
-      autoScroll: true,
-      filterText: '',
+    const logState = makeLogState({
+      logs: [{ id: 1, role: 'ai', text: 'Entry 1', timestamp: logTimestamp }],
     });
+    vi.spyOn(LogState, 'useState').mockReturnValue(logState);
+    vi.spyOn(LogAreaUiState, 'useState').mockReturnValue(makeLogAreaUiState());
 
     render(<LogArea />);
     fireEvent.click(screen.getByRole('button', { name: 'Clear logs' }));
-    expect(logStateObj.logs).toEqual([]);
+    expect(logState.logs).toEqual([]);
   });
 
   it('handleCopyAll copies all logs to clipboard', async () => {
@@ -103,31 +82,25 @@ describe('LogArea', () => {
       writable: true,
     });
 
-    const uiStateUpdater = vi.fn();
-    vi.spyOn(LogState, 'useState').mockReturnValue({
-      logs: [
-        { id: 1, role: 'ai', text: 'Hello' },
-        { id: 2, role: 'user', text: 'World' },
-      ],
-      isAIProcessing: false,
-      isSystemProcessing: false,
-    });
-    vi.spyOn(LogAreaUiState, 'useState').mockReturnValue(
-      Object.assign(uiStateUpdater, {
-        copied: false,
-        autoScroll: true,
-        filterText: '',
+    const uiState = makeLogAreaUiState();
+    vi.spyOn(LogState, 'useState').mockReturnValue(
+      makeLogState({
+        logs: [
+          { id: 1, role: 'ai', text: 'Hello', timestamp: logTimestamp },
+          { id: 2, role: 'user', text: 'World', timestamp: logTimestamp },
+        ],
       }),
     );
+    vi.spyOn(LogAreaUiState, 'useState').mockReturnValue(uiState);
 
     vi.useFakeTimers();
     render(<LogArea />);
     fireEvent.click(screen.getByRole('button', { name: 'Copy all logs' }));
 
     expect(navigator.clipboard.writeText).toHaveBeenCalledWith('[ai] Hello\n\n[user] World');
-    expect(uiStateUpdater).toHaveBeenCalled();
+    expect(uiState).toHaveBeenCalled();
     vi.advanceTimersByTime(2100);
-    expect(uiStateUpdater).toHaveBeenCalledTimes(2);
+    expect(uiState).toHaveBeenCalledTimes(2);
     vi.useRealTimers();
 
     Object.defineProperty(navigator, 'clipboard', {
@@ -138,19 +111,13 @@ describe('LogArea', () => {
   });
 
   it('handleScroll disables autoScroll when scrolling up', () => {
-    const uiStateUpdater = vi.fn();
-    vi.spyOn(LogState, 'useState').mockReturnValue({
-      logs: [{ id: 1, role: 'ai', text: 'Entry' }],
-      isAIProcessing: false,
-      isSystemProcessing: false,
-    });
-    vi.spyOn(LogAreaUiState, 'useState').mockReturnValue(
-      Object.assign(uiStateUpdater, {
-        copied: false,
-        autoScroll: true,
-        filterText: '',
+    const uiState = makeLogAreaUiState();
+    vi.spyOn(LogState, 'useState').mockReturnValue(
+      makeLogState({
+        logs: [{ id: 1, role: 'ai', text: 'Entry', timestamp: logTimestamp }],
       }),
     );
+    vi.spyOn(LogAreaUiState, 'useState').mockReturnValue(uiState);
 
     render(<LogArea />);
     const container = document.querySelector('[class*="logArea"]') || document.querySelector('div');

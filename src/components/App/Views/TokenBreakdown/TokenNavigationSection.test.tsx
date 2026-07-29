@@ -1,3 +1,4 @@
+import type { NavigationTarget } from '@/utils/navigation/types';
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import TokenNavigationSection from './TokenNavigationSection';
@@ -14,7 +15,12 @@ describe('TokenNavigationSection', () => {
         end: 10,
       },
     ];
-    render(<TokenNavigationSection navigationTargets={targets} navigationLinksEnabled={true} />);
+    render(
+      <TokenNavigationSection
+        navigationTargets={targets as unknown as NavigationTarget[]}
+        navigationLinksEnabled={true}
+      />,
+    );
 
     expect(screen.getByText('Navigation Targets')).toBeDefined();
     expect(screen.getByText('enabled')).toBeDefined();
@@ -39,7 +45,12 @@ describe('TokenNavigationSection', () => {
         end: 25,
       },
     ];
-    render(<TokenNavigationSection navigationTargets={targets} navigationLinksEnabled={true} />);
+    render(
+      <TokenNavigationSection
+        navigationTargets={targets as unknown as NavigationTarget[]}
+        navigationLinksEnabled={true}
+      />,
+    );
 
     expect(screen.getByText(/MyClass at -:-/)).toBeDefined();
     expect(screen.getByText(/someText at -:-/)).toBeDefined();

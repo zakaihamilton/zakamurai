@@ -1,10 +1,32 @@
 import type { ReactNode } from 'react';
+import type { SessionDialogState } from '@/components/App/Panes/Prompt/prompt-types';
+import { makeAgentSessionState, makePromptUiState } from '@/test-utils/stateMocks';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import SessionDialog from './SessionDialog';
 
+type DialogMockProps = {
+  isOpen?: boolean;
+  title?: string;
+  message?: string;
+  confirmText?: string;
+  cancelText?: string;
+  onConfirm?: () => void;
+  onCancel?: () => void;
+  children?: ReactNode;
+};
+
 vi.mock('@/components/ui/Dialog', () => ({
-  default: ({ isOpen, title, message, confirmText, cancelText, onConfirm, onCancel, children }) =>
+  default: ({
+    isOpen,
+    title,
+    message,
+    confirmText,
+    cancelText,
+    onConfirm,
+    onCancel,
+    children,
+  }: DialogMockProps) =>
     isOpen ? (
       <div data-testid="dialog">
         <h2>{title}</h2>
@@ -22,17 +44,26 @@ vi.mock('@/components/ui/Dialog', () => ({
 
 describe('SessionDialog', () => {
   it('renders null when sessionDialog is null', () => {
-    const { container } = render(<SessionDialog sessionDialog={null} />);
+    const { container } = render(
+      <SessionDialog
+        sessionDialog={null}
+        runningSessionId={null}
+        isAIProcessing={false}
+        agentSessionState={makeAgentSessionState()}
+        promptUiState={makePromptUiState()}
+      />,
+    );
     expect(container.firstChild).toBeNull();
   });
 
   it('handles rename dialog input and confirm/cancel', () => {
-    const agentSessionState = vi.fn((cb) =>
-      cb({ sessions: { s1: { id: 's1', name: 'Old Name' } }, activeSessionId: 's1' }),
-    );
-    const promptUiState = vi.fn((cb) => cb({ sessionDialog: { value: 'New Name' } }));
+    const agentSessionState = makeAgentSessionState({
+      sessions: { s1: { id: 's1', name: 'Old Name' } as never },
+      activeSessionId: 's1',
+    });
+    const promptUiState = makePromptUiState();
 
-    const sessionDialog = {
+    const sessionDialog: SessionDialogState = {
       type: 'rename',
       sessionId: 's1',
       value: 'Old Name',
@@ -60,18 +91,18 @@ describe('SessionDialog', () => {
   });
 
   it('handles delete dialog confirm when session is running vs idle', () => {
-    const promptUiState = vi.fn((cb) => cb({ sessionDialog: {} }));
-    const agentSessionState = vi.fn((cb) =>
-      cb({ sessions: { s1: { id: 's1', name: 'My Session' } }, activeSessionId: 's1' }),
-    );
+    const promptUiState = makePromptUiState();
+    const agentSessionState = makeAgentSessionState({
+      sessions: { s1: { id: 's1', name: 'My Session' } as never },
+      activeSessionId: 's1',
+    });
 
-    const sessionDialog = {
+    const sessionDialog: SessionDialogState = {
       type: 'delete',
       sessionId: 's1',
       name: 'My Session',
     };
 
-    // When running and processing -> shows error
     const { rerender } = render(
       <SessionDialog
         sessionDialog={sessionDialog}
@@ -84,7 +115,6 @@ describe('SessionDialog', () => {
 
     fireEvent.click(screen.getByText('Delete'));
 
-    // When idle -> deletes session
     rerender(
       <SessionDialog
         sessionDialog={sessionDialog}
@@ -100,7 +130,7 @@ describe('SessionDialog', () => {
   });
 
   it('renders error dialog type', () => {
-    const sessionDialog = {
+    const sessionDialog: SessionDialogState = {
       type: 'error',
       message: 'Something failed',
     };
@@ -110,8 +140,8 @@ describe('SessionDialog', () => {
         sessionDialog={sessionDialog}
         runningSessionId={null}
         isAIProcessing={false}
-        agentSessionState={vi.fn()}
-        promptUiState={vi.fn()}
+        agentSessionState={makeAgentSessionState()}
+        promptUiState={makePromptUiState()}
       />,
     );
 

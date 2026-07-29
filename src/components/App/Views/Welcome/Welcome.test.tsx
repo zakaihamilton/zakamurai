@@ -1,3 +1,4 @@
+import { createMockTabState } from '@/test-utils/editorMocks';
 import type { ReactNode } from 'react';
 import { TabState } from '@/components/App/Panes';
 import { fireEvent, render, screen } from '@testing-library/react';
@@ -21,10 +22,7 @@ vi.mock('@/components/ui/Icons', () => ({
 
 describe('Welcome', () => {
   it('renders welcome actions', () => {
-    vi.spyOn(TabState, 'usePassiveState').mockReturnValue({
-      openTabs: [],
-      activeTabId: null,
-    });
+    vi.spyOn(TabState, 'usePassiveState').mockReturnValue(createMockTabState());
 
     render(<Welcome />);
     expect(screen.getByText('Project info')).toBeDefined();
@@ -32,7 +30,7 @@ describe('Welcome', () => {
   });
 
   it('opens project info tab', () => {
-    const tabState = { openTabs: [], activeTabId: null };
+    const tabState = createMockTabState();
     vi.spyOn(TabState, 'usePassiveState').mockReturnValue(tabState);
 
     render(<Welcome />);
@@ -42,7 +40,7 @@ describe('Welcome', () => {
   });
 
   it('opens instructions tab when clicked', () => {
-    const tabState = { openTabs: [], activeTabId: null };
+    const tabState = createMockTabState();
     vi.spyOn(TabState, 'usePassiveState').mockReturnValue(tabState);
 
     render(<Welcome />);
@@ -52,10 +50,10 @@ describe('Welcome', () => {
   });
 
   it('does not duplicate instructions tab if already open', () => {
-    const tabState = {
+    const tabState = createMockTabState({
       openTabs: [{ id: 'instructions', type: 'instructions', label: 'Instructions' }],
       activeTabId: null,
-    };
+    });
     vi.spyOn(TabState, 'usePassiveState').mockReturnValue(tabState);
 
     render(<Welcome />);

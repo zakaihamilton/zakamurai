@@ -10,23 +10,31 @@ vi.mock('@/components/ui/Icons', () => ({
   },
 }));
 
+const defaultProps = {
+  modelCacheWork: null,
+  onToggleSort: vi.fn(),
+  onModelCacheAction: vi.fn(),
+  onRequestUncache: vi.fn(),
+};
+
 describe('ModelTable', () => {
   const models = WEB_LLM_MODELS.slice(0, 3);
 
   it('renders model rows with selected and cached badges', () => {
     render(
       <ModelTable
+        {...defaultProps}
         visibleModels={models}
         sort={null}
-        onToggleSort={vi.fn()}
         selectedModelId={models[0].id}
         cachedModelIds={[models[1].id]}
-        onModelCacheAction={vi.fn()}
-        onRequestUncache={vi.fn()}
       />,
     );
 
-    expect(screen.getByRole('checkbox', { name: `${models[0].name} selected` }).checked).toBe(true);
+    expect(
+      (screen.getByRole('checkbox', { name: `${models[0].name} selected` }) as HTMLInputElement)
+        .checked,
+    ).toBe(true);
     expect(screen.getByRole('columnheader', { name: /Model/ })).toBeDefined();
     expect(screen.getByRole('columnheader', { name: 'Cache' })).toBeDefined();
     expect(screen.getByText(models[0].name)).toBeDefined();
@@ -38,12 +46,11 @@ describe('ModelTable', () => {
     const onToggleSort = vi.fn();
     const { rerender } = render(
       <ModelTable
+        {...defaultProps}
         visibleModels={models}
         sort={null}
         onToggleSort={onToggleSort}
         selectedModelId=""
-        onModelCacheAction={vi.fn()}
-        onRequestUncache={vi.fn()}
       />,
     );
 
@@ -55,24 +62,22 @@ describe('ModelTable', () => {
 
     rerender(
       <ModelTable
+        {...defaultProps}
         visibleModels={models}
         sort={{ key: 'model', direction: 'ascending' }}
         onToggleSort={onToggleSort}
         selectedModelId=""
-        onModelCacheAction={vi.fn()}
-        onRequestUncache={vi.fn()}
       />,
     );
     expect(modelHeader.getAttribute('aria-sort')).toBe('ascending');
 
     rerender(
       <ModelTable
+        {...defaultProps}
         visibleModels={models}
         sort={{ key: 'model', direction: 'descending' }}
         onToggleSort={onToggleSort}
         selectedModelId=""
-        onModelCacheAction={vi.fn()}
-        onRequestUncache={vi.fn()}
       />,
     );
     expect(modelHeader.getAttribute('aria-sort')).toBe('descending');
@@ -81,12 +86,10 @@ describe('ModelTable', () => {
   it('renders an empty state when no models are visible', () => {
     render(
       <ModelTable
+        {...defaultProps}
         visibleModels={[]}
         sort={null}
-        onToggleSort={vi.fn()}
         selectedModelId=""
-        onModelCacheAction={vi.fn()}
-        onRequestUncache={vi.fn()}
       />,
     );
 
@@ -99,9 +102,9 @@ describe('ModelTable', () => {
 
     render(
       <ModelTable
+        {...defaultProps}
         visibleModels={models}
         sort={null}
-        onToggleSort={vi.fn()}
         selectedModelId=""
         cachedModelIds={[models[0].id]}
         onModelCacheAction={onModelCacheAction}

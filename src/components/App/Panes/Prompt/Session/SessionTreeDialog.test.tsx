@@ -1,10 +1,17 @@
+import { makeAgentSession } from '@/test-utils/agentSessionMocks';
 import type { ReactNode } from 'react';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import SessionTreeDialog from './SessionTreeDialog';
 
+type DialogMockProps = {
+  isOpen?: boolean;
+  title?: string;
+  children?: ReactNode;
+};
+
 vi.mock('@/components/ui/Dialog', () => ({
-  default: ({ isOpen, title, children }) =>
+  default: ({ isOpen, title, children }: DialogMockProps) =>
     isOpen ? <div aria-label={title}>{children}</div> : null,
 }));
 
@@ -21,8 +28,14 @@ vi.mock('@/components/ui/Icons', () => ({
 
 describe('SessionTreeDialog', () => {
   const sessions = {
-    root: { id: 'root', name: 'Root', parentId: null, mode: 'single', status: 'idle' },
-    branch: { id: 'branch', name: 'Branch', parentId: 'root', mode: 'team', status: 'idle' },
+    root: makeAgentSession({ id: 'root', name: 'Root', parentId: null, mode: 'single', status: 'idle' }),
+    branch: makeAgentSession({
+      id: 'branch',
+      name: 'Branch',
+      parentId: 'root',
+      mode: 'team',
+      status: 'idle',
+    }),
   };
 
   it('browses, selects, and manages nested agent branches', () => {
@@ -63,7 +76,7 @@ describe('SessionTreeDialog', () => {
     render(
       <SessionTreeDialog
         isOpen
-        sessions={{ ...sessions, branch: { ...sessions.branch, status: 'running' } }}
+        sessions={{ ...sessions, branch: makeAgentSession({ ...sessions.branch, status: 'running' }) }}
         activeSessionId="root"
         onCancel={vi.fn()}
         onSelect={vi.fn()}

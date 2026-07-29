@@ -1,4 +1,5 @@
 import type { NormalizedTreeNode } from '@/components/App/types';
+import type { FlatTreeRow } from '@/components/App/types';
 import type { TreeNode } from '@/components/state/domain-types';
 
 /** Cast partial tree fixture data for unit tests. */
@@ -37,6 +38,18 @@ export function makeNormalizedTreeNode(
     type,
     path,
     ...(children ? { children } : {}),
+  };
+}
+
+export function makeFlatTreeRow(
+  partial: Partial<FlatTreeRow> & { item: FlatTreeRow['item'] },
+): FlatTreeRow {
+  const path = partial.path ?? partial.item.path ?? [partial.item.name];
+  return {
+    level: 0,
+    path,
+    pathStr: partial.pathStr ?? path.join('/'),
+    ...partial,
   };
 }
 

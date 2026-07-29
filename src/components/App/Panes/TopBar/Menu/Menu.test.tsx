@@ -1,15 +1,29 @@
 import type { ReactNode } from 'react';
 import { LogState } from '@/components/App/Views/LogArea';
+import { makeLogState } from '@/test-utils/stateMocks';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import TopBarMenu from './Menu';
+
+type ContextMenuMockProps = {
+  children?: ReactNode;
+  position?: { x: number; y: number } | null;
+  onClose?: () => void;
+};
+
+type DialogMockProps = {
+  isOpen?: boolean;
+  title?: ReactNode;
+  message?: ReactNode;
+  onCancel?: () => void;
+};
 
 vi.mock('@/components/App/Views/LogArea', () => ({ LogState: { useState: vi.fn() } }));
 vi.mock('@/components/ui/Tooltip', () => ({
   default: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
 }));
 vi.mock('@/components/ui/ContextMenu', () => ({
-  default: ({ children, position, onClose }) =>
+  default: ({ children, position, onClose }: ContextMenuMockProps) =>
     position ? (
       <div data-testid="context-menu">
         {children}
@@ -20,7 +34,7 @@ vi.mock('@/components/ui/ContextMenu', () => ({
     ) : null,
 }));
 vi.mock('@/components/ui/Dialog', () => ({
-  default: ({ isOpen, title, message, onCancel }) =>
+  default: ({ isOpen, title, message, onCancel }: DialogMockProps) =>
     isOpen ? (
       <div data-testid="dialog">
         <h2>{title}</h2>
@@ -42,22 +56,25 @@ vi.mock('@/components/ui/Icons', () => ({
   },
 }));
 
+const defaultMenuProps = {
+  onExportZip: vi.fn(),
+  onExportCompiledZip: vi.fn(),
+  onExportSupportReport: vi.fn(),
+  onNewProject: vi.fn(),
+  onClearFS: vi.fn(),
+  onToggleShortcuts: vi.fn(),
+};
+
 describe('TopBarMenu', () => {
   beforeEach(() => {
-    vi.mocked(LogState.useState).mockReturnValue({ isSystemProcessing: false, isAIProcessing: false });
+    vi.mocked(LogState.useState).mockReturnValue(
+      makeLogState({ isSystemProcessing: false, isAIProcessing: false }),
+    );
   });
 
   it('renders more actions button', () => {
     act(() => {
-      render(
-        <TopBarMenu
-          onExportZip={vi.fn()}
-          onExportCompiledZip={vi.fn()}
-          onNewProject={vi.fn()}
-          onClearFS={vi.fn()}
-          onToggleShortcuts={vi.fn()}
-        />,
-      );
+      render(<TopBarMenu {...defaultMenuProps} />);
     });
 
     expect(screen.getByTestId('more-actions-btn')).toBeDefined();
@@ -66,15 +83,7 @@ describe('TopBarMenu', () => {
   it('calls onExportZip from menu', async () => {
     const onExportZip = vi.fn();
     await act(async () => {
-      render(
-        <TopBarMenu
-          onExportZip={onExportZip}
-          onExportCompiledZip={vi.fn()}
-          onNewProject={vi.fn()}
-          onClearFS={vi.fn()}
-          onToggleShortcuts={vi.fn()}
-        />,
-      );
+      render(<TopBarMenu {...defaultMenuProps} onExportZip={onExportZip} />);
     });
 
     const button = screen.getByTestId('more-actions-btn');

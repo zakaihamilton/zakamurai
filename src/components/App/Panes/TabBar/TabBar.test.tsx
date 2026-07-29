@@ -1,10 +1,21 @@
 import type { ReactNode } from 'react';
+import type { Tab } from '@/components/state/domain-types';
 import { SidebarState } from '@/components/App/Panes/Sidebar';
+import { createMockTab } from '@/test-utils/editorMocks';
 import { makeSidebarState, makeTabState } from '@/test-utils/stateMocks';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { TabState } from './TabBar';
 import TabBar from './TabBar';
+
+function fileTab(id: string, label: string, path: string[] = []): Tab {
+  return createMockTab({
+    id,
+    label,
+    type: 'file',
+    file: { name: path[path.length - 1] ?? label, path },
+  });
+}
 
 vi.mock('../Sidebar', () => ({
   SidebarState: {
@@ -12,8 +23,12 @@ vi.mock('../Sidebar', () => ({
   },
 }));
 
+type TooltipMockProps = { children?: ReactNode; content?: string };
+
 vi.mock('@/components/ui/Tooltip', () => ({
-  default: ({ children, content }) => <span data-content={content}>{children}</span>,
+  default: ({ children, content }: TooltipMockProps) => (
+    <span data-content={content}>{children}</span>
+  ),
 }));
 
 vi.mock('@/components/Storage/Settings', () => ({
@@ -34,9 +49,19 @@ vi.mock('./useTabDragAndDrop', () => ({
 }));
 
 // Capture TabContextMenu callbacks so we can test them
-let _capturedContextMenuProps = null;
+let _capturedContextMenuProps: Record<string, unknown> | null = null;
+type TabContextMenuMockProps = {
+  tab: { id: string };
+  onCloseTab: (id: string) => void;
+  onCloseOthers: (id: string) => void;
+  onCloseToLeft: (id: string) => void;
+  onCloseToRight: (id: string) => void;
+  onCloseAll: () => void;
+  onClose: () => void;
+};
+
 vi.mock('./TabContextMenu', () => ({
-  default: (props) => {
+  default: (props: TabContextMenuMockProps) => {
     _capturedContextMenuProps = props;
     return (
       <div data-testid="TabContextMenu">
@@ -67,10 +92,7 @@ describe('TabBar', () => {
   it('renders open tabs', () => {
     vi.spyOn(TabState, 'useState').mockReturnValue(
       makeTabState({
-        openTabs: [
-          { id: 'tab1', label: 'Tab 1', type: 'file', file: { path: [] } },
-          { id: 'tab2', label: 'Tab 2', type: 'file', file: { path: [] } },
-        ],
+        openTabs: [fileTab('tab1', 'Tab 1'), fileTab('tab2', 'Tab 2')],
         activeTabId: 'tab1',
       }),
     );
@@ -83,7 +105,7 @@ describe('TabBar', () => {
 
   it('calls state update when a tab is clicked', () => {
     const stateUpdate = makeTabState({
-      openTabs: [{ id: 'tab1', label: 'Tab 1', type: 'file', file: { path: [] } }],
+      openTabs: [fileTab('tab1', 'Tab 1')],
       activeTabId: 'tab1',
     });
     vi.spyOn(TabState, 'useState').mockReturnValue(stateUpdate);
@@ -118,8 +140,8 @@ describe('TabBar', () => {
   it('shows close-all button when more than one tab is open', () => {
     const stateUpdate = makeTabState({
       openTabs: [
-        { id: 'tab1', label: 'Tab 1', type: 'file', file: { path: [] } },
-        { id: 'tab2', label: 'Tab 2', type: 'file', file: { path: [] } },
+        fileTab('tab1', 'Tab 1'),
+        fileTab('tab2', 'Tab 2'),
       ],
       activeTabId: 'tab1',
     });
@@ -134,7 +156,7 @@ describe('TabBar', () => {
 
   it('opens context menu on right-click', () => {
     const stateUpdate = makeTabState({
-      openTabs: [{ id: 'tab1', label: 'Tab 1', type: 'file', file: { path: [] } }],
+      openTabs: [fileTab('tab1', 'Tab 1')],
       activeTabId: 'tab1',
     });
     vi.spyOn(TabState, 'useState').mockReturnValue(stateUpdate);
@@ -165,14 +187,14 @@ describe('TabBar', () => {
     });
 
     const stateUpdate = makeTabState({
-      openTabs: [{ id: 'tab1', label: 'Tab 1', type: 'file', file: { path: [] } }],
+      openTabs: [fileTab('tab1', 'Tab 1')],
       activeTabId: 'tab1',
     });
     vi.spyOn(TabState, 'useState').mockReturnValue(stateUpdate);
     vi.mocked(SidebarState.useState).mockReturnValue(makeSidebarState());
 
     const { container } = render(<TabBar />);
-    const tabBarContainer = container.firstChild;
+    const tabBarContainer = container.firstChild!;
 
     await act(async () => {
       fireEvent.dragOver(tabBarContainer, {
@@ -186,8 +208,8 @@ describe('TabBar', () => {
   it('context menu closeOtherTabs calls state update', () => {
     const stateUpdate = makeTabState({
       openTabs: [
-        { id: 'tab1', label: 'Tab 1', type: 'file', file: { path: ['tab1'] } },
-        { id: 'tab2', label: 'Tab 2', type: 'file', file: { path: ['tab2'] } },
+        fileTab('tab1', 'Tab 1', ['tab1']),
+        fileTab('tab2', 'Tab 2', ['tab2']),
       ],
       activeTabId: 'tab1',
     });
@@ -205,8 +227,8 @@ describe('TabBar', () => {
   it('context menu closeTabsToLeft calls state update', () => {
     const stateUpdate = makeTabState({
       openTabs: [
-        { id: 'tab1', label: 'Tab 1', type: 'file', file: { path: [] } },
-        { id: 'tab2', label: 'Tab 2', type: 'file', file: { path: [] } },
+        fileTab('tab1', 'Tab 1'),
+        fileTab('tab2', 'Tab 2'),
       ],
       activeTabId: 'tab2',
     });
@@ -222,8 +244,8 @@ describe('TabBar', () => {
   it('context menu closeTabsToRight calls state update', () => {
     const stateUpdate = makeTabState({
       openTabs: [
-        { id: 'tab1', label: 'Tab 1', type: 'file', file: { path: [] } },
-        { id: 'tab2', label: 'Tab 2', type: 'file', file: { path: [] } },
+        fileTab('tab1', 'Tab 1'),
+        fileTab('tab2', 'Tab 2'),
       ],
       activeTabId: 'tab1',
     });
@@ -238,7 +260,7 @@ describe('TabBar', () => {
 
   it('context menu dismiss sets contextMenu to null', () => {
     const stateUpdate = makeTabState({
-      openTabs: [{ id: 'tab1', label: 'Tab 1', type: 'file', file: { path: [] } }],
+      openTabs: [fileTab('tab1', 'Tab 1')],
       activeTabId: 'tab1',
     });
     vi.spyOn(TabState, 'useState').mockReturnValue(stateUpdate);
@@ -252,27 +274,24 @@ describe('TabBar', () => {
   });
 
   it('expandAncestors is called when clicking a tab with a file path', () => {
-    const sidebarUpdater = vi.fn();
+    const sidebarState = makeSidebarState({ expandedFolders: {} });
     const stateUpdate = makeTabState({
       openTabs: [
         {
           id: 'src/components/App.js',
           label: 'App.js',
           type: 'file',
-          file: { path: ['src', 'components', 'App.js'] },
+          file: { name: 'App.js', path: ['src', 'components', 'App.js'] },
         },
       ],
       activeTabId: 'src/components/App.js',
     });
     vi.spyOn(TabState, 'useState').mockReturnValue(stateUpdate);
-    vi.mocked(SidebarState.useState).mockReturnValue(
-      Object.assign(sidebarUpdater, { expandedFolders: {} }),
-    );
+    vi.mocked(SidebarState.useState).mockReturnValue(sidebarState);
 
     render(<TabBar />);
     fireEvent.click(screen.getByText('App.js'));
     expect(stateUpdate).toHaveBeenCalled();
-    // sidebarUpdater should be called to expand ancestors for the tab path
-    expect(sidebarUpdater).toHaveBeenCalled();
+    expect(sidebarState).toHaveBeenCalled();
   });
 });

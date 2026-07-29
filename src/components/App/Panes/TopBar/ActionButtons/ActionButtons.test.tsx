@@ -4,6 +4,14 @@ import { SidebarState } from '@/components/App/Panes/Sidebar';
 import { TabState } from '@/components/App/Panes/TabBar';
 import { PreviewState } from '@/components/App/PreviewState';
 import { LogState } from '@/components/App/Views/LogArea';
+import { createMockTab } from '@/test-utils/editorMocks';
+import {
+  makeAppState,
+  makeLogState,
+  makePreviewState,
+  makeSidebarState,
+  makeTabState,
+} from '@/test-utils/stateMocks';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import ActionButtons from './ActionButtons';
@@ -14,7 +22,9 @@ vi.mock('@/components/App/Panes/TabBar', () => ({ TabState: { useState: vi.fn() 
 vi.mock('@/components/App/PreviewState', () => ({ PreviewState: { useState: vi.fn() } }));
 vi.mock('@/components/App/Views/LogArea', () => ({ LogState: { useState: vi.fn() } }));
 vi.mock('@/components/ui/Tooltip', () => ({
-  default: ({ children, content }) => <div data-tooltip-content={content}>{children}</div>,
+  default: ({ children, content }: { children?: ReactNode; content?: string }) => (
+    <div data-tooltip-content={content}>{children}</div>
+  ),
 }));
 vi.mock('@/components/ui/Icons', () => ({
   Icons: {
@@ -29,16 +39,27 @@ vi.mock('@/components/ui/Icons', () => ({
 describe('ActionButtons', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(LogState.useState).mockReturnValue({ isSystemProcessing: false });
-    vi.mocked(PreviewState.useState).mockReturnValue({ compileStatus: 'idle', compilePhase: null });
-    vi.mocked(AppState.useState).mockReturnValue({ isMobile: false });
-    vi.mocked(SidebarState.useState).mockReturnValue({ showAIInput: true, isAIInputPopupOpen: false });
+    vi.mocked(LogState.useState).mockReturnValue(makeLogState({ isSystemProcessing: false }));
+    vi.mocked(PreviewState.useState).mockReturnValue(
+      makePreviewState({ compileStatus: 'idle', compilePhase: null }),
+    );
+    vi.mocked(AppState.useState).mockReturnValue(makeAppState({ isMobile: false }));
+    vi.mocked(SidebarState.useState).mockReturnValue(
+      makeSidebarState({ showAIInput: true, isAIInputPopupOpen: false }),
+    );
   });
 
   it('renders action buttons', () => {
-    const tabState = Object.assign(vi.fn(), {
+    const tabState = makeTabState({
       activeTabId: 'src/foo.js',
-      openTabs: [{ id: 'src/foo.js', type: 'file', label: 'foo.js' }],
+      openTabs: [
+        createMockTab({
+          id: 'src/foo.js',
+          type: 'file',
+          label: 'foo.js',
+          file: { name: 'foo.js', path: ['src', 'foo.js'] },
+        }),
+      ],
       lastCodeTabId: 'src/foo.js',
     });
     vi.mocked(TabState.useState).mockReturnValue(tabState);
@@ -64,9 +85,16 @@ describe('ActionButtons', () => {
     const onOpenLog = vi.fn();
     const onOpenPreview = vi.fn();
     const onToggleAIInput = vi.fn();
-    const tabState = Object.assign(vi.fn(), {
+    const tabState = makeTabState({
       activeTabId: 'ai-logs',
-      openTabs: [{ id: 'src/foo.js', type: 'file', label: 'foo.js' }],
+      openTabs: [
+        createMockTab({
+          id: 'src/foo.js',
+          type: 'file',
+          label: 'foo.js',
+          file: { name: 'foo.js', path: ['src', 'foo.js'] },
+        }),
+      ],
       lastCodeTabId: 'src/foo.js',
     });
     vi.mocked(TabState.useState).mockReturnValue(tabState);
@@ -92,14 +120,23 @@ describe('ActionButtons', () => {
   });
 
   it('shows the active compile phase in the build tooltip', () => {
-    vi.mocked(LogState.useState).mockReturnValue({ isSystemProcessing: true });
-    vi.mocked(PreviewState.useState).mockReturnValue({
-      compileStatus: 'building',
-      compilePhase: '[NPM] Downloading nanoid@3.3.16…',
-    });
-    const tabState = Object.assign(vi.fn(), {
+    vi.mocked(LogState.useState).mockReturnValue(makeLogState({ isSystemProcessing: true }));
+    vi.mocked(PreviewState.useState).mockReturnValue(
+      makePreviewState({
+        compileStatus: 'building',
+        compilePhase: '[NPM] Downloading nanoid@3.3.16…',
+      }),
+    );
+    const tabState = makeTabState({
       activeTabId: 'src/foo.js',
-      openTabs: [{ id: 'src/foo.js', type: 'file', label: 'foo.js' }],
+      openTabs: [
+        createMockTab({
+          id: 'src/foo.js',
+          type: 'file',
+          label: 'foo.js',
+          file: { name: 'foo.js', path: ['src', 'foo.js'] },
+        }),
+      ],
       lastCodeTabId: 'src/foo.js',
     });
     vi.mocked(TabState.useState).mockReturnValue(tabState);
@@ -121,14 +158,18 @@ describe('ActionButtons', () => {
   });
 
   it('switches to last content tab via code tab', () => {
-    const tabState = Object.assign(
-      vi.fn((fn) => fn({ activeTabId: 'ai-logs', openTabs: [] })),
-      {
-        activeTabId: 'ai-logs',
-        openTabs: [{ id: 'src/foo.js', type: 'file', label: 'foo.js' }],
-        lastCodeTabId: 'src/foo.js',
-      },
-    );
+    const tabState = makeTabState({
+      activeTabId: 'ai-logs',
+      openTabs: [
+        createMockTab({
+          id: 'src/foo.js',
+          type: 'file',
+          label: 'foo.js',
+          file: { name: 'foo.js', path: ['src', 'foo.js'] },
+        }),
+      ],
+      lastCodeTabId: 'src/foo.js',
+    });
     vi.mocked(TabState.useState).mockReturnValue(tabState);
 
     render(

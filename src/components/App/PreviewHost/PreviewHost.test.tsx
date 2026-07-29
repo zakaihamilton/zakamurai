@@ -2,6 +2,14 @@ import { act, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import PreviewHost from './PreviewHost';
 
+function setLocation(url: string) {
+  Object.defineProperty(window, 'location', {
+    configurable: true,
+    writable: true,
+    value: new URL(url),
+  });
+}
+
 describe('PreviewHost', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
@@ -23,7 +31,7 @@ describe('PreviewHost', () => {
   });
 
   it('waits for IDE handshake when window.opener is missing', () => {
-    window.location = new URL('http://localhost:3001/?session=s123');
+    setLocation('http://localhost:3001/?session=s123');
     render(<PreviewHost />);
     expect(screen.getByText('Connecting isolated preview…')).toBeDefined();
     expect(
@@ -35,7 +43,7 @@ describe('PreviewHost', () => {
 
   it('shows connection error after timeout when no handshake arrives', () => {
     vi.useFakeTimers();
-    window.location = new URL('http://localhost:3001/?session=s123');
+    setLocation('http://localhost:3001/?session=s123');
     render(<PreviewHost />);
     act(() => {
       vi.advanceTimersByTime(15000);
@@ -49,7 +57,7 @@ describe('PreviewHost', () => {
   });
 
   it('posts PREVIEW_CONNECT when valid session and peerWindow exist', () => {
-    window.location = new URL('http://localhost:3001/?session=s123');
+    setLocation('http://localhost:3001/?session=s123');
     const postMessageSpy = vi.fn();
     window.opener = { postMessage: postMessageSpy };
 
@@ -62,7 +70,7 @@ describe('PreviewHost', () => {
   });
 
   it('acknowledges the IDE after accepting a MessagePort handshake', () => {
-    window.location = new URL('http://localhost:3001/?session=s123');
+    setLocation('http://localhost:3001/?session=s123');
     const ideWindow = { postMessage: vi.fn() };
     window.opener = ideWindow;
 

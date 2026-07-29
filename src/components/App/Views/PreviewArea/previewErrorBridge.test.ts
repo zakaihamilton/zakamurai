@@ -7,7 +7,7 @@ import {
 
 describe('previewErrorBridge', () => {
   it('reports transform failures to the active listener', () => {
-    const messages = [];
+    const messages: string[] = [];
     setPreviewErrorListener((message) => messages.push(message));
     reportPreviewError('Transform failed with 5 errors');
     setPreviewErrorListener(null);

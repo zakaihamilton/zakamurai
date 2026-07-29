@@ -63,9 +63,9 @@ describe('useTabRestorer', () => {
     ];
     tabState.activeTabId = 'file1.js';
 
-    vi.mocked(mockFs.getFileHandleAtPath).mockImplementation(async (path: string[]) => ({
+    vi.mocked(mockFs.getFileHandleAtPath).mockImplementation(async (path: string) => ({
       kind: 'file',
-      name: path.join('/'),
+      name: path,
     } as unknown as FileSystemFileHandle));
     vi.mocked(mockFs.readFile).mockResolvedValue('file content');
 
@@ -86,8 +86,8 @@ describe('useTabRestorer', () => {
     ];
     tabState.activeTabId = 'file1.js';
 
-    vi.mocked(mockFs.getFileHandleAtPath).mockImplementation(async (path: string[]) => {
-      if (path.join('/') === 'file2.js') {
+    vi.mocked(mockFs.getFileHandleAtPath).mockImplementation(async (path: string) => {
+      if (path === 'file2.js') {
         return { kind: 'file', name: 'file2.js' } as unknown as FileSystemFileHandle;
       }
       return null;

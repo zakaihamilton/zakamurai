@@ -1,3 +1,4 @@
+import { makeTokenBreakdownReport, makeHighlightDebugToken } from '@/test-utils/tokenMocks';
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import TokenSummaryCards from './TokenSummaryCards';
@@ -13,14 +14,14 @@ vi.mock('@/components/ui/Icons', () => ({
   },
 }));
 
-const mockReport = {
+const mockReport = makeTokenBreakdownReport({
   languageMode: 'javascript',
-  tokens: [{ type: 'hlKw', value: 'const' }],
+  tokens: [makeHighlightDebugToken()],
   lineCount: 10,
-  folds: [{ id: 'fold1' }],
-  navigationTargets: [{ name: 'foo' }],
-  search: { matchCount: 2 },
-};
+  folds: [{ id: 'fold1', startLine: 1, endLine: 2 }],
+  navigationTargets: [],
+  search: { enabled: false, query: '', activeMatchIndex: 0, matchCount: 2 },
+});
 
 describe('TokenSummaryCards', () => {
   it('renders summary values from report', () => {

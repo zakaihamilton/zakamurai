@@ -1,3 +1,4 @@
+import { makePromptState, makePromptUiState } from '@/test-utils/stateMocks';
 import { act, renderHook } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import usePromptHistory from './PromptHistory';
@@ -10,26 +11,25 @@ vi.mock('./PromptState', () => ({
 }));
 
 describe('usePromptHistory', () => {
-  let promptStateUpdater;
+  let promptState: ReturnType<typeof makePromptState> & { lastDraft?: { promptHistory: string[] } };
 
   beforeEach(() => {
     vi.clearAllMocks();
-    promptStateUpdater = vi.fn((producer) => {
+    promptState = makePromptState({ promptHistory: ['first message', 'second message'] });
+    const original = promptState.getMockImplementation();
+    promptState.mockImplementation((producer) => {
       const draft = { promptHistory: ['first message', 'second message'] };
       producer(draft);
-      promptStateUpdater.lastDraft = draft;
+      promptState.lastDraft = draft;
+      return original?.(producer);
     });
-    PromptState.usePassiveState.mockReturnValue(
-      Object.assign(promptStateUpdater, {
-        promptHistory: ['first message', 'second message'],
-      }),
-    );
+    vi.mocked(PromptState.usePassiveState).mockReturnValue(promptState);
   });
 
   it('returns handler functions', () => {
-    const mockPromptUiState = vi.fn();
+    const promptUiState = makePromptUiState();
     const { result } = renderHook(() =>
-      usePromptHistory('current val', -1, 'draft val', mockPromptUiState),
+      usePromptHistory('current val', -1, 'draft val', promptUiState),
     );
 
     expect(result.current.handleArrowUp).toBeTypeOf('function');
@@ -38,32 +38,32 @@ describe('usePromptHistory', () => {
   });
 
   it('handles arrow key transitions', () => {
-    const mockPromptUiState = vi.fn();
+    const promptUiState = makePromptUiState();
     const { result, rerender } = renderHook(
       ({ val, historyIndex, draftVal }) =>
-        usePromptHistory(val, historyIndex, draftVal, mockPromptUiState),
+        usePromptHistory(val, historyIndex, draftVal, promptUiState),
       { initialProps: { val: 'current val', historyIndex: -1, draftVal: 'draft val' } },
     );
 
     act(() => {
       result.current.handleArrowUp();
     });
-    expect(mockPromptUiState).toHaveBeenCalled();
-    const upDraft = {};
-    mockPromptUiState.mock.calls.at(-1)[0](upDraft);
+    expect(promptUiState).toHaveBeenCalled();
+    const upDraft: Record<string, unknown> = {};
+    promptUiState.mock.calls.at(-1)?.[0](upDraft);
     expect(upDraft).toEqual({
       draftVal: 'current val',
       historyIndex: 0,
       val: 'first message',
     });
 
-    mockPromptUiState.mockClear();
+    promptUiState.mockClear();
     rerender({ val: 'first message', historyIndex: 0, draftVal: 'draft val' });
     act(() => {
       result.current.handleArrowDown();
     });
-    const downDraft = {};
-    mockPromptUiState.mock.calls.at(-1)[0](downDraft);
+    const downDraft: Record<string, unknown> = {};
+    promptUiState.mock.calls.at(-1)?.[0](downDraft);
     expect(downDraft).toEqual({
       historyIndex: -1,
       val: 'draft val',
@@ -71,32 +71,32 @@ describe('usePromptHistory', () => {
   });
 
   it('addToHistory ignores blank prompts and clears the draft', () => {
-    const mockPromptUiState = vi.fn();
+    const promptUiState = makePromptUiState();
     const { result } = renderHook(() =>
-      usePromptHistory('current val', 0, 'draft val', mockPromptUiState),
+      usePromptHistory('current val', 0, 'draft val', promptUiState),
     );
 
     act(() => {
       result.current.addToHistory('   ');
     });
 
-    expect(promptStateUpdater).not.toHaveBeenCalled();
-    const draft = {};
-    mockPromptUiState.mock.calls.at(-1)[0](draft);
+    expect(promptState).not.toHaveBeenCalled();
+    const draft: Record<string, unknown> = {};
+    promptUiState.mock.calls.at(-1)?.[0](draft);
     expect(draft).toEqual({ val: '', historyIndex: -1, draftVal: '' });
   });
 
   it('addToHistory prepends unique prompts', () => {
-    const mockPromptUiState = vi.fn();
+    const promptUiState = makePromptUiState();
     const { result } = renderHook(() =>
-      usePromptHistory('current val', -1, 'draft val', mockPromptUiState),
+      usePromptHistory('current val', -1, 'draft val', promptUiState),
     );
 
     act(() => {
       result.current.addToHistory('  second message  ');
     });
 
-    expect(promptStateUpdater.lastDraft.promptHistory[0]).toBe('second message');
-    expect(promptStateUpdater.lastDraft.promptHistory).toEqual(['second message', 'first message']);
+    expect(promptState.lastDraft?.promptHistory[0]).toBe('second message');
+    expect(promptState.lastDraft?.promptHistory).toEqual(['second message', 'first message']);
   });
 });

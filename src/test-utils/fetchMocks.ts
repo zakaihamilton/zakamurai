@@ -35,3 +35,9 @@ export function mockGlobalFetch(
 export function restoreGlobalFetch(): void {
   vi.unstubAllGlobals();
 }
+
+export function asFetchImpl(
+  impl: (input: RequestInfo | URL, init?: RequestInit) => Promise<unknown>,
+): typeof fetch {
+  return impl as unknown as typeof fetch;
+}

@@ -13,7 +13,7 @@ export function makeFileSystemApi(overrides: Partial<FileSystemApi> = {}): FileS
     rootHandle: null,
     mountOPFS: vi.fn(async () => {}),
     mountLocal: vi.fn(async () => {}),
-    refreshDirectory: vi.fn(async () => {}),
+    refreshDirectory: vi.fn(async () => []),
     triggerRefresh: vi.fn(),
     readFile: vi.fn(async () => ''),
     writeFile: vi.fn(async () => {}),

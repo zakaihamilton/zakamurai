@@ -1,3 +1,4 @@
+import { asNormalizedTreeNode } from '@/test-utils/treeMocks';
 import type { ReactNode } from 'react';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
@@ -40,7 +41,7 @@ describe('SidebarContextMenu', () => {
       <SidebarContextMenu
         {...baseProps}
         onStartCreate={onStartCreate}
-        item={{ name: 'src', type: 'folder', isRoot: true }}
+        item={asNormalizedTreeNode({ name: 'src', type: 'folder', path: ['src'], isRoot: true })}
         pathStr="src"
       />,
     );
@@ -66,7 +67,7 @@ describe('SidebarContextMenu', () => {
         onOpenWith={onOpenWith}
         onStartRename={onStartRename}
         onStartDelete={onStartDelete}
-        item={{ name: 'App.jsx', type: 'file' }}
+        item={asNormalizedTreeNode({ name: 'App.jsx', type: 'file', path: ['App.jsx'] })}
       />,
     );
 

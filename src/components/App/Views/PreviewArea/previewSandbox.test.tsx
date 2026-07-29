@@ -50,7 +50,7 @@ describe('previewSandbox', () => {
         source: PREVIEW_MESSAGE_SOURCE,
         type: PREVIEW_MESSAGE_TYPES.RUNTIME_ERROR,
         message: { nested: true },
-      }).message,
+      })?.message,
     ).toBe('[object Object]');
   });
 
@@ -78,7 +78,7 @@ describe('previewSandbox', () => {
   });
 
   it('requires event.source to match the preview iframe window', () => {
-    const iframeWindow = {};
+    const iframeWindow = {} as Window;
     const good = {
       source: iframeWindow,
       origin: 'null',
@@ -87,12 +87,12 @@ describe('previewSandbox', () => {
         type: PREVIEW_MESSAGE_TYPES.RUNTIME_ERROR,
         message: 'x',
       },
-    };
+    } as MessageEvent;
     const spoofed = {
       source: {},
       origin: 'null',
       data: good.data,
-    };
+    } as MessageEvent;
     expect(isTrustedPreviewMessage(good, iframeWindow)).toBe(true);
     expect(isTrustedPreviewMessage(spoofed, iframeWindow)).toBe(false);
     expect(isTrustedPreviewMessage(good, null)).toBe(false);

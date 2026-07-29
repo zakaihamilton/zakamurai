@@ -32,6 +32,15 @@ const baseHandlers = {
   onDragEnd: vi.fn(),
 };
 
+const treeItemProps = {
+  ...baseHandlers,
+  isActive: false,
+  isDragged: false,
+  isDropTarget: false,
+  isExpanded: false,
+  isLoading: false,
+};
+
 const makeRow = (name: string): SidebarTreeRow =>
   makeFlatTreeRow({
     item: asNormalizedTreeNode({ name, type: 'file', path: [name] }),
@@ -66,8 +75,8 @@ describe('TreeItem', () => {
   it('keeps editing state isolated per row', async () => {
     render(
       <>
-        <TreeItem row={makeRow('first.js')} {...baseHandlers} />
-        <TreeItem row={makeRow('second.js')} {...baseHandlers} />
+        <TreeItem row={makeRow('first.js')} {...treeItemProps} />
+        <TreeItem row={makeRow('second.js')} {...treeItemProps} />
       </>,
     );
 
@@ -83,7 +92,7 @@ describe('TreeItem', () => {
   it('starts editing the project root on double click', async () => {
     const rootRow = makeFolderRow('Test Project', [], { isRoot: true });
 
-    render(<TreeItem row={rootRow} {...baseHandlers} />);
+    render(<TreeItem row={rootRow} {...treeItemProps} />);
 
     fireEvent.doubleClick(screen.getByText('Test Project'));
 
@@ -95,7 +104,7 @@ describe('TreeItem', () => {
   it('opens a file when its row is clicked', () => {
     const onOpenFile = vi.fn();
 
-    render(<TreeItem row={makeRow('app.js')} {...baseHandlers} onOpenFile={onOpenFile} />);
+    render(<TreeItem row={makeRow('app.js')} {...treeItemProps} onOpenFile={onOpenFile} />);
 
     fireEvent.click(screen.getByRole('button', { name: /app\.js/i }));
 
@@ -106,7 +115,7 @@ describe('TreeItem', () => {
     const onToggle = vi.fn();
     const folderRow = makeFolderRow('src');
 
-    render(<TreeItem row={folderRow} {...baseHandlers} onToggle={onToggle} />);
+    render(<TreeItem row={folderRow} {...treeItemProps} onToggle={onToggle} />);
 
     fireEvent.click(screen.getByRole('button', { name: /src/i }));
 
@@ -115,7 +124,7 @@ describe('TreeItem', () => {
 
   it('opens context menu on long touch press', async () => {
     vi.useFakeTimers();
-    render(<TreeItem row={makeRow('app.js')} {...baseHandlers} />);
+    render(<TreeItem row={makeRow('app.js')} {...treeItemProps} />);
 
     const itemElement = draggableElement('app.js');
 
@@ -139,7 +148,7 @@ describe('TreeItem', () => {
 
   it('cancels context menu on touch move', async () => {
     vi.useFakeTimers();
-    render(<TreeItem row={makeRow('app.js')} {...baseHandlers} />);
+    render(<TreeItem row={makeRow('app.js')} {...treeItemProps} />);
 
     const itemElement = draggableElement('app.js');
 
@@ -161,7 +170,7 @@ describe('TreeItem', () => {
 
   it('cancels context menu on rapid touch end', async () => {
     vi.useFakeTimers();
-    render(<TreeItem row={makeRow('app.js')} {...baseHandlers} />);
+    render(<TreeItem row={makeRow('app.js')} {...treeItemProps} />);
 
     const itemElement = draggableElement('app.js');
 
@@ -186,7 +195,7 @@ describe('TreeItem', () => {
       path: ['sub', 'dir', 'app.js'],
       pathStr: 'sub/dir/app.js',
     }) as SidebarTreeRow;
-    render(<TreeItem row={customRow} {...baseHandlers} />);
+    render(<TreeItem row={customRow} {...treeItemProps} />);
 
     const itemElement = screen.getByText('app.js').closest('[draggable="true"]');
 
@@ -207,7 +216,7 @@ describe('TreeItem', () => {
   it('shows Open With for normal files', async () => {
     const onOpenFile = vi.fn();
     const row = makeRow('app.js');
-    render(<TreeItem row={row} {...baseHandlers} onOpenFile={onOpenFile} />);
+    render(<TreeItem row={row} {...treeItemProps} onOpenFile={onOpenFile} />);
 
     await act(async () => {
       fireEvent.contextMenu(draggableElement('app.js'));
@@ -228,7 +237,7 @@ describe('TreeItem', () => {
   it('shows the Image viewer in Open With for SVG files', async () => {
     const onOpenFile = vi.fn();
     const row = makeRow('logo.svg');
-    render(<TreeItem row={row} {...baseHandlers} onOpenFile={onOpenFile} />);
+    render(<TreeItem row={row} {...treeItemProps} onOpenFile={onOpenFile} />);
 
     await act(async () => {
       fireEvent.contextMenu(draggableElement('logo.svg'));
@@ -248,7 +257,7 @@ describe('TreeItem', () => {
 
   it('shows the delete dialog with a readable path preview', async () => {
     const row = makeFolderRow('components', ['src', 'components']);
-    render(<TreeItem row={row} {...baseHandlers} />);
+    render(<TreeItem row={row} {...treeItemProps} />);
 
     await act(async () => {
       fireEvent.contextMenu(draggableElement('components'));
@@ -271,7 +280,7 @@ describe('TreeItem', () => {
 
   it('shows rename but not delete for the project root context menu', async () => {
     const rootRow = makeFolderRow('Test Project', [], { isRoot: true });
-    render(<TreeItem row={rootRow} {...baseHandlers} />);
+    render(<TreeItem row={rootRow} {...treeItemProps} />);
 
     const itemElement = screen.getByText('Test Project').closest('[draggable="false"]')!;
 
@@ -289,7 +298,7 @@ describe('TreeItem', () => {
   it('starts create via context menu', async () => {
     const onStartCreate = vi.fn();
     const folderRow = makeFolderRow('src');
-    render(<TreeItem row={folderRow} {...baseHandlers} onStartCreate={onStartCreate} />);
+    render(<TreeItem row={folderRow} {...treeItemProps} onStartCreate={onStartCreate} />);
 
     await act(async () => {
       fireEvent.contextMenu(draggableElement('src'));

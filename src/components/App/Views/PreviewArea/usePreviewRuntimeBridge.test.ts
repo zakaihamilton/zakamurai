@@ -1,3 +1,4 @@
+import { makePreviewAreaUiState } from '@/test-utils/stateMocks';
 import { act, renderHook } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { PREVIEW_MESSAGE_TYPES } from './previewSandbox';
@@ -8,7 +9,7 @@ describe('usePreviewRuntimeBridge', () => {
     const iframe = document.createElement('iframe');
     document.body.appendChild(iframe);
     const iframeRef = { current: iframe };
-    const previewAreaUiState = vi.fn((updater) => updater({ address: '/preview/' }));
+    const previewAreaUiState = makePreviewAreaUiState({ address: '/preview/' });
     const setPreviewError = vi.fn();
     const { unmount } = renderHook(() =>
       usePreviewRuntimeBridge({

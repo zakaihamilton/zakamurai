@@ -1,3 +1,4 @@
+import { makeHighlightDebugToken, makeHighlightTokenRange } from '@/test-utils/tokenMocks';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import TokenTableSection from './TokenTableSection';
@@ -10,18 +11,18 @@ vi.mock('@/components/ui/Icons', () => ({
 }));
 
 const tokens = [
-  {
+  makeHighlightDebugToken({
     index: 0,
     type: 'hlKw',
     value: 'export',
-    range: { startPosition: { line: 1, column: 1 } },
-  },
-  {
+    range: makeHighlightTokenRange({ startPosition: { line: 1, column: 1 } }),
+  }),
+  makeHighlightDebugToken({
     index: 1,
     type: 'hlKw',
     value: 'const',
-    range: { startPosition: { line: 1, column: 8 } },
-  },
+    range: makeHighlightTokenRange({ startPosition: { line: 1, column: 8 } }),
+  }),
 ];
 
 describe('TokenTableSection', () => {
@@ -48,7 +49,7 @@ describe('TokenTableSection', () => {
     render(
       <TokenTableSection
         tokens={tokens}
-        filteredTokens={[tokens[1]]}
+        filteredTokens={[tokens[1]!]}
         searchTerm="const"
         setSearchTerm={setSearchTerm}
         typeFilter="All"

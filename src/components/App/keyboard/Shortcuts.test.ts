@@ -1,5 +1,4 @@
 import type { EditorStateShape } from '@/components/state/domain-types';
-import type { StateStore } from '@/components/state/types';
 import { makeKeyboardEvent } from '@/test-utils/domMocks';
 import { createMockEditorState, createMockTabState } from '@/test-utils/editorMocks';
 import { makeAppState, makeShortcutActionContext } from '@/test-utils/stateMocks';
@@ -120,7 +119,7 @@ describe('Shortcuts isMatch', () => {
 
     shortcut!.action!(
       makeShortcutActionContext({
-        editorState: editorState as unknown as StateStore<EditorStateShape>,
+        editorState,
         showNotification,
       }),
     );
@@ -129,7 +128,7 @@ describe('Shortcuts isMatch', () => {
 
     shortcut!.action!(
       makeShortcutActionContext({
-        editorState: editorState as unknown as StateStore<EditorStateShape>,
+        editorState,
         showNotification,
       }),
     );
@@ -144,9 +143,9 @@ describe('Shortcuts isMatch', () => {
     expect(forwardShortcut).toBeDefined();
 
     const mockStack = [
-      { filePath: 'src/App.js', loc: { line: 10, col: 5, index: 120 } },
-      { filePath: 'src/index.css', loc: { line: 5, col: 1, index: 40 } },
-      { filePath: 'src/utils.js', loc: { line: 20, col: 10, index: 310 } },
+      { filePath: 'src/App.js', label: 'App.js', loc: { line: 10, column: 5 } },
+      { filePath: 'src/index.css', label: 'index.css', loc: { line: 5, column: 1 } },
+      { filePath: 'src/utils.js', label: 'utils.js', loc: { line: 20, column: 10 } },
     ];
 
     const editorState = createMockEditorState({
@@ -166,7 +165,7 @@ describe('Shortcuts isMatch', () => {
     });
 
     const ctx = makeShortcutActionContext({
-      editorState: editorState as unknown as StateStore<EditorStateShape>,
+      editorState,
       tabState,
     });
     backShortcut!.action!(ctx);

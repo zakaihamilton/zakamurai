@@ -1,3 +1,4 @@
+import { makeAgentSession } from '@/test-utils/agentSessionMocks';
 import type { ReactNode } from 'react';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
@@ -18,7 +19,7 @@ describe('SessionManager', () => {
     const onOpenTree = vi.fn();
     render(
       <SessionManager
-        activeSession={{ id: 'b', name: 'Agent B', status: 'running' }}
+        activeSession={makeAgentSession({ id: 'b', name: 'Agent B', status: 'running' })}
         onOpenTree={onOpenTree}
       />,
     );

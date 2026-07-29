@@ -1,11 +1,15 @@
+import { mockDragEvent } from '@/test-utils/domMocks';
+import { makeFileSystemApi } from '@/test-utils/fsMocks';
+import { makeSidebarState } from '@/test-utils/stateMocks';
+import { asNormalizedTreeNode, makeFlatTreeRow } from '@/test-utils/treeMocks';
 import { renderHook } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import useSidebarDragAndDrop from './SidebarDragAndDrop';
 
 describe('useSidebarDragAndDrop', () => {
   const defaultArgs = {
-    fs: { mode: 'sandbox', moveEntry: vi.fn() },
-    sidebarState: vi.fn(),
+    fs: makeFileSystemApi({ mode: 'sandbox', moveEntry: vi.fn() }),
+    sidebarState: makeSidebarState(),
     setDropTargetPath: vi.fn(),
   };
 
@@ -20,15 +24,17 @@ describe('useSidebarDragAndDrop', () => {
 
   it('handleDragStart prevents default on root item', () => {
     const { result } = renderHook(() => useSidebarDragAndDrop(defaultArgs));
-    const event = { preventDefault: vi.fn() };
-    const row = { item: { isRoot: true } };
+    const event = mockDragEvent();
+    const row = makeFlatTreeRow({
+      item: asNormalizedTreeNode({ name: 'root', type: 'folder', path: [], isRoot: true }),
+    });
 
     result.current.handleDragStart(event, row);
     expect(event.preventDefault).toHaveBeenCalled();
   });
 
   it('handleDragStart sets data and updates sidebarState on non-root item', () => {
-    const sidebarState = vi.fn();
+    const sidebarState = makeSidebarState();
     const { result } = renderHook(() =>
       useSidebarDragAndDrop({
         ...defaultArgs,
@@ -36,25 +42,30 @@ describe('useSidebarDragAndDrop', () => {
       }),
     );
 
-    const event = {
-      preventDefault: vi.fn(),
-      dataTransfer: { effectAllowed: '', setData: vi.fn() },
-    };
-    const row = {
+    const setData = vi.fn();
+    const event = mockDragEvent({
+      dataTransfer: { effectAllowed: 'all', setData },
+    });
+    const row = makeFlatTreeRow({
       path: ['src', 'App.js'],
       pathStr: 'src/App.js',
-      item: { isRoot: false, type: 'file', handle: {}, name: 'App.js' },
-    };
+      item: asNormalizedTreeNode({
+        name: 'App.js',
+        type: 'file',
+        path: ['src', 'App.js'],
+        handle: {} as FileSystemFileHandle,
+      }),
+    });
 
     result.current.handleDragStart(event, row);
     expect(sidebarState).toHaveBeenCalled();
-    expect(event.dataTransfer.effectAllowed).toBe('move');
-    expect(event.dataTransfer.setData).toHaveBeenCalledWith('text/plain', 'src/App.js');
+    expect(event.dataTransfer?.effectAllowed).toBe('move');
+    expect(setData).toHaveBeenCalledWith('text/plain', 'src/App.js');
   });
 
   it('handleDragOver prevents default and sets dropEffect for valid folders', () => {
-    const sidebarState = vi.fn();
-    sidebarState.draggedItem = { path: ['src', 'App.js'] };
+    const sidebarState = makeSidebarState();
+    sidebarState.draggedItem = { path: ['src', 'App.js'] } as never;
 
     const { result } = renderHook(() =>
       useSidebarDragAndDrop({
@@ -63,24 +74,21 @@ describe('useSidebarDragAndDrop', () => {
       }),
     );
 
-    const event = {
-      preventDefault: vi.fn(),
-      dataTransfer: { dropEffect: '' },
-    };
-    const row = {
+    const event = mockDragEvent({ dataTransfer: { dropEffect: 'none' } });
+    const row = makeFlatTreeRow({
       path: ['components'],
       pathStr: 'components',
-      item: { type: 'folder' },
-    };
+      item: asNormalizedTreeNode({ name: 'components', type: 'folder', path: ['components'] }),
+    });
 
     result.current.handleDragOver(event, row);
     expect(event.preventDefault).toHaveBeenCalled();
-    expect(event.dataTransfer.dropEffect).toBe('move');
+    expect(event.dataTransfer?.dropEffect).toBe('move');
   });
 
   it('handleDragEnter sets drop target path for valid folder targets', () => {
-    const sidebarState = vi.fn();
-    sidebarState.draggedItem = { path: ['src', 'App.js'] };
+    const sidebarState = makeSidebarState();
+    sidebarState.draggedItem = { path: ['src', 'App.js'] } as never;
     const setDropTargetPath = vi.fn();
 
     const { result } = renderHook(() =>
@@ -91,25 +99,25 @@ describe('useSidebarDragAndDrop', () => {
       }),
     );
 
-    const row = {
+    const row = makeFlatTreeRow({
       path: ['components'],
       pathStr: 'components',
-      item: { type: 'folder' },
-    };
+      item: asNormalizedTreeNode({ name: 'components', type: 'folder', path: ['components'] }),
+    });
 
-    result.current.handleDragEnter({}, row);
+    result.current.handleDragEnter(mockDragEvent(), row);
     expect(setDropTargetPath).toHaveBeenCalledWith('components');
   });
 
   it('handleDrop supports local mode and updates expanded folders', async () => {
-    const sidebarState = vi.fn();
+    const sidebarState = makeSidebarState();
     sidebarState.draggedItem = {
       path: ['src', 'App.js'],
       name: 'App.js',
       handle: 'srcHandle',
-    };
+    } as never;
     const setDropTargetPath = vi.fn();
-    const fs = { mode: 'local', moveEntry: vi.fn().mockResolvedValue() };
+    const fs = makeFileSystemApi({ mode: 'local', moveEntry: vi.fn().mockResolvedValue(undefined) });
 
     const { result } = renderHook(() =>
       useSidebarDragAndDrop({
@@ -120,12 +128,17 @@ describe('useSidebarDragAndDrop', () => {
       }),
     );
 
-    const event = { preventDefault: vi.fn() };
-    const row = {
+    const event = mockDragEvent();
+    const row = makeFlatTreeRow({
       path: ['components'],
       pathStr: 'components',
-      item: { type: 'folder', handle: 'destHandle' },
-    };
+      item: asNormalizedTreeNode({
+        name: 'components',
+        type: 'folder',
+        path: ['components'],
+        handle: 'destHandle' as unknown as FileSystemDirectoryHandle,
+      }),
+    });
 
     await result.current.handleDrop(event, row);
     expect(event.preventDefault).toHaveBeenCalled();

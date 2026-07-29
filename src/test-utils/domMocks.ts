@@ -75,6 +75,26 @@ export function makeKeyboardEvent(
   } as KeyboardEvent;
 }
 
+export function mockDragEvent(
+  partial: {
+    preventDefault?: () => void;
+    stopPropagation?: () => void;
+    dataTransfer?: Partial<DataTransfer>;
+  } = {},
+): React.DragEvent {
+  return {
+    preventDefault: partial.preventDefault ?? (() => {}),
+    stopPropagation: partial.stopPropagation ?? (() => {}),
+    dataTransfer: {
+      effectAllowed: 'all',
+      dropEffect: 'none',
+      setData: () => {},
+      getData: () => '',
+      ...partial.dataTransfer,
+    },
+  } as unknown as React.DragEvent;
+}
+
 export function mockServiceWorker(register: (...args: unknown[]) => Promise<unknown>): void {
   Object.defineProperty(globalThis.navigator, 'serviceWorker', {
     configurable: true,

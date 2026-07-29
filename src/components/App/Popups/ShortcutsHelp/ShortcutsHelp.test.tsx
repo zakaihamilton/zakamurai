@@ -8,7 +8,7 @@ vi.mock('@/utils/keyboard', () => ({
   useShouldShowKeyboardShortcuts: () => true,
 }));
 vi.mock('@/utils/os', () => ({
-  formatShortcut: (s) => s,
+  formatShortcut: (s: string) => s,
   isMac: () => true,
 }));
 vi.mock('@/components/ui/Tooltip', () => ({

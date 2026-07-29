@@ -3,6 +3,9 @@ import { SidebarState } from '@/components/App/Panes/Sidebar';
 import { PreviewState } from '@/components/App/PreviewState';
 import { EditorState } from '@/components/App/Views/EditorArea';
 import { useFileSystem } from '@/components/Storage';
+import { asMockUseFileSystem } from '@/test-utils/fsMocks';
+import { createMockEditorState } from '@/test-utils/editorMocks';
+import { makeAppState, makePreviewState, makeSidebarState } from '@/test-utils/stateMocks';
 import { Compiler } from '@/utils/compiler';
 import { act, renderHook } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -17,7 +20,7 @@ const mockVfs = {
 
 const mockCompilerInstance = {
   init: vi.fn().mockResolvedValue({ vfs: mockVfs }),
-  syncFiles: vi.fn().mockResolvedValue(),
+  syncFiles: vi.fn().mockResolvedValue(undefined),
 };
 
 vi.mock('@/utils/compiler', () => {
@@ -46,35 +49,25 @@ vi.mock('@/components/App/Views/EditorArea', () => ({
 }));
 
 describe('usePreviewRestorer', () => {
-  let previewStateMock;
-  let appStateMock;
+  let previewStateMock: ReturnType<typeof makePreviewState>;
+  let appStateMock: ReturnType<typeof makeAppState>;
 
   beforeEach(() => {
     vi.clearAllMocks();
 
-    const previewObj = { isCompilerReady: false, restoreError: null, previewAddress: null };
-    previewStateMock = vi.fn((cb) => {
-      cb(previewObj);
-      previewStateMock.isCompilerReady = previewObj.isCompilerReady;
-      previewStateMock.restoreError = previewObj.restoreError;
-      previewStateMock.previewAddress = previewObj.previewAddress;
+    previewStateMock = makePreviewState({
+      htmlContent: '<html></html>',
+      isCompilerReady: false,
+      restoreError: null,
+      previewAddress: '/preview/dist/index.html',
     });
-    previewStateMock.htmlContent = '<html></html>';
-    previewStateMock.isCompilerReady = false;
-    previewStateMock.restoreError = null;
-
-    const appObj = { silentCompileRequest: 0 };
-    appStateMock = vi.fn((cb) => {
-      cb(appObj);
-      appStateMock.silentCompileRequest = appObj.silentCompileRequest;
-    });
-    appStateMock.silentCompileRequest = 0;
+    appStateMock = makeAppState({ silentCompileRequest: 0 });
 
     vi.mocked(PreviewState.useState).mockReturnValue(previewStateMock);
     vi.mocked(AppState.useState).mockReturnValue(appStateMock);
-    useFileSystem.mockReturnValue({ isReady: true });
-    vi.mocked(SidebarState.useState).mockReturnValue({ folderTree: [] });
-    vi.mocked(EditorState.useState).mockReturnValue({ fileContents: {} });
+    vi.mocked(useFileSystem).mockReturnValue(asMockUseFileSystem({ isReady: true }));
+    vi.mocked(SidebarState.useState).mockReturnValue(makeSidebarState({ folderTree: [] }));
+    vi.mocked(EditorState.useState).mockReturnValue(createMockEditorState());
     mockVfs.readdirSync.mockReturnValue([]);
   });
 

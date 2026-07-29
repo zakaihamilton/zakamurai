@@ -1,4 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
+import { asFetchImpl } from '@/test-utils/fetchMocks';
+import { asPartialError, asPreviewDocument } from '@/test-utils/previewMocks';
 import {
   createTransformErrorResponse,
   decodeResponseBody,
@@ -30,7 +32,7 @@ describe('previewErrorUtils', () => {
 
     it('truncates messages longer than 4000 characters', () => {
       const long = 'x'.repeat(4001);
-      const result = truncatePreviewError(long);
+      const result = truncatePreviewError(long)!;
       expect(result).toHaveLength(4003);
       expect(result.endsWith('...')).toBe(true);
       expect(result.startsWith('x'.repeat(4000))).toBe(true);
@@ -225,10 +227,10 @@ console.error("Transform failed");`;
     });
 
     it('fetches transform details from the failed module specifier', async () => {
-      const fetchImpl = vi.fn(async () => ({
+      const fetchImpl = asFetchImpl(async () => ({
         ok: true,
         headers: {
-          get: (name) => (name === 'X-Transform-Error' ? 'true' : null),
+          get: (name: string) => (name === 'X-Transform-Error' ? 'true' : null),
         },
         text: async () =>
           `// Transform failed with 1 error:
@@ -252,23 +254,25 @@ export default function PreviewTransformErrorPlaceholder() { return null; }`,
     });
 
     it('falls back to script src when module fetch returns nothing', async () => {
-      const fetchImpl = vi
-        .fn()
-        .mockResolvedValueOnce({
-          ok: false,
-          headers: { get: () => null },
-          text: async () => '',
-        })
-        .mockResolvedValueOnce({
-          ok: true,
-          headers: {
-            get: (name) => (name.toLowerCase() === 'x-transform-error' ? 'true' : null),
-          },
-          text: async () =>
-            `// Transform failed with 1 error:
+      const fetchImpl = asFetchImpl(
+        vi
+          .fn()
+          .mockResolvedValueOnce({
+            ok: false,
+            headers: { get: () => null },
+            text: async () => '',
+          })
+          .mockResolvedValueOnce({
+            ok: true,
+            headers: {
+              get: (name: string) => (name.toLowerCase() === 'x-transform-error' ? 'true' : null),
+            },
+            text: async () =>
+              `// Transform failed with 1 error:
 // /src/App.jsx:1:1: ERROR: Unexpected token
 export default function PreviewTransformErrorPlaceholder() { return null; }`,
-        });
+          }),
+      );
 
       const result = await resolveMissingExportError(
         {
@@ -285,7 +289,7 @@ export default function PreviewTransformErrorPlaceholder() { return null; }`,
     });
 
     it('uses event.target.src when specifier URL resolution fails', async () => {
-      const fetchImpl = vi.fn(async () => ({
+      const fetchImpl = asFetchImpl(async () => ({
         ok: false,
         headers: { get: () => null },
         text: async () => 'Service Worker Error: virtual server unavailable',
@@ -321,7 +325,7 @@ export default function PreviewTransformErrorPlaceholder() { return null; }`,
 
   describe('extractTransformErrorFromResponse', () => {
     it('returns null when response has no headers', () => {
-      expect(extractTransformErrorFromResponse(null)).toBeNull();
+      expect(extractTransformErrorFromResponse(null as never)).toBeNull();
       expect(extractTransformErrorFromResponse({ body: 'text' })).toBeNull();
     });
 
@@ -364,7 +368,7 @@ console.error("Transform failed with 2 errors");`);
         filename: 'app.js',
         lineno: 10,
         colno: 3,
-        error: { stack },
+        error: asPartialError({ stack }),
       });
 
       expect(result).toContain('boom');
@@ -408,7 +412,7 @@ console.error("Transform failed with 2 errors");`);
       const stack = ['Error: boom', ...Array(8).fill(longLine)].join('\n');
       const result = formatRuntimeError({
         message: 'boom',
-        error: { stack },
+        error: asPartialError({ stack }),
       });
       const stackPart = result.split('\n').slice(1);
       expect(stackPart.length).toBeLessThanOrEqual(5);
@@ -420,7 +424,7 @@ console.error("Transform failed with 2 errors");`);
       const stack = 'Error: boom\n  at foo (app.js:1:1)';
       const result = formatRuntimeError({
         message: 'Error: boom',
-        error: { stack },
+        error: asPartialError({ stack }),
       });
       expect(result).toBe('Error: boom');
     });
@@ -480,102 +484,102 @@ console.error("Transform failed with 2 errors");`);
   describe('detectIframeLoadError', () => {
     it('returns null when document has no body', () => {
       expect(detectIframeLoadError(null)).toBeNull();
-      expect(detectIframeLoadError({})).toBeNull();
-      expect(detectIframeLoadError({ title: 'x' })).toBeNull();
+      expect(detectIframeLoadError(asPreviewDocument({}))).toBeNull();
+      expect(detectIframeLoadError(asPreviewDocument({ title: 'x' }))).toBeNull();
     });
 
     it('detects service worker plain-text errors', () => {
-      const doc = {
+      const doc = asPreviewDocument({
         title: '',
         body: { innerText: 'Service Worker Error: virtual server unavailable' },
         querySelector: () => null,
-      };
+      });
       expect(detectIframeLoadError(doc)).toBe('Service Worker Error: virtual server unavailable');
     });
 
     it('detects decode errors', () => {
-      const doc = {
+      const doc = asPreviewDocument({
         title: '',
         body: { innerText: 'Decode error: invalid base64' },
         querySelector: () => null,
-      };
+      });
       expect(detectIframeLoadError(doc)).toBe('Decode error: invalid base64');
     });
 
     it('detects fallback preview timeout page', () => {
-      const doc = {
+      const doc = asPreviewDocument({
         title: 'Preview Loading...',
         body: {
           innerText:
             'Service worker did not activate.\nPlease go back and compile your project first.',
         },
         querySelector: () => null,
-      };
+      });
       expect(detectIframeLoadError(doc)).toBe(
         'Service worker did not activate. Please go back and compile your project first.',
       );
     });
 
     it('detects unsupported service worker browser message', () => {
-      const doc = {
+      const doc = asPreviewDocument({
         title: 'Preview Loading...',
         body: { innerText: 'Service Workers are not supported in this browser.' },
         querySelector: () => null,
-      };
+      });
       expect(detectIframeLoadError(doc)).toBe('Service Workers are not supported in this browser.');
     });
 
     it('detects transform errors rendered in the page body', () => {
-      const doc = {
+      const doc = asPreviewDocument({
         title: 'My App',
         body: {
           innerText:
             'Transform failed with 5 errors:\n/src/components/AnimatedCard.jsx:27:8: ERROR: Unexpected closing "div" tag',
         },
         querySelector: () => null,
-      };
+      });
       expect(detectIframeLoadError(doc)).toContain('Transform failed with 5 errors');
     });
 
     it('detects vite error overlay content', () => {
-      const doc = {
+      const doc = asPreviewDocument({
         title: 'My App',
         body: { innerText: '' },
         querySelector: () => ({ innerText: 'Transform failed with 1 error' }),
-      };
+      });
       expect(detectIframeLoadError(doc)).toBe('Transform failed with 1 error');
     });
 
     it('detects vite-error-overlay custom element', () => {
-      const doc = {
+      const doc = asPreviewDocument({
         title: 'My App',
         body: { innerText: 'page content' },
-        querySelector: (selector) =>
+        querySelector: (selector: string) =>
           selector === '#vite-error-overlay, vite-error-overlay'
             ? { innerText: 'Vite overlay error' }
             : null,
-      };
+      });
       expect(detectIframeLoadError(doc)).toBe('Vite overlay error');
     });
 
     it('returns null for normal preview documents', () => {
-      const doc = {
+      const doc = asPreviewDocument({
         title: 'My App',
         body: { innerText: 'Hello world' },
         querySelector: () => null,
-      };
+      });
       expect(detectIframeLoadError(doc)).toBeNull();
     });
   });
 
   describe('fetchScriptErrorBody', () => {
     it('returns null for empty url', async () => {
-      await expect(fetchScriptErrorBody(null)).resolves.toBeNull();
+      await expect(fetchScriptErrorBody(null as unknown as string)).resolves.toBeNull();
       await expect(fetchScriptErrorBody('')).resolves.toBeNull();
     });
 
     it('returns null when fetch throws', async () => {
-      const fetchImpl = vi.fn(async () => {
+      const fetchImpl = asFetchImpl(async () => {
         throw new Error('network failure');
       });
       await expect(fetchScriptErrorBody('/preview/src/App.jsx', fetchImpl)).resolves.toBeNull();
@@ -583,10 +587,10 @@ console.error("Transform failed with 2 errors");`);
 
     it('returns transform error text from failed module responses', async () => {
       const originalFetch = global.fetch;
-      global.fetch = vi.fn(async () => ({
+      global.fetch = asFetchImpl(async () => ({
         ok: true,
         headers: {
-          get: (name) => (name === 'X-Transform-Error' ? 'true' : null),
+          get: (name: string) => (name === 'X-Transform-Error' ? 'true' : null),
         },
         text: async () =>
           `// Transform Error: Transform failed with 1 error:
@@ -601,11 +605,11 @@ console.error("Transform failed with 1 error");`,
     });
 
     it('ignores host Next.js 404 HTML from bare /dist asset probes', async () => {
-      const fetchImpl = vi.fn(async (url) => {
+      const fetchImpl = asFetchImpl(async (url) => {
         expect(url).toBe('https://www.zakamurai.com/preview/dist/assets/main.js');
         return {
           ok: false,
-          headers: { get: (name) => (name === 'content-type' ? 'text/html; charset=utf-8' : null) },
+          headers: { get: (name: string) => (name === 'content-type' ? 'text/html; charset=utf-8' : null) },
           text: async () =>
             '<!DOCTYPE html><html><head><title>404: This page could not be found.</title></head><body>404</body></html>',
         };
@@ -617,7 +621,7 @@ console.error("Transform failed with 1 error");`,
     });
 
     it('ignores HTML bodies even when content-type is missing', async () => {
-      const fetchImpl = vi.fn(async () => ({
+      const fetchImpl = asFetchImpl(async () => ({
         ok: false,
         headers: { get: () => null },
         text: async () =>
@@ -628,9 +632,9 @@ console.error("Transform failed with 1 error");`,
     });
 
     it('ignores successful JavaScript bundles that contain ERROR: substrings', async () => {
-      const fetchImpl = vi.fn(async () => ({
+      const fetchImpl = asFetchImpl(async () => ({
         ok: true,
-        headers: { get: (name) => (name === 'content-type' ? 'application/javascript' : null) },
+        headers: { get: (name: string) => (name === 'content-type' ? 'application/javascript' : null) },
         text: async () =>
           'var React={};throw Error("Objects are not valid as a React child");details.push(`${where}: ERROR: ${text}`);',
       }));
@@ -641,7 +645,7 @@ console.error("Transform failed with 1 error");`,
     });
 
     it('returns service worker errors from failed responses', async () => {
-      const fetchImpl = vi.fn(async () => ({
+      const fetchImpl = asFetchImpl(async () => ({
         ok: false,
         headers: { get: () => null },
         text: async () => 'Service Worker Error: virtual server unavailable',
@@ -652,7 +656,7 @@ console.error("Transform failed with 1 error");`,
     });
 
     it('returns decode errors from failed responses', async () => {
-      const fetchImpl = vi.fn(async () => ({
+      const fetchImpl = asFetchImpl(async () => ({
         ok: false,
         headers: { get: () => null },
         text: async () => 'Decode error: invalid base64',
@@ -663,10 +667,10 @@ console.error("Transform failed with 1 error");`,
     });
 
     it('returns raw text when X-Transform-Error header is set', async () => {
-      const fetchImpl = vi.fn(async () => ({
+      const fetchImpl = asFetchImpl(async () => ({
         ok: true,
         headers: {
-          get: (name) => {
+          get: (name: string) => {
             const lower = name.toLowerCase();
             if (lower === 'x-transform-error') return 'true';
             if (lower === 'content-type') return 'application/javascript';
@@ -681,7 +685,7 @@ console.error("Transform failed with 1 error");`,
     });
 
     it('returns normalized transform errors from failed non-HTML responses', async () => {
-      const fetchImpl = vi.fn(async () => ({
+      const fetchImpl = asFetchImpl(async () => ({
         ok: false,
         headers: { get: () => 'text/plain' },
         text: async () =>
@@ -692,7 +696,7 @@ console.error("Transform failed with 1 error");`,
     });
 
     it('returns null for failed responses with unrecognized text', async () => {
-      const fetchImpl = vi.fn(async () => ({
+      const fetchImpl = asFetchImpl(async () => ({
         ok: false,
         headers: { get: () => 'text/plain' },
         text: async () => 'random server error',
@@ -703,7 +707,7 @@ console.error("Transform failed with 1 error");`,
 
   describe('toPreviewFetchUrl', () => {
     it('returns falsy urls unchanged', () => {
-      expect(toPreviewFetchUrl(null)).toBeNull();
+      expect(toPreviewFetchUrl(null as unknown as string)).toBeNull();
       expect(toPreviewFetchUrl('')).toBe('');
     });
 
@@ -734,13 +738,15 @@ console.error("Transform failed with 1 error");`,
     });
 
     it('detects .mjs extensions for module responses via pathname', async () => {
-      const fetchImpl = vi.fn(async () => ({
+      const fetchMock = vi.fn(async () => ({
         ok: true,
         headers: { get: () => null },
         text: async () => 'valid module code',
       }));
-      await fetchScriptErrorBody('/dist/assets/module.mjs', fetchImpl);
-      expect(fetchImpl.mock.calls[0][0]).toMatch(/\/preview\/dist\/assets\/module\.mjs$/);
+      await fetchScriptErrorBody('/dist/assets/module.mjs', asFetchImpl(fetchMock));
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringMatching(/\/preview\/dist\/assets\/module\.mjs$/),
+      );
     });
   });
 

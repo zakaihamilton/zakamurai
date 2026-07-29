@@ -5,12 +5,7 @@ import { AppState } from '@/components/App/AppState';
 import { PromptUiState } from '@/components/App/Panes/Prompt/PromptState';
 import { SidebarState } from '@/components/App/Panes/Sidebar';
 import { LogState } from '@/components/App/Views/LogArea';
-import {
-  makeAppState,
-  makeLogState,
-  makePromptUiState,
-  makeSidebarState,
-} from '@/test-utils/stateMocks';
+import { makeAppState, makeLogState, makePromptUiState, makeSidebarState, makeWebLLMState } from '@/test-utils/stateMocks';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import type { ChangeEvent, ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -132,9 +127,7 @@ describe('WelcomePrompt', () => {
     vi.mocked(SidebarState.usePassiveState).mockReturnValue(sidebarState);
     vi.mocked(AppState.useState).mockReturnValue(makeAppState({ isMobile: false }));
     vi.mocked(LogState.useState).mockReturnValue(makeLogState({ isAIProcessing: false }));
-    vi.mocked(WebLLMState.useState).mockReturnValue({ cachedModelIds: [] } as ReturnType<
-      typeof WebLLMState.useState
-    >);
+    vi.mocked(WebLLMState.useState).mockReturnValue(makeWebLLMState());
     vi.mocked(getCachedWebLLMModelIds).mockResolvedValue([]);
   });
 
@@ -235,9 +228,9 @@ describe('WelcomePrompt', () => {
 
   it('falls back to cachedModelIds when cache inspection fails', async () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    vi.mocked(WebLLMState.useState).mockReturnValue({
-      cachedModelIds: [RECOMMENDED_WEB_LLM_MODEL.id],
-    } as ReturnType<typeof WebLLMState.useState>);
+    vi.mocked(WebLLMState.useState).mockReturnValue(
+      makeWebLLMState({ cachedModelIds: [RECOMMENDED_WEB_LLM_MODEL.id] }),
+    );
     vi.mocked(getCachedWebLLMModelIds).mockRejectedValue(new Error('cache unavailable'));
 
     render(<WelcomePrompt />);

@@ -1,3 +1,4 @@
+import { makeHighlightDebugToken, makeHighlightTokenRange } from '@/test-utils/tokenMocks';
 import { describe, expect, it } from 'vitest';
 import {
   checkTokenReportMatch,
@@ -40,24 +41,27 @@ describe('tokenUtils', () => {
     it('orders by start, then end, then index', () => {
       expect(
         compareTokensBySourceOrder(
-          { range: { start: 2 }, index: 1 },
-          { range: { start: 5 }, index: 0 },
+          makeHighlightDebugToken({ range: makeHighlightTokenRange({ start: 2, end: 3 }), index: 1 }),
+          makeHighlightDebugToken({ range: makeHighlightTokenRange({ start: 5, end: 6 }), index: 0 }),
         ),
       ).toBeLessThan(0);
       expect(
         compareTokensBySourceOrder(
-          { range: { start: 2, end: 4 }, index: 1 },
-          { range: { start: 2, end: 8 }, index: 0 },
+          makeHighlightDebugToken({ range: makeHighlightTokenRange({ start: 2, end: 4 }), index: 1 }),
+          makeHighlightDebugToken({ range: makeHighlightTokenRange({ start: 2, end: 8 }), index: 0 }),
         ),
       ).toBeLessThan(0);
       expect(
         compareTokensBySourceOrder(
-          { range: { start: 2, end: 4 }, index: 3 },
-          { range: { start: 2, end: 4 }, index: 1 },
+          makeHighlightDebugToken({ range: makeHighlightTokenRange({ start: 2, end: 4 }), index: 3 }),
+          makeHighlightDebugToken({ range: makeHighlightTokenRange({ start: 2, end: 4 }), index: 1 }),
         ),
       ).toBeGreaterThan(0);
       expect(
-        compareTokensBySourceOrder({ index: 0 }, { range: { start: 1 }, index: 1 }),
+        compareTokensBySourceOrder(
+          makeHighlightDebugToken({ index: 0, range: null }),
+          makeHighlightDebugToken({ range: makeHighlightTokenRange({ start: 1, end: 2 }), index: 1 }),
+        ),
       ).toBeGreaterThan(0);
     });
   });
@@ -67,8 +71,8 @@ describe('tokenUtils', () => {
       const code = 'ab';
       const result = checkTokenReportMatch(code, {
         tokens: [
-          { value: 'a', range: { start: 0, end: 1 }, index: 0 },
-          { value: 'b', range: { start: 1, end: 2 }, index: 1 },
+          makeHighlightDebugToken({ value: 'a', range: makeHighlightTokenRange({ start: 0, end: 1 }), index: 0 }),
+          makeHighlightDebugToken({ value: 'b', range: makeHighlightTokenRange({ start: 1, end: 2 }), index: 1 }),
         ],
       });
       expect(result.isMatch).toBe(true);
@@ -80,10 +84,10 @@ describe('tokenUtils', () => {
       const code = 'abcd';
       const result = checkTokenReportMatch(code, {
         tokens: [
-          { value: 'a', range: { start: 0, end: 1 }, index: 0 },
-          { value: 'missing', index: 1 },
-          { value: 'xx', range: { start: 0, end: 2 }, index: 2 },
-          { value: 'wrong', range: { start: 2, end: 4 }, index: 3 },
+          makeHighlightDebugToken({ value: 'a', range: makeHighlightTokenRange({ start: 0, end: 1 }), index: 0 }),
+          makeHighlightDebugToken({ value: 'missing', index: 1, range: null }),
+          makeHighlightDebugToken({ value: 'xx', range: makeHighlightTokenRange({ start: 0, end: 2 }), index: 2 }),
+          makeHighlightDebugToken({ value: 'wrong', range: makeHighlightTokenRange({ start: 2, end: 4 }), index: 3 }),
         ],
       });
       expect(result.isMatch).toBe(false);
@@ -96,8 +100,8 @@ describe('tokenUtils', () => {
       const code = 'abc';
       const result = checkTokenReportMatch(code, {
         tokens: [
-          { value: 'b', range: { start: 1, end: 2 }, index: 1 },
-          { value: 'a', range: { start: 0, end: 1 }, index: 0 },
+          makeHighlightDebugToken({ value: 'b', range: makeHighlightTokenRange({ start: 1, end: 2 }), index: 1 }),
+          makeHighlightDebugToken({ value: 'a', range: makeHighlightTokenRange({ start: 0, end: 1 }), index: 0 }),
         ],
       });
       expect(result.isMatch).toBe(true);
@@ -105,7 +109,9 @@ describe('tokenUtils', () => {
       expect(result.originalLength).toBe(3);
 
       const withGap = checkTokenReportMatch('abcd', {
-        tokens: [{ value: 'ab', range: { start: 0, end: 2 }, index: 0 }],
+        tokens: [
+          makeHighlightDebugToken({ value: 'ab', range: makeHighlightTokenRange({ start: 0, end: 2 }), index: 0 }),
+        ],
       });
       expect(withGap.isMatch).toBe(true);
       expect(withGap.reconstructedLength).toBe(4);

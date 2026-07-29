@@ -18,8 +18,15 @@ vi.mock('@/components/ui/Icons', () => ({
   },
 }));
 
+type DialogMockProps = {
+  isOpen?: boolean;
+  title?: string;
+  children?: ReactNode;
+  onCancel?: () => void;
+};
+
 vi.mock('@/components/ui/Dialog', () => ({
-  default: ({ isOpen, title, children, onCancel }) =>
+  default: ({ isOpen, title, children, onCancel }: DialogMockProps) =>
     isOpen ? (
       <dialog open aria-label={title}>
         <h3>{title}</h3>

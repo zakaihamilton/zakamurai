@@ -306,7 +306,7 @@ describe('TopBar', () => {
       openTabs: [{ id: 'old.js', type: 'file', label: 'old.js' }],
       activeTabId: 'old.js',
     });
-    const editorState = makeEditorState({
+    const editorState = createMockEditorState({
       fileContents: { 'old.js': 'old content' },
       pendingDiffs: { 'old.js': { originalContent: 'older content', modifiedContent: '', diffs: [] } },
     });
@@ -339,9 +339,9 @@ describe('TopBar', () => {
       fileContents: {},
       navigationHistory: {
         stack: [
-          { filePath: 'src/App.js', loc: { line: 10, col: 1, index: 0 }, label: 'App.js' },
-          { filePath: 'src/index.css', loc: { line: 20, col: 1, index: 0 }, label: 'index.css' },
-          { filePath: 'src/utils.js', loc: { line: 30, col: 1, index: 0 }, label: 'utils.js' },
+          { filePath: 'src/App.js', loc: { line: 10, column: 1 }, label: 'App.js' },
+          { filePath: 'src/index.css', loc: { line: 20, column: 1 }, label: 'index.css' },
+          { filePath: 'src/utils.js', loc: { line: 30, column: 1 }, label: 'utils.js' },
         ],
         currentIndex: 1,
       },

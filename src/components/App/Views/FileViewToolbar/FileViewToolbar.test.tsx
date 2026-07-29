@@ -4,7 +4,9 @@ import { describe, expect, it, vi } from 'vitest';
 import FileViewToolbar from './FileViewToolbar';
 
 vi.mock('@/components/ui/Tooltip', () => ({
-  default: ({ children, content }) => <div data-tooltip={content}>{children}</div>,
+  default: ({ children, content }: { children?: ReactNode; content?: string }) => (
+    <div data-tooltip={content}>{children}</div>
+  ),
 }));
 
 vi.mock('@/components/ui/Icons', () => ({

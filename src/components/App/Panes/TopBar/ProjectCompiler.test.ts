@@ -5,6 +5,15 @@ import { PreviewState } from '@/components/App/PreviewState';
 import { EditorState } from '@/components/App/Views/EditorArea';
 import { LogState } from '@/components/App/Views/LogArea';
 import { useFileSystem } from '@/components/Storage';
+import { createMockEditorState } from '@/test-utils/editorMocks';
+import { asMockUseFileSystem } from '@/test-utils/fsMocks';
+import {
+  makeAppState,
+  makeLogState,
+  makePreviewState,
+  makeSidebarState,
+  makeTabState,
+} from '@/test-utils/stateMocks';
 import { act, renderHook } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import useProjectCompiler from './ProjectCompiler';
@@ -66,17 +75,17 @@ vi.mock('@/utils/compiler', () => ({
 }));
 
 function renderCompilerHook() {
-  const mockLogState = vi.fn();
-  const mockPreviewState = vi.fn();
-  const mockTabState = Object.assign(vi.fn(), { activeTabId: null, openTabs: [] });
-  LogState.usePassiveState.mockReturnValue(mockLogState);
-  PreviewState.usePassiveState.mockReturnValue(mockPreviewState);
-  TabState.usePassiveState.mockReturnValue(mockTabState);
-  useFileSystem.mockReturnValue({ mode: null, rootHandle: null });
-  vi.mocked(AppState.useState).mockReturnValue({ compileRequest: 0, silentCompileRequest: 0 });
-  vi.mocked(SidebarState.useState).mockReturnValue({ folderTree: [] });
-  EditorState.usePassiveState.mockReturnValue({ fileContents: {} });
-  vi.mocked(LogState.useState).mockReturnValue({ isSystemProcessing: false });
+  const mockLogState = makeLogState();
+  const mockPreviewState = makePreviewState();
+  const mockTabState = makeTabState();
+  vi.mocked(LogState.usePassiveState).mockReturnValue(mockLogState);
+  vi.mocked(PreviewState.usePassiveState).mockReturnValue(mockPreviewState);
+  vi.mocked(TabState.usePassiveState).mockReturnValue(mockTabState);
+  vi.mocked(useFileSystem).mockReturnValue(asMockUseFileSystem());
+  vi.mocked(AppState.useState).mockReturnValue(makeAppState());
+  vi.mocked(SidebarState.useState).mockReturnValue(makeSidebarState());
+  vi.mocked(EditorState.usePassiveState).mockReturnValue(createMockEditorState());
+  vi.mocked(LogState.useState).mockReturnValue(makeLogState({ isSystemProcessing: false }));
 
   const rendered = renderHook(() => useProjectCompiler());
   return { ...rendered, mockTabState, mockLogState, mockPreviewState };
@@ -117,10 +126,11 @@ describe('useProjectCompiler', () => {
     expect(compilerReset).toHaveBeenCalled();
     expect(mockPreviewState).toHaveBeenCalled();
     expect(mockLogState).toHaveBeenCalled();
-    const logUpdater = mockLogState.mock.calls.at(-1)[0];
-    const draft = { logs: [] };
-    logUpdater(draft);
-    expect(draft.logs.at(-1).text).toBe(
+    const logUpdater = mockLogState.mock.calls.at(-1)?.[0];
+    expect(logUpdater).toBeTypeOf('function');
+    const draft = { logs: [] as Array<{ text: string }> };
+    logUpdater?.(draft);
+    expect(draft.logs.at(-1)?.text).toBe(
       'Virtual filesystem cleared. Next compile will start fresh.',
     );
     expect(mockTabState).toHaveBeenCalled();
@@ -140,9 +150,10 @@ describe('useProjectCompiler', () => {
       'error',
     );
     expect(mockLogState).toHaveBeenCalled();
-    const logUpdater = mockLogState.mock.calls.at(-1)[0];
-    const draft = { logs: [] };
-    logUpdater(draft);
-    expect(draft.logs.at(-1).text).toBe('Failed to clear filesystem: OPFS locked');
+    const logUpdater = mockLogState.mock.calls.at(-1)?.[0];
+    expect(logUpdater).toBeTypeOf('function');
+    const draft = { logs: [] as Array<{ text: string }> };
+    logUpdater?.(draft);
+    expect(draft.logs.at(-1)?.text).toBe('Failed to clear filesystem: OPFS locked');
   });
 });

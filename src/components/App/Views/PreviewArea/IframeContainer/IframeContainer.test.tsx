@@ -29,7 +29,7 @@ describe('PreviewIframeContainer', () => {
     onDismissError: vi.fn(),
     scale: 1,
     isCompilerReady: true,
-    iframeRef: createRef(),
+    iframeRef: createRef<HTMLIFrameElement>(),
     previewUrl: 'http://localhost:3001/?session=test',
     previewSessionId: 'session-1',
     onLoad: vi.fn(),

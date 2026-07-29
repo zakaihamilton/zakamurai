@@ -1,6 +1,13 @@
 import { act, render } from '@testing-library/react';
 import React from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import {
+  createMockPreviewWindow,
+  mockCompilerContainer,
+  mockExternalPreviewRef,
+  mockIframeRef,
+  stubMessageChannel,
+} from '@/test-utils/previewMocks';
 import PreviewBridge from './PreviewBridge';
 import { PREVIEW_CONNECT, PREVIEW_CONNECT_ACK, PREVIEW_PROTOCOL_VERSION } from './previewProtocol';
 
@@ -10,10 +17,10 @@ describe('PreviewBridge', () => {
   });
 
   it('accepts handshake from an external preview window when event.source identity differs cross-origin', () => {
-    const externalWindow = { postMessage: vi.fn() };
-    const iframeWindow = { postMessage: vi.fn() };
-    const iframeRef = { current: { contentWindow: iframeWindow } };
-    const externalPreviewRef = { current: { ...externalWindow } }; // non-identical object reference
+    const externalWindow = createMockPreviewWindow();
+    const iframeWindow = createMockPreviewWindow();
+    const iframeRef = mockIframeRef(iframeWindow);
+    const externalPreviewRef = mockExternalPreviewRef({ ...externalWindow });
 
     render(
       <PreviewBridge
@@ -51,9 +58,9 @@ describe('PreviewBridge', () => {
   });
 
   it('rejects handshake with invalid origin or mismatched session ID', () => {
-    const externalWindow = { postMessage: vi.fn() };
-    const iframeRef = { current: { contentWindow: null } };
-    const externalPreviewRef = { current: externalWindow };
+    const externalWindow = createMockPreviewWindow();
+    const iframeRef = mockIframeRef(null);
+    const externalPreviewRef = mockExternalPreviewRef(externalWindow);
 
     render(
       <PreviewBridge
@@ -83,9 +90,9 @@ describe('PreviewBridge', () => {
   });
 
   it('accepts handshake from iframe window', () => {
-    const iframeWindow = { postMessage: vi.fn() };
-    const iframeRef = { current: { contentWindow: iframeWindow } };
-    const externalPreviewRef = { current: null };
+    const iframeWindow = createMockPreviewWindow();
+    const iframeRef = mockIframeRef(iframeWindow);
+    const externalPreviewRef = mockExternalPreviewRef(null);
 
     render(
       <PreviewBridge
@@ -119,9 +126,9 @@ describe('PreviewBridge', () => {
   });
 
   it('rejects handshake with mismatched session ID', () => {
-    const externalWindow = { postMessage: vi.fn() };
-    const externalPreviewRef = { current: externalWindow };
-    const iframeRef = { current: { contentWindow: null } };
+    const externalWindow = createMockPreviewWindow();
+    const externalPreviewRef = mockExternalPreviewRef(externalWindow);
+    const iframeRef = mockIframeRef(null);
 
     render(
       <PreviewBridge
@@ -158,30 +165,16 @@ describe('PreviewBridge', () => {
       body: new Uint8Array([72, 105]),
     });
 
-    let bridgePort;
-    vi.stubGlobal(
-      'MessageChannel',
-      class {
-        constructor() {
-          this.port1 = {
-            postMessage: vi.fn(),
-            onmessage: null,
-            close: vi.fn(),
-          };
-          this.port2 = { postMessage: vi.fn(), close: vi.fn() };
-          bridgePort = this.port1;
-        }
-      },
-    );
+    const { getBridgePort } = stubMessageChannel();
 
     const { Compiler } = await import('@/utils/compiler');
-    vi.spyOn(Compiler, 'getContainer').mockReturnValue({
-      serverBridge: { handleRequest },
-    });
+    vi.spyOn(Compiler, 'getContainer').mockReturnValue(
+      mockCompilerContainer({ handleRequest }),
+    );
 
-    const externalWindow = { postMessage: vi.fn() };
-    const externalPreviewRef = { current: externalWindow };
-    const iframeRef = { current: { contentWindow: null } };
+    const externalWindow = createMockPreviewWindow();
+    const externalPreviewRef = mockExternalPreviewRef(externalWindow);
+    const iframeRef = mockIframeRef(null);
 
     render(
       <PreviewBridge
@@ -207,10 +200,10 @@ describe('PreviewBridge', () => {
       window.dispatchEvent(connectEvent);
     });
 
-    expect(bridgePort).toBeDefined();
+    const bridgePort = getBridgePort();
 
     await act(async () => {
-      await bridgePort.onmessage({
+      await bridgePort.onmessage?.({
         data: {
           type: 'preview-request',
           id: 1,
@@ -232,9 +225,9 @@ describe('PreviewBridge', () => {
   });
 
   it('pushes handshake to an external preview tab when externalPreviewNonce changes', () => {
-    const externalWindow = { postMessage: vi.fn() };
-    const externalPreviewRef = { current: externalWindow };
-    const iframeRef = { current: { contentWindow: null } };
+    const externalWindow = createMockPreviewWindow();
+    const externalPreviewRef = mockExternalPreviewRef(externalWindow);
+    const iframeRef = mockIframeRef(null);
 
     render(
       <PreviewBridge
@@ -256,9 +249,9 @@ describe('PreviewBridge', () => {
 
   it('retries external handshake until the preview host acknowledges', () => {
     vi.useFakeTimers();
-    const externalWindow = { postMessage: vi.fn() };
-    const externalPreviewRef = { current: externalWindow };
-    const iframeRef = { current: { contentWindow: null } };
+    const externalWindow = createMockPreviewWindow();
+    const externalPreviewRef = mockExternalPreviewRef(externalWindow);
+    const iframeRef = mockIframeRef(null);
 
     render(
       <PreviewBridge
@@ -304,9 +297,9 @@ describe('PreviewBridge', () => {
   });
 
   it('pushes handshake to the preview iframe when iframeHandshakeNonce changes', () => {
-    const iframeWindow = { postMessage: vi.fn() };
-    const iframeRef = { current: { contentWindow: iframeWindow } };
-    const externalPreviewRef = { current: null };
+    const iframeWindow = createMockPreviewWindow();
+    const iframeRef = mockIframeRef(iframeWindow);
+    const externalPreviewRef = mockExternalPreviewRef(null);
 
     render(
       <PreviewBridge
@@ -335,32 +328,18 @@ describe('PreviewBridge', () => {
       body: largeBody,
     });
 
-    let bridgePort;
-    vi.stubGlobal(
-      'MessageChannel',
-      class {
-        constructor() {
-          this.port1 = {
-            postMessage: vi.fn(),
-            onmessage: null,
-            close: vi.fn(),
-          };
-          this.port2 = { postMessage: vi.fn(), close: vi.fn() };
-          bridgePort = this.port1;
-        }
-      },
-    );
+    const { getBridgePort } = stubMessageChannel();
 
     const { Compiler } = await import('@/utils/compiler');
-    vi.spyOn(Compiler, 'getContainer').mockReturnValue({
-      serverBridge: { handleRequest },
-    });
+    vi.spyOn(Compiler, 'getContainer').mockReturnValue(
+      mockCompilerContainer({ handleRequest }),
+    );
 
-    const externalWindow = { postMessage: vi.fn() };
+    const externalWindow = createMockPreviewWindow();
     render(
       <PreviewBridge
-        iframeRef={{ current: { contentWindow: null } }}
-        externalPreviewRef={{ current: externalWindow }}
+        iframeRef={mockIframeRef(null)}
+        externalPreviewRef={mockExternalPreviewRef(externalWindow)}
         sessionId="test-session-123"
         previewOrigin="http://localhost:3001"
         onError={vi.fn()}
@@ -380,8 +359,10 @@ describe('PreviewBridge', () => {
       window.dispatchEvent(connectEvent);
     });
 
+    const bridgePort = getBridgePort();
+
     await act(async () => {
-      await bridgePort.onmessage({
+      await bridgePort.onmessage?.({
         data: {
           type: 'preview-request',
           id: 2,
@@ -407,30 +388,16 @@ describe('PreviewBridge', () => {
 
   it('reports preview request failures through onError', async () => {
     const onError = vi.fn();
-    let bridgePort;
-    vi.stubGlobal(
-      'MessageChannel',
-      class {
-        constructor() {
-          this.port1 = {
-            postMessage: vi.fn(),
-            onmessage: null,
-            close: vi.fn(),
-          };
-          this.port2 = { postMessage: vi.fn(), close: vi.fn() };
-          bridgePort = this.port1;
-        }
-      },
-    );
+    const { getBridgePort } = stubMessageChannel();
 
     const { Compiler } = await import('@/utils/compiler');
-    vi.spyOn(Compiler, 'getContainer').mockReturnValue({ serverBridge: null });
+    vi.spyOn(Compiler, 'getContainer').mockReturnValue(mockCompilerContainer(null));
 
-    const externalWindow = { postMessage: vi.fn() };
+    const externalWindow = createMockPreviewWindow();
     render(
       <PreviewBridge
-        iframeRef={{ current: { contentWindow: null } }}
-        externalPreviewRef={{ current: externalWindow }}
+        iframeRef={mockIframeRef(null)}
+        externalPreviewRef={mockExternalPreviewRef(externalWindow)}
         sessionId="test-session-123"
         previewOrigin="http://localhost:3001"
         onError={onError}
@@ -450,8 +417,10 @@ describe('PreviewBridge', () => {
       window.dispatchEvent(connectEvent);
     });
 
+    const bridgePort = getBridgePort();
+
     await act(async () => {
-      await bridgePort.onmessage({
+      await bridgePort.onmessage?.({
         data: {
           type: 'preview-request',
           id: 3,

@@ -118,6 +118,17 @@ export function makeLogState(overrides: Partial<LogStateShape> = {}): StateStore
   });
 }
 
+export function makeLogAreaUiState(
+  overrides: Partial<import('@/components/state/domain-types').LogAreaUiStateShape> = {},
+): StateStore<import('@/components/state/domain-types').LogAreaUiStateShape> & Mock {
+  return createMockStateStore({
+    copied: false,
+    autoScroll: true,
+    filterText: '',
+    ...overrides,
+  });
+}
+
 export function makePromptState(
   overrides: Partial<PromptStateShape> = {},
 ): StateStore<PromptStateShape> & Mock {
@@ -202,6 +213,32 @@ export function makeChangeSetState(
   return createMockStateStore<ChangeSetStateShape>({
     activeId: null,
     items: [],
+    ...overrides,
+  });
+}
+
+export function makeWebLLMState(
+  overrides: Partial<import('@/components/state/domain-types').WebLLMStateShape> = {},
+): StateStore<import('@/components/state/domain-types').WebLLMStateShape> & Mock {
+  return createMockStateStore({
+    cachedModelIds: [],
+    engines: {},
+    activeModelId: null,
+    ...overrides,
+  });
+}
+
+export function makeWorkspaceHealthState(
+  overrides: Partial<import('@/components/state/domain-types').WorkspaceHealthStateShape> = {},
+): StateStore<import('@/components/state/domain-types').WorkspaceHealthStateShape> & Mock {
+  return createMockStateStore({
+    status: 'idle',
+    error: null,
+    totalFiles: 0,
+    indexedFiles: 0,
+    indexedBytes: 0,
+    skippedFiles: [],
+    lastIndexedAt: null,
     ...overrides,
   });
 }

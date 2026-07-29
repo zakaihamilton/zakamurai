@@ -14,7 +14,7 @@ vi.mock('@/components/ui/Icons', () => ({
 describe('CompletionDebug', () => {
   it('returns null when closed', () => {
     vi.mocked(EditorState.useState).mockReturnValue(
-      createMockEditorState({ aiCompletionDebug: { status: 'idle' } }),
+      createMockEditorState({ aiCompletionDebug: { status: 'idle', filePath: '' } }),
     );
     const { container } = render(<CompletionDebug isOpen={false} onClose={vi.fn()} />);
     expect(container.firstChild).toBeNull();
@@ -42,7 +42,7 @@ describe('CompletionDebug', () => {
 
   it('closes on escape', () => {
     vi.mocked(EditorState.useState).mockReturnValue(
-      createMockEditorState({ aiCompletionDebug: { status: 'idle' } }),
+      createMockEditorState({ aiCompletionDebug: { status: 'idle', filePath: '' } }),
     );
     const onClose = vi.fn();
     render(<CompletionDebug isOpen={true} onClose={onClose} />);

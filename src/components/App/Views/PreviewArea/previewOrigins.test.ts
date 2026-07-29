@@ -1,3 +1,4 @@
+import type { PreviewOrigins } from './previewOrigins';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   buildPreviewUrl,
@@ -13,6 +14,16 @@ import {
   originMatches,
 } from './previewOrigins';
 import { isPreviewRequest, isSafePreviewPath } from './previewProtocol';
+
+function previewOrigins(partial: Partial<PreviewOrigins> & Pick<PreviewOrigins, 'previewOrigin'>): PreviewOrigins {
+  const { previewOrigin, ...rest } = partial;
+  return {
+    ideOrigin: null,
+    isIsolated: true,
+    ...rest,
+    previewOrigin,
+  };
+}
 
 describe('isolated preview configuration', () => {
   afterEach(() => {
@@ -87,7 +98,7 @@ describe('isolated preview configuration', () => {
   });
 
   it('recognizes configured and preview-prefixed hosts', () => {
-    const origins = { previewOrigin: 'https://preview.zakamurai.com' };
+    const origins = previewOrigins({ previewOrigin: 'https://preview.zakamurai.com' });
     expect(isPreviewHost('preview.zakamurai.com', origins)).toBe(true);
     expect(isPreviewHost('www.zakamurai.com', origins)).toBe(false);
     expect(isPreviewHost('preview.branch.example.com', origins)).toBe(true);
@@ -149,10 +160,12 @@ describe('preview host derivation helpers', () => {
 
   it('handles buildPreviewUrl and configuration error edges', () => {
     expect(buildPreviewUrl(null, 's')).toBeNull();
-    expect(buildPreviewUrl({ previewOrigin: 'https://p.example' }, '')).toBeNull();
-    expect(buildPreviewUrl({ previewOrigin: 'https://p.example' }, 'abc')).toBe(
-      'https://p.example/?session=abc',
-    );
+    expect(
+      buildPreviewUrl(previewOrigins({ previewOrigin: 'https://p.example' }), ''),
+    ).toBeNull();
+    expect(
+      buildPreviewUrl(previewOrigins({ previewOrigin: 'https://p.example' }), 'abc'),
+    ).toBe('https://p.example/?session=abc');
     expect(getPreviewConfigurationError(null)).toContain('not configured');
     expect(
       getPreviewConfigurationError({
@@ -161,7 +174,13 @@ describe('preview host derivation helpers', () => {
         isIsolated: false,
       }),
     ).toContain('must be different');
-    expect(getPreviewServiceWorkerScope({})).toBe('/');
+    expect(
+      getPreviewServiceWorkerScope({
+        ideOrigin: null,
+        previewOrigin: null,
+        isIsolated: false,
+      }),
+    ).toBe('/');
   });
 
   it('falls back to configured origins and rejects invalid hosts', () => {
@@ -172,14 +191,24 @@ describe('preview host derivation helpers', () => {
       previewOrigin: 'https://preview.example.com',
       isIsolated: true,
     });
-    expect(isPreviewHost('', { previewOrigin: 'https://preview.example.com' })).toBe(false);
-    expect(isPreviewHost('www.example.com', {})).toBe(false);
-    expect(isPreviewHost('::::', { previewOrigin: 'not-a-url' })).toBe(false);
+    expect(
+      isPreviewHost('', previewOrigins({ previewOrigin: 'https://preview.example.com' })),
+    ).toBe(false);
+    expect(
+      isPreviewHost('www.example.com', {
+        ideOrigin: null,
+        previewOrigin: null,
+        isIsolated: false,
+      }),
+    ).toBe(false);
+    expect(
+      isPreviewHost('::::', previewOrigins({ previewOrigin: 'not-a-url' })),
+    ).toBe(false);
   });
 });
 
 describe('isValidPreviewHandshake', () => {
-  const source = {};
+  const source = {} as MessageEventSource;
   const options = {
     expectedOrigin: 'https://preview.example',
     expectedSource: source,
@@ -195,7 +224,7 @@ describe('isValidPreviewHandshake', () => {
           origin: 'https://preview.example',
           source,
           data: { type: 'connect', version: 1, sessionId: 'session' },
-        },
+        } as MessageEvent,
         options,
       ),
     ).toBe(true);
@@ -205,7 +234,7 @@ describe('isValidPreviewHandshake', () => {
           origin: 'https://attacker.example',
           source,
           data: { type: 'connect', version: 1, sessionId: 'session' },
-        },
+        } as MessageEvent,
         options,
       ),
     ).toBe(false);

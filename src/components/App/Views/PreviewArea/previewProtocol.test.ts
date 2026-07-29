@@ -41,6 +41,6 @@ describe('previewProtocol', () => {
     expect(Array.from(decoded)).toEqual([72, 101, 108, 108, 111]);
 
     expect(Array.from(fromBase64(''))).toEqual([]);
-    expect(toBase64(null)).toBe('');
+    expect(toBase64(null as unknown as Uint8Array)).toBe('');
   });
 });
