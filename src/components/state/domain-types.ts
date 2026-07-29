@@ -149,6 +149,7 @@ export interface WebLLMEngineState {
   generating?: boolean;
   error?: string | null;
   progress?: number;
+  progressText?: string;
   [key: string]: unknown;
 }
 

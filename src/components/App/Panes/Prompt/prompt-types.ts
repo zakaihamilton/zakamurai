@@ -206,6 +206,8 @@ export type PromptComposerProps = {
   isButtonActive: boolean;
   isOpen: boolean;
   selectedModelInfo?: { id: string; name?: string };
+  isModelDownloading?: boolean;
+  modelDownloadProgress?: string;
   modelOptions?: ModelSelectOption[];
   onChangeModel?: (modelId: string) => void;
   onLoadCachedModelIds?: () => void;
@@ -302,6 +304,8 @@ export type PromptContentProps = {
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
   onStop: (event: React.MouseEvent<HTMLButtonElement>) => void;
   isButtonActive: boolean;
+  isModelDownloading: boolean;
+  modelDownloadProgress: string;
   onChangeModel: (modelId: string) => void;
   onLoadCachedModelIds: () => void;
   onOpenModelManager: () => void;

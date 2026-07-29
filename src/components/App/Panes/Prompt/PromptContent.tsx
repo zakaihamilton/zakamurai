@@ -60,6 +60,8 @@ export default function PromptContent({
   onSubmit,
   onStop,
   isButtonActive,
+  isModelDownloading,
+  modelDownloadProgress,
   onChangeModel,
   onLoadCachedModelIds,
   onOpenModelManager,
@@ -150,6 +152,8 @@ export default function PromptContent({
           isButtonActive={isButtonActive}
           isOpen={isOpen}
           selectedModelInfo={selectedModelInfo}
+          isModelDownloading={isModelDownloading}
+          modelDownloadProgress={modelDownloadProgress}
           modelOptions={modelOptions}
           onChangeModel={onChangeModel}
           onLoadCachedModelIds={onLoadCachedModelIds}

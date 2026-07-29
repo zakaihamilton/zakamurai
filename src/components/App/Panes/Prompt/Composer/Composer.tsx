@@ -16,6 +16,8 @@ export default function PromptComposer({
   isButtonActive,
   isOpen,
   selectedModelInfo = { id: '' },
+  isModelDownloading = false,
+  modelDownloadProgress = '',
   modelOptions = [],
   onChangeModel = () => {},
   onLoadCachedModelIds,
@@ -35,6 +37,15 @@ export default function PromptComposer({
           className={styles.input}
           tabIndex={isOpen ? undefined : -1}
         />
+        {isModelDownloading && (
+          <output className={styles.downloadStatus} aria-live="polite">
+            <span className={styles.downloadSpinner} aria-hidden="true" />
+            <span>
+              Downloading {selectedModelInfo.name || 'AI model'}
+              {modelDownloadProgress ? ` — ${modelDownloadProgress}` : '…'}
+            </span>
+          </output>
+        )}
         <div
           className={styles.toolbar}
           onFocusCapture={onLoadCachedModelIds}

@@ -51,7 +51,9 @@ export default function Prompt() {
     sessionDialog = null,
     isAgentTreeOpen = false,
   } = promptUiState || {};
-  const { cachedModelIds = [] } = requireStore(WebLLMState.useState(['cachedModelIds']));
+  const { cachedModelIds = [], engines = {} } = requireStore(
+    WebLLMState.useState(['cachedModelIds', 'engines']),
+  );
   const logState = requireStore(LogState.useState());
   const { isSystemProcessing, isAIProcessing } = requireStore(
     LogState.useState(['isSystemProcessing', 'isAIProcessing']),
@@ -214,6 +216,9 @@ export default function Prompt() {
   const runState = isAIProcessing ? 'AI working' : isSystemProcessing ? 'Compiling' : 'Ready';
   const selectedModelInfo =
     WEB_LLM_MODELS.find((model) => model.id === selectedModel) || RECOMMENDED_WEB_LLM_MODEL;
+  const selectedModelEngine = engines[selectedModel];
+  const isModelDownloading = selectedModelEngine?.status === 'downloading';
+  const modelDownloadProgress = selectedModelEngine?.progressText || '';
   const modelOptions = WEB_LLM_MODELS.map((model) => ({
     value: model.id,
     label: model.name,
@@ -274,6 +279,8 @@ export default function Prompt() {
       onSubmit={send}
       onStop={handleStop}
       isButtonActive={Boolean(val.trim()) && !isAIProcessing}
+      isModelDownloading={isModelDownloading}
+      modelDownloadProgress={modelDownloadProgress}
       onChangeModel={setSelectedModel}
       onLoadCachedModelIds={loadCachedModelIds}
       onOpenModelManager={openModelManager}

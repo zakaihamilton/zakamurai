@@ -1,3 +1,4 @@
+import { WebLLMState } from '@/components/AI/WebLLMState';
 import { AppState } from '@/components/App/AppState';
 import { SidebarState } from '@/components/App/Panes/Sidebar';
 import { TabState } from '@/components/App/Panes/TabBar';
@@ -235,6 +236,27 @@ describe('Prompt', () => {
       });
     });
     expect(modelSelect.value).toBe('Qwen2.5-Coder-3B-Instruct-q4f16_1-MLC');
+  });
+
+  it('shows selected model download progress in the composer', () => {
+    const webLLMStore = Object.assign(vi.fn(), {
+      cachedModelIds: [],
+      engines: {
+        'Qwen3.5-4B-q4f16_1-MLC': {
+          status: 'downloading',
+          progressText: 'Fetching parameters: 50%',
+        },
+      },
+    });
+    vi.mocked(WebLLMState.useState).mockReturnValue(
+      webLLMStore as unknown as ReturnType<typeof WebLLMState.useState>,
+    );
+
+    render(<Prompt />);
+
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'Downloading Qwen3.5 4B — Fetching parameters: 50%',
+    );
   });
 
   it('opens the model manager and caches models', async () => {
