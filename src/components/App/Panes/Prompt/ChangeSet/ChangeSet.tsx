@@ -20,6 +20,22 @@ export default function ChangeSetPanel({ onOpenInTab = () => {} }: { onOpenInTab
   const tabState = TabState.usePassiveState();
   const fs = useFileSystem();
   const changeSet = (state.items || []).find((item) => item.id === state.activeId);
+  const runBulkAction = useCallback(
+    async (action: 'approve' | 'undo') => {
+      if (!changeSet) return;
+      const params = {
+        changeSetId: changeSet.id,
+        editorState: editorState as never,
+        changeSetState: state as never,
+        fs,
+        sidebarState: sidebarState as never,
+        tabState: tabState as never,
+      };
+      if (action === 'approve') await approveAllChangeSetChanges(params);
+      else await undoAllChangeSetChanges(params);
+    },
+    [changeSet, editorState, fs, sidebarState, state, tabState],
+  );
   if (!changeSet) return null;
   const reviewed = changeSet.files.filter(
     (file) => file.status && file.status !== 'pending-review',
@@ -35,21 +51,6 @@ export default function ChangeSetPanel({ onOpenInTab = () => {} }: { onOpenInTab
   const pendingCount = changeSet.files.filter(
     (file) => !file.status || file.status === 'pending-review',
   ).length;
-  const runBulkAction = useCallback(
-    async (action: 'approve' | 'undo') => {
-      const params = {
-        changeSetId: changeSet.id,
-        editorState: editorState as never,
-        changeSetState: state as never,
-        fs,
-        sidebarState: sidebarState as never,
-        tabState: tabState as never,
-      };
-      if (action === 'approve') await approveAllChangeSetChanges(params);
-      else await undoAllChangeSetChanges(params);
-    },
-    [changeSet.id, editorState, fs, sidebarState, state, tabState],
-  );
   return (
     <section className={styles.panel} aria-label="AI change set review">
       <div className={styles.header}>

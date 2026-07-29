@@ -19,6 +19,25 @@ describe('ChangeSetPanel', () => {
     expect(container.firstChild).toBeNull();
   });
 
+  it('supports an active change set arriving after an empty render', () => {
+    const state = makeChangeSetState({ activeId: 'cs1', items: [] });
+    vi.mocked(ChangeSetState.useState).mockReturnValue(state);
+    const { rerender } = render(<ChangeSetPanel />);
+
+    state.items = [
+      {
+        id: 'cs1',
+        status: 'pending-review',
+        request: 'Add a todo app',
+        createdAt: Date.now(),
+        files: [{ path: 'src/Todo.tsx', status: 'pending-review' }],
+      },
+    ];
+    rerender(<ChangeSetPanel />);
+
+    expect(screen.getByText('Add a todo app')).toBeDefined();
+  });
+
   it('renders change set details, reviewed counts, and file list', () => {
     vi.mocked(ChangeSetState.useState).mockReturnValue(
       makeChangeSetState({
