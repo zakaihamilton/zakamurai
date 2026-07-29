@@ -3,8 +3,17 @@ import { SidebarState } from '@/components/App/Panes/Sidebar';
 import { TabState } from '@/components/App/Panes/TabBar';
 import { EditorState } from '@/components/App/Views/EditorArea';
 import { LogState } from '@/components/App/Views/LogArea';
+import type { AgentSessionStateShape } from '@/components/state/domain-types';
 import Settings from '@/components/Storage/Settings';
+import { expectAgentSession } from '@/test-utils/agentSessionMocks';
+import {
+  makeAppState,
+  makeLogState,
+  makeSidebarState,
+  makeTabState,
+} from '@/test-utils/stateMocks';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import type { ReactElement, ReactNode } from 'react';
 import React from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
@@ -23,7 +32,7 @@ vi.mock('@/components/App/Views/LogArea', () => ({
 
 vi.mock('@/components/ui/Tooltip', () => ({
   __esModule: true,
-  default: ({ children, content }) => {
+  default: ({ children, content }: { children: ReactElement<{ title?: ReactNode }>; content: ReactNode }) => {
     return React.cloneElement(children, { title: content });
   },
 }));
@@ -112,28 +121,25 @@ vi.mock('@/components/Storage/Settings', () => ({
 let mockAgentSessionStore = createDefaultAgentSessions();
 
 vi.mock('./AgentSessions', async (importOriginal) => {
-  const actual = await importOriginal();
+  const actual = await importOriginal<typeof import('./AgentSessions')>();
   return {
     ...actual,
     AgentSessionState: {
       useState: vi.fn(() => {
-        const updater = (fn) => {
-          if (typeof fn === 'function') {
-            const draft = {
-              sessions: { ...mockAgentSessionStore.sessions },
-              activeSessionId: mockAgentSessionStore.activeSessionId,
-            };
-            // Deep-ish clone sessions for draft mutation style used by Prompt
-            for (const [id, session] of Object.entries(draft.sessions)) {
-              draft.sessions[id] = { ...session, messages: [...(session.messages || [])] };
-            }
-            fn(draft);
-            mockAgentSessionStore = {
-              sessions: draft.sessions,
-              activeSessionId: draft.activeSessionId,
-            };
+        const updater = vi.fn((fn: (draft: AgentSessionStateShape) => void) => {
+          const draft: AgentSessionStateShape = {
+            sessions: { ...mockAgentSessionStore.sessions },
+            activeSessionId: mockAgentSessionStore.activeSessionId,
+          };
+          for (const [id, session] of Object.entries(draft.sessions)) {
+            draft.sessions[id] = { ...session, messages: [...session.messages] };
           }
-        };
+          fn(draft);
+          mockAgentSessionStore = {
+            sessions: draft.sessions,
+            activeSessionId: draft.activeSessionId,
+          };
+        });
         return Object.assign(updater, mockAgentSessionStore);
       }),
     },
@@ -142,40 +148,25 @@ vi.mock('./AgentSessions', async (importOriginal) => {
 
 const setupCommonMocks = ({ reasoning = '', isAIProcessing = false } = {}) => {
   mockAgentSessionStore = createDefaultAgentSessions();
-  const active = getActiveAgentSession(mockAgentSessionStore);
+  const active = expectAgentSession(mockAgentSessionStore);
   mockAgentSessionStore.sessions[active.id] = {
     ...active,
     reasoning,
   };
 
-  vi.mocked(SidebarState.useState).mockReturnValue({
-    showAIInput: true,
-    isAIInputPopupOpen: false,
-  });
-  const mockLogState = {
-    isAIProcessing,
-    isSystemProcessing: false,
-    isProcessing: false,
-    reasoning,
-    logs: [],
-  };
+  vi.mocked(SidebarState.useState).mockReturnValue(
+    makeSidebarState({ showAIInput: true, isAIInputPopupOpen: false }),
+  );
+  const mockLogState = makeLogState({ isAIProcessing, reasoning });
   vi.mocked(LogState.useState).mockReturnValue(mockLogState);
-  LogState.usePassiveState.mockReturnValue(
-    Object.assign(
-      vi.fn((fn) => typeof fn === 'function' && fn(mockLogState)),
-      mockLogState,
-    ),
-  );
-  vi.mocked(TabState.useState).mockReturnValue(
-    Object.assign(vi.fn(), {
-      openTabs: [],
-      activeTabId: null,
-    }),
-  );
-  const mockAppState = { fs: {}, isMobile: false };
+  vi.mocked(LogState.usePassiveState).mockReturnValue(mockLogState);
+  vi.mocked(TabState.useState).mockReturnValue(makeTabState({ openTabs: [], activeTabId: null }));
+  const mockAppState = makeAppState({ isMobile: false });
   vi.mocked(AppState.useState).mockReturnValue(mockAppState);
-  AppState.usePassiveState.mockReturnValue(mockAppState);
-  vi.mocked(EditorState.useState).mockReturnValue(vi.fn());
+  vi.mocked(AppState.usePassiveState).mockReturnValue(mockAppState);
+  vi.mocked(EditorState.useState).mockReturnValue(
+    vi.fn() as unknown as ReturnType<typeof EditorState.useState>,
+  );
 };
 
 describe('Prompt', () => {
@@ -227,12 +218,10 @@ describe('Prompt', () => {
   });
 
   it('renders collapsed when showAIInput is false', async () => {
-    vi.mocked(SidebarState.useState).mockReturnValue({
-      showAIInput: false,
-    });
+    vi.mocked(SidebarState.useState).mockReturnValue(makeSidebarState({ showAIInput: false }));
     const { container } = render(<Prompt />);
     await waitFor(() => expect(container.firstChild).not.toBeNull());
-    expect(container.firstChild.getAttribute('aria-hidden')).toBe('true');
+    expect(container.firstChild).toHaveAttribute('aria-hidden', 'true');
   });
 
   it('renders reasoning as markdown', () => {
@@ -256,21 +245,14 @@ describe('Prompt', () => {
     const codeBlock = container.querySelector('pre code');
 
     expect(codeBlock).not.toBeNull();
-    expect(codeBlock.textContent).toContain('this-is-a-very-long-agent-output-line');
+    expect(codeBlock!.textContent).toContain('this-is-a-very-long-agent-output-line');
   });
 
   it('calls state update when form is submitted', async () => {
     const { runAgent } = await import('@/components/AI/Agent');
-    const stateUpdate = vi.fn((fn) => {
-      if (typeof fn === 'function') fn({ logs: [], isAIProcessing: false, reasoning: '' });
-    });
-    const mockLogState = Object.assign(stateUpdate, {
-      isProcessing: false,
-      isAIProcessing: false,
-      logs: [],
-    });
+    const mockLogState = makeLogState({ isAIProcessing: false });
     vi.mocked(LogState.useState).mockReturnValue(mockLogState);
-    LogState.usePassiveState.mockReturnValue(mockLogState);
+    vi.mocked(LogState.usePassiveState).mockReturnValue(mockLogState);
 
     render(<Prompt />);
     const input = screen.getByPlaceholderText('Tell the Agent what to do...');
@@ -284,7 +266,7 @@ describe('Prompt', () => {
       fireEvent.click(button);
     });
 
-    expect(stateUpdate).toHaveBeenCalled();
+    expect(mockLogState).toHaveBeenCalled();
     expect(listAgentSessions(mockAgentSessionStore.sessions)[0].messages).toHaveLength(1);
     await waitFor(() => expect(runAgent).toHaveBeenCalledOnce());
   });
@@ -323,7 +305,7 @@ describe('Prompt', () => {
   });
 
   it('shows the role graph summary in team mode and opens the editor dialog', async () => {
-    const active = getActiveAgentSession(mockAgentSessionStore);
+    const active = expectAgentSession(mockAgentSessionStore);
     mockAgentSessionStore.sessions[active.id] = {
       ...active,
       mode: 'team',

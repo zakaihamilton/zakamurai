@@ -1,4 +1,5 @@
 import { EditorState } from '@/components/App/Views/EditorArea';
+import { createMockEditorState } from '@/test-utils/editorMocks';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import CompletionDebug from './CompletionDebug';
@@ -12,22 +13,26 @@ vi.mock('@/components/ui/Icons', () => ({
 
 describe('CompletionDebug', () => {
   it('returns null when closed', () => {
-    vi.mocked(EditorState.useState).mockReturnValue({ aiCompletionDebug: { status: 'idle' } });
+    vi.mocked(EditorState.useState).mockReturnValue(
+      createMockEditorState({ aiCompletionDebug: { status: 'idle' } }),
+    );
     const { container } = render(<CompletionDebug isOpen={false} onClose={vi.fn()} />);
     expect(container.firstChild).toBeNull();
   });
 
   it('renders debug payload when open', () => {
-    vi.mocked(EditorState.useState).mockReturnValue({
-      aiCompletionDebug: {
-        status: 'done',
-        filePath: 'src/foo.js',
-        prompt: 'complete this',
-        rawResult: 'raw',
-        completion: 'done',
-        error: '',
-      },
-    });
+    vi.mocked(EditorState.useState).mockReturnValue(
+      createMockEditorState({
+        aiCompletionDebug: {
+          status: 'done',
+          filePath: 'src/foo.js',
+          prompt: 'complete this',
+          rawResult: 'raw',
+          completion: 'done',
+          error: '',
+        },
+      }),
+    );
 
     render(<CompletionDebug isOpen={true} onClose={vi.fn()} />);
     expect(screen.getByText('AI Completion Debug')).toBeDefined();
@@ -36,7 +41,9 @@ describe('CompletionDebug', () => {
   });
 
   it('closes on escape', () => {
-    vi.mocked(EditorState.useState).mockReturnValue({ aiCompletionDebug: { status: 'idle' } });
+    vi.mocked(EditorState.useState).mockReturnValue(
+      createMockEditorState({ aiCompletionDebug: { status: 'idle' } }),
+    );
     const onClose = vi.fn();
     render(<CompletionDebug isOpen={true} onClose={onClose} />);
 

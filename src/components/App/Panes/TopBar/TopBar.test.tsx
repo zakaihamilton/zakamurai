@@ -7,12 +7,22 @@ import { EditorState } from '@/components/App/Views/EditorArea';
 import { LogState } from '@/components/App/Views/LogArea';
 import { DEFAULT_CONTENTS, DEFAULT_FILES } from '@/components/Storage/InitialData';
 import Settings from '@/components/Storage/Settings';
+import { createMockEditorState } from '@/test-utils/editorMocks';
+import {
+  makeAppState,
+  makeEditorState,
+  makeLogState,
+  makePreviewState,
+  makePromptUiState,
+  makeSidebarState,
+  makeTabState,
+} from '@/test-utils/stateMocks';
 import { fireEvent, render, screen } from '@testing-library/react';
+import type { ReactElement, ReactNode } from 'react';
 import React from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import TopBar, { resetNewProjectState } from './TopBar';
 
-// Mock URL methods
 global.URL.createObjectURL = vi.fn();
 global.URL.revokeObjectURL = vi.fn();
 
@@ -52,7 +62,7 @@ vi.mock('@/components/App/PreviewState', () => ({
 
 vi.mock('@/components/ui/Tooltip', () => ({
   __esModule: true,
-  default: ({ children, content }) => {
+  default: ({ children, content }: { children: ReactElement<{ title?: ReactNode }>; content: ReactNode }) => {
     return React.cloneElement(children, { title: content });
   },
 }));
@@ -100,23 +110,42 @@ describe('TopBar', () => {
   beforeEach(() => {
     localStorage.clear();
     vi.clearAllMocks();
-    const mockLogState = { isProcessing: false, logs: [] };
+    const mockLogState = makeLogState();
     vi.mocked(LogState.useState).mockReturnValue(mockLogState);
-    LogState.usePassiveState.mockReturnValue(mockLogState);
-    vi.mocked(PreviewState.useState).mockReturnValue({});
-    PreviewState.usePassiveState.mockReturnValue({});
-    TabState.usePassiveState.mockReturnValue({});
-    AppState.usePassiveState.mockReturnValue({});
-    SidebarState.usePassiveState.mockReturnValue({});
-    EditorState.usePassiveState.mockReturnValue({});
-    PromptUiState.usePassiveState.mockReturnValue(Object.assign(vi.fn(), { val: '' }));
+    vi.mocked(LogState.usePassiveState).mockReturnValue(mockLogState);
+    vi.mocked(PreviewState.useState).mockReturnValue(makePreviewState());
+    vi.mocked(PreviewState.usePassiveState).mockReturnValue(makePreviewState());
+    vi.mocked(TabState.usePassiveState).mockReturnValue(makeTabState());
+    vi.mocked(AppState.usePassiveState).mockReturnValue(makeAppState());
+    vi.mocked(SidebarState.usePassiveState).mockReturnValue(makeSidebarState());
+    vi.mocked(EditorState.usePassiveState).mockReturnValue(
+      createMockEditorState() as ReturnType<typeof EditorState.usePassiveState>,
+    );
+    vi.mocked(PromptUiState.usePassiveState).mockReturnValue(makePromptUiState());
   });
 
-  const mockTabState = (fields) => Object.assign(vi.fn(), fields);
+  function setupCommonMocks({
+    projectName = 'Zakamurai',
+    tabState = makeTabState(),
+    sidebarState = makeSidebarState(),
+    editorState = createMockEditorState({ fileContents: {} }) as ReturnType<
+      typeof EditorState.useState
+    >,
+  }: {
+    projectName?: string;
+    tabState?: ReturnType<typeof makeTabState>;
+    sidebarState?: ReturnType<typeof makeSidebarState>;
+    editorState?: ReturnType<typeof EditorState.useState>;
+  } = {}) {
+    vi.mocked(AppState.useState).mockReturnValue(makeAppState({ theme: 'dark', projectName }));
+    vi.mocked(TabState.useState).mockReturnValue(tabState);
+    vi.mocked(SidebarState.useState).mockReturnValue(sidebarState);
+    vi.mocked(EditorState.useState).mockReturnValue(editorState);
+  }
 
   it('renders breadcrumbs for an active file', () => {
-    vi.mocked(TabState.useState).mockReturnValue(
-      mockTabState({
+    setupCommonMocks({
+      tabState: makeTabState({
         openTabs: [
           {
             id: 'test.js',
@@ -128,14 +157,7 @@ describe('TopBar', () => {
         activeTabId: 'test.js',
         lastCodeTabId: 'test.js',
       }),
-    );
-    vi.mocked(AppState.useState).mockReturnValue({
-      theme: 'dark',
-      fs: { mode: null },
-      projectName: 'Zakamurai',
     });
-    vi.mocked(SidebarState.useState).mockReturnValue({ folderTree: [] });
-    vi.mocked(EditorState.useState).mockReturnValue({ fileContents: {} });
 
     render(<TopBar />);
     expect(screen.getByText('src')).toBeDefined();
@@ -143,101 +165,55 @@ describe('TopBar', () => {
   });
 
   it('renders default breadcrumb when no active tab', () => {
-    vi.mocked(TabState.useState).mockReturnValue(
-      mockTabState({
-        openTabs: [],
-        activeTabId: null,
-      }),
-    );
-    vi.mocked(AppState.useState).mockReturnValue({
-      theme: 'dark',
-      fs: { mode: null },
-      projectName: 'Zakamurai',
+    setupCommonMocks({
+      tabState: makeTabState({ openTabs: [], activeTabId: null }),
     });
-    vi.mocked(SidebarState.useState).mockReturnValue({ folderTree: [] });
-    vi.mocked(EditorState.useState).mockReturnValue({ fileContents: {} });
 
     render(<TopBar />);
     expect(screen.getByText('Welcome')).toBeDefined();
   });
 
   it('renders the brand and toggles the sidebar from the top bar', () => {
-    const stateUpdate = vi.fn();
-    vi.mocked(TabState.useState).mockReturnValue(
-      mockTabState({
-        openTabs: [],
-        activeTabId: null,
-      }),
-    );
-    vi.mocked(AppState.useState).mockReturnValue({
-      theme: 'dark',
-      fs: { mode: null },
-      projectName: 'Zakamurai',
+    const sidebarState = makeSidebarState({
+      folderTree: [],
+      isSidebarOpen: true,
+      isSidebarPopupOpen: false,
     });
-    vi.mocked(SidebarState.useState).mockReturnValue(
-      Object.assign(stateUpdate, {
-        folderTree: [],
-        isSidebarOpen: true,
-        isSidebarPopupOpen: false,
-      }),
-    );
-    vi.mocked(EditorState.useState).mockReturnValue({ fileContents: {} });
+    setupCommonMocks({
+      tabState: makeTabState({ openTabs: [], activeTabId: null }),
+      sidebarState,
+    });
 
     render(<TopBar />);
     expect(screen.getByText(/ZAKAMUR/i)).toBeDefined();
 
     fireEvent.click(screen.getByTestId('sidebar-toggle'));
-    expect(stateUpdate).toHaveBeenCalled();
+    expect(sidebarState).toHaveBeenCalled();
   });
 
   it('renders export button and handles click', async () => {
-    vi.mocked(TabState.useState).mockReturnValue(
-      mockTabState({
-        openTabs: [],
-        activeTabId: null,
-      }),
-    );
-    vi.mocked(AppState.useState).mockReturnValue({
-      theme: 'dark',
-      fs: { mode: null },
+    setupCommonMocks({
       projectName: 'Test Project',
+      tabState: makeTabState({ openTabs: [], activeTabId: null }),
     });
-    vi.mocked(SidebarState.useState).mockReturnValue({ folderTree: [] });
-    vi.mocked(EditorState.useState).mockReturnValue({ fileContents: {} });
 
     render(<TopBar />);
-    const menuBtn = screen.getByTitle('More actions');
-    fireEvent.click(menuBtn);
-
-    const exportBtn = await screen.findByText('Export ZIP');
-    expect(exportBtn).toBeDefined();
+    fireEvent.click(screen.getByTitle('More actions'));
+    expect(await screen.findByText('Export ZIP')).toBeDefined();
   });
 
   it('renders compile button', () => {
-    vi.mocked(TabState.useState).mockReturnValue(
-      mockTabState({
-        openTabs: [],
-        activeTabId: null,
-      }),
-    );
-    vi.mocked(AppState.useState).mockReturnValue({
-      theme: 'dark',
-      fs: { mode: null },
+    setupCommonMocks({
       projectName: 'Test Project',
+      tabState: makeTabState({ openTabs: [], activeTabId: null }),
     });
-    vi.mocked(SidebarState.useState).mockReturnValue({ folderTree: [] });
-    vi.mocked(EditorState.useState).mockReturnValue({ fileContents: {} });
 
-    const { getByText } = render(<TopBar />);
-    const compileBtn = getByText('Build');
-    expect(compileBtn).toBeDefined();
+    render(<TopBar />);
+    expect(screen.getByText('Build')).toBeDefined();
   });
 
   it('opens the last non-log and non-preview tab from the view group', () => {
-    const tabStateUpdate = vi.fn((producer) => {
-      producer(tabState);
-    });
-    const tabState = Object.assign(tabStateUpdate, {
+    const tabState = makeTabState({
       openTabs: [
         {
           id: 'src/App.js',
@@ -250,53 +226,35 @@ describe('TopBar', () => {
       ],
       activeTabId: 'src/App.js',
     });
-
-    vi.mocked(TabState.useState).mockReturnValue(tabState);
-    vi.mocked(AppState.useState).mockReturnValue({
-      theme: 'dark',
-      fs: { mode: null },
-      projectName: 'Test Project',
-    });
-    vi.mocked(SidebarState.useState).mockReturnValue({ folderTree: [] });
-    vi.mocked(EditorState.useState).mockReturnValue({ fileContents: {} });
+    setupCommonMocks({ projectName: 'Test Project', tabState });
 
     const { rerender } = render(<TopBar />);
-
     tabState.activeTabId = 'ai-logs';
     rerender(<TopBar />);
-
     fireEvent.click(screen.getByTestId('code-tab'));
 
-    expect(tabStateUpdate).toHaveBeenCalled();
+    expect(tabState).toHaveBeenCalled();
     expect(tabState.activeTabId).toBe('src/App.js');
   });
 
   it('disables the code tab button when no content tab has been used', () => {
-    vi.mocked(TabState.useState).mockReturnValue({
-      openTabs: [
-        { id: 'ai-logs', type: 'logs', label: 'Logs' },
-        { id: 'preview', type: 'preview', label: 'Preview' },
-      ],
-      activeTabId: 'preview',
-    });
-    vi.mocked(AppState.useState).mockReturnValue({
-      theme: 'dark',
-      fs: { mode: null },
+    setupCommonMocks({
       projectName: 'Test Project',
+      tabState: makeTabState({
+        openTabs: [
+          { id: 'ai-logs', type: 'logs', label: 'Logs' },
+          { id: 'preview', type: 'preview', label: 'Preview' },
+        ],
+        activeTabId: 'preview',
+      }),
     });
-    vi.mocked(SidebarState.useState).mockReturnValue({ folderTree: [] });
-    vi.mocked(EditorState.useState).mockReturnValue({ fileContents: {} });
 
     render(<TopBar />);
-
     expect(screen.getByTestId('code-tab')).toBeDisabled();
   });
 
   it('uses the saved last code tab after a reload', () => {
-    const tabStateUpdate = vi.fn((producer) => {
-      producer(tabState);
-    });
-    const tabState = Object.assign(tabStateUpdate, {
+    const tabState = makeTabState({
       openTabs: [
         {
           id: 'src/App.js',
@@ -309,97 +267,51 @@ describe('TopBar', () => {
       activeTabId: 'preview',
       lastCodeTabId: 'src/App.js',
     });
-
-    vi.mocked(TabState.useState).mockReturnValue(tabState);
-    vi.mocked(AppState.useState).mockReturnValue({
-      theme: 'dark',
-      fs: { mode: null },
-      projectName: 'Test Project',
-    });
-    vi.mocked(SidebarState.useState).mockReturnValue({ folderTree: [] });
-    vi.mocked(EditorState.useState).mockReturnValue({ fileContents: {} });
+    setupCommonMocks({ projectName: 'Test Project', tabState });
 
     render(<TopBar />);
-
     fireEvent.click(screen.getByTestId('code-tab'));
-
     expect(tabState.activeTabId).toBe('src/App.js');
   });
 
   it('renders new project button and handles click', async () => {
-    vi.mocked(TabState.useState).mockReturnValue(
-      mockTabState({
-        openTabs: [],
-        activeTabId: null,
-      }),
-    );
-    vi.mocked(AppState.useState).mockReturnValue({
-      theme: 'dark',
-      fs: { mode: null },
+    setupCommonMocks({
       projectName: 'Test Project',
+      tabState: makeTabState({ openTabs: [], activeTabId: null }),
     });
-    vi.mocked(SidebarState.useState).mockReturnValue({ folderTree: [] });
-    vi.mocked(EditorState.useState).mockReturnValue({ fileContents: {} });
 
     render(<TopBar />);
-    const menuBtn = screen.getByTitle('More actions');
-    fireEvent.click(menuBtn);
-
-    const newProjectBtn = await screen.findByText('New Project');
-    expect(newProjectBtn).toBeDefined();
+    fireEvent.click(screen.getByTitle('More actions'));
+    expect(await screen.findByText('New Project')).toBeDefined();
   });
 
   it('renders new project from scratch button and handles click', async () => {
-    vi.mocked(TabState.useState).mockReturnValue(
-      mockTabState({
-        openTabs: [],
-        activeTabId: null,
-      }),
-    );
-    vi.mocked(AppState.useState).mockReturnValue({
-      theme: 'dark',
-      fs: { mode: null },
+    setupCommonMocks({
       projectName: 'Test Project',
+      tabState: makeTabState({ openTabs: [], activeTabId: null }),
     });
-    vi.mocked(SidebarState.useState).mockReturnValue({ folderTree: [] });
-    vi.mocked(EditorState.useState).mockReturnValue({ fileContents: {} });
 
     render(<TopBar />);
-    const menuBtn = screen.getByTitle('More actions');
-    fireEvent.click(menuBtn);
-
-    const scratchBtn = await screen.findByText('New Project from Scratch');
-    expect(scratchBtn).toBeDefined();
+    fireEvent.click(screen.getByTitle('More actions'));
+    expect(await screen.findByText('New Project from Scratch')).toBeDefined();
   });
 
   it('resets live file state before reloading for a new project', () => {
-    const makeState = (initial) =>
-      Object.assign(
-        vi.fn((producer) => {
-          producer(initial);
-        }),
-        initial,
-        { state: initial },
-      );
-    const appState = makeState({
-      theme: 'dark',
-      fs: { mode: 'local' },
-      projectName: 'Old Project',
-    });
-    const sidebarState = makeState({
-      folderTree: [{ name: 'old.js', type: 'file' }],
+    const appState = makeAppState({ theme: 'dark', projectName: 'Old Project' });
+    const sidebarState = makeSidebarState({
+      folderTree: [{ name: 'old.js', type: 'file', path: ['old.js'] }],
       isSidebarOpen: true,
     });
-    const tabState = makeState({
+    const tabState = makeTabState({
       openTabs: [{ id: 'old.js', type: 'file', label: 'old.js' }],
       activeTabId: 'old.js',
     });
-    const editorState = makeState({
+    const editorState = makeEditorState({
       fileContents: { 'old.js': 'old content' },
-      pendingDiffs: { 'old.js': { originalContent: 'older content' } },
+      pendingDiffs: { 'old.js': { originalContent: 'older content', modifiedContent: '', diffs: [] } },
     });
-    const previewState = makeState({ htmlContent: '<p>old</p>' });
-    const promptUiState = makeState({ val: 'draft', draftVal: 'draft', historyIndex: 0 });
+    const previewState = makePreviewState({ htmlContent: '<p>old</p>' });
+    const promptUiState = makePromptUiState({ val: 'draft', draftVal: 'draft', historyIndex: 0 });
 
     Settings.reset('default');
     resetNewProjectState({
@@ -412,88 +324,65 @@ describe('TopBar', () => {
       promptUiState,
     });
 
-    expect(appState.state.projectName).toBe('My App');
-    expect(sidebarState.state.folderTree).toBe(DEFAULT_FILES);
-    expect(tabState.state.openTabs).toEqual([]);
-    expect(tabState.state.activeTabId).toBeNull();
-    expect(editorState.state.fileContents).toBe(DEFAULT_CONTENTS);
-    expect(editorState.state.pendingDiffs).toEqual({});
-    expect(previewState.state.htmlContent).toBeNull();
-    expect(promptUiState.state.val).toBe('');
+    expect(appState.projectName).toBe('My App');
+    expect(sidebarState.folderTree).toBe(DEFAULT_FILES);
+    expect(tabState.openTabs).toEqual([]);
+    expect(tabState.activeTabId).toBeNull();
+    expect(editorState.fileContents).toBe(DEFAULT_CONTENTS);
+    expect(editorState.pendingDiffs).toEqual({});
+    expect(previewState.htmlContent).toBeNull();
+    expect(promptUiState.val).toBe('');
   });
 
   it('handles dynamic tooltips, history dropdown toggle, reverse order list, and clearing history', async () => {
-    const editorStateUpdate = vi.fn();
-    const editorStateMock = Object.assign(editorStateUpdate, {
+    const editorState = createMockEditorState({
       fileContents: {},
       navigationHistory: {
         stack: [
-          { filePath: 'src/App.js', loc: { line: 10, col: 1 }, label: 'App.js' },
-          { filePath: 'src/index.css', loc: { line: 20, col: 1 }, label: 'index.css' },
-          { filePath: 'src/utils.js', loc: { line: 30, col: 1 }, label: 'utils.js' },
+          { filePath: 'src/App.js', loc: { line: 10, col: 1, index: 0 }, label: 'App.js' },
+          { filePath: 'src/index.css', loc: { line: 20, col: 1, index: 0 }, label: 'index.css' },
+          { filePath: 'src/utils.js', loc: { line: 30, col: 1, index: 0 }, label: 'utils.js' },
         ],
         currentIndex: 1,
       },
     });
 
-    vi.mocked(TabState.useState).mockReturnValue(
-      mockTabState({
-        openTabs: [],
-        activeTabId: null,
-      }),
-    );
-    vi.mocked(AppState.useState).mockReturnValue({
-      theme: 'dark',
-      fs: { mode: null },
+    setupCommonMocks({
       projectName: 'Test Project',
+      tabState: makeTabState({ openTabs: [], activeTabId: null }),
+      editorState: editorState as ReturnType<typeof EditorState.useState>,
     });
-    vi.mocked(SidebarState.useState).mockReturnValue({ folderTree: [] });
-    vi.mocked(EditorState.useState).mockReturnValue(editorStateMock);
 
     render(<TopBar />);
 
-    // 1. Verify dynamic tooltips
     const backBtn = screen.getByTestId('go-back-button');
     const forwardBtn = screen.getByTestId('go-forward-button');
     expect(backBtn.getAttribute('title')).toBe('Go Back to App.js:10');
     expect(forwardBtn.getAttribute('title')).toBe('Go Forward to utils.js:30');
 
-    // 2. Open History dropdown
-    const historyBtn = screen.getByTestId('history-dropdown-button');
-    expect(historyBtn).toBeDefined();
-    fireEvent.click(historyBtn);
+    fireEvent.click(screen.getByTestId('history-dropdown-button'));
 
-    // 3. Verify dropdown content rendered in reverse chronological order and overlay presence
     const dropdown = screen.getByTestId('history-dropdown');
     const overlay = screen.getByTestId('history-dropdown-overlay');
     expect(dropdown).toBeDefined();
     expect(overlay).toBeDefined();
 
     const items = screen.getAllByRole('menuitem');
-    expect(items.length).toBe(3);
-    // Index 2 (utils.js) is first in reverse order
-    expect(items[0].textContent).toContain('utils.js');
-    expect(items[0].textContent).toContain('L30');
-    // Index 1 (index.css) is second
-    expect(items[1].textContent).toContain('index.css');
-    expect(items[1].textContent).toContain('L20');
-    // Index 0 (App.js) is third
-    expect(items[2].textContent).toContain('App.js');
-    expect(items[2].textContent).toContain('L10');
+    expect(items).toHaveLength(3);
+    expect(items[0]!.textContent).toContain('utils.js');
+    expect(items[0]!.textContent).toContain('L30');
+    expect(items[1]!.textContent).toContain('index.css');
+    expect(items[1]!.textContent).toContain('L20');
+    expect(items[2]!.textContent).toContain('App.js');
+    expect(items[2]!.textContent).toContain('L10');
 
-    // Verify overlay click closes the dropdown
     fireEvent.click(overlay);
     expect(screen.queryByTestId('history-dropdown')).toBeNull();
 
-    // Re-open dropdown to test clear history
-    fireEvent.click(historyBtn);
+    fireEvent.click(screen.getByTestId('history-dropdown-button'));
     expect(screen.getByTestId('history-dropdown')).toBeDefined();
 
-    // 4. Verify clearing history
-    const clearBtn = screen.getByTestId('clear-history-button');
-    expect(clearBtn).toBeDefined();
-    fireEvent.click(clearBtn);
-
-    expect(editorStateUpdate).toHaveBeenCalled();
+    fireEvent.click(screen.getByTestId('clear-history-button'));
+    expect(editorState).toHaveBeenCalled();
   });
 });

@@ -5,8 +5,14 @@ import { AppState } from '@/components/App/AppState';
 import { PromptUiState } from '@/components/App/Panes/Prompt/PromptState';
 import { SidebarState } from '@/components/App/Panes/Sidebar';
 import { LogState } from '@/components/App/Views/LogArea';
+import {
+  makeAppState,
+  makeLogState,
+  makePromptUiState,
+  makeSidebarState,
+} from '@/test-utils/stateMocks';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import React from 'react';
+import type { ChangeEvent, ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import WelcomePrompt from './Prompt';
 
@@ -22,7 +28,7 @@ vi.mock('@/components/AI/WebLLMState', () => ({
 
 vi.mock('@/components/App/AppState', () => ({
   AppState: {
-    useState: vi.fn(() => ({ isMobile: false })),
+    useState: vi.fn(() => makeAppState({ isMobile: false })),
   },
 }));
 
@@ -40,12 +46,28 @@ vi.mock('@/components/App/Panes/Sidebar', () => ({
 
 vi.mock('@/components/App/Views/LogArea', () => ({
   LogState: {
-    useState: vi.fn(() => ({ isAIProcessing: false })),
+    useState: vi.fn(() => makeLogState({ isAIProcessing: false })),
   },
 }));
 
 vi.mock('@/components/ui/Dialog', () => ({
-  default: ({ isOpen, title, message, onConfirm, onCancel, confirmText, cancelText }) => {
+  default: ({
+    isOpen,
+    title,
+    message,
+    onConfirm,
+    onCancel,
+    confirmText,
+    cancelText,
+  }: {
+    isOpen?: boolean;
+    title?: ReactNode;
+    message?: ReactNode;
+    onConfirm?: () => void;
+    onCancel?: () => void;
+    confirmText?: ReactNode;
+    cancelText?: ReactNode;
+  }) => {
     if (!isOpen) return null;
     return (
       <div data-testid="download-dialog">
@@ -63,12 +85,24 @@ vi.mock('@/components/ui/Dialog', () => ({
 }));
 
 vi.mock('@/components/ui/Select', () => ({
-  default: ({ value, options, onChange, disabled, ariaLabel }) => (
+  default: ({
+    value,
+    options,
+    onChange,
+    disabled,
+    ariaLabel,
+  }: {
+    value: string;
+    options: Array<{ value: string; label: string; badges?: string[] }>;
+    onChange: (value: string) => void;
+    disabled?: boolean;
+    ariaLabel?: string;
+  }) => (
     <select
       aria-label={ariaLabel}
       value={value}
       disabled={disabled}
-      onChange={(event) => onChange(event.target.value)}
+      onChange={(event: ChangeEvent<HTMLSelectElement>) => onChange(event.target.value)}
     >
       {options.map((option) => (
         <option key={option.value} value={option.value}>
@@ -86,42 +120,22 @@ vi.mock('@/components/ui/Icons', () => ({
   },
 }));
 
-function createPromptUiState(overrides = {}) {
-  const updater = vi.fn((fn) => {
-    if (typeof fn === 'function') fn(updater);
-  });
-  return Object.assign(updater, {
-    selectedModel: RECOMMENDED_WEB_LLM_MODEL.id,
-    welcomeRequest: null,
-    ...overrides,
-  });
-}
-
-function createSidebarState(overrides = {}) {
-  const updater = vi.fn((fn) => {
-    if (typeof fn === 'function') fn(updater);
-  });
-  return Object.assign(updater, {
-    showAIInput: false,
-    isAIInputPopupOpen: false,
-    ...overrides,
-  });
-}
-
 describe('WelcomePrompt', () => {
-  let promptUiState;
-  let sidebarState;
+  let promptUiState: ReturnType<typeof makePromptUiState>;
+  let sidebarState: ReturnType<typeof makeSidebarState>;
 
   beforeEach(() => {
     vi.clearAllMocks();
-    promptUiState = createPromptUiState();
-    sidebarState = createSidebarState();
-    PromptUiState.usePassiveState.mockReturnValue(promptUiState);
-    SidebarState.usePassiveState.mockReturnValue(sidebarState);
-    vi.mocked(AppState.useState).mockReturnValue({ isMobile: false });
-    vi.mocked(LogState.useState).mockReturnValue({ isAIProcessing: false });
-    WebLLMState.useState.mockReturnValue({ cachedModelIds: [] });
-    getCachedWebLLMModelIds.mockResolvedValue([]);
+    promptUiState = makePromptUiState({ selectedModel: RECOMMENDED_WEB_LLM_MODEL.id });
+    sidebarState = makeSidebarState();
+    vi.mocked(PromptUiState.usePassiveState).mockReturnValue(promptUiState);
+    vi.mocked(SidebarState.usePassiveState).mockReturnValue(sidebarState);
+    vi.mocked(AppState.useState).mockReturnValue(makeAppState({ isMobile: false }));
+    vi.mocked(LogState.useState).mockReturnValue(makeLogState({ isAIProcessing: false }));
+    vi.mocked(WebLLMState.useState).mockReturnValue({ cachedModelIds: [] } as ReturnType<
+      typeof WebLLMState.useState
+    >);
+    vi.mocked(getCachedWebLLMModelIds).mockResolvedValue([]);
   });
 
   it('renders the composer and disables build until there is input', () => {
@@ -133,7 +147,7 @@ describe('WelcomePrompt', () => {
   });
 
   it('starts a request immediately when the selected model is cached', async () => {
-    getCachedWebLLMModelIds.mockResolvedValue([RECOMMENDED_WEB_LLM_MODEL.id]);
+    vi.mocked(getCachedWebLLMModelIds).mockResolvedValue([RECOMMENDED_WEB_LLM_MODEL.id]);
 
     render(<WelcomePrompt />);
 
@@ -157,8 +171,8 @@ describe('WelcomePrompt', () => {
   });
 
   it('opens the AI popup on mobile instead of the desktop AI panel', async () => {
-    vi.mocked(AppState.useState).mockReturnValue({ isMobile: true });
-    getCachedWebLLMModelIds.mockResolvedValue([RECOMMENDED_WEB_LLM_MODEL.id]);
+    vi.mocked(AppState.useState).mockReturnValue(makeAppState({ isMobile: true }));
+    vi.mocked(getCachedWebLLMModelIds).mockResolvedValue([RECOMMENDED_WEB_LLM_MODEL.id]);
 
     render(<WelcomePrompt />);
 
@@ -174,7 +188,7 @@ describe('WelcomePrompt', () => {
   });
 
   it('asks to download when the selected model is not cached, then starts on confirm', async () => {
-    getCachedWebLLMModelIds.mockResolvedValue([]);
+    vi.mocked(getCachedWebLLMModelIds).mockResolvedValue([]);
 
     render(<WelcomePrompt />);
 
@@ -221,10 +235,10 @@ describe('WelcomePrompt', () => {
 
   it('falls back to cachedModelIds when cache inspection fails', async () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    WebLLMState.useState.mockReturnValue({
+    vi.mocked(WebLLMState.useState).mockReturnValue({
       cachedModelIds: [RECOMMENDED_WEB_LLM_MODEL.id],
-    });
-    getCachedWebLLMModelIds.mockRejectedValue(new Error('cache unavailable'));
+    } as ReturnType<typeof WebLLMState.useState>);
+    vi.mocked(getCachedWebLLMModelIds).mockRejectedValue(new Error('cache unavailable'));
 
     render(<WelcomePrompt />);
 
@@ -244,7 +258,7 @@ describe('WelcomePrompt', () => {
   });
 
   it('submits on Enter without Shift and ignores Shift+Enter', async () => {
-    getCachedWebLLMModelIds.mockResolvedValue([RECOMMENDED_WEB_LLM_MODEL.id]);
+    vi.mocked(getCachedWebLLMModelIds).mockResolvedValue([RECOMMENDED_WEB_LLM_MODEL.id]);
 
     render(<WelcomePrompt />);
     const input = screen.getByLabelText('Describe what you want to build');
@@ -276,27 +290,33 @@ describe('WelcomePrompt', () => {
   it('does not submit blank requests', () => {
     render(<WelcomePrompt />);
     const input = screen.getByLabelText('Describe what you want to build');
+    const form = input.closest('form');
+    expect(form).not.toBeNull();
 
     fireEvent.change(input, { target: { value: '   ' } });
-    fireEvent.submit(input.closest('form'));
+    fireEvent.submit(form!);
     expect(getCachedWebLLMModelIds).not.toHaveBeenCalled();
   });
 
   it('does not submit while AI is processing', () => {
-    vi.mocked(LogState.useState).mockReturnValue({ isAIProcessing: true });
+    vi.mocked(LogState.useState).mockReturnValue(makeLogState({ isAIProcessing: true }));
 
     render(<WelcomePrompt />);
 
     const input = screen.getByLabelText('Describe what you want to build');
+    const form = input.closest('form');
+    expect(form).not.toBeNull();
     expect(input).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Start building with AI' })).toBeDisabled();
-    fireEvent.submit(input.closest('form'));
+    fireEvent.submit(form!);
     expect(getCachedWebLLMModelIds).not.toHaveBeenCalled();
   });
 
   it('skips starting when prompt or sidebar state is unavailable', async () => {
-    PromptUiState.usePassiveState.mockReturnValue(null);
-    getCachedWebLLMModelIds.mockResolvedValue([RECOMMENDED_WEB_LLM_MODEL.id]);
+    vi.mocked(PromptUiState.usePassiveState).mockReturnValue(
+      undefined as ReturnType<typeof PromptUiState.usePassiveState>,
+    );
+    vi.mocked(getCachedWebLLMModelIds).mockResolvedValue([RECOMMENDED_WEB_LLM_MODEL.id]);
 
     render(<WelcomePrompt />);
 

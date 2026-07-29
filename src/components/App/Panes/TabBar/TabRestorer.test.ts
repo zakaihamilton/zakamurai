@@ -2,7 +2,8 @@ vi.mock('@/components/Storage', () => ({ useFileSystem: vi.fn() }));
 import { TabState } from '@/components/App/Panes/TabBar';
 import { EditorState } from '@/components/App/Views/EditorArea';
 import { useFileSystem } from '@/components/Storage';
-import Settings from '@/components/Storage/Settings';
+import { asMockUseFileSystem } from '@/test-utils/fsMocks';
+import { makeEditorState, makeTabState } from '@/test-utils/stateMocks';
 import { act, renderHook } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { useTabRestorer } from './TabRestorer';
@@ -33,132 +34,93 @@ vi.mock('@/components/Storage/Settings', () => ({
 }));
 
 describe('useTabRestorer', () => {
-  let mockEditorState;
-  let editorStateHook;
-  let mockTabState;
-  let tabStateHook;
-  let mockFs;
+  let editorState: ReturnType<typeof makeEditorState>;
+  let tabState: ReturnType<typeof makeTabState>;
+  let mockFs: ReturnType<typeof useFileSystem>;
 
   beforeEach(() => {
     vi.clearAllMocks();
 
-    mockEditorState = {
-      fileContents: {},
-    };
-    editorStateHook = vi.fn((producer) => {
-      if (typeof producer === 'function') {
-        const draft = { ...mockEditorState };
-        producer(draft);
-        mockEditorState = draft;
-      }
-      return editorStateHook;
-    });
-    Object.defineProperty(editorStateHook, 'fileContents', {
-      get: () => mockEditorState.fileContents,
-      set: (val) => {
-        mockEditorState.fileContents = val;
-      },
-      configurable: true,
-    });
-    vi.spyOn(EditorState, 'useState').mockReturnValue(editorStateHook);
+    editorState = makeEditorState({ fileContents: {} });
+    tabState = makeTabState({ openTabs: [], activeTabId: null });
+    vi.mocked(EditorState.useState).mockReturnValue(
+      editorState as ReturnType<typeof EditorState.useState>,
+    );
+    vi.mocked(TabState.useState).mockReturnValue(tabState);
 
-    mockTabState = {
-      openTabs: [],
-      activeTabId: null,
-    };
-    tabStateHook = vi.fn((producer) => {
-      if (typeof producer === 'function') {
-        const draft = { ...mockTabState };
-        producer(draft);
-        mockTabState = draft;
-      }
-      return tabStateHook;
-    });
-    Object.defineProperty(tabStateHook, 'openTabs', {
-      get: () => mockTabState.openTabs,
-      set: (val) => {
-        mockTabState.openTabs = val;
-      },
-      configurable: true,
-    });
-    Object.defineProperty(tabStateHook, 'activeTabId', {
-      get: () => mockTabState.activeTabId,
-      set: (val) => {
-        mockTabState.activeTabId = val;
-      },
-      configurable: true,
-    });
-    vi.spyOn(TabState, 'useState').mockReturnValue(tabStateHook);
-
-    mockFs = {
-      rootHandle: { name: 'root' },
+    mockFs = asMockUseFileSystem({
+      rootHandle: { name: 'root' } as FileSystemDirectoryHandle,
       getFileHandleAtPath: vi.fn(),
       readFile: vi.fn(),
-    };
-    useFileSystem.mockReturnValue(mockFs);
+    });
+    vi.mocked(useFileSystem).mockReturnValue(mockFs);
   });
 
   it('restores all tabs when they are all found in the file system', async () => {
-    mockTabState.openTabs = [
+    tabState.openTabs = [
       { id: 'file1.js', label: 'file1.js', type: 'file' },
       { id: 'file2.js', label: 'file2.js', type: 'file' },
     ];
-    mockTabState.activeTabId = 'file1.js';
+    tabState.activeTabId = 'file1.js';
 
-    mockFs.getFileHandleAtPath.mockImplementation(async (path) => ({ kind: 'file', name: path }));
-    mockFs.readFile.mockResolvedValue('file content');
+    vi.mocked(mockFs.getFileHandleAtPath).mockImplementation(async (path: string[]) => ({
+      kind: 'file',
+      name: path.join('/'),
+    } as unknown as FileSystemFileHandle));
+    vi.mocked(mockFs.readFile).mockResolvedValue('file content');
 
     await act(async () => {
       renderHook(() => useTabRestorer());
     });
 
-    expect(mockTabState.openTabs).toHaveLength(2);
-    expect(mockTabState.activeTabId).toBe('file1.js');
-    expect(mockEditorState.fileContents['file1.js']).toBe('file content');
-    expect(mockEditorState.fileContents['file2.js']).toBe('file content');
+    expect(tabState.openTabs).toHaveLength(2);
+    expect(tabState.activeTabId).toBe('file1.js');
+    expect(editorState.fileContents['file1.js']).toBe('file content');
+    expect(editorState.fileContents['file2.js']).toBe('file content');
   });
 
   it('falls back to the last successfully restored tab if the active tab fails to restore', async () => {
-    mockTabState.openTabs = [
+    tabState.openTabs = [
       { id: 'file1.js', label: 'file1.js', type: 'file' },
       { id: 'file2.js', label: 'file2.js', type: 'file' },
     ];
-    mockTabState.activeTabId = 'file1.js'; // active tab fails to restore
+    tabState.activeTabId = 'file1.js';
 
-    mockFs.getFileHandleAtPath.mockImplementation(async (path) => {
-      if (path === 'file2.js') return { kind: 'file', name: path };
-      return null; // file1.js fails to restore
-    });
-    mockFs.readFile.mockImplementation(async (handle) => {
-      if (handle.name === 'file2.js') return 'content2';
+    vi.mocked(mockFs.getFileHandleAtPath).mockImplementation(async (path: string[]) => {
+      if (path.join('/') === 'file2.js') {
+        return { kind: 'file', name: 'file2.js' } as unknown as FileSystemFileHandle;
+      }
       return null;
+    });
+    vi.mocked(mockFs.readFile).mockImplementation(async (handle) => {
+      if ((handle as FileSystemFileHandle).name === 'file2.js') return 'content2';
+      return '';
     });
 
     await act(async () => {
       renderHook(() => useTabRestorer());
     });
 
-    expect(mockTabState.openTabs).toHaveLength(1);
-    expect(mockTabState.openTabs[0].id).toBe('file2.js');
-    // activeTabId should fall back to the restored tab
-    expect(mockTabState.activeTabId).toBe('file2.js');
-    expect(mockEditorState.fileContents['file2.js']).toBe('content2');
+    expect(tabState.openTabs).toHaveLength(1);
+    expect(tabState.openTabs[0]!.id).toBe('file2.js');
+    expect(tabState.activeTabId).toBe('file2.js');
+    expect(editorState.fileContents['file2.js']).toBe('content2');
   });
 
   it('sets openTabs to empty and activeTabId to null if all tabs fail to restore', async () => {
-    mockTabState.openTabs = [
+    tabState.openTabs = [
       { id: 'file1.js', label: 'file1.js', type: 'file' },
       { id: 'file2.js', label: 'file2.js', type: 'file' },
     ];
-    mockTabState.activeTabId = 'file1.js';
+    tabState.activeTabId = 'file1.js';
 
-    mockFs.getFileHandleAtPath.mockResolvedValue(null); // All fail
+    vi.mocked(mockFs.getFileHandleAtPath).mockResolvedValue(null);
 
     await act(async () => {
       renderHook(() => useTabRestorer());
     });
 
-    expect(mockTabState.openTabs).toHaveLength(0);
-    expect(mockTabState.activeTabId).toBeNull();
+    expect(tabState.openTabs).toHaveLength(0);
+    expect(tabState.activeTabId).toBeNull();
   });
 });

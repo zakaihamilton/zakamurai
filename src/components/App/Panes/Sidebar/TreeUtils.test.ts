@@ -1,3 +1,5 @@
+import type { FlatTreeRow } from '@/components/App/types';
+import { asNormalizedTreeNode, asTreeNode, makeNormalizedTreeNode, makeTreeNode } from '@/test-utils/treeMocks';
 import { describe, expect, it, vi } from 'vitest';
 import {
   addNodeAtPath,
@@ -24,17 +26,17 @@ vi.mock('@/components/Storage/Settings', () => ({
 describe('TreeUtils', () => {
   describe('getNodeType', () => {
     it('returns explicit type if present', () => {
-      expect(getNodeType({ type: 'folder' })).toBe('folder');
-      expect(getNodeType({ type: 'file' })).toBe('file');
+      expect(getNodeType(asTreeNode({ type: 'folder' }))).toBe('folder');
+      expect(getNodeType(asTreeNode({ type: 'file' }))).toBe('file');
     });
 
     it('determines type by kind if type is absent', () => {
-      expect(getNodeType({ kind: 'directory' })).toBe('folder');
-      expect(getNodeType({ kind: 'file' })).toBe('file');
+      expect(getNodeType(asTreeNode({ kind: 'directory' }))).toBe('folder');
+      expect(getNodeType(asTreeNode({ kind: 'file' }))).toBe('file');
     });
 
     it('defaults to file if neither is present', () => {
-      expect(getNodeType({ name: 'unknown' })).toBe('file');
+      expect(getNodeType(asTreeNode({ name: 'unknown' }))).toBe('file');
     });
   });
 
@@ -47,8 +49,8 @@ describe('TreeUtils', () => {
 
   describe('isNodeModulesPath', () => {
     it('returns true if node_modules is in path', () => {
-      expect(isNodeModulesPath('project/node_modules/react')).toBe(true);
-      expect(isNodeModulesPath('project/src/index.js')).toBe(false);
+      expect(isNodeModulesPath(['project', 'node_modules', 'react'])).toBe(true);
+      expect(isNodeModulesPath(['project', 'src', 'index.js'])).toBe(false);
     });
   });
 
@@ -66,57 +68,59 @@ describe('TreeUtils', () => {
 
   describe('treeSorter', () => {
     it('sorts folders before files', () => {
-      const a = { name: 'folderA', type: 'folder' };
-      const b = { name: 'fileB', type: 'file' };
+      const a = makeTreeNode('folderA', 'folder');
+      const b = makeTreeNode('fileB', 'file');
       expect(treeSorter(a, b)).toBe(-1);
       expect(treeSorter(b, a)).toBe(1);
     });
 
     it('sorts alphabetically and numerically if types match', () => {
-      const a = { name: 'file10', type: 'file' };
-      const b = { name: 'file2', type: 'file' };
-      expect(treeSorter(a, b)).toBeGreaterThan(0); // numeric comparison: 10 > 2
+      const a = makeTreeNode('file10', 'file');
+      const b = makeTreeNode('file2', 'file');
+      expect(treeSorter(a, b)).toBeGreaterThan(0);
     });
   });
 
   describe('normalizeChildren', () => {
     it('sorts nodes and adds type and path attributes', () => {
       const rawNodes = [
-        { name: 'App.js', kind: 'file' },
-        { name: 'components', kind: 'directory', children: [{ name: 'Button.js', kind: 'file' }] },
+        asTreeNode({ name: 'App.js', kind: 'file' }),
+        asTreeNode({
+          name: 'components',
+          kind: 'directory',
+          children: [asTreeNode({ name: 'Button.js', kind: 'file' })],
+        }),
       ];
       const normalized = normalizeChildren(rawNodes, ['src']);
 
-      expect(normalized[0].name).toBe('components');
-      expect(normalized[0].type).toBe('folder');
-      expect(normalized[0].path).toEqual(['src', 'components']);
-      expect(normalized[0].children[0].name).toBe('Button.js');
-      expect(normalized[0].children[0].type).toBe('file');
-      expect(normalized[0].children[0].path).toEqual(['src', 'components', 'Button.js']);
+      expect(normalized[0]!.name).toBe('components');
+      expect(normalized[0]!.type).toBe('folder');
+      expect(normalized[0]!.path).toEqual(['src', 'components']);
+      expect(normalized[0]!.children![0]!.name).toBe('Button.js');
+      expect(normalized[0]!.children![0]!.type).toBe('file');
+      expect(normalized[0]!.children![0]!.path).toEqual(['src', 'components', 'Button.js']);
 
-      expect(normalized[1].name).toBe('App.js');
-      expect(normalized[1].type).toBe('file');
-      expect(normalized[1].path).toEqual(['src', 'App.js']);
+      expect(normalized[1]!.name).toBe('App.js');
+      expect(normalized[1]!.type).toBe('file');
+      expect(normalized[1]!.path).toEqual(['src', 'App.js']);
     });
   });
 
   describe('setChildrenAtPath', () => {
     it('updates child nodes at specified path', () => {
       const tree = [
-        {
-          name: 'src',
-          type: 'folder',
-          children: [{ name: 'components', type: 'folder', children: [] }],
-        },
+        makeTreeNode('src', 'folder', [
+          makeTreeNode('components', 'folder', []),
+        ]),
       ];
-      const newChildren = [{ name: 'Button.js', type: 'file' }];
+      const newChildren = [makeTreeNode('Button.js', 'file')];
       const result = setChildrenAtPath(tree, ['src', 'components'], newChildren);
 
-      expect(result[0].children[0].children).toEqual(newChildren);
+      expect(result[0]!.children![0]!.children).toEqual(newChildren);
     });
 
     it('returns custom children if path is empty', () => {
-      const custom = [{ name: 'root', type: 'file' }];
+      const custom = [makeTreeNode('root', 'file')];
       expect(setChildrenAtPath([], [], custom)).toEqual(custom);
     });
   });
@@ -124,109 +128,86 @@ describe('TreeUtils', () => {
   describe('renameNodeAtPath', () => {
     it('renames a node at specified path', () => {
       const tree = [
-        {
-          name: 'src',
-          type: 'folder',
-          path: ['src'],
-          children: [{ name: 'App.js', type: 'file', path: ['src', 'App.js'] }],
-        },
+        makeNormalizedTreeNode('src', 'folder', ['src'], [
+          makeNormalizedTreeNode('App.js', 'file', ['src', 'App.js']),
+        ]),
       ];
       const result = renameNodeAtPath(tree, ['src', 'App.js'], 'index.js');
-      expect(result[0].children[0].name).toBe('index.js');
-      expect(result[0].children[0].path).toEqual(['src', 'index.js']);
+      expect(result[0]!.children![0]!.name).toBe('index.js');
+      expect(result[0]!.children![0]!.path).toEqual(['src', 'index.js']);
     });
   });
 
   describe('addNodeAtPath', () => {
     it('adds node at specified path and sorts the collection', () => {
-      const tree = [
-        {
-          name: 'src',
-          type: 'folder',
-          children: [],
-        },
-      ];
-      const newNode = { name: 'App.js', kind: 'file' };
+      const tree = [makeTreeNode('src', 'folder', [])];
+      const newNode = asTreeNode({ name: 'App.js', kind: 'file' });
       const result = addNodeAtPath(tree, ['src'], newNode);
 
-      expect(result[0].children[0].name).toBe('App.js');
-      expect(result[0].children[0].type).toBe('file');
+      expect(result[0]!.children![0]!.name).toBe('App.js');
+      expect(result[0]!.children![0]!.type).toBe('file');
     });
 
     it('normalizes and appends if path is empty', () => {
-      const result = addNodeAtPath([], [], { name: 'index.js', kind: 'file' });
-      expect(result[0].name).toBe('index.js');
+      const result = addNodeAtPath([], [], asTreeNode({ name: 'index.js', kind: 'file' }));
+      expect(result[0]!.name).toBe('index.js');
     });
   });
 
   describe('removeNodeAtPath', () => {
     it('removes a node at specified path', () => {
       const tree = [
-        {
-          name: 'src',
-          type: 'folder',
-          children: [
-            { name: 'App.js', type: 'file' },
-            { name: 'index.js', type: 'file' },
-          ],
-        },
+        makeTreeNode('src', 'folder', [
+          makeTreeNode('App.js', 'file'),
+          makeTreeNode('index.js', 'file'),
+        ]),
       ];
       const result = removeNodeAtPath(tree, ['src', 'App.js']);
-      expect(result[0].children.length).toBe(1);
-      expect(result[0].children[0].name).toBe('index.js');
+      expect(result[0]!.children).toHaveLength(1);
+      expect(result[0]!.children![0]!.name).toBe('index.js');
     });
   });
 
   describe('findNodeAtPath', () => {
     it('finds node at path and returns null if not found', () => {
       const tree = [
-        {
-          name: 'src',
-          type: 'folder',
-          children: [{ name: 'App.js', type: 'file' }],
-        },
+        makeTreeNode('src', 'folder', [makeTreeNode('App.js', 'file')]),
       ];
 
       expect(findNodeAtPath(tree, ['src', 'App.js'])).toBeDefined();
-      expect(findNodeAtPath(tree, ['src', 'App.js']).name).toBe('App.js');
+      expect(findNodeAtPath(tree, ['src', 'App.js'])!.name).toBe('App.js');
       expect(findNodeAtPath(tree, ['src', 'non-existent'])).toBeNull();
     });
   });
 
   describe('flattenTree', () => {
     const tree = [
-      {
-        name: 'src',
-        type: 'folder',
-        path: ['src'],
-        children: [
-          { name: 'components', type: 'folder', path: ['src', 'components'], children: [] },
-          { name: 'App.js', type: 'file', path: ['src', 'App.js'] },
-        ],
-      },
-      { name: 'package.json', type: 'file', path: ['package.json'] },
+      makeNormalizedTreeNode('src', 'folder', ['src'], [
+        makeNormalizedTreeNode('components', 'folder', ['src', 'components'], []),
+        makeNormalizedTreeNode('App.js', 'file', ['src', 'App.js']),
+      ]),
+      makeNormalizedTreeNode('package.json', 'file', ['package.json']),
     ];
 
     it('flattens tree elements including folders', () => {
       const flat = flattenTree(tree, {}, '');
-      expect(flat.length).toBe(4);
-      expect(flat[0].key).toBe('src');
-      expect(flat[1].key).toBe('src/components');
-      expect(flat[2].key).toBe('src/App.js');
-      expect(flat[3].key).toBe('package.json');
+      expect(flat).toHaveLength(4);
+      expect(flat[0]!.key).toBe('src');
+      expect(flat[1]!.key).toBe('src/components');
+      expect(flat[2]!.key).toBe('src/App.js');
+      expect(flat[3]!.key).toBe('package.json');
     });
 
     it('filters rows based on text match', () => {
       const flat = flattenTree(tree, {}, 'App');
-      expect(flat.length).toBe(2); // 'src' matches because child matches or path matches
-      expect(flat[1].key).toBe('src/App.js');
+      expect(flat).toHaveLength(2);
+      expect(flat[1]!.key).toBe('src/App.js');
     });
 
     it('filters rows based on wildcard extension matching (*.js)', () => {
       const flat = flattenTree(tree, {}, '*.js');
-      expect(flat.length).toBe(2); // 'src' because of child, and 'src/App.js'
-      expect(flat[1].key).toBe('src/App.js');
-      // package.json shouldn't match
+      expect(flat).toHaveLength(2);
+      expect(flat[1]!.key).toBe('src/App.js');
       expect(flat.map((f) => f.key)).not.toContain('package.json');
     });
 
@@ -245,41 +226,41 @@ describe('TreeUtils', () => {
         pathStr: '',
         level: 0,
         path: [],
-        item: { name: 'Project', type: 'folder' },
+        item: makeTreeNode('Project', 'folder'),
       },
       {
         key: 'src',
         pathStr: 'src',
         level: 1,
         path: ['src'],
-        item: { name: 'src', type: 'folder' },
+        item: makeTreeNode('src', 'folder'),
       },
       {
         key: 'src/App.js',
         pathStr: 'src/App.js',
         level: 2,
         path: ['src', 'App.js'],
-        item: { name: 'App.js', type: 'file' },
+        item: makeTreeNode('App.js', 'file'),
       },
-    ];
+    ] as FlatTreeRow[] as Parameters<typeof insertCreateRow>[0];
 
     it('inserts create row immediately after the parent folder', () => {
       const next = insertCreateRow(rows, { pathStr: 'src', type: 'file' });
-      expect(next.length).toBe(4);
-      expect(next[2].isCreateRow).toBe(true);
-      expect(next[2].createType).toBe('file');
-      expect(next[2].level).toBe(2);
-      expect(next[2].parentRow).toBe(rows[1]);
-      expect(next[3].key).toBe('src/App.js');
+      expect(next).toHaveLength(4);
+      expect(next[2]!.isCreateRow).toBe(true);
+      expect(next[2]!.createType).toBe('file');
+      expect(next[2]!.level).toBe(2);
+      expect(next[2]!.parentRow).toBe(rows[1]);
+      expect(next[3]!.key).toBe('src/App.js');
     });
 
     it('inserts create row after the project root', () => {
       const next = insertCreateRow(rows, { pathStr: '', type: 'folder' });
-      expect(next.length).toBe(4);
-      expect(next[1].isCreateRow).toBe(true);
-      expect(next[1].createType).toBe('folder');
-      expect(next[1].level).toBe(1);
-      expect(next[2].key).toBe('src');
+      expect(next).toHaveLength(4);
+      expect(next[1]!.isCreateRow).toBe(true);
+      expect(next[1]!.createType).toBe('folder');
+      expect(next[1]!.level).toBe(1);
+      expect(next[2]!.key).toBe('src');
     });
 
     it('returns original rows when creatingAt is null', () => {

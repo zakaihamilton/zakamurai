@@ -1,44 +1,28 @@
 import { MOBILE_BREAKPOINT } from '@/constants/Layout';
+import { makeAppState, makeSidebarState } from '@/test-utils/stateMocks';
 import { renderHook } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { useWindowResize } from './WindowResize';
 
 describe('useWindowResize', () => {
-  let appStateMock;
-  let sidebarStateMock;
+  let appStateMock: ReturnType<typeof makeAppState>;
+  let sidebarStateMock: ReturnType<typeof makeSidebarState>;
 
   beforeEach(() => {
-    // Mock the state proxy behavior
-    appStateMock = vi.fn((cb) => {
-      const draft = { isMobile: appStateMock.isMobile };
-      cb(draft);
-      appStateMock.isMobile = draft.isMobile;
+    appStateMock = makeAppState({ isMobile: false });
+    sidebarStateMock = makeSidebarState({
+      isSidebarPopupOpen: false,
+      isAIInputPopupOpen: false,
     });
-    appStateMock.isMobile = false;
 
-    sidebarStateMock = vi.fn((cb) => {
-      const draft = {
-        isSidebarPopupOpen: sidebarStateMock.isSidebarPopupOpen,
-        isAIInputPopupOpen: sidebarStateMock.isAIInputPopupOpen,
-      };
-      cb(draft);
-      sidebarStateMock.isSidebarPopupOpen = draft.isSidebarPopupOpen;
-      sidebarStateMock.isAIInputPopupOpen = draft.isAIInputPopupOpen;
-    });
-    sidebarStateMock.isSidebarPopupOpen = false;
-    sidebarStateMock.isAIInputPopupOpen = false;
-
-    // Reset window width
     window.innerWidth = 1024;
   });
 
   it('updates appState when window is resized below breakpoint', () => {
     renderHook(() => useWindowResize(appStateMock, sidebarStateMock));
 
-    // Initially at 1024px (desktop)
     expect(appStateMock.isMobile).toBe(false);
 
-    // Resize window to mobile width
     window.innerWidth = MOBILE_BREAKPOINT - 10;
     window.dispatchEvent(new Event('resize'));
 
@@ -51,7 +35,6 @@ describe('useWindowResize', () => {
 
     const { rerender } = renderHook(() => useWindowResize(appStateMock, sidebarStateMock));
 
-    // Transition from desktop to mobile
     appStateMock.isMobile = true;
     rerender();
 
@@ -60,17 +43,14 @@ describe('useWindowResize', () => {
   });
 
   it('closes popups when leaving mobile layout', () => {
-    // Start in mobile layout
     window.innerWidth = MOBILE_BREAKPOINT - 10;
     appStateMock.isMobile = true;
 
     const { rerender } = renderHook(() => useWindowResize(appStateMock, sidebarStateMock));
 
-    // Now set popups to true
     sidebarStateMock.isSidebarPopupOpen = true;
     sidebarStateMock.isAIInputPopupOpen = true;
 
-    // Transition from mobile to desktop
     window.innerWidth = 1024;
     window.dispatchEvent(new Event('resize'));
     rerender();

@@ -1,4 +1,5 @@
 import { ChangeSetState } from '@/components/Workspace';
+import { makeChangeSetState } from '@/test-utils/stateMocks';
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import ChangeSetPanel from './ChangeSet';
@@ -11,27 +12,30 @@ vi.mock('@/components/Workspace', () => ({
 
 describe('ChangeSetPanel', () => {
   it('renders null when active change set is not found', () => {
-    vi.mocked(ChangeSetState.useState).mockReturnValue({ activeId: 'cs1', items: [] });
+    vi.mocked(ChangeSetState.useState).mockReturnValue(makeChangeSetState({ activeId: 'cs1', items: [] }));
     const { container } = render(<ChangeSetPanel />);
     expect(container.firstChild).toBeNull();
   });
 
   it('renders change set details, reviewed counts, and file list', () => {
-    vi.mocked(ChangeSetState.useState).mockReturnValue({
-      activeId: 'cs1',
-      items: [
-        {
-          id: 'cs1',
-          status: 'pending-review',
-          request: 'Refactor components',
-          files: [
-            { path: 'src/App.js', status: 'accepted' },
-            { path: 'src/index.js', status: 'conflicted' },
-            { path: 'src/utils.js', status: 'pending-review' },
-          ],
-        },
-      ],
-    });
+    vi.mocked(ChangeSetState.useState).mockReturnValue(
+      makeChangeSetState({
+        activeId: 'cs1',
+        items: [
+          {
+            id: 'cs1',
+            status: 'pending-review',
+            request: 'Refactor components',
+            createdAt: Date.now(),
+            files: [
+              { path: 'src/App.js', status: 'accepted' },
+              { path: 'src/index.js', status: 'conflicted' },
+              { path: 'src/utils.js', status: 'pending-review' },
+            ],
+          },
+        ],
+      }),
+    );
 
     render(<ChangeSetPanel />);
 

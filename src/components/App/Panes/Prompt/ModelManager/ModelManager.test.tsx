@@ -1,11 +1,34 @@
 import { fireEvent, render, screen } from '@testing-library/react';
-import React from 'react'
 import type { ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import ModelManager from './index';
 
+const defaultModelManagerProps = {
+  modelCacheWork: null,
+  modelCacheProgress: '',
+  modelCacheError: '',
+};
+
 vi.mock('@/components/ui/Dialog', () => ({
-  default: ({ children, isOpen, title, message, onConfirm, onCancel, confirmText, cancelText }) => {
+  default: ({
+    children,
+    isOpen,
+    title,
+    message,
+    onConfirm,
+    onCancel,
+    confirmText,
+    cancelText,
+  }: {
+    children?: ReactNode;
+    isOpen?: boolean;
+    title?: ReactNode;
+    message?: ReactNode;
+    onConfirm?: () => void;
+    onCancel?: () => void;
+    confirmText?: ReactNode;
+    cancelText?: ReactNode;
+  }) => {
     if (!isOpen) return null;
     return (
       <div data-testid="dialog">
@@ -36,6 +59,7 @@ describe('ModelManager', () => {
         isOpen={false}
         selectedModelId="Llama-3-8B-Instruct-q4f16_1"
         onCancel={vi.fn()}
+        {...defaultModelManagerProps}
       />,
     );
     expect(container.firstChild).toBeNull();
@@ -48,6 +72,7 @@ describe('ModelManager', () => {
         selectedModelId="Qwen3.5-4B-q4f16_1-MLC"
         cachedModelIds={['Qwen3.5-4B-q4f16_1-MLC']}
         onCancel={vi.fn()}
+        {...defaultModelManagerProps}
       />,
     );
 
@@ -64,6 +89,8 @@ describe('ModelManager', () => {
         cachedModelIds={[]}
         onCancel={vi.fn()}
         modelCacheProgress="Downloading: 50%"
+        modelCacheWork={null}
+        modelCacheError=""
       />,
     );
 

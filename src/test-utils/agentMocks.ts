@@ -22,7 +22,7 @@ export function createEditorStateMock(
     const draft = structuredClone(state);
     cb(draft);
     Object.assign(state, draft);
-  }) as StateHandle<EditorStateDraft>;
+  }) as unknown as StateHandle<EditorStateDraft>;
   Object.assign(updater, state);
   return updater;
 }
@@ -33,7 +33,7 @@ export function createSidebarStateMock(
   const state: SidebarStateDraft = { ...initial };
   const updater = vi.fn((cb: (draft: SidebarStateDraft) => void) => {
     cb(state);
-  }) as StateHandle<SidebarStateDraft>;
+  }) as unknown as StateHandle<SidebarStateDraft>;
   Object.assign(updater, state);
   return updater;
 }
@@ -42,7 +42,7 @@ export function createLogStateMock(initial: LogStateDraft = { logs: [] }): State
   const state: LogStateDraft = { ...initial };
   const updater = vi.fn((cb: (draft: LogStateDraft) => void) => {
     cb(state);
-  }) as StateHandle<LogStateDraft>;
+  }) as unknown as StateHandle<LogStateDraft>;
   Object.assign(updater, state);
   return updater;
 }
@@ -53,7 +53,7 @@ export function createChangeSetStateMock(
   const state: ChangeSetStateDraft = { ...initial };
   const updater = vi.fn((cb: (draft: ChangeSetStateDraft) => void) => {
     cb(state);
-  }) as StateHandle<ChangeSetStateDraft>;
+  }) as unknown as StateHandle<ChangeSetStateDraft>;
   Object.assign(updater, state);
   return updater;
 }

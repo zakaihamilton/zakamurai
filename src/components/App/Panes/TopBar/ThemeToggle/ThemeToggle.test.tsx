@@ -1,6 +1,6 @@
 import { AppState } from '@/components/App/AppState';
+import { makeAppState } from '@/test-utils/stateMocks';
 import { fireEvent, render, screen } from '@testing-library/react';
-import React from 'react'
 import type { ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import ThemeToggle from './ThemeToggle';
@@ -16,43 +16,35 @@ vi.mock('@/components/ui/Tooltip', () => ({
   default: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
 }));
 
-describe('ThemeToggle', () => {
-  it('renders sun icon in dark mode', () => {
-    vi.mocked(AppState.useState).mockReturnValue({
-      theme: 'dark',
-    });
-
-    render(<ThemeToggle />);
-    expect(screen.getByTestId('sun-icon')).toBeDefined();
-  });
-
-  it('renders moon icon in light mode', () => {
-    vi.mocked(AppState.useState).mockReturnValue({
-      theme: 'light',
-    });
-
-    render(<ThemeToggle />);
-    expect(screen.getByTestId('moon-icon')).toBeDefined();
-  });
-
-  it('toggles theme when clicked', () => {
-    const appStateUpdater = vi.fn();
-    const appStateMock = Object.assign(appStateUpdater, {
-      theme: 'dark',
-    });
-    vi.mocked(AppState.useState).mockReturnValue(appStateMock);
-
-    render(<ThemeToggle />);
-    const button = screen.getByRole('button');
-    fireEvent.click(button);
-
-    expect(appStateUpdater).toHaveBeenCalled();
-  });
-});
-
 vi.mock('@/components/ui/Icons', () => ({
   Icons: {
     Sun: () => <div data-testid="sun-icon" />,
     Moon: () => <div data-testid="moon-icon" />,
   },
 }));
+
+describe('ThemeToggle', () => {
+  it('renders sun icon in dark mode', () => {
+    vi.mocked(AppState.useState).mockReturnValue(makeAppState({ theme: 'dark' }));
+
+    render(<ThemeToggle />);
+    expect(screen.getByTestId('sun-icon')).toBeDefined();
+  });
+
+  it('renders moon icon in light mode', () => {
+    vi.mocked(AppState.useState).mockReturnValue(makeAppState({ theme: 'light' }));
+
+    render(<ThemeToggle />);
+    expect(screen.getByTestId('moon-icon')).toBeDefined();
+  });
+
+  it('toggles theme when clicked', () => {
+    const appState = makeAppState({ theme: 'dark' });
+    vi.mocked(AppState.useState).mockReturnValue(appState);
+
+    render(<ThemeToggle />);
+    fireEvent.click(screen.getByRole('button'));
+
+    expect(appState).toHaveBeenCalled();
+  });
+});

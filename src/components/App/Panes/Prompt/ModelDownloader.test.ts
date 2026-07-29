@@ -1,3 +1,4 @@
+import { makePromptUiState } from '@/test-utils/stateMocks';
 import { act, renderHook } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import useModelDownloader from './ModelDownloader';
@@ -10,7 +11,7 @@ vi.mock('@/components/AI/WebLLMAPI', () => ({
 
 describe('useModelDownloader', () => {
   it('returns all Model Downloader hooks', () => {
-    const mockPromptUiState = vi.fn();
+    const mockPromptUiState = makePromptUiState();
     const { result } = renderHook(() => useModelDownloader(mockPromptUiState));
 
     expect(result.current.loadCachedModelIds).toBeTypeOf('function');
@@ -20,7 +21,7 @@ describe('useModelDownloader', () => {
   });
 
   it('triggers model cache metadata requests on opening manager', () => {
-    const mockPromptUiState = vi.fn();
+    const mockPromptUiState = makePromptUiState();
     const { result } = renderHook(() => useModelDownloader(mockPromptUiState));
 
     act(() => {

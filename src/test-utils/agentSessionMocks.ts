@@ -10,6 +10,12 @@ export function expectAgentSession(
   return session;
 }
 
+/** Assert a session id is non-null in tests. */
+export function requireSessionId(id: string | null | undefined): string {
+  if (!id) throw new Error('Expected session id');
+  return id;
+}
+
 /** Cast role graph from session for test assertions. */
 export function sessionRoleGraph(session: AgentSession): RoleGraph {
   return session.roleGraph as RoleGraph;

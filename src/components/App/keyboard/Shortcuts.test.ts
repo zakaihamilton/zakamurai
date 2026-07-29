@@ -1,4 +1,8 @@
+import type { EditorStateShape } from '@/components/state/domain-types';
+import type { StateStore } from '@/components/state/types';
 import { makeKeyboardEvent } from '@/test-utils/domMocks';
+import { createMockEditorState, createMockTabState } from '@/test-utils/editorMocks';
+import { makeAppState, makeShortcutActionContext } from '@/test-utils/stateMocks';
 import { describe, expect, it, vi } from 'vitest';
 import { SHORTCUTS, isMatch } from './Shortcuts';
 
@@ -112,17 +116,24 @@ describe('Shortcuts isMatch', () => {
     expect(shortcut).toBeDefined();
 
     const showNotification = vi.fn();
-    const draftState = { isReadOnly: false };
-    const editorState = vi.fn((producer: (draft: typeof draftState) => void) => {
-      producer(draftState);
-    });
+    const editorState = createMockEditorState({ isReadOnly: false });
 
-    shortcut!.action!({ editorState: editorState as never, showNotification });
-    expect(draftState.isReadOnly).toBe(true);
+    shortcut!.action!(
+      makeShortcutActionContext({
+        editorState: editorState as unknown as StateStore<EditorStateShape>,
+        showNotification,
+      }),
+    );
+    expect(editorState.isReadOnly).toBe(true);
     expect(showNotification).toHaveBeenCalledWith('Inspection mode active', 'info');
 
-    shortcut!.action!({ editorState: editorState as never, showNotification });
-    expect(draftState.isReadOnly).toBe(false);
+    shortcut!.action!(
+      makeShortcutActionContext({
+        editorState: editorState as unknown as StateStore<EditorStateShape>,
+        showNotification,
+      }),
+    );
+    expect(editorState.isReadOnly).toBe(false);
     expect(showNotification).toHaveBeenCalledWith('Edit mode active', 'info');
   });
 
@@ -138,39 +149,36 @@ describe('Shortcuts isMatch', () => {
       { filePath: 'src/utils.js', loc: { line: 20, col: 10, index: 310 } },
     ];
 
-    const editorDraft = {
+    const editorState = createMockEditorState({
       fileContents: {
         'src/App.js': 'App content',
         'src/index.css': 'CSS content',
         'src/utils.js': 'Utils content',
       },
       navigationHistory: { stack: mockStack, currentIndex: 2 },
-      cursorPos: {} as Record<string, { line: number; col: number; index: number }>,
-      shouldScrollTo: null as { filePath: string; line: number } | null,
-    };
-
-    const editorState = vi.fn((producer: (draft: typeof editorDraft) => void) => {
-      producer(editorDraft);
+      cursorPos: {},
+      shouldScrollTo: null,
     });
 
-    const tabDraft = {
+    const tabState = createMockTabState({
       openTabs: [{ id: 'src/App.js', type: 'file', label: 'App.js' }],
       activeTabId: 'src/utils.js',
-    };
-    const tabState = vi.fn((producer: (draft: typeof tabDraft) => void) => {
-      producer(tabDraft);
     });
 
-    backShortcut!.action!({ editorState: editorState as never, tabState: tabState as never });
-    expect(editorDraft.navigationHistory.currentIndex).toBe(1);
-    expect(editorDraft.cursorPos['src/index.css']).toEqual({ line: 5, col: 1, index: 40 });
-    expect(editorDraft.shouldScrollTo?.filePath).toBe('src/index.css');
-    expect(editorDraft.shouldScrollTo?.line).toBe(5);
-    expect(tabDraft.activeTabId).toBe('src/index.css');
+    const ctx = makeShortcutActionContext({
+      editorState: editorState as unknown as StateStore<EditorStateShape>,
+      tabState,
+    });
+    backShortcut!.action!(ctx);
+    expect(editorState.navigationHistory.currentIndex).toBe(1);
+    expect(editorState.cursorPos?.['src/index.css']).toEqual({ line: 5, col: 1, index: 40 });
+    expect(editorState.shouldScrollTo?.filePath).toBe('src/index.css');
+    expect(editorState.shouldScrollTo?.line).toBe(5);
+    expect(tabState.activeTabId).toBe('src/index.css');
 
-    forwardShortcut!.action!({ editorState: editorState as never, tabState: tabState as never });
-    expect(editorDraft.navigationHistory.currentIndex).toBe(2);
-    expect(tabDraft.activeTabId).toBe('src/utils.js');
+    forwardShortcut!.action!(ctx);
+    expect(editorState.navigationHistory.currentIndex).toBe(2);
+    expect(tabState.activeTabId).toBe('src/utils.js');
   });
 
   it('switches tabs forward and backward with wraparound', () => {
@@ -179,26 +187,24 @@ describe('Shortcuts isMatch', () => {
     expect(nextShortcut).toBeDefined();
     expect(previousShortcut).toBeDefined();
 
-    const tabDraft = {
+    const tabState = createMockTabState({
       openTabs: [
         { id: 'src/App.js', type: 'file', label: 'App.js' },
         { id: 'src/index.css', type: 'file', label: 'index.css' },
         { id: 'preview', type: 'preview', label: 'Preview' },
       ],
       activeTabId: 'src/App.js',
-    };
-    const tabState = vi.fn((producer: (draft: typeof tabDraft) => void) => {
-      producer(tabDraft);
     });
 
-    nextShortcut!.action!({ tabState: tabState as never });
-    expect(tabDraft.activeTabId).toBe('src/index.css');
-    nextShortcut!.action!({ tabState: tabState as never });
-    expect(tabDraft.activeTabId).toBe('preview');
-    nextShortcut!.action!({ tabState: tabState as never });
-    expect(tabDraft.activeTabId).toBe('src/App.js');
-    previousShortcut!.action!({ tabState: tabState as never });
-    expect(tabDraft.activeTabId).toBe('preview');
+    const ctx = makeShortcutActionContext({ tabState });
+    nextShortcut!.action!(ctx);
+    expect(tabState.activeTabId).toBe('src/index.css');
+    nextShortcut!.action!(ctx);
+    expect(tabState.activeTabId).toBe('preview');
+    nextShortcut!.action!(ctx);
+    expect(tabState.activeTabId).toBe('src/App.js');
+    previousShortcut!.action!(ctx);
+    expect(tabState.activeTabId).toBe('preview');
   });
 
   it('matches ctrl-alt and cmd-alt key combinations', () => {
@@ -214,25 +220,19 @@ describe('Shortcuts isMatch', () => {
   it('triggers toggle-theme action correctly', () => {
     const themeShortcut = SHORTCUTS.find((s) => s.id === 'toggle-theme');
     expect(themeShortcut).toBeDefined();
-    const appDraft = { theme: 'dark' };
-    const appState = vi.fn((producer: (draft: typeof appDraft) => void) => {
-      producer(appDraft);
-    });
-    themeShortcut!.action!({ appState: appState as never });
-    expect(appDraft.theme).toBe('light');
-    themeShortcut!.action!({ appState: appState as never });
-    expect(appDraft.theme).toBe('dark');
+    const appState = makeAppState({ theme: 'dark' });
+    themeShortcut!.action!(makeShortcutActionContext({ appState }));
+    expect(appState.theme).toBe('light');
+    themeShortcut!.action!(makeShortcutActionContext({ appState }));
+    expect(appState.theme).toBe('dark');
   });
 
   it('triggers close-modal action correctly', () => {
     const closeModalShortcut = SHORTCUTS.find((s) => s.id === 'close-modal');
     expect(closeModalShortcut).toBeDefined();
-    const appDraft = { showShortcuts: true, showCompletionDebug: true };
-    const appState = vi.fn((producer: (draft: typeof appDraft) => void) => {
-      producer(appDraft);
-    });
-    closeModalShortcut!.action!({ appState: appState as never });
-    expect(appDraft.showShortcuts).toBe(false);
-    expect(appDraft.showCompletionDebug).toBe(false);
+    const appState = makeAppState({ showShortcuts: true, showCompletionDebug: true });
+    closeModalShortcut!.action!(makeShortcutActionContext({ appState }));
+    expect(appState.showShortcuts).toBe(false);
+    expect(appState.showCompletionDebug).toBe(false);
   });
 });

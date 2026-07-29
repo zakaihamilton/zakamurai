@@ -1,26 +1,32 @@
 import { PreviewState } from '@/components/App/PreviewState';
+import type { PreviewAreaUiStateShape, PreviewStateShape } from '@/components/state/domain-types';
+import { makePreviewAreaUiState, makePreviewState } from '@/test-utils/stateMocks';
 import { act, fireEvent, render, screen } from '@testing-library/react';
+import type { ReactElement, ReactNode } from 'react';
 import React from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import PreviewArea, { PreviewAreaUiState } from './PreviewArea';
 import { PREVIEW_MESSAGE_TYPES } from './previewSandbox';
 
+vi.mock('@/components/App/PreviewState', () => ({
+  PreviewState: { useState: vi.fn() },
+}));
+
 vi.mock('@/components/ui/Tooltip', () => ({
   __esModule: true,
-  default: ({ children, content }) => {
+  default: ({ children, content }: { children: ReactElement<{ title?: ReactNode }>; content: ReactNode }) => {
     return React.cloneElement(children, { title: content });
   },
 }));
 
-function createStateHook(initialState) {
-  const state = { ...initialState };
-  const hook = vi.fn((updater) => {
-    if (typeof updater === 'function') {
-      updater(state);
-    }
-  });
-  Object.assign(hook, state);
-  return { hook, state };
+function createPreviewMocks(
+  previewOverrides: Partial<PreviewStateShape> = {},
+  uiOverrides: Partial<PreviewAreaUiStateShape> = {},
+) {
+  return {
+    preview: makePreviewState(previewOverrides),
+    ui: makePreviewAreaUiState(uiOverrides),
+  };
 }
 
 describe('PreviewArea', () => {
@@ -30,51 +36,37 @@ describe('PreviewArea', () => {
   });
 
   it('dismisses the error banner through preview state', () => {
-    const preview = createStateHook({
-      htmlContent: '<html><body>Hello</body></html>',
-      isCompilerReady: true,
-      restoreError: null,
-    });
-    const ui = createStateHook({
-      isLoading: false,
-      scale: 1,
-      error: 'Runtime failure',
-      refreshKey: 1,
-      isSwReady: true,
-      isMaximized: false,
-      address: '/preview/',
-      host: 'localhost',
-    });
+    const { preview, ui } = createPreviewMocks(
+      {
+        htmlContent: '<html><body>Hello</body></html>',
+        isCompilerReady: true,
+        restoreError: null,
+      },
+      { error: 'Runtime failure' },
+    );
 
-    vi.spyOn(PreviewState, 'useState').mockReturnValue(preview.hook);
-    vi.spyOn(PreviewAreaUiState, 'useState').mockReturnValue(ui.hook);
+    vi.mocked(PreviewState.useState).mockReturnValue(preview);
+    vi.spyOn(PreviewAreaUiState, 'useState').mockReturnValue(ui);
 
     render(<PreviewArea />);
     fireEvent.click(screen.getByLabelText('Dismiss error'));
 
-    expect(ui.hook).toHaveBeenCalled();
-    expect(ui.state.error).toBeNull();
+    expect(ui).toHaveBeenCalled();
+    expect(ui.error).toBeNull();
   });
 
   it('shows restore errors from PreviewState', () => {
-    const preview = createStateHook({
-      htmlContent: '<html><body>Hello</body></html>',
-      isCompilerReady: true,
-      restoreError: 'Failed to sync preview files',
-    });
-    const ui = createStateHook({
-      isLoading: false,
-      scale: 1,
-      error: null,
-      refreshKey: 1,
-      isSwReady: true,
-      isMaximized: false,
-      address: '/preview/',
-      host: 'localhost',
-    });
+    const { preview, ui } = createPreviewMocks(
+      {
+        htmlContent: '<html><body>Hello</body></html>',
+        isCompilerReady: true,
+        restoreError: 'Failed to sync preview files',
+      },
+      { error: null },
+    );
 
-    vi.spyOn(PreviewState, 'useState').mockReturnValue(preview.hook);
-    vi.spyOn(PreviewAreaUiState, 'useState').mockReturnValue(ui.hook);
+    vi.mocked(PreviewState.useState).mockReturnValue(preview);
+    vi.spyOn(PreviewAreaUiState, 'useState').mockReturnValue(ui);
 
     render(<PreviewArea />);
 
@@ -83,25 +75,18 @@ describe('PreviewArea', () => {
   });
 
   it('shows compile errors when no preview html is available', () => {
-    const preview = createStateHook({
-      htmlContent: null,
-      isCompilerReady: true,
-      restoreError: null,
-      compileError: 'Command failed with exit code 1',
-    });
-    const ui = createStateHook({
-      isLoading: false,
-      scale: 1,
-      error: null,
-      refreshKey: 1,
-      isSwReady: true,
-      isMaximized: false,
-      address: '/preview/',
-      host: 'localhost',
-    });
+    const { preview, ui } = createPreviewMocks(
+      {
+        htmlContent: null,
+        isCompilerReady: true,
+        restoreError: null,
+        compileError: 'Command failed with exit code 1',
+      },
+      { error: null },
+    );
 
-    vi.spyOn(PreviewState, 'useState').mockReturnValue(preview.hook);
-    vi.spyOn(PreviewAreaUiState, 'useState').mockReturnValue(ui.hook);
+    vi.mocked(PreviewState.useState).mockReturnValue(preview);
+    vi.spyOn(PreviewAreaUiState, 'useState').mockReturnValue(ui);
 
     render(<PreviewArea />);
 
@@ -110,56 +95,42 @@ describe('PreviewArea', () => {
   });
 
   it('clears restore and compile errors when dismissed', () => {
-    const preview = createStateHook({
-      htmlContent: '<html><body>Hello</body></html>',
-      isCompilerReady: true,
-      restoreError: 'Restore failed',
-      compileError: 'Build failed',
-      serverError: null,
-    });
-    const ui = createStateHook({
-      isLoading: false,
-      scale: 1,
-      error: null,
-      refreshKey: 1,
-      isSwReady: true,
-      isMaximized: false,
-      address: '/preview/',
-      host: 'localhost',
-    });
+    const { preview, ui } = createPreviewMocks(
+      {
+        htmlContent: '<html><body>Hello</body></html>',
+        isCompilerReady: true,
+        restoreError: 'Restore failed',
+        compileError: 'Build failed',
+        serverError: null,
+      },
+      { error: null },
+    );
 
-    vi.spyOn(PreviewState, 'useState').mockReturnValue(preview.hook);
-    vi.spyOn(PreviewAreaUiState, 'useState').mockReturnValue(ui.hook);
+    vi.mocked(PreviewState.useState).mockReturnValue(preview);
+    vi.spyOn(PreviewAreaUiState, 'useState').mockReturnValue(ui);
 
     render(<PreviewArea />);
     fireEvent.click(screen.getByLabelText('Dismiss error'));
 
-    expect(preview.state.restoreError).toBeNull();
-    expect(preview.state.compileError).toBeNull();
-    expect(preview.state.serverError).toBeNull();
+    expect(preview.restoreError).toBeNull();
+    expect(preview.compileError).toBeNull();
+    expect(preview.serverError).toBeNull();
   });
 
   it('shows server transform errors from PreviewState', () => {
-    const preview = createStateHook({
-      htmlContent: '<html><body>Hello</body></html>',
-      isCompilerReady: true,
-      restoreError: null,
-      compileError: null,
-      serverError: 'Transform failed with 5 errors',
-    });
-    const ui = createStateHook({
-      isLoading: false,
-      scale: 1,
-      error: null,
-      refreshKey: 1,
-      isSwReady: true,
-      isMaximized: false,
-      address: '/preview/',
-      host: 'localhost',
-    });
+    const { preview, ui } = createPreviewMocks(
+      {
+        htmlContent: '<html><body>Hello</body></html>',
+        isCompilerReady: true,
+        restoreError: null,
+        compileError: null,
+        serverError: 'Transform failed with 5 errors',
+      },
+      { error: null },
+    );
 
-    vi.spyOn(PreviewState, 'useState').mockReturnValue(preview.hook);
-    vi.spyOn(PreviewAreaUiState, 'useState').mockReturnValue(ui.hook);
+    vi.mocked(PreviewState.useState).mockReturnValue(preview);
+    vi.spyOn(PreviewAreaUiState, 'useState').mockReturnValue(ui);
 
     render(<PreviewArea />);
 
@@ -172,24 +143,17 @@ describe('PreviewArea', () => {
     const writeText = vi.fn(async () => {});
     Object.assign(navigator, { clipboard: { writeText } });
 
-    const preview = createStateHook({
-      htmlContent: '<html><body>Hello</body></html>',
-      isCompilerReady: true,
-      restoreError: null,
-    });
-    const ui = createStateHook({
-      isLoading: false,
-      scale: 1,
-      error: 'Transform failed with 5 errors',
-      refreshKey: 1,
-      isSwReady: true,
-      isMaximized: false,
-      address: '/preview/',
-      host: 'localhost',
-    });
+    const { preview, ui } = createPreviewMocks(
+      {
+        htmlContent: '<html><body>Hello</body></html>',
+        isCompilerReady: true,
+        restoreError: null,
+      },
+      { error: 'Transform failed with 5 errors' },
+    );
 
-    vi.spyOn(PreviewState, 'useState').mockReturnValue(preview.hook);
-    vi.spyOn(PreviewAreaUiState, 'useState').mockReturnValue(ui.hook);
+    vi.mocked(PreviewState.useState).mockReturnValue(preview);
+    vi.spyOn(PreviewAreaUiState, 'useState').mockReturnValue(ui);
 
     render(<PreviewArea />);
     await act(async () => {
@@ -200,50 +164,31 @@ describe('PreviewArea', () => {
   });
 
   it('handles toolbar actions correctly', () => {
-    const preview = createStateHook({
-      htmlContent: '<html><body>Hello</body></html>',
-      isCompilerReady: true,
-      restoreError: null,
-    });
-    const ui = createStateHook({
-      isLoading: false,
-      scale: 1.0,
-      error: null,
-      refreshKey: 1,
-      isSwReady: true,
-      isMaximized: false,
-      address: '/preview/',
-      host: 'localhost',
-    });
+    const { preview, ui } = createPreviewMocks(
+      {
+        htmlContent: '<html><body>Hello</body></html>',
+        isCompilerReady: true,
+        restoreError: null,
+      },
+      { scale: 1.0, error: null },
+    );
 
-    vi.spyOn(PreviewState, 'useState').mockReturnValue(preview.hook);
-    vi.spyOn(PreviewAreaUiState, 'useState').mockReturnValue(ui.hook);
+    vi.mocked(PreviewState.useState).mockReturnValue(preview);
+    vi.spyOn(PreviewAreaUiState, 'useState').mockReturnValue(ui);
     vi.spyOn(window, 'open').mockImplementation(() => null);
 
     render(<PreviewArea />);
 
-    // Zoom in
     fireEvent.click(screen.getByTitle('Zoom in'));
-    expect(ui.hook).toHaveBeenCalled();
-
-    // Zoom out
+    expect(ui).toHaveBeenCalled();
     fireEvent.click(screen.getByTitle('Zoom out'));
-    expect(ui.hook).toHaveBeenCalled();
-
-    // Zoom reset
+    expect(ui).toHaveBeenCalled();
     fireEvent.click(screen.getByText('100%'));
-    expect(ui.hook).toHaveBeenCalled();
-
-    // Refresh
+    expect(ui).toHaveBeenCalled();
     fireEvent.click(screen.getByTitle('Refresh preview'));
-    expect(ui.hook).toHaveBeenCalled();
-
-    // Maximize
+    expect(ui).toHaveBeenCalled();
     fireEvent.click(screen.getByTitle('Maximize preview'));
-    expect(ui.hook).toHaveBeenCalled();
-
-    // Open in new tab — target must not match the iframe name, or the browser
-    // navigates the iframe instead of opening a tab.
+    expect(ui).toHaveBeenCalled();
     fireEvent.click(screen.getByTitle('Open in new tab'));
     expect(window.open).toHaveBeenCalledWith(
       expect.stringMatching(/^http:\/\/localhost:3001\/\?session=/),
@@ -253,55 +198,41 @@ describe('PreviewArea', () => {
 
   it('reports a service-worker activation timeout', () => {
     vi.useFakeTimers();
-    const preview = createStateHook({
-      htmlContent: '<html><body>Hello</body></html>',
-      isCompilerReady: false,
-      restoreError: null,
-    });
-    const ui = createStateHook({
-      isLoading: false,
-      scale: 1,
-      error: null,
-      refreshKey: 1,
-      isSwReady: false,
-      isMaximized: false,
-      address: '/preview/',
-      host: 'localhost',
-    });
+    const { preview, ui } = createPreviewMocks(
+      {
+        htmlContent: '<html><body>Hello</body></html>',
+        isCompilerReady: false,
+        restoreError: null,
+      },
+      { isSwReady: false, error: null },
+    );
 
-    vi.spyOn(PreviewState, 'useState').mockReturnValue(preview.hook);
-    vi.spyOn(PreviewAreaUiState, 'useState').mockReturnValue(ui.hook);
+    vi.mocked(PreviewState.useState).mockReturnValue(preview);
+    vi.spyOn(PreviewAreaUiState, 'useState').mockReturnValue(ui);
 
     render(<PreviewArea />);
     act(() => {
       vi.advanceTimersByTime(15000);
     });
 
-    expect(ui.state.error).toMatch(/service worker did not activate/i);
+    expect(ui.error).toMatch(/service worker did not activate/i);
   });
 
   it('accepts runtime errors sent by the active preview iframe', () => {
-    const preview = createStateHook({
-      htmlContent: '<html><body>Hello</body></html>',
-      isCompilerReady: true,
-      restoreError: null,
-    });
-    const ui = createStateHook({
-      isLoading: false,
-      scale: 1,
-      error: null,
-      refreshKey: 1,
-      isSwReady: true,
-      isMaximized: false,
-      address: '/preview/',
-      host: 'localhost',
-    });
+    const { preview, ui } = createPreviewMocks(
+      {
+        htmlContent: '<html><body>Hello</body></html>',
+        isCompilerReady: true,
+        restoreError: null,
+      },
+      { error: null },
+    );
 
-    vi.spyOn(PreviewState, 'useState').mockReturnValue(preview.hook);
-    vi.spyOn(PreviewAreaUiState, 'useState').mockReturnValue(ui.hook);
+    vi.mocked(PreviewState.useState).mockReturnValue(preview);
+    vi.spyOn(PreviewAreaUiState, 'useState').mockReturnValue(ui);
 
     render(<PreviewArea />);
-    const iframe = screen.getByTitle('Preview');
+    const iframe = screen.getByTitle('Preview') as HTMLIFrameElement;
     const event = new MessageEvent('message', {
       data: {
         source: 'zakamurai-preview',
@@ -316,32 +247,25 @@ describe('PreviewArea', () => {
       window.dispatchEvent(event);
     });
 
-    expect(ui.state.error).toBe('Uncaught ReferenceError: app is not defined');
-    expect(preview.state.serverError).toBe('Uncaught ReferenceError: app is not defined');
+    expect(ui.error).toBe('Uncaught ReferenceError: app is not defined');
+    expect(preview.serverError).toBe('Uncaught ReferenceError: app is not defined');
   });
 
   it('ignores opaque Script error messages from the preview bridge', () => {
-    const preview = createStateHook({
-      htmlContent: '<html><body>Hello</body></html>',
-      isCompilerReady: true,
-      restoreError: null,
-    });
-    const ui = createStateHook({
-      isLoading: false,
-      scale: 1,
-      error: null,
-      refreshKey: 1,
-      isSwReady: true,
-      isMaximized: false,
-      address: '/preview/',
-      host: 'localhost',
-    });
+    const { preview, ui } = createPreviewMocks(
+      {
+        htmlContent: '<html><body>Hello</body></html>',
+        isCompilerReady: true,
+        restoreError: null,
+      },
+      { error: null },
+    );
 
-    vi.spyOn(PreviewState, 'useState').mockReturnValue(preview.hook);
-    vi.spyOn(PreviewAreaUiState, 'useState').mockReturnValue(ui.hook);
+    vi.mocked(PreviewState.useState).mockReturnValue(preview);
+    vi.spyOn(PreviewAreaUiState, 'useState').mockReturnValue(ui);
 
     render(<PreviewArea />);
-    const iframe = screen.getByTitle('Preview');
+    const iframe = screen.getByTitle('Preview') as HTMLIFrameElement;
     const event = new MessageEvent('message', {
       data: {
         source: 'zakamurai-preview',
@@ -356,36 +280,29 @@ describe('PreviewArea', () => {
       window.dispatchEvent(event);
     });
 
-    expect(ui.state.error).toBeNull();
-    expect(preview.state.serverError).toBeNull();
+    expect(ui.error).toBeNull();
+    expect(preview.serverError).toBeNull();
   });
 
   it('renders a successful preview after an earlier compile error is cleared', () => {
-    const preview = createStateHook({
-      htmlContent: null,
-      isCompilerReady: true,
-      restoreError: null,
-      compileError: 'Build failed',
-    });
-    const ui = createStateHook({
-      isLoading: false,
-      scale: 1,
-      error: null,
-      refreshKey: 1,
-      isSwReady: true,
-      isMaximized: false,
-      address: '/preview/',
-      host: 'localhost',
-    });
+    const { preview, ui } = createPreviewMocks(
+      {
+        htmlContent: null,
+        isCompilerReady: true,
+        restoreError: null,
+        compileError: 'Build failed',
+      },
+      { error: null },
+    );
 
-    vi.spyOn(PreviewState, 'useState').mockReturnValue(preview.hook);
-    vi.spyOn(PreviewAreaUiState, 'useState').mockReturnValue(ui.hook);
+    vi.mocked(PreviewState.useState).mockReturnValue(preview);
+    vi.spyOn(PreviewAreaUiState, 'useState').mockReturnValue(ui);
 
     const { rerender } = render(<PreviewArea />);
     expect(screen.getByText('Build failed')).toBeDefined();
 
-    preview.hook.htmlContent = '<html><body>Recovered</body></html>';
-    preview.hook.compileError = null;
+    preview.htmlContent = '<html><body>Recovered</body></html>';
+    preview.compileError = null;
     rerender(<PreviewArea />);
 
     expect(screen.queryByRole('alert')).toBeNull();
@@ -393,35 +310,28 @@ describe('PreviewArea', () => {
   });
 
   it('updates scale precisely without floating-point precision inaccuracies on zoom in/out', () => {
-    const preview = createStateHook({
-      htmlContent: '<html><body>Hello</body></html>',
-      isCompilerReady: true,
-      restoreError: null,
-    });
-    const ui = createStateHook({
-      isLoading: false,
-      scale: 1.1,
-      error: null,
-      refreshKey: 1,
-      isSwReady: true,
-      isMaximized: false,
-      address: '/preview/dist/index.html',
-      host: 'localhost',
-    });
+    const { preview, ui } = createPreviewMocks(
+      {
+        htmlContent: '<html><body>Hello</body></html>',
+        isCompilerReady: true,
+        restoreError: null,
+      },
+      { scale: 1.1, address: '/preview/dist/index.html' },
+    );
 
-    vi.spyOn(PreviewState, 'useState').mockReturnValue(preview.hook);
-    vi.spyOn(PreviewAreaUiState, 'useState').mockReturnValue(ui.hook);
+    vi.mocked(PreviewState.useState).mockReturnValue(preview);
+    vi.spyOn(PreviewAreaUiState, 'useState').mockReturnValue(ui);
 
     render(<PreviewArea />);
 
     fireEvent.click(screen.getByTitle('Zoom in'));
-    const zoomInUpdater = ui.hook.mock.calls[ui.hook.mock.calls.length - 1][0];
+    const zoomInUpdater = vi.mocked(ui).mock.calls.at(-1)![0] as (draft: { scale: number }) => void;
     const draftIn = { scale: 1.1 };
     zoomInUpdater(draftIn);
     expect(draftIn.scale).toBe(1.2);
 
     fireEvent.click(screen.getByTitle('Zoom out'));
-    const zoomOutUpdater = ui.hook.mock.calls[ui.hook.mock.calls.length - 1][0];
+    const zoomOutUpdater = vi.mocked(ui).mock.calls.at(-1)![0] as (draft: { scale: number }) => void;
     const draftOut = { scale: 1.3 };
     zoomOutUpdater(draftOut);
     expect(draftOut.scale).toBe(1.2);

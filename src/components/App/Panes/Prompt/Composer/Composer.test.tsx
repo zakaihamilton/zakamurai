@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import type { ChangeEvent, ReactNode } from 'react';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import PromptComposer from './Composer';
@@ -10,8 +10,18 @@ vi.mock('@/components/ui/Icons', () => ({
   Icons: { Close: () => <span />, Info: () => <span />, Send: () => <span /> },
 }));
 vi.mock('@/components/ui/Select', () => ({
-  default: ({ label, value, options = [], onChange }) => (
-    <select aria-label={label} value={value} onChange={(event) => onChange(event.target.value)}>
+  default: ({
+    label,
+    value,
+    options = [],
+    onChange,
+  }: {
+    label: string;
+    value: string;
+    options?: Array<{ value: string; label: string }>;
+    onChange: (value: string) => void;
+  }) => (
+    <select aria-label={label} value={value} onChange={(event: ChangeEvent<HTMLSelectElement>) => onChange(event.target.value)}>
       {options.map((option) => (
         <option key={option.value} value={option.value}>
           {option.label}
@@ -20,7 +30,7 @@ vi.mock('@/components/ui/Select', () => ({
     </select>
   ),
 }));
-vi.mock('@/utils/os', () => ({ formatShortcut: (s) => s }));
+vi.mock('@/utils/os', () => ({ formatShortcut: (s: string) => s }));
 
 describe('PromptComposer', () => {
   it('renders textarea with placeholder', () => {
@@ -69,7 +79,9 @@ describe('PromptComposer', () => {
         isOpen={true}
       />,
     );
-    fireEvent.submit(document.querySelector('form'));
+    const form = document.querySelector('form');
+    expect(form).not.toBeNull();
+    fireEvent.submit(form!);
     expect(onSubmit).toHaveBeenCalled();
   });
 

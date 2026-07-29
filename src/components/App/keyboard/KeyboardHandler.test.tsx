@@ -5,6 +5,13 @@ import { TabState } from '@/components/App/Panes/TabBar';
 import { EditorState } from '@/components/App/Views/EditorArea';
 import { LogState } from '@/components/App/Views/LogArea';
 import { useNotification } from '@/components/ui/Notification';
+import { createMockEditorState } from '@/test-utils/editorMocks';
+import {
+  makeAppState,
+  makeLogState,
+  makeSidebarState,
+  makeTabState,
+} from '@/test-utils/stateMocks';
 import { fireEvent, render } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useKeyboardHandler } from './KeyboardHandler';
@@ -43,34 +50,29 @@ vi.mock('@/utils/os', () => ({
 import { markKeyboardActivity } from '@/utils/keyboard';
 
 describe('KeyboardHandler', () => {
-  let sidebarState;
-  let tabState;
-  let appState;
-  let logState;
-  let editorState;
-  let addNotification;
+  let sidebarState: ReturnType<typeof makeSidebarState>;
+  let tabState: ReturnType<typeof makeTabState>;
+  let appState: ReturnType<typeof makeAppState>;
+  let logState: ReturnType<typeof makeLogState>;
+  let editorState: ReturnType<typeof createMockEditorState>;
+  let addNotification: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
-    sidebarState = vi.fn();
-    sidebarState.isSidebarOpen = true;
-
-    tabState = vi.fn();
-    tabState.activeTabId = 'test.js';
-
-    appState = vi.fn();
-    appState.fs = { mode: 'local' };
-    appState.showShortcuts = false;
-
-    logState = vi.fn();
-    editorState = vi.fn();
+    sidebarState = makeSidebarState({ isSidebarOpen: true });
+    tabState = makeTabState({ activeTabId: 'test.js' });
+    appState = makeAppState({ showShortcuts: false });
+    logState = makeLogState();
+    editorState = createMockEditorState();
     addNotification = vi.fn();
 
-    SidebarState.usePassiveState.mockReturnValue(sidebarState);
-    TabState.usePassiveState.mockReturnValue(tabState);
-    AppState.usePassiveState.mockReturnValue(appState);
-    LogState.usePassiveState.mockReturnValue(logState);
-    EditorState.usePassiveState.mockReturnValue(editorState);
-    useNotification.mockReturnValue({ addNotification });
+    vi.mocked(SidebarState.usePassiveState).mockReturnValue(sidebarState);
+    vi.mocked(TabState.usePassiveState).mockReturnValue(tabState);
+    vi.mocked(AppState.usePassiveState).mockReturnValue(appState);
+    vi.mocked(LogState.usePassiveState).mockReturnValue(logState);
+    vi.mocked(EditorState.usePassiveState).mockReturnValue(
+      editorState as ReturnType<typeof EditorState.usePassiveState>,
+    );
+    vi.mocked(useNotification).mockReturnValue({ addNotification });
   });
 
   afterEach(() => {
@@ -83,7 +85,9 @@ describe('KeyboardHandler', () => {
     fireEvent.keyDown(window, { key: 'b', ctrlKey: true });
 
     expect(sidebarState).toHaveBeenCalled();
-    const updateFn = sidebarState.mock.calls[0][0];
+    const updateFn = vi.mocked(sidebarState).mock.calls[0]![0] as (draft: {
+      isSidebarOpen: boolean;
+    }) => void;
     const draft = { isSidebarOpen: true };
     updateFn(draft);
     expect(draft.isSidebarOpen).toBe(false);
@@ -95,7 +99,7 @@ describe('KeyboardHandler', () => {
     fireEvent.keyDown(window, { key: 'u', ctrlKey: true });
 
     expect(tabState).toHaveBeenCalled();
-    const updateFn = tabState.mock.calls[0][0];
+    const updateFn = vi.mocked(tabState).mock.calls[0]![0] as (draft: { activeTabId: string }) => void;
     const draft = { activeTabId: 'test.js' };
     updateFn(draft);
     expect(draft.activeTabId).toBe('ai-logs');
@@ -127,7 +131,7 @@ describe('KeyboardHandler', () => {
 
     expect(sidebarState).not.toHaveBeenCalled();
     expect(highlightHandler).toHaveBeenCalledTimes(1);
-    expect(highlightHandler.mock.calls[0][0].detail).toEqual({ shortcutId: 'toggle-sidebar' });
+    expect(highlightHandler.mock.calls[0]![0].detail).toEqual({ shortcutId: 'toggle-sidebar' });
 
     window.removeEventListener(SHORTCUT_HIGHLIGHT_EVENT, highlightHandler);
   });
@@ -141,7 +145,7 @@ describe('KeyboardHandler', () => {
     fireEvent.keyDown(window, { key: 'Tab', shiftKey: true });
 
     expect(highlightHandler).toHaveBeenCalledTimes(1);
-    expect(highlightHandler.mock.calls[0][0].detail).toEqual({ shortcutId: 'outdent' });
+    expect(highlightHandler.mock.calls[0]![0].detail).toEqual({ shortcutId: 'outdent' });
 
     window.removeEventListener(SHORTCUT_HIGHLIGHT_EVENT, highlightHandler);
   });
@@ -156,7 +160,7 @@ describe('KeyboardHandler', () => {
 
     expect(highlightHandler).not.toHaveBeenCalled();
     expect(appState).toHaveBeenCalled();
-    const updateFn = appState.mock.calls[0][0];
+    const updateFn = vi.mocked(appState).mock.calls[0]![0] as (draft: { showShortcuts: boolean }) => void;
     const draft = { showShortcuts: true };
     updateFn(draft);
     expect(draft.showShortcuts).toBe(false);

@@ -1,3 +1,4 @@
+import type { ShortcutActionContext } from '@/components/App/types';
 import type {
   AgentSessionStateShape,
   AppStateShape,
@@ -5,6 +6,7 @@ import type {
   EditorStateShape,
   LogStateShape,
   PreviewStateShape,
+  PreviewAreaUiStateShape,
   PromptStateShape,
   PromptUiStateShape,
   SidebarStateShape,
@@ -178,6 +180,22 @@ export function makePreviewState(
   });
 }
 
+export function makePreviewAreaUiState(
+  overrides: Partial<PreviewAreaUiStateShape> = {},
+): StateStore<PreviewAreaUiStateShape> & Mock {
+  return createMockStateStore<PreviewAreaUiStateShape>({
+    isLoading: false,
+    scale: 1,
+    error: null,
+    refreshKey: 1,
+    isSwReady: true,
+    isMaximized: false,
+    address: '/preview/',
+    host: 'localhost',
+    ...overrides,
+  });
+}
+
 export function makeChangeSetState(
   overrides: Partial<ChangeSetStateShape> = {},
 ): StateStore<ChangeSetStateShape> & Mock {
@@ -186,6 +204,20 @@ export function makeChangeSetState(
     items: [],
     ...overrides,
   });
+}
+
+/** Minimal ShortcutActionContext for keyboard shortcut tests. */
+export function makeShortcutActionContext(
+  overrides: Partial<ShortcutActionContext> = {},
+): ShortcutActionContext {
+  return {
+    appState: makeAppState(),
+    sidebarState: makeSidebarState(),
+    tabState: makeTabState(),
+    editorState: makeEditorState(),
+    logState: makeLogState(),
+    ...overrides,
+  };
 }
 
 /** Cast a vi.fn mock to a typed state hook for test setup. */

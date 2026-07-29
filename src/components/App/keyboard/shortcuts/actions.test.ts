@@ -1,3 +1,4 @@
+import type { ShortcutActionContext } from '@/components/App/types';
 import { describe, expect, it, vi } from 'vitest';
 import {
   navigateBackAction,
@@ -5,6 +6,10 @@ import {
   switchTabAction,
   toggleCssJsAction,
 } from './actions';
+
+function asCtx(partial: Record<string, unknown>): ShortcutActionContext {
+  return partial as unknown as ShortcutActionContext;
+}
 
 describe('shortcuts/actions', () => {
   it('toggleCssJsAction toggles sidebar when no active tab or unsupported file type', () => {
@@ -15,7 +20,7 @@ describe('shortcuts/actions', () => {
       sidebarState: sidebarUpdater,
     };
 
-    toggleCssJsAction(states);
+    toggleCssJsAction(asCtx(states));
     expect(sidebarUpdater).toHaveBeenCalled();
 
     const statesTxt = {
@@ -23,7 +28,7 @@ describe('shortcuts/actions', () => {
       tabState: { activeTabId: 'readme.txt' },
       sidebarState: sidebarUpdater,
     };
-    toggleCssJsAction(statesTxt);
+    toggleCssJsAction(asCtx(statesTxt));
     expect(sidebarUpdater).toHaveBeenCalledTimes(2);
   });
 
@@ -44,7 +49,7 @@ describe('shortcuts/actions', () => {
       sidebarState: sidebarUpdater,
     };
 
-    toggleCssJsAction(states);
+    toggleCssJsAction(asCtx(states));
     expect(tabUpdater).toHaveBeenCalled();
     expect(editorUpdater).toHaveBeenCalled();
   });
@@ -67,11 +72,11 @@ describe('shortcuts/actions', () => {
       tabState: Object.assign(tabUpdater, { activeTabId: '/b.js' }),
     };
 
-    navigateBackAction(states);
+    navigateBackAction(asCtx(states));
     expect(tabUpdater).toHaveBeenCalled();
 
     states.editorState.navigationHistory.currentIndex = 0;
-    navigateForwardAction(states);
+    navigateForwardAction(asCtx(states));
     expect(tabUpdater).toHaveBeenCalledTimes(2);
   });
 
@@ -82,7 +87,7 @@ describe('shortcuts/actions', () => {
       activeTabId: 'a.js',
     });
 
-    switchTabAction({ tabState }, 1);
+    switchTabAction(asCtx({ tabState }), 1);
     expect(tabUpdater).toHaveBeenCalled();
   });
 
@@ -97,7 +102,7 @@ describe('shortcuts/actions', () => {
       sidebarState: sidebarUpdater,
     };
 
-    toggleCssJsAction(states);
+    toggleCssJsAction(asCtx(states));
     expect(sidebarUpdater).toHaveBeenCalled();
   });
 
@@ -118,7 +123,7 @@ describe('shortcuts/actions', () => {
       sidebarState: sidebarUpdater,
     };
 
-    toggleCssJsAction(states);
+    toggleCssJsAction(asCtx(states));
     expect(tabUpdater).toHaveBeenCalled();
     expect(editorUpdater).toHaveBeenCalled();
     expect(sidebarUpdater).not.toHaveBeenCalled();
@@ -149,7 +154,7 @@ describe('shortcuts/actions', () => {
       sidebarState: vi.fn(),
     };
 
-    toggleCssJsAction(states);
+    toggleCssJsAction(asCtx(states));
     expect(capturedDraft.openTabs).toHaveLength(1);
     expect(capturedDraft.activeTabId).toBe('/src/Button.css');
   });
@@ -164,7 +169,7 @@ describe('shortcuts/actions', () => {
       tabState: Object.assign(tabUpdater, { activeTabId: '/a.js', openTabs: [] }),
     };
 
-    navigateBackAction(states);
+    navigateBackAction(asCtx(states));
     expect(tabUpdater).not.toHaveBeenCalled();
   });
 
@@ -184,16 +189,18 @@ describe('shortcuts/actions', () => {
       tabState: Object.assign(tabUpdater, { activeTabId: '/b.js', openTabs: [] }),
     };
 
-    navigateForwardAction(states);
+    navigateForwardAction(asCtx(states));
     expect(tabUpdater).not.toHaveBeenCalled();
   });
 
   it('navigateBackAction does nothing when history is missing', () => {
     const tabUpdater = vi.fn();
-    navigateBackAction({
-      editorState: { fileContents: {}, navigationHistory: null },
-      tabState: Object.assign(tabUpdater, { openTabs: [] }),
-    });
+    navigateBackAction(
+      asCtx({
+        editorState: { fileContents: {}, navigationHistory: null },
+        tabState: Object.assign(tabUpdater, { openTabs: [] }),
+      }),
+    );
     expect(tabUpdater).not.toHaveBeenCalled();
   });
 
@@ -207,19 +214,19 @@ describe('shortcuts/actions', () => {
       activeTabId: 'a.js',
     });
 
-    switchTabAction({ tabState }, -1);
+    switchTabAction(asCtx({ tabState }), -1);
     expect(capturedDraft.activeTabId).toBe('c.js');
   });
 
   it('switchTabAction does nothing with fewer than two tabs', () => {
     const tabUpdater = vi.fn();
     switchTabAction(
-      {
+      asCtx({
         tabState: Object.assign(tabUpdater, {
           openTabs: [{ id: 'only.js' }],
           activeTabId: 'only.js',
         }),
-      },
+      }),
       1,
     );
     expect(tabUpdater).not.toHaveBeenCalled();
@@ -235,7 +242,7 @@ describe('shortcuts/actions', () => {
       activeTabId: 'missing.js',
     });
 
-    switchTabAction({ tabState }, 1);
+    switchTabAction(asCtx({ tabState }), 1);
     expect(capturedDraft.activeTabId).toBe('a.js');
   });
 });
