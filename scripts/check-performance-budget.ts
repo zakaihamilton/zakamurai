@@ -16,7 +16,7 @@ async function collectJavaScriptFiles(directory: string): Promise<string[]> {
   return files.flat();
 }
 
-try {
+async function main(): Promise<void> {
   const assets = await collectJavaScriptFiles(applicationEntryDirectory);
   if (assets.length === 0) {
     throw new Error(
@@ -45,7 +45,9 @@ try {
   console.log(
     `Performance budget passed: ${assets.length} application entry assets are each within 500 KB.`,
   );
-} catch (error) {
+}
+
+main().catch((error) => {
   console.error(error instanceof Error ? error.message : String(error));
   process.exitCode = 1;
-}
+});
