@@ -210,11 +210,13 @@ export async function runAgent({
     }
 
     const fingerprint = JSON.stringify(action);
-    if (fingerprint === recoveredNoOpWrite)
-      throw new AgentExecutionError(
-        'Agent repeated a saved write after automatic validation. Staged changes were preserved for review.',
-        workspace.changes(),
-      );
+    if (fingerprint === recoveredNoOpWrite) {
+      const summary =
+        'Validated the staged changes after the local model repeated an identical write action.';
+      const changes = workspace.changes();
+      onEvent({ type: 'finished', turn, changes, message: summary, agentRole });
+      return { changes, files: workspace.files, summary, events: turn, workspace };
+    }
     if (recoveredNoOpWrite) recoveredNoOpWrite = '';
     repeatedActions = fingerprint === lastFingerprint ? repeatedActions + 1 : 0;
     lastFingerprint = fingerprint;
@@ -272,8 +274,9 @@ export async function runAgent({
       continue;
     }
     if (repeatedActions >= 3)
-      throw new Error(
-        'Agent stopped after repeating the same action despite recovery guidance. Inspect the latest diagnostic or choose another tool.',
+      throw new AgentExecutionError(
+        'Agent stopped after repeating the same action despite recovery guidance. Staged changes were preserved for review.',
+        workspace.changes(),
       );
     try {
       let result: string | undefined;
@@ -380,13 +383,18 @@ export async function runAgent({
       });
     } catch (error) {
       const err = error as Error;
-      messages.push({ role: 'user', content: observation(action.action, false, err.message) });
+      const recovery =
+        action.action === 'read_file' && /^File not found: /.test(err.message)
+          ? ' The requested file is absent. Do not call read_file for this path again. If this is a new component or stylesheet you need, create it with write_file; otherwise use one of the paths returned by list_files.'
+          : '';
+      const diagnostic = `${err.message}${recovery}`;
+      messages.push({ role: 'user', content: observation(action.action, false, diagnostic) });
       onEvent({
         type: 'observation',
         turn,
         action: action.action,
         error: true,
-        message: err.message,
+        message: diagnostic,
         agentRole,
       });
     }

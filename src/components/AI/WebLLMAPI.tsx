@@ -10,10 +10,11 @@ export { RECOMMENDED_WEB_LLM_MODEL, WEB_LLM_MODELS } from './WebLLMModels';
 const DEFAULT_WEB_LLM_MODEL_ID = RECOMMENDED_WEB_LLM_MODEL.id;
 
 type WebLLMEngine = {
-  interruptSignal: boolean;
+  interruptSignal?: boolean;
   resetChat: (keepHistory: boolean, modelId: string) => Promise<void>;
   interruptGenerate: () => Promise<void>;
   unload?: () => Promise<void>;
+  worker?: { terminate?: () => void };
   chat: {
     completions: {
       create: (options: Record<string, unknown>) => Promise<{
@@ -28,6 +29,15 @@ const inflightGenerations = new Map<string, Promise<void>>();
 
 const loadWebLLM = () => import('@mlc-ai/web-llm');
 
+const unloadEngine = async (engine: WebLLMEngine): Promise<void> => {
+  try {
+    if (typeof engine.unload === 'function') await engine.unload();
+  } finally {
+    // The proxy engine unloads GPU resources but does not own the worker lifecycle.
+    engine.worker?.terminate?.();
+  }
+};
+
 const isWebLLMInterruptError = (error: unknown): boolean => {
   const err = error as { message?: string };
   const message = err?.message || String(error);
@@ -35,7 +45,7 @@ const isWebLLMInterruptError = (error: unknown): boolean => {
 };
 
 const clearEngineInterruptState = async (engine: WebLLMEngine, modelId: string): Promise<void> => {
-  engine.interruptSignal = false;
+  if ('interruptSignal' in engine) engine.interruptSignal = false;
   try {
     await engine.resetChat(false, modelId);
   } catch (error) {
@@ -91,9 +101,7 @@ export const deleteCachedWebLLMModel = async (modelId: string): Promise<void> =>
   if (enginePromise) {
     try {
       const engine = await enginePromise;
-      if (engine && typeof engine.unload === 'function') {
-        await engine.unload();
-      }
+      if (engine) await unloadEngine(engine);
     } catch (error) {
       console.warn(`Failed to unload engine ${modelId}:`, error);
     }
@@ -121,9 +129,9 @@ const getEngine = async (
     for (const [existingId, promise] of enginePromises.entries()) {
       try {
         const existingEngine = await promise;
-        if (existingEngine && typeof existingEngine.unload === 'function') {
+        if (existingEngine) {
           console.info(`Unloading previous WebLLM engine ${existingId} for GPU memory safety...`);
-          await existingEngine.unload();
+          await unloadEngine(existingEngine);
         }
       } catch (e) {
         console.warn(`Error unloading existing WebLLM engine ${existingId}:`, e);
@@ -142,26 +150,42 @@ const getEngine = async (
       try {
         console.info(`Initializing WebLLM with ${selectedModel}...`);
 
-        const { CreateMLCEngine } = await loadWebLLM();
-        const engine = (await CreateMLCEngine(
-          selectedModel,
-          {
-            initProgressCallback: (progress: { text?: string }) => {
-              console.info(`[WebLLM]: ${progress.text}`);
-              updateWebLLMEngine(selectedModel, {
-                status: 'downloading',
-                progressText: progress.text || '',
-                error: null,
-              });
-              if (onProgress) {
-                onProgress(progress.text || '');
-              }
-            },
+        const { CreateMLCEngine, CreateWebWorkerMLCEngine } = await loadWebLLM();
+        const engineConfig = {
+          initProgressCallback: (progress: { text?: string }) => {
+            console.info(`[WebLLM]: ${progress.text}`);
+            updateWebLLMEngine(selectedModel, {
+              status: 'downloading',
+              progressText: progress.text || '',
+              error: null,
+            });
+            if (onProgress) onProgress(progress.text || '');
           },
-          {
-            context_window_size: options.contextWindowSize ?? 4096,
-          },
-        )) as unknown as WebLLMEngine;
+        };
+        const chatOptions = { context_window_size: options.contextWindowSize ?? 4096 };
+        let engine: WebLLMEngine;
+        if (typeof Worker === 'undefined') {
+          engine = (await CreateMLCEngine(
+            selectedModel,
+            engineConfig,
+            chatOptions,
+          )) as unknown as WebLLMEngine;
+        } else {
+          const worker = new Worker(new URL('./WebLLM.worker.ts', import.meta.url), {
+            type: 'module',
+          });
+          try {
+            engine = (await CreateWebWorkerMLCEngine(
+              worker,
+              selectedModel,
+              engineConfig,
+              chatOptions,
+            )) as unknown as WebLLMEngine;
+          } catch (error) {
+            worker.terminate();
+            throw error;
+          }
+        }
 
         updateWebLLMEngine(selectedModel, {
           status: 'ready',
@@ -330,9 +354,9 @@ export const unloadAllWebLLMEngines = async (): Promise<void> => {
   for (const [modelId, enginePromise] of entries) {
     try {
       const engine = await enginePromise;
-      if (engine && typeof engine.unload === 'function') {
+      if (engine) {
         console.info(`[WebLLM] Unloading engine ${modelId} to free memory...`);
-        await engine.unload();
+        await unloadEngine(engine);
       }
     } catch (error) {
       console.warn(`Failed to unload WebLLM engine ${modelId}:`, error);

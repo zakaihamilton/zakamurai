@@ -158,7 +158,7 @@ ${ACTION_CATALOG}
 
 ${WRITE_FILE_PAYLOAD_FORMAT}
 
-Use list_files to check file existence or list paths by extension (e.g., list_files query: ".module.css"). Use search_workspace to search text inside file contents. Do not repeatedly search_workspace for file extensions.
+Use list_files to check file existence or list paths by extension (e.g., list_files query: ".module.css"). Use search_workspace to search text inside file contents. Do not repeatedly search_workspace for file extensions. If read_file reports that a file is missing, do not retry it: use write_file to create the intended new file, or choose an existing path from list_files.
 Inspect before editing. You may edit any relevant workspace file. Validate after meaningful changes. Always run validate before calling finish when edits have been made. Fix validation failures when possible. Never claim success without either validation or a clear explanation.
 
 Architecture Rules:

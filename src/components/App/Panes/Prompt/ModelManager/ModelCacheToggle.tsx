@@ -10,12 +10,16 @@ export default function ModelCacheToggle({
   return (
     <button
       type="button"
-      className={`${styles.toggle} ${isCached ? styles.cached : ''} ${isBusy ? styles.busy : ''}`}
+      className={`${styles.modelCacheToggle} ${isCached ? styles.modelCacheToggleOn : ''}`}
       disabled={disabled || isBusy}
       onClick={onToggle}
       aria-label={isCached ? 'Remove from cache' : 'Cache model'}
+      aria-pressed={isCached}
     >
-      {isBusy ? '…' : isCached ? 'Cached' : 'Cache'}
+      <span className={styles.modelCacheToggleTrack} aria-hidden="true">
+        <span className={styles.modelCacheToggleThumb} />
+      </span>
+      <span>{isBusy ? '…' : isCached ? 'Cached' : 'Cache'}</span>
     </button>
   );
 }

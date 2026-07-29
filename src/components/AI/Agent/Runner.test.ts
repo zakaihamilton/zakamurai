@@ -310,7 +310,7 @@ export const title = "Today";
     expect(validate).toHaveBeenCalledOnce();
   });
 
-  it('stops when a saved write is repeated after automatic validation', async () => {
+  it('finishes with the validated draft when a saved write is repeated after automatic validation', async () => {
     const todoStyles = '.app { color: rebeccapurple; }';
     const write = `{"action":"write_file","path":"src/components/TodoApp.module.css","content":${JSON.stringify(todoStyles)}}`;
     askWebLLM
@@ -320,14 +320,15 @@ export const title = "Today";
       .mockResolvedValueOnce(write);
     const validate = vi.fn().mockResolvedValue({ status: 'passed', check: 'build' });
 
-    await expect(
-      runAgent({
-        request: 'create a pro todo app',
-        files: { 'src/components/TodoApp.module.css': '' },
-        model: 'test',
-        validate,
-      }),
-    ).rejects.toThrow(/repeated a saved write after automatic validation/);
+    const result = await runAgent({
+      request: 'create a pro todo app',
+      files: { 'src/components/TodoApp.module.css': '' },
+      model: 'test',
+      validate,
+    });
+
+    expect(result.summary).toContain('repeated an identical write action');
+    expect(result.files['src/components/TodoApp.module.css']).toBe(todoStyles);
     expect(validate).toHaveBeenCalledOnce();
   });
 
@@ -354,6 +355,32 @@ export const title = "Today";
     expect(result.summary).toBe('done');
     expect(events.some((event) => event.error)).toBe(true);
     expect(validate).toHaveBeenCalled();
+  });
+
+  it('tells the model how to recover when a requested file is missing', async () => {
+    askWebLLM
+      .mockResolvedValueOnce('{"action":"read_file","path":"src/components/TaskList.module.css"}')
+      .mockResolvedValueOnce('{"action":"finish","summary":"no changes"}');
+    const events: AgentEvent[] = [];
+
+    await runAgent({
+      request: 'create a todo app',
+      files: { 'src/components/App.module.css': '' },
+      model: 'test',
+      onEvent: (event) => events.push(event),
+    });
+
+    expect(events).toContainEqual(
+      expect.objectContaining({
+        error: true,
+        message: expect.stringContaining('create it with write_file'),
+      }),
+    );
+    expect(
+      askWebLLM.mock.calls[1]?.[3]?.messages?.some((message: { content: string }) =>
+        message.content.includes('Do not call read_file for this path again'),
+      ),
+    ).toBe(true);
   });
 
   it('throws after repeated protocol failures', async () => {

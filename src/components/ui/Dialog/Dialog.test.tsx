@@ -1,5 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
+import { DIALOG_FOCUS_RESTORED_EVENT } from '../focusRestore';
 import Dialog from './Dialog';
 
 describe('Dialog', () => {
@@ -128,5 +129,39 @@ describe('Dialog', () => {
     expect(screen.getByText('Custom body')).toBeDefined();
     expect(screen.getByText('Custom footer')).toBeDefined();
     expect(screen.queryByText('Confirm')).toBeNull();
+  });
+
+  it('announces focus restoration before returning focus to its opener', () => {
+    const opener = document.createElement('button');
+    document.body.append(opener);
+    opener.focus();
+    const onFocusRestored = vi.fn();
+    document.addEventListener(DIALOG_FOCUS_RESTORED_EVENT, onFocusRestored);
+
+    const { rerender } = render(
+      <Dialog
+        footer={null}
+        isOpen={true}
+        title="T"
+        message="M"
+        onConfirm={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    );
+    rerender(
+      <Dialog
+        footer={null}
+        isOpen={false}
+        title="T"
+        message="M"
+        onConfirm={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    );
+
+    expect(onFocusRestored).toHaveBeenCalledWith(expect.objectContaining({ detail: opener }));
+    expect(document.activeElement).toBe(opener);
+    document.removeEventListener(DIALOG_FOCUS_RESTORED_EVENT, onFocusRestored);
+    opener.remove();
   });
 });

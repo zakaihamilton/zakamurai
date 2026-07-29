@@ -6,7 +6,7 @@ import { ChangeSetState, getWorkspaceIndex } from '@/components/Workspace';
 import type { FormEvent } from 'react';
 import { useCallback } from 'react';
 import { requireStore, toCompilerFs } from '../../types';
-import { formatSessionContext } from './AgentSessions';
+import { MAX_REASONING_EVENTS, formatSessionContext } from './AgentSessions';
 import type { AgentEventFormatter, UseAgentRunnerParams } from './prompt-types';
 
 const ROLE_LABELS: Record<string, string> = {
@@ -178,7 +178,7 @@ export default function useAgentRunner({
               events.push(event);
               progressEventIndex = replaceProgress ? events.length - 1 : null;
             }
-            const reasoningEvents = events.slice(-30);
+            const reasoningEvents = events.slice(-MAX_REASONING_EVENTS);
             const reasoning = reasoningEvents.map((event) => event.text).join('\n\n');
             patchSession(sessionId, { reasoning, reasoningEvents });
             logState((draft) => {

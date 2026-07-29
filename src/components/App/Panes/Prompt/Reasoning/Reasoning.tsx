@@ -37,7 +37,8 @@ function ReasoningPanelInner({ modelDownloadStatus, onOpenInTab = () => {} }: Re
     if ((reasoning || modelDownloadStatus) && reasoningRef.current) {
       reasoningRef.current.scrollTo?.({
         top: reasoningRef.current.scrollHeight,
-        behavior: 'smooth',
+        // Repeated smooth-scroll animations compete with local model inference.
+        behavior: 'auto',
       });
     }
   }, [modelDownloadStatus, reasoning]);

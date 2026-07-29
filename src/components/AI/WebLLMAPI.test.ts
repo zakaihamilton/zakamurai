@@ -1,4 +1,9 @@
-import { CreateMLCEngine, deleteModelAllInfoInCache, hasModelInCache } from '@mlc-ai/web-llm';
+import {
+  CreateMLCEngine,
+  CreateWebWorkerMLCEngine,
+  deleteModelAllInfoInCache,
+  hasModelInCache,
+} from '@mlc-ai/web-llm';
 import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   askWebLLM,
@@ -13,6 +18,7 @@ import type { WebLLMMessage } from './types';
 vi.mock('@mlc-ai/web-llm', () => {
   return {
     CreateMLCEngine: vi.fn(),
+    CreateWebWorkerMLCEngine: vi.fn(),
     deleteModelAllInfoInCache: vi.fn(),
     hasModelInCache: vi.fn(),
   };
@@ -27,6 +33,7 @@ type MockEngine = {
 };
 
 const mockedCreateMLCEngine = vi.mocked(CreateMLCEngine);
+const mockedCreateWebWorkerMLCEngine = vi.mocked(CreateWebWorkerMLCEngine);
 const mockedHasModelInCache = vi.mocked(hasModelInCache);
 const mockedDeleteModelAllInfoInCache = vi.mocked(deleteModelAllInfoInCache);
 
@@ -35,6 +42,10 @@ describe('WebLLMAPI', () => {
 
   beforeEach(async () => {
     vi.clearAllMocks();
+    vi.stubGlobal(
+      'Worker',
+      vi.fn(() => ({ terminate: vi.fn() })),
+    );
 
     mockEngine = {
       chat: {
@@ -47,6 +58,7 @@ describe('WebLLMAPI', () => {
       interruptSignal: false,
     };
     mockedCreateMLCEngine.mockResolvedValue(mockEngine as never);
+    mockedCreateWebWorkerMLCEngine.mockResolvedValue(mockEngine as never);
     await deleteCachedWebLLMModel('test-model');
   });
 
@@ -61,7 +73,8 @@ describe('WebLLMAPI', () => {
 
   it('cacheWebLLMModel initializes engine', async () => {
     await cacheWebLLMModel('test-model');
-    expect(mockedCreateMLCEngine).toHaveBeenCalledWith(
+    expect(mockedCreateWebWorkerMLCEngine).toHaveBeenCalledWith(
+      expect.anything(),
       'test-model',
       expect.any(Object),
       expect.any(Object),
@@ -267,17 +280,18 @@ describe('WebLLMAPI', () => {
 
     const onProgress = vi.fn();
     await cacheWebLLMModel('progress-model', onProgress);
-    const progressCallback = mockedCreateMLCEngine.mock.calls.at(-1)?.[1]?.initProgressCallback;
+    const progressCallback =
+      mockedCreateWebWorkerMLCEngine.mock.calls.at(-1)?.[2]?.initProgressCallback;
     progressCallback?.({ text: '50%' } as never);
     expect(onProgress).toHaveBeenCalledWith('50%');
   });
 
   it('resets failed engine initialization so retries can succeed', async () => {
-    mockedCreateMLCEngine.mockRejectedValueOnce(new Error('init failed'));
+    mockedCreateWebWorkerMLCEngine.mockRejectedValueOnce(new Error('init failed'));
     await expect(cacheWebLLMModel('retry-model')).rejects.toThrow(/init failed/);
-    mockedCreateMLCEngine.mockResolvedValue(mockEngine as never);
+    mockedCreateWebWorkerMLCEngine.mockResolvedValue(mockEngine as never);
     await cacheWebLLMModel('retry-model');
-    expect(mockedCreateMLCEngine).toHaveBeenCalledTimes(2);
+    expect(mockedCreateWebWorkerMLCEngine).toHaveBeenCalledTimes(2);
   });
 
   it('warns when unloading a cached model fails', async () => {

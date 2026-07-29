@@ -1,4 +1,5 @@
 import { AppState } from '@/components/App/AppState';
+import { DIALOG_FOCUS_RESTORED_EVENT } from '@/components/ui/focusRestore';
 import { makeAppState } from '@/test-utils/stateMocks';
 import { useShouldShowKeyboardShortcuts } from '@/utils/keyboard';
 import { act, fireEvent, render, screen } from '@testing-library/react';
@@ -158,6 +159,25 @@ describe('Tooltip', () => {
       await Promise.resolve();
     });
     expect(screen.getByRole('tooltip')).toBeDefined();
+  });
+
+  it('does not show a tooltip when a dialog restores focus to its trigger', async () => {
+    render(
+      <Tooltip content="Helper text">
+        <button type="button">Focus me</button>
+      </Tooltip>,
+    );
+
+    const trigger = getTrigger('Focus me');
+    const opener = screen.getByRole('button', { name: 'Focus me' });
+    document.dispatchEvent(new CustomEvent(DIALOG_FOCUS_RESTORED_EVENT, { detail: opener }));
+    fireEvent.focus(trigger);
+    await act(async () => {
+      vi.advanceTimersByTime(400);
+      await Promise.resolve();
+    });
+
+    expect(screen.queryByRole('tooltip')).toBeNull();
   });
 
   it('renders multiline tooltip content with a styled header', async () => {

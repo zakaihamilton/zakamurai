@@ -3,6 +3,7 @@ import Tooltip from '@/components/ui/Tooltip';
 import type { DialogProps } from '@/components/ui/types';
 import { useEffect, useId, useRef } from 'react';
 import { createPortal } from 'react-dom';
+import { notifyDialogFocusRestored } from '../focusRestore';
 import styles from './Dialog.module.css';
 
 export default function Dialog({
@@ -57,7 +58,11 @@ export default function Dialog({
     document.addEventListener('keydown', handleKeyDown);
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
-      openerRef.current?.focus?.();
+      const opener = openerRef.current;
+      if (opener?.isConnected) {
+        notifyDialogFocusRestored(opener);
+        opener.focus();
+      }
     };
   }, [isOpen, onCancel]);
 

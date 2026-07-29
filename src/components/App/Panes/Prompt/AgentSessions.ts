@@ -12,6 +12,11 @@ import type {
 export const MAX_AGENT_SESSIONS = 50;
 export const MAX_SESSION_MESSAGES = 40;
 export const MAX_SESSION_CONTEXT_CHARACTERS = 12000;
+/**
+ * The transcript is rendered as Markdown and persisted while an agent runs.
+ * Keeping it short avoids costly re-renders on machines already running WebLLM.
+ */
+export const MAX_REASONING_EVENTS = 40;
 
 const CONTEXT_OMITTED_NOTICE = '[Earlier conversation omitted for length.]';
 
@@ -30,7 +35,7 @@ const normalizeReasoningEvents = (value: unknown): AgentReasoningEntry[] =>
           text: entry.text,
           timestamp: typeof entry.timestamp === 'string' ? entry.timestamp : '',
         }))
-        .slice(-30)
+        .slice(-MAX_REASONING_EVENTS)
     : [];
 
 export function createAgentSession({

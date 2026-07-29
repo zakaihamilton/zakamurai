@@ -51,7 +51,7 @@
   display: flex;
   align-items: center;
   min-width: 0;
-  gap: 2px;
+  gap: 8px;
 }
 
 .modelSelect {

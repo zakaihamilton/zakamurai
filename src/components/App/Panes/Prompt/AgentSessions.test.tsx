@@ -14,6 +14,7 @@ import {
 import { describe, expect, it } from 'vitest';
 import {
   MAX_AGENT_SESSIONS,
+  MAX_REASONING_EVENTS,
   addAgentSession,
   appendSessionMessage,
   capSessionMessages,
@@ -40,6 +41,21 @@ function active(state: AgentSessionStateShape): AgentSession {
 }
 
 describe('AgentSessions', () => {
+  it('retains the configured amount of persisted reasoning history', () => {
+    const session = createAgentSession();
+    const entries = Array.from({ length: MAX_REASONING_EVENTS + 1 }, (_, index) => ({
+      text: `Step ${index + 1}`,
+      timestamp: '12:00:00',
+    }));
+    const normalized = normalizeAgentSessions({
+      activeSessionId: session.id,
+      sessions: { [session.id]: { ...session, reasoningEvents: entries } },
+    });
+
+    expect(normalized.sessions[session.id]?.reasoningEvents).toHaveLength(MAX_REASONING_EVENTS);
+    expect(normalized.sessions[session.id]?.reasoningEvents[0]?.text).toBe('Step 2');
+  });
+
   it('creates a default session store', () => {
     const state = createDefaultAgentSessions('model-a');
     const sessions = listAgentSessions(state.sessions);
