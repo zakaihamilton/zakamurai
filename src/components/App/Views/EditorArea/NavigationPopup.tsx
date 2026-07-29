@@ -6,11 +6,13 @@ import type { NavigationPopupProps } from './types';
 export default function NavigationPopup({ popup, onClose, onJumpToTarget }: NavigationPopupProps) {
   if (!popup.visible) return null;
 
+  const popupStyle = {
+    '--popup-left': `${popup.x}px`,
+    '--popup-top': `${popup.y}px`,
+  } as CSSProperties;
+
   return (
-    <div
-      className={styles.hoverPopup}
-      style={{ '--popup-left': `${popup.x}px`, '--popup-top': `${popup.y}px` } as CSSProperties}
-    >
+    <div className={styles.hoverPopup} style={popupStyle}>
       <div className={styles.popupHeader}>
         <span>
           {popup.isImport
