@@ -6,6 +6,7 @@ import {
   findEdge,
   formatPlanContext,
   getRoleById,
+  isVisualRequest,
   normalizeRoleGraph,
   parsePlanSummary,
   parseReviewSummary,
@@ -185,12 +186,12 @@ describe('role graphs', () => {
     expect(validateRoleGraph(noTerminal).errors.length).toBeGreaterThan(0);
     expect(findEdge(null, 'a', 'always')).toBeNull();
     expect(getRoleById(null, 'a')).toBeNull();
-    expect(formatPlanContext({ goals: ['g'], files: [], steps: ['s'], raw: 'raw' })).toContain(
-      'Plan goals',
-    );
-    expect(formatPlanContext({ goals: [], files: [], steps: [], raw: '' })).toContain(
-      '(none listed)',
-    );
+    expect(
+      formatPlanContext({ goals: ['g'], files: [], steps: ['s'], visualBrief: null, raw: 'raw' }),
+    ).toContain('Plan goals');
+    expect(
+      formatPlanContext({ goals: [], files: [], steps: [], visualBrief: null, raw: '' }),
+    ).toContain('(none listed)');
     expect(resolveRoleConfig({ id: 'x', kind: 'coder', join: 'any', maxRetries: -1 }).join).toBe(
       'any',
     );
@@ -215,5 +216,20 @@ describe('summary parsers', () => {
     });
     expect(parseReviewSummary('needs fixes on auth')).toMatchObject({ approved: false });
     expect(parseReviewSummary('Looks good')).toMatchObject({ approved: true });
+  });
+
+  it('recognizes visual UI requests and preserves a compact visual brief', () => {
+    expect(isVisualRequest('Build a responsive dashboard UI')).toBe(true);
+    expect(isVisualRequest('Rename a TypeScript variable')).toBe(false);
+    const plan = parsePlanSummary(
+      '{"goals":[],"files":[],"steps":[],"visualBrief":{"palette":["navy and mint"],"responsive":["single column on mobile"],"components":["Hero"]}}',
+    );
+    expect(plan.visualBrief).toMatchObject({
+      palette: ['navy and mint'],
+      responsive: ['single column on mobile'],
+      components: ['Hero'],
+      accessibility: [],
+    });
+    expect(formatPlanContext(plan)).toContain('Visual brief:');
   });
 });

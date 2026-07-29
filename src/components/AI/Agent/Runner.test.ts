@@ -77,6 +77,31 @@ describe('runAgent', () => {
     expect(events[0].agentRole).toBe('planner');
   });
 
+  it('requires preview inspection before a visual review can finish', async () => {
+    askWebLLM
+      .mockResolvedValueOnce('{"action":"finish","summary":"premature"}')
+      .mockResolvedValueOnce('{"action":"inspect_preview"}')
+      .mockResolvedValueOnce('{"action":"finish","summary":"reviewed"}');
+    const inspectPreview = vi.fn().mockResolvedValue({ status: 'passed', visualEvidence: {} });
+
+    const result = await runAgent({
+      request: 'review dashboard UI',
+      files: { 'src/a.tsx': 'export {}' },
+      model: 'test',
+      visualMode: true,
+      requirePreviewInspection: true,
+      inspectPreview,
+    });
+
+    expect(result.summary).toBe('reviewed');
+    expect(inspectPreview).toHaveBeenCalledOnce();
+    expect(askWebLLM.mock.calls[0]?.[3]).toMatchObject({
+      temperature: 0.12,
+      top_p: 0.8,
+      max_tokens: 2400,
+    });
+  });
+
   it('covers list/search/delete tools and recovers from one protocol failure', async () => {
     askWebLLM
       .mockResolvedValueOnce('not-json')

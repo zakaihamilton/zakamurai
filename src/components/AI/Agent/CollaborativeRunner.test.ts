@@ -17,6 +17,7 @@ describe('Roles parsers', () => {
       goals: ['g'],
       files: ['a.js'],
       steps: ['s1'],
+      visualBrief: null,
       raw: '{"goals":["g"],"files":["a.js"],"steps":["s1"]}',
     });
     expect(parseReviewSummary('{"approved":false,"fixes":["fix null"],"notes":"n"}')).toEqual({
@@ -69,6 +70,31 @@ describe('runCollaborativeAgent', () => {
     expect(events.some((event) => event.agentRole === 'coder')).toBe(true);
     expect(events.some((event) => event.agentRole === 'reviewer')).toBe(true);
     expect(validate).toHaveBeenCalled();
+  });
+
+  it('passes a visual brief through the team and requires reviewer preview evidence', async () => {
+    askWebLLM
+      .mockResolvedValueOnce(
+        '{"action":"finish","summary":"{\\"goals\\":[\\"build dashboard\\"],\\"files\\":[],\\"steps\\":[\\"compose sections\\"],\\"visualBrief\\":{\\"pageHierarchy\\":[\\"header then main\\"],\\"components\\":[\\"Header\\"],\\"palette\\":[\\"blue\\"],\\"typography\\":[],\\"tokens\\":[],\\"responsive\\":[\\"stack on mobile\\"],\\"interactions\\":[],\\"accessibility\\":[\\"focus visible\\"]}}"}',
+      )
+      .mockResolvedValueOnce('{"action":"finish","summary":"implemented"}')
+      .mockResolvedValueOnce('{"action":"inspect_preview"}')
+      .mockResolvedValueOnce(
+        '{"action":"finish","summary":"{\\"approved\\":true,\\"notes\\":\\"preview checked\\"}"}',
+      );
+    const inspectPreview = vi.fn().mockResolvedValue({ status: 'passed', visualEvidence: {} });
+
+    const result = await runCollaborativeAgent({
+      request: 'Create a responsive dashboard UI',
+      files: { 'src/a.tsx': 'export {}' },
+      model: 'test',
+      inspectPreview,
+    });
+
+    expect(result.plan?.visualBrief?.components).toEqual(['Header']);
+    expect(inspectPreview).toHaveBeenCalledOnce();
+    expect(askWebLLM.mock.calls[1]?.[3]?.messages?.[1]?.content).toContain('Visual brief:');
+    expect(askWebLLM.mock.calls[0]?.[3]).toMatchObject({ max_tokens: 2400, top_p: 0.8 });
   });
 
   it('retries coder once when reviewer rejects', async () => {

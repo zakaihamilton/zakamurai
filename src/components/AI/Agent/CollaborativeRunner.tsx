@@ -10,6 +10,7 @@ import {
   findEdge,
   formatPlanContext,
   getRoleById,
+  isVisualRequest,
   normalizeRoleGraph,
   parsePlanSummary,
   parseReviewSummary,
@@ -53,6 +54,7 @@ export async function runCollaborativeAgent({
   if (!graphValidation.valid)
     throw new Error(`Invalid workflow graph: ${graphValidation.errors.join(' ')}`);
   const workspace = new AgentWorkspace(files, workspaceIndex);
+  const visualMode = isVisualRequest(request);
   const shared = {
     request,
     scope,
@@ -76,6 +78,11 @@ export async function runCollaborativeAgent({
   });
 
   const priorParts = priorContext ? [priorContext] : [];
+  if (visualMode) {
+    priorParts.push(
+      'Visual UI mode: First produce and then follow a compact visual brief covering hierarchy, components, palette, typography, design tokens, responsive behavior, interaction states, and accessibility. Use preview evidence for deterministic review; this text-only model must not claim screenshot-based aesthetic judgment.',
+    );
+  }
   const roleSummaries: Record<string, string> = {};
   const rejectCounts: Record<string, number> = {};
   let currentRoleId = graph.entryRoleId;
@@ -102,6 +109,8 @@ export async function runCollaborativeAgent({
       allowedActions: config.allowedActions,
       maxTurns: config.maxTurns,
       agentRole: config.id,
+      visualMode,
+      requirePreviewInspection: visualMode && config.kind === 'reviewer',
       onEvent: withRoleEvent(onEvent, config.id),
     });
 

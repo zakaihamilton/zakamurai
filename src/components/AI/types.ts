@@ -171,7 +171,19 @@ export type PlanSummary = {
   goals: string[];
   files: string[];
   steps: string[];
+  visualBrief: VisualBrief | null;
   raw: string;
+};
+
+export type VisualBrief = {
+  pageHierarchy: string[];
+  components: string[];
+  palette: string[];
+  typography: string[];
+  tokens: string[];
+  responsive: string[];
+  interactions: string[];
+  accessibility: string[];
 };
 
 export type ReviewSummary = {
@@ -356,6 +368,8 @@ export type RunAgentOptions = {
   workspace?: import('./Agent/Workspace').AgentWorkspace | null;
   agentRole?: string | null;
   workspaceIndex?: WorkspaceIndex | null;
+  visualMode?: boolean;
+  requirePreviewInspection?: boolean;
 };
 
 export type RunAgentResult = {

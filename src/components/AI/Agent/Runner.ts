@@ -70,6 +70,8 @@ export async function runAgent({
   workspace: existingWorkspace = null,
   agentRole = null,
   workspaceIndex = null,
+  visualMode = false,
+  requirePreviewInspection = false,
 }: RunAgentOptions): Promise<RunAgentResult> {
   const askWebLLM = await loadAskWebLLM();
   const workspace = existingWorkspace || new AgentWorkspace(files, workspaceIndex);
@@ -92,6 +94,7 @@ export async function runAgent({
   let repeatedActions = 0;
   let wroteSinceVerification = false;
   let repairAttempts = 0;
+  let inspectedPreview = false;
 
   for (let turn = 1; turn <= maxTurns; turn++) {
     if (signal?.aborted) throw new DOMException('Agent stopped', 'AbortError');
@@ -99,14 +102,17 @@ export async function runAgent({
       type: 'thinking',
       turn,
       agentRole,
-      message: `Planning step ${turn}`,
+      message:
+        turn === 1
+          ? 'Reviewing the request and available workspace context before choosing an action…'
+          : 'Reviewing the latest tool result and choosing the next action…',
     });
     const reply = await askWebLLM('', '', null, {
       model,
       messages,
-      temperature: 0.15,
+      temperature: visualMode ? 0.12 : 0.15,
       top_p: 0.8,
-      max_tokens: 1800,
+      max_tokens: visualMode ? 2400 : 1800,
     });
     messages.push({ role: 'assistant', content: reply });
 
@@ -201,9 +207,21 @@ export async function runAgent({
           ? await inspectPreview(workspace.files)
           : { status: 'unavailable', diagnostics: 'Preview inspection is unavailable.' };
         result = JSON.stringify(preview);
+        inspectedPreview = true;
         context.record('preview', preview);
       }
       if (action.action === 'finish') {
+        if (requirePreviewInspection && !inspectedPreview) {
+          messages.push({
+            role: 'user',
+            content: observation(
+              'finish',
+              false,
+              'Visual UI review requires action "inspect_preview" before finishing. Use its structured evidence to assess landmarks, named controls, runtime errors, and the visual brief.',
+            ),
+          });
+          continue;
+        }
         if (wroteSinceVerification && validate) {
           messages.push({
             role: 'user',

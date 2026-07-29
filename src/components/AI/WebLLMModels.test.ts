@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   LEGACY_WEB_LLM_MODEL_IDS,
   RECOMMENDED_COMPLETION_MODEL,
+  RECOMMENDED_VISUAL_REVIEW_MODEL,
   RECOMMENDED_WEB_LLM_MODEL,
   WEB_LLM_MODELS,
   resolveCompletionModelId,
@@ -25,6 +26,10 @@ describe('WebLLMModels', () => {
 
   it('recommends Qwen3.5 4B by default', () => {
     expect(RECOMMENDED_WEB_LLM_MODEL.id).toBe('Qwen3.5-4B-q4f16_1-MLC');
+  });
+
+  it('offers Qwen3.5 9B as the opt-in visual planning and review tier', () => {
+    expect(RECOMMENDED_VISUAL_REVIEW_MODEL.id).toBe('Qwen3.5-9B-q4f16_1-MLC');
   });
 
   it('migrates legacy Qwen3 model IDs to Qwen3.5 equivalents', () => {

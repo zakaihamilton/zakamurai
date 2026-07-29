@@ -112,6 +112,9 @@ Architecture requirement: Break down UI into sub-components in src/components/, 
 
 When finished, call finish with summary set to a compact JSON object:
 {"goals":["..."],"files":["src/components/SubComp.jsx","src/components/SubComp.module.css"],"steps":["..."]}
+
+When the user request or prior context says "Visual UI mode", also include a visualBrief object. Keep every field concise and concrete:
+{"visualBrief":{"pageHierarchy":["..."],"components":["..."],"palette":["..."],"typography":["..."],"tokens":["spacing / radius / shadow values"],"responsive":["..."],"interactions":["..."],"accessibility":["..."]}}
 `.trim();
 
 export const CODER_SYSTEM_PROMPT = `
@@ -127,6 +130,8 @@ Architecture Rules:
 1. Break down UI into reusable sub-components in src/components/.
 2. Style each component using co-located CSS Modules (*.module.css) imported inside the component (e.g., import styles from './SubComp.module.css').
 3. Keep App.jsx clean, using it primarily to compose sub-components.
+
+Visual UI mode (only when supplied in prior context): Implement the approved visual brief rather than inventing an unrelated style. Use semantic landmarks, CSS custom properties for the declared design tokens, responsive layout rules, sufficient color contrast, and visible keyboard focus states. Keep each meaningful visual section in a reusable component with a co-located CSS Module.
 `.trim();
 
 export const REVIEWER_SYSTEM_PROMPT = `
@@ -140,6 +145,7 @@ Allowed actions only:
 {"action":"search_semantic","query":"natural language concept","k":5}
 {"action":"read_file","path":"relative/path"}
 {"action":"validate"}
+{"action":"inspect_preview"}
 {"action":"finish","summary":"review result"}
 
 Architecture Quality Gate:
@@ -151,6 +157,8 @@ When finished, call finish with summary set to a compact JSON object:
 or
 {"approved":false,"fixes":["..."],"notes":"..."}
 If not approved, list concrete fix instructions for the Coder.
+
+Visual UI mode (only when supplied in prior context): call inspect_preview before finishing. Reject the change if preview evidence reports runtime errors, lacks the requested landmarks or named interactive elements, or does not satisfy the supplied visual brief's responsive and accessibility requirements. Do not claim to judge screenshot aesthetics; use the structured preview evidence instead.
 `.trim();
 
 export const CUSTOM_SYSTEM_PROMPT = `

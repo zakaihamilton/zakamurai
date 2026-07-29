@@ -1,5 +1,7 @@
 import { applyAgentChanges } from '@/components/AI/Agent';
+import { computeDiff } from '@/components/AI/Processor/utils/DiffEngine';
 import type { AgentEvent } from '@/components/AI/types';
+import { AppState } from '@/components/App/AppState';
 import { ChangeSetState, getWorkspaceIndex } from '@/components/Workspace';
 import type { FormEvent } from 'react';
 import { useCallback } from 'react';
@@ -18,7 +20,7 @@ export const formatAgentEvent: AgentEventFormatter = (event, roleLabelById = {})
   const roleName = roleLabelById[roleKey] || ROLE_LABELS[roleKey] || event.agentRole || null;
   const rolePrefix = roleName ? `**${roleName}** · ` : '';
   if (event.type === 'thinking') {
-    return `${rolePrefix}**Step ${event.turn}:** planning next action…`;
+    return `${rolePrefix}**Step ${event.turn}:** ${event.message || 'planning next action…'}`;
   }
   if (event.type === 'tool') {
     const action = event.action;
@@ -57,6 +59,7 @@ export default function useAgentRunner({
   logState,
 }: UseAgentRunnerParams) {
   const changeSetState = requireStore(ChangeSetState.usePassiveState());
+  const appState = requireStore(AppState.usePassiveState());
   const handleStop = useCallback(
     (e: React.MouseEvent<HTMLButtonElement>) => {
       e.preventDefault();
@@ -152,6 +155,15 @@ export default function useAgentRunner({
             draft.abortController = controller;
           });
           const events: string[] = [];
+          const appendReasoning = (line: string) => {
+            events.push(line);
+            const reasoning = events.slice(-30).join('\n\n');
+            patchSession(sessionId, { reasoning });
+            logState((draft) => {
+              (draft as typeof draft & { reasoning?: string }).reasoning = reasoning;
+            });
+          };
+          appendReasoning('**Preparing workspace:** collecting project files for the local agent…');
           const priorContext = formatSessionContext(activeSession.messages || []);
           const roleGraph = activeSession.roleGraph as {
             roles?: Array<{ id: string; label?: string; kind?: string }>;
@@ -173,6 +185,9 @@ export default function useAgentRunner({
           const workspaceFiles = await collectWorkspaceFiles(
             toCompilerFs(fs) as never,
             editorState.fileContents || {},
+          );
+          appendReasoning(
+            `**Workspace ready:** ${Object.keys(workspaceFiles).length} file(s) available. Loading **${selectedModel}** and starting the agent…`,
           );
           const runOptions = {
             request: userMsg,
@@ -245,7 +260,11 @@ export default function useAgentRunner({
                 const { getLatestPreviewEvidence } = await import(
                   '@/components/App/Views/PreviewArea/previewEvidenceBridge'
                 );
+                const { summarizeVisualPreviewEvidence } = await import(
+                  '@/components/AI/Agent/VisualPreviewEvidence'
+                );
                 const evidence = getLatestPreviewEvidence();
+                const runtimeErrors: string[] = [];
                 return {
                   status: 'passed',
                   path: evidence?.path || '/preview/',
@@ -253,7 +272,8 @@ export default function useAgentRunner({
                   domSummary:
                     evidence?.text || 'Open the Preview pane to collect rendered DOM evidence.',
                   elements: evidence?.elements || [],
-                  runtimeErrors: [],
+                  runtimeErrors,
+                  visualEvidence: summarizeVisualPreviewEvidence(evidence, runtimeErrors),
                   screenshotCaptured: Boolean(evidence?.screenshotCaptured),
                   diagnostics: verificationLogs.slice(-12).join('\n'),
                 };
@@ -269,17 +289,31 @@ export default function useAgentRunner({
             },
             onEvent: (event: AgentEvent) => {
               const line = formatAgentEvent(event, roleLabelById);
-              if (line) events.push(line);
-              const reasoning = events.slice(-30).join('\n\n');
-              patchSession(sessionId, { reasoning });
-              logState((draft) => {
-                (draft as typeof draft & { reasoning?: string }).reasoning = reasoning;
-              });
+              if (line) appendReasoning(line);
 
               if (event.type === 'tool' && event.action && typeof event.action === 'object') {
                 const actionObj = event.action;
                 if (actionObj.action === 'write_file' && actionObj.path) {
-                  ensureFileInTree(sidebarState, actionObj.path);
+                  const filePath = actionObj.path;
+                  ensureFileInTree(sidebarState, filePath);
+                  const content = actionObj.content || '';
+                  editorState((draft) => {
+                    const existing = draft.pendingDiffs?.[filePath];
+                    const originalContent =
+                      existing?.originalContent ?? draft.fileContents?.[filePath] ?? '';
+                    const pendingDiffs = { ...(draft.pendingDiffs || {}) };
+                    pendingDiffs[filePath] = {
+                      originalContent,
+                      modifiedContent: content,
+                      originalCursorPos: existing?.originalCursorPos,
+                      diffs: computeDiff(originalContent, content).diffs,
+                    };
+                    draft.fileContents = { ...(draft.fileContents || {}), [filePath]: content };
+                    draft.pendingDiffs = pendingDiffs;
+                  });
+                  appendReasoning(
+                    `**Live draft available:** \`${filePath}\` can now be opened from the file tree.`,
+                  );
                 } else if (actionObj.action === 'delete_file' && actionObj.path) {
                   removeFileFromTree(sidebarState, actionObj.path);
                 }
@@ -293,6 +327,7 @@ export default function useAgentRunner({
                   runOptions as import('@/components/AI/types').RunCollaborativeAgentOptions,
                 )
               : await runAgent(runOptions as import('@/components/AI/types').RunAgentOptions);
+          appendReasoning('**Agent complete:** preparing validated changes for the workspace…');
 
           let stillProcessing = false;
           logState((draft) => {
@@ -329,7 +364,7 @@ export default function useAgentRunner({
             draft.isAIProcessing = false;
           });
 
-          const { deletions, changeSet } = applyAgentChanges(result.changes, {
+          const { applied, deletions, changeSet } = applyAgentChanges(result.changes, {
             editorState: editorState as never,
             sidebarState: sidebarState as never,
             logState: logState as never,
@@ -337,6 +372,14 @@ export default function useAgentRunner({
             request: userMsg,
             autoApprove: autoApproveInitialProject,
           });
+          if (autoApproveInitialProject && applied > 0) {
+            appendReasoning(
+              '**Initial project ready:** starting the first build now. Preview will open automatically when it succeeds…',
+            );
+            appState((draft) => {
+              draft.compileRequest = (draft.compileRequest || 0) + 1;
+            });
+          }
           if (changeSet) {
             pushSessionMessage(
               sessionId,
@@ -419,6 +462,7 @@ export default function useAgentRunner({
     [
       activeSession,
       addToHistory,
+      appState,
       createSessionMessage,
       changeSetState,
       editorState,

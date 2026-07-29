@@ -94,3 +94,74 @@
 .content::-webkit-scrollbar-corner {
   background: transparent;
 }
+
+.markdownContent {
+  font-family: inherit;
+  white-space: normal;
+}
+
+.markdownContent *:first-child {
+  margin-top: 0;
+}
+
+.markdownContent *:last-child {
+  margin-bottom: 0;
+}
+
+.paragraph,
+.list,
+.pre,
+.blockquote {
+  margin: 0 0 12px;
+}
+
+.list {
+  padding-left: 22px;
+}
+
+.listItem {
+  margin: 4px 0;
+}
+
+.heading {
+  margin: 16px 0 8px;
+  color: var(--text-main);
+  font-size: 16px;
+  line-height: 1.35;
+}
+
+.code {
+  border-radius: 4px;
+  background: var(--bg-input);
+  color: var(--text-main);
+  font-family: var(--font-mono, monospace);
+  font-size: 12px;
+  padding: 1px 4px;
+}
+
+.pre {
+  overflow-x: auto;
+  border: 1px solid var(--border-light);
+  border-radius: 6px;
+  background: var(--bg-input);
+  padding: 12px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.pre .code {
+  display: block;
+  background: transparent;
+  padding: 0;
+  white-space: pre-wrap;
+}
+
+.blockquote {
+  border-left: 3px solid var(--accent);
+  color: var(--text-muted);
+  padding-left: 12px;
+}
+
+.link {
+  color: var(--accent);
+}

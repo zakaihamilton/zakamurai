@@ -1,9 +1,11 @@
 import type { AgentEvent } from '@/components/AI/types';
+import { AppState } from '@/components/App/AppState';
 import { makeAgentSession } from '@/test-utils/agentSessionMocks';
 import { createMockEditorState, createMockTab } from '@/test-utils/editorMocks';
 import { makeFileSystemApi } from '@/test-utils/fsMocks';
 import {
   makeAgentSessionState,
+  makeAppState,
   makeLogState,
   makePromptUiState,
   makeSidebarState,
@@ -25,7 +27,7 @@ const {
 } = vi.hoisted(() => ({
   runAgent: vi.fn(),
   runCollaborativeAgent: vi.fn(),
-  applyAgentChanges: vi.fn(() => ({ deletions: [], changeSet: null })),
+  applyAgentChanges: vi.fn(() => ({ applied: 0, deletions: [], changeSet: null })),
   collectWorkspaceFiles: vi.fn(async (_fs: unknown, files: unknown) => files),
   ensureFileInTree: vi.fn(),
   removeFileFromTree: vi.fn(),
@@ -34,6 +36,10 @@ const {
 vi.mock('@/components/Workspace', () => ({
   ChangeSetState: { usePassiveState: () => ({}) },
   getWorkspaceIndex: () => ({ queryText: vi.fn().mockResolvedValue([]) }),
+}));
+
+vi.mock('@/components/App/AppState', () => ({
+  AppState: { usePassiveState: vi.fn() },
 }));
 
 vi.mock('@/components/AI/Agent', () => ({
@@ -167,11 +173,24 @@ describe('formatAgentEvent', () => {
       formatAgentEvent({ type: 'thinking', turn: 1, agentRole: 'r1' }, { r1: 'Lead' }),
     ).toContain('Lead');
   });
+
+  it('shows the agent-provided thinking detail instead of a generic wait message', () => {
+    expect(
+      formatAgentEvent({
+        type: 'thinking',
+        turn: 1,
+        agentRole: 'planner',
+        message: 'Reviewing the workspace…',
+      }),
+    ).toContain('Reviewing the workspace');
+  });
 });
 
 describe('useAgentRunner', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(AppState.usePassiveState).mockReturnValue(makeAppState());
+    applyAgentChanges.mockReturnValue({ applied: 0, deletions: [], changeSet: null });
     runAgent.mockResolvedValue({
       summary: 'single done',
       changes: [{ path: 'app.js', before: 'a', after: 'b' }],
@@ -290,6 +309,29 @@ describe('useAgentRunner', () => {
     ).toMatchObject({ autoApprove: true });
   });
 
+  it('builds and opens preview through the compile request after initial files are applied', async () => {
+    const appState = makeAppState({ compileRequest: 0 });
+    vi.mocked(AppState.usePassiveState).mockReturnValue(appState);
+    applyAgentChanges.mockReturnValue({ applied: 1, deletions: [], changeSet: null });
+    const props = createRunnerProps({
+      editorState: createMockEditorState({ fileContents: {}, selectedLines: {} }),
+      sidebarState: makeSidebarState({ folderTree: [] }),
+    });
+    const { result } = renderHook(() => useAgentRunner(props));
+
+    act(() => {
+      result.current.send(mockFormEvent());
+    });
+
+    await waitFor(() => expect(appState.compileRequest).toBe(1));
+    expect(props.patchSession).toHaveBeenCalledWith(
+      'session-1',
+      expect.objectContaining({
+        reasoning: expect.stringContaining('Preview will open automatically'),
+      }),
+    );
+  });
+
   it('keeps review enabled when the project already has files', async () => {
     const props = createRunnerProps({
       editorState: createMockEditorState({
@@ -350,11 +392,15 @@ describe('useAgentRunner', () => {
     expect(runCollaborativeAgent).not.toHaveBeenCalled();
   });
 
-  it('updates sidebar file tree live during write_file and delete_file tool events', async () => {
+  it('makes generated files viewable as live pending drafts during write_file events', async () => {
     runAgent.mockImplementationOnce(async (options) => {
       options.onEvent({
         type: 'tool',
-        action: { action: 'write_file', path: 'src/components/Live.jsx' },
+        action: {
+          action: 'write_file',
+          path: 'src/components/Live.jsx',
+          content: 'export default function Live() { return null; }',
+        },
       });
       options.onEvent({
         type: 'tool',
@@ -373,6 +419,13 @@ describe('useAgentRunner', () => {
     await waitFor(() => {
       expect(ensureFileInTree).toHaveBeenCalledWith(props.sidebarState, 'src/components/Live.jsx');
       expect(removeFileFromTree).toHaveBeenCalledWith(props.sidebarState, 'src/old.js');
+      expect(props.editorState.fileContents?.['src/components/Live.jsx']).toContain(
+        'function Live',
+      );
+      expect(props.editorState.pendingDiffs?.['src/components/Live.jsx']).toMatchObject({
+        originalContent: '',
+        modifiedContent: 'export default function Live() { return null; }',
+      });
     });
   });
 });

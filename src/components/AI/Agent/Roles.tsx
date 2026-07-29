@@ -8,6 +8,7 @@ import type {
   RoleKind,
   RoleNode,
   RoleNodeInput,
+  VisualBrief,
 } from '@/components/AI/types';
 import {
   ALL_AGENT_ACTIONS,
@@ -315,7 +316,7 @@ export function findEdge(
 
 export function parsePlanSummary(summary: string | null | undefined): PlanSummary {
   if (typeof summary !== 'string' || !summary.trim()) {
-    return { goals: [], files: [], steps: [], raw: summary || '' };
+    return { goals: [], files: [], steps: [], visualBrief: null, raw: summary || '' };
   }
   try {
     const fenced = summary.match(/```(?:json)?\s*([\s\S]*?)```/i);
@@ -324,19 +325,50 @@ export function parsePlanSummary(summary: string | null | undefined): PlanSummar
       goals?: unknown[];
       files?: unknown[];
       steps?: unknown[];
+      visualBrief?: unknown;
     };
     if (!value || typeof value !== 'object') {
-      return { goals: [], files: [], steps: [], raw: summary };
+      return { goals: [], files: [], steps: [], visualBrief: null, raw: summary };
     }
     return {
       goals: Array.isArray(value.goals) ? value.goals.map(String) : [],
       files: Array.isArray(value.files) ? value.files.map(String) : [],
       steps: Array.isArray(value.steps) ? value.steps.map(String) : [],
+      visualBrief: normalizeVisualBrief(value.visualBrief),
       raw: summary,
     };
   } catch {
-    return { goals: [], files: [], steps: [], raw: summary };
+    return { goals: [], files: [], steps: [], visualBrief: null, raw: summary };
   }
+}
+
+const VISUAL_BRIEF_FIELDS: Array<keyof VisualBrief> = [
+  'pageHierarchy',
+  'components',
+  'palette',
+  'typography',
+  'tokens',
+  'responsive',
+  'interactions',
+  'accessibility',
+];
+
+export function normalizeVisualBrief(value: unknown): VisualBrief | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const source = value as Record<string, unknown>;
+  const brief = Object.fromEntries(
+    VISUAL_BRIEF_FIELDS.map((field) => [
+      field,
+      Array.isArray(source[field]) ? source[field].map(String).filter(Boolean).slice(0, 8) : [],
+    ]),
+  ) as VisualBrief;
+  return VISUAL_BRIEF_FIELDS.some((field) => brief[field].length > 0) ? brief : null;
+}
+
+export function isVisualRequest(request: string | null | undefined): boolean {
+  return /\b(ui|ux|visual|design|layout|landing page|dashboard|responsive|stylesheet|css|theme)\b/i.test(
+    request || '',
+  );
 }
 
 export function parseReviewSummary(summary: string | null | undefined): ReviewSummary {
@@ -379,7 +411,12 @@ export function formatPlanContext(plan: PlanSummary): string {
   const goals = plan.goals?.length ? plan.goals.map((g) => `- ${g}`).join('\n') : '- (none listed)';
   const files = plan.files?.length ? plan.files.map((f) => `- ${f}`).join('\n') : '- (none listed)';
   const steps = plan.steps?.length ? plan.steps.map((s) => `- ${s}`).join('\n') : '- (none listed)';
-  return `Plan goals:\n${goals}\n\nTarget files:\n${files}\n\nSteps:\n${steps}\n\nRaw plan:\n${plan.raw || ''}`;
+  const visualBrief = plan.visualBrief
+    ? `\n\nVisual brief:\n${VISUAL_BRIEF_FIELDS.map(
+        (field) => `${field}: ${plan.visualBrief?.[field].join('; ') || '(none)'}`,
+      ).join('\n')}`
+    : '';
+  return `Plan goals:\n${goals}\n\nTarget files:\n${files}\n\nSteps:\n${steps}${visualBrief}\n\nRaw plan:\n${plan.raw || ''}`;
 }
 
 export function describeRoleGraph(graph: RoleGraph): string {

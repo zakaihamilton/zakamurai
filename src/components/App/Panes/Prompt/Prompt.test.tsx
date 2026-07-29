@@ -316,6 +316,27 @@ describe('Prompt', () => {
     expect(screen.getByText('const ready = true;').tagName).toBe('CODE');
   });
 
+  it('opens Progress & Reasoning in a tab when a welcome request is handed off', async () => {
+    const tabState = makeTabState({ openTabs: [], activeTabId: null });
+    vi.mocked(TabState.useState).mockReturnValue(tabState);
+    vi.mocked(PromptUiState.useState).mockReturnValue(
+      makePromptUiState({
+        val: '',
+        selectedModel: 'Qwen3.5-4B-q4f16_1-MLC',
+        welcomeRequest: { text: 'Build a landing page', scope: 'project' },
+      }),
+    );
+
+    render(<Prompt />);
+
+    await waitFor(() => expect(tabState.activeTabId).toBe('ai-section:reasoning'));
+    expect(tabState.openTabs).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: 'ai-section:reasoning', label: 'Progress & Reasoning' }),
+      ]),
+    );
+  });
+
   it('wraps long reasoning code blocks inside the prompt pane', () => {
     setupCommonMocks({
       reasoning: '```text\nthis-is-a-very-long-agent-output-line-without-natural-breaks\n```',

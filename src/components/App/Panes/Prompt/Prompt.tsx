@@ -128,8 +128,18 @@ export default function Prompt() {
     promptUiState((draft) => {
       draft.welcomeRequest = null;
     });
+    tabState((draft) => {
+      const id = 'ai-section:reasoning';
+      if (!draft.openTabs.some((tab) => tab.id === id)) {
+        draft.openTabs = [
+          ...draft.openTabs,
+          { id, type: 'ai-section', label: 'Progress & Reasoning' },
+        ];
+      }
+      draft.activeTabId = id;
+    });
     send(null, request.text, request.scope);
-  }, [activeSession, isAIProcessing, promptUiState, send, welcomeRequest]);
+  }, [activeSession, isAIProcessing, promptUiState, send, tabState, welcomeRequest]);
 
   const handleKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
     const mac = navigator.platform.toUpperCase().includes('MAC');

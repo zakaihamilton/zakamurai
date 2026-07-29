@@ -49,7 +49,7 @@ export const PREVIEW_ERROR_BRIDGE_SCRIPT = `(function(){
     post(${JSON.stringify(PREVIEW_MESSAGE_TYPES.NAVIGATE)}, '', { path: location.pathname || '' });
     setTimeout(function () {
       var text = (document.body && document.body.innerText || '').replace(/\\s+/g, ' ').slice(0, 4000);
-      var elements = Array.prototype.slice.call(document.querySelectorAll('h1,h2,h3,button,a,input,[role]'), 0, 80).map(function(el) {
+      var elements = Array.prototype.slice.call(document.querySelectorAll('main,nav,header,footer,h1,h2,h3,button,a,input,select,textarea,[role]'), 0, 80).map(function(el) {
         return (el.getAttribute('role') || el.tagName.toLowerCase()) + ': ' + (el.getAttribute('aria-label') || el.innerText || el.value || '').replace(/\\s+/g, ' ').slice(0, 160);
       }).filter(Boolean);
       post(${JSON.stringify(PREVIEW_MESSAGE_TYPES.EVIDENCE)}, '', { path: location.pathname || '', title: document.title || '', text: text, elements: elements, screenshotCaptured: false });

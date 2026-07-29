@@ -13,7 +13,8 @@ import { ChangeSetState } from '@/components/Workspace';
 import type { Tab } from '@/components/state/domain-types';
 import { Icons } from '@/components/ui/Icons';
 import Tooltip from '@/components/ui/Tooltip';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import ReactMarkdown from 'react-markdown';
 import styles from './AISection.module.css';
 
 const titleBySection = {
@@ -42,6 +43,7 @@ export default function AISectionView({ tab }: { tab: Tab }) {
   const changeSetState = requireStore(ChangeSetState.useState(['activeId', 'items']));
   const webLLMState = requireStore(WebLLMState.useState(['engines']));
   const [copied, setCopied] = useState(false);
+  const contentRef = useRef<HTMLDivElement | null>(null);
   const activeSession = getActiveAgentSession(agentSessionState);
   const scope = promptUiState.promptScope || 'project';
   const activeTab = tabState.openTabs.find((openTab) => openTab.id === tabState.activeTabId);
@@ -94,6 +96,14 @@ export default function AISectionView({ tab }: { tab: Tab }) {
               .filter(Boolean)
               .join('\n\n') || 'No progress or reasoning to show yet.';
 
+  useEffect(() => {
+    if (section !== 'reasoning' || !content || !contentRef.current) return;
+    contentRef.current.scrollTo({
+      top: contentRef.current.scrollHeight,
+      behavior: 'smooth',
+    });
+  }, [content, section]);
+
   const copy = async () => {
     await navigator.clipboard.writeText(content);
     setCopied(true);
@@ -118,7 +128,34 @@ export default function AISectionView({ tab }: { tab: Tab }) {
           </button>
         </Tooltip>
       </header>
-      <pre className={styles.content}>{content}</pre>
+      {section === 'reasoning' ? (
+        <div ref={contentRef} className={`${styles.content} ${styles.markdownContent}`}>
+          <ReactMarkdown
+            components={{
+              a: ({ node, ...props }) => <a className={styles.link} {...props} />,
+              blockquote: ({ node, ...props }) => (
+                <blockquote className={styles.blockquote} {...props} />
+              ),
+              code: ({ node, ...props }) => <code className={styles.code} {...props} />,
+              h1: ({ node, ...props }) => <h1 className={styles.heading} {...props} />,
+              h2: ({ node, ...props }) => <h2 className={styles.heading} {...props} />,
+              h3: ({ node, ...props }) => <h3 className={styles.heading} {...props} />,
+              h4: ({ node, ...props }) => <h4 className={styles.heading} {...props} />,
+              h5: ({ node, ...props }) => <h5 className={styles.heading} {...props} />,
+              h6: ({ node, ...props }) => <h6 className={styles.heading} {...props} />,
+              li: ({ node, ...props }) => <li className={styles.listItem} {...props} />,
+              ol: ({ node, ...props }) => <ol className={styles.list} {...props} />,
+              p: ({ node, ...props }) => <p className={styles.paragraph} {...props} />,
+              pre: ({ node, ...props }) => <pre className={styles.pre} {...props} />,
+              ul: ({ node, ...props }) => <ul className={styles.list} {...props} />,
+            }}
+          >
+            {content}
+          </ReactMarkdown>
+        </div>
+      ) : (
+        <pre className={styles.content}>{content}</pre>
+      )}
     </section>
   );
 }

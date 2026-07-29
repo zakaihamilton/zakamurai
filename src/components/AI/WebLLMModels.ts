@@ -25,7 +25,10 @@ export const WEB_LLM_MODELS: WebLLMModel[] = [
       ['System', 'High-end WebGPU device with ~6.4 GB VRAM'],
       ['Storage', 'Large browser cache footprint'],
       ['Speed', 'Slower than 4B models'],
-      ['Best for', 'Harder reasoning, planning, code review, architecture questions'],
+      [
+        'Best for',
+        'Harder reasoning, visual UI planning/review, code review, architecture questions',
+      ],
     ],
     recommended: false,
   },
@@ -39,7 +42,7 @@ export const WEB_LLM_MODELS: WebLLMModel[] = [
       ['System', 'Modern WebGPU-capable laptop or desktop with ~3.9 GB VRAM'],
       ['Storage', 'Medium browser cache footprint'],
       ['Speed', 'Balanced startup and generation'],
-      ['Best for', 'Everyday coding help, app changes, explanations'],
+      ['Best for', 'Everyday coding help, app changes, visual UI implementation, explanations'],
     ],
     recommended: true,
   },
@@ -85,6 +88,11 @@ export const RECOMMENDED_WEB_LLM_MODEL =
 export const RECOMMENDED_COMPLETION_MODEL =
   WEB_LLM_MODELS.find((model) => model.id === 'Qwen2.5-Coder-3B-Instruct-q4f16_1-MLC') ||
   WEB_LLM_MODELS.find((model) => model.id.includes('Coder-3B')) ||
+  RECOMMENDED_WEB_LLM_MODEL;
+
+/** Optional quality tier for visual planning and review on capable WebGPU devices. */
+export const RECOMMENDED_VISUAL_REVIEW_MODEL =
+  WEB_LLM_MODELS.find((model) => model.id === 'Qwen3.5-9B-q4f16_1-MLC') ||
   RECOMMENDED_WEB_LLM_MODEL;
 
 const VALID_WEB_LLM_MODEL_IDS = new Set(WEB_LLM_MODELS.map((model) => model.id));

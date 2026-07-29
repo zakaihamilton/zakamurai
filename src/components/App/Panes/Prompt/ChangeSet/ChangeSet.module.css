@@ -59,6 +59,37 @@
   margin-top: 8px;
 }
 
+.bulkActions {
+  display: flex;
+  gap: 8px;
+  margin: 10px 0;
+}
+
+.approveAll,
+.undoAll {
+  border: 1px solid var(--border-color, #555);
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  padding: 5px 8px;
+}
+
+.approveAll:disabled,
+.undoAll:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.approveAll:hover:not(:disabled) {
+  border-color: var(--success-color, #4caf50);
+}
+
+.undoAll:hover:not(:disabled) {
+  border-color: var(--warning-color, #e6a23c);
+}
+
 .file {
   max-width: 100%;
   overflow: hidden;
