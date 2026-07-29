@@ -48,5 +48,3 @@ export type HistoryDropdownProps = {
   onItemClick: (index: number) => void;
   onClearHistory: () => void;
 };
-
-export type MenuOpenEvent = MouseEvent<HTMLButtonElement>;

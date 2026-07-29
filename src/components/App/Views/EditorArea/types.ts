@@ -36,7 +36,6 @@ export interface ExtendedEditorState extends Omit<EditorStateShape, 'pendingDele
 export type EditorStateStore = StateStore<ExtendedEditorState>;
 export type EditorStateDraft = Draft<ExtendedEditorState>;
 export type TabStateStore = StateStore<TabStateShape>;
-export type TabStateDraft = Draft<TabStateShape>;
 
 // ---------------------------------------------------------------------------
 // File system (subset used by EditorArea)

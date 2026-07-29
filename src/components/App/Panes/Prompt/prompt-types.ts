@@ -111,13 +111,6 @@ export type SessionTreeDialogProps = {
   onDelete: (sessionId: string) => void;
 };
 
-export type UsePromptHistoryParams = {
-  val: string;
-  historyIndex: number;
-  draftVal: string;
-  promptUiState: StateStore<PromptUiStateShape>;
-};
-
 export type UsePromptLayoutParams = {
   isMobile: boolean;
   isOpen: boolean;

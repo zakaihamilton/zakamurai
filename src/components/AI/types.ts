@@ -248,11 +248,6 @@ export type WebLLMStateDraft = {
   cachedModelIds?: string[];
 };
 
-export type RagStateDraft = {
-  status?: string;
-  error?: string | null;
-};
-
 export type LogEntry = {
   id: string | number;
   role: string;

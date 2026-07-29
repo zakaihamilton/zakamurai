@@ -51,11 +51,6 @@ export type SidebarContentProps = {
   children: ReactNode;
 };
 
-export type SidebarCreateAt = {
-  pathStr: string;
-  type: string;
-};
-
 export type SidebarTreeRow = FlatTreeRow & {
   key: string;
   isCreateRow?: boolean;

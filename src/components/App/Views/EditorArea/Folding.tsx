@@ -1,10 +1,10 @@
-import type { CodeFold, EditorLineItem } from './types';
+import type { CodeFold, EditorLineItem, VisibleFoldedContent } from './types';
 
 export function getVisibleFoldedContent(
   code = '',
   folds: CodeFold[] = [],
   collapsedFoldIds: string[] = [],
-) {
+): VisibleFoldedContent {
   const collapsedIds = new Set(collapsedFoldIds);
   const collapsedFolds = folds.filter((fold) => collapsedIds.has(fold.id));
   const lines = code.split('\n');

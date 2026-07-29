@@ -191,10 +191,6 @@ export function createMockTab(partial: Partial<Tab> & Pick<Tab, 'id' | 'type' | 
   return partial as Tab;
 }
 
-export type MockEditorState = StateStore<ExtendedEditorState> &
-  Mock<(draft: EditorStateDraft) => void>;
-export type MockTabState = StateStore<TabStateShape> & Mock<(draft: TabStateShape) => void>;
-
 export function createMockTextareaRef(partial: Partial<HTMLTextAreaElement> = {}): TextareaRef {
   return {
     current: {

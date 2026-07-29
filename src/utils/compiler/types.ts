@@ -76,11 +76,6 @@ export type EsbuildBuildResult = {
   outputFiles: EsbuildOutputFile[];
 };
 
-export type EsbuildPlugin = {
-  name: string;
-  setup: (build: EsbuildBuild) => void;
-};
-
 export type EsbuildBuild = {
   onResolve: (
     options: { filter: RegExp },
