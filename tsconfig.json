@@ -1,8 +1,6 @@
 {
   "compilerOptions": {
-    "allowJs": true,
     "baseUrl": ".",
-    "checkJs": false,
     "esModuleInterop": true,
     "lib": ["dom", "dom.iterable", "esnext"],
     "module": "esnext",
@@ -18,12 +16,24 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
     "jsx": "react-jsx",
+    "types": ["vitest/globals"],
     "plugins": [
       {
         "name": "next"
       }
-    ]
+    ],
+    "allowJs": true
   },
-  "include": ["src/contracts/**/*.ts", ".next/types/**/*.ts", ".next/dev/types/**/*.ts"],
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.tsx",
+    "tests/**/*.ts",
+    "tests/**/*.tsx",
+    "scripts/**/*.ts",
+    "vitest.config.ts",
+    ".next/types/**/*.ts",
+    ".next/dev/types/**/*.ts",
+    "next-env.d.ts"
+  ],
   "exclude": ["node_modules"]
 }

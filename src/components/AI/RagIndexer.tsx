@@ -1,0 +1,154 @@
+import { RagState } from '@/components/AI/RagState';
+import type { FileMap } from '@/components/AI/types';
+import { EditorState } from '@/components/App/Views/EditorArea';
+import { reportDiagnostic } from '@/components/Diagnostics';
+import { useFileSystem } from '@/components/Storage';
+import { useEffect, useRef } from 'react';
+
+const INDEX_DEBOUNCE_MS = 1500;
+
+/**
+ * Initialize the RAG worker and keep the index aligned with the mounted workspace
+ * (editor buffers + local FS snapshot), not OPFS alone.
+ * Heavy deps (transformers via rag-worker) load only when indexing starts.
+ */
+export function useRagIndexer() {
+  const fs = useFileSystem();
+  const editorState = EditorState.useState(['fileContents']);
+  const ragState = RagState.useState();
+  const bootstrappedRef = useRef(false);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastFingerprintRef = useRef('');
+  const fileContentsRef = useRef(editorState?.fileContents);
+  fileContentsRef.current = editorState?.fileContents;
+
+  useEffect(() => {
+    if (!ragState) return undefined;
+    let cancelled = false;
+
+    const initRag = async () => {
+      try {
+        ragState((draft) => {
+          draft.status = 'initializing';
+          draft.error = null;
+        });
+        // Start the timeout before dynamic imports so hung imports are covered.
+        const timeout = new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error('RAG Init Timeout')), 10000),
+        );
+        const initWork = (async () => {
+          const [{ ragSearch }, { collectWorkspaceFiles }] = await Promise.all([
+            import('@/utils/rag/search-utility'),
+            import('@/components/AI/Agent/Snapshot'),
+          ]);
+          await ragSearch.init();
+          return { ragSearch, collectWorkspaceFiles };
+        })();
+        const { ragSearch, collectWorkspaceFiles } = await Promise.race([initWork, timeout]);
+        if (cancelled || !fs?.isReady) return;
+        console.log('[RAG] Indexer initialized successfully.');
+
+        if (!bootstrappedRef.current) {
+          bootstrappedRef.current = true;
+          ragState((draft) => {
+            draft.status = 'indexing';
+          });
+          const files = await collectWorkspaceFiles(
+            fs as import('@/components/AI/types').FileSystemLike,
+            fileContentsRef.current || {},
+          );
+          if (cancelled) return;
+          await ragSearch.indexWorkspaceFiles(files);
+          const fingerprint = fingerprintContents(fileContentsRef.current);
+          lastFingerprintRef.current = fingerprint;
+          ragState((draft) => {
+            draft.status = 'ready';
+            draft.error = null;
+            draft.indexedFileCount = Object.keys(files || {}).length;
+            draft.lastIndexedAt = Date.now();
+            draft.lastFingerprint = fingerprint;
+          });
+          console.log('[RAG] Workspace bootstrap index complete.');
+        }
+      } catch (error) {
+        const err = error as Error;
+        console.error('[RAG] Failed to initialize indexer:', error);
+        reportDiagnostic({
+          source: 'rag',
+          severity: 'error',
+          message: err?.message || String(error),
+        });
+        ragState((draft) => {
+          draft.status = 'error';
+          draft.error = err?.message || String(error);
+        });
+      }
+    };
+
+    initRag();
+    return () => {
+      cancelled = true;
+    };
+  }, [fs, fs?.isReady, ragState]);
+
+  useEffect(() => {
+    if (!fs?.isReady || !editorState || !ragState) return undefined;
+    const nextFingerprint = fingerprintContents(editorState.fileContents);
+    if (nextFingerprint === lastFingerprintRef.current) return undefined;
+
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(async () => {
+      try {
+        ragState((draft) => {
+          draft.status = 'indexing';
+          draft.error = null;
+        });
+        const { ragSearch } = await import('@/utils/rag/search-utility');
+        const files = editorState.fileContents || {};
+        await ragSearch.indexWorkspaceFiles(files);
+        lastFingerprintRef.current = nextFingerprint;
+        ragState((draft) => {
+          draft.status = 'ready';
+          draft.indexedFileCount = Object.keys(files).length;
+          draft.lastIndexedAt = Date.now();
+          draft.lastFingerprint = nextFingerprint;
+        });
+      } catch (error) {
+        const err = error as Error;
+        console.error('[RAG] Failed to sync workspace index:', error);
+        reportDiagnostic({
+          source: 'rag',
+          severity: 'error',
+          message: err?.message || String(error),
+        });
+        ragState((draft) => {
+          draft.status = 'error';
+          draft.error = err?.message || String(error);
+        });
+      }
+    }, INDEX_DEBOUNCE_MS);
+
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, [editorState?.fileContents, fs?.isReady, ragState, editorState]);
+}
+
+function hashString(str: string): string {
+  let hash = 0x811c9dc5;
+  for (let i = 0; i < str.length; i++) {
+    hash ^= str.charCodeAt(i);
+    hash = Math.imul(hash, 0x01000193);
+  }
+  return (hash >>> 0).toString(16);
+}
+
+export function fingerprintContents(fileContents: FileMap = {}): string {
+  const keys = Object.keys(fileContents).sort();
+  return keys
+    .map((key) => {
+      const content = String(fileContents[key] ?? '');
+      return `${key}:${content.length}:${hashString(content)}`;
+    })
+    .join('|');
+}

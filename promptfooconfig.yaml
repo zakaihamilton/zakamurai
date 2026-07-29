@@ -13,52 +13,52 @@ tests:
     vars: file://tests/ai-golden/vars-good-css-module.json
     assert:
       - type: javascript
-        value: file://scripts/promptfoo-assertions.mjs:assertCssModules
+        value: file://scripts/promptfoo-assertions.ts:assertCssModules
 
   - description: "State Proxy Architecture Compliance"
     vars: file://tests/ai-golden/vars-good-state-proxy.json
     assert:
       - type: javascript
-        value: file://scripts/promptfoo-assertions.mjs:assertStateProxy
+        value: file://scripts/promptfoo-assertions.ts:assertStateProxy
 
   - description: "SEARCH/REPLACE Block Format Integrity"
     vars: file://tests/ai-golden/vars-valid-diff.json
     assert:
       - type: javascript
-        value: file://scripts/promptfoo-assertions.mjs:assertSearchReplace
+        value: file://scripts/promptfoo-assertions.ts:assertSearchReplace
 
   - description: "Golden — valid SEARCH/REPLACE fixture"
     vars: file://tests/ai-golden/vars-valid-diff.json
     assert:
       - type: javascript
-        value: file://scripts/promptfoo-assertions.mjs:assertValidGoldenDiff
+        value: file://scripts/promptfoo-assertions.ts:assertValidGoldenDiff
 
   - description: "Golden — malformed diff fixture fails markers check"
     vars: file://tests/ai-golden/vars-malformed-diff.json
     assert:
       - type: javascript
-        value: file://scripts/promptfoo-assertions.mjs:assertMalformedGoldenDiff
+        value: file://scripts/promptfoo-assertions.ts:assertMalformedGoldenDiff
 
   - description: "Golden — unsafe path fixture"
     vars: file://tests/ai-golden/vars-unsafe-paths.json
     assert:
       - type: javascript
-        value: file://scripts/promptfoo-assertions.mjs:assertUnsafePaths
+        value: file://scripts/promptfoo-assertions.ts:assertUnsafePaths
 
   - description: "Golden — Tailwind violation fixture"
     vars: file://tests/ai-golden/vars-tailwind-violation.json
     assert:
       - type: javascript
-        value: file://scripts/promptfoo-assertions.mjs:assertTailwindViolation
+        value: file://scripts/promptfoo-assertions.ts:assertTailwindViolation
 
   - description: "Golden — inline style violation fixture"
     vars: file://tests/ai-golden/vars-inline-style-violation.json
     assert:
       - type: javascript
-        value: file://scripts/promptfoo-assertions.mjs:assertInlineStyleViolation
+        value: file://scripts/promptfoo-assertions.ts:assertInlineStyleViolation
 
   - description: "Golden — domain useState violation fixture"
     vars: file://tests/ai-golden/vars-domain-usestate-violation.json
     assert:
       - type: javascript
-        value: file://scripts/promptfoo-assertions.mjs:assertDomainUseStateViolation
+        value: file://scripts/promptfoo-assertions.ts:assertDomainUseStateViolation

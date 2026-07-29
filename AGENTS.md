@@ -24,7 +24,7 @@ Zakamurai is a single Next.js 16 / React 19 app (no backend, no database). Persi
 User prompt → Agent/Runner → validateAIChanges → pendingDiffs → user review → Applier → fileContents
 ```
 
-Key modules: `src/components/AI/Agent/`, `src/components/AI/Processor/`, `src/components/AI/ChangeValidator.js`.
+Key modules: `src/components/AI/Agent/`, `src/components/AI/Processor/`, `src/components/AI/ChangeValidator.ts`.
 
 ## Quality gates
 
@@ -63,7 +63,7 @@ Install lucidshark and add it to PATH to enable the architectural scan. See luci
 ### Known pre-existing caveats (not environment issues)
 
 - `npm run format:check` (Biome) may still report a few formatting diffs on a clean checkout. Prefer `npm run format` when touching those files.
-- In-browser Build/Preview uses the custom esbuild-wasm resolver in `src/utils/compiler/browser-bundler.js`. Object-shaped package `browser` maps (e.g. react-dom) are applied via `applyBrowserRemap` and must not be treated as entry path strings.
+- In-browser Build/Preview uses the custom esbuild-wasm resolver in `src/utils/compiler/browser-bundler.tsx`. Object-shaped package `browser` maps (e.g. react-dom) are applied via `applyBrowserRemap` and must not be treated as entry path strings.
 
 ### Playwright / visual tests
 
@@ -71,4 +71,4 @@ Install lucidshark and add it to PATH to enable the architectural scan. See luci
 
 ### LocalFS
 
-- `src/components/Storage/LocalFS.js` uses the File System Access API and IndexedDB in the browser. It is not available in all environments (for example headless CI or browsers without the API).
+- `src/components/Storage/LocalFS.tsx` uses the File System Access API and IndexedDB in the browser. It is not available in all environments (for example headless CI or browsers without the API).

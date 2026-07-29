@@ -1,0 +1,201 @@
+import type { FileSystemApi, FlatTreeRow, NormalizedTreeNode } from '@/components/App/types';
+import type { SidebarStateShape, SidebarUiStateShape } from '@/components/state/domain-types';
+import type { StateStore } from '@/components/state/types';
+import type {
+  CSSProperties,
+  ChangeEvent,
+  Dispatch,
+  DragEvent,
+  MouseEvent,
+  ReactNode,
+  RefObject,
+  SetStateAction,
+  TouchEvent,
+} from 'react';
+
+export type SidebarCreateRow = FlatTreeRow & {
+  key: string;
+  isCreateRow?: boolean;
+  createType?: 'file' | 'folder' | string;
+  parentRow?: FlatTreeRow;
+  level?: number;
+};
+
+export type CreateRowInputProps = {
+  row: SidebarCreateRow;
+  onCreate: (
+    parentRow: FlatTreeRow | undefined,
+    createType: string,
+    name: string,
+  ) => Promise<boolean | undefined>;
+  onCancelCreate: () => void;
+};
+
+export type SidebarFilterProps = {
+  inputRef: RefObject<HTMLInputElement | null>;
+  value: string;
+  onChange: (event: ChangeEvent<HTMLInputElement>) => void;
+};
+
+export type SidebarMountSectionProps = {
+  hasFileSystem: boolean;
+  onMountLocal: () => void;
+};
+
+export type SidebarUiKey = keyof SidebarUiStateShape;
+
+export type SidebarContentProps = {
+  isMobile: boolean;
+  isOpen: boolean;
+  desktopWidth: string;
+  children: ReactNode;
+};
+
+export type SidebarTreeRow = FlatTreeRow & {
+  key: string;
+  isCreateRow?: boolean;
+  createType?: string;
+  parentRow?: FlatTreeRow;
+};
+
+export type SidebarTreeProps = {
+  rows: SidebarTreeRow[];
+  activeTabId: string | null;
+  scrollToIndex?: number;
+  filterText: string;
+  expandedFolders: Record<string, boolean>;
+  loadingPaths: Record<string, boolean>;
+  draggedPath: string | null;
+  dropTargetPath: string | null;
+  isOpen: boolean;
+  hasFileSystem: boolean;
+  onToggle: (row: FlatTreeRow) => void;
+  onOpenFile: (row: FlatTreeRow, options?: { viewType?: string }) => void;
+  onRename: (row: FlatTreeRow, name: string) => Promise<boolean | undefined> | boolean | undefined;
+  onCreate: (
+    parentRow: FlatTreeRow | undefined,
+    type: string,
+    name: string,
+  ) => Promise<boolean | undefined>;
+  onStartCreate: (row: FlatTreeRow, type: string) => void;
+  onCancelCreate: () => void;
+  onDelete: (row: FlatTreeRow) => Promise<void> | void;
+  onDragStart: (event: DragEvent, row: FlatTreeRow) => void;
+  onDragOver: (event: DragEvent, row: FlatTreeRow) => void;
+  onDragEnter: (event: DragEvent, row: FlatTreeRow) => void;
+  onDragLeave: () => void;
+  onDrop: (event: DragEvent, row: FlatTreeRow) => void;
+  onDragEnd: () => void;
+};
+
+export type VirtualListProps<T extends { key?: string; pathStr?: string }> = {
+  items: T[];
+  itemHeight: number;
+  overscan?: number;
+  renderItem: (item: T, index: number) => ReactNode;
+  className?: string;
+  style?: CSSProperties;
+  scrollKey?: string | null;
+  scrollToIndex?: number | null;
+};
+
+export type TreeItemControls = {
+  isEditing: boolean;
+  editValue: string;
+  setEditValue: (value: string) => void;
+  editInputRef: RefObject<HTMLInputElement | null>;
+  contextMenu: { x: number; y: number } | null;
+  showDeleteDialog: boolean;
+  setShowDeleteDialog: (value: boolean) => void;
+  longPressHandlers: Record<string, unknown>;
+  handleContextMenu: (event: MouseEvent) => void;
+  startRename: () => void;
+  stopEditing: () => void;
+  submitRename: () => void;
+  startCreate: (type: string) => void;
+  startDelete: () => void;
+  closeContextMenu: () => void;
+  openWith: (app: string) => void;
+};
+
+export type TreeItemContentProps = {
+  controls: TreeItemControls;
+  filterText: string;
+  isActive: boolean;
+  isDragged: boolean;
+  isDropTarget: boolean;
+  isExpanded: boolean;
+  isLoading: boolean;
+  onDelete: (row: FlatTreeRow) => Promise<void> | void;
+  onDragEnd: () => void;
+  onDragEnter: (event: DragEvent, row: FlatTreeRow) => void;
+  onDragLeave: () => void;
+  onDragOver: (event: DragEvent, row: FlatTreeRow) => void;
+  onDragStart: (event: DragEvent, row: FlatTreeRow) => void;
+  onDrop: (event: DragEvent, row: FlatTreeRow) => void;
+  onOpenFile: (row: FlatTreeRow, options?: { viewType?: string }) => void;
+  onToggle: (row: FlatTreeRow) => void;
+  row: SidebarTreeRow;
+};
+
+export type NormalizedTreeItem = NormalizedTreeNode & {
+  isRoot?: boolean;
+  handle?: FileSystemFileHandle | FileSystemDirectoryHandle | null;
+};
+
+export type SidebarContextMenuProps = {
+  item: NormalizedTreeItem;
+  pathStr: string;
+  isLoading: boolean;
+  isExpanded: boolean;
+  position: { x: number; y: number } | null;
+  onClose: () => void;
+  onStartCreate: (type: string) => void;
+  onStartRename: () => void;
+  onStartDelete: () => void;
+  onOpenWith: (viewType: string) => void;
+};
+
+export type UseSidebarDragAndDropParams = {
+  fs: FileSystemApi;
+  sidebarState: StateStore<SidebarStateShape>;
+  setDropTargetPath: Dispatch<SetStateAction<string | null>>;
+};
+
+export type UseSidebarLayoutParams = {
+  isMobile: boolean;
+  isOpen: boolean;
+  sidebarWidth: number;
+  animatedWidth: number;
+  setAnimatedWidth: Dispatch<SetStateAction<number>>;
+};
+
+export type UseTreeItemControlsParams = {
+  row: SidebarTreeRow;
+  onOpenFile: (row: FlatTreeRow, options?: { viewType?: string }) => void;
+  onRename: (row: FlatTreeRow, name: string) => Promise<boolean | undefined> | boolean | undefined;
+  onStartCreate: (row: FlatTreeRow, type: string) => void;
+};
+
+export type TreeItemProps = {
+  row: SidebarTreeRow;
+  filterText?: string;
+  onCancelCreate: () => void;
+  onCreate: SidebarTreeProps['onCreate'];
+  onOpenFile: SidebarTreeProps['onOpenFile'];
+  onRename: SidebarTreeProps['onRename'];
+  onStartCreate: SidebarTreeProps['onStartCreate'];
+  onDelete: SidebarTreeProps['onDelete'];
+  onToggle: SidebarTreeProps['onToggle'];
+  onDragStart: SidebarTreeProps['onDragStart'];
+  onDragOver: SidebarTreeProps['onDragOver'];
+  onDragEnter: SidebarTreeProps['onDragEnter'];
+  onDragLeave: SidebarTreeProps['onDragLeave'];
+  onDrop: SidebarTreeProps['onDrop'];
+  onDragEnd: SidebarTreeProps['onDragEnd'];
+  isActive: boolean;
+  isDragged: boolean;
+  isDropTarget: boolean;
+  isExpanded: boolean;
+  isLoading: boolean;
+};

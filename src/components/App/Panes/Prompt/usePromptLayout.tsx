@@ -1,0 +1,37 @@
+import type { PromptUiStateShape } from '@/components/state/domain-types';
+import { useCallback, useEffect } from 'react';
+import type { UsePromptLayoutParams, UsePromptLayoutResult } from './prompt-types';
+
+/** Drives the desktop drawer transition without introducing local shared state. */
+export default function usePromptLayout({
+  isMobile,
+  isOpen,
+  promptWidth,
+  animatedWidth,
+  promptUiState,
+}: UsePromptLayoutParams): UsePromptLayoutResult {
+  const setAnimatedWidth = useCallback(
+    (nextValue: number | ((current: number) => number)) => {
+      promptUiState((draft) => {
+        draft.animatedWidth =
+          typeof nextValue === 'function'
+            ? nextValue(draft.animatedWidth as PromptUiStateShape['animatedWidth'])
+            : nextValue;
+      });
+    },
+    [promptUiState],
+  );
+
+  useEffect(() => {
+    if (isMobile) return undefined;
+    if (isOpen) {
+      const frame = window.requestAnimationFrame(() => setAnimatedWidth(promptWidth));
+      return () => window.cancelAnimationFrame(frame);
+    }
+    setAnimatedWidth(promptWidth);
+    const frame = window.requestAnimationFrame(() => setAnimatedWidth(0));
+    return () => window.cancelAnimationFrame(frame);
+  }, [isMobile, isOpen, promptWidth, setAnimatedWidth]);
+
+  return { desktopWidth: `${animatedWidth}px` };
+}

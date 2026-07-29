@@ -1,18 +1,8 @@
 {
   "$schema": "https://unpkg.com/knip@6/schema.json",
   "project": ["src/**/*.{js,jsx,ts,tsx}"],
-  "ignore": [
-    "src/components/AI/index.js",
-    "src/components/AI/Agent/index.js",
-    "src/utils/empty.js"
-  ],
-  "ignoreDependencies": [
-    "@types/json-schema",
-    "almostnode",
-    "fast-check",
-    "promptfoo",
-    "esbuild-wasm"
-  ],
+  "ignore": [],
+  "ignoreDependencies": ["@types/json-schema", "almostnode", "promptfoo"],
   "ignoreExportsUsedInFile": true,
   "rules": {
     "exports": "off"

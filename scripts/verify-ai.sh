@@ -14,13 +14,13 @@ else
 fi
 
 echo "--- Starting Static AI Compliance Checks ---"
-node scripts/run-promptfoo-checks.mjs
+npx tsx scripts/run-promptfoo-checks.ts
 
 echo "--- Starting promptfoo eval (optional report) ---"
 npx promptfoo eval || echo "Warning: promptfoo eval reported failures; static checks above are authoritative."
 
 echo "--- Starting Performance Budget Check ---"
-node scripts/check-performance-budget.mjs
+npx tsx scripts/check-performance-budget.ts
 
 echo "--- Starting Visual Regression Tests ---"
 npm run test:visual
