@@ -8,12 +8,12 @@
 
 | Module | Path | Role |
 | --- | --- | --- |
-| **Node** | `src/components/state/Node.js` | Spatial hierarchy mirroring the React tree. Stores attach to nodes. |
-| **Object** | `src/components/state/Object.js` | Proxy wrapper; mutations notify subscribers (microtask-batched). |
-| **State** | `src/components/state/State.js` | `createState(displayName)` factory → component + hooks. |
-| **StateUtils** | `src/components/state/StateUtils.js` | `setInDraft`, `updateInDraft`, `deleteInDraft`, `remapKeysInDraft`, `deleteKeysWithPrefixInDraft`. |
+| **Node** | `src/components/state/Node.tsx` | Spatial hierarchy mirroring the React tree. Stores attach to nodes. |
+| **Object** | `src/components/state/Object.ts` | Proxy wrapper; mutations notify subscribers (microtask-batched). |
+| **State** | `src/components/state/State.tsx` | `createState(displayName)` factory → component + hooks. |
+| **StateUtils** | `src/components/state/StateUtils.tsx` | `setInDraft`, `updateInDraft`, `deleteInDraft`, `remapKeysInDraft`, `deleteKeysWithPrefixInDraft`. |
 
-Domain stores (`AppState`, `EditorState`, …) are **bootstrapped in `App.js` on the root node** via `XState.useState(null, initial)`. Per-file UI stores pass `initial` under `<Node id={filePath}>` so they are scoped to that node.
+Domain stores (`AppState`, `EditorState`, …) are **bootstrapped in `App.tsx` on the root node** via `XState.useState(null, initial)`. Per-file UI stores pass `initial` under `<Node id={filePath}>` so they are scoped to that node.
 
 ## 2. Reading State
 
@@ -77,18 +77,18 @@ Manual edits clear `pendingDiffs[path]`. Pending review blocks FS auto-save.
 
 1. Prefer presentational components that receive props.
 2. Containers subscribe with `XState.useState(...)` / `usePassiveState` and pass primitives down.
-3. Do not modify `Node.js`, `Object.js`, or `State.js` unless explicitly instructed.
+3. Do not modify `Node.tsx`, `Object.ts`, or `State.tsx` unless explicitly instructed.
 4. For nested map updates, prefer `StateUtils` helpers so Proxy notifications always fire.
 
 ## 7. AI Pipeline
 
 | Module | Path | Role |
 | --- | --- | --- |
-| **Prompts** | `src/components/AI/Prompts.js` | System prompts and output format instructions |
+| **Prompts** | `src/components/AI/Prompts.ts` | System prompts and output format instructions |
 | **Processor** | `src/components/AI/Processor/` | Parses AI responses, SEARCH/REPLACE application |
-| **ChangeValidator** | `src/components/AI/ChangeValidator.js` | Path safety, syntax checks before staging |
+| **ChangeValidator** | `src/components/AI/ChangeValidator.ts` | Path safety, syntax checks before staging |
 | **Agent** | `src/components/AI/Agent/` | `runAgent`, collaborative runner, applier |
-| **WebLLM** | `src/components/AI/WebLLMAPI.js` | In-browser model inference |
+| **WebLLM** | `src/components/AI/WebLLMAPI.tsx` | In-browser model inference |
 
 Flow: user prompt → agent collects workspace context → model output → parser → validator → `EditorState.pendingDiffs` → user approves → applier updates `fileContents` and triggers build.
 
@@ -98,7 +98,7 @@ AI changes must use project-relative paths. `validateAIChanges` rejects absolute
 
 - IDE and preview run on **different origins** in production (`NEXT_PUBLIC_IDE_ORIGIN`, `NEXT_PUBLIC_PREVIEW_ORIGIN`).
 - `PreviewBridge` (IDE side) and `PreviewHost` (preview origin) exchange a one-time `zakamurai-preview-connect` handshake with protocol version and session ID before transferring a `MessagePort`.
-- `isValidPreviewHandshake` in `previewOrigins.js` is shared — do not relax checks on one side only.
+- `isValidPreviewHandshake` in `previewOrigins.ts` is shared — do not relax checks on one side only.
 - User project code never receives same-origin access to IDE storage or cookies.
 
 ## 9. Testing Expectations

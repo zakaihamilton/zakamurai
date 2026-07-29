@@ -208,4 +208,18 @@ cleanup();`);
       getJavaScriptBlockFolds(arrow, 'run.js').some((fold) => fold.endLine > fold.startLine),
     ).toBe(true);
   });
+
+  it('supports virtual javascript and typescript editor paths', () => {
+    const code = `function App() {
+  return true;
+}`;
+    expect(getJavaScriptBlockFolds(code, 'javascript')).toEqual([
+      { id: '1:3', startLine: 1, endLine: 3 },
+    ]);
+    expect(getJavaScriptBlockFolds(code, 'typescript')).toEqual([
+      { id: '1:3', startLine: 1, endLine: 3 },
+    ]);
+    expect(getJavaScriptBlockFolds(code, 'module.mjs').length).toBeGreaterThan(0);
+    expect(getJavaScriptBlockFolds(code, 'legacy.cjs').length).toBeGreaterThan(0);
+  });
 });

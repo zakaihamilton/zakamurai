@@ -544,4 +544,267 @@ describe('useFileSystem', () => {
 
     expect(state).toHaveBeenCalled();
   });
+
+  it('reads a file at a nested path', async () => {
+    const fileHandle = {
+      kind: 'file',
+      getFile: vi.fn().mockResolvedValue({ text: async () => 'nested content' }),
+    };
+    const srcDir = {
+      ...makeDirHandle('src'),
+      getFileHandle: vi.fn().mockResolvedValue(fileHandle),
+    };
+    const root = {
+      ...makeDirHandle('root'),
+      getDirectoryHandle: vi.fn().mockResolvedValue(srcDir),
+    };
+    const state = makeFileSystemState({ rootHandle: root });
+    vi.spyOn(FileSystemState, 'useState').mockReturnValue(state);
+    const { result } = renderHook(() => useFileSystem());
+
+    const content = await result.current.readFileAtPath('src/test.js', root);
+    expect(content).toBe('nested content');
+  });
+
+  it('deleteFileAtPath removes nested files and refreshes the tree', async () => {
+    const srcDir = {
+      ...makeDirHandle('src'),
+      removeEntry: vi.fn().mockResolvedValue(undefined),
+    };
+    const root = {
+      ...makeDirHandle('root'),
+      getDirectoryHandle: vi.fn().mockResolvedValue(srcDir),
+    };
+    const state = makeFileSystemState({ rootHandle: root });
+    vi.spyOn(FileSystemState, 'useState').mockReturnValue(state);
+    const { result } = renderHook(() => useFileSystem());
+
+    await act(async () => {
+      const deleted = await result.current.deleteFileAtPath('src/test.js', root);
+      expect(deleted).toBe(true);
+    });
+    expect(srcDir.removeEntry).toHaveBeenCalledWith('test.js', { recursive: true });
+  });
+
+  it('deleteFileAtPath handles errors by setting error state', async () => {
+    const root = {
+      ...makeDirHandle('root'),
+      getDirectoryHandle: vi.fn().mockRejectedValue(new Error('missing folder')),
+    };
+    const state = makeFileSystemState({ rootHandle: root });
+    vi.spyOn(FileSystemState, 'useState').mockReturnValue(state);
+    const { result } = renderHook(() => useFileSystem());
+
+    await act(async () => {
+      const deleted = await result.current.deleteFileAtPath('src/test.js', root);
+      expect(deleted).toBe(false);
+    });
+    expect(state).toHaveBeenCalled();
+  });
+
+  it('moveEntry uses the native move API when available', async () => {
+    const move = vi.fn().mockResolvedValue(undefined);
+    const sourceHandle = { name: 'App.js', move } as unknown as FileSystemHandle;
+    const destinationDir = makeDirHandle('dest');
+    const state = makeFileSystemState();
+    vi.spyOn(FileSystemState, 'useState').mockReturnValue(state);
+    const { result } = renderHook(() => useFileSystem());
+
+    await act(async () => {
+      await result.current.moveEntry(sourceHandle, destinationDir, 'Main.js');
+    });
+
+    expect(move).toHaveBeenCalledWith(destinationDir, 'Main.js');
+    expect(state).toHaveBeenCalled();
+  });
+
+  it('unlinkProject handles clearHandle failures', async () => {
+    global.indexedDB = {
+      open: vi.fn(() => {
+        const req = {
+          onsuccess: null as (() => void) | null,
+          onerror: null as (() => void) | null,
+          onupgradeneeded: null as (() => void) | null,
+          result: {
+            transaction: vi.fn(() => {
+              throw new Error('db unavailable');
+            }),
+          },
+        };
+        setTimeout(() => req.onerror?.(), 0);
+        return req;
+      }),
+    } as unknown as IDBFactory;
+
+    const state = makeFileSystemState();
+    vi.spyOn(FileSystemState, 'useState').mockReturnValue(state);
+    const { result } = renderHook(() => useFileSystem());
+
+    await act(async () => {
+      await result.current.unlinkProject();
+    });
+
+    expect(state).toHaveBeenCalled();
+  });
+
+  it('restores a saved local handle on bootstrap when permission is granted', async () => {
+    const storedHandle = makeDirHandle('saved-project', [{ name: 'index.js', kind: 'file' }]);
+    vi.mocked(storedHandle.queryPermission).mockResolvedValue('granted');
+    global.indexedDB = makeIDBMock(storedHandle);
+    const state = makeFileSystemState({ isReady: false });
+    vi.spyOn(FileSystemState, 'useState').mockReturnValue(state);
+
+    renderHook(() => useFileSystem({ bootstrap: true }));
+
+    await act(async () => {
+      await vi.waitFor(() => expect(state).toHaveBeenCalled(), { timeout: 2000 });
+    });
+  });
+
+  it('refreshDirectory can skip sidebar updates when updateSidebar is false', async () => {
+    const dirHandle = makeDirHandle('nested', [{ name: 'file.js', kind: 'file' }]);
+    const state = makeFileSystemState();
+    vi.spyOn(FileSystemState, 'useState').mockReturnValue(state);
+    const { result } = renderHook(() => useFileSystem());
+
+    await act(async () => {
+      const entries = await result.current.refreshDirectory(dirHandle, false);
+      expect(entries).toHaveLength(1);
+    });
+
+    expect(state.files).toEqual([]);
+    expect(state).toHaveBeenCalled();
+  });
+
+  it('mountLocal mounts a picked directory and saves the handle', async () => {
+    const pickedHandle = makeDirHandle('picked');
+    vi.mocked(pickedHandle.queryPermission).mockResolvedValue('granted');
+    global.window = {
+      ...global.window,
+      showDirectoryPicker: vi.fn().mockResolvedValue(pickedHandle),
+    } as unknown as Window & typeof globalThis;
+    global.indexedDB = makeIDBMock();
+
+    const state = makeFileSystemState();
+    vi.spyOn(FileSystemState, 'useState').mockReturnValue(state);
+    const { result } = renderHook(() => useFileSystem());
+
+    await act(async () => {
+      await result.current.mountLocal();
+    });
+
+    expect(window.showDirectoryPicker).toHaveBeenCalled();
+    expect(state).toHaveBeenCalled();
+  });
+
+  it('no-ops when filesystem state is unavailable', async () => {
+    vi.spyOn(FileSystemState, 'useState').mockReturnValue(null as never);
+    const { result } = renderHook(() => useFileSystem());
+
+    await act(async () => {
+      await result.current.mountOPFS();
+      await result.current.mountLocal();
+      await result.current.unlinkProject();
+      result.current.triggerRefresh();
+    });
+
+    expect(result.current.rootHandle).toBeNull();
+  });
+
+  it('returns early from mountLocal when directory picker is unavailable', async () => {
+    const state = makeFileSystemState();
+    vi.spyOn(FileSystemState, 'useState').mockReturnValue(state);
+    const originalPicker = window.showDirectoryPicker;
+    Object.defineProperty(window, 'showDirectoryPicker', {
+      configurable: true,
+      value: undefined,
+    });
+    const { result } = renderHook(() => useFileSystem());
+
+    await act(async () => {
+      await result.current.mountLocal();
+    });
+
+    expect(state).not.toHaveBeenCalled();
+    Object.defineProperty(window, 'showDirectoryPicker', {
+      configurable: true,
+      value: originalPicker,
+    });
+  });
+
+  it('handles non-Error failures with string messages', async () => {
+    const badDirHandle = {
+      getFileHandle: vi.fn().mockRejectedValue('disk full'),
+      entries: async function* () {},
+    };
+    const state = makeFileSystemState();
+    vi.spyOn(FileSystemState, 'useState').mockReturnValue(state);
+    const { result } = renderHook(() => useFileSystem());
+
+    await act(async () => {
+      await result.current.writeFile('test.js', 'content', badDirHandle as never);
+      await result.current.deleteEntry('locked.js', badDirHandle as never);
+      await result.current.createFolder('locked', badDirHandle as never);
+      await result.current.refreshDirectory(badDirHandle as never);
+    });
+
+    expect(state).toHaveBeenCalled();
+  });
+
+  it('handles OPFS and path write failures from non-Error rejections', async () => {
+    global.navigator = {
+      ...global.navigator,
+      storage: { getDirectory: vi.fn().mockRejectedValue('opfs unavailable') },
+    } as unknown as Navigator;
+
+    const badRoot = {
+      getDirectoryHandle: vi.fn().mockRejectedValue('not writable'),
+      entries: async function* () {},
+    };
+    const state = makeFileSystemState({ rootHandle: badRoot });
+    vi.spyOn(FileSystemState, 'useState').mockReturnValue(state);
+    const { result } = renderHook(() => useFileSystem());
+
+    await act(async () => {
+      await result.current.mountOPFS();
+      await result.current.writeFileAtPath('src/fail.js', 'x', badRoot as never);
+      await result.current.deleteFileAtPath('src/fail.js', badRoot as never);
+      await result.current.moveEntry(
+        { name: 'a.js', move: vi.fn().mockRejectedValue('move failed') } as never,
+        makeDirHandle('dest'),
+      );
+    });
+
+    expect(state).toHaveBeenCalled();
+  });
+
+  it('skips restore when saved handle permission is not granted', async () => {
+    const storedHandle = makeDirHandle('saved-project');
+    vi.mocked(storedHandle.queryPermission).mockResolvedValue('denied');
+    global.indexedDB = makeIDBMock(storedHandle);
+    const state = makeFileSystemState({ isReady: false });
+    vi.spyOn(FileSystemState, 'useState').mockReturnValue(state);
+
+    renderHook(() => useFileSystem({ bootstrap: true }));
+
+    await act(async () => {
+      await vi.waitFor(() => expect(state).toHaveBeenCalled(), { timeout: 2000 });
+    });
+    expect(storedHandle.queryPermission).toHaveBeenCalled();
+  });
+
+  it('tolerates missing indexedDB when unlinking a project', async () => {
+    const originalIndexedDb = global.indexedDB;
+    global.indexedDB = undefined as unknown as IDBFactory;
+    const state = makeFileSystemState();
+    vi.spyOn(FileSystemState, 'useState').mockReturnValue(state);
+    const { result } = renderHook(() => useFileSystem());
+
+    await act(async () => {
+      await result.current.unlinkProject();
+    });
+
+    expect(state).toHaveBeenCalled();
+    global.indexedDB = originalIndexedDb;
+  });
 });

@@ -568,5 +568,56 @@ describe('VariableResolver', () => {
       );
       expect(outerUse).toBeDefined();
     });
+
+    it('registers catch bindings from try/catch statements', () => {
+      const code = [
+        'function risky() {',
+        '  try {',
+        '    return missing.value;',
+        '  } catch (failure) {',
+        '    console.error(failure);',
+        '  }',
+        '}',
+      ].join('\n');
+      const targets = resolveVariables(code, 'test.js');
+
+      expect(
+        targets.some((t) => t.name === 'failure' && t.targets.some((u) => u.loc.line === 5)),
+      ).toBe(true);
+    });
+
+    it('handles generator functions and for-await-of loops', () => {
+      const code = [
+        'async function* stream(items) {',
+        '  for await (const item of items) {',
+        '    yield item;',
+        '  }',
+        '}',
+        'function* sync(items) {',
+        '  for (const item of items) yield item;',
+        '}',
+      ].join('\n');
+      const targets = resolveVariables(code, 'test.js');
+
+      expect(
+        targets.some((t) => t.name === 'item' && t.targets.some((u) => u.loc.line === 3)),
+      ).toBe(true);
+      expect(targets.some((t) => t.name === 'items' && t.targets.length > 0)).toBe(true);
+    });
+
+    it('closes template literal expressions and scans nested braces', () => {
+      const code = [
+        'const label = "ok";',
+        'const message = `prefix ${label} ${JSON.stringify({ value: label })} suffix`;',
+        'console.log(message);',
+      ].join('\n');
+      const targets = resolveVariables(code, 'test.js');
+
+      const labelUses = targets.filter((t) => t.name === 'label');
+      expect(labelUses.length).toBeGreaterThan(1);
+      expect(
+        targets.some((t) => t.name === 'message' && t.targets.some((u) => u.loc.line === 3)),
+      ).toBe(true);
+    });
   });
 });

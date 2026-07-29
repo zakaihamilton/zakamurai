@@ -13,7 +13,9 @@ const medianDuration = (operation: () => void) => {
     operation();
     return performance.now() - start;
   }).sort((a, b) => a - b);
-  return durations[2]!;
+  const median = durations[2];
+  if (median === undefined) throw new Error('expected median duration');
+  return median;
 };
 
 const ceiling = (value: number) => value * (1 + baseline.tolerancePercent / 100);

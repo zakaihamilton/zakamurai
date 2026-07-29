@@ -413,4 +413,154 @@ describe('Settings', () => {
     vi.stubGlobal('localStorage', undefined);
     expect(Settings.get('zakamurai-theme', 'dark')).toBe('dark');
   });
+
+  it('gets and sets workspace profile', () => {
+    expect(Settings.getWorkspaceProfile()).toEqual({});
+    Settings.setWorkspaceProfile({ name: 'demo', stack: ['react'] });
+    expect(Settings.getWorkspaceProfile()).toEqual({ name: 'demo', stack: ['react'] });
+  });
+
+  it('gets and sets change sets via IndexedDB-backed cache', async () => {
+    const changeSets = {
+      activeId: 'cs-1',
+      items: [{ id: 'cs-1', label: 'Initial', createdAt: 1, files: [] }],
+    };
+    await Settings.setChangeSets(changeSets as never);
+    expect(Settings.getChangeSets()).toEqual(changeSets);
+    await Settings.setChangeSets(null);
+    expect(Settings.getChangeSets()).toEqual({ activeId: null, items: [] });
+  });
+
+  it('gets and sets the active agent session id', () => {
+    expect(Settings.getActiveAgentSessionId()).toBeNull();
+    Settings.setActiveAgentSessionId('session-42');
+    expect(Settings.getActiveAgentSessionId()).toBe('session-42');
+    Settings.setActiveAgentSessionId(null);
+    expect(Settings.getActiveAgentSessionId()).toBeNull();
+  });
+
+  it('resets persisted settings to the scratch template', async () => {
+    Settings.setProjectName('Custom Project');
+    Settings.setTemplate('default');
+    await Settings.reset('scratch');
+    expect(Settings.getTemplate()).toBe('scratch');
+    expect(Settings.getProjectName()).toBe('My App');
+  });
+
+  it('reports storage health and quota warnings', async () => {
+    const health = Settings.getStorageHealth();
+    expect(health.status).toBeTruthy();
+    await Settings.refreshStorageHealth();
+    expect(Settings.getStorageHealth().status).toBeTruthy();
+  });
+
+  it('returns defaults when localStorage methods are missing', () => {
+    vi.stubGlobal('localStorage', {
+      getItem: undefined,
+      setItem: undefined,
+      removeItem: undefined,
+    });
+    expect(Settings.get('zakamurai-theme', 'dark')).toBe('dark');
+    expect(Settings.set('zakamurai-theme', 'light')).toBe(false);
+  });
+
+  it('returns false from set when removeItem throws for null values', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    vi.stubGlobal('localStorage', {
+      getItem: localStorage.getItem.bind(localStorage),
+      setItem: localStorage.setItem.bind(localStorage),
+      removeItem: () => {
+        throw new Error('remove failed');
+      },
+      clear: localStorage.clear.bind(localStorage),
+    });
+    expect(Settings.set('zakamurai-theme', null)).toBe(false);
+    expect(warnSpy).toHaveBeenCalled();
+  });
+
+  it('returns null for corrupt open tabs JSON', () => {
+    localStorage.setItem('zakamurai_open_tabs', '{bad');
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    expect(Settings.getOpenTabs()).toBeNull();
+    expect(errorSpy).toHaveBeenCalled();
+  });
+
+  it('normalizes invalid file contents payloads to an empty object', async () => {
+    await expect(Settings.setFileContents(null)).resolves.toBe(true);
+    expect(Settings.getFileContents()).toEqual({});
+    await expect(Settings.setFileContents('bad' as never)).resolves.toBe(true);
+    expect(Settings.getFileContents()).toEqual({});
+  });
+
+  it('returns an empty workspace profile for non-object stored values', () => {
+    localStorage.setItem('zakamurai_workspace_profile', JSON.stringify(['not', 'an', 'object']));
+    expect(Settings.getWorkspaceProfile()).toEqual({});
+  });
+
+  it('returns false when recovery checkpoint persistence fails', async () => {
+    const diagnosticSpy = vi.spyOn(Diagnostics, 'reportDiagnostic').mockImplementation(() => {});
+    const originalIndexedDb = globalThis.indexedDB;
+    globalThis.indexedDB = undefined as unknown as IDBFactory;
+    resetIdbConnection();
+
+    const saved = await Settings.saveRecoveryCheckpoint({
+      projectName: 'Broken checkpoint',
+      fileContents: { 'src/App.js': 'export default 1;' },
+      pendingDiffs: {},
+      openTabs: [],
+      activeTabId: 'src/App.js',
+    });
+
+    expect(saved).toBe(false);
+    expect(diagnosticSpy).toHaveBeenCalled();
+    globalThis.indexedDB = originalIndexedDb;
+    resetIdbConnection();
+  });
+
+  it('reuses the in-flight hydrate promise and short-circuits when already hydrated', async () => {
+    Settings._resetHydrationForTests();
+    const first = Settings.hydrate();
+    const second = Settings.hydrate();
+    await expect(first).resolves.toBe(true);
+    await expect(second).resolves.toBe(true);
+    await expect(Settings.hydrate()).resolves.toBe(true);
+    expect(Settings.isHydrated()).toBe(true);
+  });
+
+  it('recovers from hydrate failures with empty defaults', async () => {
+    const idbStore = await import('./idbStore');
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    vi.spyOn(idbStore, 'idbGet').mockRejectedValueOnce(new Error('idb read failed'));
+    Settings._resetHydrationForTests();
+
+    await expect(Settings.hydrate()).resolves.toBe(false);
+    expect(Settings.isHydrated()).toBe(true);
+    expect(Settings.getFileContents()).toBeNull();
+    expect(warnSpy).toHaveBeenCalled();
+    vi.restoreAllMocks();
+  });
+
+  it('ignores storage estimate failures during health refresh', async () => {
+    vi.stubGlobal('navigator', {
+      ...navigator,
+      storage: {
+        estimate: vi.fn().mockRejectedValue(new Error('estimate unavailable')),
+      },
+    });
+    const health = await Settings.refreshStorageHealth();
+    expect(health.status).toBeTruthy();
+  });
+
+  it('normalizes invalid change set payloads', async () => {
+    await Settings.setChangeSets({ activeId: 'cs-1', items: 'bad' as never });
+    expect(Settings.getChangeSets()).toEqual({ activeId: 'cs-1', items: [] });
+  });
+
+  it('returns empty AI logs when cache is corrupted', async () => {
+    await Settings.setAILogs([{ id: 1, role: 'system', text: 'hello', timestamp: '00:00' }]);
+    Settings._resetHydrationForTests();
+    localStorage.setItem('zakamurai_ai_logs', JSON.stringify('not-an-array'));
+    await Settings.hydrate();
+    expect(Settings.getAILogs()).toEqual([]);
+  });
 });

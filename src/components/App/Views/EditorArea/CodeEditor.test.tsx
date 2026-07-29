@@ -1,3 +1,4 @@
+import { requireElement } from '@/test-utils/domMocks';
 import {
   createDefaultCodeEditorProps,
   createMockNavigationTarget,
@@ -75,9 +76,8 @@ describe('CodeEditor', () => {
     const link = screen.getByText('MyComponent');
     link.getBoundingClientRect = () => mockDomRect({ left: 100, top: 150, width: 80, height: 20 });
 
-    const textarea = container.querySelector('textarea');
-    expect(textarea).not.toBeNull();
-    textarea!.getBoundingClientRect = () =>
+    const textarea = requireElement(container.querySelector('textarea'));
+    textarea.getBoundingClientRect = () =>
       mockDomRect({ left: 50, top: 100, width: 500, height: 400 });
 
     fireEvent.click(link);
@@ -113,9 +113,8 @@ describe('CodeEditor', () => {
 
     const link = screen.getByText('./Button');
     link.getBoundingClientRect = () => mockDomRect({ left: 100, top: 150, width: 80, height: 20 });
-    const textarea = container.querySelector('textarea');
-    expect(textarea).not.toBeNull();
-    textarea!.getBoundingClientRect = () =>
+    const textarea = requireElement(container.querySelector('textarea'));
+    textarea.getBoundingClientRect = () =>
       mockDomRect({ left: 50, top: 100, width: 500, height: 400 });
 
     fireEvent.click(link);
@@ -149,9 +148,8 @@ describe('CodeEditor', () => {
 
     const link = screen.getByText('Button');
     link.getBoundingClientRect = () => mockDomRect({ left: 100, top: 150, width: 80, height: 20 });
-    const textarea = container.querySelector('textarea');
-    expect(textarea).not.toBeNull();
-    textarea!.getBoundingClientRect = () =>
+    const textarea = requireElement(container.querySelector('textarea'));
+    textarea.getBoundingClientRect = () =>
       mockDomRect({ left: 50, top: 100, width: 500, height: 400 });
 
     fireEvent.click(link);
@@ -190,9 +188,8 @@ describe('CodeEditor', () => {
 
     const link = screen.getByText('MyComponent');
     link.getBoundingClientRect = () => mockDomRect({ left: 100, top: 150, width: 80, height: 20 });
-    const textarea = container.querySelector('textarea');
-    expect(textarea).not.toBeNull();
-    textarea!.getBoundingClientRect = () =>
+    const textarea = requireElement(container.querySelector('textarea'));
+    textarea.getBoundingClientRect = () =>
       mockDomRect({ left: 50, top: 100, width: 500, height: 400 });
 
     fireEvent.click(link);
@@ -231,9 +228,8 @@ describe('CodeEditor', () => {
 
     const link = screen.getByText('MyComponent');
     link.getBoundingClientRect = () => mockDomRect({ left: 100, top: 150, width: 80, height: 20 });
-    const textarea = container.querySelector('textarea');
-    expect(textarea).not.toBeNull();
-    textarea!.getBoundingClientRect = () =>
+    const textarea = requireElement(container.querySelector('textarea'));
+    textarea.getBoundingClientRect = () =>
       mockDomRect({ left: 50, top: 100, width: 500, height: 400 });
 
     fireEvent.click(link);
@@ -331,5 +327,38 @@ describe('CodeEditor', () => {
 
     expect(onCopySelection).toHaveBeenCalledWith('visible folded text', 0, 19);
     expect(setData).toHaveBeenCalledWith('text/plain', 'full folded text');
+  });
+
+  it('shows variable definition popup headers and toggles closed on repeat click', () => {
+    const mockTargets = [
+      createMockNavigationTarget({
+        type: 'variable',
+        name: 'messages',
+        start: 0,
+        end: 8,
+        className: 'variable:messages',
+        targets: [
+          { filePath: 'src/test.js', fileName: 'test.js', loc: withLoc(1) },
+          { filePath: 'src/other.js', fileName: 'other.js', loc: withLoc(4) },
+        ],
+      }),
+    ];
+    vi.mocked(findNavigationTargets).mockReturnValue(mockTargets);
+
+    const highlightedHtml =
+      '<span class="navLink" data-nav-target="true" data-nav-idx="0">messages</span>';
+    const { container } = render(
+      <CodeEditor {...defaultProps} highlightedCode={highlightedHtml} navigationLinksEnabled />,
+    );
+
+    const link = screen.getByText('messages');
+    link.getBoundingClientRect = () => mockDomRect({ left: 100, top: 150, width: 80, height: 20 });
+    const textarea = requireElement(container.querySelector('textarea'));
+    textarea.getBoundingClientRect = () =>
+      mockDomRect({ left: 50, top: 100, width: 500, height: 400 });
+
+    fireEvent.click(link);
+    expect(screen.getByText('Defined in CSS')).toBeDefined();
+    expect(screen.getByText('test.js')).toBeDefined();
   });
 });

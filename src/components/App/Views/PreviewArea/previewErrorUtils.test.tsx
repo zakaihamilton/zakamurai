@@ -5,12 +5,15 @@ import {
   createTransformErrorResponse,
   decodeResponseBody,
   detectIframeLoadError,
+  extractFailedModuleSpecifier,
   extractTransformErrorFromResponse,
+  extractTransformErrorFromStub,
   fetchScriptErrorBody,
   formatEsbuildTransformError,
   formatRuntimeError,
   formatUnhandledRejection,
   isHtmlErrorDocument,
+  isMissingDefaultExportError,
   isOpaqueScriptError,
   normalizeTransformError,
   resolveMissingExportError,
@@ -66,6 +69,14 @@ describe('previewErrorUtils', () => {
       expect(message).toContain('/src/App.jsx:3:7: ERROR: syntax error');
     });
 
+    it('formats errors with filePath only when line is missing', () => {
+      const message = formatEsbuildTransformError({
+        message: 'Transform failed',
+        errors: [{ text: 'file-path only', location: { filePath: '/src/App.jsx' } }],
+      });
+      expect(message).toContain('/src/App.jsx: ERROR: file-path only');
+    });
+
     it('includes text-only errors without location', () => {
       const message = formatEsbuildTransformError({
         message: 'Transform failed',
@@ -81,6 +92,15 @@ describe('previewErrorUtils', () => {
         errors: [{ text: 'missing column', location: { file: '/src/App.jsx', line: 9 } }],
       });
       expect(message).toContain('/src/App.jsx:9:0: ERROR: missing column');
+    });
+
+    it('formats errors with file path only when line is missing', () => {
+      const message = formatEsbuildTransformError({
+        message: 'Transform failed',
+        errors: [{ text: 'file-only location', location: { file: '/src/App.jsx' } }],
+      });
+      expect(message).toContain('/src/App.jsx: ERROR: file-only location');
+      expect(message).not.toContain('/src/App.jsx::');
     });
 
     it('uses message field when text is absent', () => {
@@ -497,6 +517,18 @@ console.error("Transform failed with 2 errors");`);
       expect(detectIframeLoadError(doc)).toBe('Service Worker Error: virtual server unavailable');
     });
 
+    it('falls back to innerText when textContent is empty', () => {
+      const doc = asPreviewDocument({
+        title: '',
+        body: {
+          textContent: '',
+          innerText: 'Service Worker Error: virtual server unavailable',
+        },
+        querySelector: () => null,
+      });
+      expect(detectIframeLoadError(doc)).toBe('Service Worker Error: virtual server unavailable');
+    });
+
     it('detects decode errors', () => {
       const doc = asPreviewDocument({
         title: '',
@@ -707,6 +739,18 @@ console.error("Transform failed with 1 error");`,
       }));
       await expect(fetchScriptErrorBody('/preview/src/App.jsx', fetchImpl)).resolves.toBeNull();
     });
+
+    it('detects javascript modules from invalid URLs via extension fallback', async () => {
+      const fetchMock = vi.fn(async () => ({
+        ok: true,
+        headers: { get: () => null },
+        text: async () => 'module.exports = {};',
+      }));
+      await expect(
+        fetchScriptErrorBody('[[[not-a-valid-url]]].cjs', asFetchImpl(fetchMock)),
+      ).resolves.toBeNull();
+      expect(fetchMock).toHaveBeenCalled();
+    });
   });
 
   describe('toPreviewFetchUrl', () => {
@@ -752,6 +796,20 @@ console.error("Transform failed with 1 error");`,
         expect.stringMatching(/\/preview\/dist\/assets\/module\.mjs$/),
       );
     });
+
+    it('treats .cjs bundles as JavaScript modules and ignores successful responses', async () => {
+      const fetchMock = vi.fn(async () => ({
+        ok: true,
+        headers: { get: () => 'application/javascript' },
+        text: async () => 'module.exports = { ok: true };',
+      }));
+      await expect(
+        fetchScriptErrorBody('/dist/assets/legacy.cjs', asFetchImpl(fetchMock)),
+      ).resolves.toBeNull();
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringMatching(/\/preview\/dist\/assets\/legacy\.cjs$/),
+      );
+    });
   });
 
   describe('isHtmlErrorDocument', () => {
@@ -769,6 +827,141 @@ console.error("Transform failed with 1 error");`,
 
     it('detects 404 page text without doctype', () => {
       expect(isHtmlErrorDocument('404: This page could not be found')).toBe(true);
+    });
+  });
+
+  describe('isMissingDefaultExportError', () => {
+    it('detects missing default export messages', () => {
+      expect(
+        isMissingDefaultExportError(
+          "The requested module './App' does not provide an export named 'default'",
+        ),
+      ).toBe(true);
+      expect(isMissingDefaultExportError('SyntaxError: Unexpected token')).toBe(false);
+      expect(isMissingDefaultExportError(null)).toBe(false);
+    });
+  });
+
+  describe('extractFailedModuleSpecifier', () => {
+    it('extracts the module specifier from error text', () => {
+      expect(
+        extractFailedModuleSpecifier(
+          "Uncaught SyntaxError: The requested module './components/Card' does not provide an export named 'default'",
+        ),
+      ).toBe('./components/Card');
+      expect(extractFailedModuleSpecifier('no module here')).toBeNull();
+    });
+  });
+
+  describe('extractTransformErrorFromStub', () => {
+    it('returns null for unrecognized stub text', () => {
+      expect(extractTransformErrorFromStub('export default function App() {}')).toBeNull();
+    });
+
+    it('returns the full message when it is exactly 4000 characters', () => {
+      const exact = 'x'.repeat(4000);
+      expect(truncatePreviewError(exact)).toBe(exact);
+    });
+
+    it('extracts export {} stub comments', () => {
+      const text = `// /src/App.jsx:5:1: ERROR: Missing export
+export {}`;
+      expect(extractTransformErrorFromStub(text)).toContain('Missing export');
+    });
+
+    it('extracts legacy transform error comments', () => {
+      const text = `// Transform Error: Legacy failure
+console.error("Transform failed");`;
+      expect(extractTransformErrorFromStub(text)).toBe('Legacy failure');
+    });
+  });
+
+  describe('decodeResponseBody', () => {
+    it('decodes Uint8Array and ArrayBufferView payloads', () => {
+      const bytes = new TextEncoder().encode('module error');
+      expect(decodeResponseBody(bytes)).toBe('module error');
+      expect(decodeResponseBody(bytes.buffer)).toBe('module error');
+    });
+
+    it('returns an empty string for unsupported body shapes', () => {
+      expect(decodeResponseBody(null)).toBe('');
+      expect(decodeResponseBody({ bad: true })).toBe('');
+    });
+  });
+
+  describe('formatUnhandledRejection', () => {
+    it('formats Error reasons with truncated stacks', () => {
+      const error = new Error('boom');
+      error.stack = ['Error: boom', 'at run (file.js:1:1)', 'at test (file.js:2:2)'].join('\n');
+      const message = formatUnhandledRejection({ reason: error });
+      expect(message).toContain('boom');
+      expect(message).toContain('at run');
+    });
+
+    it('formats string reasons and falls back for unknown values', () => {
+      expect(formatUnhandledRejection({ reason: 'plain failure' })).toBe('plain failure');
+      expect(formatUnhandledRejection({ reason: { code: 1 } })).toBe(
+        'An unhandled promise rejection occurred in the preview.',
+      );
+    });
+  });
+
+  describe('formatRuntimeError', () => {
+    it('falls back to filename when message is missing', () => {
+      expect(formatRuntimeError({ filename: '/preview/src/App.jsx' })).toContain(
+        'Failed to load resource: /preview/src/App.jsx',
+      );
+    });
+
+    it('includes stack traces without duplicating the first line', () => {
+      const error = new Error('runtime boom');
+      error.stack = ['Error: runtime boom', 'at render (App.jsx:4:5)'].join('\n');
+      const message = formatRuntimeError({
+        message: 'runtime boom',
+        filename: 'App.jsx',
+        lineno: 4,
+        colno: 5,
+        error,
+      });
+      expect(message).toContain('runtime boom');
+      expect(message).toContain('at render');
+    });
+  });
+
+  describe('extractTransformErrorFromResponse', () => {
+    it('returns raw text when transform header is set without stub comments', () => {
+      const message = extractTransformErrorFromResponse({
+        headers: { 'X-Transform-Error': 'true' },
+        body: '  raw transform failure  ',
+      });
+      expect(message).toBe('raw transform failure');
+    });
+  });
+
+  describe('normalizeTransformError', () => {
+    it('accepts unexpected closing errors with file locations', () => {
+      const text =
+        '/src/App.jsx:12:4\nUnexpected closing "div" tag does not match opening "section" tag';
+      expect(normalizeTransformError(text)).toContain('Unexpected closing');
+    });
+  });
+
+  describe('resolveMissingExportError', () => {
+    it('fetches module errors using event.target.src when filename is missing', async () => {
+      const fetchImpl = asFetchImpl(async () => ({
+        ok: false,
+        headers: { get: () => 'text/plain' },
+        text: async () => 'Service Worker Error: module unavailable',
+      }));
+      const message = await resolveMissingExportError(
+        {
+          message:
+            "Uncaught SyntaxError: The requested module './Card.jsx' does not provide an export named 'default'",
+          target: { src: 'http://localhost/preview/src/App.jsx' },
+        },
+        fetchImpl,
+      );
+      expect(message).toBe('Service Worker Error: module unavailable');
     });
   });
 });

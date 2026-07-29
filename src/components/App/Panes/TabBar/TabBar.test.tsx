@@ -1,5 +1,6 @@
 import { SidebarState } from '@/components/App/Panes/Sidebar';
 import type { Tab } from '@/components/state/domain-types';
+import { requireElement } from '@/test-utils/domMocks';
 import { createMockTab } from '@/test-utils/editorMocks';
 import { makeSidebarState, makeTabState } from '@/test-utils/stateMocks';
 import { act, fireEvent, render, screen } from '@testing-library/react';
@@ -191,7 +192,7 @@ describe('TabBar', () => {
     vi.mocked(SidebarState.useState).mockReturnValue(makeSidebarState());
 
     const { container } = render(<TabBar />);
-    const tabBarContainer = container.firstChild!;
+    const tabBarContainer = requireElement(container.firstChild as Element | null);
 
     await act(async () => {
       fireEvent.dragOver(tabBarContainer, {

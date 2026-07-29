@@ -182,4 +182,69 @@ describe('useAssociationNavigator', () => {
     expect(state.navigationHistory.stack.length).toBeLessThanOrEqual(3);
     expect(state.cursorPos?.['src/App.module.css']).toEqual({ line: 8, col: 1, index: 0 });
   });
+
+  it('uses string style results and falls back to the first line when no class match exists', () => {
+    vi.mocked(getStyleAtCursor).mockReturnValue('card');
+    vi.mocked(findClassInCss).mockReturnValue(null);
+
+    const { result } = renderHook(() =>
+      useAssociationNavigator({
+        filePath: 'src/App.jsx',
+        cursorPos: { line: 1, col: 18, index: 17 },
+        localContentRef,
+        state,
+        tabState,
+        shouldScrollRef,
+      }),
+    );
+
+    act(() => {
+      result.current.handleNavigateToAssociated();
+    });
+
+    expect(state.cursorPos?.['src/App.module.css']).toEqual({ line: 1, col: 1, index: 0 });
+  });
+
+  it('resolves dynamic module paths from identifier imports in JavaScript files', () => {
+    vi.mocked(getStyleAtCursor).mockReturnValue({ className: 'card', identifier: 'theme' });
+    vi.mocked(getAssociatedFilePath).mockImplementation((_path, _files, identifier) =>
+      identifier ? 'src/Theme.module.css' : 'src/App.module.css',
+    );
+
+    const { result } = renderHook(() =>
+      useAssociationNavigator({
+        filePath: 'src/App.jsx',
+        cursorPos: { line: 1, col: 18, index: 17 },
+        localContentRef,
+        state,
+        tabState,
+        shouldScrollRef,
+      }),
+    );
+
+    act(() => {
+      result.current.handleNavigateToAssociated();
+    });
+
+    expect(tabState.activeTabId).toBe('src/Theme.module.css');
+  });
+
+  it('ignores jump requests without a target location', () => {
+    const { result } = renderHook(() =>
+      useAssociationNavigator({
+        filePath: 'src/App.jsx',
+        cursorPos: { line: 1, col: 1, index: 0 },
+        localContentRef,
+        state,
+        tabState,
+        shouldScrollRef,
+      }),
+    );
+
+    act(() => {
+      result.current.handleJumpToTarget('src/App.module.css', null as never);
+    });
+
+    expect(tabState.activeTabId).toBe('src/App.jsx');
+  });
 });

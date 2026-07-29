@@ -684,7 +684,8 @@ describe('navigation utils', () => {
       // Check SparklesIcon target
       const sparklesTarget = importTargets.find((t) => t.name === 'SparklesIcon');
       expect(sparklesTarget).toBeDefined();
-      const sparkles = sparklesTarget!;
+      if (!sparklesTarget) return;
+      const sparkles = sparklesTarget;
       expect(sparkles.targets[0].filePath).toBe('src/Icons.js');
       expect(sparkles.targets[0].loc.line).toBe(2);
       expect(fileContents['src/App.js'].substring(sparkles.start, sparkles.end)).toBe(
@@ -694,7 +695,8 @@ describe('navigation utils', () => {
       // Check CheckIcon target
       const checkTarget = importTargets.find((t) => t.name === 'CheckIcon');
       expect(checkTarget).toBeDefined();
-      const check = checkTarget!;
+      if (!checkTarget) return;
+      const check = checkTarget;
       expect(check.targets[0].filePath).toBe('src/Icons.js');
       expect(check.targets[0].loc.line).toBe(3);
       expect(fileContents['src/App.js'].substring(check.start, check.end)).toBe('CheckIcon');
@@ -801,13 +803,15 @@ describe('navigation utils', () => {
 
       const btnTarget = styleTargets.find((t) => t.className === 'btn');
       expect(btnTarget).toBeDefined();
-      const btn = btnTarget!;
+      if (!btnTarget) return;
+      const btn = btnTarget;
       expect(btn.targets[0].filePath).toBe('src/global.css');
       expect(btn.targets[0].loc.line).toBe(2);
 
       const primaryBtnTarget = styleTargets.find((t) => t.className === 'primary-btn');
       expect(primaryBtnTarget).toBeDefined();
-      const primaryBtn = primaryBtnTarget!;
+      if (!primaryBtnTarget) return;
+      const primaryBtn = primaryBtnTarget;
       expect(primaryBtn.targets[0].filePath).toBe('src/global.css');
       expect(primaryBtn.targets[0].loc.line).toBe(3);
 
@@ -846,13 +850,15 @@ describe('navigation utils', () => {
       expect(spinDef).toBeDefined();
       expect(spinDef?.targets.length).toBe(1);
       expect(spinDef?.targets[0].loc.line).toBe(8); // animation line in spinner class
-      expect(cssCode.substring(spinDef!.start, spinDef!.end)).toBe('spin');
+      if (!spinDef) return;
+      expect(cssCode.substring(spinDef.start, spinDef.end)).toBe('spin');
 
       // 2. Usage check: 'animation: spin ...' (type 'import' pointing to definition)
       const spinUsage = targets.find((t) => t.type === 'import' && t.name === 'spin');
       expect(spinUsage).toBeDefined();
       expect(spinUsage?.targets[0].loc.line).toBe(2); // definition line
-      expect(cssCode.substring(spinUsage!.start, spinUsage!.end)).toBe('spin');
+      if (!spinUsage) return;
+      expect(cssCode.substring(spinUsage.start, spinUsage.end)).toBe('spin');
     });
   });
 });

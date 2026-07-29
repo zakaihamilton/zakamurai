@@ -386,4 +386,78 @@ describe('Prompt', () => {
     expect(toggleBtn).toBeDefined();
     await act(async () => fireEvent.click(toggleBtn));
   });
+
+  it('uses the mobile popup state instead of the desktop panel', () => {
+    vi.mocked(AppState.useState).mockReturnValue(makeAppState({ isMobile: true }));
+    vi.mocked(SidebarState.useState).mockReturnValue(
+      makeSidebarState({ showAIInput: false, isAIInputPopupOpen: true }),
+    );
+    render(<Prompt />);
+    expect(screen.getByPlaceholderText('Tell the Agent what to do...')).toBeDefined();
+  });
+
+  it('shows compiling state and active file metadata', () => {
+    vi.mocked(LogState.useState).mockReturnValue(
+      makeLogState({ isAIProcessing: false, isSystemProcessing: true }),
+    );
+    vi.mocked(TabState.useState).mockReturnValue(
+      makeTabState({
+        activeTabId: 'src/App.js',
+        openTabs: [{ id: 'src/App.js', type: 'file', label: 'App.js' }],
+      }),
+    );
+    vi.mocked(PromptUiState.useState).mockReturnValue(makePromptUiState({ promptScope: 'file' }));
+    const editorStore = Object.assign(vi.fn(), { selectedLines: { 'src/App.js': [2, 4] } });
+    vi.mocked(EditorState.useState).mockReturnValue(
+      editorStore as unknown as ReturnType<typeof EditorState.useState>,
+    );
+    render(<Prompt />);
+    expect(screen.getAllByText('Compiling').length).toBeGreaterThan(0);
+    expect(screen.getByText('App.js')).toBeDefined();
+    expect(screen.getByText('Lines 2, 4')).toBeDefined();
+  });
+
+  it('sends welcome requests once an active session is available', async () => {
+    const { runAgent } = await import('@/components/AI/Agent');
+    const promptUi = makePromptUiState({
+      welcomeRequest: { text: 'build a todo app', scope: 'project' },
+    });
+    vi.mocked(PromptUiState.useState).mockReturnValue(promptUi);
+    render(<Prompt />);
+
+    await waitFor(() => expect(runAgent).toHaveBeenCalled());
+    expect(promptUi.welcomeRequest).toBeNull();
+  });
+
+  it('updates draft text while browsing history', async () => {
+    const promptUi = makePromptUiState({ val: 'draft', historyIndex: -1, draftVal: '' });
+    vi.mocked(PromptUiState.useState).mockReturnValue(promptUi);
+    render(<Prompt />);
+    const input = screen.getByPlaceholderText('Tell the Agent what to do...');
+
+    await act(async () => {
+      fireEvent.change(input, { target: { value: 'updated draft' } });
+    });
+
+    expect(promptUi.draftVal).toBe('updated draft');
+  });
+
+  it('stops generation with Ctrl+. on non-Mac platforms', async () => {
+    const originalPlatform = navigator.platform;
+    Object.defineProperty(navigator, 'platform', { configurable: true, value: 'Win32' });
+    const interrupt = (await import('@/components/AI/WebLLMAPI')).interruptWebLLM;
+    vi.mocked(SidebarState.useState).mockReturnValue(
+      makeSidebarState({ showAIInput: true, isAIInputPopupOpen: false }),
+    );
+    vi.mocked(LogState.useState).mockReturnValue(makeLogState({ isAIProcessing: true }));
+    render(<Prompt />);
+    const input = screen.getByPlaceholderText('Agent is working... Please wait.');
+
+    await act(async () => {
+      fireEvent.keyDown(input, { key: '.', ctrlKey: true });
+    });
+
+    expect(interrupt).toHaveBeenCalled();
+    Object.defineProperty(navigator, 'platform', { configurable: true, value: originalPlatform });
+  });
 });

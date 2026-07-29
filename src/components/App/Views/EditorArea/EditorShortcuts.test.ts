@@ -12,6 +12,12 @@ describe('useEditorShortcuts', () => {
   let handleChange: Mock;
   let textareaRef: TextareaRef;
 
+  const textarea = () => {
+    const el = textareaRef.current;
+    if (!el) throw new Error('expected textarea ref');
+    return el;
+  };
+
   beforeEach(() => {
     vi.clearAllMocks();
     handleChange = vi.fn();
@@ -19,9 +25,9 @@ describe('useEditorShortcuts', () => {
   });
 
   it('adds a closing bracket when typing "("', () => {
-    textareaRef.current!.value = '';
-    textareaRef.current!.selectionStart = 0;
-    textareaRef.current!.selectionEnd = 0;
+    textarea().value = '';
+    textarea().selectionStart = 0;
+    textarea().selectionEnd = 0;
 
     const { result } = renderHook(() => useEditorShortcuts({ handleChange, textareaRef }));
 
@@ -34,9 +40,9 @@ describe('useEditorShortcuts', () => {
   });
 
   it('indents with Tab', () => {
-    textareaRef.current!.value = 'line1';
-    textareaRef.current!.selectionStart = 0;
-    textareaRef.current!.selectionEnd = 0;
+    textarea().value = 'line1';
+    textarea().selectionStart = 0;
+    textarea().selectionEnd = 0;
 
     const { result } = renderHook(() => useEditorShortcuts({ handleChange, textareaRef }));
 
@@ -49,9 +55,9 @@ describe('useEditorShortcuts', () => {
   });
 
   it('toggles comment with Cmd+/', () => {
-    textareaRef.current!.value = 'const x = 1;';
-    textareaRef.current!.selectionStart = 0;
-    textareaRef.current!.selectionEnd = 0;
+    textarea().value = 'const x = 1;';
+    textarea().selectionStart = 0;
+    textarea().selectionEnd = 0;
 
     const { result } = renderHook(() => useEditorShortcuts({ handleChange, textareaRef }));
 
@@ -64,9 +70,9 @@ describe('useEditorShortcuts', () => {
   });
 
   it('auto-indents on Enter after {', () => {
-    textareaRef.current!.value = 'if (true) {';
-    textareaRef.current!.selectionStart = 11;
-    textareaRef.current!.selectionEnd = 11;
+    textarea().value = 'if (true) {';
+    textarea().selectionStart = 11;
+    textarea().selectionEnd = 11;
 
     const { result } = renderHook(() => useEditorShortcuts({ handleChange, textareaRef }));
 
@@ -162,6 +168,90 @@ describe('useEditorShortcuts', () => {
     expect(event.preventDefault).toHaveBeenCalled();
     expect(onCancelSuggestion).toHaveBeenCalledWith({ pauseUntilEdit: true });
     expect(handleChange).not.toHaveBeenCalled();
+  });
+
+  it('outdents with Shift+Tab', () => {
+    textarea().value = '  line1\n  line2';
+    textarea().selectionStart = 0;
+    textarea().selectionEnd = 14;
+
+    const { result } = renderHook(() => useEditorShortcuts({ handleChange, textareaRef }));
+    const event = createKeyboardEvent({ key: 'Tab', shiftKey: true });
+
+    result.current.handleKeyDown(event);
+
+    expect(handleChange).toHaveBeenCalledWith({ target: { value: 'line1\nline2' } });
+  });
+
+  it('indents a multi-line selection with Tab', () => {
+    textarea().value = 'line1\nline2';
+    textarea().selectionStart = 0;
+    textarea().selectionEnd = 11;
+
+    const { result } = renderHook(() => useEditorShortcuts({ handleChange, textareaRef }));
+    const event = createKeyboardEvent({ key: 'Tab' });
+
+    result.current.handleKeyDown(event);
+
+    expect(handleChange).toHaveBeenCalledWith({ target: { value: '  line1\n  line2' } });
+  });
+
+  it('wraps selections in square brackets and quotes', () => {
+    textarea().value = 'value';
+    textarea().selectionStart = 0;
+    textarea().selectionEnd = 5;
+
+    const { result } = renderHook(() => useEditorShortcuts({ handleChange, textareaRef }));
+
+    result.current.handleKeyDown(createKeyboardEvent({ key: '[' }));
+    expect(handleChange).toHaveBeenLastCalledWith({ target: { value: '[value]' } });
+
+    result.current.handleKeyDown(createKeyboardEvent({ key: '"' }));
+    expect(handleChange).toHaveBeenLastCalledWith({ target: { value: '"value"' } });
+  });
+
+  it('requests jump-to-line on Ctrl+G', () => {
+    const onRequestJumpToLine = vi.fn();
+    const { result } = renderHook(() =>
+      useEditorShortcuts({ handleChange, textareaRef, onRequestJumpToLine }),
+    );
+
+    result.current.handleKeyDown(createKeyboardEvent({ key: 'g', ctrlKey: true }));
+
+    expect(onRequestJumpToLine).toHaveBeenCalled();
+  });
+
+  it('uncomments selected lines with Cmd+/', () => {
+    textarea().value = '// const x = 1;';
+    textarea().selectionStart = 0;
+    textarea().selectionEnd = 15;
+
+    const { result } = renderHook(() => useEditorShortcuts({ handleChange, textareaRef }));
+    result.current.handleKeyDown(createKeyboardEvent({ key: '/', metaKey: true }));
+
+    expect(handleChange).toHaveBeenCalledWith({ target: { value: 'const x = 1;' } });
+  });
+
+  it('auto-indents between matching braces on Enter', () => {
+    textarea().value = 'if (true) {}';
+    textarea().selectionStart = 11;
+    textarea().selectionEnd = 11;
+
+    const { result } = renderHook(() => useEditorShortcuts({ handleChange, textareaRef }));
+    result.current.handleKeyDown(createKeyboardEvent({ key: 'Enter' }));
+
+    expect(handleChange).toHaveBeenCalledWith({ target: { value: 'if (true) {\n  \n}' } });
+  });
+
+  it('preserves indentation on Enter for indented lines', () => {
+    textarea().value = '  const x = 1;';
+    textarea().selectionStart = 14;
+    textarea().selectionEnd = 14;
+
+    const { result } = renderHook(() => useEditorShortcuts({ handleChange, textareaRef }));
+    result.current.handleKeyDown(createKeyboardEvent({ key: 'Enter' }));
+
+    expect(handleChange).toHaveBeenCalledWith({ target: { value: '  const x = 1;\n  ' } });
   });
 });
 

@@ -245,4 +245,13 @@ describe('shortcuts/actions', () => {
     switchTabAction(asCtx({ tabState }), 1);
     expect(capturedDraft.activeTabId).toBe('a.js');
   });
+
+  it('no-ops when required shortcut stores are missing', () => {
+    const tabUpdater = vi.fn();
+    toggleCssJsAction(asCtx({ editorState: null, tabState: null, sidebarState: null }));
+    navigateBackAction(asCtx({ editorState: null, tabState: tabUpdater }));
+    navigateForwardAction(asCtx({ editorState: null, tabState: tabUpdater }));
+    switchTabAction(asCtx({ tabState: null }), 1);
+    expect(tabUpdater).not.toHaveBeenCalled();
+  });
 });

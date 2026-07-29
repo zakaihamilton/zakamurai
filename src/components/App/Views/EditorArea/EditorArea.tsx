@@ -253,7 +253,7 @@ function EditorAreaInner({ file, fsHandle }: EditorAreaProps) {
         showSideBySide={showSideBySide}
         hasDiff={hasDiff}
         sideBySideProps={{
-          diffData: diffData!,
+          diffData: diffData ?? { originalContent: '', modifiedContent: '', diffs: [] },
           isReadOnly,
           navigationLinksEnabled: reviewNavigationLinksEnabled,
           filePath,

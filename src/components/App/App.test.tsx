@@ -1,4 +1,5 @@
 import { useFileSystem } from '@/components/Storage';
+import Settings from '@/components/Storage/Settings';
 import { makeFileSystemApi } from '@/test-utils/fsMocks';
 import { makeAppState } from '@/test-utils/stateMocks';
 import { render, screen } from '@testing-library/react';
@@ -169,6 +170,9 @@ vi.mock('@/components/Storage/Settings', () => ({
     getPreviewHtml: vi.fn(() => null),
     getAgentSessions: vi.fn(() => null),
     getActiveAgentSessionId: vi.fn(() => null),
+    getRecoveryCheckpoint: vi.fn(() => null),
+    getWorkspaceProfile: vi.fn(() => ({})),
+    getChangeSets: vi.fn(() => ({ activeId: null, items: [] })),
   },
 }));
 vi.mock('./WindowResize', () => ({ useWindowResize: vi.fn() }));
@@ -209,5 +213,83 @@ describe('App', () => {
     );
     render(<App />);
     expect(await screen.findByText('Initializing workspace...')).toBeDefined();
+  });
+
+  it('syncs projectName from rootHandle when local folder is mounted', async () => {
+    const appStateMock = makeAppState({
+      theme: 'dark',
+      projectName: 'Old Project',
+    });
+    vi.spyOn(AppState, 'useState').mockReturnValue(appStateMock);
+
+    const rootHandle = { name: 'MountedFolder' } as FileSystemDirectoryHandle;
+    vi.mocked(useFileSystem).mockReturnValue(
+      makeFileSystemApi({ isReady: true, rootHandle }) as ReturnType<typeof useFileSystem>,
+    );
+
+    render(<App />);
+    expect(await screen.findByTestId('sidebar')).toBeDefined();
+    expect(appStateMock).toHaveBeenCalled();
+    expect(appStateMock.projectName).toBe('MountedFolder');
+  });
+
+  it('hydrates initial values from recovery checkpoint settings', async () => {
+    vi.mocked(Settings.getRecoveryCheckpoint).mockReturnValue({
+      projectName: 'Recovered Project',
+      openTabs: [{ id: 'src/App.js', label: 'App.js', type: 'file' }],
+      activeTabId: 'src/App.js',
+      fileContents: { 'src/App.js': 'recovered code' },
+      pendingDiffs: {},
+    });
+    vi.mocked(Settings.getOpenTabs).mockReturnValue([]);
+    vi.mocked(Settings.getActiveTabId).mockReturnValue(null);
+    vi.mocked(Settings.getFileContents).mockReturnValue(null);
+    vi.mocked(Settings.getPendingDiffs).mockReturnValue({});
+    vi.mocked(Settings.getProjectName).mockReturnValue('Recovered Project');
+
+    render(<App />);
+    expect(await screen.findByTestId('sidebar')).toBeDefined();
+    expect(Settings.getProjectName).toHaveBeenCalled();
+  });
+
+  it('does not sync projectName when it already matches rootHandle', async () => {
+    const appStateMock = makeAppState({
+      theme: 'dark',
+      projectName: 'MountedFolder',
+    });
+    vi.spyOn(AppState, 'useState').mockReturnValue(appStateMock);
+
+    const rootHandle = { name: 'MountedFolder' } as FileSystemDirectoryHandle;
+    vi.mocked(useFileSystem).mockReturnValue(
+      makeFileSystemApi({ isReady: true, rootHandle }) as ReturnType<typeof useFileSystem>,
+    );
+
+    render(<App />);
+    expect(await screen.findByTestId('sidebar')).toBeDefined();
+    expect(appStateMock.projectName).toBe('MountedFolder');
+  });
+
+  it('builds scratch template defaults when template is scratch', async () => {
+    vi.mocked(Settings.getTemplate).mockReturnValue('scratch');
+    vi.mocked(Settings.getFileContents).mockReturnValue(null);
+    vi.mocked(Settings.getPendingDiffs).mockReturnValue({});
+
+    render(<App />);
+    expect(await screen.findByTestId('sidebar')).toBeDefined();
+    expect(Settings.getTemplate).toHaveBeenCalled();
+  });
+
+  it('restores pending diffs from settings during hydration', async () => {
+    vi.mocked(Settings.getPendingDiffs).mockReturnValue({
+      'src/App.js': {
+        originalContent: 'const old = 1;',
+        modifiedContent: 'const newer = 2;',
+      },
+    });
+    vi.mocked(Settings.getFileContents).mockReturnValue({ 'src/App.js': 'const newer = 2;' });
+
+    render(<App />);
+    expect(await screen.findByTestId('sidebar')).toBeDefined();
+    expect(Settings.getPendingDiffs).toHaveBeenCalled();
   });
 });
