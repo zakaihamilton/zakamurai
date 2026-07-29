@@ -1,0 +1,116 @@
+import React, { useEffect, useCallback } from 'react';
+import FindReplaceBar from './FindReplaceBar';
+import type { FindHandlerProps, FindMatch } from './types';
+
+export default function FindHandler({
+  localContent,
+  scrollContainerRef,
+  showFind,
+  setShowFind,
+  findQuery,
+  setFindQuery,
+  replaceQuery,
+  setReplaceQuery,
+  matchIndex,
+  setMatchIndex,
+  matches,
+  setMatches,
+  handleChange,
+}: FindHandlerProps) {
+  const handleFind = useCallback(() => {
+    if (!findQuery) {
+      setMatches([]);
+      setMatchIndex(-1);
+      return;
+    }
+    const escapedQuery = findQuery.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const regex = new RegExp(escapedQuery, 'gi');
+    const newMatches: FindMatch[] = [];
+    let match = regex.exec(localContent);
+    while (match !== null) {
+      const before = localContent.substring(0, match.index);
+      const line = before.split('\n').length;
+      const lineStart = before.lastIndexOf('\n') + 1;
+      newMatches.push({
+        line,
+        index: match.index - lineStart,
+        absoluteIndex: match.index,
+        length: match[0].length,
+      });
+      match = regex.exec(localContent);
+    }
+
+    setMatches(newMatches);
+    setMatchIndex((prev) => {
+      if (newMatches.length === 0) return -1;
+      if (prev === -1) return 0;
+      return prev % newMatches.length;
+    });
+  }, [findQuery, localContent, setMatches, setMatchIndex]);
+
+  useEffect(() => {
+    if (showFind) {
+      handleFind();
+    }
+  }, [handleFind, showFind]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'f' && !e.shiftKey) {
+        e.preventDefault();
+        setShowFind((prev) => !prev);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [setShowFind]);
+
+  useEffect(() => {
+    if (matchIndex !== -1 && matches[matchIndex] && scrollContainerRef.current) {
+      const match = matches[matchIndex];
+      const lineHeight = 1.6 * 14;
+      const top = (match.line - 1) * lineHeight + 20;
+      scrollContainerRef.current.scrollTo({
+        top: top - 100,
+        behavior: 'smooth',
+      });
+    }
+  }, [matchIndex, matches, scrollContainerRef]);
+
+  const handleReplace = useCallback(() => {
+    if (matchIndex === -1 || matches.length === 0) return;
+    const match = matches[matchIndex];
+    const newVal =
+      localContent.substring(0, match.absoluteIndex) +
+      replaceQuery +
+      localContent.substring(match.absoluteIndex + match.length);
+
+    handleChange?.({ target: { value: newVal } });
+  }, [matchIndex, matches, localContent, replaceQuery, handleChange]);
+
+  const handleReplaceAll = useCallback(() => {
+    if (!findQuery) return;
+    const escapedQuery = findQuery.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const regex = new RegExp(escapedQuery, 'gi');
+    const newVal = localContent.replace(regex, () => replaceQuery);
+    handleChange?.({ target: { value: newVal } });
+    setShowFind(false);
+  }, [findQuery, localContent, replaceQuery, handleChange, setShowFind]);
+
+  return (
+    <FindReplaceBar
+      showFind={showFind}
+      setShowFind={setShowFind}
+      findQuery={findQuery}
+      setFindQuery={setFindQuery}
+      replaceQuery={replaceQuery}
+      setReplaceQuery={setReplaceQuery}
+      matches={matches}
+      matchIndex={matchIndex}
+      setMatchIndex={setMatchIndex}
+      handleFind={handleFind}
+      handleReplace={handleReplace}
+      handleReplaceAll={handleReplaceAll}
+    />
+  );
+}

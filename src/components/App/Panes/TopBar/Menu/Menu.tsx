@@ -1,0 +1,185 @@
+import { LogState } from '@/components/App/Views/LogArea';
+import type { TopBarMenuStateShape } from '@/components/state/domain-types';
+import { createState } from '@/components/state/State';
+import ContextMenu from '@/components/ui/ContextMenu';
+import Dialog from '@/components/ui/Dialog';
+import { Icons } from '@/components/ui/Icons';
+import Tooltip from '@/components/ui/Tooltip';
+import { formatShortcut } from '@/utils/os';
+import styles from './Menu.module.css';
+import { requireStore } from '../../../types';
+
+const TopBarMenuState = createState<TopBarMenuStateShape>('TopBarMenuState');
+
+export default function TopBarMenu({
+  onExportZip,
+  onExportCompiledZip,
+  onNewProject,
+  onClearFS,
+  onExportSupportReport,
+  onToggleShortcuts,
+}) {
+  const { isSystemProcessing, isAIProcessing } = requireStore(LogState.useState([
+    'isSystemProcessing',
+    'isAIProcessing',
+  ]));
+  const topBarMenuState = requireStore(TopBarMenuState.useState(null, {
+    menuPosition: null,
+    newProjectTemplate: null,
+  }));
+  const { menuPosition = null, newProjectTemplate = null } = topBarMenuState || {};
+
+  const handleMenuOpen = (e) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    topBarMenuState((draft) => {
+      draft.menuPosition = {
+        x: rect.right - 220,
+        y: rect.bottom + 8,
+      };
+    });
+  };
+
+  const handleMenuClose = () => {
+    topBarMenuState((draft) => {
+      draft.menuPosition = null;
+    });
+  };
+
+  const isProcessing = isSystemProcessing || isAIProcessing;
+
+  return (
+    <>
+      <Tooltip content="More actions">
+        <button
+          type="button"
+          className={`${styles.actionBtn} ${menuPosition ? styles.activeAction : ''}`}
+          onClick={handleMenuOpen}
+          aria-label="More actions"
+          data-testid="more-actions-btn"
+        >
+          <Icons.MoreVertical />
+        </button>
+      </Tooltip>
+      <ContextMenu position={menuPosition} onClose={handleMenuClose}>
+        <button
+          type="button"
+          className={styles.menuItem}
+          disabled={isProcessing}
+          onClick={() => {
+            topBarMenuState((draft) => {
+              draft.newProjectTemplate = 'default';
+            });
+            handleMenuClose();
+          }}
+        >
+          <Icons.FilePlus />
+          <span>New Project</span>
+        </button>
+        <button
+          type="button"
+          className={styles.menuItem}
+          disabled={isProcessing}
+          onClick={() => {
+            topBarMenuState((draft) => {
+              draft.newProjectTemplate = 'scratch';
+            });
+            handleMenuClose();
+          }}
+        >
+          <Icons.Code />
+          <span>New Project from Scratch</span>
+        </button>
+
+        <div className={styles.menuSeparator} />
+
+        <button
+          type="button"
+          className={styles.menuItem}
+          onClick={() => {
+            onExportZip();
+            handleMenuClose();
+          }}
+        >
+          <Icons.Download />
+          <span>Export ZIP</span>
+        </button>
+        <button
+          type="button"
+          className={styles.menuItem}
+          onClick={() => {
+            onExportCompiledZip();
+            handleMenuClose();
+          }}
+        >
+          <Icons.Download />
+          <span>Export compiled files</span>
+        </button>
+        <button
+          type="button"
+          className={styles.menuItem}
+          onClick={() => {
+            onExportSupportReport();
+            handleMenuClose();
+          }}
+        >
+          <Icons.Download />
+          <span>Export support report</span>
+        </button>
+
+        <div className={styles.menuSeparator} />
+
+        <button
+          type="button"
+          className={styles.menuItem}
+          disabled={isProcessing}
+          onClick={() => {
+            onClearFS();
+            handleMenuClose();
+          }}
+        >
+          <Icons.Trash />
+          <span>Clear FS</span>
+        </button>
+
+        <div className={styles.menuSeparator} />
+
+        <button
+          type="button"
+          className={styles.menuItem}
+          onClick={() => {
+            onToggleShortcuts();
+            handleMenuClose();
+          }}
+        >
+          <Icons.Info />
+          <span>Keyboard Shortcuts</span>
+          <span className={styles.menuShortcut}>{formatShortcut('⌃⇧K')}</span>
+        </button>
+      </ContextMenu>
+      <Dialog
+        isOpen={!!newProjectTemplate}
+        title={newProjectTemplate === 'scratch' ? 'New Project from Scratch?' : 'New Project?'}
+        message={
+          newProjectTemplate === 'scratch'
+            ? 'Are you sure you want to start a new project from scratch? This will unlink the current project and reset all files to a minimal setup.'
+            : 'Are you sure you want to start a new project? This will unlink the current project and reset all files to defaults.'
+        }
+        onConfirm={() => {
+          const template = newProjectTemplate;
+          topBarMenuState((draft) => {
+            draft.newProjectTemplate = null;
+          });
+          onNewProject(template);
+        }}
+        onCancel={() =>
+          topBarMenuState((draft) => {
+            draft.newProjectTemplate = null;
+          })
+        }
+        confirmText="New Project"
+        cancelText="Cancel"
+        type="danger"
+      />
+    </>
+  );
+}
