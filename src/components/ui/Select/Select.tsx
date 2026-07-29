@@ -8,6 +8,33 @@ import styles from './Select.module.css';
 
 const SelectState = createState<SelectStateShape>('SelectState');
 
+// Keep this aligned with .menu's max-height so the menu never creates avoidable scroll overflow.
+const MENU_SPACE_REQUIRED = 320;
+
+export function shouldOpenSelectMenuUp(
+  triggerTop: number,
+  triggerBottom: number,
+  boundaryTop: number,
+  boundaryBottom: number,
+): boolean {
+  const roomBelow = boundaryBottom - triggerBottom;
+  const roomAbove = triggerTop - boundaryTop;
+  return roomBelow < MENU_SPACE_REQUIRED && roomAbove > roomBelow;
+}
+
+function findVerticalMenuBoundary(element: HTMLElement): { top: number; bottom: number } {
+  let ancestor = element.parentElement;
+  while (ancestor) {
+    const overflowY = window.getComputedStyle(ancestor).overflowY;
+    if (/(auto|scroll|hidden|clip)/.test(overflowY)) {
+      const rect = ancestor.getBoundingClientRect();
+      return { top: rect.top, bottom: rect.bottom };
+    }
+    ancestor = ancestor.parentElement;
+  }
+  return { top: 0, bottom: window.innerHeight };
+}
+
 export default function Select({
   id,
   label,
@@ -75,7 +102,10 @@ function SelectInner({
   };
 
   return (
-    <div className={`${styles.field} ${className}`} ref={wrapperRef}>
+    <div
+      className={`${styles.field} ${isOpen ? styles.fieldOpen : ''} ${className}`}
+      ref={wrapperRef}
+    >
       {label && (
         <span className={styles.label} id={id ? `${id}-label` : undefined}>
           {label}
@@ -94,9 +124,13 @@ function SelectInner({
           onClick={(event) =>
             selectState?.((draft) => {
               const rect = event.currentTarget.getBoundingClientRect();
-              const roomBelow = window.innerHeight - rect.bottom;
-              const roomAbove = rect.top;
-              draft.opensUp = roomBelow < 260 && roomAbove > roomBelow;
+              const boundary = findVerticalMenuBoundary(event.currentTarget);
+              draft.opensUp = shouldOpenSelectMenuUp(
+                rect.top,
+                rect.bottom,
+                boundary.top,
+                boundary.bottom,
+              );
               draft.isOpen = !draft.isOpen;
             })
           }

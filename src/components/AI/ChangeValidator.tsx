@@ -164,6 +164,29 @@ export function validateComponentStyling(path: string, content: string): string 
   return null;
 }
 
+/** Reject a stylesheet that was accidentally assigned a JSX or TSX path. */
+export function validateFileContentType(path: string, content: string): string | null {
+  if (!/\.(jsx|tsx)$/i.test(path) || typeof content !== 'string') return null;
+
+  const source = stripComments(content).trim();
+  if (
+    /^(?:async\s+)?(?:class|const|enum|export|function|import|interface|let|type|var)\b/.test(
+      source,
+    )
+  ) {
+    return null;
+  }
+  const startsWithCssRule =
+    /^(?:@(?:container|font-face|import|keyframes|layer|media|supports)\b|:root\b|[.#*\[]|(?:[a-z][\w-]*)(?:\s*\{|\s*[>+~]\s*|\s+|\s*,\s*[.#:]?)[^{]*\{)/i.test(
+      source,
+    );
+
+  if (startsWithCssRule) {
+    return `CSS content cannot be written to ${path}. Write it to a *.css or *.module.css file instead.`;
+  }
+  return null;
+}
+
 /** Async syntax validation with esbuild transform attempt if initialized. */
 export async function validateContentSyntaxAsync(
   path: string,
@@ -239,6 +262,17 @@ export async function validateAIChangesAsync(
         });
         continue;
       }
+      const contentTypeError = validateFileContentType(path as string, content);
+      if (contentTypeError) {
+        rejected.push(contentTypeError);
+        details.push({
+          path: String(path),
+          error: contentTypeError,
+          type: 'content',
+          failedContent: content,
+        });
+        continue;
+      }
       const syntaxError = await validateContentSyntaxAsync(
         path as string,
         content,
@@ -294,6 +328,11 @@ export function validateAIChanges(changes: AgentChange[]): ValidatedAIChanges {
       const stylingError = validateComponentStyling(path as string, content);
       if (stylingError) {
         rejected.push(stylingError);
+        continue;
+      }
+      const contentTypeError = validateFileContentType(path as string, content);
+      if (contentTypeError) {
+        rejected.push(contentTypeError);
         continue;
       }
       const syntaxError = validateContentSyntax(path as string, content);

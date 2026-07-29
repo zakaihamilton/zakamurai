@@ -1,4 +1,6 @@
 .form {
+  position: relative;
+  z-index: 1;
   width: min(100%, 680px);
   margin-top: 16px;
   animation: rise-in 0.48s ease 0.42s both;
@@ -68,7 +70,7 @@
 }
 
 .modelSelect {
-  width: min(100%, 190px);
+  width: min(100%, 280px);
 }
 
 .sendButton:disabled {

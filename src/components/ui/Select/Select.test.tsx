@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import Select from './Select';
+import Select, { shouldOpenSelectMenuUp } from './Select';
 
 const options = [
   { value: 'alpha', label: 'Alpha' },
@@ -8,6 +8,11 @@ const options = [
 ];
 
 describe('Select', () => {
+  it('uses the nearest scroll boundary when deciding whether to open upward', () => {
+    expect(shouldOpenSelectMenuUp(527, 563, 106, 816)).toBe(true);
+    expect(shouldOpenSelectMenuUp(180, 216, 106, 737)).toBe(false);
+  });
+
   it('keeps open state isolated per instance', async () => {
     render(
       <>

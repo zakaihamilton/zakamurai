@@ -111,6 +111,27 @@ describe('runAgent', () => {
     expect(events.some((event) => event.error && event.message?.includes('Inline CSS'))).toBe(true);
   });
 
+  it('rejects raw CSS assigned to a JSX file before it becomes a visible staged draft', async () => {
+    askWebLLM
+      .mockResolvedValueOnce(
+        '{"action":"write_file","path":"src/components/Task.jsx","content":".task { display: flex; }"}',
+      )
+      .mockResolvedValueOnce('{"action":"finish","summary":"no changes"}');
+    const events: AgentEvent[] = [];
+
+    const result = await runAgent({
+      request: 'style task',
+      files: { 'src/components/Task.jsx': 'export default function Task() { return null; }' },
+      model: 'test',
+      onEvent: (event) => events.push(event),
+    });
+
+    expect(result.changes).toEqual([]);
+    expect(events.some((event) => event.error && event.message?.includes('CSS content'))).toBe(
+      true,
+    );
+  });
+
   it('honors allowedActions, priorContext, and agentRole events', async () => {
     askWebLLM.mockResolvedValueOnce('{"action":"finish","summary":"done"}');
     const events: AgentEvent[] = [];

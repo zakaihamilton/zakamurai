@@ -148,7 +148,12 @@ For write_file actions containing source code, prefer this format to avoid JSON 
 \`\`\`jsx
 complete file content here
 \`\`\`
-The JSON metadata must be on one line and the following single code fence is the content to write. Do not include a content property when using this format.`.trim();
+For a stylesheet, keep both the path and fence language aligned:
+{"action":"write_file","path":"src/components/Example.module.css","reason":"style the example"}
+\`\`\`css
+.example { color: rebeccapurple; }
+\`\`\`
+The JSON metadata must be on one line and the following single code fence is the content to write. The path extension determines the destination: never write raw CSS to a .jsx or .tsx path. Do not include a content property when using this format.`.trim();
 
 export const AGENT_SYSTEM_PROMPT = `
 You are a local coding agent operating in a private browser workspace. Work autonomously until the request is complete.

@@ -5,6 +5,7 @@ import {
   validateComponentStyling,
   validateContentSyntax,
   validateContentSyntaxAsync,
+  validateFileContentType,
   validateProjectPath,
 } from './ChangeValidator';
 
@@ -97,6 +98,17 @@ describe('AI change validation', () => {
         "import styles from './App.module.css'; export default () => <main className={styles.app} />;",
       ),
     ).toBeNull();
+  });
+
+  it('rejects a stylesheet assigned to a JSX path', () => {
+    const css = '.task { display: flex; }\n@media (width < 600px) { .task { display: block; } }';
+    expect(validateFileContentType('src/components/Task.jsx', css)).toContain(
+      'CSS content cannot be written',
+    );
+    expect(
+      validateAIChanges([{ path: 'src/components/Task.jsx', after: css }]).rejected[0],
+    ).toContain('CSS content cannot be written');
+    expect(validateFileContentType('src/components/Task.module.css', css)).toBeNull();
   });
 
   it('accepts code with comments containing unmatched brackets', () => {

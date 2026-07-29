@@ -6,6 +6,11 @@
   width: 100%;
 }
 
+.fieldOpen {
+  position: relative;
+  z-index: 60;
+}
+
 .label {
   color: var(--text-muted);
   font-size: 10px;

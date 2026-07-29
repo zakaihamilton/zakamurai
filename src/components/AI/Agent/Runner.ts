@@ -14,7 +14,7 @@ export class AgentExecutionError extends Error {
     this.changes = changes;
   }
 }
-import { validateComponentStyling } from '../ChangeValidator';
+import { validateComponentStyling, validateFileContentType } from '../ChangeValidator';
 import { AgentContextManager, formatVerificationResult } from './ContextManager';
 import { listProjectChecks, runProjectCheck } from './ProjectChecks';
 import { AGENT_SYSTEM_PROMPT, ALL_AGENT_ACTIONS, parseAgentAction } from './Protocol';
@@ -300,6 +300,8 @@ export async function runAgent({
       if (action.action === 'write_file') {
         const stylingError = validateComponentStyling(action.path || '', action.content || '');
         if (stylingError) throw new Error(stylingError);
+        const contentTypeError = validateFileContentType(action.path || '', action.content || '');
+        if (contentTypeError) throw new Error(contentTypeError);
         workspace.write(action.path || '', action.content || '');
         wroteSinceVerification = true;
         onEvent({ type: 'tool', turn, action, agentRole });
