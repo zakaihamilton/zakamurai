@@ -64,7 +64,7 @@ export class IndexerController {
   }
 
   async initialize(): Promise<void> {
-    this.worker = new Worker(new URL('./rag-worker.js', import.meta.url), {
+    this.worker = new Worker(new URL('./rag-worker.tsx', import.meta.url), {
       type: 'module',
     });
 

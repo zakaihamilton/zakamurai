@@ -1,8 +1,9 @@
 export const isMediaFile = (filename: string | null | undefined): boolean => {
   if (!filename) return false;
   const ext = filename.split('.').pop()?.toLowerCase();
+  if (!ext) return false;
   return ['png', 'jpg', 'jpeg', 'gif', 'webp', 'ico', 'webm', 'mp4', 'ogg', 'avif', 'bmp'].includes(
-    ext ?? '',
+    ext,
   );
 };
 

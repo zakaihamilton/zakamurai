@@ -30,7 +30,7 @@ export class WorkspaceIndexController {
 
   async init(): Promise<void> {
     if (this.worker) return;
-    this.worker = new Worker(new URL('./workspace-index-worker.js', import.meta.url), {
+    this.worker = new Worker(new URL('./workspace-index-worker.ts', import.meta.url), {
       type: 'module',
     });
     this.worker.addEventListener('message', ({ data }) => {

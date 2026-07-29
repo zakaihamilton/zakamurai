@@ -1,11 +1,11 @@
 import React from 'react';
 import type { IconProps } from '../types';
 
-export default function Code({ size = 14, stroke = 'currentColor' }: IconProps = {}) {
+export default function Code({ size = 16, stroke = 'currentColor' }: IconProps = {}) {
   return (
     <svg
-      width={size || 16}
-      height={size || 16}
+      width={size}
+      height={size}
       viewBox="0 0 24 24"
       fill="none"
       stroke={stroke}

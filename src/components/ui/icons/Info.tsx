@@ -4,11 +4,11 @@ import type { IconProps } from '../types';
 export default function Info({ size = 14, stroke = 'currentColor' }: IconProps = {}) {
   return (
     <svg
-      width={size || 14}
-      height={size || 14}
+      width={size}
+      height={size}
       viewBox="0 0 24 24"
       fill="none"
-      stroke={stroke || 'currentColor'}
+      stroke={stroke}
       strokeWidth="2"
       strokeLinecap="round"
       strokeLinejoin="round"

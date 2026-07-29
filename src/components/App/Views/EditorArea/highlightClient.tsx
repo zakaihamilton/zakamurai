@@ -74,7 +74,7 @@ function getWorker(): Worker | null {
   if (workerFailed || typeof Worker === 'undefined') return null;
   if (worker) return worker;
   try {
-    worker = new Worker(new URL('./highlight.worker.js', import.meta.url));
+    worker = new Worker(new URL('./highlight.worker.ts', import.meta.url));
     worker.onmessage = (event: MessageEvent<HighlightWorkerResponse>) => {
       const { id, html, error } = event.data || {};
       const entry = pending.get(id);
