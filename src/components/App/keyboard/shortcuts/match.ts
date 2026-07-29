@@ -1,8 +1,4 @@
-import type {
-  ShortcutActionContext,
-  ShortcutDefinition,
-  ShortcutGroup,
-} from '@/components/App/types';
+import type { ShortcutDefinition, ShortcutGroup } from '@/components/App/types';
 import { isMac } from '@/utils/os';
 import { SHORTCUT_GROUPS } from './constants';
 import { SHORTCUTS } from './definitions';

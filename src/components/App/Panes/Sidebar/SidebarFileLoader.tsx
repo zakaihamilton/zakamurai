@@ -7,7 +7,6 @@ import { useCallback } from 'react';
 import {
   addNodeAtPath,
   findNodeAtPath,
-  flattenTree,
   getInitialFileContents,
   getPathStr,
   isNodeModulesPath,

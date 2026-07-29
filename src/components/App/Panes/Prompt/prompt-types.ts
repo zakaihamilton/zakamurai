@@ -7,12 +7,11 @@ import type {
   WebLLMModel,
 } from '@/components/AI/types';
 import type { ExtendedEditorState } from '@/components/App/Views/EditorArea/types';
-import type { CssCustomProperties, FileSystemApi } from '@/components/App/types';
+import type { FileSystemApi } from '@/components/App/types';
 import type {
   AgentSession,
   AgentSessionMessage,
   AgentSessionStateShape,
-  EditorStateShape,
   LogStateShape,
   PromptUiStateShape,
   SidebarStateShape,
@@ -20,7 +19,7 @@ import type {
 } from '@/components/state/domain-types';
 import type { StateStore } from '@/components/state/types';
 import type { SelectOption } from '@/components/ui/types';
-import type { ChangeEvent, FormEvent, KeyboardEvent, ReactNode } from 'react';
+import type { ChangeEvent, FormEvent, KeyboardEvent } from 'react';
 
 export type WelcomeRequest = {
   text: string;

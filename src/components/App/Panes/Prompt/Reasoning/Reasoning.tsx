@@ -1,7 +1,7 @@
 import Node from '@/components/state/Node';
 import { Icons } from '@/components/ui/Icons';
 import Tooltip from '@/components/ui/Tooltip';
-import React, { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { requireStore } from '../../../types';
 import { AgentSessionState, getActiveAgentSession } from '../AgentSessions';

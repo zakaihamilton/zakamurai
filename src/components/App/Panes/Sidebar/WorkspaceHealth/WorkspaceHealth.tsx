@@ -1,5 +1,4 @@
 import { WorkspaceHealthState } from '@/components/Workspace';
-import React from 'react';
 import styles from './WorkspaceHealth.module.css';
 
 export default function WorkspaceHealth() {

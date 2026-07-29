@@ -1,6 +1,5 @@
 import type {
   AppStateShape,
-  EditorStateShape,
   NavigationHistory,
   PreviewStateShape,
   PromptUiStateShape,
@@ -8,8 +7,6 @@ import type {
   TabStateShape,
 } from '@/components/state/domain-types';
 import type { StateStore } from '@/components/state/types';
-import type { MouseEvent } from 'react';
-
 export type ResetNewProjectStateParams = {
   template?: string;
   appState: StateStore<AppStateShape>;

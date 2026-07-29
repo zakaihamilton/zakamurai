@@ -1,6 +1,5 @@
 import type { RoleGraphDialogProps } from '@/components/App/Panes/Prompt/prompt-types';
 import Dialog from '@/components/ui/Dialog';
-import React from 'react';
 import styles from './RoleGraphDialog.module.css';
 import RoleGraphEditor from './RoleGraphEditor';
 

@@ -1,4 +1,3 @@
-import type { EditorStateShape } from '@/components/state/domain-types';
 import { makeKeyboardEvent } from '@/test-utils/domMocks';
 import { createMockEditorState, createMockTabState } from '@/test-utils/editorMocks';
 import { makeAppState, makeShortcutActionContext } from '@/test-utils/stateMocks';

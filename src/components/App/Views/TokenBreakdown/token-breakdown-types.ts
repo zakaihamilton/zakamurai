@@ -1,7 +1,7 @@
 import type { HighlightDebug, HighlightDebugToken } from '@/components/App/Views/EditorArea/types';
 import type { Tab } from '@/components/state/domain-types';
 import type { FileViewType } from '@/utils/fileViews';
-import type { ChangeEvent, Dispatch, SetStateAction } from 'react';
+import type { Dispatch, SetStateAction } from 'react';
 
 export type CodeFold = {
   id: string;

@@ -1,5 +1,4 @@
 import { Icons } from '@/components/ui/Icons';
-import React from 'react';
 import styles from './TokenVerificationCard.module.css';
 import type { TokenVerificationCardProps, VerificationMetricProps } from './token-breakdown-types';
 

@@ -1,7 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createObject, filterObjectByKeys, objectChangedKeys } from './Object';
 import { setInDraft } from './StateUtils';
-import type { StateStore } from './types';
 
 describe('Object utils', () => {
   describe('objectChangedKeys', () => {

@@ -8,7 +8,7 @@ import { useFileSystem } from '@/components/Storage';
 import { setInDraft } from '@/components/state/StateUtils';
 import { Icons } from '@/components/ui/Icons';
 import Tooltip from '@/components/ui/Tooltip';
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { requireStore } from '../../types';
 import styles from './StatusBar.module.css';
 

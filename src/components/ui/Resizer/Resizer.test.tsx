@@ -1,8 +1,6 @@
-import { createState } from '@/components/state/State';
 import type { StateStore } from '@/components/state/types';
 import { fireEvent, render, screen } from '@testing-library/react';
 import type { ReactNode } from 'react';
-import React from 'react';
 import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 import Resizer from './Resizer';
 

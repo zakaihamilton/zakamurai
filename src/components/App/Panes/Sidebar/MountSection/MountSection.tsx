@@ -1,5 +1,4 @@
 import { Icons } from '@/components/ui/Icons';
-import React from 'react';
 import type { SidebarMountSectionProps } from '../sidebar-types';
 import styles from './MountSection.module.css';
 

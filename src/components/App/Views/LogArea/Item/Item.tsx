@@ -1,4 +1,3 @@
-import React from 'react';
 import type { LogItemProps, ProcessingLogItemProps } from '../log-area-types';
 import styles from './Item.module.css';
 

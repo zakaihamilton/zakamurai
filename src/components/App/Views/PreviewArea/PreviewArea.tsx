@@ -2,7 +2,7 @@
 
 import { createState } from '@/components/state/State';
 import type { PreviewAreaUiStateShape } from '@/components/state/domain-types';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { PreviewState } from '../../PreviewState';
 import { requireStore } from '../../types';
 import { PreviewErrorState, PreviewUnavailableState } from './PreviewEmptyState';

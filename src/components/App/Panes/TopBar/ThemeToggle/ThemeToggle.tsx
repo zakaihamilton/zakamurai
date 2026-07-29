@@ -2,7 +2,6 @@ import { AppState } from '@/components/App/AppState';
 import { Icons } from '@/components/ui/Icons';
 import Tooltip from '@/components/ui/Tooltip';
 import { formatShortcut } from '@/utils/os';
-import React from 'react';
 import { requireStore } from '../../../types';
 import styles from './ThemeToggle.module.css';
 

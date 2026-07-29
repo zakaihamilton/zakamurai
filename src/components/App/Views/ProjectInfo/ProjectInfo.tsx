@@ -1,4 +1,3 @@
-import React from 'react';
 import ProjectAbout from './About';
 import ProjectHeader from './Header';
 import styles from './ProjectInfo.module.css';

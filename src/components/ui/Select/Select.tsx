@@ -3,7 +3,7 @@ import { createState } from '@/components/state/State';
 import type { SelectStateShape } from '@/components/state/domain-types';
 import { Icons } from '@/components/ui/Icons';
 import type { SelectOption, SelectProps } from '@/components/ui/types';
-import React, { useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import styles from './Select.module.css';
 
 const SelectState = createState<SelectStateShape>('SelectState');

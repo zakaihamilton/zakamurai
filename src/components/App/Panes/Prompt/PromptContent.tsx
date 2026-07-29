@@ -1,5 +1,5 @@
 import type { RoleGraph } from '@/components/AI/types';
-import type { CssCustomProperties, NormalizedTreeNode } from '@/components/App/types';
+import type { CssCustomProperties } from '@/components/App/types';
 import ChangeSetPanel from './ChangeSet';
 import PromptComposer from './Composer';
 import PromptContextPanel from './Context';

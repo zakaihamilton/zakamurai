@@ -2,7 +2,6 @@ import FileViewToolbar from '@/components/App/Views/FileViewToolbar';
 import { Icons } from '@/components/ui/Icons';
 import Tooltip from '@/components/ui/Tooltip';
 import { FILE_VIEW_TYPES } from '@/utils/fileViews';
-import React from 'react';
 import styles from './TokenBreakdownHeader.module.css';
 import type { TokenBreakdownHeaderProps } from './token-breakdown-types';
 

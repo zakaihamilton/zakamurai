@@ -1,7 +1,6 @@
 import { Icons } from '@/components/ui/Icons';
 import Tooltip from '@/components/ui/Tooltip';
 import { getFileViews } from '@/utils/fileViews';
-import React from 'react';
 import styles from './FileViewToolbar.module.css';
 import type { FileViewToolbarProps } from './file-view-toolbar-types';
 

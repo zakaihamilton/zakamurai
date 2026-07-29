@@ -6,7 +6,6 @@ import type {
   AgentSessionStateShape,
   AppStateShape,
   ChangeSetStateShape,
-  EditorStateShape,
   LogStateShape,
   PendingDiff,
   PreviewStateShape,

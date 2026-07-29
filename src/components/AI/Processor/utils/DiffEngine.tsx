@@ -1,4 +1,4 @@
-import type { Diff, ProcessingResult } from '@/components/AI/types';
+import type { ProcessingResult } from '@/components/AI/types';
 
 /**
  * Computes multiple granular diff ranges and filters them by selectedLines if provided.

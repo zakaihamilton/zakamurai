@@ -6,8 +6,6 @@ import {
   resolveRelativePath,
 } from './ImportResolver';
 
-import { findClassInCss } from './CssResolver';
-
 import type { CssSearchResult, ExportRange, FileContents, SourceLocation } from './types';
 
 /**

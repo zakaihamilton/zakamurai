@@ -7,10 +7,9 @@ import {
   normalizeRoleGraph,
   syncLinearAlwaysEdges,
 } from '@/components/AI/Agent/Roles';
-import type { RoleEdge, RoleGraph, RoleKind, RoleNode } from '@/components/AI/types';
+import type { RoleEdge, RoleKind, RoleNode } from '@/components/AI/types';
 import type { RoleGraphEditorProps } from '@/components/App/Panes/Prompt/prompt-types';
 import type { SelectOption } from '@/components/ui/types';
-import React from 'react';
 import RoleCard from './RoleCard';
 import RoleGraphAddRow from './RoleGraphAddRow';
 import styles from './RoleGraphEditor.module.css';

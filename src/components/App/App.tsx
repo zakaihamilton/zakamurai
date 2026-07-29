@@ -24,7 +24,7 @@ import {
   WorkspaceProfileState,
 } from '@/components/Workspace';
 import type { PendingDiff } from '@/components/state/domain-types';
-import React, { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import styles from './App.module.css';
 import { PromptState, PromptUiState, SidebarState, TabState } from './Panes';
 import { AgentSessionState, normalizeAgentSessions } from './Panes/Prompt/AgentSessions';

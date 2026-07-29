@@ -1,4 +1,3 @@
-import React from 'react';
 import styles from './TokenSectionTabs.module.css';
 import type { TokenSectionTabsProps } from './token-breakdown-types';
 

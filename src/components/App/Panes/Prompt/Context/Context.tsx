@@ -1,6 +1,6 @@
 import { Icons } from '@/components/ui/Icons';
 import Tooltip from '@/components/ui/Tooltip';
-import React, { useState } from 'react';
+import { useState } from 'react';
 import SectionActions from '../SectionExpandButton';
 import type { PromptContextPanelProps } from '../prompt-types';
 import styles from './Context.module.css';

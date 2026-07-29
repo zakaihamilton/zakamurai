@@ -1,11 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
-  COMPLETION_PHASES,
   buildCompletionPrompt,
   buildCompletionRagQuery,
   getCompletionActivityMessage,
   getCompletionStatusMessage,
-  getCurrentToken,
   getNextSuggestionWord,
   normalizeCompletion,
   normalizeStreamingCompletion,

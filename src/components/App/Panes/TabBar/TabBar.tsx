@@ -2,7 +2,6 @@ import { SidebarState } from '@/components/App/Panes/Sidebar';
 import { createState } from '@/components/state/State';
 import type {
   SidebarStateShape,
-  Tab,
   TabBarUiStateShape,
   TabStateShape,
 } from '@/components/state/domain-types';

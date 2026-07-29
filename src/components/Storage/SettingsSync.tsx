@@ -19,7 +19,6 @@ import type {
   PromptUiStateShape,
   SidebarStateShape,
   StorageHealthStateShape,
-  Tab,
   TabStateShape,
   WorkspaceProfileStateShape,
 } from '@/components/state/domain-types';

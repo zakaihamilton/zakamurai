@@ -1,5 +1,5 @@
 import type { CursorPosition } from '@/components/state/domain-types';
-import React, { useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import type { HistoryHandlerProps } from './types';
 
 export default function HistoryHandler({ filePath, localContent, state }: HistoryHandlerProps) {

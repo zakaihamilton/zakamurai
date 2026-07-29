@@ -1,5 +1,4 @@
 import { Notification } from '@/components/ui/Notification';
-import React from 'react';
 import { useAppBackgroundServices } from '../AppBackgroundServices';
 
 export default function AppBackgroundServices() {

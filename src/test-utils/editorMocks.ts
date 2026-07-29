@@ -1,6 +1,5 @@
 import type {
   CodeEditorProps,
-  EditorStateDraft,
   ExtendedEditorState,
   FindMatch,
   HighlightEditorState,

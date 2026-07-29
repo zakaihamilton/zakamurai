@@ -1,4 +1,3 @@
-import React from 'react';
 import PreviewIframeContainer from './IframeContainer';
 import PreviewBridge from './PreviewBridge';
 import styles from './PreviewSurface.module.css';

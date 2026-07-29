@@ -1,4 +1,3 @@
-import React from 'react';
 import type { IconProps } from '../types';
 
 export default function Code({ size = 16, stroke = 'currentColor' }: IconProps = {}) {

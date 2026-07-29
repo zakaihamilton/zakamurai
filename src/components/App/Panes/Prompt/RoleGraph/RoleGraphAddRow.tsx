@@ -1,5 +1,4 @@
 import type { RoleGraphAddRowProps } from '@/components/App/Panes/Prompt/prompt-types';
-import React from 'react';
 import styles from './RoleGraphAddRow.module.css';
 
 export default function RoleGraphAddRow({

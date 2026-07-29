@@ -3,7 +3,6 @@ import { Icons } from '@/components/ui/Icons';
 import Tooltip from '@/components/ui/Tooltip';
 import { FILE_VIEW_TYPES } from '@/utils/fileViews';
 import { formatShortcut } from '@/utils/os';
-import React from 'react';
 import styles from './EditorHeader.module.css';
 import type { EditorHeaderProps } from './types';
 

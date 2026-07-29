@@ -3,7 +3,7 @@ import { Icons } from '@/components/ui/Icons';
 import Tooltip from '@/components/ui/Tooltip';
 import { useShouldShowKeyboardShortcuts } from '@/utils/keyboard';
 import { formatShortcut, isMac } from '@/utils/os';
-import React, { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { ShortcutsHelpProps } from '../popup-types';
 import styles from './ShortcutsHelp.module.css';

@@ -4,7 +4,6 @@ import type {
   AgentSessionStateShape,
   AppStateShape,
   ChangeSetStateShape,
-  EditorStateShape,
   LogStateShape,
   PreviewAreaUiStateShape,
   PreviewStateShape,

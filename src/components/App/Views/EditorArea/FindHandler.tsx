@@ -1,4 +1,4 @@
-import React, { useEffect, useCallback } from 'react';
+import { useCallback, useEffect } from 'react';
 import FindReplaceBar from './FindReplaceBar';
 import type { FindHandlerProps, FindMatch } from './types';
 

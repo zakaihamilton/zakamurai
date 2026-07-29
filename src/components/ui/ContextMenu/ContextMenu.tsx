@@ -1,5 +1,4 @@
 import type { ContextMenuProps } from '@/components/ui/types';
-import React from 'react';
 import { createPortal } from 'react-dom';
 import styles from './ContextMenu.module.css';
 

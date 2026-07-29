@@ -1,6 +1,6 @@
 import { Icons } from '@/components/ui/Icons';
 import Tooltip from '@/components/ui/Tooltip';
-import React, { useState } from 'react';
+import { useState } from 'react';
 import type { PromptHeaderProps } from '../prompt-types';
 import styles from './Header.module.css';
 

@@ -1,4 +1,3 @@
-import React from 'react';
 import TreeItem from '../TreeItem';
 import VirtualList from '../VirtualList';
 import type { SidebarTreeProps } from '../sidebar-types';

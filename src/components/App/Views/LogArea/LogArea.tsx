@@ -1,6 +1,6 @@
 import { createState } from '@/components/state/State';
 import type { LogAreaUiStateShape, LogStateShape } from '@/components/state/domain-types';
-import React, { useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { requireStore } from '../../types';
 import LogList from './List';
 import styles from './LogArea.module.css';

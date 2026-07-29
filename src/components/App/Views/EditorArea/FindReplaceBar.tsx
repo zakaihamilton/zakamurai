@@ -1,5 +1,4 @@
 import { Icons } from '@/components/ui/Icons';
-import React from 'react';
 import styles from './FindReplaceBar.module.css';
 import type { FindReplaceBarProps } from './types';
 

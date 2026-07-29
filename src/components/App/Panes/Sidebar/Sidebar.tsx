@@ -10,7 +10,7 @@ import type {
   TreeNode,
 } from '@/components/state/domain-types';
 import { useNotification } from '@/components/ui/Notification';
-import React, { useCallback, useDeferredValue, useEffect, useMemo, useRef } from 'react';
+import { useCallback, useDeferredValue, useEffect, useMemo, useRef } from 'react';
 import type { ChangeEvent, SetStateAction } from 'react';
 import { requireStore } from '../../types';
 import SidebarFilter from './Filter';

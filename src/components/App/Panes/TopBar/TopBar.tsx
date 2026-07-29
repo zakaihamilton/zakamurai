@@ -25,7 +25,7 @@ import Dialog from '@/components/ui/Dialog';
 import { Icons } from '@/components/ui/Icons';
 import Tooltip from '@/components/ui/Tooltip';
 import { formatShortcut } from '@/utils/os';
-import React, { useEffect } from 'react';
+import { useEffect } from 'react';
 import { requireStore } from '../../types';
 import ActionButtons from './ActionButtons';
 import Breadcrumb from './Breadcrumb';

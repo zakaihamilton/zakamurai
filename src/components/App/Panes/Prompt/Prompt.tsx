@@ -8,7 +8,7 @@ import { EditorState } from '@/components/App/Views/EditorArea';
 import { LogState } from '@/components/App/Views/LogArea';
 import { useFileSystem } from '@/components/Storage';
 import { useCallback, useEffect } from 'react';
-import type { ChangeEvent, FormEvent, KeyboardEvent, MouseEvent } from 'react';
+import type { ChangeEvent, KeyboardEvent, MouseEvent } from 'react';
 import { requireStore } from '../../types';
 import { AgentSessionState, createSessionMessage } from './AgentSessions';
 import useModelDownloader from './ModelDownloader';

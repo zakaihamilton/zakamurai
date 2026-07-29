@@ -1,5 +1,4 @@
 import { Icons } from '@/components/ui/Icons';
-import React from 'react';
 import styles from './Instructions.module.css';
 
 export default function Instructions() {

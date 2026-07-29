@@ -29,6 +29,7 @@
     "rules": {
       "recommended": true,
       "correctness": {
+        "noUnusedImports": "error",
         "noUnusedVariables": "warn"
       },
       "style": {

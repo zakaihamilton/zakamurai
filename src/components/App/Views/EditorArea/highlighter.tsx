@@ -1,4 +1,3 @@
-import type { Diff } from '@/components/AI/types';
 import type { CursorPosition } from '@/components/state/domain-types';
 import { findNavigationTargets } from '@/utils/navigation';
 import type { NavigationTarget } from '@/utils/navigation/types';

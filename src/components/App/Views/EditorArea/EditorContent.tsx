@@ -1,4 +1,3 @@
-import React from 'react';
 import SideBySideEditorView from './SideBySideEditorView';
 import SingleEditorView from './SingleEditorView';
 import type { EditorContentProps } from './types';

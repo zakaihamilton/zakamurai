@@ -1,6 +1,6 @@
 import { Icons } from '@/components/ui/Icons';
 import Tooltip from '@/components/ui/Tooltip';
-import React, { useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import CodeEditor from './CodeEditor';
 import Gutter from './Gutter';
 import styles from './SideBySideEditorView.module.css';

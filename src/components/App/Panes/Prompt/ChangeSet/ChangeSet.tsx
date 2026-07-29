@@ -1,6 +1,6 @@
 import { ChangeSetState } from '@/components/Workspace';
 import Tooltip from '@/components/ui/Tooltip';
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { requireStore } from '../../../types';
 import SectionActions from '../SectionExpandButton';
 import styles from './ChangeSet.module.css';

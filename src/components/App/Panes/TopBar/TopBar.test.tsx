@@ -10,7 +10,6 @@ import Settings from '@/components/Storage/Settings';
 import { createMockEditorState } from '@/test-utils/editorMocks';
 import {
   makeAppState,
-  makeEditorState,
   makeLogState,
   makePreviewState,
   makePromptUiState,
@@ -18,8 +17,8 @@ import {
   makeTabState,
 } from '@/test-utils/stateMocks';
 import { fireEvent, render, screen } from '@testing-library/react';
-import type { ReactElement, ReactNode } from 'react';
 import React from 'react';
+import type { ReactElement, ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import TopBar, { resetNewProjectState } from './TopBar';
 

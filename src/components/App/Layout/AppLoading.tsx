@@ -1,5 +1,4 @@
 import { Icons } from '@/components/ui/Icons';
-import React from 'react';
 import styles from './AppLoading.module.css';
 
 export default function AppLoading() {

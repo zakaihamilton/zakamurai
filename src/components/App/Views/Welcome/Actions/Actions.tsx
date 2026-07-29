@@ -1,6 +1,5 @@
 import { Icons } from '@/components/ui/Icons';
 import Tooltip from '@/components/ui/Tooltip';
-import React from 'react';
 import type { WelcomeActionsProps } from '../welcome-types';
 import styles from './Actions.module.css';
 

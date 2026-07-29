@@ -2,7 +2,6 @@ import { describeRoleGraph } from '@/components/AI/Agent/Roles';
 import type { RoleGraphSummaryProps } from '@/components/App/Panes/Prompt/prompt-types';
 import { Icons } from '@/components/ui/Icons';
 import Tooltip from '@/components/ui/Tooltip';
-import React from 'react';
 import styles from './RoleGraphSummary.module.css';
 
 export default function RoleGraphSummary({

@@ -1,10 +1,4 @@
-import {
-  createMockEditorState,
-  createMockHighlightState,
-  createMockPendingDiff,
-  createMockScrollContainerRef,
-  createSetLocalContentMock,
-} from '@/test-utils/editorMocks';
+import { createMockEditorState, createSetLocalContentMock } from '@/test-utils/editorMocks';
 import { makeFileHandle } from '@/test-utils/fsMocks';
 import { act, renderHook } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';

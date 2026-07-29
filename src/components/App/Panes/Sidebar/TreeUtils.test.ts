@@ -1,10 +1,5 @@
 import type { FlatTreeRow } from '@/components/App/types';
-import {
-  asNormalizedTreeNode,
-  asTreeNode,
-  makeNormalizedTreeNode,
-  makeTreeNode,
-} from '@/test-utils/treeMocks';
+import { asTreeNode, makeNormalizedTreeNode, makeTreeNode } from '@/test-utils/treeMocks';
 import { describe, expect, it, vi } from 'vitest';
 import {
   addNodeAtPath,

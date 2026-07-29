@@ -1,5 +1,5 @@
 import { Icons } from '@/components/ui/Icons';
-import React, { useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { requireStore } from '../../types';
 import styles from './CreateRowInput.module.css';
 import { TreeItemState } from './TreeItem';

@@ -4,7 +4,6 @@ import { SidebarState } from '@/components/App/Panes/Sidebar';
 import { TabState } from '@/components/App/Panes/TabBar';
 import { EditorState } from '@/components/App/Views/EditorArea';
 import { LogState } from '@/components/App/Views/LogArea';
-import Settings from '@/components/Storage/Settings';
 import type { AgentSessionStateShape } from '@/components/state/domain-types';
 import { expectAgentSession } from '@/test-utils/agentSessionMocks';
 import {
@@ -17,14 +16,10 @@ import {
   makeWorkspaceHealthState,
 } from '@/test-utils/stateMocks';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import type { ReactElement, ReactNode } from 'react';
 import React from 'react';
+import type { ReactElement, ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import {
-  createDefaultAgentSessions,
-  getActiveAgentSession,
-  listAgentSessions,
-} from './AgentSessions';
+import { createDefaultAgentSessions, listAgentSessions } from './AgentSessions';
 import Prompt from './Prompt';
 import { PromptState, PromptUiState } from './PromptState';
 

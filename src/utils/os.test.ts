@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { formatShortcut, getControlKey, getModifierKey, getShiftKey, isMac } from './os';
+import { formatShortcut, getModifierKey, isMac } from './os';
 
 describe('os utils', () => {
   describe('isMac', () => {

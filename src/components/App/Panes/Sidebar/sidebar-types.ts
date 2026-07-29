@@ -10,7 +10,6 @@ import type {
   ReactNode,
   RefObject,
   SetStateAction,
-  TouchEvent,
 } from 'react';
 
 export type SidebarCreateRow = FlatTreeRow & {

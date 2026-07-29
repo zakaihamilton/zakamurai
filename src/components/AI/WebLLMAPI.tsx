@@ -1,7 +1,7 @@
 /**
  * @fileoverview Browser-local LLM inference via @mlc-ai/web-llm (lazy-loaded).
  */
-import type { StateHandle, WebLLMOptions, WebLLMStateDraft } from '@/components/AI/types';
+import type { WebLLMOptions } from '@/components/AI/types';
 import { DEFAULT_SYSTEM_PROMPT } from './Prompts';
 import { RECOMMENDED_WEB_LLM_MODEL, WEB_LLM_MODELS } from './WebLLMModels';
 import { setWebLLMCachedModelIds, updateWebLLMEngine } from './WebLLMState';

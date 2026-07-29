@@ -1,7 +1,6 @@
 import type { CursorPosition } from '@/components/state/domain-types';
 import Dialog from '@/components/ui/Dialog';
 import { findNavigationTargets } from '@/utils/navigation';
-import type { SourceLocation } from '@/utils/navigation/types';
 import type React from 'react';
 import { type ChangeEvent, useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import styles from './CodeEditor.module.css';

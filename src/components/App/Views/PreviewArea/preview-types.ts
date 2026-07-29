@@ -1,4 +1,3 @@
-import type { CssCustomProperties } from '@/components/App/types';
 import type { PreviewAreaUiStateShape, PreviewStateShape } from '@/components/state/domain-types';
 import type { StateStore } from '@/components/state/types';
 import type { RefObject } from 'react';

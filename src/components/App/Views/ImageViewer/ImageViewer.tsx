@@ -8,7 +8,7 @@ import { Icons } from '@/components/ui/Icons';
 import Tooltip from '@/components/ui/Tooltip';
 import type { FileViewType } from '@/utils/fileViews';
 import { FILE_VIEW_TYPES } from '@/utils/fileViews';
-import React, { useEffect } from 'react';
+import { useEffect } from 'react';
 import { requireStore } from '../../types';
 import styles from './ImageViewer.module.css';
 

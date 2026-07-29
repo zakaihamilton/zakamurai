@@ -1,11 +1,8 @@
 import type { Diff } from '@/components/AI/types';
 import type {
-  AiCompletionDebug,
   CursorPosition,
   EditorStateShape,
   PendingDiff,
-  Tab,
-  TabFileRef,
   TabStateShape,
 } from '@/components/state/domain-types';
 import type { Draft, StateStore } from '@/components/state/types';

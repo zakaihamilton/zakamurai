@@ -1,6 +1,5 @@
 import { LogState } from '@/components/App/Views/LogArea';
 import { Icons } from '@/components/ui/Icons';
-import React from 'react';
 import { requireStore } from '../../../types';
 import styles from './WorkingIndicator.module.css';
 

@@ -2,7 +2,6 @@ import { ROLE_KIND_DEFAULTS } from '@/components/AI/Agent/Roles';
 import type { RoleKind } from '@/components/AI/types';
 import type { RoleCardProps } from '@/components/App/Panes/Prompt/prompt-types';
 import { Icons } from '@/components/ui/Icons';
-import React from 'react';
 import styles from './RoleCard.module.css';
 
 export default function RoleCard({
