@@ -1,4 +1,5 @@
 import { ChangeSetState } from '@/components/Workspace';
+import Tooltip from '@/components/ui/Tooltip';
 import React, { useState } from 'react';
 import { requireStore } from '../../../types';
 import SectionActions from '../SectionExpandButton';
@@ -23,14 +24,20 @@ export default function ChangeSetPanel({ onOpenInTab = () => {} }: { onOpenInTab
   return (
     <section className={styles.panel} aria-label="AI change set review">
       <div className={styles.header}>
-        <button
-          type="button"
-          className={styles.titleButton}
-          aria-expanded={isExpanded}
-          onClick={() => setIsExpanded((expanded) => !expanded)}
+        <Tooltip
+          content={
+            'Change Set\nFiles the AI wants to modify and their review status.\nIncludes the original request.'
+          }
         >
-          Change set
-        </button>
+          <button
+            type="button"
+            className={styles.titleButton}
+            aria-expanded={isExpanded}
+            onClick={() => setIsExpanded((expanded) => !expanded)}
+          >
+            Change set
+          </button>
+        </Tooltip>
         <div className={styles.actions}>
           <span className={styles.status}>{changeSet.status}</span>
           <SectionActions content={changeSetText} onOpenInTab={onOpenInTab} />

@@ -173,6 +173,18 @@ describe('Tooltip', () => {
     expect(screen.getByText('src/test.js')).toBeDefined();
   });
 
+  it('preserves line breaks in multiline tooltip details', async () => {
+    render(
+      <Tooltip content={'Title\nFirst detail\nSecond detail'}>
+        <button type="button">Hover me</button>
+      </Tooltip>,
+    );
+
+    await showTooltip(getTrigger('Hover me'));
+
+    expect(screen.getByRole('tooltip').textContent).toContain('First detail\nSecond detail');
+  });
+
   it('keeps visibility isolated per instance', async () => {
     render(
       <>

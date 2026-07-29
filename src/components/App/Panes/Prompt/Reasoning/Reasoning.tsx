@@ -1,5 +1,6 @@
 import Node from '@/components/state/Node';
 import { Icons } from '@/components/ui/Icons';
+import Tooltip from '@/components/ui/Tooltip';
 import React, { useEffect, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { requireStore } from '../../../types';
@@ -53,14 +54,20 @@ function ReasoningPanelInner({ modelDownloadStatus, onOpenInTab = () => {} }: Re
         <div className={styles.reasoningHeader}>
           <div className={styles.reasoningTitle}>
             <Icons.Brain size={14} />
-            <button
-              type="button"
-              className={styles.titleButton}
-              aria-expanded={isExpanded}
-              onClick={() => setIsExpanded((expanded) => !expanded)}
+            <Tooltip
+              content={
+                'Progress & Reasoning\nLive updates while the agent works.\nIncludes planning, tool activity, downloads, and completion status.'
+              }
             >
-              Progress & Reasoning
-            </button>
+              <button
+                type="button"
+                className={styles.titleButton}
+                aria-expanded={isExpanded}
+                onClick={() => setIsExpanded((expanded) => !expanded)}
+              >
+                Progress & Reasoning
+              </button>
+            </Tooltip>
           </div>
           <div className={styles.reasoningActions}>
             <SectionActions content={reasoningText} onOpenInTab={onOpenInTab} />

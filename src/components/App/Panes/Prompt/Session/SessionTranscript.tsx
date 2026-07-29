@@ -1,4 +1,5 @@
 import type { AgentSessionMessage } from '@/components/state/domain-types';
+import Tooltip from '@/components/ui/Tooltip';
 import { useEffect, useRef, useState } from 'react';
 import SectionActions from '../SectionExpandButton';
 import type { SessionTranscriptProps } from '../prompt-types';
@@ -56,14 +57,20 @@ export default function SessionTranscript({
   return (
     <section className={`${styles.section} ${isExpanded ? '' : styles.collapsed}`}>
       <div className={styles.header}>
-        <button
-          type="button"
-          className={styles.titleButton}
-          aria-expanded={isExpanded}
-          onClick={() => setIsExpanded((expanded) => !expanded)}
+        <Tooltip
+          content={
+            'Transcript\nConversation history between you and the agent.\nIncludes prompts, replies, and system messages.'
+          }
         >
-          Transcript
-        </button>
+          <button
+            type="button"
+            className={styles.titleButton}
+            aria-expanded={isExpanded}
+            onClick={() => setIsExpanded((expanded) => !expanded)}
+          >
+            Transcript
+          </button>
+        </Tooltip>
         <SectionActions content={transcriptText} onOpenInTab={onOpenInTab} />
       </div>
       {isExpanded && content}

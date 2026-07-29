@@ -30,14 +30,18 @@ export default function PromptContextPanel({
   return (
     <section className={styles.section} aria-label="AI context">
       <div className={styles.header}>
-        <button
-          type="button"
-          className={styles.titleButton}
-          aria-expanded={isExpanded}
-          onClick={() => setIsExpanded((expanded) => !expanded)}
+        <Tooltip
+          content={'Context\nPrompt scope, target, and selection.\nCurrent workspace state.'}
         >
-          Context
-        </button>
+          <button
+            type="button"
+            className={styles.titleButton}
+            aria-expanded={isExpanded}
+            onClick={() => setIsExpanded((expanded) => !expanded)}
+          >
+            Context
+          </button>
+        </Tooltip>
         <SectionActions content={contextText} onOpenInTab={onOpenInTab} />
       </div>
       {isExpanded && (
