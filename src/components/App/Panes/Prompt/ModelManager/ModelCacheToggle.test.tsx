@@ -7,17 +7,17 @@ describe('ModelCacheToggle', () => {
     const { rerender } = render(
       <ModelCacheToggle isCached={false} isBusy={false} disabled={false} onToggle={vi.fn()} />,
     );
-    expect(screen.getByRole('button', { name: 'Cache' })).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Cache model' })).toBeDefined();
 
     rerender(
       <ModelCacheToggle isCached={true} isBusy={false} disabled={false} onToggle={vi.fn()} />,
     );
-    expect(screen.getByRole('button', { name: 'Cached' })).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Remove from cache' })).toBeDefined();
 
     rerender(
       <ModelCacheToggle isCached={false} isBusy={true} disabled={false} onToggle={vi.fn()} />,
     );
-    expect(screen.getByRole('button', { name: 'Working...' })).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Cache model' })).toHaveProperty('disabled', true);
   });
 
   it('calls onToggle when clicked', () => {
@@ -26,7 +26,7 @@ describe('ModelCacheToggle', () => {
       <ModelCacheToggle isCached={false} isBusy={false} disabled={false} onToggle={onToggle} />,
     );
 
-    fireEvent.click(screen.getByRole('button', { name: 'Cache' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Cache model' }));
     expect(onToggle).toHaveBeenCalled();
   });
 
@@ -36,7 +36,7 @@ describe('ModelCacheToggle', () => {
       <ModelCacheToggle isCached={false} isBusy={false} disabled={true} onToggle={onToggle} />,
     );
 
-    fireEvent.click(screen.getByRole('button', { name: 'Cache' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Cache model' }));
     expect(onToggle).not.toHaveBeenCalled();
   });
 });

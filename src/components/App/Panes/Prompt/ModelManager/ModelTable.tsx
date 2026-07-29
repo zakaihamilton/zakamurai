@@ -1,5 +1,5 @@
 import { Icons } from '@/components/ui/Icons';
-import React from 'react';
+import type { ModelTableProps } from '../prompt-types';
 import ModelCacheToggle from './ModelCacheToggle';
 import styles from './ModelTable.module.css';
 import { COLUMNS, detailValue, formatSize } from './modelUtils';
@@ -13,7 +13,7 @@ export default function ModelTable({
   modelCacheWork,
   onModelCacheAction,
   onRequestUncache,
-}) {
+}: ModelTableProps) {
   return (
     <div className={styles.modelTableWrap}>
       <table className={styles.modelTable}>
@@ -73,7 +73,7 @@ export default function ModelTable({
                   <td>
                     <ModelCacheToggle
                       isCached={isCached}
-                      isBusy={isBusy}
+                      isBusy={Boolean(isBusy)}
                       disabled={Boolean(modelCacheWork)}
                       onToggle={() => {
                         if (isCached) {

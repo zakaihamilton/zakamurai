@@ -1,7 +1,15 @@
-import type { AgentSession, AgentSessionMessage, AgentSessionStateShape } from '@/components/state/domain-types';
+import type {
+  AgentSession,
+  AgentSessionMessage,
+  AgentSessionStateShape,
+} from '@/components/state/domain-types';
 import type { CreateAgentSessionOptions } from '@/components/App/types';
 import type { RoleGraph } from '@/components/AI/types';
-import { expectAgentSession, requireSessionId, sessionRoleGraph } from '@/test-utils/agentSessionMocks';
+import {
+  expectAgentSession,
+  requireSessionId,
+  sessionRoleGraph,
+} from '@/test-utils/agentSessionMocks';
 import { describe, expect, it } from 'vitest';
 import {
   MAX_AGENT_SESSIONS,
@@ -211,18 +219,15 @@ describe('AgentSessions', () => {
     expect(
       createAgentSession({ parentId: 12 } as unknown as CreateAgentSessionOptions).parentId,
     ).toBeNull();
-    expect(
-      createAgentSession({ mode: 'other' } as unknown as CreateAgentSessionOptions).mode,
-    ).toBe('single');
+    expect(createAgentSession({ mode: 'other' } as unknown as CreateAgentSessionOptions).mode).toBe(
+      'single',
+    );
     expect(createAgentSession({ name: '' }).name).toBe('Agent 1');
     expect(capSessionMessages(null as unknown as AgentSessionMessage[])).toEqual([]);
     expect(listAgentSessions()).toEqual([]);
     expect(getAgentSessionSubtreeIds({}, 'missing').size).toBe(0);
     expect(
-      formatSessionContext(
-        [{ role: 'user', text: 'x' }] as unknown as AgentSessionMessage[],
-        0,
-      ),
+      formatSessionContext([{ role: 'user', text: 'x' }] as unknown as AgentSessionMessage[], 0),
     ).toBe('');
     expect(
       formatSessionContext(

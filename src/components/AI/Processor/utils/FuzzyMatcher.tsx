@@ -127,7 +127,7 @@ export function applyHeuristicInsertion(
   // If we found at least 2 similar items, it's likely a list
   if (matchCount >= 2 && lastMatchIdx !== -1) {
     const resultLines = [...originalLines];
-    const indent = originalLines[lastMatchIdx].match(/^[ \t]*/)[0];
+    const indent = originalLines[lastMatchIdx]?.match(/^[ \t]*/)?.[0] ?? '';
     resultLines.splice(lastMatchIdx + 1, 0, indent + line);
 
     const newContent = resultLines.join('\n');

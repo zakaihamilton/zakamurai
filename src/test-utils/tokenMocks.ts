@@ -1,4 +1,7 @@
-import type { HighlightDebugToken, HighlightTokenRange } from '@/components/App/Views/EditorArea/types';
+import type {
+  HighlightDebugToken,
+  HighlightTokenRange,
+} from '@/components/App/Views/EditorArea/types';
 import type {
   ConciseTokenReport,
   TokenBreakdownReport,

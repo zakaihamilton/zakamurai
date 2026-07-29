@@ -1,15 +1,14 @@
 import { WorkspaceHealthState } from '@/components/Workspace';
 import React from 'react';
 import styles from './WorkspaceHealth.module.css';
-import { requireStore } from '../../../types';
 
 export default function WorkspaceHealth() {
-  const health = requireStore(WorkspaceHealthState.useState([
+  const health = WorkspaceHealthState.useState([
     'status',
     'indexedFiles',
     'totalFiles',
     'skippedFiles',
-  ]));
+  ]);
   if (!health || health.status === 'idle') return null;
   const skipped = health.skippedFiles?.length || 0;
   return (

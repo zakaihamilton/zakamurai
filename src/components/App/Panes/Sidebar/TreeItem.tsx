@@ -28,7 +28,13 @@ export default function TreeItem({
 
 type TreeItemControlledProps = Omit<TreeItemProps, 'onCancelCreate' | 'onCreate'>;
 
-function TreeItemWithControls({ row, onOpenFile, onRename, onStartCreate, ...props }: TreeItemControlledProps) {
+function TreeItemWithControls({
+  row,
+  onOpenFile,
+  onRename,
+  onStartCreate,
+  ...props
+}: TreeItemControlledProps) {
   return (
     <Node id={row?.pathStr || row?.item?.name || 'TreeItem'}>
       <TreeItemControlled

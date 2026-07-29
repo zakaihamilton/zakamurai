@@ -41,7 +41,9 @@ describe('ReasoningPanel', () => {
 
   it('renders reasoning title and text correctly', () => {
     setSessionReasoning('This is some **Markdown** content');
-    vi.mocked(PromptUiState.useState).mockReturnValue(makePromptUiState({ isReasoningVisible: true }));
+    vi.mocked(PromptUiState.useState).mockReturnValue(
+      makePromptUiState({ isReasoningVisible: true }),
+    );
 
     render(<ReasoningPanel />);
 
@@ -52,7 +54,9 @@ describe('ReasoningPanel', () => {
   it('copies reasoning to clipboard when copy button is clicked', async () => {
     vi.spyOn(navigator.clipboard, 'writeText').mockResolvedValue();
     setSessionReasoning('Copied content text');
-    vi.mocked(PromptUiState.useState).mockReturnValue(makePromptUiState({ isReasoningVisible: true }));
+    vi.mocked(PromptUiState.useState).mockReturnValue(
+      makePromptUiState({ isReasoningVisible: true }),
+    );
 
     render(<ReasoningPanel />);
 

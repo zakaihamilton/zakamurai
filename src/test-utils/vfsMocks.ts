@@ -10,9 +10,7 @@ export type MutableVfsLike = VfsLike & {
 export function createMutableVfsLike(files: Record<string, string> = {}): MutableVfsLike {
   const isDirectory = (path: string): boolean => {
     const normalized = path.endsWith('/') ? path.slice(0, -1) : path;
-    return Object.keys(files).some(
-      (key) => key.startsWith(`${normalized}/`) && key !== normalized,
-    );
+    return Object.keys(files).some((key) => key.startsWith(`${normalized}/`) && key !== normalized);
   };
 
   return {
@@ -30,6 +28,9 @@ export function createMutableVfsLike(files: Record<string, string> = {}): Mutabl
       files[path] = typeof content === 'string' ? content : new TextDecoder().decode(content);
     },
     readdirSync(path: string) {
+      if (Object.hasOwn(files, path)) {
+        throw new Error('ENOTDIR');
+      }
       const prefix = path.endsWith('/') ? path : `${path}/`;
       const names = new Set<string>();
       for (const key of Object.keys(files)) {

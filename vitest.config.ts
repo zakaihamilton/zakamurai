@@ -17,19 +17,12 @@ export default defineConfig({
       '**/tests/isolated-preview/**',
       ...(isCoverageRun ? ['**/EditorPerformance.test.ts'] : []),
     ],
-    include: [
-      'src/**/*.{test,spec}.{ts,tsx}',
-      'tests/**/*.{test,spec}.{ts,tsx}',
-    ],
+    include: ['src/**/*.{test,spec}.{ts,tsx}', 'tests/**/*.{test,spec}.{ts,tsx}'],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],
       include: ['src/**/*'],
-      exclude: [
-        'src/setupTests.ts',
-        'src/**/*.test.{ts,tsx}',
-        'src/**/*.spec.{ts,tsx}',
-      ],
+      exclude: ['src/setupTests.ts', 'src/**/*.test.{ts,tsx}', 'src/**/*.spec.{ts,tsx}'],
       thresholds: {
         statements: 80,
         branches: 85,

@@ -1,4 +1,8 @@
-import type { ShortcutActionContext, ShortcutDefinition, ShortcutGroup } from '@/components/App/types';
+import type {
+  ShortcutActionContext,
+  ShortcutDefinition,
+  ShortcutGroup,
+} from '@/components/App/types';
 import { isMac } from '@/utils/os';
 import { SHORTCUT_GROUPS } from './constants';
 import { SHORTCUTS } from './definitions';
@@ -69,7 +73,5 @@ export const getShortcutsByGroup = (): ShortcutGroup[] => {
     SHORTCUT_GROUPS.GENERAL,
   ];
 
-  return order
-    .filter((name) => groups[name])
-    .map((name) => ({ group: name, items: groups[name] }));
+  return order.filter((name) => groups[name]).map((name) => ({ group: name, items: groups[name] }));
 };

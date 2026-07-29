@@ -26,19 +26,22 @@ describe('WebLLMState helpers', () => {
   });
 
   it('updateWebLLMEngine merges engine patches and sets activeModelId', () => {
-    const draft = { engines: undefined, activeModelId: null };
+    const draft: {
+      engines?: Record<string, Record<string, unknown>>;
+      activeModelId: string | null;
+    } = { engines: {}, activeModelId: null };
     const store = vi.fn((producer) => producer(draft));
     bindWebLLMStore(store);
 
     updateWebLLMEngine('m1', { status: 'downloading', progressText: '10%' });
-    expect(draft.engines.m1).toEqual({
+    expect(draft.engines?.m1).toEqual({
       status: 'downloading',
       progressText: '10%',
     });
     expect(draft.activeModelId).toBe('m1');
 
     updateWebLLMEngine('m1', { status: 'ready', generating: false });
-    expect(draft.engines.m1.status).toBe('ready');
+    expect(draft.engines?.m1?.status).toBe('ready');
     expect(draft.activeModelId).toBe('m1');
 
     updateWebLLMEngine('m1', { generating: true });

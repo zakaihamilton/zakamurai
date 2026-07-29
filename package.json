@@ -83,12 +83,7 @@
     "vitest": "3.2.7"
   },
   "lint-staged": {
-    "src/**/*.{js,jsx,ts,tsx}": [
-      "biome check --write",
-      "vitest related --run"
-    ],
-    "src/**/*.module.css": [
-      "stylelint --fix"
-    ]
+    "src/**/*.{js,jsx,ts,tsx}": ["biome check --write", "vitest related --run"],
+    "src/**/*.module.css": ["stylelint --fix"]
   }
 }

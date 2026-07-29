@@ -7,7 +7,8 @@ import type {
 import { createState } from '@/components/state/State';
 
 /** Project-wide metadata that is deliberately separate from editor buffers. */
-export const WorkspaceProfileState = createState<WorkspaceProfileStateShape>('WorkspaceProfileState');
+export const WorkspaceProfileState =
+  createState<WorkspaceProfileStateShape>('WorkspaceProfileState');
 export const WorkspaceHealthState = createState<WorkspaceHealthStateShape>('WorkspaceHealthState');
 export const ProblemsState = createState<ProblemsStateShape>('ProblemsState');
 export const ChangeSetState = createState<ChangeSetStateShape>('ChangeSetState');

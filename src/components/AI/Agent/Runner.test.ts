@@ -1,15 +1,16 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { AgentEvent, AskWebLLM } from '../types';
+import { beforeEach, describe, expect, it, vi, type Mock } from 'vitest';
 import { runAgent } from './Runner';
 
 vi.mock('../WebLLMAPI', () => ({ askWebLLM: vi.fn() }));
 
 describe('runAgent', () => {
-  let askWebLLM;
+  let askWebLLM: Mock<AskWebLLM>;
 
   beforeEach(async () => {
     vi.clearAllMocks();
     vi.resetAllMocks();
-    ({ askWebLLM } = await import('../WebLLMAPI'));
+    ({ askWebLLM } = (await import('../WebLLMAPI')) as unknown as { askWebLLM: Mock<AskWebLLM> });
   });
 
   it('iterates through tools and returns isolated changes', async () => {
@@ -30,7 +31,7 @@ describe('runAgent', () => {
 
     expect(validate).toHaveBeenCalledWith({ 'src/a.js': 'const a = 2;' });
     expect(result.changes[0].after).toBe('const a = 2;');
-    expect(askWebLLM.mock.calls[0][3].messages[1].content).toContain('Scope: current file');
+    expect(askWebLLM.mock.calls[0]?.[3]?.messages?.[1]?.content).toContain('Scope: current file');
   });
 
   it('frames project scope without file or selection bias and edits multiple files', async () => {
@@ -48,7 +49,7 @@ describe('runAgent', () => {
       model: 'test',
     });
 
-    const initialPrompt = askWebLLM.mock.calls[0][3].messages[1].content;
+    const initialPrompt = askWebLLM.mock.calls[0]?.[3]?.messages?.[1]?.content;
     expect(initialPrompt).toContain('Scope: whole project');
     expect(initialPrompt).not.toContain('Active file:');
     expect(initialPrompt).not.toContain('Selected lines:');
@@ -57,7 +58,7 @@ describe('runAgent', () => {
 
   it('honors allowedActions, priorContext, and agentRole events', async () => {
     askWebLLM.mockResolvedValueOnce('{"action":"finish","summary":"done"}');
-    const events = [];
+    const events: AgentEvent[] = [];
     const result = await runAgent({
       request: 'inspect',
       files: { 'src/a.js': 'a' },
@@ -69,8 +70,10 @@ describe('runAgent', () => {
       onEvent: (event) => events.push(event),
     });
     expect(result.summary).toBe('done');
-    expect(askWebLLM.mock.calls[0][3].messages[0].content).toBe('planner only');
-    expect(askWebLLM.mock.calls[0][3].messages[1].content).toContain('Prior conversation context');
+    expect(askWebLLM.mock.calls[0]?.[3]?.messages?.[0]?.content).toBe('planner only');
+    expect(askWebLLM.mock.calls[0]?.[3]?.messages?.[1]?.content).toContain(
+      'Prior conversation context',
+    );
     expect(events[0].agentRole).toBe('planner');
   });
 
@@ -142,7 +145,7 @@ describe('runAgent', () => {
       .mockResolvedValueOnce('{"action":"validate"}')
       .mockResolvedValueOnce('{"action":"finish","summary":"done"}');
 
-    const events = [];
+    const events: AgentEvent[] = [];
     const validate = vi
       .fn()
       .mockResolvedValue({ status: 'passed', check: 'build', diagnostics: '' });
@@ -182,7 +185,7 @@ describe('runAgent', () => {
       .mockResolvedValueOnce('{"action":"validate"}')
       .mockResolvedValueOnce('{"action":"finish","summary":"done"}');
 
-    const events = [];
+    const events: AgentEvent[] = [];
     const validate = vi
       .fn()
       .mockResolvedValueOnce('failed checks')

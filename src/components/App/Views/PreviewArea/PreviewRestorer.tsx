@@ -4,14 +4,16 @@ import { PreviewState } from '@/components/App/PreviewState';
 import { EditorState } from '@/components/App/Views/EditorArea';
 import { useFileSystem } from '@/components/Storage';
 import { useEffect, useRef } from 'react';
-import { requireStore } from '../../types';
+import { requireStore, toCompilerFs } from '../../types';
 
 /**
  * On reload, saved preview HTML alone is not enough — bundled /dist/assets are gone.
  * Trigger a silent recompile so preview can serve real production output again.
  */
 export function usePreviewRestorer() {
-  const previewState = requireStore(PreviewState.useState(['htmlContent', 'isCompilerReady', 'restoreError']));
+  const previewState = requireStore(
+    PreviewState.useState(['htmlContent', 'isCompilerReady', 'restoreError']),
+  );
   const { htmlContent } = previewState;
   const appState = requireStore(AppState.useState(['silentCompileRequest']));
   const fs = useFileSystem();
@@ -41,11 +43,15 @@ export function usePreviewRestorer() {
         const compiler = new Compiler(() => {});
         const container = await compiler.init();
         if (!container.vfs.existsSync('/dist')) {
-          container.vfs.mkdirSync('/dist', { recursive: true });
+          container.vfs.mkdirSync?.('/dist', { recursive: true });
         }
         container.vfs.writeFileSync('/dist/index.html', htmlContent);
         container.vfs.writeFileSync('/index.html', htmlContent);
-        await compiler.syncFiles(fs, sidebarState.folderTree, editorState.fileContents);
+        await compiler.syncFiles(
+          toCompilerFs(fs),
+          sidebarState.folderTree,
+          editorState.fileContents,
+        );
 
         const hasAssets =
           container.vfs.existsSync('/dist') &&
@@ -54,7 +60,6 @@ export function usePreviewRestorer() {
           );
 
         if (!hasAssets) {
-          // VFS lost hashed bundles — rebuild quietly.
           appState((draft) => {
             draft.silentCompileRequest = (draft.silentCompileRequest || 0) + 1;
           });
@@ -66,8 +71,9 @@ export function usePreviewRestorer() {
           draft.isCompilerReady = true;
         });
       } catch (e) {
+        const message = e instanceof Error ? e.message : String(e);
         previewState((draft) => {
-          draft.restoreError = e?.message || String(e);
+          draft.restoreError = message;
           draft.isCompilerReady = true;
         });
       }

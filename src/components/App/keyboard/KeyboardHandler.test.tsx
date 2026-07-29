@@ -99,7 +99,9 @@ describe('KeyboardHandler', () => {
     fireEvent.keyDown(window, { key: 'u', ctrlKey: true });
 
     expect(tabState).toHaveBeenCalled();
-    const updateFn = vi.mocked(tabState).mock.calls[0]![0] as (draft: { activeTabId: string }) => void;
+    const updateFn = vi.mocked(tabState).mock.calls[0]![0] as (draft: {
+      activeTabId: string;
+    }) => void;
     const draft = { activeTabId: 'test.js' };
     updateFn(draft);
     expect(draft.activeTabId).toBe('ai-logs');
@@ -160,7 +162,9 @@ describe('KeyboardHandler', () => {
 
     expect(highlightHandler).not.toHaveBeenCalled();
     expect(appState).toHaveBeenCalled();
-    const updateFn = vi.mocked(appState).mock.calls[0]![0] as (draft: { showShortcuts: boolean }) => void;
+    const updateFn = vi.mocked(appState).mock.calls[0]![0] as (draft: {
+      showShortcuts: boolean;
+    }) => void;
     const draft = { showShortcuts: true };
     updateFn(draft);
     expect(draft.showShortcuts).toBe(false);

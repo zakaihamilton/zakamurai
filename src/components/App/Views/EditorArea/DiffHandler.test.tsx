@@ -1,7 +1,11 @@
 import { SidebarState } from '@/components/App/Panes/Sidebar';
 import { TabState } from '@/components/App/Panes/TabBar';
 import type { DiffActions, EditorFileSystem } from '@/components/App/Views/EditorArea/types';
-import { createMockEditorState, createMockTabState, createSetLocalContentMock } from '@/test-utils/editorMocks';
+import {
+  createMockEditorState,
+  createMockTabState,
+  createSetLocalContentMock,
+} from '@/test-utils/editorMocks';
 import { makeSidebarState } from '@/test-utils/stateMocks';
 import { act, render } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi, type Mock } from 'vitest';

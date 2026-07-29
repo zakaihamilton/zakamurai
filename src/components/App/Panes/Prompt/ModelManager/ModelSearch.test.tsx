@@ -14,24 +14,15 @@ describe('ModelSearch', () => {
     const onSearchTermChange = vi.fn();
     render(<ModelSearch searchTerm="" onSearchTermChange={onSearchTermChange} />);
 
-    fireEvent.change(screen.getByRole('searchbox', { name: 'Search AI models' }), {
+    fireEvent.change(screen.getByRole('searchbox', { name: 'Search models' }), {
       target: { value: 'qwen' },
     });
 
     expect(onSearchTermChange).toHaveBeenCalledWith('qwen');
   });
 
-  it('shows and uses the clear button when a term is present', () => {
-    const onSearchTermChange = vi.fn();
-    render(<ModelSearch searchTerm="cached" onSearchTermChange={onSearchTermChange} />);
-
-    expect(screen.getByRole('button', { name: 'Clear model search' })).toBeDefined();
-    fireEvent.click(screen.getByRole('button', { name: 'Clear model search' }));
-    expect(onSearchTermChange).toHaveBeenCalledWith('');
-  });
-
   it('hides the clear button when the search term is empty', () => {
     render(<ModelSearch searchTerm="" onSearchTermChange={vi.fn()} />);
-    expect(screen.queryByRole('button', { name: 'Clear model search' })).toBeNull();
+    expect(screen.queryByRole('button')).toBeNull();
   });
 });

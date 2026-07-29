@@ -22,16 +22,17 @@ export default function useZipExporter() {
         for await (const [name, entry] of handle.entries()) {
           const entryPath = path ? `${path}/${name}` : name;
           if (entry.kind === 'file') {
+            const fileHandle = entry as FileSystemFileHandle;
             const inMemory = editorState.fileContents?.[entryPath];
             if (inMemory !== undefined) {
               zip.addFile(entryPath, inMemory);
             } else {
-              const file = await entry.getFile();
+              const file = await fileHandle.getFile();
               const content = await file.arrayBuffer();
               zip.addFile(entryPath, new Uint8Array(content));
             }
           } else if (entry.kind === 'directory') {
-            await traverse(entry, entryPath);
+            await traverse(entry as FileSystemDirectoryHandle, entryPath);
           }
         }
       };

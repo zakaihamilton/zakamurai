@@ -139,10 +139,7 @@ describe('TabBar', () => {
 
   it('shows close-all button when more than one tab is open', () => {
     const stateUpdate = makeTabState({
-      openTabs: [
-        fileTab('tab1', 'Tab 1'),
-        fileTab('tab2', 'Tab 2'),
-      ],
+      openTabs: [fileTab('tab1', 'Tab 1'), fileTab('tab2', 'Tab 2')],
       activeTabId: 'tab1',
     });
     vi.spyOn(TabState, 'useState').mockReturnValue(stateUpdate);
@@ -207,10 +204,7 @@ describe('TabBar', () => {
 
   it('context menu closeOtherTabs calls state update', () => {
     const stateUpdate = makeTabState({
-      openTabs: [
-        fileTab('tab1', 'Tab 1', ['tab1']),
-        fileTab('tab2', 'Tab 2', ['tab2']),
-      ],
+      openTabs: [fileTab('tab1', 'Tab 1', ['tab1']), fileTab('tab2', 'Tab 2', ['tab2'])],
       activeTabId: 'tab1',
     });
     vi.spyOn(TabState, 'useState').mockReturnValue(stateUpdate);
@@ -226,10 +220,7 @@ describe('TabBar', () => {
 
   it('context menu closeTabsToLeft calls state update', () => {
     const stateUpdate = makeTabState({
-      openTabs: [
-        fileTab('tab1', 'Tab 1'),
-        fileTab('tab2', 'Tab 2'),
-      ],
+      openTabs: [fileTab('tab1', 'Tab 1'), fileTab('tab2', 'Tab 2')],
       activeTabId: 'tab2',
     });
     vi.spyOn(TabState, 'useState').mockReturnValue(stateUpdate);
@@ -243,10 +234,7 @@ describe('TabBar', () => {
 
   it('context menu closeTabsToRight calls state update', () => {
     const stateUpdate = makeTabState({
-      openTabs: [
-        fileTab('tab1', 'Tab 1'),
-        fileTab('tab2', 'Tab 2'),
-      ],
+      openTabs: [fileTab('tab1', 'Tab 1'), fileTab('tab2', 'Tab 2')],
       activeTabId: 'tab1',
     });
     vi.spyOn(TabState, 'useState').mockReturnValue(stateUpdate);

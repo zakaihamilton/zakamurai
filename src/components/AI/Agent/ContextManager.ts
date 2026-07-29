@@ -50,7 +50,9 @@ export class AgentContextManager {
   }
 }
 
-export const formatVerificationResult = (result: VerificationResult | null | undefined): string => {
+export const formatVerificationResult = (
+  result: VerificationResult | null | undefined = undefined,
+): string => {
   if (!result) return 'Validation is unavailable.';
   return JSON.stringify({
     status: result.status || 'unavailable',

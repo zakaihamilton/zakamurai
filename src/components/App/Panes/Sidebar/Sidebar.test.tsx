@@ -13,14 +13,11 @@ import { EditorState } from '@/components/App/Views/EditorArea';
 import { useFileSystem } from '@/components/Storage';
 import { asMockUseFileSystem } from '@/test-utils/fsMocks';
 import { createMockEditorState, createMockTab, createMockTabState } from '@/test-utils/editorMocks';
-import {
-  makeAppState,
-  makeSidebarState,
-  makeSidebarUiState,
-} from '@/test-utils/stateMocks';
+import { makeAppState, makeSidebarState, makeSidebarUiState, makeWorkspaceHealthState } from '@/test-utils/stateMocks';
 import { asTreeNode } from '@/test-utils/treeMocks';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { WorkspaceHealthState } from '@/components/Workspace';
 import { SidebarState, SidebarUiState } from './Sidebar';
 import Sidebar from './Sidebar';
 
@@ -61,8 +58,16 @@ describe('Sidebar', () => {
           type: 'folder',
           path: ['src', 'components'],
           children: [
-            asTreeNode({ name: 'AnimatedCard.jsx', type: 'file', path: ['src', 'components', 'AnimatedCard.jsx'] }),
-            asTreeNode({ name: 'Icons.jsx', type: 'file', path: ['src', 'components', 'Icons.jsx'] }),
+            asTreeNode({
+              name: 'AnimatedCard.jsx',
+              type: 'file',
+              path: ['src', 'components', 'AnimatedCard.jsx'],
+            }),
+            asTreeNode({
+              name: 'Icons.jsx',
+              type: 'file',
+              path: ['src', 'components', 'Icons.jsx'],
+            }),
           ],
         }),
         asTreeNode({ name: 'App.jsx', type: 'file', path: ['src', 'App.jsx'] }),
@@ -72,6 +77,11 @@ describe('Sidebar', () => {
   ];
 
   beforeEach(() => {
+    vi.spyOn(SidebarState, 'useState');
+    vi.spyOn(SidebarUiState, 'useState');
+    vi.spyOn(WorkspaceHealthState, 'useState').mockReturnValue(
+      makeWorkspaceHealthState({ status: 'idle' }),
+    );
     vi.mocked(AppState.usePassiveState).mockReturnValue(
       makeAppState({ projectName: 'App', isMobile: false }),
     );
@@ -125,9 +135,7 @@ describe('Sidebar', () => {
         expandedFolders: {},
       }),
     );
-    vi.mocked(SidebarUiState.useState).mockReturnValue(
-      makeSidebarUiState({ filterText: 'icons' }),
-    );
+    vi.mocked(SidebarUiState.useState).mockReturnValue(makeSidebarUiState({ filterText: 'icons' }));
     vi.mocked(AppState.useState).mockReturnValue(makeAppState({ projectName: 'Test Project' }));
     vi.mocked(TabState.useState).mockReturnValue(createMockTabState({ activeTabId: null }));
     vi.mocked(EditorState.usePassiveState).mockReturnValue(createMockEditorState());

@@ -11,9 +11,7 @@ declare global {
 
   interface FileSystemDirectoryHandle {
     entries(): AsyncIterableIterator<[string, FileSystemHandle]>;
-    queryPermission(
-      descriptor?: FileSystemHandlePermissionDescriptor,
-    ): Promise<PermissionState>;
+    queryPermission(descriptor?: FileSystemHandlePermissionDescriptor): Promise<PermissionState>;
   }
 
   interface FileSystemHandle {

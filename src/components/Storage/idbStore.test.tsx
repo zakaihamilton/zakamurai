@@ -41,7 +41,7 @@ describe('idbStore', () => {
 
   it('returns false (not durable) when IndexedDB is unavailable', async () => {
     const original = globalThis.indexedDB;
-    globalThis.indexedDB = undefined;
+    globalThis.indexedDB = undefined as unknown as IDBFactory;
     resetIdbConnection();
 
     await expect(idbSet('k', { ok: true })).resolves.toBe(false);

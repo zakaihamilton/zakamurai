@@ -12,10 +12,10 @@ describe('computeDiff properties', () => {
           const result = computeDiff(original, updated);
           expect(result.content).toBe(updated);
           for (const diff of result.diffs) {
-            expect(diff.start).toBeGreaterThanOrEqual(0);
-            expect(diff.end).toBeGreaterThanOrEqual(diff.start);
-            expect(diff.origStart).toBeGreaterThanOrEqual(0);
-            expect(diff.origEnd).toBeGreaterThanOrEqual(diff.origStart);
+            expect(diff.start ?? 0).toBeGreaterThanOrEqual(0);
+            expect(diff.end ?? 0).toBeGreaterThanOrEqual(diff.start ?? 0);
+            expect(diff.origStart ?? 0).toBeGreaterThanOrEqual(0);
+            expect(diff.origEnd ?? 0).toBeGreaterThanOrEqual(diff.origStart ?? 0);
           }
         },
       ),

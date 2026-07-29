@@ -32,12 +32,14 @@ export default function ImageViewer({ tab }: ImageViewerProps) {
 
 function ImageViewerInner({ tab }: ImageViewerProps) {
   const tabState = TabState.usePassiveState();
-  const imageViewerState = requireStore(ImageViewerState.useState(null, {
-    imageUrl: null,
-    error: null,
-    scale: 1,
-    showGrid: false,
-  }));
+  const imageViewerState = requireStore(
+    ImageViewerState.useState(null, {
+      imageUrl: null,
+      error: null,
+      scale: 1,
+      showGrid: false,
+    }),
+  );
   const { imageUrl = null, error = null, scale = 1, showGrid = false } = imageViewerState || {};
   const fileName = tab?.file?.name || '';
   const filePath = tab?.file?.path?.join('/') || fileName;

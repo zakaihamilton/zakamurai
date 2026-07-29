@@ -42,7 +42,7 @@ export function stubMessageChannel(): { getBridgePort: () => MockMessagePort } {
           onmessage: null,
           close: vi.fn(),
         };
-        this.port2 = { postMessage: vi.fn(), close: vi.fn() };
+        this.port2 = { postMessage: vi.fn(), onmessage: null, close: vi.fn() };
         bridgePort = this.port1;
       }
     },
@@ -67,9 +67,7 @@ export function mockCompilerContainer(
   return { serverBridge } as unknown as AlmostnodeContainer;
 }
 
-export function asPreviewDocument(
-  partial: Record<string, unknown>,
-): Document {
+export function asPreviewDocument(partial: Record<string, unknown>): Document {
   return partial as unknown as Document;
 }
 

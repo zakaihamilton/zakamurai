@@ -5,20 +5,20 @@ vi.mock('./Processor/Main', () => ({
   processAIResponse: 'processAIResponseMock',
 }));
 vi.mock('./Processor/utils/Parser', () => ({
-  parseResponse: 'parseResponseMock',
+  parseAIResponse: 'parseAIResponseMock',
 }));
 vi.mock('./Processor/utils/Applier', () => ({
-  applyChanges: 'applyChangesMock',
+  applyFileUpdate: 'applyFileUpdateMock',
 }));
 vi.mock('./Processor/utils/PathResolver', () => ({
-  resolvePath: 'resolvePathMock',
+  resolveFilePath: 'resolveFilePathMock',
 }));
 
 describe('Processor re-exports', () => {
   it('correctly re-exports from sub-files', () => {
     expect(exports.processAIResponse).toBe('processAIResponseMock');
-    expect(exports.parseResponse).toBe('parseResponseMock');
-    expect(exports.applyChanges).toBe('applyChangesMock');
-    expect(exports.resolvePath).toBe('resolvePathMock');
+    expect(exports.parseAIResponse).toBe('parseAIResponseMock');
+    expect(exports.applyFileUpdate).toBe('applyFileUpdateMock');
+    expect(exports.resolveFilePath).toBe('resolveFilePathMock');
   });
 });

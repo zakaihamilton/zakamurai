@@ -4,12 +4,7 @@
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import Node, { nodeGetProperty, nodeSetProperty, subscribeToNode } from './Node';
 import { createObject, objectChangedKeys } from './Object';
-import type {
-  StateMonitorCallback,
-  StateScope,
-  StateSelector,
-  StateStore,
-} from './types';
+import type { StateMonitorCallback, StateScope, StateSelector, StateStore } from './types';
 
 /**
  * Creates a named state scope: a React component plus `useState`, `useFutureState`, and

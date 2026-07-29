@@ -213,7 +213,9 @@ export default function useSidebarFileLoader({
       if (fs.mode === 'local' && entryHandle) {
         try {
           if (!entryHandle.move) throw new Error('Rename is not supported by this browser.');
-          await (entryHandle as unknown as { move: (name: string) => Promise<void> }).move(nextName);
+          await (entryHandle as unknown as { move: (name: string) => Promise<void> }).move(
+            nextName,
+          );
           fs.triggerRefresh();
         } catch (err) {
           console.error('Failed to rename local file:', err);

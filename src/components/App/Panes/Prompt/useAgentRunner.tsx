@@ -33,7 +33,7 @@ export const formatAgentEvent: AgentEventFormatter = (event, roleLabelById = {})
     return `${rolePrefix}**Ready for review:** ${event.message || 'Agent finished.'}`;
   }
   return '';
-}
+};
 
 export default function useAgentRunner({
   val,
@@ -140,7 +140,8 @@ export default function useAgentRunner({
       const runAI = async () => {
         try {
           console.info('[Prompt] Starting AI request for:', userMsg);
-          const selectedLines = editorState.selectedLines?.[currentActiveTabId] || [];
+          const selectedLines =
+            (currentActiveTabId && editorState.selectedLines?.[currentActiveTabId]) || [];
           const controller = new AbortController();
           promptUiState((draft) => {
             draft.abortController = controller;
@@ -157,11 +158,14 @@ export default function useAgentRunner({
             { collectWorkspaceFiles, runAgent, runCollaborativeAgent, applyAgentChanges },
             { Compiler },
           ] = await Promise.all([import('@/components/AI/Agent'), import('@/utils/compiler')]);
-          const workspaceFiles = await collectWorkspaceFiles(toCompilerFs(fs) as never, editorState.fileContents || {});
+          const workspaceFiles = await collectWorkspaceFiles(
+            toCompilerFs(fs) as never,
+            editorState.fileContents || {},
+          );
           const runOptions = {
             request: userMsg,
             priorContext,
-            scope: effectiveScope,
+            scope: (effectiveScope === 'project' ? 'project' : 'file') as 'file' | 'project',
             activeFile:
               effectiveScope === 'file' && currentActiveTab?.type === 'file'
                 ? currentActiveTabId
@@ -187,7 +191,11 @@ export default function useAgentRunner({
               const validationLogs: string[] = [];
               const compiler = new Compiler((line: string) => validationLogs.push(line));
               try {
-                await compiler.compile(toCompilerFs(fs), sidebarState.folderTree || [], stagedFiles);
+                await compiler.compile(
+                  toCompilerFs(fs),
+                  sidebarState.folderTree || [],
+                  stagedFiles,
+                );
                 return {
                   status: 'passed',
                   check: 'build',
@@ -217,7 +225,11 @@ export default function useAgentRunner({
               const verificationLogs: string[] = [];
               const compiler = new Compiler((line: string) => verificationLogs.push(line));
               try {
-                await compiler.compile(toCompilerFs(fs), sidebarState.folderTree || [], stagedFiles);
+                await compiler.compile(
+                  toCompilerFs(fs),
+                  sidebarState.folderTree || [],
+                  stagedFiles,
+                );
                 const { getLatestPreviewEvidence } = await import(
                   '@/components/App/Views/PreviewArea/previewEvidenceBridge'
                 );
@@ -256,8 +268,10 @@ export default function useAgentRunner({
 
           const result =
             sessionMode === 'team'
-              ? await runCollaborativeAgent(runOptions)
-              : await runAgent(runOptions);
+              ? await runCollaborativeAgent(
+                  runOptions as import('@/components/AI/types').RunCollaborativeAgentOptions,
+                )
+              : await runAgent(runOptions as import('@/components/AI/types').RunAgentOptions);
 
           let stillProcessing = false;
           logState((draft) => {
@@ -314,7 +328,7 @@ export default function useAgentRunner({
             editorState((draft) => {
               const next = { ...(draft.pendingDeletions || {}) };
               for (const { path, before } of deletions) {
-                next[path] = { originalContent: before, changeSetId: changeSet?.id };
+                next[path] = { originalContent: before, changeSetId: changeSet?.id ?? '' };
               }
               draft.pendingDeletions = next;
             });

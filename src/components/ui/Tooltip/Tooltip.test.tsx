@@ -1,4 +1,5 @@
 import { AppState } from '@/components/App/AppState';
+import { makeAppState } from '@/test-utils/stateMocks';
 import { useShouldShowKeyboardShortcuts } from '@/utils/keyboard';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -14,9 +15,44 @@ vi.mock('@/utils/keyboard', () => ({
   useShouldShowKeyboardShortcuts: vi.fn(() => true),
 }));
 
+function getTrigger(label: string): HTMLElement {
+  const el = screen.getByText(label).parentElement;
+  if (!el) throw new Error(`missing trigger for ${label}`);
+  return el;
+}
+
+type RectLike = {
+  top: number;
+  bottom: number;
+  left: number;
+  right: number;
+  width: number;
+  height: number;
+  x: number;
+  y: number;
+  toJSON?: () => void;
+};
+
+function asDomRect(rect: RectLike): DOMRect {
+  return {
+    ...rect,
+    toJSON: rect.toJSON ?? (() => ({})),
+  } as DOMRect;
+}
+
+function mockRects(trigger: Element, triggerRect: RectLike, tooltipRect?: RectLike) {
+  const triggerDomRect = asDomRect(triggerRect);
+  const tooltipDomRect = asDomRect(tooltipRect ?? triggerRect);
+  vi.spyOn(trigger, 'getBoundingClientRect').mockReturnValue(triggerDomRect);
+  vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function (this: Element) {
+    if (this.getAttribute('role') === 'tooltip') return tooltipDomRect;
+    return triggerDomRect;
+  });
+}
+
 describe('Tooltip', () => {
   beforeEach(() => {
-    vi.mocked(AppState.useState).mockReturnValue({ theme: 'dark' } as never);
+    vi.mocked(AppState.useState).mockReturnValue(makeAppState({ theme: 'dark' }));
     vi.mocked(useShouldShowKeyboardShortcuts).mockReturnValue(true);
     vi.useFakeTimers();
   });
@@ -62,7 +98,7 @@ describe('Tooltip', () => {
       </Tooltip>,
     );
 
-    await showTooltip(screen.getByText('Hover me').parentElement!);
+    await showTooltip(getTrigger('Hover me'));
     expect(screen.getByText('Rich helper').tagName).toBe('STRONG');
   });
 
@@ -73,7 +109,7 @@ describe('Tooltip', () => {
       </Tooltip>,
     );
 
-    await showTooltip(screen.getByText('Hover me').parentElement!);
+    await showTooltip(getTrigger('Hover me'));
     expect(screen.getByText(/Body only/)).toBeDefined();
     expect(document.querySelector('[class*="contentHeader"]')).toBeNull();
   });
@@ -85,7 +121,7 @@ describe('Tooltip', () => {
       </Tooltip>,
     );
 
-    const trigger = screen.getByText('Hover me').parentElement;
+    const trigger = getTrigger('Hover me');
     fireEvent.mouseEnter(trigger);
     expect(screen.queryByRole('tooltip')).toBeNull();
 
@@ -107,7 +143,7 @@ describe('Tooltip', () => {
       </Tooltip>,
     );
 
-    const trigger = screen.getByText('Focus me').parentElement;
+    const trigger = getTrigger('Focus me');
     fireEvent.focus(trigger);
     await act(async () => {
       vi.advanceTimersByTime(400);
@@ -131,7 +167,7 @@ describe('Tooltip', () => {
       </Tooltip>,
     );
 
-    await showTooltip(screen.getByText('Hover me').parentElement!);
+    await showTooltip(getTrigger('Hover me'));
 
     expect(screen.getByText('Token Breakdown')).toBeDefined();
     expect(screen.getByText('src/test.js')).toBeDefined();
@@ -149,7 +185,7 @@ describe('Tooltip', () => {
       </>,
     );
 
-    await showTooltip(screen.getByText('First').parentElement!);
+    await showTooltip(getTrigger('First'));
 
     expect(screen.getByText('First helper')).toBeDefined();
     expect(screen.queryByText('Second helper')).toBeNull();
@@ -164,7 +200,7 @@ describe('Tooltip', () => {
       </Tooltip>,
     );
 
-    await showTooltip(screen.getByText('Hover me').parentElement!);
+    await showTooltip(getTrigger('Hover me'));
 
     expect(screen.getByRole('tooltip')).toBeDefined();
     expect(screen.getByText('Helper text')).toBeDefined();
@@ -178,7 +214,7 @@ describe('Tooltip', () => {
       </Tooltip>,
     );
 
-    const trigger = screen.getByText('Hover me').parentElement;
+    const trigger = getTrigger('Hover me');
     await showTooltip(trigger);
     expect(screen.getByRole('tooltip')).toBeDefined();
 
@@ -197,7 +233,7 @@ describe('Tooltip', () => {
       </Tooltip>,
     );
 
-    const trigger = screen.getByText('Hover me').parentElement;
+    const trigger = getTrigger('Hover me');
     fireEvent.mouseEnter(trigger);
     act(() => {
       vi.advanceTimersByTime(200);
@@ -220,8 +256,8 @@ describe('Tooltip', () => {
       </Tooltip>,
     );
 
-    const trigger = screen.getByText('Hover me').parentElement;
-    const triggerRect = {
+    const trigger = getTrigger('Hover me');
+    const triggerRect: RectLike = {
       top: 4,
       bottom: 24,
       left: 0,
@@ -232,7 +268,7 @@ describe('Tooltip', () => {
       y: 4,
       toJSON: () => {},
     };
-    const tooltipRect = {
+    const tooltipRect: RectLike = {
       top: 0,
       bottom: 0,
       left: 0,
@@ -244,11 +280,7 @@ describe('Tooltip', () => {
       toJSON: () => {},
     };
 
-    vi.spyOn(trigger, 'getBoundingClientRect').mockReturnValue(triggerRect);
-    vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function getRect() {
-      if (this.getAttribute('role') === 'tooltip') return tooltipRect;
-      return triggerRect;
-    });
+    mockRects(trigger, triggerRect, tooltipRect);
 
     await showTooltip(trigger);
 
@@ -261,7 +293,7 @@ describe('Tooltip', () => {
   });
 
   it('positions a light tooltip above a centered trigger', async () => {
-    vi.spyOn(AppState, 'useState').mockReturnValue({ theme: 'light' });
+    vi.mocked(AppState.useState).mockReturnValue(makeAppState({ theme: 'light' }));
     Object.defineProperty(window, 'innerWidth', { configurable: true, value: 800 });
     Object.defineProperty(window, 'innerHeight', { configurable: true, value: 600 });
 
@@ -271,8 +303,8 @@ describe('Tooltip', () => {
       </Tooltip>,
     );
 
-    const trigger = screen.getByText('Focus me').parentElement;
-    const triggerRect = {
+    const trigger = getTrigger('Focus me');
+    const triggerRect: RectLike = {
       top: 300,
       bottom: 320,
       left: 390,
@@ -283,11 +315,8 @@ describe('Tooltip', () => {
       y: 300,
       toJSON: () => {},
     };
-    const tooltipRect = { ...triggerRect, width: 100, height: 30 };
-    vi.spyOn(trigger, 'getBoundingClientRect').mockReturnValue(triggerRect);
-    vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function getRect() {
-      return this.getAttribute('role') === 'tooltip' ? tooltipRect : triggerRect;
-    });
+    const tooltipRect: RectLike = { ...triggerRect, width: 100, height: 30 };
+    mockRects(trigger, triggerRect, tooltipRect);
 
     fireEvent.focus(trigger);
     await act(async () => {
@@ -316,8 +345,8 @@ describe('Tooltip', () => {
       </Tooltip>,
     );
 
-    const trigger = screen.getByText('Tall trigger').parentElement;
-    const triggerRect = {
+    const trigger = getTrigger('Tall trigger');
+    const triggerRect: RectLike = {
       top: 150,
       bottom: 170,
       left: 200,
@@ -328,12 +357,7 @@ describe('Tooltip', () => {
       y: 150,
       toJSON: () => {},
     };
-    vi.spyOn(trigger, 'getBoundingClientRect').mockReturnValue(triggerRect);
-    vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function getRect() {
-      return this.getAttribute('role') === 'tooltip'
-        ? { ...triggerRect, width: 100, height: 200 }
-        : triggerRect;
-    });
+    mockRects(trigger, triggerRect, { ...triggerRect, width: 100, height: 200 });
 
     await showTooltip(trigger);
     expect(screen.getByRole('tooltip').className).toContain('bottom');
@@ -348,8 +372,8 @@ describe('Tooltip', () => {
       </Tooltip>,
     );
 
-    const trigger = screen.getByText('Moving trigger').parentElement;
-    let triggerRect = {
+    const trigger = getTrigger('Moving trigger');
+    let triggerRect: RectLike = {
       top: 300,
       bottom: 320,
       left: 390,
@@ -360,11 +384,13 @@ describe('Tooltip', () => {
       y: 300,
       toJSON: () => {},
     };
-    vi.spyOn(trigger, 'getBoundingClientRect').mockImplementation(() => triggerRect);
-    vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function getRect() {
+    vi.spyOn(trigger, 'getBoundingClientRect').mockImplementation(() => asDomRect(triggerRect));
+    vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function (
+      this: Element,
+    ) {
       return this.getAttribute('role') === 'tooltip'
-        ? { ...triggerRect, width: 100, height: 30 }
-        : triggerRect;
+        ? asDomRect({ ...triggerRect, width: 100, height: 30 })
+        : asDomRect(triggerRect);
     });
 
     await showTooltip(trigger);
@@ -386,8 +412,8 @@ describe('Tooltip', () => {
       </Tooltip>,
     );
 
-    const trigger = screen.getByText('Compact trigger').parentElement;
-    const rect = {
+    const trigger = getTrigger('Compact trigger');
+    const rect: RectLike = {
       top: 1,
       bottom: 2,
       left: 0,
@@ -398,10 +424,7 @@ describe('Tooltip', () => {
       y: 1,
       toJSON: () => {},
     };
-    vi.spyOn(trigger, 'getBoundingClientRect').mockReturnValue(rect);
-    vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function getRect() {
-      return this.getAttribute('role') === 'tooltip' ? { ...rect, width: 20, height: 10 } : rect;
-    });
+    mockRects(trigger, rect, { ...rect, width: 20, height: 10 });
 
     await showTooltip(trigger);
     const tooltip = screen.getByRole('tooltip');
@@ -422,8 +445,8 @@ describe('Tooltip', () => {
       </>,
     );
 
-    const firstTrigger = screen.getByText('First').parentElement;
-    const secondTrigger = screen.getByText('Second').parentElement;
+    const firstTrigger = getTrigger('First');
+    const secondTrigger = getTrigger('Second');
 
     await showTooltip(firstTrigger);
     expect(screen.getByText('First helper')).toBeDefined();
@@ -442,7 +465,7 @@ describe('Tooltip', () => {
       </Tooltip>,
     );
 
-    const trigger = screen.getByText('Hover me').parentElement;
+    const trigger = getTrigger('Hover me');
     await showTooltip(trigger);
     expect(screen.getByRole('tooltip')).toBeDefined();
 

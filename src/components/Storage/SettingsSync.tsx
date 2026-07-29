@@ -41,7 +41,10 @@ export function useSettingsSync(
     EditorStateShape,
     'aiCompletionEnabled' | 'isReadOnly' | 'fileContents' | 'pendingDiffs'
   >,
-  agentSessionState: Pick<AgentSessionStateShape, 'sessions' | 'activeSessionId'> | null | undefined,
+  agentSessionState:
+    | Pick<AgentSessionStateShape, 'sessions' | 'activeSessionId'>
+    | null
+    | undefined,
   tabState: Pick<TabStateShape, 'openTabs' | 'activeTabId' | 'lastCodeTabId'> | null | undefined,
   logState: Pick<LogStateShape, 'logs'> | null | undefined,
   previewState: Pick<PreviewStateShape, 'htmlContent'> | null | undefined,
@@ -86,11 +89,12 @@ export function useSettingsSync(
         draft.usage = health.usage ?? undefined;
         draft.quota = health.quota ?? undefined;
         draft.lastSuccessfulPersistAt = health.lastSuccessfulPersistAt ?? null;
-        draft.message = storageHealthMessage({
-          ...health,
-          usage: health.usage ?? undefined,
-          quota: health.quota ?? undefined,
-        }) ?? null;
+        draft.message =
+          storageHealthMessage({
+            ...health,
+            usage: health.usage ?? undefined,
+            quota: health.quota ?? undefined,
+          }) ?? null;
       });
       if (health.quotaWarning && !quotaWarningNotifiedRef.current) {
         quotaWarningNotifiedRef.current = true;
@@ -103,9 +107,10 @@ export function useSettingsSync(
           'warning',
           12000,
           {
-          label: 'Export ZIP',
-          onClick: requestRecoveryExport,
-        });
+            label: 'Export ZIP',
+            onClick: requestRecoveryExport,
+          },
+        );
       } else if (!health.quotaWarning) {
         quotaWarningNotifiedRef.current = false;
       }

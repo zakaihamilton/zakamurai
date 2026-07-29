@@ -18,9 +18,7 @@ describe('useLongPress hook', () => {
     const handlers = result.current;
     expect(handlers.onTouchStart).toBeDefined();
 
-    handlers.onTouchStart?.(
-      mockTouchEvent({ touches: [{ clientX: 10, clientY: 20 }] }),
-    );
+    handlers.onTouchStart?.(mockTouchEvent({ touches: [{ clientX: 10, clientY: 20 }] }));
 
     expect(callback).not.toHaveBeenCalled();
 

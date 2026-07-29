@@ -1,18 +1,20 @@
 import { reportDiagnostic } from '@/components/Diagnostics';
 
-let listener = null;
+type PreviewErrorListener = ((message: string) => void) | null;
 
-export function setPreviewErrorListener(fn) {
+let listener: PreviewErrorListener = null;
+
+export function setPreviewErrorListener(fn: PreviewErrorListener) {
   listener = fn;
 }
 
-export function reportPreviewError(message) {
+export function reportPreviewError(message: string) {
   if (message) reportDiagnostic({ source: 'preview', severity: 'error', message });
   if (!message || !listener) return;
   listener(message);
 }
 
-export function shouldReportPreviewError(level, message) {
+export function shouldReportPreviewError(level: string, message: string) {
   if (level === 'error') return true;
   return /transform failed|compilation error|\bERR:/i.test(message);
 }

@@ -14,13 +14,15 @@ import { requireStore } from '../../types';
 export default function StatusBar() {
   const { theme, projectName } = requireStore(AppState.useState(['theme', 'projectName']));
   const fs = useFileSystem();
-  const editorState = requireStore(EditorState.useState([
-    'cursorPos',
-    'isCompleting',
-    'aiCompletionEnabled',
-    'aiCompletionDebug',
-    'completionActivity',
-  ]));
+  const editorState = requireStore(
+    EditorState.useState([
+      'cursorPos',
+      'isCompleting',
+      'aiCompletionEnabled',
+      'aiCompletionDebug',
+      'completionActivity',
+    ]),
+  );
   const tabState = requireStore(TabState.useState(['activeTabId', 'openTabs']));
   const { status: ragStatus } = requireStore(RagState.useState(['status']));
   const { activeTabId, openTabs = [] } = tabState;
@@ -42,8 +44,14 @@ export default function StatusBar() {
   const completionActivity = getCompletionStatusMessage(
     completionActivityState
       ? {
-          phase: typeof completionActivityState.phase === 'string' ? completionActivityState.phase : undefined,
-          model: typeof completionActivityState.model === 'string' ? completionActivityState.model : undefined,
+          phase:
+            typeof completionActivityState.phase === 'string'
+              ? completionActivityState.phase
+              : undefined,
+          model:
+            typeof completionActivityState.model === 'string'
+              ? completionActivityState.model
+              : undefined,
         }
       : null,
     !!isCompleting,

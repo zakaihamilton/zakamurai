@@ -16,7 +16,12 @@ import useEditorShortcuts from './EditorShortcuts';
 import NavigationPopup from './NavigationPopup';
 import { shouldDeferEditorAnalysis } from './largeFile';
 import useScrollSync from './useScrollSync';
-import type { CodeEditorProps, EditorShortcutsProps, NavigationPopupState, TextareaRef } from './types';
+import type {
+  CodeEditorProps,
+  EditorShortcutsProps,
+  NavigationPopupState,
+  TextareaRef,
+} from './types';
 
 const getCursorPosition = (content: string, index: number): CursorPosition => {
   let line = 1;

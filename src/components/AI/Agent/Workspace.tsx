@@ -77,7 +77,7 @@ export class AgentWorkspace {
 
   async semanticSearch(
     query: string,
-    retrieveContext: (query: string, k: number) => Promise<SemanticSearchResult[]>,
+    retrieveContext?: ((query: string, k: number) => Promise<SemanticSearchResult[]>) | null,
     k = 5,
   ): Promise<string> {
     if (!query) throw new Error('search_semantic requires a query');

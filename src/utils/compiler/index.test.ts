@@ -19,10 +19,15 @@ vi.mock('./container', () => {
   };
   return {
     getSharedContainer: vi.fn(() => mockContainer),
-    initContainer: vi.fn(async (_onLog: (msg: string) => void, callback?: (container: typeof mockContainer) => void) => {
-      if (callback) callback(mockContainer);
-      return mockContainer;
-    }),
+    initContainer: vi.fn(
+      async (
+        _onLog: (msg: string) => void,
+        callback?: (container: typeof mockContainer) => void,
+      ) => {
+        if (callback) callback(mockContainer);
+        return mockContainer;
+      },
+    ),
     resetContainer: vi.fn().mockResolvedValue(true),
   };
 });
@@ -152,7 +157,9 @@ describe('Compiler', () => {
     container.vfs.existsSync.mockImplementation((p) => p === '/package.json');
     container.vfs.readFileSync.mockReturnValue('');
 
-    await expect(compiler.compile({ mode: 'opfs' }, [], {})).rejects.toThrow('package.json is empty or invalid');
+    await expect(compiler.compile({ mode: 'opfs' }, [], {})).rejects.toThrow(
+      'package.json is empty or invalid',
+    );
     expect(onPhase).toHaveBeenCalledWith('error');
   });
 

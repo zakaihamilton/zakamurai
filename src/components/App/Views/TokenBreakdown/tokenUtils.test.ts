@@ -41,26 +41,47 @@ describe('tokenUtils', () => {
     it('orders by start, then end, then index', () => {
       expect(
         compareTokensBySourceOrder(
-          makeHighlightDebugToken({ range: makeHighlightTokenRange({ start: 2, end: 3 }), index: 1 }),
-          makeHighlightDebugToken({ range: makeHighlightTokenRange({ start: 5, end: 6 }), index: 0 }),
+          makeHighlightDebugToken({
+            range: makeHighlightTokenRange({ start: 2, end: 3 }),
+            index: 1,
+          }),
+          makeHighlightDebugToken({
+            range: makeHighlightTokenRange({ start: 5, end: 6 }),
+            index: 0,
+          }),
         ),
       ).toBeLessThan(0);
       expect(
         compareTokensBySourceOrder(
-          makeHighlightDebugToken({ range: makeHighlightTokenRange({ start: 2, end: 4 }), index: 1 }),
-          makeHighlightDebugToken({ range: makeHighlightTokenRange({ start: 2, end: 8 }), index: 0 }),
+          makeHighlightDebugToken({
+            range: makeHighlightTokenRange({ start: 2, end: 4 }),
+            index: 1,
+          }),
+          makeHighlightDebugToken({
+            range: makeHighlightTokenRange({ start: 2, end: 8 }),
+            index: 0,
+          }),
         ),
       ).toBeLessThan(0);
       expect(
         compareTokensBySourceOrder(
-          makeHighlightDebugToken({ range: makeHighlightTokenRange({ start: 2, end: 4 }), index: 3 }),
-          makeHighlightDebugToken({ range: makeHighlightTokenRange({ start: 2, end: 4 }), index: 1 }),
+          makeHighlightDebugToken({
+            range: makeHighlightTokenRange({ start: 2, end: 4 }),
+            index: 3,
+          }),
+          makeHighlightDebugToken({
+            range: makeHighlightTokenRange({ start: 2, end: 4 }),
+            index: 1,
+          }),
         ),
       ).toBeGreaterThan(0);
       expect(
         compareTokensBySourceOrder(
           makeHighlightDebugToken({ index: 0, range: null }),
-          makeHighlightDebugToken({ range: makeHighlightTokenRange({ start: 1, end: 2 }), index: 1 }),
+          makeHighlightDebugToken({
+            range: makeHighlightTokenRange({ start: 1, end: 2 }),
+            index: 1,
+          }),
         ),
       ).toBeGreaterThan(0);
     });
@@ -71,8 +92,16 @@ describe('tokenUtils', () => {
       const code = 'ab';
       const result = checkTokenReportMatch(code, {
         tokens: [
-          makeHighlightDebugToken({ value: 'a', range: makeHighlightTokenRange({ start: 0, end: 1 }), index: 0 }),
-          makeHighlightDebugToken({ value: 'b', range: makeHighlightTokenRange({ start: 1, end: 2 }), index: 1 }),
+          makeHighlightDebugToken({
+            value: 'a',
+            range: makeHighlightTokenRange({ start: 0, end: 1 }),
+            index: 0,
+          }),
+          makeHighlightDebugToken({
+            value: 'b',
+            range: makeHighlightTokenRange({ start: 1, end: 2 }),
+            index: 1,
+          }),
         ],
       });
       expect(result.isMatch).toBe(true);
@@ -84,10 +113,22 @@ describe('tokenUtils', () => {
       const code = 'abcd';
       const result = checkTokenReportMatch(code, {
         tokens: [
-          makeHighlightDebugToken({ value: 'a', range: makeHighlightTokenRange({ start: 0, end: 1 }), index: 0 }),
+          makeHighlightDebugToken({
+            value: 'a',
+            range: makeHighlightTokenRange({ start: 0, end: 1 }),
+            index: 0,
+          }),
           makeHighlightDebugToken({ value: 'missing', index: 1, range: null }),
-          makeHighlightDebugToken({ value: 'xx', range: makeHighlightTokenRange({ start: 0, end: 2 }), index: 2 }),
-          makeHighlightDebugToken({ value: 'wrong', range: makeHighlightTokenRange({ start: 2, end: 4 }), index: 3 }),
+          makeHighlightDebugToken({
+            value: 'xx',
+            range: makeHighlightTokenRange({ start: 0, end: 2 }),
+            index: 2,
+          }),
+          makeHighlightDebugToken({
+            value: 'wrong',
+            range: makeHighlightTokenRange({ start: 2, end: 4 }),
+            index: 3,
+          }),
         ],
       });
       expect(result.isMatch).toBe(false);
@@ -100,8 +141,16 @@ describe('tokenUtils', () => {
       const code = 'abc';
       const result = checkTokenReportMatch(code, {
         tokens: [
-          makeHighlightDebugToken({ value: 'b', range: makeHighlightTokenRange({ start: 1, end: 2 }), index: 1 }),
-          makeHighlightDebugToken({ value: 'a', range: makeHighlightTokenRange({ start: 0, end: 1 }), index: 0 }),
+          makeHighlightDebugToken({
+            value: 'b',
+            range: makeHighlightTokenRange({ start: 1, end: 2 }),
+            index: 1,
+          }),
+          makeHighlightDebugToken({
+            value: 'a',
+            range: makeHighlightTokenRange({ start: 0, end: 1 }),
+            index: 0,
+          }),
         ],
       });
       expect(result.isMatch).toBe(true);
@@ -110,7 +159,11 @@ describe('tokenUtils', () => {
 
       const withGap = checkTokenReportMatch('abcd', {
         tokens: [
-          makeHighlightDebugToken({ value: 'ab', range: makeHighlightTokenRange({ start: 0, end: 2 }), index: 0 }),
+          makeHighlightDebugToken({
+            value: 'ab',
+            range: makeHighlightTokenRange({ start: 0, end: 2 }),
+            index: 0,
+          }),
         ],
       });
       expect(withGap.isMatch).toBe(true);

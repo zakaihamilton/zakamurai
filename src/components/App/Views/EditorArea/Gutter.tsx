@@ -152,7 +152,9 @@ function GutterInner({
             <div
               key={`${line}:${index}`}
               data-gutter-line={line}
-              style={top == null ? undefined : ({ '--line-top': `${top}px` } as React.CSSProperties)}
+              style={
+                top == null ? undefined : ({ '--line-top': `${top}px` } as React.CSSProperties)
+              }
               onClick={(e) => {
                 e.stopPropagation();
                 if (toggleLine) toggleLine(line);

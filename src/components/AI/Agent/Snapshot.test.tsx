@@ -1,3 +1,4 @@
+import type { FileSystemLike } from '@/components/AI/types';
 import { describe, expect, it } from 'vitest';
 import { collectWorkspaceFiles } from './Snapshot';
 
@@ -62,7 +63,7 @@ describe('collectWorkspaceFiles', () => {
       rootHandle: mockRootHandle,
     };
 
-    const files = await collectWorkspaceFiles(fs);
+    const files = await collectWorkspaceFiles(fs as unknown as FileSystemLike);
     expect(files).toEqual({
       'src/file1.js': 'file1 content',
       'file2.js': 'file2 content',
@@ -92,12 +93,12 @@ describe('collectWorkspaceFiles', () => {
       rootHandle: mockRootHandle,
     };
 
-    const files = await collectWorkspaceFiles(fs);
+    const files = await collectWorkspaceFiles(fs as unknown as FileSystemLike);
     expect(files).toEqual({});
   });
 
   it('stops recursion if depth exceeds 20', async () => {
-    const createDeepHandle = (currentDepth, maxDepth) => {
+    const createDeepHandle = (currentDepth: number, maxDepth: number) => {
       return {
         kind: 'directory',
         entries: async function* () {
@@ -125,7 +126,7 @@ describe('collectWorkspaceFiles', () => {
       rootHandle: createDeepHandle(0, 21),
     };
 
-    const files = await collectWorkspaceFiles(fs);
+    const files = await collectWorkspaceFiles(fs as unknown as FileSystemLike);
     expect(files).toEqual({});
   });
 });

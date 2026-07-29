@@ -1,9 +1,10 @@
 import { computeDiff } from '@/components/AI/Processor/utils/DiffEngine';
 import type {
+  AgentChange,
   ApplyAgentChangesResult,
   ApplyAgentChangesStates,
-  AgentChange,
   FolderTreeNode,
+  LogEntry,
   SidebarStateDraft,
   StateHandle,
 } from '@/components/AI/types';
@@ -55,8 +56,8 @@ export function applyAgentChanges(
   const validChanges = validation.accepted;
   if (validation.rejected.length > 0 && logState) {
     logState((draft) => {
-      updateInDraft(draft, ['logs'], (logs = []) => [
-        ...logs,
+      updateInDraft(draft, ['logs'], (logs: LogEntry[] | undefined) => [
+        ...(logs ?? []),
         ...validation.rejected.map((text, index) => ({
           id: `${Date.now()}-validation-${index}`,
           role: 'system',
@@ -96,8 +97,8 @@ export function applyAgentChanges(
     if (finalContent === originalContent || !diffs || diffs.length === 0) {
       if (logState) {
         logState((draft) => {
-          updateInDraft(draft, ['logs'], (logs = []) => [
-            ...logs,
+          updateInDraft(draft, ['logs'], (logs: LogEntry[] | undefined) => [
+            ...(logs ?? []),
             {
               id: Date.now() + 3,
               role: 'system',
@@ -130,8 +131,8 @@ export function applyAgentChanges(
 
   if (applied > 0 && logState) {
     logState((draft) => {
-      updateInDraft(draft, ['logs'], (logs = []) => [
-        ...logs,
+      updateInDraft(draft, ['logs'], (logs: LogEntry[] | undefined) => [
+        ...(logs ?? []),
         {
           id: Date.now() + 5,
           role: 'system',

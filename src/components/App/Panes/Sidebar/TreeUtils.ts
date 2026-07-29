@@ -57,11 +57,7 @@ export const setChildrenAtPath = (
   });
 };
 
-export const renameNodeAtPath = (
-  nodes: TreeNode[],
-  path: string[],
-  name: string,
-): TreeNode[] =>
+export const renameNodeAtPath = (nodes: TreeNode[], path: string[], name: string): TreeNode[] =>
   nodes.map((node) => {
     if (node.name !== path[0]) return node;
     const nodePath = node.path || path;

@@ -1,9 +1,13 @@
 import { Icons } from '@/components/ui/Icons';
 import Tooltip from '@/components/ui/Tooltip';
-import React from 'react';
+import type { SessionManagerProps } from '../prompt-types';
 import styles from './SessionManager.module.css';
 
-export default function SessionManager({ activeSession, onOpenTree, isOpen = true }) {
+export default function SessionManager({
+  activeSession,
+  onOpenTree,
+  isOpen = true,
+}: SessionManagerProps) {
   return (
     <div className={styles.manager}>
       <div className={styles.activeAgent} aria-label="Active agent">

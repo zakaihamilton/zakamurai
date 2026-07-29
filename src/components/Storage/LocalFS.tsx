@@ -1,6 +1,7 @@
 import type { FileSystemStateShape } from '@/components/state/domain-types';
 import type { Draft } from '@/components/state/types';
 import { createState } from '@/components/state/State';
+import type { FileSystemApi } from '@/components/App/types';
 import { useCallback, useEffect, useMemo } from 'react';
 
 const DB_NAME = 'ZakamuraiFS';
@@ -21,7 +22,11 @@ const INITIAL_FS_STATE: FileSystemStateShape = {
   isReady: false,
 };
 
-function withTimeout<T>(promise: Promise<T>, message: string, timeoutMs = FS_INIT_TIMEOUT_MS): Promise<T> {
+function withTimeout<T>(
+  promise: Promise<T>,
+  message: string,
+  timeoutMs = FS_INIT_TIMEOUT_MS,
+): Promise<T> {
   let timeoutId: ReturnType<typeof setTimeout> | undefined;
   const timeout = new Promise<never>((_, reject) => {
     timeoutId = setTimeout(() => reject(new Error(message)), timeoutMs);
@@ -59,7 +64,8 @@ async function loadHandle(): Promise<FileSystemDirectoryHandle | null> {
   const tx = db.transaction(STORE_NAME, 'readonly');
   const request = tx.objectStore(STORE_NAME).get('root');
   return new Promise((resolve, reject) => {
-    request.onsuccess = () => resolve((request.result as FileSystemDirectoryHandle | undefined) ?? null);
+    request.onsuccess = () =>
+      resolve((request.result as FileSystemDirectoryHandle | undefined) ?? null);
     request.onerror = () => reject(request.error);
   });
 }
@@ -80,7 +86,7 @@ async function clearHandle(): Promise<void> {
  * Pass `{ bootstrap: true }` only from App so init/restore runs once on the root Node.
  * Other callers omit bootstrap and look up the ancestor store (safe under nested Nodes).
  */
-export function useFileSystem({ bootstrap = false } = {}) {
+export function useFileSystem({ bootstrap = false } = {}): FileSystemApi {
   const fileSystemState = FileSystemState.useState(null, bootstrap ? INITIAL_FS_STATE : undefined);
   const {
     rootHandle = null,
@@ -95,7 +101,9 @@ export function useFileSystem({ bootstrap = false } = {}) {
   const setFileSystemValue = useCallback(
     <K extends keyof FileSystemStateShape>(
       key: K,
-      nextValue: FileSystemStateShape[K] | ((current: FileSystemStateShape[K]) => FileSystemStateShape[K]),
+      nextValue:
+        | FileSystemStateShape[K]
+        | ((current: FileSystemStateShape[K]) => FileSystemStateShape[K]),
     ) => {
       if (!fileSystemState) return;
       fileSystemState((draft: Draft<FileSystemStateShape>) => {
@@ -239,7 +247,11 @@ export function useFileSystem({ bootstrap = false } = {}) {
 
   // Wrapped in useCallback with currentDirHandle and refreshDirectory as deps
   const writeFile = useCallback(
-    async (filename: string, content: string, dirHandle: FileSystemDirectoryHandle | null = currentDirHandle) => {
+    async (
+      filename: string,
+      content: string,
+      dirHandle: FileSystemDirectoryHandle | null = currentDirHandle,
+    ) => {
       if (!dirHandle) throw new Error('No directory mounted');
       try {
         const fileHandle = await dirHandle.getFileHandle(filename, { create: true });
@@ -248,7 +260,10 @@ export function useFileSystem({ bootstrap = false } = {}) {
         await writable.close();
         await refreshDirectory(dirHandle);
       } catch (err) {
-        setFileSystemValue('error', `Failed to write file: ${err instanceof Error ? err.message : String(err)}`);
+        setFileSystemValue(
+          'error',
+          `Failed to write file: ${err instanceof Error ? err.message : String(err)}`,
+        );
       }
     },
     [currentDirHandle, refreshDirectory, setFileSystemValue],
@@ -272,7 +287,10 @@ export function useFileSystem({ bootstrap = false } = {}) {
         await refreshDirectory(root); // Refresh from root to see changes everywhere
         return true;
       } catch (err) {
-        setFileSystemValue('error', `Failed to write file at path: ${err instanceof Error ? err.message : String(err)}`);
+        setFileSystemValue(
+          'error',
+          `Failed to write file at path: ${err instanceof Error ? err.message : String(err)}`,
+        );
         return false;
       }
     },
@@ -306,7 +324,10 @@ export function useFileSystem({ bootstrap = false } = {}) {
         await refreshDirectory(root);
         return true;
       } catch (err) {
-        setFileSystemValue('error', `Failed to delete file at path: ${err instanceof Error ? err.message : String(err)}`);
+        setFileSystemValue(
+          'error',
+          `Failed to delete file at path: ${err instanceof Error ? err.message : String(err)}`,
+        );
         return false;
       }
     },
@@ -337,7 +358,10 @@ export function useFileSystem({ bootstrap = false } = {}) {
         await dirHandle.getDirectoryHandle(folderName, { create: true });
         await refreshDirectory(dirHandle);
       } catch (err) {
-        setFileSystemValue('error', `Failed to create folder: ${err instanceof Error ? err.message : String(err)}`);
+        setFileSystemValue(
+          'error',
+          `Failed to create folder: ${err instanceof Error ? err.message : String(err)}`,
+        );
       }
     },
     [currentDirHandle, refreshDirectory, setFileSystemValue],
@@ -350,14 +374,21 @@ export function useFileSystem({ bootstrap = false } = {}) {
         await dirHandle.removeEntry(name, { recursive: true });
         await refreshDirectory(dirHandle);
       } catch (err) {
-        setFileSystemValue('error', `Failed to delete entry: ${err instanceof Error ? err.message : String(err)}`);
+        setFileSystemValue(
+          'error',
+          `Failed to delete entry: ${err instanceof Error ? err.message : String(err)}`,
+        );
       }
     },
     [currentDirHandle, refreshDirectory, setFileSystemValue],
   );
 
   const moveEntry = useCallback(
-    async (sourceHandle: FileSystemHandle, destinationDirHandle: FileSystemDirectoryHandle, newName: string | null = null) => {
+    async (
+      sourceHandle: FileSystemHandle,
+      destinationDirHandle: FileSystemDirectoryHandle,
+      newName: string | null = null,
+    ) => {
       if (!sourceHandle || !destinationDirHandle) throw new Error('Source or destination missing');
       try {
         // Use the modern move API if available
@@ -369,7 +400,10 @@ export function useFileSystem({ bootstrap = false } = {}) {
         await refreshDirectory(destinationDirHandle);
         setFileSystemValue('refreshTrigger', (v = 0) => v + 1);
       } catch (err) {
-        setFileSystemValue('error', `Failed to move entry: ${err instanceof Error ? err.message : String(err)}`);
+        setFileSystemValue(
+          'error',
+          `Failed to move entry: ${err instanceof Error ? err.message : String(err)}`,
+        );
       }
     },
     [refreshDirectory, setFileSystemValue],
@@ -386,11 +420,14 @@ export function useFileSystem({ bootstrap = false } = {}) {
         draft.error = null;
       });
     } catch (err) {
-      setFileSystemValue('error', `Failed to unlink project: ${err instanceof Error ? err.message : String(err)}`);
+      setFileSystemValue(
+        'error',
+        `Failed to unlink project: ${err instanceof Error ? err.message : String(err)}`,
+      );
     }
   }, [fileSystemState, setFileSystemValue]);
 
-  return useMemo(
+  return useMemo<FileSystemApi>(
     () => ({
       mode,
       files,

@@ -12,9 +12,9 @@ describe('support reports', () => {
         },
       ],
       logs: [
-        { role: 'user', text: 'my private prompt', timestamp: '10:00' },
-        { role: 'assistant', text: 'model output', timestamp: '10:01' },
-        { role: 'system', text: 'Build failed token=secret-value', timestamp: '10:02' },
+        { id: 1, role: 'user', text: 'my private prompt', timestamp: '10:00' },
+        { id: 2, role: 'assistant', text: 'model output', timestamp: '10:01' },
+        { id: 3, role: 'system', text: 'Build failed token=secret-value', timestamp: '10:02' },
       ],
       storageHealth: {
         status: 'healthy',

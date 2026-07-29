@@ -1,6 +1,7 @@
 import { TabState } from '@/components/App/Panes/TabBar';
 import { EditorState } from '@/components/App/Views/EditorArea';
 import { useFileSystem } from '@/components/Storage';
+import type { Tab } from '@/components/state/domain-types';
 import { isMediaFile } from '@/utils/file';
 import { useEffect, useRef } from 'react';
 import { requireStore } from '../../types';
@@ -9,7 +10,7 @@ export function useTabRestorer() {
   const fs = useFileSystem();
   const tabState = requireStore(TabState.useState());
   const editorState = requireStore(EditorState.useState());
-  const lastRootHandleRef = useRef(null);
+  const lastRootHandleRef = useRef<FileSystemDirectoryHandle | null>(null);
 
   useEffect(() => {
     if (!fs?.rootHandle || !fs?.getFileHandleAtPath) return;
@@ -21,8 +22,8 @@ export function useTabRestorer() {
       const savedActiveTabId = tabState.activeTabId;
 
       if (parsedTabs && parsedTabs.length > 0) {
-        const restoredTabs = [];
-        const newContents = {};
+        const restoredTabs: Tab[] = [];
+        const newContents: Record<string, string> = {};
 
         for (const tab of parsedTabs) {
           if (tab.type === 'file') {
@@ -32,7 +33,7 @@ export function useTabRestorer() {
                 const content = isMediaFile(tab.label) ? null : await fs.readFile(handle);
                 restoredTabs.push({
                   ...tab,
-                  file: { name: tab.label, path: tab.id.split('/'), content },
+                  file: { name: tab.label, path: tab.id.split('/'), content: content ?? undefined },
                   fsHandle: handle,
                 });
                 if (content !== null && content !== undefined) {
@@ -51,7 +52,6 @@ export function useTabRestorer() {
           const pending = draft.pendingDiffs || {};
           const merged = { ...draft.fileContents };
           for (const [path, content] of Object.entries(newContents)) {
-            // Keep in-memory AI review buffers; do not clobber with disk.
             if (pending[path]) continue;
             merged[path] = content;
           }

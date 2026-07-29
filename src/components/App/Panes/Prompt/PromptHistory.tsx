@@ -1,7 +1,14 @@
+import type { PromptUiStateShape } from '@/components/state/domain-types';
+import type { StateStore } from '@/components/state/types';
 import { PromptState } from '@/components/App/Panes/Prompt/PromptState';
 import { useCallback } from 'react';
 
-export default function usePromptHistory(val, historyIndex, draftVal, promptUiState) {
+export default function usePromptHistory(
+  val: string,
+  historyIndex: number,
+  draftVal: string,
+  promptUiState: StateStore<PromptUiStateShape>,
+) {
   const promptState = PromptState.usePassiveState();
 
   const handleArrowUp = useCallback(() => {
@@ -30,7 +37,7 @@ export default function usePromptHistory(val, historyIndex, draftVal, promptUiSt
   }, [historyIndex, draftVal, promptUiState, promptState]);
 
   const addToHistory = useCallback(
-    (userMsg) => {
+    (userMsg: string) => {
       if (!userMsg || !userMsg.trim()) {
         promptUiState((draft) => {
           draft.val = '';

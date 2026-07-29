@@ -10,7 +10,7 @@ export default function RoleGraphSummary({
   disabled = false,
   onEdit,
 }: RoleGraphSummaryProps) {
-  const summary = describeRoleGraph(roleGraph);
+  const summary = roleGraph ? describeRoleGraph(roleGraph) : 'No roles configured';
 
   return (
     <div className={styles.summary} aria-label="Team role graph summary">

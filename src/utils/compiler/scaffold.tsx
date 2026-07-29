@@ -3,11 +3,7 @@ import type { OnLog, PackageJson, VfsLike } from './types';
 /**
  * Scaffolding logic for generating default configuration files.
  */
-export function scaffoldMissingFiles(
-  vfs: VfsLike,
-  packageJson: PackageJson,
-  onLog: OnLog,
-): void {
+export function scaffoldMissingFiles(vfs: VfsLike, packageJson: PackageJson, onLog: OnLog): void {
   // Ensure type: module for Vite if not present
   if (packageJson.scripts?.build?.includes('vite') && packageJson.type !== 'module') {
     onLog('Adding "type": "module" to package.json for Vite compatibility...');

@@ -1,5 +1,10 @@
 import type { FlatTreeRow } from '@/components/App/types';
-import { asNormalizedTreeNode, asTreeNode, makeNormalizedTreeNode, makeTreeNode } from '@/test-utils/treeMocks';
+import {
+  asNormalizedTreeNode,
+  asTreeNode,
+  makeNormalizedTreeNode,
+  makeTreeNode,
+} from '@/test-utils/treeMocks';
 import { describe, expect, it, vi } from 'vitest';
 import {
   addNodeAtPath,
@@ -108,11 +113,7 @@ describe('TreeUtils', () => {
 
   describe('setChildrenAtPath', () => {
     it('updates child nodes at specified path', () => {
-      const tree = [
-        makeTreeNode('src', 'folder', [
-          makeTreeNode('components', 'folder', []),
-        ]),
-      ];
+      const tree = [makeTreeNode('src', 'folder', [makeTreeNode('components', 'folder', [])])];
       const newChildren = [makeTreeNode('Button.js', 'file')];
       const result = setChildrenAtPath(tree, ['src', 'components'], newChildren);
 
@@ -128,9 +129,12 @@ describe('TreeUtils', () => {
   describe('renameNodeAtPath', () => {
     it('renames a node at specified path', () => {
       const tree = [
-        makeNormalizedTreeNode('src', 'folder', ['src'], [
-          makeNormalizedTreeNode('App.js', 'file', ['src', 'App.js']),
-        ]),
+        makeNormalizedTreeNode(
+          'src',
+          'folder',
+          ['src'],
+          [makeNormalizedTreeNode('App.js', 'file', ['src', 'App.js'])],
+        ),
       ];
       const result = renameNodeAtPath(tree, ['src', 'App.js'], 'index.js');
       expect(result[0]!.children![0]!.name).toBe('index.js');
@@ -170,9 +174,7 @@ describe('TreeUtils', () => {
 
   describe('findNodeAtPath', () => {
     it('finds node at path and returns null if not found', () => {
-      const tree = [
-        makeTreeNode('src', 'folder', [makeTreeNode('App.js', 'file')]),
-      ];
+      const tree = [makeTreeNode('src', 'folder', [makeTreeNode('App.js', 'file')])];
 
       expect(findNodeAtPath(tree, ['src', 'App.js'])).toBeDefined();
       expect(findNodeAtPath(tree, ['src', 'App.js'])!.name).toBe('App.js');
@@ -182,10 +184,15 @@ describe('TreeUtils', () => {
 
   describe('flattenTree', () => {
     const tree = [
-      makeNormalizedTreeNode('src', 'folder', ['src'], [
-        makeNormalizedTreeNode('components', 'folder', ['src', 'components'], []),
-        makeNormalizedTreeNode('App.js', 'file', ['src', 'App.js']),
-      ]),
+      makeNormalizedTreeNode(
+        'src',
+        'folder',
+        ['src'],
+        [
+          makeNormalizedTreeNode('components', 'folder', ['src', 'components'], []),
+          makeNormalizedTreeNode('App.js', 'file', ['src', 'App.js']),
+        ],
+      ),
       makeNormalizedTreeNode('package.json', 'file', ['package.json']),
     ];
 

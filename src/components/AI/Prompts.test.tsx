@@ -133,7 +133,7 @@ describe('AI Prompts', () => {
   });
 
   it('handles a related file with omitted optional content and CSS metadata', () => {
-    expect(formatCompactContext([{ filePath: 'empty.js' }])).toContain(
+    expect(formatCompactContext([{ filePath: 'empty.js', content: '' }])).toContain(
       'Related file: empty.js\n```\n\n```',
     );
   });

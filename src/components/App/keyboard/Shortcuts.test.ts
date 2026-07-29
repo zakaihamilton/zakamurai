@@ -23,16 +23,16 @@ const mockIsMac = vi.mocked(isMac);
 describe('Shortcuts isMatch', () => {
   it('matches Cmd+B on Mac', () => {
     mockIsMac.mockReturnValue(true);
-    expect(isMatch(makeKeyboardEvent({ key: 'b', metaKey: true }), { key: 'b', modifier: 'cmd' })).toBe(
-      true,
-    );
+    expect(
+      isMatch(makeKeyboardEvent({ key: 'b', metaKey: true }), { key: 'b', modifier: 'cmd' }),
+    ).toBe(true);
   });
 
   it('matches Ctrl+B on Windows', () => {
     mockIsMac.mockReturnValue(false);
-    expect(isMatch(makeKeyboardEvent({ key: 'b', ctrlKey: true }), { key: 'b', modifier: 'cmd' })).toBe(
-      true,
-    );
+    expect(
+      isMatch(makeKeyboardEvent({ key: 'b', ctrlKey: true }), { key: 'b', modifier: 'cmd' }),
+    ).toBe(true);
   });
 
   it('matches Cmd+Shift+Z', () => {
@@ -48,7 +48,10 @@ describe('Shortcuts isMatch', () => {
   it('does not match if shift is pressed but not expected', () => {
     mockIsMac.mockReturnValue(true);
     expect(
-      isMatch(makeKeyboardEvent({ key: 'b', metaKey: true, shiftKey: true }), { key: 'b', modifier: 'cmd' }),
+      isMatch(makeKeyboardEvent({ key: 'b', metaKey: true, shiftKey: true }), {
+        key: 'b',
+        modifier: 'cmd',
+      }),
     ).toBe(false);
   });
 
@@ -85,16 +88,16 @@ describe('Shortcuts isMatch', () => {
 
   it('matches Shift+Tab', () => {
     mockIsMac.mockReturnValue(true);
-    expect(isMatch(makeKeyboardEvent({ key: 'Tab', shiftKey: true }), { key: 'Tab', modifier: 'shift' })).toBe(
-      true,
-    );
+    expect(
+      isMatch(makeKeyboardEvent({ key: 'Tab', shiftKey: true }), { key: 'Tab', modifier: 'shift' }),
+    ).toBe(true);
   });
 
   it('matches Ctrl+T and Ctrl+Shift+T', () => {
     mockIsMac.mockReturnValue(true);
-    expect(isMatch(makeKeyboardEvent({ key: 't', ctrlKey: true }), { key: 't', modifier: 'ctrl' })).toBe(
-      true,
-    );
+    expect(
+      isMatch(makeKeyboardEvent({ key: 't', ctrlKey: true }), { key: 't', modifier: 'ctrl' }),
+    ).toBe(true);
     expect(
       isMatch(makeKeyboardEvent({ key: 't', ctrlKey: true, shiftKey: true }), {
         key: 't',
@@ -105,9 +108,9 @@ describe('Shortcuts isMatch', () => {
 
   it('matches Ctrl+L', () => {
     mockIsMac.mockReturnValue(true);
-    expect(isMatch(makeKeyboardEvent({ key: 'l', ctrlKey: true }), { key: 'l', modifier: 'ctrl' })).toBe(
-      true,
-    );
+    expect(
+      isMatch(makeKeyboardEvent({ key: 'l', ctrlKey: true }), { key: 'l', modifier: 'ctrl' }),
+    ).toBe(true);
   });
 
   it('triggers toggle-inspect-mode action and switches modes correctly', () => {
@@ -143,9 +146,9 @@ describe('Shortcuts isMatch', () => {
     expect(forwardShortcut).toBeDefined();
 
     const mockStack = [
-      { filePath: 'src/App.js', label: 'App.js', loc: { line: 10, column: 5 } },
-      { filePath: 'src/index.css', label: 'index.css', loc: { line: 5, column: 1 } },
-      { filePath: 'src/utils.js', label: 'utils.js', loc: { line: 20, column: 10 } },
+      { filePath: 'src/App.js', label: 'App.js', loc: { line: 10, col: 5, index: 0 } },
+      { filePath: 'src/index.css', label: 'index.css', loc: { line: 5, col: 1, index: 0 } },
+      { filePath: 'src/utils.js', label: 'utils.js', loc: { line: 20, col: 10, index: 0 } },
     ];
 
     const editorState = createMockEditorState({
@@ -170,7 +173,7 @@ describe('Shortcuts isMatch', () => {
     });
     backShortcut!.action!(ctx);
     expect(editorState.navigationHistory.currentIndex).toBe(1);
-    expect(editorState.cursorPos?.['src/index.css']).toEqual({ line: 5, col: 1, index: 40 });
+    expect(editorState.cursorPos?.['src/index.css']).toEqual({ line: 5, col: 1, index: 0 });
     expect(editorState.shouldScrollTo?.filePath).toBe('src/index.css');
     expect(editorState.shouldScrollTo?.line).toBe(5);
     expect(tabState.activeTabId).toBe('src/index.css');
@@ -209,10 +212,16 @@ describe('Shortcuts isMatch', () => {
   it('matches ctrl-alt and cmd-alt key combinations', () => {
     mockIsMac.mockReturnValue(true);
     expect(
-      isMatch(makeKeyboardEvent({ key: 'p', ctrlKey: true, altKey: true }), { key: 'p', modifier: 'ctrl-alt' }),
+      isMatch(makeKeyboardEvent({ key: 'p', ctrlKey: true, altKey: true }), {
+        key: 'p',
+        modifier: 'ctrl-alt',
+      }),
     ).toBe(true);
     expect(
-      isMatch(makeKeyboardEvent({ key: 'p', metaKey: true, altKey: true }), { key: 'p', modifier: 'cmd-alt' }),
+      isMatch(makeKeyboardEvent({ key: 'p', metaKey: true, altKey: true }), {
+        key: 'p',
+        modifier: 'cmd-alt',
+      }),
     ).toBe(true);
   });
 

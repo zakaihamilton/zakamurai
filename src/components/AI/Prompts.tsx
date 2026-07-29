@@ -2,6 +2,26 @@
  * System prompts and AI configuration for Zakamurai.
  */
 
+export type ContextFileResult = {
+  filePath: string;
+  content: string;
+  score?: number;
+  linkedCss?: Array<{ filePath: string; content: string }>;
+};
+
+export type PromptOptions = {
+  maxContextFiles?: number;
+  maxContextChars?: number;
+  maxActiveFileChars?: number;
+  maxTokenBudget?: number;
+};
+
+type PromptRegistryShape = {
+  v1: Record<string, string>;
+  v2: Record<string, string>;
+  getPrompt(type?: string, version?: string): string;
+};
+
 export const DEFAULT_SYSTEM_PROMPT = `
 You are a precise code editor.
 To edit:
@@ -89,7 +109,7 @@ Format:
 // --- End File ---
 `.trim();
 
-export const PromptRegistry = {
+export const PromptRegistry: PromptRegistryShape = {
   v1: {
     edit: DEFAULT_SYSTEM_PROMPT,
     completion: COMPLETION_SYSTEM_PROMPT,
@@ -103,8 +123,8 @@ export const PromptRegistry = {
     completion: COMPLETION_SYSTEM_PROMPT,
     searchReplace: SEARCH_REPLACE_INSTRUCTION,
   },
-  getPrompt(type = 'edit', version = 'v2') {
-    return this[version]?.[type] ?? this.v1[type] ?? DEFAULT_SYSTEM_PROMPT;
+  getPrompt(type = 'edit', version = 'v2'): string {
+    return this[version as 'v1' | 'v2']?.[type] ?? this.v1[type] ?? DEFAULT_SYSTEM_PROMPT;
   },
 };
 
@@ -118,17 +138,20 @@ export function estimateTokens(text = '') {
   return Math.ceil(text.length / CHARS_PER_TOKEN);
 }
 
-function trimText(value, maxChars) {
+function trimText(value: string, maxChars: number): string {
   if (!value) return '';
   if (value.length <= maxChars) return value;
   return `${value.slice(0, maxChars)}\n...[truncated]`;
 }
 
-function formatFileBlock(label, path, content) {
+function formatFileBlock(label: string, path: string, content: string): string {
   return `${label}: ${path}\n\`\`\`\n${content}\n\`\`\``;
 }
 
-export function formatCompactContext(results = [], options = {}) {
+export function formatCompactContext(
+  results: ContextFileResult[] = [],
+  options: PromptOptions = {},
+): string {
   const maxFiles = options.maxContextFiles ?? MAX_CONTEXT_FILES;
   const maxChars = options.maxContextChars ?? MAX_CONTEXT_CHARS;
   const blocks = [];
@@ -162,6 +185,12 @@ export function allocateTokenBudget({
   activeFileContent = '',
   relatedContext = [],
   maxTokenBudget = 4000,
+}: {
+  systemPrompt?: string;
+  userRequest?: string;
+  activeFileContent?: string;
+  relatedContext?: ContextFileResult[];
+  maxTokenBudget?: number;
 }) {
   const systemTokens = estimateTokens(systemPrompt);
   const requestTokens = estimateTokens(userRequest);
@@ -204,6 +233,12 @@ export function buildPlanningPrompt({
   activeFileContent,
   relatedContext = [],
   options = {},
+}: {
+  userRequest: string;
+  activeFilePath?: string;
+  activeFileContent?: string;
+  relatedContext?: ContextFileResult[];
+  options?: PromptOptions;
 }) {
   const sections = [];
   if (activeFilePath && activeFileContent !== undefined) {
@@ -230,6 +265,14 @@ export function buildPatchPrompt({
   selectedLines = [],
   relatedContext = [],
   options = {},
+}: {
+  userRequest: string;
+  plan?: string;
+  activeFilePath?: string;
+  activeFileContent?: string;
+  selectedLines?: number[];
+  relatedContext?: ContextFileResult[];
+  options?: PromptOptions;
 }) {
   const sections = [];
   if (plan) {
@@ -263,6 +306,12 @@ export function buildRepairPrompt({
   originalContent,
   failedPatch,
   diagnosticError,
+}: {
+  userRequest: string;
+  filePath: string;
+  originalContent: string;
+  failedPatch: string;
+  diagnosticError: string;
 }) {
   return [
     `Target File: ${filePath}`,
@@ -280,6 +329,13 @@ export function buildEditPrompt({
   selectedLines = [],
   relatedContext = [],
   options = {},
+}: {
+  userRequest: string;
+  activeFilePath?: string;
+  activeFileContent?: string;
+  selectedLines?: number[];
+  relatedContext?: ContextFileResult[];
+  options?: PromptOptions;
 }) {
   const sections = [];
   const maxActiveChars = options.maxActiveFileChars ?? MAX_ACTIVE_FILE_CHARS;

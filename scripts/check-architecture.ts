@@ -174,7 +174,11 @@ async function main(): Promise<void> {
 }
 
 main().catch((error) => {
-  if (error instanceof Error && 'code' in error && (error as NodeJS.ErrnoException).code === 'ENOENT') {
+  if (
+    error instanceof Error &&
+    'code' in error &&
+    (error as NodeJS.ErrnoException).code === 'ENOENT'
+  ) {
     throw new Error(`Components directory not found: ${COMPONENTS_DIR}`);
   }
   console.error(error instanceof Error ? error.message : String(error));

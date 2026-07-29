@@ -9,8 +9,12 @@ describe('scaffoldMissingFiles', () => {
   let onLogMock: Mock<(message: string) => void>;
 
   beforeEach(() => {
+    const base = createMutableVfsLike();
     mockVfs = {
-      ...createMutableVfsLike(),
+      ...base,
+      writeFileSync: vi.fn((path: string, content: string | Uint8Array) => {
+        base.writeFileSync(path, content);
+      }),
       mkdirSync: vi.fn(),
     };
     onLogMock = vi.fn();
@@ -101,7 +105,7 @@ describe('scaffoldMissingFiles', () => {
     expect(mockVfs.mkdirSync).toHaveBeenCalledWith('/src');
     expect(mockVfs.writeFileSync).toHaveBeenCalledWith(
       '/src/main.jsx',
-      expect.stringContaining("import App from './App';"),
+      expect.stringContaining("import App from './App.jsx';"),
     );
   });
 });

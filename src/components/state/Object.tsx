@@ -136,7 +136,10 @@ export function createObject<T extends object>(props: T, id?: string): StateStor
 
       for (const key in draft as Record<string, unknown>) {
         untouchedKeys.delete(key);
-        if ((internalState as Record<string, unknown>)[key] !== (draft as Record<string, unknown>)[key]) {
+        if (
+          (internalState as Record<string, unknown>)[key] !==
+          (draft as Record<string, unknown>)[key]
+        ) {
           (internalState as Record<string, unknown>)[key] = (draft as Record<string, unknown>)[key];
           changedKeys.push(key);
         }
@@ -215,7 +218,11 @@ export function createObject<T extends object>(props: T, id?: string): StateStor
 
   Object.defineProperty(proxy, '__string', {
     get: () => {
-      return JSON.stringify(internalState, getCircularReplacer(internalState as Record<string, unknown>), 2);
+      return JSON.stringify(
+        internalState,
+        getCircularReplacer(internalState as Record<string, unknown>),
+        2,
+      );
     },
     enumerable: false,
   });

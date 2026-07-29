@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import type { UsePreviewSessionLifecycleParams } from './preview-types';
 import { buildPreviewUrl, createPreviewSession, getPreviewOrigins } from './previewOrigins';
 
 /** Maintains the stable preview session and rebuild lifecycle, including an optional external tab. */
@@ -12,9 +13,9 @@ export default function usePreviewSessionLifecycle({
   refreshKey,
   address,
   onBlockedExternalPreview,
-}) {
+}: UsePreviewSessionLifecycleParams) {
   const previewSessionRef = useRef(previewSessionId || createPreviewSession());
-  const externalPreviewRef = useRef(null);
+  const externalPreviewRef = useRef<Window | null>(null);
   const [externalPreviewNonce, setExternalPreviewNonce] = useState(0);
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
 
@@ -105,6 +106,7 @@ export default function usePreviewSessionLifecycle({
   }, [htmlContent, previewAreaUiState, previewState]);
 
   const handleOpenExternal = useCallback(() => {
+    if (!previewUrl) return;
     const previewWindow = window.open(
       previewUrl,
       `zakamurai-preview-tab-${previewSessionRef.current}`,

@@ -1,5 +1,5 @@
 import { act, renderHook } from '@testing-library/react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from 'vitest';
 import { useRagIndexer } from './RagIndexer';
 
 const ragSearch = {
@@ -10,8 +10,8 @@ const ragSearch = {
 vi.mock('@/utils/rag/search-utility', () => {
   return {
     ragSearch: {
-      init: (...args) => ragSearch.init(...args),
-      indexWorkspaceFiles: (...args) => ragSearch.indexWorkspaceFiles(...args),
+      init: (...args: unknown[]) => ragSearch.init(...args),
+      indexWorkspaceFiles: (...args: unknown[]) => ragSearch.indexWorkspaceFiles(...args),
     },
   };
 });
@@ -19,7 +19,7 @@ vi.mock('@/utils/rag/search-utility', () => {
 const collectWorkspaceFiles = vi.fn().mockResolvedValue({});
 
 vi.mock('@/components/AI/Agent/Snapshot', () => ({
-  collectWorkspaceFiles: (...args) => collectWorkspaceFiles(...args),
+  collectWorkspaceFiles: (...args: unknown[]) => collectWorkspaceFiles(...args),
 }));
 
 vi.mock('@/components/Storage', () => ({
@@ -42,18 +42,22 @@ import { RagState } from '@/components/AI/RagState';
 import { EditorState } from '@/components/App/Views/EditorArea';
 import { useFileSystem } from '@/components/Storage';
 
+const mockUseFileSystem = vi.mocked(useFileSystem);
+const mockEditorState = vi.mocked(EditorState.useState);
+const mockRagState = vi.mocked(RagState.useState);
+
 describe('useRagIndexer', () => {
-  let consoleLogSpy;
-  let consoleErrorSpy;
+  let consoleLogSpy: Mock;
+  let consoleErrorSpy: Mock;
 
   beforeEach(() => {
     vi.useFakeTimers();
     vi.clearAllMocks();
-    consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
-    consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-    useFileSystem.mockReturnValue({ isReady: true });
-    EditorState.useState.mockReturnValue({ fileContents: {} });
-    RagState.useState.mockReturnValue(Object.assign(vi.fn(), { status: 'idle' }));
+    consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {}) as Mock;
+    consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {}) as Mock;
+    mockUseFileSystem.mockReturnValue({ isReady: true } as never);
+    mockEditorState.mockReturnValue({ fileContents: {} } as never);
+    mockRagState.mockReturnValue(Object.assign(vi.fn(), { status: 'idle' }) as never);
     ragSearch.init.mockResolvedValue(undefined);
   });
 
@@ -85,7 +89,7 @@ describe('useRagIndexer', () => {
     });
 
     ragSearch.indexWorkspaceFiles.mockClear();
-    EditorState.useState.mockReturnValue({ fileContents: { 'a.js': 'hi' } });
+    mockEditorState.mockReturnValue({ fileContents: { 'a.js': 'hi' } } as never);
     rerender();
 
     await act(async () => {

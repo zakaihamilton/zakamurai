@@ -375,8 +375,8 @@ describe('VariableResolver', () => {
     });
 
     it('resolves interruptWebLLM forward reference in WebLLMAPI', () => {
-      const code = fs.readFileSync('src/components/AI/WebLLMAPI.js', 'utf8');
-      const targets = resolveVariables(code, 'src/components/AI/WebLLMAPI.js');
+      const code = fs.readFileSync('src/components/AI/WebLLMAPI.tsx', 'utf8');
+      const targets = resolveVariables(code, 'src/components/AI/WebLLMAPI.tsx');
       const useIndex = code.indexOf('interruptWebLLM()');
       const useTarget = targets.find((t) => t.name === 'interruptWebLLM' && t.start === useIndex);
       expect(useTarget).toBeDefined();
@@ -387,8 +387,8 @@ describe('VariableResolver', () => {
     });
 
     it('resolves object argument usages in WebLLMAPI', () => {
-      const code = fs.readFileSync('src/components/AI/WebLLMAPI.js', 'utf8');
-      const targets = resolveVariables(code, 'src/components/AI/WebLLMAPI.js');
+      const code = fs.readFileSync('src/components/AI/WebLLMAPI.tsx', 'utf8');
+      const targets = resolveVariables(code, 'src/components/AI/WebLLMAPI.tsx');
       const messagesUseIndex = code.indexOf('messages,', code.indexOf('completions.create'));
       const generationOptionsUseIndex = code.indexOf(
         'generationOptions,',
@@ -406,7 +406,7 @@ describe('VariableResolver', () => {
       );
       expect(generationOptionsUse).toBeDefined();
       const generationOptionsDeclLine = code
-        .slice(0, code.search(/const generationOptions\s*=/))
+        .slice(0, code.search(/const generationOptions\b[^=]*=/))
         .split('\n').length;
       expect(generationOptionsUse!.targets[0].loc.line).toBe(generationOptionsDeclLine);
     });

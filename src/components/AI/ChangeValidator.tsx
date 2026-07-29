@@ -215,10 +215,19 @@ export async function validateAIChangesAsync(
     }
 
     if (typeof content === 'string') {
-      const syntaxError = await validateContentSyntaxAsync(path as string, content, esbuildTransform);
+      const syntaxError = await validateContentSyntaxAsync(
+        path as string,
+        content,
+        esbuildTransform,
+      );
       if (syntaxError) {
         rejected.push(syntaxError);
-        details.push({ path: String(path), error: syntaxError, type: 'syntax', failedContent: content });
+        details.push({
+          path: String(path),
+          error: syntaxError,
+          type: 'syntax',
+          failedContent: content,
+        });
         continue;
       }
     }

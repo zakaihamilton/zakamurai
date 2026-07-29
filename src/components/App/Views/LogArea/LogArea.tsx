@@ -1,7 +1,4 @@
-import type {
-  LogAreaUiStateShape,
-  LogStateShape,
-} from '@/components/state/domain-types';
+import type { LogAreaUiStateShape, LogStateShape } from '@/components/state/domain-types';
 import { createState } from '@/components/state/State';
 import React, { useEffect, useRef } from 'react';
 import LogList from './List';
@@ -14,14 +11,18 @@ export const LogState = createState<LogStateShape>('LogState');
 export const LogAreaUiState = createState<LogAreaUiStateShape>('LogAreaUiState');
 
 export default function LogArea() {
-  const logState = requireStore(LogState.useState(['logs', 'isSystemProcessing', 'isAIProcessing']));
+  const logState = requireStore(
+    LogState.useState(['logs', 'isSystemProcessing', 'isAIProcessing']),
+  );
   const { logs = [], isSystemProcessing, isAIProcessing } = logState;
   const isProcessing = isSystemProcessing || isAIProcessing;
-  const logAreaUiState = requireStore(LogAreaUiState.useState(null, {
-    copied: false,
-    autoScroll: true,
-    filterText: '',
-  }));
+  const logAreaUiState = requireStore(
+    LogAreaUiState.useState(null, {
+      copied: false,
+      autoScroll: true,
+      filterText: '',
+    }),
+  );
   const { copied = false, autoScroll = true, filterText = '' } = logAreaUiState || {};
   const containerRef = useRef<HTMLDivElement | null>(null);
   const normalizedFilter = filterText.trim().toLowerCase();

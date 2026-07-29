@@ -5,7 +5,9 @@ import { describe, expect, it, vi } from 'vitest';
 import SidebarContextMenu from './SidebarContextMenu';
 
 vi.mock('@/components/ui/ContextMenu', () => ({
-  default: ({ children }: { children?: ReactNode }) => <div data-testid="context-menu">{children}</div>,
+  default: ({ children }: { children?: ReactNode }) => (
+    <div data-testid="context-menu">{children}</div>
+  ),
 }));
 
 vi.mock('@/components/ui/Icons', () => ({

@@ -5,7 +5,11 @@ export function markPerformance(name: string): void {
   performance.mark(`${MARK_PREFIX}${name}`);
 }
 
-export function measurePerformance(name: string, start: string, end: string): PerformanceMeasure | null {
+export function measurePerformance(
+  name: string,
+  start: string,
+  end: string,
+): PerformanceMeasure | null {
   if (typeof performance?.measure !== 'function') return null;
   try {
     return performance.measure(

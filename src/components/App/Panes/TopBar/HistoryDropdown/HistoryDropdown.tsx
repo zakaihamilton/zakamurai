@@ -1,7 +1,14 @@
-import React from 'react';
+import type { NavigationHistoryEntry } from '@/components/state/domain-types';
+import type { HistoryDropdownProps } from '../topbar-types';
 import styles from './HistoryDropdown.module.css';
 
-export default function HistoryDropdown({ isOpen, onClose, history, onItemClick, onClearHistory }) {
+export default function HistoryDropdown({
+  isOpen,
+  onClose,
+  history,
+  onItemClick,
+  onClearHistory,
+}: HistoryDropdownProps) {
   if (!isOpen || !history || history.stack.length === 0) return null;
 
   return (
@@ -35,7 +42,7 @@ export default function HistoryDropdown({ isOpen, onClose, history, onItemClick,
           {history.stack
             .slice()
             .reverse()
-            .map((item, idx) => {
+            .map((item: NavigationHistoryEntry, idx) => {
               const originalIdx = history.stack.length - 1 - idx;
               const isActive = originalIdx === history.currentIndex;
               return (

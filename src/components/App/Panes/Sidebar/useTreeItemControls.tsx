@@ -14,12 +14,14 @@ export function useTreeItemControls({
   onStartCreate,
 }: UseTreeItemControlsParams) {
   const { item } = row;
-  const treeItemState = requireStore(TreeItemState.useState(null, {
-    isEditing: false,
-    editValue: item.name,
-    contextMenu: null,
-    showDeleteDialog: false,
-  }));
+  const treeItemState = requireStore(
+    TreeItemState.useState(null, {
+      isEditing: false,
+      editValue: item.name,
+      contextMenu: null,
+      showDeleteDialog: false,
+    }),
+  );
   const {
     isEditing = false,
     editValue = item.name,

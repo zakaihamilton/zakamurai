@@ -145,7 +145,7 @@ const largeWriteGen = {
   changeSets: 0,
 };
 
-const readLegacyLocal = <T>(key: string, fallback: T, { raw = false } = {}): T => {
+const readLegacyLocal = <T,>(key: string, fallback: T, { raw = false } = {}): T => {
   const storage = getStorage();
   if (!storage) return fallback;
   const val = storage.getItem(key);
@@ -327,7 +327,10 @@ const Settings = {
     if (!prompt || !prompt.trim()) return;
     const history = this.getPromptHistory();
     // Add to beginning, remove duplicates of the same prompt, limit to 50
-    const newHistory = [prompt.trim(), ...history.filter((p: string) => p !== prompt.trim())].slice(0, 50);
+    const newHistory = [prompt.trim(), ...history.filter((p: string) => p !== prompt.trim())].slice(
+      0,
+      50,
+    );
     this.set(KEYS.PROMPT_HISTORY, JSON.stringify(newHistory));
   },
 
@@ -569,7 +572,7 @@ const Settings = {
 
     hydratePromise = (async () => {
       recoveryCheckpoint = normalizeRecoveryCheckpoint(await idbGet(RECOVERY_CHECKPOINT_KEY));
-      const loadOne = async <T>(
+      const loadOne = async <T,>(
         cacheKey: LargeCacheKey,
         fallback: T,
         { raw = false }: { raw?: boolean } = {},

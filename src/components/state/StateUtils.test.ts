@@ -94,7 +94,9 @@ describe('StateUtils', () => {
       );
       expect(draft.fileContents).toEqual({ 'src/b.js': '1', 'other.js': '2' });
       expect((draft.pendingDiffs as Record<string, { x: number }>)['src/b.js']).toEqual({ x: 1 });
-      expect((draft.cursorPos as Record<string, { line: number }>)['src/b.js']).toEqual({ line: 1 });
+      expect((draft.cursorPos as Record<string, { line: number }>)['src/b.js']).toEqual({
+        line: 1,
+      });
     });
   });
 

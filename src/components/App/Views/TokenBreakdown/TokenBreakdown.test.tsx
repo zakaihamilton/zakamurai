@@ -141,9 +141,7 @@ describe('TokenBreakdown', () => {
   it('lists tokens in source order instead of highlight-pass order', () => {
     vi.spyOn(EditorState, 'useState').mockReturnValue(editorFixture());
 
-    const { container } = render(
-      <TokenBreakdown tab={makeTokenBreakdownTab()} />,
-    );
+    const { container } = render(<TokenBreakdown tab={makeTokenBreakdownTab()} />);
 
     const values = Array.from(container.querySelectorAll('tbody tr td:last-child code')).map(
       (node) => node.textContent,

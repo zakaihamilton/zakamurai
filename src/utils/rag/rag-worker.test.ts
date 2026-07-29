@@ -22,8 +22,7 @@ vi.mock('@huggingface/transformers', () => {
   };
 });
 
-const listeners: Record<string, (event: { data: Record<string, unknown> }) => Promise<void>> =
-  {};
+const listeners: Record<string, (event: { data: Record<string, unknown> }) => Promise<void>> = {};
 
 const mockSelf = {
   addEventListener: vi.fn((event: string, cb: (typeof listeners)[string]) => {

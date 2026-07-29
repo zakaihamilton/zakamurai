@@ -9,6 +9,7 @@ import {
   getPreviewServiceWorkerScope,
   isValidPreviewHandshake,
   originMatches,
+  type PreviewHandshakeEvent,
 } from '../Views/PreviewArea/previewOrigins';
 import {
   PREVIEW_CONNECT,
@@ -54,10 +55,7 @@ function getPreviewEntryUrl(sessionId: string): string {
   return `/__preview/${encodeURIComponent(sessionId)}/dist/index.html`;
 }
 
-async function waitForWorkerState(
-  worker: ServiceWorker,
-  state: ServiceWorkerState,
-): Promise<void> {
+async function waitForWorkerState(worker: ServiceWorker, state: ServiceWorkerState): Promise<void> {
   if (!worker || worker.state === state) return;
   await new Promise<void>((resolve, reject) => {
     const timeout = window.setTimeout(() => {
@@ -74,9 +72,7 @@ async function waitForWorkerState(
   });
 }
 
-async function ensureActiveWorker(
-  registration: ServiceWorkerRegistration,
-): Promise<ServiceWorker> {
+async function ensureActiveWorker(registration: ServiceWorkerRegistration): Promise<ServiceWorker> {
   const activateWorker = async (worker: ServiceWorker | null) => {
     if (!worker) return;
     if (worker.state === 'activated') return;
@@ -86,7 +82,7 @@ async function ensureActiveWorker(
     if (worker.state === 'installed') {
       worker.postMessage({ type: 'SKIP_WAITING' });
     }
-    if (worker.state !== 'activated') {
+    if ((worker.state as ServiceWorkerState) !== 'activated') {
       await waitForWorkerState(worker, 'activated');
     }
   };
@@ -178,7 +174,7 @@ export default function PreviewHost() {
 
     const connect = async (event: MessageEvent<PreviewConnectMessage>) => {
       const handshakeOk =
-        isValidPreviewHandshake(event, {
+        isValidPreviewHandshake(event as PreviewHandshakeEvent, {
           expectedOrigin: ideOrigin,
           expectedSource: peerWindow,
           sessionId,

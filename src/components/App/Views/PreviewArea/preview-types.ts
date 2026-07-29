@@ -1,4 +1,8 @@
 import type { RefObject } from 'react';
+import type { CssCustomProperties } from '@/components/App/types';
+import type { PreviewAreaUiStateShape, PreviewStateShape } from '@/components/state/domain-types';
+import type { StateStore } from '@/components/state/types';
+import type { PreviewOrigins } from './previewOrigins';
 
 export type PreviewSurfaceKind = 'iframe' | 'external';
 
@@ -75,4 +79,103 @@ export type EsbuildTransformError = {
     message?: string;
   }>;
   cause?: { errors?: EsbuildTransformError['errors'] };
+};
+
+export type PreviewMessage = {
+  source?: string;
+  type: string;
+  message?: string;
+  path?: string;
+  title?: string;
+  text?: string;
+  elements?: string[];
+  screenshotCaptured?: boolean;
+  screenshot?: string;
+};
+
+export type PreviewEvidence = {
+  path?: string;
+  title?: string;
+  text?: string;
+  elements?: string[];
+  screenshotCaptured?: boolean;
+  screenshot?: string;
+};
+
+export type PreviewErrorActionsProps = {
+  copied: boolean;
+  onCopy: () => void;
+  onDismiss: () => void;
+};
+
+export type PreviewErrorBannerProps = {
+  displayError: string | null;
+  errorCopied: boolean;
+  onCopyError: () => void;
+  onDismissError: () => void;
+};
+
+export type PreviewErrorStateProps = {
+  title: string;
+  message: string;
+  copied?: boolean;
+  onCopy?: () => void;
+  onDismiss?: () => void;
+};
+
+export type PreviewIframeContainerProps = {
+  isLoading: boolean;
+  hasLoadedOnce: boolean;
+  showInitOverlay: boolean;
+  displayError: string | null;
+  errorCopied: boolean;
+  onCopyError: () => void;
+  onDismissError: () => void;
+  scale: number;
+  isCompilerReady: boolean;
+  iframeRef: RefObject<HTMLIFrameElement | null>;
+  previewUrl: string | null;
+  previewSessionId: string | null;
+  refreshKey?: number;
+  onLoad: () => void;
+};
+
+export type PreviewToolbarProps = {
+  previewHostLabel: string;
+  isLoading: boolean;
+  scale: number;
+  isMaximized: boolean;
+  onZoomIn: () => void;
+  onZoomOut: () => void;
+  onZoomReset: () => void;
+  onRefresh: () => void;
+  onOpenExternal: () => void;
+  onToggleMaximize: () => void;
+};
+
+export type UsePreviewRuntimeBridgeParams = {
+  iframeRef: RefObject<HTMLIFrameElement | null>;
+  previewAreaUiState: StateStore<PreviewAreaUiStateShape>;
+  previewUrl: string | null;
+  previewOrigin: string;
+  setPreviewError: (message: string) => void;
+  setHasLoadedOnce: (value: boolean) => void;
+};
+
+export type UsePreviewSessionLifecycleParams = {
+  previewSessionId: string | null;
+  htmlContent: string | null;
+  previewAddress: string;
+  previewState: StateStore<PreviewStateShape>;
+  previewAreaUiState: StateStore<PreviewAreaUiStateShape>;
+  origins: PreviewOrigins;
+  refreshKey: number;
+  address: string;
+  onBlockedExternalPreview: (message: string) => void;
+};
+
+export type PreviewIframeListeners = {
+  win: Window;
+  onError: (event: ErrorEvent) => void;
+  onRejection: (event: PromiseRejectionEvent) => void;
 };

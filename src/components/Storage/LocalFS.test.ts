@@ -24,7 +24,9 @@ const makeDirHandle = (name = 'root', entries: MockDirEntry[] = []) => {
       }),
       getFile: vi.fn().mockResolvedValue(new File(['content'], 'test.js')),
     }),
-    getDirectoryHandle: vi.fn().mockImplementation((dirName: string) => Promise.resolve(makeDirHandle(dirName))),
+    getDirectoryHandle: vi
+      .fn()
+      .mockImplementation((dirName: string) => Promise.resolve(makeDirHandle(dirName))),
     removeEntry: vi.fn().mockResolvedValue(undefined),
     queryPermission: vi.fn().mockResolvedValue('prompt'),
     move: vi.fn().mockResolvedValue(undefined),
@@ -101,7 +103,10 @@ const makeFileSystemState = (
     const draft = { ...defaults, ...overrides };
     cb(draft);
   });
-  return Object.assign(updater, { ...defaults, ...overrides }) as StateStore<FileSystemStateShape>;
+  return Object.assign(updater, {
+    ...defaults,
+    ...overrides,
+  }) as unknown as StateStore<FileSystemStateShape>;
 };
 
 describe('useFileSystem', () => {
@@ -146,7 +151,7 @@ describe('useFileSystem', () => {
   it('throws error when moving entry with missing handles', async () => {
     vi.spyOn(FileSystemState, 'useState').mockReturnValue(makeFileSystemState());
     const { result } = renderHook(() => useFileSystem());
-    await expect(result.current.moveEntry(null, {})).rejects.toThrow(
+    await expect(result.current.moveEntry(null as never, {} as never)).rejects.toThrow(
       'Source or destination missing',
     );
   });
@@ -218,7 +223,7 @@ describe('useFileSystem', () => {
 
     let content;
     await act(async () => {
-      content = await result.current.readFile(fileHandle);
+      content = await result.current.readFile(fileHandle as never);
     });
 
     expect(content).toBe('hello world');
@@ -243,7 +248,7 @@ describe('useFileSystem', () => {
     const { result } = renderHook(() => useFileSystem());
 
     await act(async () => {
-      await result.current.moveEntry(sourceHandle, destHandle);
+      await result.current.moveEntry(sourceHandle as never, destHandle);
     });
 
     expect(sourceHandle.move).toHaveBeenCalled();
@@ -257,7 +262,7 @@ describe('useFileSystem', () => {
     const { result } = renderHook(() => useFileSystem());
 
     await act(async () => {
-      await result.current.moveEntry(sourceHandle, destHandle);
+      await result.current.moveEntry(sourceHandle as never, destHandle);
     });
 
     expect(state).toHaveBeenCalled(); // setFileSystemValue called with error
@@ -283,15 +288,15 @@ describe('useFileSystem', () => {
     vi.spyOn(FileSystemState, 'useState').mockReturnValue(state);
     const { result } = renderHook(() => useFileSystem());
 
-    let entries;
+    let entries: Awaited<ReturnType<typeof result.current.refreshDirectory>>;
     await act(async () => {
       entries = await result.current.refreshDirectory(dirHandle);
     });
 
     // Should have sorted the entries (directories first)
     expect(Array.isArray(entries)).toBe(true);
-    expect(entries.length).toBe(2);
-    expect(entries[0].kind).toBe('directory'); // sorted first
+    expect(entries!.length).toBe(2);
+    expect(entries![0].kind).toBe('directory'); // sorted first
   });
 
   it('createFolder creates a new directory', async () => {
@@ -319,7 +324,7 @@ describe('useFileSystem', () => {
 
     let handle;
     await act(async () => {
-      handle = await result.current.getFileHandleAtPath('src/test.js', rootHandle);
+      handle = await result.current.getFileHandleAtPath('src/test.js', rootHandle as never);
     });
 
     expect(rootHandle.getDirectoryHandle).toHaveBeenCalledWith('src');
@@ -336,7 +341,7 @@ describe('useFileSystem', () => {
 
     let handle;
     await act(async () => {
-      handle = await result.current.getFileHandleAtPath('src/test.js', rootHandle);
+      handle = await result.current.getFileHandleAtPath('src/test.js', rootHandle as never);
     });
 
     expect(handle).toBeNull();
@@ -347,7 +352,7 @@ describe('useFileSystem', () => {
     global.navigator = {
       ...global.navigator,
       storage: { getDirectory: vi.fn().mockResolvedValue(opfsHandle) },
-    };
+    } as unknown as Navigator;
 
     const state = makeFileSystemState();
     vi.spyOn(FileSystemState, 'useState').mockReturnValue(state);
@@ -365,7 +370,7 @@ describe('useFileSystem', () => {
     global.navigator = {
       ...global.navigator,
       storage: { getDirectory: vi.fn().mockRejectedValue(new Error('OPFS unavailable')) },
-    };
+    } as unknown as Navigator;
 
     const state = makeFileSystemState();
     vi.spyOn(FileSystemState, 'useState').mockReturnValue(state);
@@ -417,14 +422,14 @@ describe('useFileSystem', () => {
     global.window = {
       ...global.window,
       showDirectoryPicker: vi.fn().mockRejectedValue(abortError),
-    };
+    } as unknown as Window & typeof globalThis;
 
     const state = makeFileSystemState();
     vi.spyOn(FileSystemState, 'useState').mockReturnValue(state);
     const { result } = renderHook(() => useFileSystem());
 
     // Should not set error for AbortError
-    const _callCountBefore = state.mock.calls.length;
+    const _callCountBefore = vi.mocked(state).mock.calls.length;
     await act(async () => {
       await result.current.mountLocal();
     });
@@ -439,7 +444,7 @@ describe('useFileSystem', () => {
     global.window = {
       ...global.window,
       showDirectoryPicker: vi.fn().mockRejectedValue(networkError),
-    };
+    } as unknown as Window & typeof globalThis;
 
     const state = makeFileSystemState();
     vi.spyOn(FileSystemState, 'useState').mockReturnValue(state);
@@ -465,7 +470,7 @@ describe('useFileSystem', () => {
     const { result } = renderHook(() => useFileSystem());
 
     await act(async () => {
-      await result.current.refreshDirectory(badHandle);
+      await result.current.refreshDirectory(badHandle as never);
     });
 
     // state should have been updated with error message
@@ -483,7 +488,7 @@ describe('useFileSystem', () => {
     const { result } = renderHook(() => useFileSystem());
 
     await act(async () => {
-      await result.current.deleteEntry('locked.js', badDirHandle);
+      await result.current.deleteEntry('locked.js', badDirHandle as never);
     });
 
     expect(state).toHaveBeenCalled();
@@ -500,7 +505,7 @@ describe('useFileSystem', () => {
     const { result } = renderHook(() => useFileSystem());
 
     await act(async () => {
-      await result.current.createFolder('locked-folder', badDirHandle);
+      await result.current.createFolder('locked-folder', badDirHandle as never);
     });
 
     expect(state).toHaveBeenCalled();
@@ -517,7 +522,7 @@ describe('useFileSystem', () => {
     const { result } = renderHook(() => useFileSystem());
 
     await act(async () => {
-      await result.current.writeFile('test.js', 'content', badDirHandle);
+      await result.current.writeFile('test.js', 'content', badDirHandle as never);
     });
 
     expect(state).toHaveBeenCalled();
@@ -534,7 +539,7 @@ describe('useFileSystem', () => {
     const { result } = renderHook(() => useFileSystem());
 
     await act(async () => {
-      await result.current.writeFileAtPath('src/fail.js', 'content', badRootHandle);
+      await result.current.writeFileAtPath('src/fail.js', 'content', badRootHandle as never);
     });
 
     expect(state).toHaveBeenCalled();

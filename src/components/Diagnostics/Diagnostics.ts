@@ -1,9 +1,6 @@
 import type { DiagnosticsStateShape } from '@/components/state/domain-types';
 import { createState } from '@/components/state/State';
-import {
-  normalizeDiagnosticEvent,
-  redactDiagnosticText,
-} from '@/contracts/runtime';
+import { normalizeDiagnosticEvent, redactDiagnosticText } from '@/contracts/runtime';
 import type { LogEntry } from '@/components/state/domain-types';
 import type { StorageHealthStateShape } from '@/components/state/domain-types';
 import type { StateStore } from '@/components/state/types';

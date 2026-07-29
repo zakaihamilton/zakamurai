@@ -55,10 +55,15 @@ export function makeFlatTreeRow(
 
 export function makeSampleTree(): NormalizedTreeNode[] {
   return [
-    makeNormalizedTreeNode('src', 'folder', ['src'], [
-      makeNormalizedTreeNode('index.js', 'file', ['src', 'index.js']),
-      makeNormalizedTreeNode('App.js', 'file', ['src', 'App.js']),
-    ]),
+    makeNormalizedTreeNode(
+      'src',
+      'folder',
+      ['src'],
+      [
+        makeNormalizedTreeNode('index.js', 'file', ['src', 'index.js']),
+        makeNormalizedTreeNode('App.js', 'file', ['src', 'App.js']),
+      ],
+    ),
     makeNormalizedTreeNode('package.json', 'file', ['package.json']),
   ];
 }

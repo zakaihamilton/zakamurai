@@ -144,7 +144,12 @@ export async function setupSmartDevServer(
 ): Promise<void> {
   const nativeImport = new Function('specifier', 'return import(specifier)') as (
     specifier: string,
-  ) => Promise<{ ViteDevServer: new (vfs: VfsLike, options: { port: number; root: string }) => ViteDevServerInstance }>;
+  ) => Promise<{
+    ViteDevServer: new (
+      vfs: VfsLike,
+      options: { port: number; root: string },
+    ) => ViteDevServerInstance;
+  }>;
   const { ViteDevServer } = await nativeImport('/lib/almostnode/index.mjs');
 
   class SmartViteDevServer extends (ViteDevServer as new (
@@ -163,7 +168,9 @@ export async function setupSmartDevServer(
         const content = this.vfs.readFileSync(filePath, 'utf8');
         await this.transformCode(content, urlPath);
       } catch (error) {
-        const message = formatEsbuildTransformError(error);
+        const message = formatEsbuildTransformError(
+          error as Parameters<typeof formatEsbuildTransformError>[0],
+        );
         reportPreviewError(message);
         return createTransformErrorResponse(message) as DevServerResponse;
       }

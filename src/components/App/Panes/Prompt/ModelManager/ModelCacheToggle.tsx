@@ -1,19 +1,21 @@
-import React from 'react';
+import type { ModelCacheToggleProps } from '../prompt-types';
 import styles from './ModelCacheToggle.module.css';
 
-export default function ModelCacheToggle({ isCached, isBusy, disabled, onToggle }) {
+export default function ModelCacheToggle({
+  isCached,
+  isBusy,
+  disabled,
+  onToggle,
+}: ModelCacheToggleProps) {
   return (
     <button
       type="button"
-      className={`${styles.modelCacheToggle} ${isCached ? styles.modelCacheToggleOn : ''}`}
-      aria-pressed={isCached}
+      className={`${styles.toggle} ${isCached ? styles.cached : ''} ${isBusy ? styles.busy : ''}`}
+      disabled={disabled || isBusy}
       onClick={onToggle}
-      disabled={disabled}
+      aria-label={isCached ? 'Remove from cache' : 'Cache model'}
     >
-      <span className={styles.modelCacheToggleTrack}>
-        <span className={styles.modelCacheToggleThumb} />
-      </span>
-      <span>{isBusy ? 'Working...' : isCached ? 'Cached' : 'Cache'}</span>
+      {isBusy ? '…' : isCached ? 'Cached' : 'Cache'}
     </button>
   );
 }

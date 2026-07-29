@@ -22,7 +22,9 @@ export class ZipWriter {
 
   async compress(data: Uint8Array): Promise<Uint8Array> {
     try {
-      const stream = new Blob([data as BlobPart]).stream().pipeThrough(new CompressionStream('deflate-raw'));
+      const stream = new Blob([data as BlobPart])
+        .stream()
+        .pipeThrough(new CompressionStream('deflate-raw'));
       const reader = stream.getReader();
       const chunks: Uint8Array[] = [];
       while (true) {

@@ -50,8 +50,7 @@ export default function Resizer({
   const resize = useCallback(
     (e: MouseEvent | TouchEvent) => {
       if (isResizing && !isDisabled) {
-        const clientX =
-          'clientX' in e ? e.clientX : (e as TouchEvent).touches?.[0]?.clientX;
+        const clientX = 'clientX' in e ? e.clientX : (e as TouchEvent).touches?.[0]?.clientX;
         if (clientX !== undefined) {
           onResize(clientX);
         }

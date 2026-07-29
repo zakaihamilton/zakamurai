@@ -70,7 +70,11 @@ describe('ImageViewer', () => {
   });
 
   it('renders loading states and loads image URL from file handle', async () => {
-    const tab = imageTab('1', { name: 'test.png', path: ['src', 'test.png'] }, { fsHandle: mockFsHandle });
+    const tab = imageTab(
+      '1',
+      { name: 'test.png', path: ['src', 'test.png'] },
+      { fsHandle: mockFsHandle },
+    );
 
     render(<ImageViewer tab={tab} />);
 

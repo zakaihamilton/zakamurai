@@ -2,7 +2,8 @@ import type { KeyboardShortcutStateShape } from '@/components/state/domain-types
 import { createState } from '@/components/state/State';
 import { useEffect } from 'react';
 
-export const KeyboardShortcutState = createState<KeyboardShortcutStateShape>('KeyboardShortcutState');
+export const KeyboardShortcutState =
+  createState<KeyboardShortcutStateShape>('KeyboardShortcutState');
 
 const hasWindow = (): boolean => typeof window !== 'undefined';
 

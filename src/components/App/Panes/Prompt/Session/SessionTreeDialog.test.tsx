@@ -28,7 +28,13 @@ vi.mock('@/components/ui/Icons', () => ({
 
 describe('SessionTreeDialog', () => {
   const sessions = {
-    root: makeAgentSession({ id: 'root', name: 'Root', parentId: null, mode: 'single', status: 'idle' }),
+    root: makeAgentSession({
+      id: 'root',
+      name: 'Root',
+      parentId: null,
+      mode: 'single',
+      status: 'idle',
+    }),
     branch: makeAgentSession({
       id: 'branch',
       name: 'Branch',
@@ -76,7 +82,10 @@ describe('SessionTreeDialog', () => {
     render(
       <SessionTreeDialog
         isOpen
-        sessions={{ ...sessions, branch: makeAgentSession({ ...sessions.branch, status: 'running' }) }}
+        sessions={{
+          ...sessions,
+          branch: makeAgentSession({ ...sessions.branch, status: 'running' }),
+        }}
         activeSessionId="root"
         onCancel={vi.fn()}
         onSelect={vi.fn()}

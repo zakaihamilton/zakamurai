@@ -11,7 +11,9 @@ export default function useModelDownloader(promptUiState: StateStore<PromptUiSta
   const setPromptUiValue = useCallback(
     <K extends PromptUiKey>(
       key: K,
-      nextValue: PromptUiStateShape[K] | ((current: PromptUiStateShape[K]) => PromptUiStateShape[K]),
+      nextValue:
+        | PromptUiStateShape[K]
+        | ((current: PromptUiStateShape[K]) => PromptUiStateShape[K]),
     ) => {
       promptUiState((draft) => {
         draft[key] =
@@ -24,7 +26,8 @@ export default function useModelDownloader(promptUiState: StateStore<PromptUiSta
   );
 
   const setModelCacheWork = useCallback(
-    (nextValue: PromptUiStateShape['modelCacheWork']) => setPromptUiValue('modelCacheWork', nextValue),
+    (nextValue: PromptUiStateShape['modelCacheWork']) =>
+      setPromptUiValue('modelCacheWork', nextValue),
     [setPromptUiValue],
   );
   const setModelCacheProgress = useCallback(
@@ -67,7 +70,7 @@ export default function useModelDownloader(promptUiState: StateStore<PromptUiSta
   }, [promptUiState, setModelCacheError, setModelCacheProgress]);
 
   const handleModelCacheAction = useCallback(
-    async (model: ModelOption, action: 'cache' | 'delete') => {
+    async (model: ModelOption, action: 'cache' | 'delete' | 'uncache') => {
       const key = `${action}:${model.id}`;
       setModelCacheWork(key);
       setModelCacheError('');

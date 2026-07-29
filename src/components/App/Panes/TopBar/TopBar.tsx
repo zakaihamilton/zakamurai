@@ -35,6 +35,7 @@ import ThemeToggle from './ThemeToggle';
 import styles from './TopBar.module.css';
 import WorkingIndicator from './WorkingIndicator';
 import useZipExporter from './ZipExporter';
+import type { ResetNewProjectStateParams } from './topbar-types';
 import { requireStore } from '../../types';
 
 export function resetNewProjectState({
@@ -45,16 +46,16 @@ export function resetNewProjectState({
   editorState,
   previewState,
   promptUiState,
-}) {
+}: ResetNewProjectStateParams) {
   const isScratch = template === 'scratch';
   const initialFiles = isScratch ? SCRATCH_FILES : DEFAULT_FILES;
   const initialContents = isScratch ? SCRATCH_CONTENTS : DEFAULT_CONTENTS;
 
   appState((draft) => {
-    draft.projectName = Settings.getProjectName();
+    draft.projectName = Settings.getProjectName() || '';
   });
   sidebarState((draft) => {
-    draft.folderTree = initialFiles;
+    draft.folderTree = initialFiles as import('@/components/state/domain-types').TreeNode[];
     draft.expandedFolders = {};
   });
   tabState((draft) => {
@@ -83,8 +84,8 @@ export default function TopBar() {
   const { openTabs = [], activeTabId } = tabState;
   const sidebarState = requireStore(SidebarState.useState(['isSidebarOpen', 'isSidebarPopupOpen']));
   const { isSidebarOpen, isSidebarPopupOpen } = sidebarState;
-  const editorState = EditorState.usePassiveState();
-  const previewState = PreviewState.usePassiveState();
+  const editorState = requireStore(EditorState.useState());
+  const previewState = requireStore(PreviewState.useState());
   const promptUiState = PromptUiState.usePassiveState();
   const diagnosticsState = DiagnosticsState.usePassiveState();
   const storageHealthState = StorageHealthState.usePassiveState();
@@ -99,7 +100,7 @@ export default function TopBar() {
       createSupportReport({
         diagnostics: diagnosticsState?.events || [],
         logs: logState?.logs || [],
-        storageHealth: storageHealthState || {},
+        storageHealth: (storageHealthState || {}) as Record<string, unknown>,
       }),
     );
   };
@@ -137,7 +138,7 @@ export default function TopBar() {
     }
   }
 
-  const handleBreadcrumbClick = (_seg, index) => {
+  const handleBreadcrumbClick = (_seg: string, index: number) => {
     sidebarState((draft) => {
       let fullPath = '';
       if (index > 0) {

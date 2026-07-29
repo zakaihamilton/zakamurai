@@ -1,31 +1,41 @@
-import { beforeEach, describe, expect, test, vi } from 'vitest';
+import type {
+  EditorStateDraft,
+  FileSystemLike,
+  LogStateDraft,
+  SidebarStateDraft,
+  StateHandle,
+  TabState,
+} from '@/components/AI/types';
+import {
+  createEditorStateMock,
+  createLogStateMock,
+  createSidebarStateMock,
+} from '@/test-utils/agentMocks';
+import { beforeEach, describe, expect, test, vi, type Mock } from 'vitest';
 import { processAIResponse } from './Main';
 
 describe('Main', () => {
   describe('processAIResponse', () => {
-    let mockFS;
-    let mockLogState;
-    let mockSidebarState;
-    let mockEditorState;
-    let mockTabState;
+    let mockFS: FileSystemLike;
+    let mockLogState: StateHandle<LogStateDraft> & Mock;
+    let mockSidebarState: StateHandle<SidebarStateDraft> & Mock;
+    let mockEditorState: StateHandle<EditorStateDraft> & Mock;
+    let mockTabState: TabState;
 
     beforeEach(() => {
       mockFS = {
-        rootHandle: {},
+        rootHandle: {} as FileSystemDirectoryHandle,
         getFileHandleAtPath: vi.fn().mockResolvedValue({}),
         readFile: vi.fn().mockResolvedValue('old content'),
       };
-      mockLogState = vi.fn((fn) => {
-        const draft = { logs: [] };
-        fn(draft);
-        return draft;
-      });
-      mockSidebarState = vi.fn();
-      mockEditorState = vi.fn((fn) => {
-        const draft = { fileContents: { 'test.js': 'old content' }, pendingDiffs: {} };
-        fn(draft);
-        return draft;
-      });
+      mockLogState = createLogStateMock({ logs: [] }) as StateHandle<LogStateDraft> & Mock;
+      mockSidebarState = createSidebarStateMock({
+        folderTree: [],
+      }) as StateHandle<SidebarStateDraft> & Mock;
+      mockEditorState = createEditorStateMock({
+        fileContents: { 'test.js': 'old content' },
+        pendingDiffs: {},
+      }) as StateHandle<EditorStateDraft> & Mock;
       mockTabState = { activeTabId: 'test.js' };
     });
 
@@ -105,7 +115,7 @@ modified content
     });
 
     test('recomputes accumulated diff ranges against the first review baseline', async () => {
-      const state = {
+      const state: EditorStateDraft = {
         fileContents: { 'test.js': 'one\ntwo\nthree' },
         pendingDiffs: {
           'test.js': {
@@ -115,15 +125,9 @@ modified content
           },
         },
       };
-      const editorState = Object.assign(
-        vi.fn((update) => {
-          update(state);
-          return state;
-        }),
-        state,
-      );
-      const fs = {
-        rootHandle: {},
+      const editorState = createEditorStateMock(state) as StateHandle<EditorStateDraft> & Mock;
+      const fs: FileSystemLike = {
+        rootHandle: {} as FileSystemDirectoryHandle,
         getFileHandleAtPath: vi.fn().mockResolvedValue({}),
         readFile: vi.fn().mockResolvedValue('one\ntwo\nthree'),
       };
@@ -145,24 +149,21 @@ four
         ),
       ).toBe(1);
 
-      const pending = state.pendingDiffs['test.js'];
-      expect(pending.originalContent).toBe('one\nthree');
-      expect(pending.modifiedContent).toBe('one\ntwo\nthree\nfour');
-      expect(pending.diffs.map(({ original, updated }) => ({ original, updated }))).toEqual([
+      const pending = state.pendingDiffs?.['test.js'];
+      expect(pending?.originalContent).toBe('one\nthree');
+      expect(pending?.modifiedContent).toBe('one\ntwo\nthree\nfour');
+      expect(pending?.diffs.map(({ original, updated }) => ({ original, updated }))).toEqual([
         { original: '', updated: 'two' },
         { original: '', updated: 'four' },
       ]);
     });
 
     test('uses the agent before snapshot as the authoritative original', async () => {
-      const state = { fileContents: { 'test.js': 'mutable editor state' }, pendingDiffs: {} };
-      const editorState = Object.assign(
-        vi.fn((update) => {
-          update(state);
-          return state;
-        }),
-        state,
-      );
+      const state: EditorStateDraft = {
+        fileContents: { 'test.js': 'mutable editor state' },
+        pendingDiffs: {},
+      };
+      const editorState = createEditorStateMock(state) as StateHandle<EditorStateDraft> & Mock;
       const response = `// --- File: test.js ---
 original
 added
@@ -178,19 +179,17 @@ added
         { 'test.js': 'original' },
       );
 
-      expect(state.pendingDiffs['test.js'].originalContent).toBe('original');
-      expect(state.pendingDiffs['test.js'].diffs).toEqual(
+      expect(state.pendingDiffs?.['test.js']?.originalContent).toBe('original');
+      expect(state.pendingDiffs?.['test.js']?.diffs).toEqual(
         expect.arrayContaining([expect.objectContaining({ original: '', updated: 'added' })]),
       );
       expect(mockFS.readFile).not.toHaveBeenCalled();
     });
 
     test('creates missing directory nodes in sidebar state', async () => {
-      mockFS.getFileHandleAtPath.mockResolvedValue(null);
-      const sidebarStateObj = { folderTree: [] };
-      const sidebarState = vi.fn((update) => {
-        update(sidebarStateObj);
-      });
+      vi.mocked(mockFS.getFileHandleAtPath!).mockResolvedValue(null);
+      const sidebarStateObj: SidebarStateDraft = { folderTree: [] };
+      const sidebarState = createSidebarStateMock(sidebarStateObj);
 
       const response = `// --- File: nested/dir/newfile.js ---
 content
@@ -205,14 +204,16 @@ content
         mockTabState,
       );
 
-      expect(sidebarStateObj.folderTree[0].name).toBe('nested');
-      expect(sidebarStateObj.folderTree[0].type).toBe('folder');
-      expect(sidebarStateObj.folderTree[0].children[0].name).toBe('dir');
-      expect(sidebarStateObj.folderTree[0].children[0].children[0].name).toBe('newfile.js');
+      expect(sidebarStateObj.folderTree?.[0]?.name).toBe('nested');
+      expect(sidebarStateObj.folderTree?.[0]?.type).toBe('folder');
+      expect(sidebarStateObj.folderTree?.[0]?.children?.[0]?.name).toBe('dir');
+      expect(sidebarStateObj.folderTree?.[0]?.children?.[0]?.children?.[0]?.name).toBe(
+        'newfile.js',
+      );
     });
 
     test('handles filesystem and processing errors gracefully by logging', async () => {
-      mockFS.readFile.mockRejectedValue(new Error('FS Read Error'));
+      vi.mocked(mockFS.readFile!).mockRejectedValue(new Error('FS Read Error'));
 
       const response = `// --- File: test.js ---
 new content
@@ -232,8 +233,9 @@ new content
     });
 
     test('handles editorState with useState function branch', async () => {
-      const editorState = vi.fn();
-      editorState.useState = vi.fn();
+      const editorState = Object.assign(vi.fn(), {
+        useState: vi.fn(),
+      }) as StateHandle<EditorStateDraft> & Mock & { useState: Mock };
 
       const response = `// --- File: test.js ---
 new content

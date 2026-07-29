@@ -44,7 +44,9 @@ describe('useZipExporter', () => {
         typeof EditorState.usePassiveState
       >,
     );
-    vi.mocked(SidebarState.useState).mockReturnValue(makeSidebarState({ folderTree: mockFolderTree }));
+    vi.mocked(SidebarState.useState).mockReturnValue(
+      makeSidebarState({ folderTree: mockFolderTree }),
+    );
     vi.mocked(AppState.useState).mockReturnValue(makeAppState({ projectName: 'Test Project' }));
     vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
 

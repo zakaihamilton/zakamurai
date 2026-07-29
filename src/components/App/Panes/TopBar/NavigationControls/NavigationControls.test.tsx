@@ -39,8 +39,8 @@ describe('NavigationControls', () => {
     const editorState = createMockEditorState({
       navigationHistory: {
         stack: [
-          { filePath: 'src/a.js', label: 'a.js', loc: { line: 1, column: 1 } },
-          { filePath: 'src/b.js', label: 'b.js', loc: { line: 2, column: 1 } },
+          { filePath: 'src/a.js', label: 'a.js', loc: { line: 1, col: 1, index: 0 } },
+          { filePath: 'src/b.js', label: 'b.js', loc: { line: 2, col: 1, index: 0 } },
         ],
         currentIndex: 1,
       },
@@ -59,7 +59,7 @@ describe('NavigationControls', () => {
 
 describe('HistoryDropdown', () => {
   const history = {
-    stack: [{ filePath: 'src/foo.js', label: 'foo.js', loc: { line: 5 } }],
+    stack: [{ filePath: 'src/foo.js', label: 'foo.js', loc: { line: 5, col: 1, index: 0 } }],
     currentIndex: 0,
   };
 

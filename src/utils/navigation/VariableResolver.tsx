@@ -68,7 +68,11 @@ export function resolveVariables(
     }
   }
 
-  function parseBindingPattern(tokens: JsToken[], startIdx: number, isBlockScoped: boolean): number {
+  function parseBindingPattern(
+    tokens: JsToken[],
+    startIdx: number,
+    isBlockScoped: boolean,
+  ): number {
     let idx = startIdx;
     if (idx >= tokens.length) return idx;
     const token = tokens[idx];

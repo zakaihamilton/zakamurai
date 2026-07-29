@@ -1,5 +1,6 @@
 import { markPerformance, measurePerformance } from '@/components/Performance';
 import { useCallback, useEffect, useRef } from 'react';
+import type { PreviewIframeListeners, UsePreviewRuntimeBridgeParams } from './preview-types';
 import {
   detectIframeLoadError,
   fetchScriptErrorBody,
@@ -23,8 +24,8 @@ export default function usePreviewRuntimeBridge({
   previewOrigin,
   setPreviewError,
   setHasLoadedOnce,
-}) {
-  const listenersRef = useRef(null);
+}: UsePreviewRuntimeBridgeParams) {
+  const listenersRef = useRef<PreviewIframeListeners | null>(null);
   const removeIframeListeners = useCallback(() => {
     if (!listenersRef.current) return;
     const { win, onError, onRejection } = listenersRef.current;
@@ -41,7 +42,8 @@ export default function usePreviewRuntimeBridge({
       const doc = iframeRef.current.contentDocument;
       const scripts = doc?.querySelectorAll('script[type="module"][src]') || [];
       for (const script of scripts) {
-        const fetched = await fetchScriptErrorBody(script.src);
+        const src = (script as HTMLScriptElement).src;
+        const fetched = await fetchScriptErrorBody(src);
         if (fetched) {
           setPreviewError(fetched);
           return;
@@ -63,7 +65,7 @@ export default function usePreviewRuntimeBridge({
   }, [iframeRef, setPreviewError]);
 
   useEffect(() => {
-    const onMessage = (event) => {
+    const onMessage = (event: MessageEvent) => {
       const iframeWindow = iframeRef.current?.contentWindow;
       if (!isTrustedPreviewMessage(event, iframeWindow, previewOrigin)) return;
       const payload = parsePreviewMessage(event.data);
@@ -115,15 +117,26 @@ export default function usePreviewRuntimeBridge({
         return;
       }
 
-      const onError = (event) => {
+      const onError = (event: ErrorEvent) => {
         void (async () => {
-          const missingExportError = await resolveMissingExportError(event);
+          const missingExportError = await resolveMissingExportError({
+            message: event.message,
+            filename: event.filename,
+            lineno: event.lineno,
+            colno: event.colno,
+          });
           if (missingExportError) {
             setPreviewError(missingExportError);
             return;
           }
-          let message = formatRuntimeError(event);
-          const scriptUrl = event.target?.src || event.filename;
+          let message = formatRuntimeError({
+            message: event.message,
+            filename: event.filename,
+            lineno: event.lineno,
+            colno: event.colno,
+          });
+          const target = event.target as HTMLScriptElement | null;
+          const scriptUrl = target?.src || event.filename;
           if (scriptUrl) {
             const fetched = await fetchScriptErrorBody(scriptUrl);
             if (fetched) message = fetched;
@@ -131,17 +144,17 @@ export default function usePreviewRuntimeBridge({
           setPreviewError(message);
         })();
       };
-      const onRejection = (event) => {
+      const onRejection = (event: PromiseRejectionEvent) => {
         void (async () => {
           const reason = event.reason;
           const missingExportError =
             reason instanceof Error
               ? await resolveMissingExportError({
                   message: reason.message,
-                  filename: reason.fileName,
+                  filename: (reason as Error & { fileName?: string }).fileName,
                 })
               : typeof reason === 'object' && reason?.message
-                ? await resolveMissingExportError(reason)
+                ? await resolveMissingExportError(reason as { message?: string; filename?: string })
                 : null;
           if (missingExportError) {
             setPreviewError(missingExportError);

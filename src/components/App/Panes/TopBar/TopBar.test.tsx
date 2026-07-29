@@ -62,7 +62,10 @@ vi.mock('@/components/App/PreviewState', () => ({
 
 vi.mock('@/components/ui/Tooltip', () => ({
   __esModule: true,
-  default: ({ children, content }: { children: ReactElement<{ title?: ReactNode }>; content: ReactNode }) => {
+  default: ({
+    children,
+    content,
+  }: { children: ReactElement<{ title?: ReactNode }>; content: ReactNode }) => {
     return React.cloneElement(children, { title: content });
   },
 }));
@@ -308,7 +311,9 @@ describe('TopBar', () => {
     });
     const editorState = createMockEditorState({
       fileContents: { 'old.js': 'old content' },
-      pendingDiffs: { 'old.js': { originalContent: 'older content', modifiedContent: '', diffs: [] } },
+      pendingDiffs: {
+        'old.js': { originalContent: 'older content', modifiedContent: '', diffs: [] },
+      },
     });
     const previewState = makePreviewState({ htmlContent: '<p>old</p>' });
     const promptUiState = makePromptUiState({ val: 'draft', draftVal: 'draft', historyIndex: 0 });
@@ -339,9 +344,9 @@ describe('TopBar', () => {
       fileContents: {},
       navigationHistory: {
         stack: [
-          { filePath: 'src/App.js', loc: { line: 10, column: 1 }, label: 'App.js' },
-          { filePath: 'src/index.css', loc: { line: 20, column: 1 }, label: 'index.css' },
-          { filePath: 'src/utils.js', loc: { line: 30, column: 1 }, label: 'utils.js' },
+          { filePath: 'src/App.js', loc: { line: 10, col: 1, index: 0 }, label: 'App.js' },
+          { filePath: 'src/index.css', loc: { line: 20, col: 1, index: 0 }, label: 'index.css' },
+          { filePath: 'src/utils.js', loc: { line: 30, col: 1, index: 0 }, label: 'utils.js' },
         ],
         currentIndex: 1,
       },

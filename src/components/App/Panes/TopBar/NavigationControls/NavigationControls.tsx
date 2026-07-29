@@ -1,9 +1,10 @@
+import type { NavigationHistory } from '@/components/state/domain-types';
 import { TabState } from '@/components/App/Panes/TabBar';
 import { EditorState } from '@/components/App/Views/EditorArea';
 import { Icons } from '@/components/ui/Icons';
 import Tooltip from '@/components/ui/Tooltip';
 import { formatShortcut } from '@/utils/os';
-import React, { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import HistoryDropdown from '../HistoryDropdown';
 import styles from './NavigationControls.module.css';
 import { requireStore } from '../../../types';
@@ -12,16 +13,19 @@ export default function NavigationControls() {
   const tabState = TabState.usePassiveState();
   const editorState = requireStore(EditorState.useState(['navigationHistory', 'fileContents']));
 
-  const history = editorState.navigationHistory || { stack: [], currentIndex: -1 };
+  const history: NavigationHistory = editorState.navigationHistory || {
+    stack: [],
+    currentIndex: -1,
+  };
   const canGoBack = history.currentIndex > 0;
   const canGoForward = history.currentIndex < history.stack.length - 1;
 
   const [showHistoryDropdown, setShowHistoryDropdown] = useState(false);
-  const dropdownRef = useRef(null);
+  const dropdownRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setShowHistoryDropdown(false);
       }
     };
@@ -40,21 +44,7 @@ export default function NavigationControls() {
     setShowHistoryDropdown(false);
   };
 
-  const handleItemClick = (index) => {
-    if (!tabState) return;
-    navigateToHistoryItem(index);
-    setShowHistoryDropdown(false);
-  };
-
-  const prevItem = canGoBack ? history.stack[history.currentIndex - 1] : null;
-  const nextItem = canGoForward ? history.stack[history.currentIndex + 1] : null;
-
-  const backTooltip = prevItem ? `Go Back to ${prevItem.label}:${prevItem.loc.line}` : 'Go Back';
-  const forwardTooltip = nextItem
-    ? `Go Forward to ${nextItem.label}:${nextItem.loc.line}`
-    : 'Go Forward';
-
-  const navigateToHistoryItem = (nextIndex) => {
+  const navigateToHistoryItem = (nextIndex: number) => {
     if (!tabState || !editorState) return;
     if (!history || !history.stack) return;
     const item = history.stack[nextIndex];
@@ -72,7 +62,7 @@ export default function NavigationControls() {
     };
     const newTab = {
       id: targetPath,
-      type: 'file',
+      type: 'file' as const,
       label: fileName,
       file: fileObj,
     };
@@ -86,7 +76,10 @@ export default function NavigationControls() {
     });
 
     editorState((draft) => {
-      draft.cursorPos = { ...(draft.cursorPos || {}), [targetPath]: targetLoc };
+      draft.cursorPos = {
+        ...(draft.cursorPos || {}),
+        [targetPath]: targetLoc as import('@/components/state/domain-types').CursorPosition,
+      };
       draft.shouldScrollTo = {
         filePath: targetPath,
         line: targetLoc.line,
@@ -100,6 +93,20 @@ export default function NavigationControls() {
       }
     });
   };
+
+  const handleItemClick = (index: number) => {
+    if (!tabState) return;
+    navigateToHistoryItem(index);
+    setShowHistoryDropdown(false);
+  };
+
+  const prevItem = canGoBack ? history.stack[history.currentIndex - 1] : null;
+  const nextItem = canGoForward ? history.stack[history.currentIndex + 1] : null;
+
+  const backTooltip = prevItem ? `Go Back to ${prevItem.label}:${prevItem.loc.line}` : 'Go Back';
+  const forwardTooltip = nextItem
+    ? `Go Forward to ${nextItem.label}:${nextItem.loc.line}`
+    : 'Go Forward';
 
   const handleGoBack = () => {
     if (canGoBack) {

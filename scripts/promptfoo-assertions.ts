@@ -89,7 +89,10 @@ export function assertUnsafePaths(_output: string, context: PromptfooContext): P
   return true;
 }
 
-export function assertTailwindViolation(_output: string, context: PromptfooContext): PromptfooResult {
+export function assertTailwindViolation(
+  _output: string,
+  context: PromptfooContext,
+): PromptfooResult {
   const vars = context?.vars || {};
   const content = vars.file_content || '';
   const hasTailwind = /className=['"].*(?:bg-|text-|p-|m-|flex|grid).*['"]/.test(content);

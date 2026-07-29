@@ -5,8 +5,8 @@ import HistoryDropdown from './HistoryDropdown';
 const history = {
   currentIndex: 1,
   stack: [
-    { filePath: 'src/a.js', label: 'a.js', loc: { line: 1 } },
-    { filePath: 'src/b.js', label: 'b.js', loc: { line: 10 } },
+    { filePath: 'src/a.js', label: 'a.js', loc: { line: 1, col: 1, index: 0 } },
+    { filePath: 'src/b.js', label: 'b.js', loc: { line: 10, col: 1, index: 0 } },
   ],
 };
 

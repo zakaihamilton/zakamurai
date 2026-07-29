@@ -3,7 +3,7 @@ import type { AIFileBlock, AIPlan } from '@/components/AI/types';
 /**
  * Extracts structured plan information from Stage 1 reasoning responses.
  */
-export function parseAIPlan(response = ''): AIPlan {
+export function parseAIPlan(response: string | null | undefined = ''): AIPlan {
   if (typeof response !== 'string') {
     return { objective: '', filesToModify: [], keyChanges: [] };
   }
@@ -95,7 +95,7 @@ export function parseAIResponse(response: string, activeTabId?: string): AIFileB
         const restartMatch = content.match(restartKeywords);
         if (restartMatch) {
           // Discard everything before and including the apology/restart keyword
-          const splitIdx = restartMatch.index + restartMatch[0].length;
+          const splitIdx = (restartMatch.index ?? 0) + restartMatch[0].length;
           content = content.substring(splitIdx).trim();
           console.info(`[Processor] Detected and cleaned up internal AI restart for ${filePath}.`);
         }

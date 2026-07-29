@@ -161,7 +161,7 @@ const getEngine = async (
           {
             context_window_size: options.contextWindowSize ?? 4096,
           },
-        )) as WebLLMEngine;
+        )) as unknown as WebLLMEngine;
 
         updateWebLLMEngine(selectedModel, {
           status: 'ready',
@@ -270,7 +270,7 @@ export const askWebLLM = async (
   }
 };
 
-export const interruptWebLLMModel = async (modelId: string): Promise<void> => {
+export const interruptWebLLMModel = async (modelId: string | null | undefined): Promise<void> => {
   if (!modelId) return;
 
   const enginePromise = enginePromises.get(modelId);

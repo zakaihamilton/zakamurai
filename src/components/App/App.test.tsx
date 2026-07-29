@@ -12,7 +12,9 @@ window.HTMLElement.prototype.scrollIntoView = vi.fn();
 
 // Mock dependencies that might be tricky
 vi.mock('./Panes', () => {
-  const SidebarState = ({ children }: { children?: ReactNode }) => <div data-testid="sidebar-state">{children}</div>;
+  const SidebarState = ({ children }: { children?: ReactNode }) => (
+    <div data-testid="sidebar-state">{children}</div>
+  );
   SidebarState.useState = vi.fn(() =>
     Object.assign(vi.fn(), {
       isSidebarOpen: true,
@@ -22,13 +24,17 @@ vi.mock('./Panes', () => {
     }),
   );
 
-  const TabState = ({ children }: { children?: ReactNode }) => <div data-testid="tabbar-state">{children}</div>;
+  const TabState = ({ children }: { children?: ReactNode }) => (
+    <div data-testid="tabbar-state">{children}</div>
+  );
   TabState.useState = vi.fn(() => Object.assign(vi.fn(), { openTabs: [], activeTabId: null }));
   TabState.usePassiveState = vi.fn(() =>
     Object.assign(vi.fn(), { openTabs: [], activeTabId: null }),
   );
 
-  const PromptState = ({ children }: { children?: ReactNode }) => <div data-testid="prompt-state">{children}</div>;
+  const PromptState = ({ children }: { children?: ReactNode }) => (
+    <div data-testid="prompt-state">{children}</div>
+  );
   PromptState.useState = vi.fn(() =>
     Object.assign(vi.fn(), { promptWidth: 340, promptHistory: [] }),
   );
@@ -36,7 +42,9 @@ vi.mock('./Panes', () => {
     Object.assign(vi.fn(), { promptWidth: 340, promptHistory: [] }),
   );
 
-  const PromptUiState = ({ children }: { children?: ReactNode }) => <div data-testid="prompt-ui-state">{children}</div>;
+  const PromptUiState = ({ children }: { children?: ReactNode }) => (
+    <div data-testid="prompt-ui-state">{children}</div>
+  );
   PromptUiState.useState = vi.fn(() =>
     Object.assign(vi.fn(), { val: '', selectedModel: 'Qwen3.5-4B-q4f16_1-MLC' }),
   );
@@ -93,7 +101,9 @@ vi.mock('@/components/ui/Notification/Notification', () => ({
   useNotification: vi.fn(() => ({ addNotification: vi.fn() })),
 }));
 vi.mock('./Views/EditorArea', () => {
-  const State = ({ children }: { children?: ReactNode }) => <div data-testid="editor-state">{children}</div>;
+  const State = ({ children }: { children?: ReactNode }) => (
+    <div data-testid="editor-state">{children}</div>
+  );
   State.useState = vi.fn(() => Object.assign(vi.fn(), {}));
   State.usePassiveState = vi.fn(() => Object.assign(vi.fn(), {}));
   return {
@@ -103,7 +113,9 @@ vi.mock('./Views/EditorArea', () => {
 });
 
 vi.mock('./Views/LogArea', () => {
-  const State = ({ children }: { children?: ReactNode }) => <div data-testid="log-state">{children}</div>;
+  const State = ({ children }: { children?: ReactNode }) => (
+    <div data-testid="log-state">{children}</div>
+  );
   State.useState = vi.fn(() => Object.assign(vi.fn(), { logs: [], isProcessing: false }));
   State.usePassiveState = vi.fn(() => Object.assign(vi.fn(), { logs: [], isProcessing: false }));
   return {
@@ -113,7 +125,9 @@ vi.mock('./Views/LogArea', () => {
 });
 
 vi.mock('./PreviewState', () => {
-  const State = ({ children }: { children?: ReactNode }) => <div data-testid="preview-state">{children}</div>;
+  const State = ({ children }: { children?: ReactNode }) => (
+    <div data-testid="preview-state">{children}</div>
+  );
   State.useState = vi.fn(() => Object.assign(vi.fn(), { htmlContent: '', isCompilerReady: false }));
   State.usePassiveState = vi.fn(() =>
     Object.assign(vi.fn(), { htmlContent: '', isCompilerReady: false }),
@@ -190,7 +204,9 @@ describe('App', () => {
   });
 
   it('renders AppLoading when fs is not ready', async () => {
-    vi.mocked(useFileSystem).mockReturnValue(makeFileSystemApi({ isReady: false }) as ReturnType<typeof useFileSystem>);
+    vi.mocked(useFileSystem).mockReturnValue(
+      makeFileSystemApi({ isReady: false }) as ReturnType<typeof useFileSystem>,
+    );
     render(<App />);
     expect(await screen.findByText('Initializing workspace...')).toBeDefined();
   });

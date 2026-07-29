@@ -1,9 +1,9 @@
 import { Icons } from '@/components/ui/Icons';
 import Tooltip from '@/components/ui/Tooltip';
-import React from 'react';
+import type { PreviewErrorActionsProps, PreviewErrorBannerProps } from '../preview-types';
 import styles from './ErrorOverlay.module.css';
 
-export function PreviewErrorActions({ copied, onCopy, onDismiss }) {
+export function PreviewErrorActions({ copied, onCopy, onDismiss }: PreviewErrorActionsProps) {
   return (
     <div className={styles.errorActions}>
       <Tooltip content={copied ? 'Copied!' : 'Copy error'}>
@@ -30,7 +30,12 @@ export function PreviewErrorActions({ copied, onCopy, onDismiss }) {
   );
 }
 
-export function PreviewErrorBanner({ displayError, errorCopied, onCopyError, onDismissError }) {
+export function PreviewErrorBanner({
+  displayError,
+  errorCopied,
+  onCopyError,
+  onDismissError,
+}: PreviewErrorBannerProps) {
   if (!displayError) return null;
   return (
     <div className={styles.errorBanner} role="alert">

@@ -1,5 +1,6 @@
 import Settings from '@/components/Storage/Settings';
 import { useNotification } from '@/components/ui/Notification';
+import type { SidebarStateShape } from '@/components/state/domain-types';
 import { act, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useSettingsSync } from './SettingsSync';
@@ -63,11 +64,14 @@ describe('useSettingsSync', () => {
 
   it('updates Settings when state dependencies change', async () => {
     const appState = { theme: 'dark', projectName: 'TestProj' };
-    const sidebarState = {
+    const sidebarState: Pick<
+      SidebarStateShape,
+      'sidebarWidth' | 'isSidebarOpen' | 'showAIInput' | 'expandedFolders'
+    > = {
       sidebarWidth: 250,
       isSidebarOpen: true,
       showAIInput: false,
-      expandedFolders: ['src'],
+      expandedFolders: { src: true },
     };
     const promptState = { promptWidth: 400, promptHistory: ['hello'] };
     const editorState = {
@@ -76,9 +80,9 @@ describe('useSettingsSync', () => {
       fileContents: { 'a.js': 'code' },
       pendingDiffs: {
         'a.js': { originalContent: 'old', diffs: [], modifiedContent: 'code' },
-        'bad.js': { originalContent: 1, diffs: null },
+        'bad.js': { originalContent: 'bad', diffs: [], modifiedContent: 'bad' },
       },
-    };
+    } as never;
     const agentSessionState = {
       sessions: {
         'session-1': {
@@ -86,21 +90,23 @@ describe('useSettingsSync', () => {
           name: 'Agent 1',
           createdAt: 1,
           updatedAt: 1,
-          mode: 'single',
+          mode: 'single' as const,
           modelId: null,
           messages: [],
           reasoning: '',
           status: 'idle',
+          parentId: null,
+          roleGraph: null,
         },
       },
       activeSessionId: 'session-1',
     };
     const tabState = {
-      openTabs: [{ id: 'a.js', type: 'file', label: 'a.js' }],
+      openTabs: [{ id: 'a.js', type: 'file' as const, label: 'a.js' }],
       activeTabId: 'a.js',
       lastCodeTabId: 'a.js',
     };
-    const logState = { logs: [{ id: '1', text: 'hi' }] };
+    const logState = { logs: [{ id: '1', role: 'user', text: 'hi', timestamp: '2024-01-01' }] };
     const previewState = { htmlContent: '<html></html>' };
     const promptUiState = {
       val: 'draft text',
@@ -130,7 +136,7 @@ describe('useSettingsSync', () => {
     expect(Settings.setSidebarWidth).toHaveBeenCalledWith(250);
     expect(Settings.setIsSidebarOpen).toHaveBeenCalledWith(true);
     expect(Settings.setShowAIInput).toHaveBeenCalledWith(false);
-    expect(Settings.setExpandedFolders).toHaveBeenCalledWith(['src']);
+    expect(Settings.setExpandedFolders).toHaveBeenCalledWith({ src: true });
     expect(Settings.setPromptWidth).toHaveBeenCalledWith(400);
     expect(Settings.setAICompletionEnabled).toHaveBeenCalledWith(true);
     expect(Settings.setEditorReadOnly).toHaveBeenCalledWith(false);
@@ -171,6 +177,7 @@ describe('useSettingsSync', () => {
     expect(Settings.setFileContents).toHaveBeenCalledWith({ 'a.js': 'code' });
     expect(Settings.setPendingDiffs).toHaveBeenCalledWith({
       'a.js': { originalContent: 'old', diffs: [], modifiedContent: 'code' },
+      'bad.js': { originalContent: 'bad', diffs: [], modifiedContent: 'bad' },
     });
 
     rerender({
@@ -179,7 +186,7 @@ describe('useSettingsSync', () => {
         sidebarWidth: 300,
         isSidebarOpen: false,
         showAIInput: true,
-        expandedFolders: ['src', 'components'],
+        expandedFolders: { src: true, components: true },
       },
       prompt: { promptWidth: 450, promptHistory: ['hello', 'world'] },
       editor: {
@@ -187,11 +194,11 @@ describe('useSettingsSync', () => {
         isReadOnly: true,
         fileContents: { 'a.js': 'updated' },
         pendingDiffs: {} as Record<string, never>,
-      },
+      } as never,
       agents: agentSessionState,
-      tabs: { openTabs: [] as never[], activeTabId: null as string | null, lastCodeTabId: null as string | null },
+      tabs: { openTabs: [] as never[], activeTabId: null, lastCodeTabId: null } as never,
       logs: { logs: [] },
-      preview: { htmlContent: null },
+      preview: { htmlContent: null } as never,
       promptUi: { val: '', selectedModel: 'Qwen3.5-9B-q4f16_1-MLC' },
     });
 
@@ -200,7 +207,7 @@ describe('useSettingsSync', () => {
     expect(Settings.setSidebarWidth).toHaveBeenCalledWith(300);
     expect(Settings.setIsSidebarOpen).toHaveBeenCalledWith(false);
     expect(Settings.setShowAIInput).toHaveBeenCalledWith(true);
-    expect(Settings.setExpandedFolders).toHaveBeenCalledWith(['src', 'components']);
+    expect(Settings.setExpandedFolders).toHaveBeenCalledWith({ src: true, components: true });
     expect(Settings.setPromptWidth).toHaveBeenCalledWith(450);
     expect(Settings.setAICompletionEnabled).toHaveBeenCalledWith(false);
     expect(Settings.setEditorReadOnly).toHaveBeenCalledWith(true);
@@ -240,7 +247,17 @@ describe('useSettingsSync', () => {
     });
     const { rerender } = renderHook(
       ({ contents }) =>
-        useSettingsSync(baseArgs[0], baseArgs[1], baseArgs[2], editorState(contents), baseArgs[3], baseArgs[4], baseArgs[5], baseArgs[6], baseArgs[7]),
+        useSettingsSync(
+          baseArgs[0] as never,
+          baseArgs[1] as never,
+          baseArgs[2] as never,
+          editorState(contents),
+          baseArgs[3] as never,
+          baseArgs[4] as never,
+          baseArgs[5] as never,
+          baseArgs[6] as never,
+          baseArgs[7] as never,
+        ),
       { initialProps: { contents: { 'a.js': 'first failure' } } },
     );
 
@@ -286,10 +303,12 @@ describe('useSettingsSync', () => {
           messages: [],
           reasoning: '',
           status: 'idle',
+          parentId: null,
+          roleGraph: null,
         },
       },
       activeSessionId: 'session-1',
-    };
+    } as never;
 
     renderHook(() =>
       useSettingsSync(
@@ -302,10 +321,10 @@ describe('useSettingsSync', () => {
           fileContents: {},
           pendingDiffs: {} as Record<string, never>,
         },
-        agentSessionState,
-        { openTabs: [], activeTabId: null, lastCodeTabId: null },
+        agentSessionState as never,
+        { openTabs: [], activeTabId: null as string | null, lastCodeTabId: null as string | null },
         { logs: [] },
-        { htmlContent: null },
+        { htmlContent: null as string | null },
         { val: '', selectedModel: 'model' },
       ),
     );
@@ -350,16 +369,22 @@ describe('useSettingsSync', () => {
               messages: [],
               reasoning: '',
               status: 'idle',
+              parentId: null,
+              roleGraph: null,
             },
           },
           activeSessionId: 'session-1',
         },
-        { openTabs: ['a.js'], activeTabId: 'a.js', lastCodeTabId: 'a.js' },
+        {
+          openTabs: [{ id: 'a.js', type: 'file', label: 'a.js' }],
+          activeTabId: 'a.js',
+          lastCodeTabId: 'a.js',
+        },
         { logs: [] },
         { htmlContent: null },
         { val: 'draft', selectedModel: 'model' },
-        workspaceProfileState,
-        changeSetState,
+        workspaceProfileState as never,
+        changeSetState as never,
       ),
     );
 
@@ -390,6 +415,9 @@ describe('useSettingsSync', () => {
       layer: 'indexeddb',
       quotaWarning: true,
       message: 'Storage almost full',
+      usage: null,
+      quota: null,
+      lastSuccessfulPersistAt: null,
     });
     vi.mocked(Settings.setFileContents).mockResolvedValue(true);
 
@@ -441,18 +469,18 @@ describe('useSettingsSync', () => {
       useSettingsSync(
         { theme: 'dark', projectName: 'Test' },
         { sidebarWidth: 250, isSidebarOpen: true, showAIInput: false, expandedFolders: {} },
-        { promptWidth: 400, promptHistory: 'not-an-array' },
+        { promptWidth: 400, promptHistory: 'not-an-array' as never },
         {
           aiCompletionEnabled: true,
           isReadOnly: 'maybe',
           fileContents: null,
           pendingDiffs: null,
-        },
+        } as never,
         null,
-        { openTabs: 'bad', activeTabId: null, lastCodeTabId: null },
-        { logs: 'bad' },
-        { htmlContent: undefined },
-        { val: 42, selectedModel: null },
+        { openTabs: 'bad', activeTabId: null, lastCodeTabId: null } as never,
+        { logs: 'bad' } as never,
+        { htmlContent: undefined } as never,
+        { val: 42, selectedModel: null } as never,
       ),
     );
 

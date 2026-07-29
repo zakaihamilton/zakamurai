@@ -6,7 +6,7 @@ describe('InitialData', () => {
     expect(DEFAULT_FILES.some((entry) => entry.name === 'src')).toBe(true);
     expect(DEFAULT_FILES.some((entry) => entry.name === 'package.json')).toBe(true);
 
-    for (const path of Object.keys(DEFAULT_CONTENTS)) {
+    for (const path of Object.keys(DEFAULT_CONTENTS) as Array<keyof typeof DEFAULT_CONTENTS>) {
       expect(DEFAULT_CONTENTS[path].length).toBeGreaterThan(0);
     }
 

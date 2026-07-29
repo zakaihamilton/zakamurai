@@ -1,7 +1,13 @@
 import { useEffect, useRef } from 'react';
 import type { SyncHandlerProps } from './types';
 
-export default function SyncHandler({ fs, filePath, localContent, state, tabState }: SyncHandlerProps) {
+export default function SyncHandler({
+  fs,
+  filePath,
+  localContent,
+  state,
+  tabState,
+}: SyncHandlerProps) {
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastSavedContent = useRef(localContent);
 

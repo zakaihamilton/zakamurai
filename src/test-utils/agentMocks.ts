@@ -12,18 +12,25 @@ import type {
 export function createEditorStateMock(
   initial: EditorStateDraft = {},
 ): StateHandle<EditorStateDraft> {
-  const state: EditorStateDraft = {
-    fileContents: {},
-    pendingDiffs: {},
-    cursorPos: {},
-    ...initial,
+  const state: EditorStateDraft = initial;
+  state.fileContents ??= {};
+  state.pendingDiffs ??= {};
+  state.cursorPos ??= {};
+
+  const syncProps = () => {
+    for (const key of Object.keys(state) as (keyof EditorStateDraft)[]) {
+      (updater as unknown as Record<string, unknown>)[key as string] = state[key];
+    }
   };
+
   const updater = vi.fn((cb: (draft: EditorStateDraft) => void) => {
     const draft = structuredClone(state);
     cb(draft);
     Object.assign(state, draft);
+    syncProps();
   }) as unknown as StateHandle<EditorStateDraft>;
   Object.assign(updater, state);
+  syncProps();
   return updater;
 }
 
@@ -38,7 +45,9 @@ export function createSidebarStateMock(
   return updater;
 }
 
-export function createLogStateMock(initial: LogStateDraft = { logs: [] }): StateHandle<LogStateDraft> {
+export function createLogStateMock(
+  initial: LogStateDraft = { logs: [] },
+): StateHandle<LogStateDraft> {
   const state: LogStateDraft = { ...initial };
   const updater = vi.fn((cb: (draft: LogStateDraft) => void) => {
     cb(state);

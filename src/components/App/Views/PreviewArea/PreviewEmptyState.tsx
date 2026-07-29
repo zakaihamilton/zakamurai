@@ -1,9 +1,15 @@
 import { Icons } from '@/components/ui/Icons';
-import React from 'react';
+import type { PreviewErrorStateProps } from './preview-types';
 import { PreviewErrorActions } from './ErrorOverlay';
 import styles from './PreviewEmptyState.module.css';
 
-export function PreviewErrorState({ title, message, copied, onCopy, onDismiss }) {
+export function PreviewErrorState({
+  title,
+  message,
+  copied,
+  onCopy,
+  onDismiss,
+}: PreviewErrorStateProps) {
   return (
     <div className={styles.emptyState}>
       <div className={styles.emptyIcon}>
@@ -13,7 +19,7 @@ export function PreviewErrorState({ title, message, copied, onCopy, onDismiss })
       <div className={styles.emptyError} role="alert">
         {message}
       </div>
-      {onCopy && onDismiss && (
+      {onCopy && onDismiss && copied !== undefined && (
         <PreviewErrorActions copied={copied} onCopy={onCopy} onDismiss={onDismiss} />
       )}
     </div>

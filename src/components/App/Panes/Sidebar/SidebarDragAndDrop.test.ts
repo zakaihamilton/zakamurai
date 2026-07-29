@@ -1,5 +1,5 @@
 import { mockDragEvent } from '@/test-utils/domMocks';
-import { makeFileSystemApi } from '@/test-utils/fsMocks';
+import { makeDirectoryHandle, makeFileHandle, makeFileSystemApi } from '@/test-utils/fsMocks';
 import { makeSidebarState } from '@/test-utils/stateMocks';
 import { asNormalizedTreeNode, makeFlatTreeRow } from '@/test-utils/treeMocks';
 import { renderHook } from '@testing-library/react';
@@ -114,10 +114,13 @@ describe('useSidebarDragAndDrop', () => {
     sidebarState.draggedItem = {
       path: ['src', 'App.js'],
       name: 'App.js',
-      handle: 'srcHandle',
+      handle: makeFileHandle('App.js'),
     } as never;
     const setDropTargetPath = vi.fn();
-    const fs = makeFileSystemApi({ mode: 'local', moveEntry: vi.fn().mockResolvedValue(undefined) });
+    const fs = makeFileSystemApi({
+      mode: 'local',
+      moveEntry: vi.fn().mockResolvedValue(undefined),
+    });
 
     const { result } = renderHook(() =>
       useSidebarDragAndDrop({
@@ -136,14 +139,17 @@ describe('useSidebarDragAndDrop', () => {
         name: 'components',
         type: 'folder',
         path: ['components'],
-        handle: 'destHandle' as unknown as FileSystemDirectoryHandle,
+        handle: makeDirectoryHandle('components'),
       }),
     });
 
     await result.current.handleDrop(event, row);
     expect(event.preventDefault).toHaveBeenCalled();
     expect(setDropTargetPath).toHaveBeenCalledWith(null);
-    expect(fs.moveEntry).toHaveBeenCalledWith('srcHandle', 'destHandle');
+    expect(fs.moveEntry).toHaveBeenCalledWith(
+      expect.objectContaining({ kind: 'file' }),
+      expect.objectContaining({ kind: 'directory' }),
+    );
     expect(sidebarState).toHaveBeenCalled();
   });
 });

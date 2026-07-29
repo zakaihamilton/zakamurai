@@ -1,3 +1,4 @@
+import type { HighlightEditorState } from '@/components/App/Views/EditorArea/types';
 import { TabState } from '@/components/App/Panes/TabBar';
 import { EditorState } from '@/components/App/Views/EditorArea';
 import { getHighlightBreakdown } from '@/components/App/Views/EditorArea/highlighter';
@@ -32,7 +33,9 @@ export default function TokenBreakdown({ tab }: TokenBreakdownProps) {
   const [activeSection, setActiveSection] = useState('tokens');
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState('All');
-  const [verificationResult, setVerificationResult] = useState<TokenVerificationResult | null>(null);
+  const [verificationResult, setVerificationResult] = useState<TokenVerificationResult | null>(
+    null,
+  );
 
   const filePath = tab?.sourceFilePath || tab?.filePath || tab?.file?.path?.join('/') || '';
   const fileName = tab?.file?.name || filePath.split('/').pop() || '';
@@ -77,7 +80,7 @@ export default function TokenBreakdown({ tab }: TokenBreakdownProps) {
       code,
       filePath,
       state: {
-        pendingDiffs: editorState.pendingDiffs as import('@/components/App/Views/EditorArea/types').HighlightEditorState['pendingDiffs'],
+        pendingDiffs: editorState.pendingDiffs as HighlightEditorState['pendingDiffs'],
         fileContents: editorState.fileContents,
       },
       styles,

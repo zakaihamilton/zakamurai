@@ -47,18 +47,18 @@ describe('Settings', () => {
 
   it('gets and sets open tabs', () => {
     const tabs = [{ id: '1', type: 'file', label: 'test.js' }];
-    Settings.setOpenTabs(tabs);
+    Settings.setOpenTabs(tabs as never);
     const savedTabs = Settings.getOpenTabs();
     expect(savedTabs).toHaveLength(1);
-    expect(savedTabs[0].id).toBe('1');
+    expect(savedTabs![0].id).toBe('1');
   });
 
   it('gets and sets the last code tab id', () => {
-    expect(Settings.getLastCodeTabId()).toBeUndefined();
+    expect(Settings.getLastCodeTabId()).toBeNull();
     Settings.setLastCodeTabId('src/App.js');
     expect(Settings.getLastCodeTabId()).toBe('src/App.js');
     Settings.setLastCodeTabId(null);
-    expect(Settings.getLastCodeTabId()).toBeUndefined();
+    expect(Settings.getLastCodeTabId()).toBeNull();
   });
 
   it('adds to prompt history', () => {
@@ -70,11 +70,11 @@ describe('Settings', () => {
   });
 
   it('replaces prompt history via setPromptHistory', () => {
-    Settings.setPromptHistory([' one ', 'two', 'one', '', 3, 'three']);
+    Settings.setPromptHistory([' one ', 'two', 'one', '', 'three']);
     expect(Settings.getPromptHistory()).toEqual(['one', 'two', 'three']);
     Settings.setPromptHistory([]);
     expect(Settings.getPromptHistory()).toEqual([]);
-    Settings.setPromptHistory(null);
+    Settings.setPromptHistory([] as never);
     expect(Settings.getPromptHistory()).toEqual([]);
   });
 
@@ -193,10 +193,10 @@ describe('Settings', () => {
   });
 
   it('does not let an in-flight durable write clear a newer unload snapshot', async () => {
-    const writePromise = Settings.setFileContents({ stale: true });
+    const writePromise = Settings.setFileContents({ stale: 'true' });
     expect(
       Settings.flushEditorBuffersSync(
-        { fresh: true },
+        { fresh: 'true' },
         {
           'a.js': {
             originalContent: 'old',
@@ -209,8 +209,8 @@ describe('Settings', () => {
 
     await writePromise;
 
-    expect(Settings.getFileContents()).toEqual({ fresh: true });
-    expect(JSON.parse(localStorage.getItem('zakamurai_file_contents'))).toEqual({ fresh: true });
+    expect(Settings.getFileContents()).toEqual({ fresh: 'true' });
+    expect(JSON.parse(localStorage.getItem('zakamurai_file_contents')!)).toEqual({ fresh: 'true' });
   });
 
   it('gets and sets sidebar width', () => {
@@ -255,7 +255,7 @@ describe('Settings', () => {
     const contents = { 'a.js': 'code' };
 
     try {
-      globalThis.indexedDB = undefined;
+      globalThis.indexedDB = undefined as unknown as IDBFactory;
       resetIdbConnection();
       stubFailingLocalStorage();
 
@@ -273,11 +273,11 @@ describe('Settings', () => {
     const contents = { 'a.js': 'fallback code' };
 
     try {
-      globalThis.indexedDB = undefined;
+      globalThis.indexedDB = undefined as unknown as IDBFactory;
       resetIdbConnection();
 
       await expect(Settings.setFileContents(contents)).resolves.toBe(true);
-      expect(JSON.parse(localStorage.getItem('zakamurai_file_contents'))).toEqual(contents);
+      expect(JSON.parse(localStorage.getItem('zakamurai_file_contents')!)).toEqual(contents);
       expect(Settings.getFileContents()).toEqual(contents);
     } finally {
       globalThis.indexedDB = originalIndexedDb;
@@ -286,14 +286,19 @@ describe('Settings', () => {
   });
 
   it('gets and sets active tab id', () => {
-    expect(Settings.getActiveTabId()).toBeUndefined();
+    expect(Settings.getActiveTabId()).toBeNull();
     Settings.setActiveTabId('src/App.js');
     expect(Settings.getActiveTabId()).toBe('src/App.js');
   });
 
   it('gets and sets AI logs and truncates to 50 entries', async () => {
     expect(Settings.getAILogs()).toEqual([]);
-    const logs = Array.from({ length: 55 }, (_, index) => ({ id: index }));
+    const logs = Array.from({ length: 55 }, (_, index) => ({
+      id: index,
+      role: 'system',
+      text: `log ${index}`,
+      timestamp: '00:00',
+    }));
     await Settings.setAILogs(logs);
     expect(Settings.getAILogs()).toHaveLength(50);
     expect(Settings.getAILogs()[0].id).toBe(5);
@@ -383,7 +388,7 @@ describe('Settings', () => {
   it('does not add empty or whitespace prompt history entries', () => {
     Settings.addPromptHistory('');
     Settings.addPromptHistory('   ');
-    Settings.addPromptHistory(null);
+    Settings.addPromptHistory(null as never);
     expect(Settings.getPromptHistory()).toEqual([]);
   });
 

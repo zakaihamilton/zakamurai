@@ -5,7 +5,13 @@ import { AppState } from '@/components/App/AppState';
 import { PromptUiState } from '@/components/App/Panes/Prompt/PromptState';
 import { SidebarState } from '@/components/App/Panes/Sidebar';
 import { LogState } from '@/components/App/Views/LogArea';
-import { makeAppState, makeLogState, makePromptUiState, makeSidebarState, makeWebLLMState } from '@/test-utils/stateMocks';
+import {
+  makeAppState,
+  makeLogState,
+  makePromptUiState,
+  makeSidebarState,
+  makeWebLLMState,
+} from '@/test-utils/stateMocks';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import type { ChangeEvent, ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';

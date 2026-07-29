@@ -1,3 +1,4 @@
+import type { UseTabDragAndDropParams } from './tab-types';
 import { useCallback } from 'react';
 
 export default function useTabDragAndDrop({
@@ -5,9 +6,9 @@ export default function useTabDragAndDrop({
   tabBarUiState,
   draggedTabId,
   resetDragState,
-}) {
+}: UseTabDragAndDropParams) {
   const handleDragStart = useCallback(
-    (e, tabId) => {
+    (e: React.DragEvent, tabId: string) => {
       e.dataTransfer.setData('tabId', tabId);
       e.dataTransfer.effectAllowed = 'move';
       tabBarUiState((draft) => {
@@ -18,7 +19,7 @@ export default function useTabDragAndDrop({
   );
 
   const handleDragOver = useCallback(
-    (e, tabId) => {
+    (e: React.DragEvent, tabId: string) => {
       e.preventDefault();
       e.stopPropagation();
       e.dataTransfer.dropEffect = 'move';
@@ -37,7 +38,7 @@ export default function useTabDragAndDrop({
   }, [resetDragState]);
 
   const handleDrop = useCallback(
-    (e, targetTabId) => {
+    (e: React.DragEvent, targetTabId: string) => {
       e.preventDefault();
       e.stopPropagation();
       const draggedId = e.dataTransfer.getData('tabId');
@@ -64,7 +65,7 @@ export default function useTabDragAndDrop({
   );
 
   const handleDropOnBar = useCallback(
-    (e) => {
+    (e: React.DragEvent) => {
       e.preventDefault();
       const draggedId = e.dataTransfer.getData('tabId');
       if (!draggedId) return;

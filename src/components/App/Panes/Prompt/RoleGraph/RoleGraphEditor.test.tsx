@@ -49,7 +49,9 @@ describe('RoleGraphEditor', () => {
     expect(lastGraph(onChange).roles[0]?.label).toBe('Lead');
 
     fireEvent.click(screen.getByText('+ Custom'));
-    expect(lastGraph(onChange).roles.some((role: RoleGraph['roles'][number]) => role.kind === 'custom')).toBe(true);
+    expect(
+      lastGraph(onChange).roles.some((role: RoleGraph['roles'][number]) => role.kind === 'custom'),
+    ).toBe(true);
 
     fireEvent.click(screen.getByLabelText('Reset role graph'));
     expect(lastGraph(onChange).roles).toHaveLength(3);
@@ -79,7 +81,9 @@ describe('RoleGraphEditor', () => {
     const reviewerSelects = reviewerCard.querySelectorAll('select');
     fireEvent.change(reviewerSelects[2]!, { target: { value: 'planner' } });
     expect(
-      lastGraph(onChange).edges.some((edge: RoleGraph['edges'][number]) => edge.when === 'reject' && edge.to === 'planner'),
+      lastGraph(onChange).edges.some(
+        (edge: RoleGraph['edges'][number]) => edge.when === 'reject' && edge.to === 'planner',
+      ),
     ).toBe(true);
   });
 
@@ -115,6 +119,9 @@ describe('RoleGraphEditor', () => {
     const reviewerCard = container.querySelector('[data-role-id="reviewer"]')!;
     const retryInput = reviewerCard.querySelector('input[type="number"]')!;
     fireEvent.change(retryInput, { target: { value: '2' } });
-    expect(lastGraph(onChange).edges.find((edge: RoleGraph['edges'][number]) => edge.when === 'reject')?.maxTimes).toBe(2);
+    expect(
+      lastGraph(onChange).edges.find((edge: RoleGraph['edges'][number]) => edge.when === 'reject')
+        ?.maxTimes,
+    ).toBe(2);
   });
 });

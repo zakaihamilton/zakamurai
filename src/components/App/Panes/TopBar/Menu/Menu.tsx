@@ -6,6 +6,7 @@ import Dialog from '@/components/ui/Dialog';
 import { Icons } from '@/components/ui/Icons';
 import Tooltip from '@/components/ui/Tooltip';
 import { formatShortcut } from '@/utils/os';
+import type { TopBarMenuProps } from '../topbar-types';
 import styles from './Menu.module.css';
 import { requireStore } from '../../../types';
 
@@ -18,18 +19,19 @@ export default function TopBarMenu({
   onClearFS,
   onExportSupportReport,
   onToggleShortcuts,
-}) {
-  const { isSystemProcessing, isAIProcessing } = requireStore(LogState.useState([
-    'isSystemProcessing',
-    'isAIProcessing',
-  ]));
-  const topBarMenuState = requireStore(TopBarMenuState.useState(null, {
-    menuPosition: null,
-    newProjectTemplate: null,
-  }));
+}: TopBarMenuProps) {
+  const { isSystemProcessing, isAIProcessing } = requireStore(
+    LogState.useState(['isSystemProcessing', 'isAIProcessing']),
+  );
+  const topBarMenuState = requireStore(
+    TopBarMenuState.useState(null, {
+      menuPosition: null,
+      newProjectTemplate: null,
+    }),
+  );
   const { menuPosition = null, newProjectTemplate = null } = topBarMenuState || {};
 
-  const handleMenuOpen = (e) => {
+  const handleMenuOpen = (e: React.MouseEvent<HTMLButtonElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();
     topBarMenuState((draft) => {
       draft.menuPosition = {
@@ -169,7 +171,7 @@ export default function TopBarMenu({
           topBarMenuState((draft) => {
             draft.newProjectTemplate = null;
           });
-          onNewProject(template);
+          onNewProject(template || 'default');
         }}
         onCancel={() =>
           topBarMenuState((draft) => {

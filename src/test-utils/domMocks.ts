@@ -1,3 +1,5 @@
+import { vi } from 'vitest';
+
 export type MockProxyRequest = {
   nextUrl: {
     pathname: string;
@@ -27,15 +29,13 @@ export function createMockProxyRequest(
   };
 }
 
-export function mockStorageManager(
-  overrides: Partial<StorageManager> = {},
-): StorageManager {
+export function mockStorageManager(overrides: Partial<StorageManager> = {}): StorageManager {
   return {
     estimate: async () => ({ usage: 0, quota: 0 }),
     persist: async () => true,
     persisted: async () => false,
     getDirectory: async () => ({
-      getDirectoryHandle: async () => ({} as FileSystemDirectoryHandle),
+      getDirectoryHandle: async () => ({}) as FileSystemDirectoryHandle,
       getFileHandle: async () =>
         ({
           getFile: async () => ({ text: async () => '' }),
@@ -83,8 +83,8 @@ export function mockDragEvent(
   } = {},
 ): React.DragEvent {
   return {
-    preventDefault: partial.preventDefault ?? (() => {}),
-    stopPropagation: partial.stopPropagation ?? (() => {}),
+    preventDefault: partial.preventDefault ?? vi.fn(),
+    stopPropagation: partial.stopPropagation ?? vi.fn(),
     dataTransfer: {
       effectAllowed: 'all',
       dropEffect: 'none',

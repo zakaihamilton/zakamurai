@@ -17,15 +17,17 @@ const SW_INIT_TIMEOUT_MS = 15000;
 export const PreviewAreaUiState = createState<PreviewAreaUiStateShape>('PreviewAreaUiState');
 
 export default function PreviewArea() {
-  const previewState = requireStore(PreviewState.useState([
-    'htmlContent',
-    'isCompilerReady',
-    'restoreError',
-    'compileError',
-    'serverError',
-    'previewAddress',
-    'previewSessionId',
-  ]));
+  const previewState = requireStore(
+    PreviewState.useState([
+      'htmlContent',
+      'isCompilerReady',
+      'restoreError',
+      'compileError',
+      'serverError',
+      'previewAddress',
+      'previewSessionId',
+    ]),
+  );
   const {
     htmlContent,
     isCompilerReady,
@@ -35,19 +37,21 @@ export default function PreviewArea() {
     previewAddress = '/preview/dist/index.html',
     previewSessionId = null,
   } = previewState;
-  const iframeRef = useRef(null);
+  const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const isLoadingRef = useRef(false);
-  const containerRef = useRef(null);
-  const previewAreaUiState = requireStore(PreviewAreaUiState.useState(null, {
-    isLoading: false,
-    scale: 1,
-    error: null,
-    refreshKey: Date.now(),
-    isSwReady: !!(typeof navigator !== 'undefined' && navigator.serviceWorker?.controller),
-    isMaximized: false,
-    address: '/preview/dist/index.html',
-    host: '',
-  }));
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const previewAreaUiState = requireStore(
+    PreviewAreaUiState.useState(null, {
+      isLoading: false,
+      scale: 1,
+      error: null,
+      refreshKey: Date.now(),
+      isSwReady: !!(typeof navigator !== 'undefined' && navigator.serviceWorker?.controller),
+      isMaximized: false,
+      address: '/preview/dist/index.html',
+      host: '',
+    }),
+  );
   const {
     isLoading = false,
     scale = 1,
@@ -67,7 +71,7 @@ export default function PreviewArea() {
   const previewConfigurationError = getPreviewConfigurationError(origins);
 
   const setPreviewError = useCallback(
-    (message) => {
+    (message: string) => {
       if (!message || isOpaqueScriptError(message) || isLoadingRef.current) return;
       previewAreaUiState((draft) => {
         draft.error = message;
@@ -103,7 +107,7 @@ export default function PreviewArea() {
     iframeRef,
     previewAreaUiState,
     previewUrl,
-    previewOrigin: origins.previewOrigin,
+    previewOrigin: origins.previewOrigin || '',
     setPreviewError,
     setHasLoadedOnce,
   });
@@ -215,7 +219,7 @@ export default function PreviewArea() {
       onLoad={handleLoad}
       externalPreviewRef={externalPreviewRef}
       externalPreviewNonce={externalPreviewNonce}
-      previewOrigin={origins.previewOrigin}
+      previewOrigin={origins.previewOrigin || ''}
       onError={setPreviewError}
     />
   );

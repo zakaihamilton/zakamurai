@@ -1,7 +1,7 @@
 import ContextMenu from '@/components/ui/ContextMenu';
 import { Icons } from '@/components/ui/Icons';
 import { isMediaFile } from '@/utils/file';
-import React from 'react';
+import type { TabContextMenuProps } from './tab-types';
 import styles from './TabContextMenu.module.css';
 
 export default function TabContextMenu({
@@ -13,7 +13,7 @@ export default function TabContextMenu({
   onCloseToLeft,
   onCloseToRight,
   onCloseAll,
-}) {
+}: TabContextMenuProps) {
   if (!tab) return null;
 
   const getSubLabel = () => {
@@ -79,7 +79,6 @@ export default function TabContextMenu({
         }}
         className={styles.contextMenuOption}
       >
-        {/* Custom SVG icon for "Close Others" */}
         <svg
           width="14"
           height="14"
@@ -106,7 +105,6 @@ export default function TabContextMenu({
         }}
         className={styles.contextMenuOption}
       >
-        {/* Custom SVG icon for "Close to the Left" */}
         <svg
           width="14"
           height="14"
@@ -132,7 +130,6 @@ export default function TabContextMenu({
         }}
         className={styles.contextMenuOption}
       >
-        {/* Custom SVG icon for "Close to the Right" */}
         <svg
           width="14"
           height="14"

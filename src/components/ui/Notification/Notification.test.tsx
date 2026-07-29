@@ -1,11 +1,12 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
+import type { ReactNode } from 'react';
 import React from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { Notification, NotificationState, useNotification } from './Notification';
 
 vi.mock('@/components/state/State', () => ({
   createState: vi.fn(() => {
-    const state = ({ children }) => <div>{children}</div>;
+    const state = ({ children }: { children?: ReactNode }) => <div>{children}</div>;
     state.useState = vi.fn();
     return state;
   }),
@@ -30,7 +31,7 @@ describe('Notification', () => {
         { id: 1, message: 'Success message', type: 'success' },
         { id: 2, message: 'Error message', type: 'error' },
       ],
-    });
+    } as never);
 
     render(<Notification />);
 
@@ -45,7 +46,7 @@ describe('Notification', () => {
     vi.mocked(NotificationState.useState).mockReturnValue(
       Object.assign(stateUpdater, {
         notifications: [{ id: 1, message: 'Test message', type: 'info' }],
-      }),
+      }) as never,
     );
 
     render(<Notification />);
@@ -60,7 +61,7 @@ describe('Notification', () => {
       const draft = { notifications: [] };
       if (typeof cb === 'function') cb(draft);
     });
-    vi.mocked(NotificationState.useState).mockReturnValue(stateUpdater);
+    vi.mocked(NotificationState.useState).mockReturnValue(stateUpdater as never);
 
     const { renderHook } = await import('@testing-library/react');
     const { result } = renderHook(() => useNotification());
@@ -71,7 +72,6 @@ describe('Notification', () => {
 
     expect(stateUpdater).toHaveBeenCalled();
 
-    // Fast-forward timers to trigger auto-remove setTimeout
     act(() => {
       vi.advanceTimersByTime(2500);
     });

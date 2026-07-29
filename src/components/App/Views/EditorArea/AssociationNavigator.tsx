@@ -21,7 +21,10 @@ const recordJump = (
   targetPath: string,
   targetLoc: SourceLocation,
 ) => {
-  const history = (draft.navigationHistory || { stack: [], currentIndex: -1 }) as NavigationHistoryStack;
+  const history = (draft.navigationHistory || {
+    stack: [],
+    currentIndex: -1,
+  }) as NavigationHistoryStack;
   let stack = [...(history.stack || [])];
   let currentIndex = history.currentIndex;
 

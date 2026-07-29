@@ -12,7 +12,12 @@ export type MockFetchResponse = {
 
 export function makeFetchResponse(
   body: unknown,
-  init: { ok?: boolean; status?: number; statusText?: string; headers?: Record<string, string> } = {},
+  init: {
+    ok?: boolean;
+    status?: number;
+    statusText?: string;
+    headers?: Record<string, string>;
+  } = {},
 ): MockFetchResponse {
   const text = typeof body === 'string' ? body : JSON.stringify(body);
   return {
@@ -39,5 +44,5 @@ export function restoreGlobalFetch(): void {
 export function asFetchImpl(
   impl: (input: RequestInfo | URL, init?: RequestInit) => Promise<unknown>,
 ): typeof fetch {
-  return impl as unknown as typeof fetch;
+  return vi.fn(impl) as unknown as typeof fetch;
 }

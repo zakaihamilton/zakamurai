@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react';
-import { createRef } from 'react'
+import { createRef } from 'react';
 import type { ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { PREVIEW_IFRAME_SANDBOX } from '../previewSandbox';

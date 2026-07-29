@@ -6,22 +6,30 @@ import { LogState } from '@/components/App/Views/LogArea';
 import { Icons } from '@/components/ui/Icons';
 import Tooltip from '@/components/ui/Tooltip';
 import { formatShortcut } from '@/utils/os';
-import React, { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
+import type { ActionButtonsProps } from '../topbar-types';
 import styles from './ActionButtons.module.css';
 import { requireStore } from '../../../types';
 
-const isViewTab = (tabId) => tabId === 'ai-logs' || tabId === 'preview';
+const isViewTab = (tabId: string | null | undefined): boolean =>
+  tabId === 'ai-logs' || tabId === 'preview';
 
-export default function ActionButtons({ onCompile, onOpenLog, onOpenPreview, onToggleAIInput }) {
+export default function ActionButtons({
+  onCompile,
+  onOpenLog,
+  onOpenPreview,
+  onToggleAIInput,
+}: ActionButtonsProps) {
   const { isSystemProcessing } = requireStore(LogState.useState('isSystemProcessing'));
-  const { compileStatus, compilePhase } = requireStore(PreviewState.useState(['compileStatus', 'compilePhase']));
+  const { compileStatus, compilePhase } = requireStore(
+    PreviewState.useState(['compileStatus', 'compilePhase']),
+  );
   const tabState = requireStore(TabState.useState(['activeTabId', 'openTabs', 'lastCodeTabId']));
   const { activeTabId, openTabs = [], lastCodeTabId } = tabState;
   const { isMobile } = requireStore(AppState.useState('isMobile'));
-  const { showAIInput, isAIInputPopupOpen } = requireStore(SidebarState.useState([
-    'showAIInput',
-    'isAIInputPopupOpen',
-  ]));
+  const { showAIInput, isAIInputPopupOpen } = requireStore(
+    SidebarState.useState(['showAIInput', 'isAIInputPopupOpen']),
+  );
   const isAIInputActive = isMobile ? isAIInputPopupOpen : showAIInput;
   const buildTooltip =
     compileStatus === 'building' ? compilePhase || 'Compiling…' : 'Build Project';

@@ -45,7 +45,9 @@ describe('useSidebarFileLoader', () => {
     );
 
     const res = await result.current.handleRename(
-      makeFlatTreeRow({ item: asNormalizedTreeNode({ name: 'Project', type: 'folder', path: [], isRoot: true }) }),
+      makeFlatTreeRow({
+        item: asNormalizedTreeNode({ name: 'Project', type: 'folder', path: [], isRoot: true }),
+      }),
       'NewProject',
     );
     expect(res).toBe(true);
@@ -56,7 +58,9 @@ describe('useSidebarFileLoader', () => {
   it('handles handleRename for non-root file in sandbox mode', async () => {
     const sidebarState = makeSidebarState({ folderTree: [], expandedFolders: {} });
     const editorState = createMockEditorState({ fileContents: {} });
-    const tabState = createMockTabState({ openTabs: [{ id: 'src/App.js', label: 'App.js', type: 'file' }] });
+    const tabState = createMockTabState({
+      openTabs: [{ id: 'src/App.js', label: 'App.js', type: 'file' }],
+    });
 
     const { result } = renderHook(() =>
       useSidebarFileLoader({
@@ -84,7 +88,9 @@ describe('useSidebarFileLoader', () => {
   it('handles handleDelete for file', async () => {
     const sidebarState = makeSidebarState({ folderTree: [] });
     const editorState = createMockEditorState({ fileContents: {} });
-    const tabState = createMockTabState({ openTabs: [{ id: 'src/App.js', label: 'App.js', type: 'file' }] });
+    const tabState = createMockTabState({
+      openTabs: [{ id: 'src/App.js', label: 'App.js', type: 'file' }],
+    });
     const addNotification = vi.fn();
 
     const { result } = renderHook(() =>

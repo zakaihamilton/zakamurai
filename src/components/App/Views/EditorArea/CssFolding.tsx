@@ -1,6 +1,7 @@
 import type { CodeFold } from './types';
 
-export const isCssPath = (filePath = ''): boolean => filePath.endsWith('.css') || filePath === 'css';
+export const isCssPath = (filePath = ''): boolean =>
+  filePath.endsWith('.css') || filePath === 'css';
 
 export function getCssBlockFolds(code = '', filePath = ''): CodeFold[] {
   if (!isCssPath(filePath) || !code) return [];

@@ -48,8 +48,10 @@ describe('SingleEditorView', () => {
     );
 
     const codeLines = container.querySelectorAll('[data-line]');
-    codeLines[0]!.getBoundingClientRect = () => mockDomRect({ left: 0, top: 0, width: 0, height: 22 });
-    codeLines[1]!.getBoundingClientRect = () => mockDomRect({ left: 0, top: 0, width: 0, height: 44 });
+    codeLines[0]!.getBoundingClientRect = () =>
+      mockDomRect({ left: 0, top: 0, width: 0, height: 22 });
+    codeLines[1]!.getBoundingClientRect = () =>
+      mockDomRect({ left: 0, top: 0, width: 0, height: 44 });
 
     vi.advanceTimersByTime(50);
 

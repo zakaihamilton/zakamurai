@@ -75,7 +75,7 @@ describe('role graphs', () => {
     expect(config.allowedActions).toEqual(['read_file', 'finish']);
     expect(config.maxTurns).toBe(8);
 
-    expect(resolveRoleConfig({ id: 'x', kind: 'nope' }).kind).toBe('custom');
+    expect(resolveRoleConfig({ id: 'x', kind: 'nope' as never }).kind).toBe('custom');
     expect(createRoleNode({ kind: 'weird' }).kind).toBe('custom');
 
     expect(
@@ -116,14 +116,18 @@ describe('role graphs', () => {
 
     expect(
       syncLinearAlwaysEdges({
-        roles: [{ id: 'solo', kind: 'custom' }],
-        edges: [null, { from: 'solo', to: 'solo', when: 'reject', maxTimes: 0 }],
+        version: 2,
+        entryRoleId: 'solo',
+        roles: [createRoleNode({ id: 'solo', kind: 'custom' })],
+        edges: [null as never, { from: 'solo', to: 'solo', when: 'reject', maxTimes: 0 }],
       }),
     ).toMatchObject({
       entryRoleId: 'solo',
       edges: [{ from: 'solo', to: 'solo', when: 'reject', maxTimes: 1 }],
     });
-    expect(syncLinearAlwaysEdges({ roles: null })).toMatchObject({
+    expect(
+      syncLinearAlwaysEdges({ version: 2, entryRoleId: null, roles: null as never, edges: [] }),
+    ).toMatchObject({
       entryRoleId: null,
       roles: [],
       edges: [],
@@ -184,7 +188,9 @@ describe('role graphs', () => {
     expect(formatPlanContext({ goals: ['g'], files: [], steps: ['s'], raw: 'raw' })).toContain(
       'Plan goals',
     );
-    expect(formatPlanContext({})).toContain('(none listed)');
+    expect(formatPlanContext({ goals: [], files: [], steps: [], raw: '' })).toContain(
+      '(none listed)',
+    );
     expect(resolveRoleConfig({ id: 'x', kind: 'coder', join: 'any', maxRetries: -1 }).join).toBe(
       'any',
     );

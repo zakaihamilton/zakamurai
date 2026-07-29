@@ -12,7 +12,11 @@ type VirtualListMockProps<T> = {
 };
 
 vi.mock('../VirtualList', () => ({
-  default: <T extends { pathStr?: string }>({ items, renderItem, className }: VirtualListMockProps<T>) => (
+  default: <T extends { pathStr?: string }>({
+    items,
+    renderItem,
+    className,
+  }: VirtualListMockProps<T>) => (
     <div data-testid="virtual-list" className={className}>
       {items.map((row, index) => (
         <div key={row.pathStr || index}>{renderItem(row)}</div>

@@ -1,5 +1,10 @@
 import { SidebarState } from '@/components/App/Panes/Sidebar';
-import type { SidebarStateShape, Tab, TabBarUiStateShape, TabStateShape } from '@/components/state/domain-types';
+import type {
+  SidebarStateShape,
+  Tab,
+  TabBarUiStateShape,
+  TabStateShape,
+} from '@/components/state/domain-types';
 import { createState } from '@/components/state/State';
 import type { StateStore } from '@/components/state/types';
 import { Icons } from '@/components/ui/Icons';
@@ -9,6 +14,7 @@ import styles from './TabBar.module.css';
 import TabContextMenu from './TabContextMenu';
 import TabItem from './TabItem';
 import useTabDragAndDrop from './useTabDragAndDrop';
+import type { TabContextMenuState } from './tab-types';
 import { requireStore } from '../../types';
 
 export const TabState = createState<TabStateShape>('TabState');
@@ -34,13 +40,15 @@ export default function TabBar() {
   const tabState = requireStore(TabState.useState());
   const { openTabs = [], activeTabId } = tabState;
   const sidebarState = requireStore(SidebarState.useState());
-  const [contextMenu, setContextMenu] = useState(null);
-  const tabRefs = useRef(new Map());
-  const tabBarUiState = requireStore(TabBarUiState.useState(null, {
-    draggedTabId: null,
-    dropTargetId: null,
-    isOverBar: false,
-  }));
+  const [contextMenu, setContextMenu] = useState<TabContextMenuState | null>(null);
+  const tabRefs = useRef(new Map<string, HTMLDivElement>());
+  const tabBarUiState = requireStore(
+    TabBarUiState.useState(null, {
+      draggedTabId: null,
+      dropTargetId: null,
+      isOverBar: false,
+    }),
+  );
   const { draggedTabId = null, dropTargetId = null, isOverBar = false } = tabBarUiState || {};
 
   const resetDragState = () => {
@@ -62,7 +70,7 @@ export default function TabBar() {
     }
   };
 
-  const handleTabKeyDown = (event, tabId) => {
+  const handleTabKeyDown = (event: React.KeyboardEvent, tabId: string) => {
     const currentIndex = openTabs.findIndex((tab) => tab.id === tabId);
     if (currentIndex === -1) return;
     let targetIndex = currentIndex;
@@ -115,7 +123,7 @@ export default function TabBar() {
     });
   };
 
-  const closeTabsToLeft = (tabId) => {
+  const closeTabsToLeft = (tabId: string) => {
     tabState((draft) => {
       const clickedIndex = draft.openTabs.findIndex((t) => t.id === tabId);
       if (clickedIndex === -1) return;

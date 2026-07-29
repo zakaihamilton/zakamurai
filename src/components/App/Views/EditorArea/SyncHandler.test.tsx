@@ -26,7 +26,14 @@ describe('SyncHandler', () => {
     };
 
     tabState = createMockTabState({
-      openTabs: [{ id: filePath, type: 'file', label: filePath, fsHandle: handleMock as unknown as FileSystemFileHandle }],
+      openTabs: [
+        {
+          id: filePath,
+          type: 'file',
+          label: filePath,
+          fsHandle: handleMock as unknown as FileSystemFileHandle,
+        },
+      ],
     });
   });
 

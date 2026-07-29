@@ -84,7 +84,12 @@ function createRunnerProps(overrides: Partial<UseAgentRunnerParams> = {}): UseAg
     tabState: makeTabState({
       activeTabId: 'app.js',
       openTabs: [
-        createMockTab({ id: 'app.js', type: 'file', label: 'app.js', file: { name: 'app.js', path: ['app.js'] } }),
+        createMockTab({
+          id: 'app.js',
+          type: 'file',
+          label: 'app.js',
+          file: { name: 'app.js', path: ['app.js'] },
+        }),
       ],
     }),
     editorState: createMockEditorState({ fileContents: {}, selectedLines: {} }),
@@ -190,14 +195,16 @@ describe('useAgentRunner', () => {
   });
 
   it('stops generation and clears running session state', async () => {
-    const props = createRunnerProps({ isAIProcessing: true });
+    const abort = vi.fn();
+    const abortController = { abort } as unknown as AbortController;
+    const props = createRunnerProps({ isAIProcessing: true, abortController });
     const { result } = renderHook(() => useAgentRunner(props));
 
     await act(async () => {
       result.current.handleStop(mockMouseEvent());
     });
 
-    expect(props.abortController?.abort).toHaveBeenCalled();
+    expect(abort).toHaveBeenCalled();
     expect(props.patchSession).toHaveBeenCalledWith('session-1', { status: 'idle', reasoning: '' });
     expect(props.pushSessionMessage).toHaveBeenCalled();
     expect(props.promptUiState).toHaveBeenCalled();
@@ -217,7 +224,12 @@ describe('useAgentRunner', () => {
       tabState: makeTabState({
         activeTabId: 'app.js',
         openTabs: [
-          createMockTab({ id: 'app.js', type: 'file', label: 'app.js', file: { name: 'app.js', path: ['app.js'] } }),
+          createMockTab({
+            id: 'app.js',
+            type: 'file',
+            label: 'app.js',
+            file: { name: 'app.js', path: ['app.js'] },
+          }),
         ],
       }),
       editorState: createMockEditorState({

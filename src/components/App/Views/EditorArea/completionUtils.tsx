@@ -6,7 +6,9 @@ export const COMPLETION_PHASES = {
   GENERATING: 'generating',
 };
 
-export const getCompletionActivityMessage = (debug: { phase?: string; model?: string } | null | undefined): string | null => {
+export const getCompletionActivityMessage = (
+  debug: { phase?: string; model?: string } | null | undefined,
+): string | null => {
   if (!debug?.phase) return null;
 
   switch (debug.phase) {

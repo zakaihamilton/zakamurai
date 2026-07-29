@@ -44,7 +44,7 @@ describe('project checks', () => {
     expect(isEligibleProjectCheck('test', null)).toBe(false);
     expect(isEligibleProjectCheck('test', 'echo "unterminated')).toBe(false);
 
-    await expect(runProjectCheck({ check: 'missing', files, run: () => {} })).rejects.toThrow(
+    await expect(runProjectCheck({ check: 'missing', files, run: async () => '' })).rejects.toThrow(
       'Project check is not eligible: missing',
     );
     expect(await runProjectCheck({ check: 'test', files })).toEqual(
@@ -56,7 +56,7 @@ describe('project checks', () => {
       files,
       run: async () => 'x'.repeat(12001),
     });
-    expect(clipped.output.endsWith('…[truncated]')).toBe(true);
+    expect(clipped.output?.endsWith('…[truncated]')).toBe(true);
 
     const empty = await runProjectCheck({ check: 'test', files, run: async () => '' });
     expect(empty.output).toBe('');

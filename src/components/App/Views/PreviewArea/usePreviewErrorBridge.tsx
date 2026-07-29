@@ -7,7 +7,7 @@ export function usePreviewErrorBridge() {
 
   useEffect(() => {
     if (!previewState) return undefined;
-    setPreviewErrorListener((message) => {
+    setPreviewErrorListener((message: string) => {
       previewState((draft) => {
         draft.serverError = message;
       });

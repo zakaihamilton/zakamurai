@@ -14,7 +14,10 @@ vi.mock('@/components/App/PreviewState', () => ({
 
 vi.mock('@/components/ui/Tooltip', () => ({
   __esModule: true,
-  default: ({ children, content }: { children: ReactElement<{ title?: ReactNode }>; content: ReactNode }) => {
+  default: ({
+    children,
+    content,
+  }: { children: ReactElement<{ title?: ReactNode }>; content: ReactNode }) => {
     return React.cloneElement(children, { title: content });
   },
 }));
@@ -331,7 +334,9 @@ describe('PreviewArea', () => {
     expect(draftIn.scale).toBe(1.2);
 
     fireEvent.click(screen.getByTitle('Zoom out'));
-    const zoomOutUpdater = vi.mocked(ui).mock.calls.at(-1)![0] as (draft: { scale: number }) => void;
+    const zoomOutUpdater = vi.mocked(ui).mock.calls.at(-1)![0] as (draft: {
+      scale: number;
+    }) => void;
     const draftOut = { scale: 1.3 };
     zoomOutUpdater(draftOut);
     expect(draftOut.scale).toBe(1.2);

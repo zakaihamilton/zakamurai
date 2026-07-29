@@ -107,7 +107,9 @@ describe('AppContent', () => {
 
   it('renders mobile overlay when mobile and sidebar popup open', () => {
     vi.mocked(AppState.useState).mockReturnValue(makeAppState({ isMobile: true }));
-    vi.mocked(SidebarState.useState).mockReturnValue(makeSidebarState({ isSidebarPopupOpen: true }));
+    vi.mocked(SidebarState.useState).mockReturnValue(
+      makeSidebarState({ isSidebarPopupOpen: true }),
+    );
 
     render(<AppContent />);
     expect(screen.getByRole('button', { name: /close overlays/i })).toBeDefined();

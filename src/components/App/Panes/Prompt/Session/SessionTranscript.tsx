@@ -1,8 +1,10 @@
-import React, { useEffect, useRef } from 'react';
+import type { AgentSessionMessage } from '@/components/state/domain-types';
+import { useEffect, useRef } from 'react';
+import type { SessionTranscriptProps } from '../prompt-types';
 import styles from './SessionTranscript.module.css';
 
-export default function SessionTranscript({ messages = [] }) {
-  const endRef = useRef(null);
+export default function SessionTranscript({ messages = [] }: SessionTranscriptProps) {
+  const endRef = useRef<HTMLDivElement | null>(null);
   const lastMessageId = messages.at(-1)?.id;
 
   useEffect(() => {
@@ -20,7 +22,7 @@ export default function SessionTranscript({ messages = [] }) {
 
   return (
     <div className={styles.transcript} aria-label="Session transcript">
-      {messages.map((message) => {
+      {messages.map((message: AgentSessionMessage) => {
         const roleClass =
           message.role === 'user' ? styles.user : message.role === 'ai' ? styles.ai : styles.system;
         const label =

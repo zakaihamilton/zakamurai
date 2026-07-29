@@ -194,7 +194,7 @@ export function applyMarkerReplacement(
       const newLineContent = updatedLines[i].replace(markerPattern, '').trimEnd();
 
       // Look for context around this line to find it in the original
-      const cleanLine = (l) => l.replace(markerPattern, '').trimEnd();
+      const cleanLine = (l: string) => l.replace(markerPattern, '').trimEnd();
       const contextBefore = updatedLines.slice(Math.max(0, i - 3), i).map(cleanLine);
       const contextAfter = updatedLines
         .slice(i + 1, Math.min(updatedLines.length, i + 4))

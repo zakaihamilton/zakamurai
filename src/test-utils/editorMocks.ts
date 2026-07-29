@@ -31,22 +31,54 @@ function createStoreInternals<T extends object>() {
 
 function createCallableMockStore<T extends object>(initial: T): StateStore<T> & Mock {
   const snapshot = { ...initial };
+
+  const syncProps = () => {
+    for (const key of Object.keys(snapshot) as (keyof T)[]) {
+      (updater as Record<string, unknown>)[key as string] = snapshot[key];
+    }
+  };
+
   const updater = vi.fn((cb: (draft: Draft<T>) => void) => {
     const draft = structuredClone(snapshot) as Draft<T>;
     cb(draft);
     Object.assign(snapshot, draft);
-    Object.assign(updater, snapshot);
+    syncProps();
     return snapshot;
   }) as StateStore<T> & Mock;
-  return Object.assign(updater, snapshot, createStoreInternals<T>());
+
+  Object.assign(updater, snapshot, createStoreInternals<T>());
+  syncProps();
+
+  return new Proxy(updater, {
+    get(target, prop, receiver) {
+      if (typeof prop === 'string' && !prop.startsWith('__') && prop in snapshot) {
+        return (snapshot as Record<string, unknown>)[prop];
+      }
+      return Reflect.get(target, prop, receiver);
+    },
+    set(target, prop, value, receiver) {
+      if (typeof prop === 'string' && !prop.startsWith('__') && prop in snapshot) {
+        (snapshot as Record<string, unknown>)[prop] = value;
+      }
+      return Reflect.set(target, prop, value, receiver);
+    },
+  }) as StateStore<T> & Mock;
 }
 
 /** Minimal DOMRect for layout-dependent editor tests. */
 export function mockDomRect(
   partial: Partial<DOMRect> & Pick<DOMRect, 'left' | 'top' | 'width' | 'height'>,
 ): DOMRect {
-  const { left, top, width, height, x = left, y = top, bottom = top + height, right = left + width } =
-    partial;
+  const {
+    left,
+    top,
+    width,
+    height,
+    x = left,
+    y = top,
+    bottom = top + height,
+    right = left + width,
+  } = partial;
   return {
     left,
     top,
@@ -106,9 +138,7 @@ export function createMockNavigationTarget(
   };
 }
 
-export function createMockSourceLocation(
-  partial: Partial<SourceLocation> = {},
-): SourceLocation {
+export function createMockSourceLocation(partial: Partial<SourceLocation> = {}): SourceLocation {
   return { line: 1, col: 1, index: 0, ...partial };
 }
 
@@ -161,12 +191,11 @@ export function createMockTab(partial: Partial<Tab> & Pick<Tab, 'id' | 'type' | 
   return partial as Tab;
 }
 
-export type MockEditorState = StateStore<ExtendedEditorState> & Mock<(draft: EditorStateDraft) => void>;
+export type MockEditorState = StateStore<ExtendedEditorState> &
+  Mock<(draft: EditorStateDraft) => void>;
 export type MockTabState = StateStore<TabStateShape> & Mock<(draft: TabStateShape) => void>;
 
-export function createMockTextareaRef(
-  partial: Partial<HTMLTextAreaElement> = {},
-): TextareaRef {
+export function createMockTextareaRef(partial: Partial<HTMLTextAreaElement> = {}): TextareaRef {
   return {
     current: {
       selectionStart: 0,
@@ -180,7 +209,8 @@ export function createMockTextareaRef(
 }
 
 export function createKeyboardEvent(
-  partial: Partial<KeyboardEvent<HTMLTextAreaElement>> & Pick<KeyboardEvent<HTMLTextAreaElement>, 'key'>,
+  partial: Partial<KeyboardEvent<HTMLTextAreaElement>> &
+    Pick<KeyboardEvent<HTMLTextAreaElement>, 'key'>,
 ): KeyboardEvent<HTMLTextAreaElement> {
   return {
     preventDefault: vi.fn(),
@@ -226,7 +256,9 @@ export function createMockScrollContainerRef(
   };
 }
 
-export function createSetLocalContentMock(): Mock<(value: string | ((prev: string) => string)) => void> {
+export function createSetLocalContentMock(): Mock<
+  (value: string | ((prev: string) => string)) => void
+> {
   return vi.fn((value: string | ((prev: string) => string)) => {
     if (typeof value === 'function') {
       value('');

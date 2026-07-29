@@ -40,8 +40,7 @@ export type FlatTreeRow = {
 };
 
 /** CSS module custom properties (e.g. `--panel-width`). */
-export type CssCustomProperties = CSSProperties &
-  Record<`--${string}`, string | number>;
+export type CssCustomProperties = CSSProperties & Record<`--${string}`, string | number>;
 
 /** Return type of `useFileSystem` from LocalFS. */
 export type FileSystemApi = {
@@ -71,26 +70,14 @@ export type FileSystemApi = {
     content: string,
     root?: FileSystemDirectoryHandle | null,
   ) => Promise<boolean>;
-  readFileAtPath: (
-    path: string,
-    root?: FileSystemDirectoryHandle | null,
-  ) => Promise<string>;
-  deleteFileAtPath: (
-    path: string,
-    root?: FileSystemDirectoryHandle | null,
-  ) => Promise<boolean>;
+  readFileAtPath: (path: string, root?: FileSystemDirectoryHandle | null) => Promise<string>;
+  deleteFileAtPath: (path: string, root?: FileSystemDirectoryHandle | null) => Promise<boolean>;
   getFileHandleAtPath: (
     path: string,
     root?: FileSystemDirectoryHandle | null,
   ) => Promise<FileSystemFileHandle | null>;
-  createFolder: (
-    folderName: string,
-    dirHandle?: FileSystemDirectoryHandle | null,
-  ) => Promise<void>;
-  deleteEntry: (
-    name: string,
-    dirHandle?: FileSystemDirectoryHandle | null,
-  ) => Promise<void>;
+  createFolder: (folderName: string, dirHandle?: FileSystemDirectoryHandle | null) => Promise<void>;
+  deleteEntry: (name: string, dirHandle?: FileSystemDirectoryHandle | null) => Promise<void>;
   moveEntry: (
     sourceHandle: FileSystemHandle,
     destinationDirHandle: FileSystemDirectoryHandle,

@@ -1,4 +1,7 @@
 /** Message protocol for sandboxed preview → parent runtime errors. */
+import { isPreviewMessageShape } from '@/contracts/preview';
+import type { PreviewMessage } from './preview-types';
+
 export const PREVIEW_MESSAGE_SOURCE = 'zakamurai-preview';
 
 export const PREVIEW_MESSAGE_TYPES = {
@@ -7,7 +10,7 @@ export const PREVIEW_MESSAGE_TYPES = {
   NAVIGATE: 'navigate',
   EVIDENCE: 'evidence',
   RECONNECT: 'reconnect',
-};
+} as const;
 
 /**
  * Preview iframe sandbox tokens.
@@ -45,9 +48,9 @@ export const PREVIEW_ERROR_BRIDGE_SCRIPT = `(function(){
   try {
     post(${JSON.stringify(PREVIEW_MESSAGE_TYPES.NAVIGATE)}, '', { path: location.pathname || '' });
     setTimeout(function () {
-      var text = (document.body && document.body.innerText || '').replace(/\s+/g, ' ').slice(0, 4000);
+      var text = (document.body && document.body.innerText || '').replace(/\\s+/g, ' ').slice(0, 4000);
       var elements = Array.prototype.slice.call(document.querySelectorAll('h1,h2,h3,button,a,input,[role]'), 0, 80).map(function(el) {
-        return (el.getAttribute('role') || el.tagName.toLowerCase()) + ': ' + (el.getAttribute('aria-label') || el.innerText || el.value || '').replace(/\s+/g, ' ').slice(0, 160);
+        return (el.getAttribute('role') || el.tagName.toLowerCase()) + ': ' + (el.getAttribute('aria-label') || el.innerText || el.value || '').replace(/\\s+/g, ' ').slice(0, 160);
       }).filter(Boolean);
       post(${JSON.stringify(PREVIEW_MESSAGE_TYPES.EVIDENCE)}, '', { path: location.pathname || '', title: document.title || '', text: text, elements: elements, screenshotCaptured: false });
       try {
@@ -69,7 +72,7 @@ export const PREVIEW_ERROR_BRIDGE_SCRIPT = `(function(){
   } catch (_e) {}
 })();`;
 
-export function injectPreviewErrorBridge(html) {
+export function injectPreviewErrorBridge(html: string) {
   if (typeof html !== 'string' || !html) return html;
   if (html.includes('__zakamuraiPreviewBridge')) return html;
   const scriptTag = `<script>${PREVIEW_ERROR_BRIDGE_SCRIPT}</script>`;
@@ -82,26 +85,34 @@ export function injectPreviewErrorBridge(html) {
   return `${html}${scriptTag}`;
 }
 
-export function parsePreviewMessage(data) {
+export function parsePreviewMessage(data: unknown): PreviewMessage | null {
   if (!isPreviewMessageShape(data)) {
     return null;
   }
-  if (!Object.values(PREVIEW_MESSAGE_TYPES).includes(data.type)) {
+  const record = data as Record<string, unknown>;
+  if (
+    !Object.values(PREVIEW_MESSAGE_TYPES).includes(
+      record.type as (typeof PREVIEW_MESSAGE_TYPES)[keyof typeof PREVIEW_MESSAGE_TYPES],
+    )
+  ) {
     return null;
   }
-  const parsed = {
-    ...data,
-    message: data.message == null ? '' : String(data.message),
-    path: data.path == null ? data.path : String(data.path),
+  const parsed: PreviewMessage = {
+    source: String(record.source || ''),
+    type: String(record.type),
+    message: record.message == null ? '' : String(record.message),
+    path: record.path == null ? undefined : String(record.path),
   };
-  if (data.type === PREVIEW_MESSAGE_TYPES.EVIDENCE) {
-    parsed.title = data.title == null ? '' : String(data.title).slice(0, 300);
-    parsed.text = data.text == null ? '' : String(data.text).slice(0, 4000);
-    parsed.elements = Array.isArray(data.elements) ? data.elements.slice(0, 80).map(String) : [];
-    parsed.screenshotCaptured = Boolean(data.screenshotCaptured);
+  if (record.type === PREVIEW_MESSAGE_TYPES.EVIDENCE) {
+    parsed.title = record.title == null ? '' : String(record.title).slice(0, 300);
+    parsed.text = record.text == null ? '' : String(record.text).slice(0, 4000);
+    parsed.elements = Array.isArray(record.elements)
+      ? record.elements.slice(0, 80).map(String)
+      : [];
+    parsed.screenshotCaptured = Boolean(record.screenshotCaptured);
     parsed.screenshot =
-      typeof data.screenshot === 'string' && data.screenshot.startsWith('data:image/')
-        ? data.screenshot.slice(0, 500000)
+      typeof record.screenshot === 'string' && record.screenshot.startsWith('data:image/')
+        ? record.screenshot.slice(0, 500000)
         : '';
   }
   return parsed;
@@ -111,7 +122,7 @@ export function parsePreviewMessage(data) {
  * Allow only same-app preview paths. Reject absolute URLs, protocol-relative,
  * traversal (including encoded forms), and anything outside a `/preview` namespace.
  */
-export function sanitizePreviewPath(path) {
+export function sanitizePreviewPath(path: string): string | null {
   if (typeof path !== 'string' || !path) return null;
   let trimmed = path.trim();
   if (!trimmed.startsWith('/')) return null;
@@ -127,7 +138,6 @@ export function sanitizePreviewPath(path) {
 
   if (trimmed.includes('\\') || trimmed.includes('..')) return null;
   if (!trimmed.startsWith('/') || trimmed.startsWith('//')) return null;
-  // /preview, /preview/..., or /{base}/preview/...
   if (!/^(?:\/[^/]+)*\/preview(?:\/.*)?$/.test(trimmed)) return null;
   return trimmed;
 }
@@ -136,7 +146,11 @@ export function sanitizePreviewPath(path) {
  * Accept preview bridge messages only from the preview iframe window.
  * Same-origin previews must match the IDE origin; opaque frames report "null".
  */
-export function isTrustedPreviewMessage(event, iframeWindow, trustedOrigin = null) {
+export function isTrustedPreviewMessage(
+  event: MessageEvent,
+  iframeWindow: Window | null | undefined,
+  trustedOrigin: string | null = null,
+) {
   if (!event || !iframeWindow) return false;
   if (event.source !== iframeWindow) return false;
   const origin = event.origin;
@@ -149,4 +163,3 @@ export function isTrustedPreviewMessage(event, iframeWindow, trustedOrigin = nul
   }
   return !!parsePreviewMessage(event.data);
 }
-import { isPreviewMessageShape } from '@/contracts/preview';

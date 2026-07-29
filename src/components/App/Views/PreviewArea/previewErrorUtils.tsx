@@ -32,13 +32,17 @@ function truncateStack(stack: string): string {
   return result;
 }
 
-export function truncatePreviewError(message: string | null | undefined): string | null | undefined {
+export function truncatePreviewError(
+  message: string | null | undefined,
+): string | null | undefined {
   if (!message) return message;
   if (message.length <= MAX_ERROR_LENGTH) return message;
   return `${message.slice(0, MAX_ERROR_LENGTH)}...`;
 }
 
-export function formatEsbuildTransformError(error: EsbuildTransformError | null | undefined): string {
+export function formatEsbuildTransformError(
+  error: EsbuildTransformError | null | undefined,
+): string {
   if (!error) return 'Transform failed';
 
   const details: string[] = [];
@@ -351,9 +355,13 @@ export function isOpaqueScriptError(message: unknown): boolean {
   return /^Script error\.?(?:\s+at\s+:?\d*)?$/i.test(trimmed);
 }
 
+function getElementText(el: { textContent?: string | null; innerText?: string }): string {
+  return el.textContent?.trim() || el.innerText?.trim() || '';
+}
+
 function extractViteOverlayError(doc: Document): string | null {
   const overlay = doc.querySelector('#vite-error-overlay, vite-error-overlay');
-  const overlayText = overlay?.textContent?.trim();
+  const overlayText = overlay ? getElementText(overlay as HTMLElement) : '';
   if (overlayText) {
     return truncatePreviewError(overlayText) || overlayText;
   }
@@ -366,7 +374,7 @@ export function detectIframeLoadError(doc: Document | null | undefined): string 
   const overlayError = extractViteOverlayError(doc);
   if (overlayError) return overlayError;
 
-  const bodyText = doc.body.textContent?.trim() || '';
+  const bodyText = getElementText(doc.body);
   const title = doc.title || '';
 
   const transformError = normalizeTransformError(bodyText);

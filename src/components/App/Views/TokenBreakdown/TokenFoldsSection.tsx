@@ -1,7 +1,11 @@
 import type { TokenFoldsSectionProps } from './token-breakdown-types';
 import styles from './TokenFoldsSection.module.css';
 
-export default function TokenFoldsSection({ folds, foldLabel, collapsedFoldIds }: TokenFoldsSectionProps) {
+export default function TokenFoldsSection({
+  folds,
+  foldLabel,
+  collapsedFoldIds,
+}: TokenFoldsSectionProps) {
   return (
     <>
       <div className={styles.sectionHeader}>

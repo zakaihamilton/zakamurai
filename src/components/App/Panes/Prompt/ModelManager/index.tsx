@@ -1,6 +1,7 @@
 import { WEB_LLM_MODELS } from '@/components/AI/WebLLMModels';
 import Dialog from '@/components/ui/Dialog';
-import React, { useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
+import type { ModelManagerProps, ModelOption, ModelSortKey, ModelSortState } from '../prompt-types';
 import styles from './ModelManager.module.css';
 import ModelSearch from './ModelSearch';
 import ModelTable from './ModelTable';
@@ -16,10 +17,10 @@ export default function ModelManager({
   modelCacheWork,
   modelCacheProgress,
   modelCacheError,
-}) {
+}: ModelManagerProps) {
   const [searchTerm, setSearchTerm] = useState('');
-  const [sort, setSort] = useState(null);
-  const [modelPendingRemoval, setModelPendingRemoval] = useState(null);
+  const [sort, setSort] = useState<ModelSortState>(null);
+  const [modelPendingRemoval, setModelPendingRemoval] = useState<ModelOption | null>(null);
 
   const visibleModels = useMemo(() => {
     const query = searchTerm.trim().toLocaleLowerCase();
@@ -38,8 +39,8 @@ export default function ModelManager({
       const rightValue = modelValues(right, selectedModelId, cachedModelIds)[sort.key];
       const comparison =
         typeof leftValue === 'number'
-          ? leftValue - rightValue
-          : leftValue.localeCompare(rightValue, undefined, {
+          ? leftValue - (rightValue as number)
+          : String(leftValue).localeCompare(String(rightValue), undefined, {
               numeric: true,
               sensitivity: 'base',
             });
@@ -47,7 +48,7 @@ export default function ModelManager({
     });
   }, [cachedModelIds, searchTerm, selectedModelId, sort]);
 
-  const toggleSort = (key) => {
+  const toggleSort = (key: ModelSortKey) => {
     setSort((current) => ({
       key,
       direction:
@@ -61,6 +62,7 @@ export default function ModelManager({
         isOpen={isOpen}
         title="AI Models"
         onCancel={onCancel}
+        onConfirm={onCancel}
         footer={null}
         className={styles.modelDialog}
       >

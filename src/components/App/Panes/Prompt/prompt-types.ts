@@ -1,5 +1,12 @@
-import type { FileSystemApi } from '@/components/App/types';
-import type { AgentEvent, RoleEdge, RoleGraph, RoleKind, RoleNode } from '@/components/AI/types';
+import type { FileSystemApi, CssCustomProperties } from '@/components/App/types';
+import type {
+  AgentEvent,
+  RoleEdge,
+  RoleGraph,
+  RoleKind,
+  RoleNode,
+  WebLLMModel,
+} from '@/components/AI/types';
 import type { SelectOption } from '@/components/ui/types';
 import type {
   AgentSession,
@@ -13,10 +20,120 @@ import type {
 } from '@/components/state/domain-types';
 import type { StateStore } from '@/components/state/types';
 import type { ChangeEvent, FormEvent, KeyboardEvent, ReactNode } from 'react';
+import type { ExtendedEditorState } from '@/components/App/Views/EditorArea/types';
+
+export type WelcomeRequest = {
+  text: string;
+  scope: string;
+};
+
+export type ModelSortKey =
+  | 'model'
+  | 'bestFor'
+  | 'ram'
+  | 'storage'
+  | 'speed'
+  | 'status'
+  | 'searchText';
+
+export type ModelSortState = {
+  key: ModelSortKey;
+  direction: 'ascending' | 'descending';
+} | null;
+
+export type ModelManagerProps = {
+  isOpen: boolean;
+  selectedModelId: string;
+  cachedModelIds?: string[];
+  onCancel: () => void;
+  onModelCacheAction?: (model: ModelOption, action: 'cache' | 'uncache' | 'delete') => void;
+  modelCacheWork: string | null;
+  modelCacheProgress: string;
+  modelCacheError: string;
+};
+
+export type ModelCacheToggleProps = {
+  isCached: boolean;
+  isBusy: boolean;
+  disabled: boolean;
+  onToggle: () => void;
+};
+
+export type ModelSearchProps = {
+  searchTerm: string;
+  onSearchTermChange: (value: string) => void;
+};
+
+export type ModelTableProps = {
+  visibleModels: WebLLMModel[];
+  sort: ModelSortState;
+  onToggleSort: (key: ModelSortKey) => void;
+  selectedModelId: string;
+  cachedModelIds?: string[];
+  modelCacheWork: string | null;
+  onModelCacheAction?: (model: ModelOption, action: 'cache' | 'uncache' | 'delete') => void;
+  onRequestUncache: (model: ModelOption) => void;
+};
+
+export type RemoveCacheDialogProps = {
+  model: ModelOption | null;
+  onCancel: () => void;
+  onConfirm: () => void;
+};
+
+export type SessionManagerProps = {
+  activeSession: AgentSession | null;
+  onOpenTree: () => void;
+  isOpen?: boolean;
+};
+
+export type SessionDialogProps = {
+  sessionDialog: SessionDialogState;
+  runningSessionId: string | null;
+  isAIProcessing: boolean;
+  agentSessionState: StateStore<AgentSessionStateShape> | null;
+  promptUiState: StateStore<PromptUiStateShape>;
+};
+
+export type SessionTranscriptProps = {
+  messages?: AgentSessionMessage[];
+};
+
+export type SessionTreeDialogProps = {
+  isOpen: boolean;
+  sessions?: Record<string, AgentSession>;
+  activeSessionId?: string | null;
+  onCancel: () => void;
+  onSelect: (sessionId: string) => void;
+  onCreate: () => void;
+  onBranch: (sessionId: string) => void;
+  onRename: (sessionId: string) => void;
+  onDelete: (sessionId: string) => void;
+};
+
+export type UsePromptHistoryParams = {
+  val: string;
+  historyIndex: number;
+  draftVal: string;
+  promptUiState: StateStore<PromptUiStateShape>;
+};
+
+export type UsePromptLayoutParams = {
+  isMobile: boolean;
+  isOpen: boolean;
+  promptWidth: number;
+  animatedWidth: number;
+  promptUiState: StateStore<PromptUiStateShape>;
+};
+
+export type UsePromptLayoutResult = {
+  desktopWidth: string;
+};
 
 export type ModelOption = {
   id: string;
-  label: string;
+  label?: string;
+  name?: string;
   ramMB?: number;
   storageMB?: number;
 };
@@ -143,7 +260,7 @@ export type SessionDialogState =
 export type PromptContentProps = {
   isMobile: boolean;
   isOpen: boolean;
-  desktopWidth: number;
+  desktopWidth: string;
   isAIProcessing: boolean;
   isSystemProcessing: boolean;
   activeSession: AgentSession | null;
@@ -154,12 +271,12 @@ export type PromptContentProps = {
   onOpenTree: () => void;
   isAgentTreeOpen: boolean;
   sessionDialog: SessionDialogState;
-  agentSessionState: AgentSessionStateShape | null;
+  agentSessionState: StateStore<AgentSessionStateShape> | null;
   onCloseTree: () => void;
   onSelectSession: (sessionId: string) => void;
-  onCreateSession: (name: string) => void;
+  onCreateSession: () => void;
   onBranchSession: (sessionId: string) => void;
-  onRenameSession: (sessionId: string, name: string) => void;
+  onRenameSession: (sessionId: string) => void;
   onDeleteSession: (sessionId: string) => void;
   runningSessionId: string | null;
   promptUiState: StateStore<PromptUiStateShape>;
@@ -179,8 +296,11 @@ export type PromptContentProps = {
   selectedModelInfo: { id: string; name?: string };
   cachedModelIds: string[];
   onCloseModelManager: () => void;
-  onModelCacheAction: (action: string, modelId?: string) => void;
-  modelCacheWork: unknown;
+  onModelCacheAction: (
+    model: ModelOption,
+    action: 'cache' | 'delete' | 'uncache',
+  ) => void | Promise<void>;
+  modelCacheWork: string | null;
   modelCacheProgress: string;
   modelCacheError: string;
   value: string;
@@ -215,7 +335,7 @@ export type UseAgentRunnerParams = {
   }) => AgentSessionMessage;
   fs: FileSystemApi;
   tabState: StateStore<TabStateShape>;
-  editorState: StateStore<EditorStateShape>;
+  editorState: StateStore<ExtendedEditorState>;
   sidebarState: StateStore<SidebarStateShape>;
   logState: StateStore<LogStateShape>;
 };
@@ -232,4 +352,3 @@ export type UsePromptSessionControlsParams = {
   isAIProcessing: boolean;
   isRoleGraphOpen: boolean;
 };
-

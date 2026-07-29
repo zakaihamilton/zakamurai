@@ -44,7 +44,11 @@ describe('TabContextMenu', () => {
 
   it('returns null when tab is missing', () => {
     const { container } = render(
-      <TabContextMenu tab={null as unknown as import('@/components/state/domain-types').Tab} position={{ x: 0, y: 0 }} {...handlers} />,
+      <TabContextMenu
+        tab={null as unknown as import('@/components/state/domain-types').Tab}
+        position={{ x: 0, y: 0 }}
+        {...handlers}
+      />,
     );
     expect(container.firstChild).toBeNull();
   });

@@ -28,27 +28,31 @@ export const SidebarState = createState<SidebarStateShape>('SidebarState');
 export const SidebarUiState = createState<SidebarUiStateShape>('SidebarUiState');
 
 export default function Sidebar() {
-  const sidebarState = requireStore(SidebarState.useState([
-    'isSidebarOpen',
-    'isSidebarPopupOpen',
-    'folderTree',
-    'sidebarWidth',
-    'expandedFolders',
-    'draggedItem',
-  ]));
+  const sidebarState = requireStore(
+    SidebarState.useState([
+      'isSidebarOpen',
+      'isSidebarPopupOpen',
+      'folderTree',
+      'sidebarWidth',
+      'expandedFolders',
+      'draggedItem',
+    ]),
+  );
   const { isSidebarOpen, folderTree = [], sidebarWidth, expandedFolders = {} } = sidebarState;
   const { projectName, isMobile } = requireStore(AppState.useState(['projectName', 'isMobile']));
   const appState = AppState.usePassiveState();
   const fs = useFileSystem();
   const tabState = requireStore(TabState.useState(['activeTabId', 'openTabs']));
   const editorState = EditorState.usePassiveState();
-  const sidebarUiState = requireStore(SidebarUiState.useState(null, {
-    filterText: '',
-    loadingPaths: {},
-    dropTargetPath: null,
-    animatedWidth: sidebarWidth ?? 0,
-    creatingAt: null,
-  }));
+  const sidebarUiState = requireStore(
+    SidebarUiState.useState(null, {
+      filterText: '',
+      loadingPaths: {},
+      dropTargetPath: null,
+      animatedWidth: sidebarWidth ?? 0,
+      creatingAt: null,
+    }),
+  );
   const {
     filterText = '',
     loadingPaths = {},
@@ -57,30 +61,43 @@ export default function Sidebar() {
     creatingAt = null,
   } = sidebarUiState || {};
   const setSidebarUiValue = useCallback(
-    <K extends SidebarUiKey>(key: K, nextValue: SidebarUiStateShape[K] | ((current: SidebarUiStateShape[K]) => SidebarUiStateShape[K])) => {
+    <K extends SidebarUiKey>(
+      key: K,
+      nextValue:
+        | SidebarUiStateShape[K]
+        | ((current: SidebarUiStateShape[K]) => SidebarUiStateShape[K]),
+    ) => {
       sidebarUiState((draft) => {
-        draft[key] = typeof nextValue === 'function'
-          ? (nextValue as (current: SidebarUiStateShape[K]) => SidebarUiStateShape[K])(draft[key])
-          : nextValue;
+        draft[key] =
+          typeof nextValue === 'function'
+            ? (nextValue as (current: SidebarUiStateShape[K]) => SidebarUiStateShape[K])(draft[key])
+            : nextValue;
       });
     },
     [sidebarUiState],
   );
   const setLoadingPaths = useCallback(
-    (nextValue: SetStateAction<Record<string, boolean>>) => setSidebarUiValue('loadingPaths', nextValue as SidebarUiStateShape['loadingPaths']),
+    (nextValue: SetStateAction<Record<string, boolean>>) =>
+      setSidebarUiValue('loadingPaths', nextValue as SidebarUiStateShape['loadingPaths']),
     [setSidebarUiValue],
   );
   const setDropTargetPath = useCallback(
-    (nextValue: SetStateAction<string | null>) => setSidebarUiValue('dropTargetPath', nextValue as SidebarUiStateShape['dropTargetPath']),
+    (nextValue: SetStateAction<string | null>) =>
+      setSidebarUiValue('dropTargetPath', nextValue as SidebarUiStateShape['dropTargetPath']),
     [setSidebarUiValue],
   );
   const setAnimatedWidth = useCallback(
-    (nextValue: SetStateAction<number>) => setSidebarUiValue('animatedWidth', nextValue as SidebarUiStateShape['animatedWidth']),
+    (nextValue: SetStateAction<number>) =>
+      setSidebarUiValue('animatedWidth', nextValue as SidebarUiStateShape['animatedWidth']),
     [setSidebarUiValue],
   );
   const deferredFilterText = useDeferredValue(filterText);
   const searchInputRef = useRef<HTMLInputElement | null>(null);
-  const syncedFsRef = useRef<{ files: TreeNode[] | null; mode: string | null; version: number | null }>({ files: null, mode: null, version: null });
+  const syncedFsRef = useRef<{
+    files: TreeNode[] | null;
+    mode: string | null;
+    version: number | null;
+  }>({ files: null, mode: null, version: null });
   const { addNotification } = useNotification();
 
   useEffect(() => {

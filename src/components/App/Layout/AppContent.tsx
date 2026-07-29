@@ -10,21 +10,25 @@ import WorkspaceArea from './WorkspaceArea';
 
 export default function AppContent() {
   const appState = requireStore(
-    requireStore(AppState.useState([
-      'theme',
-      'showShortcuts',
-      'showCompletionDebug',
-      'isResizing',
-      'isMobile',
-    ])),
+    requireStore(
+      AppState.useState([
+        'theme',
+        'showShortcuts',
+        'showCompletionDebug',
+        'isResizing',
+        'isMobile',
+      ]),
+    ),
   );
   const sidebarState = requireStore(
-    requireStore(SidebarState.useState([
-      'isSidebarOpen',
-      'isSidebarPopupOpen',
-      'isAIInputPopupOpen',
-      'sidebarWidth',
-    ])),
+    requireStore(
+      SidebarState.useState([
+        'isSidebarOpen',
+        'isSidebarPopupOpen',
+        'isAIInputPopupOpen',
+        'sidebarWidth',
+      ]),
+    ),
   );
   const { theme, showShortcuts, showCompletionDebug, isResizing = false, isMobile } = appState;
   const { isSidebarOpen, isSidebarPopupOpen, isAIInputPopupOpen, sidebarWidth } = sidebarState;

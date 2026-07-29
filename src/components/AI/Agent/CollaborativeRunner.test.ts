@@ -1,10 +1,12 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { AgentEvent, AskWebLLM, RoleGraph } from '../types';
+import { beforeEach, describe, expect, it, vi, type Mock } from 'vitest';
 import { runCollaborativeAgent } from './CollaborativeRunner';
 import {
   createDefaultRoleGraph,
   createRoleNode,
   parsePlanSummary,
   parseReviewSummary,
+  ROLE_GRAPH_VERSION,
 } from './Roles';
 
 vi.mock('../WebLLMAPI', () => ({ askWebLLM: vi.fn() }));
@@ -28,12 +30,12 @@ describe('Roles parsers', () => {
 });
 
 describe('runCollaborativeAgent', () => {
-  let askWebLLM;
+  let askWebLLM: Mock<AskWebLLM>;
 
   beforeEach(async () => {
     vi.clearAllMocks();
     vi.resetAllMocks();
-    ({ askWebLLM } = await import('../WebLLMAPI'));
+    ({ askWebLLM } = (await import('../WebLLMAPI')) as unknown as { askWebLLM: Mock<AskWebLLM> });
   });
 
   it('runs planner → coder → reviewer and returns shared changes', async () => {
@@ -50,7 +52,7 @@ describe('runCollaborativeAgent', () => {
       );
 
     const validate = vi.fn().mockResolvedValue('Checks passed.');
-    const events = [];
+    const events: AgentEvent[] = [];
     const result = await runCollaborativeAgent({
       request: 'update a',
       activeFile: 'src/a.js',
@@ -61,8 +63,8 @@ describe('runCollaborativeAgent', () => {
     });
 
     expect(result.changes[0].after).toBe('const a = 2;');
-    expect(result.review.approved).toBe(true);
-    expect(result.plan.files).toContain('src/a.js');
+    expect(result.review!.approved).toBe(true);
+    expect(result.plan!.files).toContain('src/a.js');
     expect(events.some((event) => event.agentRole === 'planner')).toBe(true);
     expect(events.some((event) => event.agentRole === 'coder')).toBe(true);
     expect(events.some((event) => event.agentRole === 'reviewer')).toBe(true);
@@ -92,14 +94,15 @@ describe('runCollaborativeAgent', () => {
     });
 
     expect(result.changes[0].after).toBe('const a = 2;');
-    expect(result.review.approved).toBe(true);
+    expect(result.review!.approved).toBe(true);
     expect(askWebLLM).toHaveBeenCalledTimes(7);
   });
 
   it('uses per-role models and custom role graphs', async () => {
     const planner = createRoleNode({ id: 'p1', kind: 'planner', modelId: 'model-plan' });
     const coder = createRoleNode({ id: 'c1', kind: 'coder', modelId: 'model-code' });
-    const graph = {
+    const graph: RoleGraph = {
+      version: ROLE_GRAPH_VERSION,
       entryRoleId: 'p1',
       roles: [planner, coder],
       edges: [{ from: 'p1', to: 'c1', when: 'always' }],
@@ -120,9 +123,9 @@ describe('runCollaborativeAgent', () => {
     });
 
     expect(result.changes[0].after).toBe('done');
-    expect(askWebLLM.mock.calls[0][3].model).toBe('model-plan');
-    expect(askWebLLM.mock.calls[1][3].model).toBe('model-code');
-    expect(askWebLLM.mock.calls[2][3].model).toBe('model-code');
+    expect(askWebLLM.mock.calls[0]?.[3]?.model).toBe('model-plan');
+    expect(askWebLLM.mock.calls[1]?.[3]?.model).toBe('model-code');
+    expect(askWebLLM.mock.calls[2]?.[3]?.model).toBe('model-code');
   });
 
   it('falls back to the session model when a role has no modelId', async () => {
@@ -143,7 +146,11 @@ describe('runCollaborativeAgent', () => {
       roleGraph: graph,
     });
 
-    expect(askWebLLM.mock.calls.every((call) => call[3].model === 'session-model')).toBe(true);
+    expect(
+      askWebLLM.mock.calls.every(
+        (call: Parameters<AskWebLLM>) => call[3]?.model === 'session-model',
+      ),
+    ).toBe(true);
   });
 
   it('passes inherited conversation context into the first team role', async () => {
@@ -163,7 +170,7 @@ describe('runCollaborativeAgent', () => {
       priorContext: 'User: We already chose accessible controls.',
     });
 
-    expect(askWebLLM.mock.calls[0][3].messages[1].content).toContain(
+    expect(askWebLLM.mock.calls[0]?.[3]?.messages?.[1]?.content).toContain(
       'We already chose accessible controls.',
     );
   });
@@ -172,7 +179,8 @@ describe('runCollaborativeAgent', () => {
     const planner = createRoleNode({ id: 'p1', kind: 'planner' });
     const coder = createRoleNode({ id: 'c1', kind: 'coder' });
     const reviewer = createRoleNode({ id: 'r1', kind: 'reviewer' });
-    const graph = {
+    const graph: RoleGraph = {
+      version: ROLE_GRAPH_VERSION,
       entryRoleId: 'p1',
       roles: [planner, coder, reviewer],
       edges: [
@@ -205,7 +213,7 @@ describe('runCollaborativeAgent', () => {
     });
 
     expect(result.changes[0].after).toBe('v2');
-    expect(result.review.approved).toBe(false);
+    expect(result.review!.approved).toBe(false);
     expect(result.summary).toContain('unresolved notes');
   });
 
@@ -217,7 +225,8 @@ describe('runCollaborativeAgent', () => {
       systemPrompt: 'Check security.',
     });
     const reviewer = createRoleNode({ id: 'rev', kind: 'reviewer', label: 'Review' });
-    const graph = {
+    const graph: RoleGraph = {
+      version: ROLE_GRAPH_VERSION,
       entryRoleId: 'sec',
       roles: [custom, reviewer],
       edges: [{ from: 'sec', to: 'rev', when: 'always' }],
@@ -237,7 +246,7 @@ describe('runCollaborativeAgent', () => {
     });
 
     expect(result.roleSummaries.sec).toBe('secured');
-    expect(result.review.approved).toBe(true);
+    expect(result.review!.approved).toBe(true);
     expect(askWebLLM).toHaveBeenCalledTimes(2);
   });
 
@@ -264,6 +273,7 @@ describe('runCollaborativeAgent', () => {
         files: { 'a.js': 'a' },
         model: 'test',
         roleGraph: {
+          version: ROLE_GRAPH_VERSION,
           entryRoleId: 'p1',
           roles: [planner, coder, reviewer],
           edges: [{ from: 'c1', to: 'r1', when: 'always' }],
@@ -296,7 +306,8 @@ describe('runCollaborativeAgent', () => {
     const planner = createRoleNode({ id: 'p1', kind: 'planner' });
     const coder = createRoleNode({ id: 'c1', kind: 'coder' });
     const reviewer = createRoleNode({ id: 'r1', kind: 'reviewer' });
-    const graph = {
+    const graph: RoleGraph = {
+      version: ROLE_GRAPH_VERSION,
       entryRoleId: 'p1',
       roles: [planner, coder, reviewer],
       edges: [
@@ -321,7 +332,7 @@ describe('runCollaborativeAgent', () => {
       roleGraph: graph,
     });
 
-    expect(result.review.approved).toBe(false);
+    expect(result.review!.approved).toBe(false);
     expect(result.summary).toContain('unresolved notes');
     expect(result.summary).toContain('needs work');
   });

@@ -5,6 +5,7 @@ import {
   getPreviewServiceWorkerScope,
   isValidPreviewHandshake,
   originMatches,
+  type PreviewHandshakeEvent,
 } from './previewOrigins';
 import {
   PREVIEW_CONNECT,
@@ -89,18 +90,29 @@ async function handleRequest(message: PreviewRequestMessage): Promise<PreviewRes
   const body = message.bodyBase64
     ? Uint8Array.from(atob(message.bodyBase64), (char) => char.charCodeAt(0))
     : null;
+  const bridge = container.serverBridge as typeof container.serverBridge & {
+    handleRequest: (
+      port: number,
+      method: string,
+      path: string,
+      headers: Record<string, string>,
+      body: Uint8Array | null,
+    ) => Promise<{
+      body?: Uint8Array | ArrayLike<number>;
+      statusCode?: number;
+      statusMessage?: string;
+      headers?: Record<string, string>;
+    }>;
+  };
   return toResponsePayload(
-    await container.serverBridge.handleRequest(
-      3000,
-      message.method,
-      message.path,
-      message.headers || {},
-      body,
-    ),
+    await bridge.handleRequest(3000, message.method, message.path, message.headers || {}, body),
   );
 }
 
-function bindPortHandler(port: MessagePort, { sessionId, onError, onFirstRequest }: PortHandlerContext) {
+function bindPortHandler(
+  port: MessagePort,
+  { sessionId, onError, onFirstRequest }: PortHandlerContext,
+) {
   let sawRequest = false;
   port.onmessage = async ({ data: request }: MessageEvent<PreviewRequestMessage>) => {
     if (!isPreviewRequest(request, sessionId)) return;
@@ -321,9 +333,9 @@ export default function PreviewBridge({
           : null;
 
       const handshakeOk =
-        isValidPreviewHandshake(event, {
+        isValidPreviewHandshake(event as PreviewHandshakeEvent, {
           expectedOrigin: previewOrigin,
-          expectedSource,
+          expectedSource: (expectedSource ?? null) as MessageEventSource | null,
           sessionId,
           type: PREVIEW_CONNECT,
           version: PREVIEW_PROTOCOL_VERSION,
@@ -344,7 +356,8 @@ export default function PreviewBridge({
         onError,
       });
       try {
-        (event.source || expectedSource)?.postMessage(
+        const target = (event.source || expectedSource) as Window;
+        target?.postMessage(
           { type: PREVIEW_CONNECT, version: PREVIEW_PROTOCOL_VERSION, sessionId },
           previewOrigin,
           [channel.port2],

@@ -12,7 +12,9 @@ vi.mock('@/components/Workspace', () => ({
 
 describe('ChangeSetPanel', () => {
   it('renders null when active change set is not found', () => {
-    vi.mocked(ChangeSetState.useState).mockReturnValue(makeChangeSetState({ activeId: 'cs1', items: [] }));
+    vi.mocked(ChangeSetState.useState).mockReturnValue(
+      makeChangeSetState({ activeId: 'cs1', items: [] }),
+    );
     const { container } = render(<ChangeSetPanel />);
     expect(container.firstChild).toBeNull();
   });

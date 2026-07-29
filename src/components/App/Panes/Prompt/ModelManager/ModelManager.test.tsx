@@ -77,7 +77,7 @@ describe('ModelManager', () => {
     );
 
     expect(screen.getByText('AI Models')).toBeDefined();
-    expect(screen.getByRole('searchbox', { name: 'Search AI models' })).toBeDefined();
+    expect(screen.getByRole('searchbox', { name: 'Search models' })).toBeDefined();
     expect(screen.getByRole('columnheader', { name: 'Cache' })).toBeDefined();
   });
 

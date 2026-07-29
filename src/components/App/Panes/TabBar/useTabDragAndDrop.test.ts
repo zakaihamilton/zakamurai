@@ -49,9 +49,24 @@ describe('useTabDragAndDrop', () => {
   it('handleDrop reorders tabs', () => {
     const draft: TabStateShape = {
       openTabs: [
-        createMockTab({ id: 'tab1', label: 'Tab 1', type: 'file', file: { name: 'tab1.js', path: ['tab1.js'] } }),
-        createMockTab({ id: 'tab2', label: 'Tab 2', type: 'file', file: { name: 'tab2.js', path: ['tab2.js'] } }),
-        createMockTab({ id: 'tab3', label: 'Tab 3', type: 'file', file: { name: 'tab3.js', path: ['tab3.js'] } }),
+        createMockTab({
+          id: 'tab1',
+          label: 'Tab 1',
+          type: 'file',
+          file: { name: 'tab1.js', path: ['tab1.js'] },
+        }),
+        createMockTab({
+          id: 'tab2',
+          label: 'Tab 2',
+          type: 'file',
+          file: { name: 'tab2.js', path: ['tab2.js'] },
+        }),
+        createMockTab({
+          id: 'tab3',
+          label: 'Tab 3',
+          type: 'file',
+          file: { name: 'tab3.js', path: ['tab3.js'] },
+        }),
       ],
       activeTabId: 'tab1',
       lastCodeTabId: 'tab1',
@@ -70,7 +85,7 @@ describe('useTabDragAndDrop', () => {
     const e = createMockDragEvent('tab1');
     act(() => result.current.handleDrop(e, 'tab3'));
 
-    expect(draft.openTabs.map((t) => t.id)).toEqual(['tab2', 'tab3', 'tab1']);
+    expect(tabState.openTabs.map((t) => t.id)).toEqual(['tab2', 'tab3', 'tab1']);
     expect(resetDragState).toHaveBeenCalled();
   });
 
@@ -96,8 +111,18 @@ describe('useTabDragAndDrop', () => {
   it('handleDropOnBar moves tab to end', () => {
     const draft: TabStateShape = {
       openTabs: [
-        createMockTab({ id: 'tab1', label: 'Tab 1', type: 'file', file: { name: 'tab1.js', path: ['tab1.js'] } }),
-        createMockTab({ id: 'tab2', label: 'Tab 2', type: 'file', file: { name: 'tab2.js', path: ['tab2.js'] } }),
+        createMockTab({
+          id: 'tab1',
+          label: 'Tab 1',
+          type: 'file',
+          file: { name: 'tab1.js', path: ['tab1.js'] },
+        }),
+        createMockTab({
+          id: 'tab2',
+          label: 'Tab 2',
+          type: 'file',
+          file: { name: 'tab2.js', path: ['tab2.js'] },
+        }),
       ],
       activeTabId: 'tab1',
       lastCodeTabId: 'tab1',
@@ -116,7 +141,7 @@ describe('useTabDragAndDrop', () => {
     const e = createMockDragEvent('tab1');
     act(() => result.current.handleDropOnBar(e));
 
-    expect(draft.openTabs.map((t) => t.id)).toEqual(['tab2', 'tab1']);
+    expect(tabState.openTabs.map((t) => t.id)).toEqual(['tab2', 'tab1']);
     expect(resetDragState).toHaveBeenCalled();
   });
 

@@ -15,10 +15,7 @@ export const isJsonPath = (filePath = ''): boolean =>
 
 export const countLines = (value = ''): number => (value ? value.split('\n').length : 1);
 
-export const getLineColumn = (
-  code = '',
-  index = 0,
-): { line: number; column: number } => {
+export const getLineColumn = (code = '', index = 0): { line: number; column: number } => {
   const safeIndex = Math.max(0, Math.min(index, code.length));
   let line = 1;
   let column = 1;

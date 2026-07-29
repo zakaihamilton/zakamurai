@@ -36,7 +36,7 @@ describe('TokenNavigationSection', () => {
         end: 5,
       },
       {
-        text: 'someText',
+        name: 'someText',
         start: 10,
         end: 15,
       },

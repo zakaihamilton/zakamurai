@@ -168,9 +168,7 @@ describe('PreviewBridge', () => {
     const { getBridgePort } = stubMessageChannel();
 
     const { Compiler } = await import('@/utils/compiler');
-    vi.spyOn(Compiler, 'getContainer').mockReturnValue(
-      mockCompilerContainer({ handleRequest }),
-    );
+    vi.spyOn(Compiler, 'getContainer').mockReturnValue(mockCompilerContainer({ handleRequest }));
 
     const externalWindow = createMockPreviewWindow();
     const externalPreviewRef = mockExternalPreviewRef(externalWindow);
@@ -331,9 +329,7 @@ describe('PreviewBridge', () => {
     const { getBridgePort } = stubMessageChannel();
 
     const { Compiler } = await import('@/utils/compiler');
-    vi.spyOn(Compiler, 'getContainer').mockReturnValue(
-      mockCompilerContainer({ handleRequest }),
-    );
+    vi.spyOn(Compiler, 'getContainer').mockReturnValue(mockCompilerContainer({ handleRequest }));
 
     const externalWindow = createMockPreviewWindow();
     render(

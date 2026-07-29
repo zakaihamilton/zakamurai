@@ -609,7 +609,9 @@ console.error("Transform failed with 1 error");`,
         expect(url).toBe('https://www.zakamurai.com/preview/dist/assets/main.js');
         return {
           ok: false,
-          headers: { get: (name: string) => (name === 'content-type' ? 'text/html; charset=utf-8' : null) },
+          headers: {
+            get: (name: string) => (name === 'content-type' ? 'text/html; charset=utf-8' : null),
+          },
           text: async () =>
             '<!DOCTYPE html><html><head><title>404: This page could not be found.</title></head><body>404</body></html>',
         };
@@ -634,7 +636,9 @@ console.error("Transform failed with 1 error");`,
     it('ignores successful JavaScript bundles that contain ERROR: substrings', async () => {
       const fetchImpl = asFetchImpl(async () => ({
         ok: true,
-        headers: { get: (name: string) => (name === 'content-type' ? 'application/javascript' : null) },
+        headers: {
+          get: (name: string) => (name === 'content-type' ? 'application/javascript' : null),
+        },
         text: async () =>
           'var React={};throw Error("Objects are not valid as a React child");details.push(`${where}: ERROR: ${text}`);',
       }));

@@ -79,7 +79,9 @@ function buildInitialValues(): InitialAppValues {
     files: defaultFiles as InitialAppValues['files'],
     contents: restoredContents,
     theme: Settings.getTheme() || 'dark',
-    tabs: (Settings.getOpenTabs() || recoveryCheckpoint?.openTabs || []) as InitialAppValues['tabs'],
+    tabs: (Settings.getOpenTabs() ||
+      recoveryCheckpoint?.openTabs ||
+      []) as InitialAppValues['tabs'],
     activeTabId: Settings.getActiveTabId() || recoveryCheckpoint?.activeTabId || null,
     lastCodeTabId: Settings.getLastCodeTabId() || null,
     aiLogs: Settings.getAILogs() || [],
@@ -221,7 +223,9 @@ function AppReady({ initialValues }: AppReadyProps) {
   });
 
   useEffect(() => {
-    bindWebLLMStore((webLLMState ?? null) as import('@/components/AI/types').StateHandle<WebLLMStateDraft> | null);
+    bindWebLLMStore(
+      (webLLMState ?? null) as import('@/components/AI/types').StateHandle<WebLLMStateDraft> | null,
+    );
     return () => bindWebLLMStore(null);
   }, [webLLMState]);
 
@@ -263,7 +267,11 @@ function AppReady({ initialValues }: AppReadyProps) {
 
   useEffect(() => {
     const rootName = fs.rootHandle?.name;
-    if (rootName && syncedRootHandleRef.current !== fs.rootHandle && appState.projectName !== rootName) {
+    if (
+      rootName &&
+      syncedRootHandleRef.current !== fs.rootHandle &&
+      appState.projectName !== rootName
+    ) {
       appState((draft) => {
         draft.projectName = rootName;
       });

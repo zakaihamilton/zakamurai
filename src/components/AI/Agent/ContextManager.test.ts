@@ -18,7 +18,9 @@ describe('AgentContextManager', () => {
     context.record('empty', '');
     expect(context.toString()).toContain('[message]');
     expect(formatVerificationResult()).toBe('Validation is unavailable.');
-    expect(formatVerificationResult({ output: 'done' })).toContain('"status":"unavailable"');
+    expect(formatVerificationResult({ output: 'done', status: 'unavailable' })).toContain(
+      '"status":"unavailable"',
+    );
     expect(formatVerificationResult({ status: 'passed', diagnostics: '' })).toContain(
       '"diagnostics":""',
     );

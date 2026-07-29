@@ -1,4 +1,5 @@
 import type { DiagnosticEvent } from '@/contracts/runtime';
+import type { SourceLocation } from '@/utils/navigation/types';
 
 // ---------------------------------------------------------------------------
 // Shared domain types
@@ -67,8 +68,14 @@ export interface PendingDiff {
   changeSetId?: string;
 }
 
+export interface NavigationHistoryEntry {
+  filePath: string;
+  label: string;
+  loc: SourceLocation;
+}
+
 export interface NavigationHistory {
-  stack: unknown[];
+  stack: NavigationHistoryEntry[];
   currentIndex: number;
 }
 
@@ -193,7 +200,12 @@ export interface SidebarStateShape {
   folderTree: TreeNode[];
   sidebarWidth: number;
   expandedFolders: Record<string, boolean>;
-  draggedItem?: unknown;
+  draggedItem?: {
+    path?: string[];
+    handle?: FileSystemHandle;
+    type?: string;
+    name?: string;
+  } | null;
 }
 
 export interface SidebarUiStateShape {
@@ -201,7 +213,7 @@ export interface SidebarUiStateShape {
   loadingPaths: Record<string, boolean>;
   dropTargetPath: string | null;
   animatedWidth: number;
-  creatingAt: string | null;
+  creatingAt: { pathStr: string; type: string } | null;
 }
 
 export interface TabStateShape {

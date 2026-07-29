@@ -1,27 +1,16 @@
-import { Icons } from '@/components/ui/Icons';
-import React from 'react';
+import type { ModelSearchProps } from '../prompt-types';
 import styles from './ModelSearch.module.css';
 
-export default function ModelSearch({ searchTerm, onSearchTermChange }) {
+export default function ModelSearch({ searchTerm, onSearchTermChange }: ModelSearchProps) {
   return (
-    <div className={styles.modelSearch}>
-      <Icons.Search size={14} />
+    <label className={styles.search}>
+      <span className={styles.searchLabel}>Search models</span>
       <input
         type="search"
-        aria-label="Search AI models"
-        placeholder="Search models, capabilities, or status..."
         value={searchTerm}
         onChange={(event) => onSearchTermChange(event.target.value)}
+        placeholder="Filter by name, requirement, or capability"
       />
-      {searchTerm && (
-        <button
-          type="button"
-          onClick={() => onSearchTermChange('')}
-          aria-label="Clear model search"
-        >
-          <Icons.Close size={14} />
-        </button>
-      )}
-    </div>
+    </label>
   );
 }

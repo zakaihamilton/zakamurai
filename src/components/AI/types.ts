@@ -1,4 +1,6 @@
 import type { AiChange } from '@/contracts/ai';
+import type { ChangeSetStateShape } from '@/components/state/domain-types';
+import type { StateStore } from '@/components/state/types';
 
 /** Updater callback for proxy-based state stores. */
 export type DraftUpdater<T extends Record<string, unknown> = Record<string, unknown>> = (
@@ -6,8 +8,9 @@ export type DraftUpdater<T extends Record<string, unknown> = Record<string, unkn
 ) => void;
 
 /** State handle: callable updater with snapshot properties on the function object. */
-export type StateHandle<T extends Record<string, unknown> = Record<string, unknown>> =
-  DraftUpdater<T> & T;
+export type StateHandle<T extends Record<string, unknown> = Record<string, unknown>> = T & {
+  (updater: DraftUpdater<T>): void;
+};
 
 export type FileMap = Record<string, string>;
 
@@ -195,10 +198,7 @@ export type SemanticSearchResult = {
 };
 
 export type WorkspaceIndex = {
-  queryText: (
-    query: string,
-    limit: number,
-  ) => Promise<Array<{ path: string; preview: string }>>;
+  queryText: (query: string, limit: number) => Promise<Array<{ path: string; preview: string }>>;
 };
 
 export type WebLLMMessage = {
@@ -295,7 +295,7 @@ export type TabState = {
 
 export type FileSystemLike = {
   rootHandle?: FileSystemDirectoryHandle | null;
-  mode?: string;
+  mode?: string | null;
   isReady?: boolean;
   getFileHandleAtPath?: (path: string) => Promise<FileSystemFileHandle | null>;
   readFile?: (handle: FileSystemFileHandle) => Promise<string>;
@@ -311,7 +311,7 @@ export type ApplyAgentChangesStates = {
   editorState: StateHandle<EditorStateDraft> | null;
   sidebarState?: StateHandle<SidebarStateDraft> | null;
   logState?: StateHandle<LogStateDraft> | null;
-  changeSetState?: StateHandle<ChangeSetStateDraft> | null;
+  changeSetState?: StateStore<ChangeSetStateShape> | null;
   request?: string;
   validation?: unknown;
 };
@@ -347,12 +347,7 @@ export type RunAgentOptions = {
   selectedLines?: number[];
   files: FileMap;
   model: string;
-  validate?: (
-    files: FileMap,
-  ) =>
-    | Promise<VerificationResult | string>
-    | VerificationResult
-    | string;
+  validate?: (files: FileMap) => Promise<VerificationResult | string> | VerificationResult | string;
   runProjectCheck?: (check: string, files: FileMap) => Promise<string>;
   inspectPreview?: (files: FileMap) => Promise<unknown>;
   retrieveContext?: (query: string, k: number) => Promise<SemanticSearchResult[]>;
@@ -375,7 +370,10 @@ export type RunAgentResult = {
   workspace: import('./Agent/Workspace').AgentWorkspace;
 };
 
-export type RunCollaborativeAgentOptions = Omit<RunAgentOptions, 'systemPrompt' | 'allowedActions' | 'maxTurns' | 'agentRole' | 'workspace'> & {
+export type RunCollaborativeAgentOptions = Omit<
+  RunAgentOptions,
+  'systemPrompt' | 'allowedActions' | 'maxTurns' | 'agentRole' | 'workspace'
+> & {
   roleGraph?: RoleGraph | null;
   onEvent?: AgentEventHandler;
 };
@@ -395,10 +393,7 @@ export type SnapshotOptions = {
   onSkipped?: (info: { path: string; size: number; reason: string }) => void;
 };
 
-export type EsbuildTransform = (
-  content: string,
-  options: { loader: string },
-) => Promise<void>;
+export type EsbuildTransform = (content: string, options: { loader: string }) => Promise<void>;
 
 /** Re-export contract type for convenience in AI modules. */
 export type { AiChange };

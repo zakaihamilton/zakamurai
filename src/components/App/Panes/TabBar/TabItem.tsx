@@ -1,11 +1,15 @@
+import type { Tab } from '@/components/state/domain-types';
+import type { MouseEvent } from 'react';
 import { Icons } from '@/components/ui/Icons';
 import Tooltip from '@/components/ui/Tooltip';
 import { isMediaFile } from '@/utils/file';
-import { FILE_VIEW_TYPES, getFileViewByType } from '@/utils/fileViews';
+import { FILE_VIEW_TYPES, getFileViewByType, type FileViewType } from '@/utils/fileViews';
+import type { TabItemProps } from './tab-types';
 import styles from './TabItem.module.css';
 
-const getTabViewType = (tab) => {
-  if (tab.type === 'file') return getFileViewByType(tab.file?.name, tab.viewType).label;
+const getTabViewType = (tab: Tab): string => {
+  if (tab.type === 'file')
+    return getFileViewByType(tab.file?.name ?? '', (tab.viewType ?? '') as FileViewType).label;
   if (tab.type === 'token-breakdown') return 'Token Breakdown';
   if (tab.type === 'logs') return 'Logs';
   if (tab.type === 'preview') return 'Preview';
@@ -14,7 +18,7 @@ const getTabViewType = (tab) => {
   return tab.type || 'View';
 };
 
-const getTabTooltipContent = (tab) => {
+const getTabTooltipContent = (tab: Tab): string => {
   const target = tab.type === 'file' ? tab.id : tab.sourceFilePath || tab.label;
   return `${getTabViewType(tab)}\n${target}`;
 };
@@ -33,7 +37,7 @@ export default function TabItem({
   onDrop,
   tabRef,
   onKeyDown,
-}) {
+}: TabItemProps) {
   return (
     <div
       ref={tabRef}
@@ -77,7 +81,10 @@ export default function TabItem({
         <button
           type="button"
           onClick={(e) => onCloseTab(e, tab.id)}
-          onKeyDown={(e) => e.key === 'Enter' && onCloseTab(e, tab.id)}
+          onKeyDown={(e) =>
+            e.key === 'Enter' &&
+            onCloseTab(e as unknown as React.MouseEvent<HTMLButtonElement>, tab.id)
+          }
           className={`${styles.closeButton} ${isActive ? '' : styles.closeButtonDimmed}`}
           aria-label={`Close Tab: ${tab.label}`}
         >

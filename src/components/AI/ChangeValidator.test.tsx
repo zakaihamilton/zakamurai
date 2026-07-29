@@ -26,26 +26,30 @@ describe('AI change validation', () => {
     const result = validateAIChanges([
       { path: 'src/a.js', after: 'one' },
       { path: 'src/a.js', after: 'two' },
-      { path: 'src/b.js', after: 4 },
+      { path: 'src/b.js', after: 4 as unknown as string },
     ]);
     expect(result.accepted).toHaveLength(1);
     expect(result.rejected).toHaveLength(2);
   });
 
   it('rejects non-array payloads and missing paths', () => {
-    expect(validateAIChanges(null).rejected).toEqual(['Changes must be an array.']);
-    expect(validateAIChanges([{ after: 'code' }]).rejected[0]).toBe('A file path is required.');
+    expect(validateAIChanges(null as never).rejected).toEqual(['Changes must be an array.']);
+    expect(validateAIChanges([{ path: '', after: 'code' }]).rejected[0]).toBe(
+      'A file path is required.',
+    );
   });
 
   it('rejects empty and non-string paths', () => {
     expect(validateProjectPath('')).toBe('A file path is required.');
     expect(validateProjectPath('   ')).toBe('A file path is required.');
-    expect(validateProjectPath(null)).toBe('A file path is required.');
-    expect(validateProjectPath(42)).toBe('A file path is required.');
+    expect(validateProjectPath(null as never)).toBe('A file path is required.');
+    expect(validateProjectPath(42 as never)).toBe('A file path is required.');
   });
 
   it('accepts changes using the filePath alias', () => {
-    const result = validateAIChanges([{ filePath: 'src/alias.js', after: 'export default 1' }]);
+    const result = validateAIChanges([
+      { path: 'src/alias.js', filePath: 'src/alias.js', after: 'export default 1' },
+    ]);
     expect(result.rejected).toEqual([]);
     expect(result.accepted).toHaveLength(1);
   });
@@ -65,7 +69,7 @@ describe('AI change validation', () => {
   });
 
   it('returns null for non-string content or missing path in sync validation', () => {
-    expect(validateContentSyntax('src/app.js', null)).toBeNull();
+    expect(validateContentSyntax('src/app.js', null as never)).toBeNull();
     expect(validateContentSyntax('', 'const x = 1;')).toBeNull();
   });
 
@@ -139,29 +143,29 @@ describe('AI change validation', () => {
 
     expect(res.accepted).toHaveLength(1);
     expect(res.rejected).toHaveLength(1);
-    expect(res.details[0].type).toBe('syntax');
-    expect(res.details[0].path).toBe('src/bad.js');
+    expect(res.details?.[0]?.type).toBe('syntax');
+    expect(res.details?.[0]?.path).toBe('src/bad.js');
   });
 
   it('validateAIChangesAsync reports path, conflict, and content errors', async () => {
     const { validateAIChangesAsync } = await import('./ChangeValidator');
 
     const res = await validateAIChangesAsync([
-      { filePath: '/absolute.js', content: 'x' },
+      { path: '/absolute.js', filePath: '/absolute.js', content: 'x' },
       { path: 'src/a.js', content: 'first' },
       { path: 'src/a.js', content: 'second' },
-      { path: 'src/b.js', after: 42 },
+      { path: 'src/b.js', after: 42 as unknown as string },
     ]);
 
     expect(res.accepted).toHaveLength(1);
     expect(res.rejected).toHaveLength(3);
-    expect(res.details.map((d) => d.type)).toEqual(['path', 'conflict', 'content']);
-    expect(res.details[0].path).toBe('/absolute.js');
+    expect(res.details?.map((d) => d.type)).toEqual(['path', 'conflict', 'content']);
+    expect(res.details?.[0]?.path).toBe('/absolute.js');
   });
 
   it('validateAIChangesAsync rejects non-array input', async () => {
     const { validateAIChangesAsync } = await import('./ChangeValidator');
-    const res = await validateAIChangesAsync('not-array');
+    const res = await validateAIChangesAsync('not-array' as never);
     expect(res.accepted).toEqual([]);
     expect(res.rejected).toEqual(['Changes must be an array.']);
     expect(res.details).toEqual([]);

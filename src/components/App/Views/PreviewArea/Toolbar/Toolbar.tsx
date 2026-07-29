@@ -1,6 +1,6 @@
 import { Icons } from '@/components/ui/Icons';
 import Tooltip from '@/components/ui/Tooltip';
-import React from 'react';
+import type { PreviewToolbarProps } from '../preview-types';
 import styles from './Toolbar.module.css';
 
 export default function PreviewToolbar({
@@ -14,7 +14,7 @@ export default function PreviewToolbar({
   onRefresh,
   onOpenExternal,
   onToggleMaximize,
-}) {
+}: PreviewToolbarProps) {
   return (
     <div className={styles.toolbar}>
       <div className={styles.addressBar}>

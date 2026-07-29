@@ -1,5 +1,6 @@
+import type { CssCustomProperties, NormalizedTreeNode } from '@/components/App/types';
+import type { RoleGraph } from '@/components/AI/types';
 import type { PromptContentProps } from './prompt-types';
-import React from 'react';
 import ChangeSetPanel from './ChangeSet';
 import PromptComposer from './Composer';
 import PromptContextPanel from './Context';
@@ -68,7 +69,7 @@ export default function PromptContent({
     <aside
       className={`${styles.prompt} ${isOpen ? '' : styles.closed}`}
       aria-hidden={!isOpen}
-      style={isMobile ? undefined : { '--panel-width': desktopWidth }}
+      style={isMobile ? undefined : ({ '--panel-width': desktopWidth } as CssCustomProperties)}
     >
       <div className={styles.content}>
         <PromptHeader
@@ -101,7 +102,7 @@ export default function PromptContent({
         />
         {activeSession?.mode === 'team' && (
           <RoleGraphSummary
-            roleGraph={activeSession.roleGraph}
+            roleGraph={activeSession.roleGraph as RoleGraph | null | undefined}
             disabled={!isOpen || isAIProcessing}
             onEdit={onOpenRoleGraph}
           />
@@ -130,7 +131,7 @@ export default function PromptContent({
         <RoleGraphDialog
           isOpen={isRoleGraphOpen}
           onCancel={onCloseRoleGraph}
-          roleGraph={activeSession?.roleGraph}
+          roleGraph={(activeSession?.roleGraph as RoleGraph | null | undefined) ?? null}
           modelOptions={modelOptions}
           defaultModelId={selectedModel}
           disabled={isAIProcessing}

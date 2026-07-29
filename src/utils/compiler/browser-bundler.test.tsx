@@ -645,39 +645,39 @@ describe('browser-bundler', () => {
           }) => void;
         }>;
       }) => {
-      const plugin = options.plugins[0];
-      let onResolve: ResolveCallback | undefined;
-      plugin.setup({
-        onResolve: (_opts: unknown, cb: ResolveCallback) => {
-          onResolve = cb;
-        },
-        onLoad: () => {},
-      });
+        const plugin = options.plugins[0];
+        let onResolve: ResolveCallback | undefined;
+        plugin.setup({
+          onResolve: (_opts: unknown, cb: ResolveCallback) => {
+            onResolve = cb;
+          },
+          onLoad: () => {},
+        });
 
-      const resolve = (path: string, importer?: string, resolveDir?: string) =>
-        onResolve!({ path, importer, resolveDir: resolveDir || '/src' });
+        const resolve = (path: string, importer?: string, resolveDir?: string) =>
+          onResolve!({ path, importer, resolveDir: resolveDir || '/src' });
 
-      const entry = resolve('/src/main.jsx', undefined, '/');
-      expect(entry.errors).toBeUndefined();
-      expect(entry.path).toBe('/src/main.jsx');
+        const entry = resolve('/src/main.jsx', undefined, '/');
+        expect(entry.errors).toBeUndefined();
+        expect(entry.path).toBe('/src/main.jsx');
 
-      const client = resolve('react-dom/client', '/src/main.jsx', '/src');
-      expect(client.errors).toBeUndefined();
-      expect(client.path).toBe('/node_modules/react-dom/client.js');
+        const client = resolve('react-dom/client', '/src/main.jsx', '/src');
+        expect(client.errors).toBeUndefined();
+        expect(client.path).toBe('/node_modules/react-dom/client.js');
 
-      // The path that previously failed inside client.js
-      const root = resolve(
-        'react-dom',
-        '/node_modules/react-dom/client.js',
-        '/node_modules/react-dom',
-      );
-      expect(root.errors).toBeUndefined();
-      expect(root.path).toBe('/node_modules/react-dom/index.js');
+        // The path that previously failed inside client.js
+        const root = resolve(
+          'react-dom',
+          '/node_modules/react-dom/client.js',
+          '/node_modules/react-dom',
+        );
+        expect(root.errors).toBeUndefined();
+        expect(root.path).toBe('/node_modules/react-dom/index.js');
 
-      return {
-        outputFiles: [{ path: '/dist/assets/main-abc.js', contents: new Uint8Array([1]) }],
-      };
-    },
+        return {
+          outputFiles: [{ path: '/dist/assets/main-abc.js', contents: new Uint8Array([1]) }],
+        };
+      },
     );
 
     vi.doMock('esbuild-wasm/lib/browser', () => ({

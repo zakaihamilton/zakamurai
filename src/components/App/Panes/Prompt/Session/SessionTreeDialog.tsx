@@ -1,10 +1,12 @@
+import type { AgentSession } from '@/components/state/domain-types';
 import Dialog from '@/components/ui/Dialog';
 import { Icons } from '@/components/ui/Icons';
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { getAgentSessionChildren } from '../AgentSessions';
+import type { SessionTreeDialogProps } from '../prompt-types';
 import styles from './SessionTreeDialog.module.css';
 
-function hasRunningDescendant(sessions, sessionId) {
+function hasRunningDescendant(sessions: Record<string, AgentSession>, sessionId: string): boolean {
   const children = getAgentSessionChildren(sessions, sessionId);
   return children.some(
     (child) => child.status === 'running' || hasRunningDescendant(sessions, child.id),
@@ -21,8 +23,8 @@ export default function SessionTreeDialog({
   onBranch,
   onRename,
   onDelete,
-}) {
-  const [expandedIds, setExpandedIds] = useState(() => new Set());
+}: SessionTreeDialogProps) {
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(() => new Set());
   const roots = useMemo(() => getAgentSessionChildren(sessions, null), [sessions]);
 
   useEffect(() => {
@@ -36,7 +38,7 @@ export default function SessionTreeDialog({
     );
   }, [isOpen, sessions]);
 
-  const toggleExpanded = (sessionId) => {
+  const toggleExpanded = (sessionId: string) => {
     setExpandedIds((current) => {
       const next = new Set(current);
       if (next.has(sessionId)) next.delete(sessionId);
@@ -45,7 +47,7 @@ export default function SessionTreeDialog({
     });
   };
 
-  const renderNode = (session) => {
+  const renderNode = (session: AgentSession) => {
     const children = getAgentSessionChildren(sessions, session.id);
     const hasChildren = children.length > 0;
     const isExpanded = expandedIds.has(session.id);
@@ -124,7 +126,7 @@ export default function SessionTreeDialog({
         <button
           type="button"
           className={styles.newRootButton}
-          onClick={onCreate}
+          onClick={() => onCreate()}
           aria-label="New agent"
         >
           <Icons.Plus size={15} /> New agent

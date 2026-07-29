@@ -7,14 +7,26 @@ import useCodeFolding from './CodeFolding';
 import { EditorAreaUiState } from './EditorAreaState';
 import useFileLoader from './FileLoader';
 import { applyFoldedContentEdit } from './Folding';
-import type { CollapsedFoldsMap, DiffActions, EditorBufferProps, EditorLineItem, FindMatch } from './types';
+import type {
+  CollapsedFoldsMap,
+  DiffActions,
+  EditorBufferProps,
+  EditorLineItem,
+  FindMatch,
+} from './types';
 
 const countLines = (value: string): number => (value ? value.split('\n').length : 1);
 const getTemplateContents = (): Record<string, string> =>
   Settings.getTemplate() === 'scratch' ? SCRATCH_CONTENTS : DEFAULT_CONTENTS;
 
 /** Owns the per-file typing buffer, editor-local UI state, and folded-content editing. */
-export default function useEditorBuffer({ file, filePath, fs, fsHandle, state }: EditorBufferProps) {
+export default function useEditorBuffer({
+  file,
+  filePath,
+  fs,
+  fsHandle,
+  state,
+}: EditorBufferProps) {
   const fallbackContent = getTemplateContents()[filePath] ?? file?.content ?? '';
   const editorAreaUiState = EditorAreaUiState.useState(null, {
     localContent: state.fileContents?.[filePath] ?? fallbackContent,
@@ -39,19 +51,31 @@ export default function useEditorBuffer({ file, filePath, fs, fsHandle, state }:
     collapsedFolds = {},
   } = editorAreaUiState || {};
   const setEditorAreaValue = useCallback(
-    <K extends keyof EditorAreaUiStateShape>(key: K, nextValue: EditorAreaUiStateShape[K] | ((prev: EditorAreaUiStateShape[K]) => EditorAreaUiStateShape[K])) => {
+    <K extends keyof EditorAreaUiStateShape>(
+      key: K,
+      nextValue:
+        | EditorAreaUiStateShape[K]
+        | ((prev: EditorAreaUiStateShape[K]) => EditorAreaUiStateShape[K]),
+    ) => {
       editorAreaUiState?.((draft) => {
-        draft[key] = typeof nextValue === 'function' ? (nextValue as (prev: EditorAreaUiStateShape[K]) => EditorAreaUiStateShape[K])(draft[key]) : nextValue;
+        draft[key] =
+          typeof nextValue === 'function'
+            ? (nextValue as (prev: EditorAreaUiStateShape[K]) => EditorAreaUiStateShape[K])(
+                draft[key],
+              )
+            : nextValue;
       });
     },
     [editorAreaUiState],
   );
   const setLocalContent = useCallback(
-    (nextValue: string | ((prev: string) => string)) => setEditorAreaValue('localContent', nextValue),
+    (nextValue: string | ((prev: string) => string)) =>
+      setEditorAreaValue('localContent', nextValue),
     [setEditorAreaValue],
   );
   const setShowFind = useCallback(
-    (nextValue: boolean | ((prev: boolean) => boolean)) => setEditorAreaValue('showFind', nextValue),
+    (nextValue: boolean | ((prev: boolean) => boolean)) =>
+      setEditorAreaValue('showFind', nextValue),
     [setEditorAreaValue],
   );
   const setFindQuery = useCallback(
@@ -59,7 +83,8 @@ export default function useEditorBuffer({ file, filePath, fs, fsHandle, state }:
     [setEditorAreaValue],
   );
   const setReplaceQuery = useCallback(
-    (nextValue: string | ((prev: string) => string)) => setEditorAreaValue('replaceQuery', nextValue),
+    (nextValue: string | ((prev: string) => string)) =>
+      setEditorAreaValue('replaceQuery', nextValue),
     [setEditorAreaValue],
   );
   const setMatchIndex = useCallback(
@@ -108,7 +133,9 @@ export default function useEditorBuffer({ file, filePath, fs, fsHandle, state }:
   });
   const hasDiff = Boolean(state.pendingDiffs?.[filePath]);
   const editorContent = hasDiff ? localContent : folding.visibleFoldedContent.content;
-  const editorLineItems: EditorLineItem[] | null = hasDiff ? null : folding.visibleFoldedContent.lineItems;
+  const editorLineItems: EditorLineItem[] | null = hasDiff
+    ? null
+    : folding.visibleFoldedContent.lineItems;
   const hasCollapsedFolds = hasDiff ? false : folding.visibleFoldedContent.hasCollapsedFolds;
 
   const handleChange = useCallback(

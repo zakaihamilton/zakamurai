@@ -46,7 +46,9 @@ function VirtualListInner<T extends { key?: string; pathStr?: string }>({
 }: VirtualListProps<T>) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const scrollFrameRef = useRef(0);
-  const virtualListState = requireStore(VirtualListState.useState(null, { scrollTop: 0, height: 0 }));
+  const virtualListState = requireStore(
+    VirtualListState.useState(null, { scrollTop: 0, height: 0 }),
+  );
   const { scrollTop = 0, height = 0 } = virtualListState || {};
 
   useLayoutEffect(() => {
@@ -121,7 +123,10 @@ function VirtualListInner<T extends { key?: string; pathStr?: string }>({
 
   return (
     <div ref={containerRef} className={className} style={style} onScroll={handleScroll}>
-      <div className={styles.spacer} style={{ ['--virtual-total-height' as string]: `${totalHeight}px` }}>
+      <div
+        className={styles.spacer}
+        style={{ ['--virtual-total-height' as string]: `${totalHeight}px` }}
+      >
         {items.slice(range.start, range.end).map((item: T, offset: number) => {
           const index = range.start + offset;
           return (

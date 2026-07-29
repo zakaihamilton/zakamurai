@@ -1,5 +1,5 @@
 import Dialog from '@/components/ui/Dialog';
-import React from 'react';
+import type { SessionDialogProps } from '../prompt-types';
 import { deleteAgentSession, renameAgentSession } from '../AgentSessions';
 
 export default function SessionDialog({
@@ -8,8 +8,8 @@ export default function SessionDialog({
   isAIProcessing,
   agentSessionState,
   promptUiState,
-}) {
-  if (!sessionDialog) return null;
+}: SessionDialogProps) {
+  if (!sessionDialog || !agentSessionState) return null;
 
   const handleConfirm = () => {
     if (sessionDialog.type === 'rename') {
@@ -41,8 +41,9 @@ export default function SessionDialog({
           draft.activeSessionId = next.activeSessionId;
         });
       } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
         promptUiState((draft) => {
-          draft.sessionDialog = { type: 'error', message: error.message };
+          draft.sessionDialog = { type: 'error', message };
         });
         return;
       }
@@ -71,7 +72,9 @@ export default function SessionDialog({
       message={
         sessionDialog.type === 'delete'
           ? `Delete "${sessionDialog.name}" and ${sessionDialog.descendantCount || 0} branch${sessionDialog.descendantCount === 1 ? '' : 'es'}? This cannot be undone.`
-          : sessionDialog.message
+          : sessionDialog.type === 'error'
+            ? sessionDialog.message
+            : undefined
       }
       confirmText={
         sessionDialog.type === 'rename'
@@ -91,7 +94,9 @@ export default function SessionDialog({
           value={sessionDialog.value}
           onChange={(event) =>
             promptUiState((draft) => {
-              draft.sessionDialog.value = event.target.value;
+              if (draft.sessionDialog?.type === 'rename') {
+                draft.sessionDialog.value = event.target.value;
+              }
             })
           }
         />

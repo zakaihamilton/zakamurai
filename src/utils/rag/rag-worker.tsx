@@ -146,7 +146,10 @@ async function getHash(text: string): Promise<string> {
   return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
 }
 
-async function indexFile({ filePath, content }: { filePath: string; content: string }): Promise<void> {
+async function indexFile({
+  filePath,
+  content,
+}: { filePath: string; content: string }): Promise<void> {
   await init();
 
   if (!content || content.length > MAX_FILE_BYTES) {

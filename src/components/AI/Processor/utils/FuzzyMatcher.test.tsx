@@ -33,7 +33,7 @@ describe('FuzzyMatcher', () => {
       const snippet = '<li className="item">Cherry</li>';
       const result = applyHeuristicInsertion(original, snippet);
       expect(result).not.toBeNull();
-      expect(result.content).toContain('Banana</li>\n  <li className="item">Cherry</li>');
+      expect(result!.content).toContain('Banana</li>\n  <li className="item">Cherry</li>');
     });
   });
 });

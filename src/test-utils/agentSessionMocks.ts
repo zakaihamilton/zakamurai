@@ -20,9 +20,7 @@ export function makeAgentSession(overrides: Partial<AgentSession> = {}): AgentSe
 }
 
 /** Assert an agent session exists in tests. */
-export function expectAgentSession(
-  state: AgentSessionStateShape | null | undefined,
-): AgentSession {
+export function expectAgentSession(state: AgentSessionStateShape | null | undefined): AgentSession {
   const session = state?.activeSessionId ? state.sessions[state.activeSessionId] : null;
   if (!session) throw new Error('Expected active agent session');
   return session;

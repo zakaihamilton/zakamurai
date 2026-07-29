@@ -6,7 +6,9 @@ import { TabState } from '@/components/App/Panes/TabBar';
 import { EditorState } from '@/components/App/Views/EditorArea';
 import { LogState } from '@/components/App/Views/LogArea';
 import { useFileSystem } from '@/components/Storage';
+import type { WelcomeRequest } from '@/components/App/Panes/Prompt/prompt-types';
 import { useCallback, useEffect } from 'react';
+import type { ChangeEvent, FormEvent, KeyboardEvent, MouseEvent } from 'react';
 import { AgentSessionState, createSessionMessage } from './AgentSessions';
 import useModelDownloader from './ModelDownloader';
 import PromptContent from './PromptContent';
@@ -24,10 +26,12 @@ export default function Prompt() {
   const fs = useFileSystem();
   const promptState = requireStore(PromptState.useState(['promptWidth']));
   const { promptWidth } = promptState;
-  const promptUiState = requireStore(PromptUiState.useState(null, {
-    ...getInitialPromptUiState(),
-    animatedWidth: promptState?.promptWidth ?? 0,
-  }));
+  const promptUiState = requireStore(
+    PromptUiState.useState(null, {
+      ...getInitialPromptUiState(),
+      animatedWidth: promptState?.promptWidth ?? 0,
+    }),
+  );
   const {
     val = '',
     historyIndex = -1,
@@ -48,15 +52,16 @@ export default function Prompt() {
     isAgentTreeOpen = false,
   } = promptUiState || {};
   const { cachedModelIds = [] } = requireStore(WebLLMState.useState(['cachedModelIds']));
-  const logState = LogState.usePassiveState();
-  const { isSystemProcessing, isAIProcessing } = requireStore(LogState.useState([
-    'isSystemProcessing',
-    'isAIProcessing',
-  ]));
+  const logState = requireStore(LogState.useState());
+  const { isSystemProcessing, isAIProcessing } = requireStore(
+    LogState.useState(['isSystemProcessing', 'isAIProcessing']),
+  );
   const sidebarState = requireStore(SidebarState.useState(['showAIInput', 'isAIInputPopupOpen']));
   const tabState = requireStore(TabState.useState(['activeTabId', 'openTabs']));
   const editorState = requireStore(EditorState.useState(['selectedLines']));
-  const agentSessionState = requireStore(AgentSessionState.useState(['sessions', 'activeSessionId']));
+  const agentSessionState = requireStore(
+    AgentSessionState.useState(['sessions', 'activeSessionId']),
+  );
   const isOpen = isMobile ? sidebarState.isAIInputPopupOpen : sidebarState.showAIInput;
 
   const {
@@ -117,29 +122,31 @@ export default function Prompt() {
   useEffect(() => {
     if (!welcomeRequest || isAIProcessing || !activeSession) return;
 
+    const request = welcomeRequest as WelcomeRequest;
     promptUiState((draft) => {
       draft.welcomeRequest = null;
     });
-    send(null, welcomeRequest.text, welcomeRequest.scope);
+    send(null, request.text, request.scope);
   }, [activeSession, isAIProcessing, promptUiState, send, welcomeRequest]);
 
-  const handleKeyDown = (event) => {
+  const handleKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
     const mac = navigator.platform.toUpperCase().includes('MAC');
     if ((mac ? event.metaKey : event.ctrlKey) && event.key === '.') {
-      handleStop(event);
+      handleStop(event as unknown as MouseEvent<HTMLButtonElement>);
       return;
     }
     if (event.key === 'Enter') {
       if (event.metaKey || event.ctrlKey) {
         event.preventDefault();
         event.stopPropagation();
-        const { selectionStart, selectionEnd, value } = event.target;
+        const target = event.target as HTMLTextAreaElement;
+        const { selectionStart, selectionEnd, value } = target;
         const nextValue = `${value.substring(0, selectionStart)}\n${value.substring(selectionEnd)}`;
         promptUiState((draft) => {
           draft.val = nextValue;
         });
         requestAnimationFrame(() => {
-          event.target.selectionStart = event.target.selectionEnd = selectionStart + 1;
+          target.selectionStart = target.selectionEnd = selectionStart + 1;
         });
         return;
       }
@@ -152,7 +159,7 @@ export default function Prompt() {
   };
 
   const handleComposerChange = useCallback(
-    (event) => {
+    (event: ChangeEvent<HTMLTextAreaElement>) => {
       promptUiState((draft) => {
         draft.val = event.target.value;
         if (historyIndex === -1) draft.draftVal = event.target.value;
@@ -161,7 +168,7 @@ export default function Prompt() {
     [historyIndex, promptUiState],
   );
   const setPromptScope = useCallback(
-    (scope) => {
+    (scope: string) => {
       promptUiState((draft) => {
         draft.promptScope = scope;
       });
@@ -184,7 +191,7 @@ export default function Prompt() {
     });
   }, [promptUiState]);
   const setSelectedModel = useCallback(
-    (modelId) => {
+    (modelId: string) => {
       promptUiState((draft) => {
         draft.selectedModel = modelId;
       });
@@ -194,12 +201,16 @@ export default function Prompt() {
 
   const currentActiveTabId = tabState.activeTabId;
   const currentActiveTab = tabState.openTabs.find((tab) => tab.id === currentActiveTabId);
-  const selectedLines = editorState.selectedLines?.[currentActiveTabId] || [];
+  const selectedLines =
+    (currentActiveTabId && editorState.selectedLines?.[currentActiveTabId]) || [];
   const selectedLineText =
     selectedLines.length > 0 ? [...selectedLines].sort((a, b) => a - b).join(', ') : 'None';
   const activeFileName =
-    currentActiveTab?.type === 'file' ? currentActiveTabId.split('/').pop() : 'No file selected';
-  const activeFilePath = currentActiveTab?.type === 'file' ? currentActiveTabId : 'Open a file';
+    currentActiveTab?.type === 'file' && currentActiveTabId
+      ? currentActiveTabId.split('/').pop()
+      : 'No file selected';
+  const activeFilePath =
+    currentActiveTab?.type === 'file' && currentActiveTabId ? currentActiveTabId : 'Open a file';
   const runState = isAIProcessing ? 'AI working' : isSystemProcessing ? 'Compiling' : 'Ready';
   const selectedModelInfo =
     WEB_LLM_MODELS.find((model) => model.id === selectedModel) || RECOMMENDED_WEB_LLM_MODEL;
@@ -254,7 +265,7 @@ export default function Prompt() {
       cachedModelIds={cachedModelIds}
       onCloseModelManager={closeModelManager}
       onModelCacheAction={handleModelCacheAction}
-      modelCacheWork={modelCacheWork}
+      modelCacheWork={modelCacheWork as string | null}
       modelCacheProgress={modelCacheProgress}
       modelCacheError={modelCacheError}
       value={val}

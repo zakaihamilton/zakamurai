@@ -15,7 +15,9 @@ import {
 } from './previewOrigins';
 import { isPreviewRequest, isSafePreviewPath } from './previewProtocol';
 
-function previewOrigins(partial: Partial<PreviewOrigins> & Pick<PreviewOrigins, 'previewOrigin'>): PreviewOrigins {
+function previewOrigins(
+  partial: Partial<PreviewOrigins> & Pick<PreviewOrigins, 'previewOrigin'>,
+): PreviewOrigins {
   const { previewOrigin, ...rest } = partial;
   return {
     ideOrigin: null,
@@ -160,12 +162,10 @@ describe('preview host derivation helpers', () => {
 
   it('handles buildPreviewUrl and configuration error edges', () => {
     expect(buildPreviewUrl(null, 's')).toBeNull();
-    expect(
-      buildPreviewUrl(previewOrigins({ previewOrigin: 'https://p.example' }), ''),
-    ).toBeNull();
-    expect(
-      buildPreviewUrl(previewOrigins({ previewOrigin: 'https://p.example' }), 'abc'),
-    ).toBe('https://p.example/?session=abc');
+    expect(buildPreviewUrl(previewOrigins({ previewOrigin: 'https://p.example' }), '')).toBeNull();
+    expect(buildPreviewUrl(previewOrigins({ previewOrigin: 'https://p.example' }), 'abc')).toBe(
+      'https://p.example/?session=abc',
+    );
     expect(getPreviewConfigurationError(null)).toContain('not configured');
     expect(
       getPreviewConfigurationError({
@@ -201,9 +201,7 @@ describe('preview host derivation helpers', () => {
         isIsolated: false,
       }),
     ).toBe(false);
-    expect(
-      isPreviewHost('::::', previewOrigins({ previewOrigin: 'not-a-url' })),
-    ).toBe(false);
+    expect(isPreviewHost('::::', previewOrigins({ previewOrigin: 'not-a-url' }))).toBe(false);
   });
 });
 

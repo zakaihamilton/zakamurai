@@ -70,7 +70,9 @@ describe('RoleCard', () => {
       />,
     );
 
-    const selects = container.querySelector('[data-role-id="reviewer"]')!.querySelectorAll('select');
+    const selects = container
+      .querySelector('[data-role-id="reviewer"]')!
+      .querySelectorAll('select');
     fireEvent.change(selects[1]!, { target: { value: 'model-b' } });
     expect(onChangeModel).toHaveBeenCalledWith('model-b');
 

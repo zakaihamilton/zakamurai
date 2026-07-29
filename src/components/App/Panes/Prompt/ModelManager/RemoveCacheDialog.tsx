@@ -1,19 +1,21 @@
 import Dialog from '@/components/ui/Dialog';
-import React from 'react';
+import type { RemoveCacheDialogProps } from '../prompt-types';
+import styles from './RemoveCacheDialog.module.css';
 
-export default function RemoveCacheDialog({ model, onCancel, onConfirm }) {
+export default function RemoveCacheDialog({ model, onCancel, onConfirm }: RemoveCacheDialogProps) {
+  if (!model) return null;
+
   return (
     <Dialog
-      isOpen={Boolean(model)}
+      isOpen={!!model}
       title="Remove cached model?"
-      message={
-        model ? `${model.name} will need to be downloaded again before it can run locally.` : ''
-      }
-      confirmText="Remove cache"
-      cancelText="Keep cached"
-      type="danger"
+      message={`Remove "${model.label || model.id}" from the local cache?`}
       onCancel={onCancel}
       onConfirm={onConfirm}
+      confirmText="Remove"
+      cancelText="Cancel"
+      type="danger"
+      className={styles.dialog}
     />
   );
 }

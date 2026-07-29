@@ -68,7 +68,11 @@ function queryText(query: string, limit = 50) {
 }
 
 self.addEventListener('message', (event: MessageEvent) => {
-  const { id, type, payload = {} } = event.data as {
+  const {
+    id,
+    type,
+    payload = {},
+  } = event.data as {
     id: number;
     type: string;
     payload: Record<string, unknown>;

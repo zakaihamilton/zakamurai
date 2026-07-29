@@ -61,13 +61,13 @@ describe('RemoveCacheDialog', () => {
     render(<RemoveCacheDialog model={model} onCancel={onCancel} onConfirm={onConfirm} />);
 
     expect(screen.getByRole('heading', { name: 'Remove cached model?' })).toBeDefined();
-    expect(screen.getByText(/will need to be downloaded again/)).toBeDefined();
+    expect(screen.getByText(/Remove ".*" from the local cache\?/)).toBeDefined();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Keep cached' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
     expect(onCancel).toHaveBeenCalled();
     expect(onConfirm).not.toHaveBeenCalled();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Remove cache' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Remove' }));
     expect(onConfirm).toHaveBeenCalled();
   });
 });

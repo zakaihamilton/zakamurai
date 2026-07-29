@@ -38,8 +38,8 @@ describe('ModelTable', () => {
     expect(screen.getByRole('columnheader', { name: /Model/ })).toBeDefined();
     expect(screen.getByRole('columnheader', { name: 'Cache' })).toBeDefined();
     expect(screen.getByText(models[0].name)).toBeDefined();
-    expect(screen.getByRole('button', { name: 'Cached' })).toBeDefined();
-    expect(screen.getAllByRole('button', { name: 'Cache' }).length).toBeGreaterThan(0);
+    expect(screen.getByRole('button', { name: 'Remove from cache' })).toBeDefined();
+    expect(screen.getAllByRole('button', { name: 'Cache model' }).length).toBeGreaterThan(0);
   });
 
   it('toggles sort direction and exposes aria-sort', () => {
@@ -84,14 +84,7 @@ describe('ModelTable', () => {
   });
 
   it('renders an empty state when no models are visible', () => {
-    render(
-      <ModelTable
-        {...defaultProps}
-        visibleModels={[]}
-        sort={null}
-        selectedModelId=""
-      />,
-    );
+    render(<ModelTable {...defaultProps} visibleModels={[]} sort={null} selectedModelId="" />);
 
     expect(screen.getByText('No AI models match your search.')).toBeDefined();
   });
@@ -112,13 +105,13 @@ describe('ModelTable', () => {
       />,
     );
 
-    fireEvent.click(screen.getAllByRole('button', { name: 'Cache' })[0]);
+    fireEvent.click(screen.getAllByRole('button', { name: 'Cache model' })[0]);
     expect(onModelCacheAction).toHaveBeenCalledWith(
       expect.objectContaining({ id: models[1].id }),
       'cache',
     );
 
-    fireEvent.click(screen.getByRole('button', { name: 'Cached' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Remove from cache' }));
     expect(onRequestUncache).toHaveBeenCalledWith(expect.objectContaining({ id: models[0].id }));
   });
 });

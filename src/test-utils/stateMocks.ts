@@ -1,4 +1,5 @@
 import type { ShortcutActionContext } from '@/components/App/types';
+import type { ExtendedEditorState } from '@/components/App/Views/EditorArea/types';
 import type {
   AgentSessionStateShape,
   AppStateShape,
@@ -7,6 +8,7 @@ import type {
   LogStateShape,
   PreviewStateShape,
   PreviewAreaUiStateShape,
+  ProblemsStateShape,
   PromptStateShape,
   PromptUiStateShape,
   SidebarStateShape,
@@ -31,20 +33,44 @@ function createStoreInternals<T extends object>() {
 }
 
 /** Build a callable mock state store with snapshot properties. */
-export function createMockStateStore<T extends object>(
-  initial: T,
-): StateStore<T> & Mock {
+export function createMockStateStore<T extends object>(initial: T): StateStore<T> & Mock {
   const state = { ...initial };
+
+  const syncProps = () => {
+    for (const key of Object.keys(state) as (keyof T)[]) {
+      (updater as Record<string, unknown>)[key as string] = state[key];
+    }
+  };
+
   const updater = vi.fn((cb: (draft: Draft<T>) => void) => {
     const draft = structuredClone(state) as Draft<T>;
     cb(draft);
     Object.assign(state, draft);
+    syncProps();
   }) as StateStore<T> & Mock;
+
   Object.assign(updater, state, createStoreInternals<T>());
-  return updater;
+  syncProps();
+
+  return new Proxy(updater, {
+    set(target, prop, value, receiver) {
+      if (typeof prop === 'string' && !prop.startsWith('__') && prop in state) {
+        (state as Record<string, unknown>)[prop] = value;
+      }
+      return Reflect.set(target, prop, value, receiver);
+    },
+    get(target, prop, receiver) {
+      if (typeof prop === 'string' && !prop.startsWith('__') && prop in state) {
+        return (state as Record<string, unknown>)[prop];
+      }
+      return Reflect.get(target, prop, receiver);
+    },
+  }) as StateStore<T> & Mock;
 }
 
-export function makeAppState(overrides: Partial<AppStateShape> = {}): StateStore<AppStateShape> & Mock {
+export function makeAppState(
+  overrides: Partial<AppStateShape> = {},
+): StateStore<AppStateShape> & Mock {
   return createMockStateStore<AppStateShape>({
     theme: 'dark',
     projectName: 'My App',
@@ -86,7 +112,9 @@ export function makeSidebarUiState(
   });
 }
 
-export function makeTabState(overrides: Partial<TabStateShape> = {}): StateStore<TabStateShape> & Mock {
+export function makeTabState(
+  overrides: Partial<TabStateShape> = {},
+): StateStore<TabStateShape> & Mock {
   return createMockStateStore<TabStateShape>({
     openTabs: [],
     activeTabId: null,
@@ -96,9 +124,9 @@ export function makeTabState(overrides: Partial<TabStateShape> = {}): StateStore
 }
 
 export function makeEditorState(
-  overrides: Partial<EditorStateShape> = {},
-): StateStore<EditorStateShape> & Mock {
-  return createMockStateStore<EditorStateShape>({
+  overrides: Partial<ExtendedEditorState> = {},
+): StateStore<ExtendedEditorState> & Mock {
+  return createMockStateStore<ExtendedEditorState>({
     fileContents: {},
     aiCompletionEnabled: true,
     isReadOnly: false,
@@ -109,7 +137,9 @@ export function makeEditorState(
   });
 }
 
-export function makeLogState(overrides: Partial<LogStateShape> = {}): StateStore<LogStateShape> & Mock {
+export function makeLogState(
+  overrides: Partial<LogStateShape> = {},
+): StateStore<LogStateShape> & Mock {
   return createMockStateStore<LogStateShape>({
     isSystemProcessing: false,
     isAIProcessing: false,
@@ -170,6 +200,15 @@ export function makeAgentSessionState(
   return createMockStateStore<AgentSessionStateShape>({
     sessions: {},
     activeSessionId: null,
+    ...overrides,
+  });
+}
+
+export function makeProblemsState(
+  overrides: Partial<ProblemsStateShape> = {},
+): StateStore<ProblemsStateShape> & Mock {
+  return createMockStateStore<ProblemsStateShape>({
+    items: [],
     ...overrides,
   });
 }

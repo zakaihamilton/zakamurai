@@ -15,7 +15,7 @@ export type PreviewOrigins = {
 
 export type PreviewHandshakeEvent = MessageEvent<{
   type?: string;
-  version?: string;
+  version?: string | number;
   sessionId?: string;
 }>;
 
@@ -52,7 +52,10 @@ export function expandOriginAliases(origin: unknown): string[] {
   }
 }
 
-export function originMatches(candidate: string | null | undefined, expected: string | null | undefined): boolean {
+export function originMatches(
+  candidate: string | null | undefined,
+  expected: string | null | undefined,
+): boolean {
   if (!candidate || !expected) return false;
   if (candidate === expected) return true;
   const expectedAliases = new Set(expandOriginAliases(expected));
@@ -90,7 +93,10 @@ function getVercelSurfaceOrigins(windowOrigin: string): PreviewOrigins | null {
   };
 }
 
-export function buildPreviewUrl(origins: PreviewOrigins | null | undefined, sessionId: string | null): string | null {
+export function buildPreviewUrl(
+  origins: PreviewOrigins | null | undefined,
+  sessionId: string | null,
+): string | null {
   if (!origins?.previewOrigin || !sessionId) return null;
   const url = new URL(origins.useSurfaceQuery ? PREVIEW_HOST_PATH : '/', origins.previewOrigin);
   url.searchParams.set('session', sessionId);
@@ -167,7 +173,7 @@ export function getPreviewOrigins({
     };
   }
 
-  const vercelSurfaceOrigins = getVercelSurfaceOrigins(windowOrigin);
+  const vercelSurfaceOrigins = windowOrigin ? getVercelSurfaceOrigins(windowOrigin) : null;
   if (vercelSurfaceOrigins) {
     return vercelSurfaceOrigins;
   }
@@ -188,7 +194,9 @@ export function getPreviewOrigins({
   return { ideOrigin: null, previewOrigin: null, isIsolated: false };
 }
 
-export function getPreviewConfigurationError(origins: PreviewOrigins | null | undefined): string | null {
+export function getPreviewConfigurationError(
+  origins: PreviewOrigins | null | undefined,
+): string | null {
   if (!origins?.ideOrigin || !origins?.previewOrigin) {
     return 'Preview origins are not configured. Set NEXT_PUBLIC_IDE_ORIGIN and NEXT_PUBLIC_PREVIEW_ORIGIN.';
   }
@@ -198,7 +206,9 @@ export function getPreviewConfigurationError(origins: PreviewOrigins | null | un
   return null;
 }
 
-export function getPreviewFrameAncestors({ ideOrigin }: { ideOrigin?: string | null } = {}): string {
+export function getPreviewFrameAncestors({
+  ideOrigin,
+}: { ideOrigin?: string | null } = {}): string {
   const ancestors = new Set([LOCAL_IDE_ORIGIN]);
   const configuredIdeOrigin = trimOrigin(process.env.NEXT_PUBLIC_IDE_ORIGIN);
   const vercelBranchOrigin = toHostOrigin(process.env.NEXT_PUBLIC_VERCEL_BRANCH_URL);
@@ -247,7 +257,10 @@ export function isValidPreviewHandshake(
   );
 }
 
-export function isPreviewHost(host: string | null | undefined, { previewOrigin } = getPreviewOrigins()): boolean {
+export function isPreviewHost(
+  host: string | null | undefined,
+  { previewOrigin } = getPreviewOrigins(),
+): boolean {
   if (!host) return false;
   try {
     const normalizedHost = host.split(':')[0].toLowerCase();

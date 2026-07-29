@@ -66,7 +66,9 @@ export async function initContainer(
     try {
       const nativeImport = new Function('specifier', 'return import(specifier)') as (
         specifier: string,
-      ) => Promise<{ createContainer: (options: Record<string, unknown>) => Promise<AlmostnodeContainer> }>;
+      ) => Promise<{
+        createContainer: (options: Record<string, unknown>) => Promise<AlmostnodeContainer>;
+      }>;
       const { createContainer } = await nativeImport('/lib/almostnode/index.mjs');
 
       const container = await createContainer({

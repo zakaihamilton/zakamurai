@@ -17,7 +17,7 @@ export function listProjectChecks(files: FileMap = {}): string[] {
   }
 }
 
-export function isEligibleProjectCheck(name: string, command: string): boolean {
+export function isEligibleProjectCheck(name: string, command: string | null): boolean {
   if (!name || typeof command !== 'string' || BLOCKED_NAME.test(name)) return false;
   try {
     const parts = parseBuildCommand(command);

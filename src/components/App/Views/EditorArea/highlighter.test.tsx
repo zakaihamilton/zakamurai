@@ -42,7 +42,13 @@ describe('highlighter', () => {
         end: 21,
         type: 'import',
         name: './styles.css',
-        targets: [{ filePath: 'src/styles.css', fileName: 'styles.css', loc: { line: 1, col: 1, index: 0 } }],
+        targets: [
+          {
+            filePath: 'src/styles.css',
+            fileName: 'styles.css',
+            loc: { line: 1, col: 1, index: 0 },
+          },
+        ],
       },
     ];
     vi.mocked(findNavigationTargets).mockReturnValue(mockTargets);
@@ -82,14 +88,18 @@ describe('highlighter', () => {
         end: 114,
         type: 'variable',
         name: 'messages',
-        targets: [{ filePath: 'src/test.js', fileName: 'test.js', loc: { line: 1, col: 7, index: 0 } }],
+        targets: [
+          { filePath: 'src/test.js', fileName: 'test.js', loc: { line: 1, col: 7, index: 0 } },
+        ],
       },
       {
         start: 121,
         end: 138,
         type: 'variable',
         name: 'generationOptions',
-        targets: [{ filePath: 'src/test.js', fileName: 'test.js', loc: { line: 2, col: 7, index: 0 } }],
+        targets: [
+          { filePath: 'src/test.js', fileName: 'test.js', loc: { line: 2, col: 7, index: 0 } },
+        ],
       },
     ];
     vi.mocked(findNavigationTargets).mockReturnValue(mockTargets);
@@ -561,7 +571,13 @@ generationOptions.max_tokens = options.max_tokens;`;
         end: 5,
         type: 'selector',
         name: '.card',
-        targets: [{ filePath: 'src/styles.css', fileName: 'styles.css', loc: { line: 1, col: 1, index: 0 } }],
+        targets: [
+          {
+            filePath: 'src/styles.css',
+            fileName: 'styles.css',
+            loc: { line: 1, col: 1, index: 0 },
+          },
+        ],
       },
     ];
     vi.mocked(findNavigationTargets).mockReturnValue(mockTargets);

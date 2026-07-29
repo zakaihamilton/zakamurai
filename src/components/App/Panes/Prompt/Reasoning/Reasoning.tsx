@@ -21,13 +21,16 @@ export default function ReasoningPanel() {
 }
 
 function ReasoningPanelInner() {
-  const agentSessionState = requireStore(AgentSessionState.useState(['sessions', 'activeSessionId']));
+  const agentSessionState = requireStore(
+    AgentSessionState.useState(['sessions', 'activeSessionId']),
+  );
   const activeSession = getActiveAgentSession(agentSessionState);
   const reasoning = activeSession?.reasoning || '';
-  const { isReasoningVisible = true } = requireStore(PromptUiState.useState('isReasoningVisible')) || {};
+  const { isReasoningVisible = true } =
+    requireStore(PromptUiState.useState('isReasoningVisible')) || {};
   const reasoningPanelState = requireStore(ReasoningPanelState.useState(null, { isCopied: false }));
   const { isCopied = false } = reasoningPanelState || {};
-  const reasoningRef = useRef(null);
+  const reasoningRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (reasoning && reasoningRef.current) {

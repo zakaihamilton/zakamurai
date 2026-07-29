@@ -210,14 +210,14 @@ export function normalizeRoleGraph(raw: RawRoleGraph | RoleGraph | null | unknow
   const roleIds = new Set(roles.map((role) => role.id));
   const edgesIn = Array.isArray(graph.edges) ? graph.edges : [];
   const edges = edgesIn
-    .filter(
-      (edge): edge is RoleEdge =>
-        Boolean(edge) &&
-        typeof edge === 'object' &&
+    .filter((edge): edge is RoleEdge => {
+      if (!edge || typeof edge !== 'object') return false;
+      return (
         roleIds.has(edge.from || '') &&
         roleIds.has(edge.to || '') &&
-        EDGE_CONDITIONS.includes(edge.when as (typeof EDGE_CONDITIONS)[number]),
-    )
+        EDGE_CONDITIONS.includes(edge.when as (typeof EDGE_CONDITIONS)[number])
+      );
+    })
     .map((edge) => ({
       from: edge.from,
       to: edge.to,
@@ -248,7 +248,9 @@ export function normalizeRoleGraph(raw: RawRoleGraph | RoleGraph | null | unknow
 }
 
 /** Returns user-facing structural errors without rejecting legacy retry edges. */
-export function validateRoleGraph(graph: RoleGraph | RawRoleGraph | null | unknown): RoleGraphValidation {
+export function validateRoleGraph(
+  graph: RoleGraph | RawRoleGraph | null | unknown,
+): RoleGraphValidation {
   const normalized = normalizeRoleGraph(graph);
   const errors: string[] = [];
   const ids = new Set(normalized.roles.map((role) => role.id));
@@ -293,7 +295,9 @@ export function resolveRoleConfig(role: RoleNode | Partial<RoleNode>): ResolvedR
     allowedActions: role.allowedActions || defaults.allowedActions,
     maxTurns: role.maxTurns || defaults.maxTurns,
     join: role.join === 'any' ? 'any' : 'all',
-    maxRetries: Number.isFinite(role.maxRetries) ? Math.min(Math.max(role.maxRetries as number, 0), 3) : 0,
+    maxRetries: Number.isFinite(role.maxRetries)
+      ? Math.min(Math.max(role.maxRetries as number, 0), 3)
+      : 0,
   };
 }
 

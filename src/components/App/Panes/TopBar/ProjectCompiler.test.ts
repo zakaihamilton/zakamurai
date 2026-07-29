@@ -13,7 +13,9 @@ import {
   makePreviewState,
   makeSidebarState,
   makeTabState,
+  makeProblemsState,
 } from '@/test-utils/stateMocks';
+import { ProblemsState } from '@/components/Workspace';
 import { act, renderHook } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import useProjectCompiler from './ProjectCompiler';
@@ -33,7 +35,7 @@ vi.mock('@/components/Storage', () => ({
 
 vi.mock('@/components/App/AppState', () => ({
   AppState: {
-    useState: vi.fn(() => ({ compileRequest: 0, silentCompileRequest: 0 })),
+    useState: vi.fn(),
   },
 }));
 
@@ -64,7 +66,13 @@ vi.mock('@/components/App/Views/LogArea', () => ({
 
 vi.mock('@/components/App/PreviewState', () => ({
   PreviewState: {
-    usePassiveState: vi.fn(() => vi.fn()),
+    usePassiveState: vi.fn(),
+  },
+}));
+
+vi.mock('@/components/Workspace', () => ({
+  ProblemsState: {
+    usePassiveState: vi.fn(),
   },
 }));
 
@@ -86,6 +94,7 @@ function renderCompilerHook() {
   vi.mocked(SidebarState.useState).mockReturnValue(makeSidebarState());
   vi.mocked(EditorState.usePassiveState).mockReturnValue(createMockEditorState());
   vi.mocked(LogState.useState).mockReturnValue(makeLogState({ isSystemProcessing: false }));
+  vi.mocked(ProblemsState.usePassiveState).mockReturnValue(makeProblemsState());
 
   const rendered = renderHook(() => useProjectCompiler());
   return { ...rendered, mockTabState, mockLogState, mockPreviewState };

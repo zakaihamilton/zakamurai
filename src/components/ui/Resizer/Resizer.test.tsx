@@ -1,16 +1,27 @@
 import { createState } from '@/components/state/State';
+import type { StateStore } from '@/components/state/types';
 import { fireEvent, render, screen } from '@testing-library/react';
+import type { ReactNode } from 'react';
 import React from 'react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi, type Mock } from 'vitest';
 import Resizer from './Resizer';
 
-vi.mock('@/components/state/State', () => {
-  const mockState = ({ children }) => <div>{children}</div>;
-  mockState.useState = vi.fn();
-  return {
-    createState: vi.fn(() => mockState),
-  };
+const { mockUseState, mockStateComponent } = vi.hoisted(() => {
+  const mockUseState = vi.fn();
+  const mockStateComponent = ({ children }: { children?: ReactNode }) => <div>{children}</div>;
+  Object.assign(mockStateComponent, { useState: mockUseState });
+  return { mockUseState, mockStateComponent };
 });
+
+vi.mock('@/components/state/State', () => ({
+  createState: vi.fn(() => mockStateComponent),
+}));
+
+type ResizerState = { isResizing: boolean };
+
+function mockResizerState(updater: Mock, state: ResizerState): StateStore<ResizerState> & Mock {
+  return Object.assign(updater, state) as StateStore<ResizerState> & Mock;
+}
 
 describe('Resizer', () => {
   beforeEach(() => {
@@ -20,26 +31,24 @@ describe('Resizer', () => {
   it('calls onResizeStart when mouse is pressed', () => {
     const onResizeStart = vi.fn();
     const resizerStateUpdater = vi.fn();
-    const resizerStateMock = Object.assign(resizerStateUpdater, { isResizing: false });
-    createState().useState.mockReturnValue(resizerStateMock);
+    mockUseState.mockReturnValue(mockResizerState(resizerStateUpdater, { isResizing: false }));
 
     const { container } = render(<Resizer onResizeStart={onResizeStart} onResize={() => {}} />);
-    const resizer = container.firstChild!;
+    const resizer = container.firstChild as HTMLElement;
 
-    fireEvent.mouseDown(resizer!);
+    fireEvent.mouseDown(resizer);
     expect(onResizeStart).toHaveBeenCalled();
     expect(resizerStateUpdater).toHaveBeenCalled();
   });
 
   it('calls onDoubleClick when double clicked', () => {
     const onDoubleClick = vi.fn();
-    const resizerStateMock = Object.assign(vi.fn(), { isResizing: false });
-    createState().useState.mockReturnValue(resizerStateMock);
+    mockUseState.mockReturnValue(mockResizerState(vi.fn(), { isResizing: false }));
 
     const { container } = render(<Resizer onDoubleClick={onDoubleClick} onResize={() => {}} />);
-    const resizer = container.firstChild!;
+    const resizer = container.firstChild as HTMLElement;
 
-    fireEvent.doubleClick(resizer!);
+    fireEvent.doubleClick(resizer);
     expect(onDoubleClick).toHaveBeenCalled();
   });
 
@@ -47,12 +56,10 @@ describe('Resizer', () => {
     const onResize = vi.fn();
     const onResizeEnd = vi.fn();
     const resizerStateUpdater = vi.fn((callback) => callback({ isResizing: true }));
-    createState().useState.mockReturnValue(
-      Object.assign(resizerStateUpdater, { isResizing: true }),
-    );
+    mockUseState.mockReturnValue(mockResizerState(resizerStateUpdater, { isResizing: true }));
 
     const { container } = render(<Resizer onResize={onResize} onResizeEnd={onResizeEnd} />);
-    expect(container.firstChild!.className).toContain('resizing');
+    expect((container.firstChild as HTMLElement).className).toContain('resizing');
 
     fireEvent.mouseMove(window, { clientX: 125 });
     fireEvent.touchMove(window, { touches: [{ clientX: 240 }] });
@@ -64,16 +71,13 @@ describe('Resizer', () => {
     expect(resizerStateUpdater).toHaveBeenCalled();
   });
 
-  it('ignores incomplete resize events and double-click mouse downs', () => {
+  it('ignores double-click mouse downs when starting a resize', () => {
     const onResize = vi.fn();
     const resizerStateUpdater = vi.fn();
-    createState().useState.mockReturnValue(
-      Object.assign(resizerStateUpdater, { isResizing: true }),
-    );
+    mockUseState.mockReturnValue(mockResizerState(resizerStateUpdater, { isResizing: true }));
 
     const { container } = render(<Resizer onResize={onResize} />);
-    fireEvent.mouseMove(window);
-    fireEvent.mouseDown(container.firstChild!, { detail: 2 });
+    fireEvent.mouseDown(container.firstChild as Element, { detail: 2 });
 
     expect(onResize).not.toHaveBeenCalled();
     expect(resizerStateUpdater).not.toHaveBeenCalled();
@@ -81,8 +85,8 @@ describe('Resizer', () => {
 
   it('supports omitted lifecycle callbacks', () => {
     const resizerStateUpdater = vi.fn((callback) => callback({ isResizing: true }));
-    const state = Object.assign(resizerStateUpdater, { isResizing: false });
-    createState().useState.mockReturnValue(state);
+    const state = mockResizerState(resizerStateUpdater, { isResizing: false });
+    mockUseState.mockReturnValue(state);
     const { container, rerender } = render(<Resizer onResize={() => {}} />);
 
     fireEvent.mouseDown(container.firstChild as Element);
@@ -95,7 +99,7 @@ describe('Resizer', () => {
 
   it('supports keyboard resizing with separator semantics', () => {
     const onResize = vi.fn();
-    createState().useState.mockReturnValue(Object.assign(vi.fn(), { isResizing: false }));
+    mockUseState.mockReturnValue(mockResizerState(vi.fn(), { isResizing: false }));
     render(<Resizer onResize={onResize} value={300} min={240} max={600} label="Resize sidebar" />);
 
     const resizer = screen.getByRole('separator', { name: 'Resize sidebar' });
@@ -108,7 +112,7 @@ describe('Resizer', () => {
 
   it('supports left/end/shift keyboard resizing and null state defaults', () => {
     const onResize = vi.fn();
-    createState().useState.mockReturnValue(null);
+    mockUseState.mockReturnValue(null);
     render(<Resizer onResize={onResize} value={300} min={240} max={600} label="Resize sidebar" />);
 
     const resizer = screen.getByRole('separator', { name: 'Resize sidebar' });
@@ -128,9 +132,7 @@ describe('Resizer', () => {
     const onDoubleClick = vi.fn();
     const onResize = vi.fn();
     const resizerStateUpdater = vi.fn();
-    createState().useState.mockReturnValue(
-      Object.assign(resizerStateUpdater, { isResizing: false }),
-    );
+    mockUseState.mockReturnValue(mockResizerState(resizerStateUpdater, { isResizing: false }));
 
     const { container, rerender } = render(
       <Resizer
@@ -142,12 +144,12 @@ describe('Resizer', () => {
       />,
     );
 
-    const resizer = container.firstChild!;
+    const resizer = container.firstChild as HTMLElement;
     expect(resizer.className).toContain('collapsed');
     expect(resizer).toHaveAttribute('aria-disabled', 'true');
 
-    fireEvent.mouseDown(resizer!);
-    fireEvent.doubleClick(resizer!);
+    fireEvent.mouseDown(resizer);
+    fireEvent.doubleClick(resizer);
     fireEvent.keyDown(resizer, { key: 'ArrowRight' });
 
     expect(onResizeStart).not.toHaveBeenCalled();

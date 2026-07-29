@@ -2,6 +2,7 @@ import type {
   EditorStateDraft,
   FileMap,
   FileSystemLike,
+  LogEntry,
   LogStateDraft,
   ProcessAIOptions,
   SidebarStateDraft,
@@ -46,8 +47,8 @@ export const processAIResponse = async (
     const firstRejection = validation.rejected[0];
     if (logState) {
       logState((draft) => {
-        updateInDraft(draft, ['logs'], (logs = []) => [
-          ...logs,
+        updateInDraft(draft, ['logs'], (logs: LogEntry[] | undefined) => [
+          ...(logs ?? []),
           {
             id: `${Date.now()}-repair-${attempt}`,
             role: 'system',
@@ -73,8 +74,8 @@ export const processAIResponse = async (
   const fileBlocks = validation.accepted.map(({ path, ...block }) => block);
   if (validation.rejected.length > 0 && logState) {
     logState((draft) => {
-      updateInDraft(draft, ['logs'], (logs = []) => [
-        ...logs,
+      updateInDraft(draft, ['logs'], (logs: LogEntry[] | undefined) => [
+        ...(logs ?? []),
         ...validation.rejected.map((text, index) => ({
           id: `${Date.now()}-validation-${index}`,
           role: 'system',
@@ -96,12 +97,17 @@ export const processAIResponse = async (
       : [];
 
   for (const block of fileBlocks) {
-    const filePath = resolveFilePath(block.filePath, existingPaths);
+    const filePath = resolveFilePath(block.filePath ?? '', existingPaths);
 
     try {
       const suppliedOriginal = originalContents[filePath];
       let originalContent = typeof suppliedOriginal === 'string' ? suppliedOriginal : '';
-      if (typeof suppliedOriginal !== 'string' && fs?.rootHandle && fs.getFileHandleAtPath && fs.readFile) {
+      if (
+        typeof suppliedOriginal !== 'string' &&
+        fs?.rootHandle &&
+        fs.getFileHandleAtPath &&
+        fs.readFile
+      ) {
         const handle = await fs.getFileHandleAtPath(filePath);
         if (handle) {
           originalContent = await fs.readFile(handle);
@@ -117,7 +123,7 @@ export const processAIResponse = async (
       const fileSelectedLines = selectedLines[filePath] || [];
       const { content: appliedContent } = applyFileUpdate(
         originalContent,
-        block.content,
+        block.content ?? '',
         fileSelectedLines,
       );
 
@@ -127,8 +133,8 @@ export const processAIResponse = async (
 
       if (finalContent === originalContent || !finalDiffs || finalDiffs.length === 0) {
         logState?.((draft) => {
-          updateInDraft(draft, ['logs'], (logs = []) => [
-            ...logs,
+          updateInDraft(draft, ['logs'], (logs: LogEntry[] | undefined) => [
+            ...(logs ?? []),
             {
               id: Date.now() + 3,
               role: 'system',
@@ -190,8 +196,8 @@ export const processAIResponse = async (
     } catch (fsErr) {
       const error = fsErr as Error;
       logState?.((draft) => {
-        updateInDraft(draft, ['logs'], (logs = []) => [
-          ...logs,
+        updateInDraft(draft, ['logs'], (logs: LogEntry[] | undefined) => [
+          ...(logs ?? []),
           {
             id: Date.now() + 4,
             role: 'system',
@@ -205,8 +211,8 @@ export const processAIResponse = async (
 
   if (filesUpdated > 0) {
     logState?.((draft) => {
-      updateInDraft(draft, ['logs'], (logs = []) => [
-        ...logs,
+      updateInDraft(draft, ['logs'], (logs: LogEntry[] | undefined) => [
+        ...(logs ?? []),
         {
           id: Date.now() + 5,
           role: 'system',

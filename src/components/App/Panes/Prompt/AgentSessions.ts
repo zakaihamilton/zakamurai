@@ -6,10 +6,7 @@ import type {
   AgentSessionStateShape,
 } from '@/components/state/domain-types';
 import { createState } from '@/components/state/State';
-import type {
-  AgentSessionTreeRow,
-  CreateAgentSessionOptions,
-} from '@/components/App/types';
+import type { AgentSessionTreeRow, CreateAgentSessionOptions } from '@/components/App/types';
 
 export const MAX_AGENT_SESSIONS = 50;
 export const MAX_SESSION_MESSAGES = 40;
@@ -80,7 +77,9 @@ export function getAgentSessionChildren(
   return listAgentSessions(sessions).filter((session) => (session.parentId || null) === parentId);
 }
 
-export function listAgentSessionTree(sessions: Record<string, AgentSession> = {}): AgentSessionTreeRow[] {
+export function listAgentSessionTree(
+  sessions: Record<string, AgentSession> = {},
+): AgentSessionTreeRow[] {
   const rows: AgentSessionTreeRow[] = [];
   const visit = (parentId: string | null, depth: number, ancestors = new Set<string>()) => {
     for (const session of getAgentSessionChildren(sessions, parentId)) {
@@ -93,7 +92,9 @@ export function listAgentSessionTree(sessions: Record<string, AgentSession> = {}
   return rows;
 }
 
-export function getActiveAgentSession(state: AgentSessionStateShape | null | undefined): AgentSession | null {
+export function getActiveAgentSession(
+  state: AgentSessionStateShape | null | undefined,
+): AgentSession | null {
   if (!state?.sessions || !state.activeSessionId) return null;
   return state.sessions[state.activeSessionId] || null;
 }
@@ -152,10 +153,13 @@ export function normalizeAgentSessions(
   }
 
   const sessionsIn =
-    raw && typeof raw === 'object' && !Array.isArray(raw) && 'sessions' in raw &&
+    raw &&
+    typeof raw === 'object' &&
+    !Array.isArray(raw) &&
+    'sessions' in raw &&
     (raw as { sessions?: unknown }).sessions &&
     typeof (raw as { sessions: unknown }).sessions === 'object'
-      ? ((raw as { sessions: Record<string, AgentSession> }).sessions)
+      ? (raw as { sessions: Record<string, AgentSession> }).sessions
       : {};
   const normalized: Record<string, AgentSession> = {};
   for (const [id, session] of Object.entries(sessionsIn)) {
@@ -328,7 +332,7 @@ export function deleteAgentSession(
     ? target.parentId && sessions[target.parentId]
       ? target.parentId
       : getAgentSessionChildren(sessions, null)[0]?.id || remaining[0].id
-    : state?.activeSessionId ?? remaining[0].id;
+    : (state?.activeSessionId ?? remaining[0].id);
   return { sessions, activeSessionId };
 }
 

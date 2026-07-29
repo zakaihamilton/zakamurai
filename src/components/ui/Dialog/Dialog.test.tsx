@@ -51,14 +51,32 @@ describe('Dialog', () => {
 
   it('does not render when isOpen is false', () => {
     const { container } = render(
-      <Dialog footer={null} children={null} isOpen={false} title="T" message="M" onConfirm={vi.fn()} onCancel={vi.fn()} />,
+      <Dialog
+        footer={null}
+        children={null}
+        isOpen={false}
+        title="T"
+        message="M"
+        onConfirm={vi.fn()}
+        onCancel={vi.fn()}
+      />,
     );
     expect(container.firstChild).toBeNull();
   });
 
   it('provides modal semantics and closes on Escape', () => {
     const onCancel = vi.fn();
-    render(<Dialog footer={null} children={null} isOpen={true} title="T" message="M" onConfirm={vi.fn()} onCancel={onCancel} />);
+    render(
+      <Dialog
+        footer={null}
+        children={null}
+        isOpen={true}
+        title="T"
+        message="M"
+        onConfirm={vi.fn()}
+        onCancel={onCancel}
+      />,
+    );
 
     const dialog = screen.getByRole('dialog', { name: 'T' });
     expect(dialog).toHaveAttribute('aria-modal', 'true');
@@ -69,14 +87,24 @@ describe('Dialog', () => {
 
   it('traps Tab focus within the dialog', () => {
     const onCancel = vi.fn();
-    render(<Dialog footer={null} children={null} isOpen={true} title="T" message="M" onConfirm={vi.fn()} onCancel={onCancel} />);
+    render(
+      <Dialog
+        footer={null}
+        children={null}
+        isOpen={true}
+        title="T"
+        message="M"
+        onConfirm={vi.fn()}
+        onCancel={onCancel}
+      />,
+    );
 
     const dialog = screen.getByRole('dialog', { name: 'T' });
     const focusable = dialog.querySelectorAll(
       'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
     );
-    const first = focusable[0];
-    const last = focusable[focusable.length - 1];
+    const first = focusable[0] as HTMLElement;
+    const last = focusable[focusable.length - 1] as HTMLElement;
 
     last.focus();
     fireEvent.keyDown(document, { key: 'Tab' });

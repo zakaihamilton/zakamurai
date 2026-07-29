@@ -85,7 +85,15 @@ describe('LogList', () => {
     const { container } = render(
       <LogList
         visibleLogs={[
-          { log: { id: 1, role: 'system', text: 'ERR: Something went wrong', timestamp: '2024-01-01T00:00:00Z' }, displayIndex: 0 },
+          {
+            log: {
+              id: 1,
+              role: 'system',
+              text: 'ERR: Something went wrong',
+              timestamp: '2024-01-01T00:00:00Z',
+            },
+            displayIndex: 0,
+          },
         ]}
         totalLogsCount={1}
         filterText=""

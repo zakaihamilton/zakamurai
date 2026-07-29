@@ -1,7 +1,8 @@
 import type { StateHandle, WebLLMEngineState, WebLLMStateDraft } from '@/components/AI/types';
+import type { WebLLMStateShape } from '@/components/state/domain-types';
 import { createState } from '@/components/state/State';
 
-export const WebLLMState = createState('WebLLMState');
+export const WebLLMState = createState<WebLLMStateShape>('WebLLMState');
 
 let webLLMStore: StateHandle<WebLLMStateDraft> | null = null;
 
@@ -25,7 +26,7 @@ export function updateWebLLMEngine(modelId: string, patch: WebLLMEngineState): v
   });
 }
 
-export function setWebLLMCachedModelIds(ids: string[]): void {
+export function setWebLLMCachedModelIds(ids: string[] | null): void {
   if (!webLLMStore) return;
   webLLMStore((draft) => {
     draft.cachedModelIds = Array.isArray(ids) ? ids : [];

@@ -1,4 +1,9 @@
-import type { RunAgentOptions, RunAgentResult, VerificationResult, WebLLMMessage } from '@/components/AI/types';
+import type {
+  RunAgentOptions,
+  RunAgentResult,
+  VerificationResult,
+  WebLLMMessage,
+} from '@/components/AI/types';
 import { AgentContextManager, formatVerificationResult } from './ContextManager';
 import { listProjectChecks, runProjectCheck } from './ProjectChecks';
 import { AGENT_SYSTEM_PROMPT, ALL_AGENT_ACTIONS, parseAgentAction } from './Protocol';
@@ -95,7 +100,7 @@ export async function runAgent({
     });
     messages.push({ role: 'assistant', content: reply });
 
-    let action;
+    let action: ReturnType<typeof parseAgentAction> | undefined;
     try {
       action = parseAgentAction(reply, { allowedActions });
       protocolFailures = 0;
@@ -147,16 +152,17 @@ export async function runAgent({
         result = `Staged deletion of ${action.path}.`;
       }
       if (action.action === 'validate') {
-        let verification: VerificationResult = validate
+        const rawVerification = validate
           ? await validate(workspace.files)
           : { status: 'unavailable', check: 'build', diagnostics: 'Validation is unavailable.' };
-        if (typeof verification === 'string') {
-          verification = {
-            status: /\b(passed|success|ok)\b/i.test(verification) ? 'passed' : 'failed',
-            check: 'build',
-            diagnostics: verification,
-          };
-        }
+        const verification: VerificationResult =
+          typeof rawVerification === 'string'
+            ? {
+                status: /\b(passed|success|ok)\b/i.test(rawVerification) ? 'passed' : 'failed',
+                check: 'build',
+                diagnostics: rawVerification,
+              }
+            : rawVerification;
         result = formatVerificationResult(verification);
         context.record('verification', verification);
         if (verification.status === 'passed' || verification.status === 'unavailable') {

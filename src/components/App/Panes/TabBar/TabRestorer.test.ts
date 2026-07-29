@@ -63,14 +63,18 @@ describe('useTabRestorer', () => {
     ];
     tabState.activeTabId = 'file1.js';
 
-    vi.mocked(mockFs.getFileHandleAtPath).mockImplementation(async (path: string) => ({
-      kind: 'file',
-      name: path,
-    } as unknown as FileSystemFileHandle));
+    vi.mocked(mockFs.getFileHandleAtPath).mockImplementation(
+      async (path: string) =>
+        ({
+          kind: 'file',
+          name: path,
+        }) as unknown as FileSystemFileHandle,
+    );
     vi.mocked(mockFs.readFile).mockResolvedValue('file content');
 
     await act(async () => {
       renderHook(() => useTabRestorer());
+      await Promise.resolve();
     });
 
     expect(tabState.openTabs).toHaveLength(2);
@@ -99,6 +103,7 @@ describe('useTabRestorer', () => {
 
     await act(async () => {
       renderHook(() => useTabRestorer());
+      await Promise.resolve();
     });
 
     expect(tabState.openTabs).toHaveLength(1);
@@ -118,6 +123,7 @@ describe('useTabRestorer', () => {
 
     await act(async () => {
       renderHook(() => useTabRestorer());
+      await Promise.resolve();
     });
 
     expect(tabState.openTabs).toHaveLength(0);

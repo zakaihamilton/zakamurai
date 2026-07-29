@@ -21,7 +21,11 @@ vi.mock('@/components/ui/Select', () => ({
     options?: Array<{ value: string; label: string }>;
     onChange: (value: string) => void;
   }) => (
-    <select aria-label={label} value={value} onChange={(event: ChangeEvent<HTMLSelectElement>) => onChange(event.target.value)}>
+    <select
+      aria-label={label}
+      value={value}
+      onChange={(event: ChangeEvent<HTMLSelectElement>) => onChange(event.target.value)}
+    >
       {options.map((option) => (
         <option key={option.value} value={option.value}>
           {option.label}

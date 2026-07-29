@@ -19,10 +19,11 @@ export function useRagIndexer() {
   const bootstrappedRef = useRef(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastFingerprintRef = useRef('');
-  const fileContentsRef = useRef(editorState.fileContents);
-  fileContentsRef.current = editorState.fileContents;
+  const fileContentsRef = useRef(editorState?.fileContents);
+  fileContentsRef.current = editorState?.fileContents;
 
   useEffect(() => {
+    if (!ragState) return undefined;
     let cancelled = false;
 
     const initRag = async () => {
@@ -32,7 +33,7 @@ export function useRagIndexer() {
           draft.error = null;
         });
         // Start the timeout before dynamic imports so hung imports are covered.
-        const timeout = new Promise((_, reject) =>
+        const timeout = new Promise<never>((_, reject) =>
           setTimeout(() => reject(new Error('RAG Init Timeout')), 10000),
         );
         const initWork = (async () => {
@@ -52,7 +53,10 @@ export function useRagIndexer() {
           ragState((draft) => {
             draft.status = 'indexing';
           });
-          const files = await collectWorkspaceFiles(fs, fileContentsRef.current || {});
+          const files = await collectWorkspaceFiles(
+            fs as import('@/components/AI/types').FileSystemLike,
+            fileContentsRef.current || {},
+          );
           if (cancelled) return;
           await ragSearch.indexWorkspaceFiles(files);
           const fingerprint = fingerprintContents(fileContentsRef.current);
@@ -88,7 +92,7 @@ export function useRagIndexer() {
   }, [fs, fs?.isReady, ragState]);
 
   useEffect(() => {
-    if (!fs?.isReady) return undefined;
+    if (!fs?.isReady || !editorState || !ragState) return undefined;
     const nextFingerprint = fingerprintContents(editorState.fileContents);
     if (nextFingerprint === lastFingerprintRef.current) return undefined;
 
@@ -127,7 +131,7 @@ export function useRagIndexer() {
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
-  }, [editorState.fileContents, fs?.isReady, ragState]);
+  }, [editorState?.fileContents, fs?.isReady, ragState, editorState]);
 }
 
 function hashString(str: string): string {

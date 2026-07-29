@@ -21,7 +21,12 @@ import {
 } from './navigation/JsSymbolResolver';
 
 import { resolveVariables } from './navigation/VariableResolver';
-import type { FileContents, NavigationTarget, SourceLocation, StyleAtCursor } from './navigation/types';
+import type {
+  FileContents,
+  NavigationTarget,
+  SourceLocation,
+  StyleAtCursor,
+} from './navigation/types';
 
 // Re-export all submodules functions to keep the API exactly the same
 export {

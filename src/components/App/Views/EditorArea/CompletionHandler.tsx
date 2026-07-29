@@ -41,7 +41,8 @@ const createDebugPayload = ({
   model = '',
   requestedAt,
   completedAt,
-}: Partial<CompletionDebugPayload> & Pick<CompletionDebugPayload, 'status' | 'filePath'>): CompletionDebugPayload => ({
+}: Partial<CompletionDebugPayload> &
+  Pick<CompletionDebugPayload, 'status' | 'filePath'>): CompletionDebugPayload => ({
   status,
   phase: phase || '',
   filePath,
