@@ -1,5 +1,11 @@
 import { vi } from 'vitest';
 
+/** Assert an element exists and return it for event helpers. */
+export function requireElement<T extends Element | null>(el: T): NonNullable<T> {
+  if (el == null) throw new Error('expected element to be present');
+  return el;
+}
+
 export type MockProxyRequest = {
   nextUrl: {
     pathname: string;

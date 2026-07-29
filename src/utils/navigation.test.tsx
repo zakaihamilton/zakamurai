@@ -17,6 +17,7 @@ import {
   resolveImportPath,
   resolveRelativePath,
 } from './navigation';
+import { requireSourceIndex } from './navigation/types';
 
 describe('navigation utils', () => {
   describe('getCssImports', () => {
@@ -221,18 +222,24 @@ describe('navigation utils', () => {
       );
       expect(result).not.toBeNull();
       expect(result?.line).toBe(2);
-      expect(jsCode.substring(result?.index, result?.index + 'theme.titleMain'.length)).toBe(
-        'theme.titleMain',
-      );
+      expect(
+        jsCode.substring(
+          requireSourceIndex(result),
+          requireSourceIndex(result) + 'theme.titleMain'.length,
+        ),
+      ).toBe('theme.titleMain');
     });
 
     it('finds reference using auto-extracted identifiers when no specific path is given', () => {
       const result = findClassReferenceInJs(jsCode, 'header-title');
       expect(result).not.toBeNull();
       expect(result?.line).toBe(2);
-      expect(jsCode.substring(result?.index, result?.index + "theme['header-title']".length)).toBe(
-        "theme['header-title']",
-      );
+      expect(
+        jsCode.substring(
+          requireSourceIndex(result),
+          requireSourceIndex(result) + "theme['header-title']".length,
+        ),
+      ).toBe("theme['header-title']");
     });
 
     it('returns null if reference does not exist', () => {
@@ -247,9 +254,12 @@ describe('navigation utils', () => {
       const result = findClassReferenceInJs(jsCode, 'primary-btn');
       expect(result).not.toBeNull();
       expect(result?.line).toBe(3);
-      expect(jsCode.substring(result?.index, result?.index + 'primary-btn'.length)).toBe(
-        'primary-btn',
-      );
+      expect(
+        jsCode.substring(
+          requireSourceIndex(result),
+          requireSourceIndex(result) + 'primary-btn'.length,
+        ),
+      ).toBe('primary-btn');
     });
   });
 
@@ -674,20 +684,20 @@ describe('navigation utils', () => {
       // Check SparklesIcon target
       const sparklesTarget = importTargets.find((t) => t.name === 'SparklesIcon');
       expect(sparklesTarget).toBeDefined();
-      expect(sparklesTarget?.targets[0].filePath).toBe('src/Icons.js');
-      expect(sparklesTarget?.targets[0].loc.line).toBe(2);
-      expect(fileContents['src/App.js'].substring(sparklesTarget?.start, sparklesTarget?.end)).toBe(
+      const sparkles = sparklesTarget!;
+      expect(sparkles.targets[0].filePath).toBe('src/Icons.js');
+      expect(sparkles.targets[0].loc.line).toBe(2);
+      expect(fileContents['src/App.js'].substring(sparkles.start, sparkles.end)).toBe(
         'SparklesIcon',
       );
 
       // Check CheckIcon target
       const checkTarget = importTargets.find((t) => t.name === 'CheckIcon');
       expect(checkTarget).toBeDefined();
-      expect(checkTarget?.targets[0].filePath).toBe('src/Icons.js');
-      expect(checkTarget?.targets[0].loc.line).toBe(3);
-      expect(fileContents['src/App.js'].substring(checkTarget?.start, checkTarget?.end)).toBe(
-        'CheckIcon',
-      );
+      const check = checkTarget!;
+      expect(check.targets[0].filePath).toBe('src/Icons.js');
+      expect(check.targets[0].loc.line).toBe(3);
+      expect(fileContents['src/App.js'].substring(check.start, check.end)).toBe('CheckIcon');
     });
 
     it('returns targets for named imports with aliases', () => {
@@ -791,18 +801,20 @@ describe('navigation utils', () => {
 
       const btnTarget = styleTargets.find((t) => t.className === 'btn');
       expect(btnTarget).toBeDefined();
-      expect(btnTarget?.targets[0].filePath).toBe('src/global.css');
-      expect(btnTarget?.targets[0].loc.line).toBe(2);
+      const btn = btnTarget!;
+      expect(btn.targets[0].filePath).toBe('src/global.css');
+      expect(btn.targets[0].loc.line).toBe(2);
 
       const primaryBtnTarget = styleTargets.find((t) => t.className === 'primary-btn');
       expect(primaryBtnTarget).toBeDefined();
-      expect(primaryBtnTarget?.targets[0].filePath).toBe('src/global.css');
-      expect(primaryBtnTarget?.targets[0].loc.line).toBe(3);
+      const primaryBtn = primaryBtnTarget!;
+      expect(primaryBtn.targets[0].filePath).toBe('src/global.css');
+      expect(primaryBtn.targets[0].loc.line).toBe(3);
 
-      expect(fileContents['src/App.js'].substring(btnTarget?.start, btnTarget?.end)).toBe('btn');
-      expect(
-        fileContents['src/App.js'].substring(primaryBtnTarget?.start, primaryBtnTarget?.end),
-      ).toBe('primary-btn');
+      expect(fileContents['src/App.js'].substring(btn.start, btn.end)).toBe('btn');
+      expect(fileContents['src/App.js'].substring(primaryBtn.start, primaryBtn.end)).toBe(
+        'primary-btn',
+      );
     });
   });
 
@@ -834,13 +846,13 @@ describe('navigation utils', () => {
       expect(spinDef).toBeDefined();
       expect(spinDef?.targets.length).toBe(1);
       expect(spinDef?.targets[0].loc.line).toBe(8); // animation line in spinner class
-      expect(cssCode.substring(spinDef?.start, spinDef?.end)).toBe('spin');
+      expect(cssCode.substring(spinDef!.start, spinDef!.end)).toBe('spin');
 
       // 2. Usage check: 'animation: spin ...' (type 'import' pointing to definition)
       const spinUsage = targets.find((t) => t.type === 'import' && t.name === 'spin');
       expect(spinUsage).toBeDefined();
       expect(spinUsage?.targets[0].loc.line).toBe(2); // definition line
-      expect(cssCode.substring(spinUsage?.start, spinUsage?.end)).toBe('spin');
+      expect(cssCode.substring(spinUsage!.start, spinUsage!.end)).toBe('spin');
     });
   });
 });

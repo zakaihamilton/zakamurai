@@ -1,5 +1,5 @@
-import { requireElement } from '@/test-utils/domMocks';
 import { createDefaultRoleGraph } from '@/components/AI/Agent/Roles';
+import { requireElement } from '@/test-utils/domMocks';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import RoleCard from './RoleCard';
@@ -74,10 +74,10 @@ describe('RoleCard', () => {
     const selects = container
       .querySelector('[data-role-id="reviewer"]')
       ?.querySelectorAll('select');
-    fireEvent.change(requireElement(selects?.[1]), { target: { value: 'model-b' } });
+    fireEvent.change(requireElement(selects?.[1] ?? null), { target: { value: 'model-b' } });
     expect(onChangeModel).toHaveBeenCalledWith('model-b');
 
-    fireEvent.change(requireElement(selects?.[2]), { target: { value: 'planner' } });
+    fireEvent.change(requireElement(selects?.[2] ?? null), { target: { value: 'planner' } });
     expect(onChangeRejectTarget).toHaveBeenCalledWith('planner', rejectEdge?.maxTimes);
   });
 });

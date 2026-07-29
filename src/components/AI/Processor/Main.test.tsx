@@ -187,7 +187,9 @@ added
     });
 
     test('creates missing directory nodes in sidebar state', async () => {
-      vi.mocked(mockFS.getFileHandleAtPath).mockResolvedValue(null);
+      const getFileHandleAtPath = mockFS.getFileHandleAtPath;
+      if (!getFileHandleAtPath) throw new Error('mock FS missing getFileHandleAtPath');
+      vi.mocked(getFileHandleAtPath).mockResolvedValue(null);
       const sidebarStateObj: SidebarStateDraft = { folderTree: [] };
       const sidebarState = createSidebarStateMock(sidebarStateObj);
 
@@ -213,7 +215,9 @@ content
     });
 
     test('handles filesystem and processing errors gracefully by logging', async () => {
-      vi.mocked(mockFS.readFile).mockRejectedValue(new Error('FS Read Error'));
+      const readFile = mockFS.readFile;
+      if (!readFile) throw new Error('mock FS missing readFile');
+      vi.mocked(readFile).mockRejectedValue(new Error('FS Read Error'));
 
       const response = `// --- File: test.js ---
 new content

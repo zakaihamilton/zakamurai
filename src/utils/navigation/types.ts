@@ -24,6 +24,11 @@ export type SourceLocation = {
   index: number;
 };
 
+export function requireSourceIndex(loc: SourceLocation | null | undefined): number {
+  if (!loc || loc.index == null) throw new Error('expected source location index');
+  return loc.index;
+}
+
 export type JsToken = {
   type: string;
   value: string;

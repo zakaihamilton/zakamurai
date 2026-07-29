@@ -36,7 +36,7 @@ export default function useFileLoader({
       if (!handle || cancelled) return;
 
       const content = await fs.readFile?.(handle);
-      if (cancelled) return;
+      if (cancelled || content == null) return;
 
       loadedLocalFileRef.current = filePath;
       setLocalContent((current) => (current === startingContent ? content : current));
@@ -84,6 +84,7 @@ export default function useFileLoader({
             const handle = await fs.getFileHandleAtPath?.(candidate);
             if (handle) {
               const content = await fs.readFile?.(handle);
+              if (content == null) continue;
               state((draft) => {
                 draft.fileContents = {
                   ...draft.fileContents,
@@ -124,6 +125,7 @@ export default function useFileLoader({
               const handle = await fs.getFileHandleAtPath?.(candidate);
               if (handle) {
                 const content = await fs.readFile?.(handle);
+                if (content == null) continue;
                 state((draft) => {
                   draft.fileContents = {
                     ...draft.fileContents,

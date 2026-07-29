@@ -82,8 +82,9 @@ describe('AgentSessions', () => {
 
     state = addAgentSession(state, { name: 'Extra' });
     const activeId = requireSessionId(state.activeSessionId);
-    const other = listAgentSessions(state.sessions).find((s) => s.id !== activeId)?.id;
-    state = deleteAgentSession(state, other);
+    const other = requireSessionId(
+      listAgentSessions(state.sessions).find((s) => s.id !== activeId)?.id,
+    );
     expect(state.activeSessionId).toBe(activeId);
   });
 

@@ -56,7 +56,7 @@ describe('Node', () => {
   });
 
   it('walks ancestors when looking up a property by id', () => {
-    let found: unknown;
+    let found: StateNode | null = null;
 
     function Reader() {
       found = Node.useNode('shared');

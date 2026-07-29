@@ -658,10 +658,12 @@ describe('browser-bundler', () => {
           onResolve?.({ path, importer, resolveDir: resolveDir || '/src' });
 
         const entry = resolve('/src/main.jsx', undefined, '/');
+        if (!entry) throw new Error('expected resolve result');
         expect(entry.errors).toBeUndefined();
         expect(entry.path).toBe('/src/main.jsx');
 
         const client = resolve('react-dom/client', '/src/main.jsx', '/src');
+        if (!client) throw new Error('expected resolve result');
         expect(client.errors).toBeUndefined();
         expect(client.path).toBe('/node_modules/react-dom/client.js');
 
@@ -671,6 +673,7 @@ describe('browser-bundler', () => {
           '/node_modules/react-dom/client.js',
           '/node_modules/react-dom',
         );
+        if (!root) throw new Error('expected resolve result');
         expect(root.errors).toBeUndefined();
         expect(root.path).toBe('/node_modules/react-dom/index.js');
 

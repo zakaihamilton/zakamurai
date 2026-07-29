@@ -145,14 +145,14 @@ const largeWriteGen = {
   changeSets: 0,
 };
 
-const readLegacyLocal = <T>(key: string, fallback: T, { raw = false } = {}): T => {
+function readLegacyLocal<T>(key: string, fallback: T, { raw = false } = {}): T {
   const storage = getStorage();
   if (!storage) return fallback;
   const val = storage.getItem(key);
   if (val == null) return fallback;
   if (raw) return val as T;
   return parseStoredJson(val, fallback);
-};
+}
 
 const clearLegacyLocal = (key: string) => {
   const storage = getStorage();
@@ -179,10 +179,10 @@ function setLargeCacheValue<K extends LargeCacheKey>(key: K, value: LargeCache[K
   largeCache[key] = value;
 }
 
-const writeLarge = async <K extends LargeCacheKey>(
+async function writeLarge<K extends LargeCacheKey>(
   cacheKey: K,
   value: LargeCache[K],
-): Promise<boolean> => {
+): Promise<boolean> {
   setLargeCacheValue(cacheKey, value);
   const idbKey = LARGE_IDB_KEYS[cacheKey];
   const myGen = ++largeWriteGen[cacheKey];
@@ -210,13 +210,13 @@ const writeLarge = async <K extends LargeCacheKey>(
   if (fallbackSaved) await recordStorageSuccess('localStorage');
   else recordStorageFailure(`Could not persist ${cacheKey} in IndexedDB or localStorage.`);
   return fallbackSaved;
-};
+}
 
 /**
  * Synchronous last-chance write for beforeunload. Updates the in-memory cache and
  * localStorage so the debounce window is not lost when the tab closes.
  */
-const persistLargeSync = <K extends LargeCacheKey>(cacheKey: K, value: LargeCache[K]): boolean => {
+function persistLargeSync<K extends LargeCacheKey>(cacheKey: K, value: LargeCache[K]): boolean {
   setLargeCacheValue(cacheKey, value);
   // Invalidate in-flight writeLarge so it cannot clear this fresher unload snapshot.
   largeWriteGen[cacheKey] += 1;
@@ -231,7 +231,7 @@ const persistLargeSync = <K extends LargeCacheKey>(cacheKey: K, value: LargeCach
   // Fire-and-forget durable IDB write; unload may cancel it.
   void idbSet(idbKey, value);
   return ok;
-};
+}
 
 const Settings = {
   getStorageHealth() {
@@ -572,11 +572,11 @@ const Settings = {
 
     hydratePromise = (async () => {
       recoveryCheckpoint = normalizeRecoveryCheckpoint(await idbGet(RECOVERY_CHECKPOINT_KEY));
-      const loadOne = async <T>(
+      async function loadOne<T>(
         cacheKey: LargeCacheKey,
         fallback: T,
         { raw = false }: { raw?: boolean } = {},
-      ) => {
+      ) {
         const idbKey = LARGE_IDB_KEYS[cacheKey];
         const legacy = readLegacyLocal(idbKey, fallback, { raw });
         const hasLegacy = legacy != null && legacy !== fallback;
@@ -594,7 +594,7 @@ const Settings = {
           cacheKey,
           (value == null ? fallback : value) as LargeCache[typeof cacheKey],
         );
-      };
+      }
 
       await Promise.all([
         loadOne('fileContents', null),
