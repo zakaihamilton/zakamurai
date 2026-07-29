@@ -1,12 +1,18 @@
 import type { TreeItemStateShape } from '@/components/state/domain-types';
 import { createState } from '@/components/state/State';
 import { useLongPress } from '@/utils/touch';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, type TouchEvent as ReactTouchEvent } from 'react';
 import { requireStore } from '../../types';
+import type { UseTreeItemControlsParams } from './sidebar-types';
 
 export const TreeItemState = createState<TreeItemStateShape>('TreeItemState');
 
-export function useTreeItemControls({ row, onOpenFile, onRename, onStartCreate }) {
+export function useTreeItemControls({
+  row,
+  onOpenFile,
+  onRename,
+  onStartCreate,
+}: UseTreeItemControlsParams) {
   const { item } = row;
   const treeItemState = requireStore(TreeItemState.useState(null, {
     isEditing: false,
@@ -20,7 +26,7 @@ export function useTreeItemControls({ row, onOpenFile, onRename, onStartCreate }
     contextMenu = null,
     showDeleteDialog = false,
   } = treeItemState || {};
-  const editInputRef = useRef(null);
+  const editInputRef = useRef<HTMLInputElement | null>(null);
 
   const closeContextMenu = () => {
     treeItemState((draft) => {
@@ -29,7 +35,7 @@ export function useTreeItemControls({ row, onOpenFile, onRename, onStartCreate }
   };
 
   const longPressHandlers = useLongPress(
-    (event) => {
+    (event: ReactTouchEvent) => {
       const touch = event.touches[0];
       treeItemState((draft) => {
         draft.contextMenu = { x: touch.pageX, y: touch.pageY };
@@ -74,7 +80,7 @@ export function useTreeItemControls({ row, onOpenFile, onRename, onStartCreate }
     contextMenu,
     editInputRef,
     editValue,
-    handleContextMenu: (event) => {
+    handleContextMenu: (event: React.MouseEvent) => {
       if (isEditing) return;
       event.preventDefault();
       treeItemState((draft) => {
@@ -83,16 +89,16 @@ export function useTreeItemControls({ row, onOpenFile, onRename, onStartCreate }
     },
     isEditing,
     longPressHandlers,
-    openWith: (viewType) => {
+    openWith: (viewType: string) => {
       onOpenFile(row, { viewType });
       closeContextMenu();
     },
-    setEditValue: (value) => {
+    setEditValue: (value: string) => {
       treeItemState((draft) => {
         draft.editValue = value;
       });
     },
-    startCreate: (type) => {
+    startCreate: (type: string) => {
       closeContextMenu();
       onStartCreate(row, type);
     },
@@ -115,7 +121,7 @@ export function useTreeItemControls({ row, onOpenFile, onRename, onStartCreate }
     },
     submitRename,
     showDeleteDialog,
-    setShowDeleteDialog: (isOpen) => {
+    setShowDeleteDialog: (isOpen: boolean) => {
       treeItemState((draft) => {
         draft.showDeleteDialog = isOpen;
       });

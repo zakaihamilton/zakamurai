@@ -1,6 +1,10 @@
+import type { TokenNavigationSectionProps } from './token-breakdown-types';
 import styles from './TokenNavigationSection.module.css';
 
-export default function TokenNavigationSection({ navigationTargets, navigationLinksEnabled }) {
+export default function TokenNavigationSection({
+  navigationTargets,
+  navigationLinksEnabled,
+}: TokenNavigationSectionProps) {
   return (
     <>
       <div className={styles.sectionHeader}>
@@ -13,7 +17,7 @@ export default function TokenNavigationSection({ navigationTargets, navigationLi
             <li key={`${target.start}-${target.end}-${target.name || target.className || index}`}>
               <code>{target.type || 'target'}</code>
               <span>
-                {target.name || target.className || target.text || 'unnamed'} at{' '}
+                {target.name || target.className || 'unnamed'} at{' '}
                 {target.position?.line || '-'}:{target.position?.column || '-'}
               </span>
             </li>

@@ -2,6 +2,7 @@ import { TabState } from '@/components/App/Panes/TabBar';
 import { EditorState } from '@/components/App/Views/EditorArea';
 import { getHighlightBreakdown } from '@/components/App/Views/EditorArea/highlighter';
 import { shouldDeferEditorAnalysis } from '@/components/App/Views/EditorArea/largeFile';
+import type { FileViewType } from '@/utils/fileViews';
 import { Icons } from '@/components/ui/Icons';
 import { useMemo, useState } from 'react';
 import styles from './TokenBreakdown.module.css';
@@ -13,6 +14,7 @@ import TokenSectionTabs from './TokenSectionTabs';
 import TokenSummaryCards from './TokenSummaryCards';
 import TokenTableSection from './TokenTableSection';
 import TokenVerificationCard from './TokenVerificationCard';
+import type { TokenBreakdownProps, TokenVerificationResult } from './token-breakdown-types';
 import {
   checkTokenReportMatch,
   compareTokensBySourceOrder,
@@ -22,7 +24,7 @@ import {
 } from './tokenUtils';
 import { requireStore } from '../../types';
 
-export default function TokenBreakdown({ tab }) {
+export default function TokenBreakdown({ tab }: TokenBreakdownProps) {
   const editorState = requireStore(EditorState.useState(['fileContents', 'pendingDiffs']));
   const tabState = requireStore(TabState.useState(['activeTabId', 'openTabs']));
   const [copied, setCopied] = useState(false);
@@ -30,7 +32,7 @@ export default function TokenBreakdown({ tab }) {
   const [activeSection, setActiveSection] = useState('tokens');
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState('All');
-  const [verificationResult, setVerificationResult] = useState(null);
+  const [verificationResult, setVerificationResult] = useState<TokenVerificationResult | null>(null);
 
   const filePath = tab?.sourceFilePath || tab?.filePath || tab?.file?.path?.join('/') || '';
   const fileName = tab?.file?.name || filePath.split('/').pop() || '';
@@ -39,7 +41,7 @@ export default function TokenBreakdown({ tab }) {
   const isFileView = tab?.type === 'file';
   const canSwitchFileViews = isFileView || !!filePath;
 
-  const handleSelectView = (viewType) => {
+  const handleSelectView = (viewType: FileViewType) => {
     tabState((draft) => {
       if (isFileView) {
         draft.openTabs = draft.openTabs.map((openTab) =>
@@ -74,7 +76,10 @@ export default function TokenBreakdown({ tab }) {
     const breakdown = getHighlightBreakdown({
       code,
       filePath,
-      state: editorState,
+      state: {
+        pendingDiffs: editorState.pendingDiffs as import('@/components/App/Views/EditorArea/types').HighlightEditorState['pendingDiffs'],
+        fileContents: editorState.fileContents,
+      },
       styles,
       navigationLinksEnabled: true,
     });

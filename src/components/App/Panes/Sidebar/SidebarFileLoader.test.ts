@@ -1,18 +1,22 @@
 import { renderHook } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
+import { makeFileSystemApi } from '@/test-utils/fsMocks';
+import { createMockEditorState, createMockTabState } from '@/test-utils/editorMocks';
+import { makeAppState, makeSidebarState } from '@/test-utils/stateMocks';
+import { asNormalizedTreeNode, makeFlatTreeRow } from '@/test-utils/treeMocks';
 import useSidebarFileLoader from './SidebarFileLoader';
 
 describe('useSidebarFileLoader', () => {
   const defaultArgs = {
-    fs: {
+    fs: makeFileSystemApi({
       mode: 'sandbox',
       triggerRefresh: vi.fn(),
       readFile: vi.fn().mockResolvedValue('file text'),
-    },
-    appState: { isMobile: false },
-    sidebarState: vi.fn(),
-    tabState: vi.fn(),
-    editorState: Object.assign(vi.fn(), { fileContents: { 'src/App.js': 'code' } }),
+    }),
+    appState: makeAppState({ isMobile: false }),
+    sidebarState: makeSidebarState(),
+    tabState: createMockTabState(),
+    editorState: createMockEditorState({ fileContents: { 'src/App.js': 'code' } }),
     setLoadingPaths: vi.fn(),
     addNotification: vi.fn(),
   };
@@ -29,30 +33,30 @@ describe('useSidebarFileLoader', () => {
   });
 
   it('handles handleRename for root project', async () => {
-    const appState = vi.fn();
+    const appState = makeAppState({ isMobile: false });
     const addNotification = vi.fn();
 
     const { result } = renderHook(() =>
       useSidebarFileLoader({
         ...defaultArgs,
-        appState: Object.assign(appState, { isMobile: false }),
+        appState,
         addNotification,
       }),
     );
 
-    const res = await result.current.handleRename({ item: { isRoot: true } }, 'NewProject');
+    const res = await result.current.handleRename(
+      makeFlatTreeRow({ item: asNormalizedTreeNode({ name: 'Project', type: 'folder', path: [], isRoot: true }) }),
+      'NewProject',
+    );
     expect(res).toBe(true);
     expect(appState).toHaveBeenCalled();
     expect(addNotification).toHaveBeenCalledWith('Renamed project to "NewProject"', 'success');
   });
 
   it('handles handleRename for non-root file in sandbox mode', async () => {
-    const sidebarState = vi.fn((cb) => cb({ folderTree: [], expandedFolders: {} }));
-    const editorState = Object.assign(
-      vi.fn((cb) => cb({ fileContents: {} })),
-      { fileContents: {} },
-    );
-    const tabState = vi.fn((cb) => cb({ openTabs: [{ id: 'src/App.js' }] }));
+    const sidebarState = makeSidebarState({ folderTree: [], expandedFolders: {} });
+    const editorState = createMockEditorState({ fileContents: {} });
+    const tabState = createMockTabState({ openTabs: [{ id: 'src/App.js', label: 'App.js', type: 'file' }] });
 
     const { result } = renderHook(() =>
       useSidebarFileLoader({
@@ -64,7 +68,11 @@ describe('useSidebarFileLoader', () => {
     );
 
     const res = await result.current.handleRename(
-      { item: { isRoot: false }, path: ['src', 'App.js'], pathStr: 'src/App.js' },
+      makeFlatTreeRow({
+        item: asNormalizedTreeNode({ name: 'App.js', type: 'file', path: ['src', 'App.js'] }),
+        path: ['src', 'App.js'],
+        pathStr: 'src/App.js',
+      }),
       'Main.js',
     );
     expect(res).toBe(true);
@@ -74,12 +82,9 @@ describe('useSidebarFileLoader', () => {
   });
 
   it('handles handleDelete for file', async () => {
-    const sidebarState = vi.fn((cb) => cb({ folderTree: [] }));
-    const editorState = Object.assign(
-      vi.fn((cb) => cb({ fileContents: {} })),
-      { fileContents: {} },
-    );
-    const tabState = vi.fn((cb) => cb({ openTabs: [{ id: 'src/App.js' }] }));
+    const sidebarState = makeSidebarState({ folderTree: [] });
+    const editorState = createMockEditorState({ fileContents: {} });
+    const tabState = createMockTabState({ openTabs: [{ id: 'src/App.js', label: 'App.js', type: 'file' }] });
     const addNotification = vi.fn();
 
     const { result } = renderHook(() =>
@@ -92,11 +97,13 @@ describe('useSidebarFileLoader', () => {
       }),
     );
 
-    await result.current.handleDelete({
-      item: { name: 'App.js' },
-      path: ['src', 'App.js'],
-      pathStr: 'src/App.js',
-    });
+    await result.current.handleDelete(
+      makeFlatTreeRow({
+        item: asNormalizedTreeNode({ name: 'App.js', type: 'file', path: ['src', 'App.js'] }),
+        path: ['src', 'App.js'],
+        pathStr: 'src/App.js',
+      }),
+    );
     expect(sidebarState).toHaveBeenCalled();
     expect(tabState).toHaveBeenCalled();
     expect(editorState).toHaveBeenCalled();
@@ -104,10 +111,9 @@ describe('useSidebarFileLoader', () => {
   });
 
   it('handles handleOpenFile in sandbox mode', async () => {
-    const editorStateFn = vi.fn((cb) => cb({ fileContents: { 'src/App.js': 'code' } }));
-    const editorState = Object.assign(editorStateFn, { fileContents: { 'src/App.js': 'code' } });
-    const tabState = vi.fn((cb) => cb({ openTabs: [] }));
-    const sidebarState = vi.fn((cb) => cb({ expandedFolders: {} }));
+    const editorState = createMockEditorState({ fileContents: { 'src/App.js': 'code' } });
+    const tabState = createMockTabState({ openTabs: [] });
+    const sidebarState = makeSidebarState({ expandedFolders: {} });
 
     const { result } = renderHook(() =>
       useSidebarFileLoader({
@@ -118,11 +124,13 @@ describe('useSidebarFileLoader', () => {
       }),
     );
 
-    await result.current.handleOpenFile({
-      item: { name: 'App.js' },
-      path: ['src', 'App.js'],
-      pathStr: 'src/App.js',
-    });
+    await result.current.handleOpenFile(
+      makeFlatTreeRow({
+        item: asNormalizedTreeNode({ name: 'App.js', type: 'file', path: ['src', 'App.js'] }),
+        path: ['src', 'App.js'],
+        pathStr: 'src/App.js',
+      }),
+    );
 
     expect(editorState).toHaveBeenCalled();
     expect(tabState).toHaveBeenCalled();
@@ -130,7 +138,7 @@ describe('useSidebarFileLoader', () => {
   });
 
   it('handles handleCreate in sandbox (non-local) mode', async () => {
-    const sidebarState = vi.fn();
+    const sidebarState = makeSidebarState();
     const addNotification = vi.fn();
 
     const { result } = renderHook(() =>
@@ -141,7 +149,15 @@ describe('useSidebarFileLoader', () => {
       }),
     );
 
-    const success = await result.current.handleCreate({ path: ['src'] }, 'file', 'index.js');
+    const success = await result.current.handleCreate(
+      makeFlatTreeRow({
+        item: asNormalizedTreeNode({ name: 'src', type: 'folder', path: ['src'] }),
+        path: ['src'],
+        pathStr: 'src',
+      }),
+      'file',
+      'index.js',
+    );
 
     expect(success).toBe(true);
     expect(sidebarState).toHaveBeenCalled();
@@ -151,13 +167,13 @@ describe('useSidebarFileLoader', () => {
   it('handles handleCreate in local mode for files', async () => {
     const mockFileHandle = {
       createWritable: vi.fn().mockResolvedValue({
-        close: vi.fn().mockResolvedValue(),
+        close: vi.fn().mockResolvedValue(undefined),
       }),
     };
     const mockDirHandle = {
       getFileHandle: vi.fn().mockResolvedValue(mockFileHandle),
-    };
-    const fs = { mode: 'local', triggerRefresh: vi.fn() };
+    } as unknown as FileSystemDirectoryHandle;
+    const fs = makeFileSystemApi({ mode: 'local', triggerRefresh: vi.fn() });
     const addNotification = vi.fn();
 
     const { result } = renderHook(() =>
@@ -169,7 +185,16 @@ describe('useSidebarFileLoader', () => {
     );
 
     const success = await result.current.handleCreate(
-      { item: { handle: mockDirHandle }, path: ['src'] },
+      makeFlatTreeRow({
+        item: asNormalizedTreeNode({
+          name: 'src',
+          type: 'folder',
+          path: ['src'],
+          handle: mockDirHandle,
+        }),
+        path: ['src'],
+        pathStr: 'src',
+      }),
       'file',
       'index.js',
     );
@@ -182,8 +207,8 @@ describe('useSidebarFileLoader', () => {
   it('handles handleCreate in local mode for folders', async () => {
     const mockDirHandle = {
       getDirectoryHandle: vi.fn().mockResolvedValue({}),
-    };
-    const fs = { mode: 'local', triggerRefresh: vi.fn() };
+    } as unknown as FileSystemDirectoryHandle;
+    const fs = makeFileSystemApi({ mode: 'local', triggerRefresh: vi.fn() });
 
     const { result } = renderHook(() =>
       useSidebarFileLoader({
@@ -193,7 +218,16 @@ describe('useSidebarFileLoader', () => {
     );
 
     const success = await result.current.handleCreate(
-      { item: { handle: mockDirHandle }, path: ['src'] },
+      makeFlatTreeRow({
+        item: asNormalizedTreeNode({
+          name: 'src',
+          type: 'folder',
+          path: ['src'],
+          handle: mockDirHandle,
+        }),
+        path: ['src'],
+        pathStr: 'src',
+      }),
       'folder',
       'components',
     );
@@ -205,8 +239,8 @@ describe('useSidebarFileLoader', () => {
   it('handles handleCreate error in local mode gracefully', async () => {
     const mockDirHandle = {
       getFileHandle: vi.fn().mockRejectedValue(new Error('Permission denied')),
-    };
-    const fs = { mode: 'local', triggerRefresh: vi.fn() };
+    } as unknown as FileSystemDirectoryHandle;
+    const fs = makeFileSystemApi({ mode: 'local', triggerRefresh: vi.fn() });
     const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
     const { result } = renderHook(() =>
@@ -217,7 +251,16 @@ describe('useSidebarFileLoader', () => {
     );
 
     const success = await result.current.handleCreate(
-      { item: { handle: mockDirHandle }, path: ['src'] },
+      makeFlatTreeRow({
+        item: asNormalizedTreeNode({
+          name: 'src',
+          type: 'folder',
+          path: ['src'],
+          handle: mockDirHandle,
+        }),
+        path: ['src'],
+        pathStr: 'src',
+      }),
       'file',
       'index.js',
     );

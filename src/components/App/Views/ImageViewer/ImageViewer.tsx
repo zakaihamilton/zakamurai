@@ -1,10 +1,12 @@
 import { TabState } from '@/components/App/Panes/TabBar';
 import FileViewToolbar from '@/components/App/Views/FileViewToolbar';
+import type { CssCustomProperties } from '@/components/App/types';
 import Node from '@/components/state/Node';
-import type { ImageViewerStateShape } from '@/components/state/domain-types';
+import type { ImageViewerStateShape, Tab } from '@/components/state/domain-types';
 import { createState } from '@/components/state/State';
 import { Icons } from '@/components/ui/Icons';
 import Tooltip from '@/components/ui/Tooltip';
+import type { FileViewType } from '@/utils/fileViews';
 import { FILE_VIEW_TYPES } from '@/utils/fileViews';
 import React, { useEffect } from 'react';
 import styles from './ImageViewer.module.css';
@@ -12,7 +14,15 @@ import { requireStore } from '../../types';
 
 const ImageViewerState = createState<ImageViewerStateShape>('ImageViewerState');
 
-export default function ImageViewer({ tab }) {
+type ImageViewerTab = Tab & {
+  file?: Tab['file'] & { content?: string | Blob };
+};
+
+type ImageViewerProps = {
+  tab: ImageViewerTab;
+};
+
+export default function ImageViewer({ tab }: ImageViewerProps) {
   return (
     <Node id={tab?.id || tab?.file?.name || 'ImageViewer'}>
       <ImageViewerInner tab={tab} />
@@ -20,7 +30,7 @@ export default function ImageViewer({ tab }) {
   );
 }
 
-function ImageViewerInner({ tab }) {
+function ImageViewerInner({ tab }: ImageViewerProps) {
   const tabState = TabState.usePassiveState();
   const imageViewerState = requireStore(ImageViewerState.useState(null, {
     imageUrl: null,
@@ -35,9 +45,9 @@ function ImageViewerInner({ tab }) {
 
   useEffect(() => {
     let isActive = true;
-    let urlToRevoke = null;
+    let urlToRevoke: string | null = null;
 
-    const setError = (message) => {
+    const setError = (message: string) => {
       imageViewerState((draft) => {
         draft.error = message;
         draft.imageUrl = null;
@@ -47,7 +57,7 @@ function ImageViewerInner({ tab }) {
     if (tab?.fsHandle) {
       tab.fsHandle
         .getFile()
-        .then((f) => {
+        .then((f: File) => {
           if (!isActive) return;
           const url = URL.createObjectURL(f);
           urlToRevoke = url;
@@ -56,13 +66,13 @@ function ImageViewerInner({ tab }) {
             draft.error = null;
           });
         })
-        .catch((err) => {
+        .catch((err: unknown) => {
           console.error('Failed to get file from handle:', err);
           if (isActive) setError('Unable to load file.');
         });
     } else if (tab?.file?.content != null) {
-      const isSvg = fileName.toLowerCase().endsWith('.svg');
-      const type = isSvg ? 'image/svg+xml' : 'application/octet-stream';
+      const isSvgFile = fileName.toLowerCase().endsWith('.svg');
+      const type = isSvgFile ? 'image/svg+xml' : 'application/octet-stream';
       const blob = new Blob([tab.file.content], { type });
       const url = URL.createObjectURL(blob);
       urlToRevoke = url;
@@ -86,8 +96,8 @@ function ImageViewerInner({ tab }) {
     };
   }, [tab?.fsHandle, tab?.file?.content, fileName, imageViewerState]);
 
-  const handleSelectView = (viewType) => {
-    tabState((draft) => {
+  const handleSelectView = (viewType: FileViewType) => {
+    tabState?.((draft) => {
       draft.openTabs = draft.openTabs.map((openTab) =>
         openTab.id === tab.id ? { ...openTab, viewType } : openTab,
       );
@@ -119,6 +129,7 @@ function ImageViewerInner({ tab }) {
   };
 
   const isVideo = fileName.match(/\.(webm|mp4|ogg)$/i);
+  const scaleStyle: CssCustomProperties = { '--image-scale': scale };
 
   return (
     <div className={styles.imageViewer}>
@@ -176,7 +187,7 @@ function ImageViewerInner({ tab }) {
         ) : imageUrl ? (
           <div
             className={`${styles.imageContainer} ${showGrid ? styles.showGridPattern : ''}`}
-            style={{ '--image-scale': scale }}
+            style={scaleStyle}
           >
             {isVideo ? (
               // biome-ignore lint/a11y/useMediaCaption: we don't have captions for these raw files

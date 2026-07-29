@@ -1,5 +1,5 @@
 import type { SidebarFileLoaderParams } from '@/components/App/types';
-import type { NormalizedTreeNode } from '@/components/App/types';
+import type { FlatTreeRow, NormalizedTreeNode } from '@/components/App/types';
 import { deleteKeysWithPrefixInDraft, remapKeysInDraft } from '@/components/state/StateUtils';
 import { isMediaFile } from '@/utils/file';
 import { FILE_VIEW_TYPES, getDefaultFileViewType } from '@/utils/fileViews';
@@ -17,6 +17,21 @@ import {
   setChildrenAtPath,
 } from './TreeUtils';
 
+type SidebarRow = FlatTreeRow & {
+  item: NormalizedTreeNode & {
+    isRoot?: boolean;
+    handle?: FileSystemFileHandle | FileSystemDirectoryHandle | null;
+  };
+};
+
+type ToggleOptions = {
+  expandOnly?: boolean;
+};
+
+type OpenFileOptions = {
+  viewType?: string;
+};
+
 const EDITOR_PATH_MAPS = [
   'fileContents',
   'pendingDiffs',
@@ -24,7 +39,7 @@ const EDITOR_PATH_MAPS = [
   'history',
   'cursorPos',
   'selectedLines',
-];
+] as const;
 
 export default function useSidebarFileLoader({
   fs,
@@ -39,13 +54,20 @@ export default function useSidebarFileLoader({
   const { folderTree = [], expandedFolders = {} } = sidebarState;
 
   const loadChildren = useCallback(
-    async (row: { item: NormalizedTreeNode & { handle?: FileSystemDirectoryHandle }; path: string[]; pathStr: string }, force = false) => {
+    async (row: SidebarRow, force = false) => {
       if (fs.mode !== 'local' || row.item.type !== 'folder' || !row.item.handle) return;
       if (!force && row.item.children) return;
-      setLoadingPaths((current) => ({ ...current, [row.pathStr]: true }));
+      setLoadingPaths((current: Record<string, boolean>) => ({ ...current, [row.pathStr]: true }));
       try {
-        const entries = [];
-        for await (const [name, handle] of row.item.handle.entries()) {
+        const entries: Array<{
+          name: string;
+          kind: FileSystemHandleKind;
+          handle: FileSystemHandle;
+          type: 'file' | 'folder';
+          path: string[];
+        }> = [];
+        const dirHandle = row.item.handle as FileSystemDirectoryHandle;
+        for await (const [name, handle] of dirHandle.entries()) {
           entries.push({
             name,
             kind: handle.kind,
@@ -72,7 +94,7 @@ export default function useSidebarFileLoader({
       } catch (err) {
         console.error('Failed to load directory:', err);
       } finally {
-        setLoadingPaths((current) => {
+        setLoadingPaths((current: Record<string, boolean>) => {
           const next = { ...current };
           delete next[row.pathStr];
           return next;
@@ -83,7 +105,7 @@ export default function useSidebarFileLoader({
   );
 
   const handleToggle = useCallback(
-    (row, options = {}) => {
+    (row: SidebarRow, options: ToggleOptions = {}) => {
       if (row.item.isRoot) return;
       if (row.item.type !== 'folder') return;
       const isCurrentlyExpanded = !!row.item.children && expandedFolders[row.pathStr] !== false;
@@ -101,7 +123,7 @@ export default function useSidebarFileLoader({
   );
 
   const handleOpenFile = useCallback(
-    async (row, options = {}) => {
+    async (row: SidebarRow, options: OpenFileOptions = {}) => {
       const viewType = options.viewType || getDefaultFileViewType(row.item.name);
       let content = '';
       const shouldLoadText =
@@ -109,8 +131,9 @@ export default function useSidebarFileLoader({
         viewType === FILE_VIEW_TYPES.EDITOR ||
         viewType === FILE_VIEW_TYPES.TOKEN_BREAKDOWN;
 
-      if (fs.mode === 'local' && row.item.handle && shouldLoadText) {
-        content = await fs.readFile(row.item.handle);
+      const fileHandle = row.item.handle as FileSystemFileHandle | undefined;
+      if (fs.mode === 'local' && fileHandle && shouldLoadText) {
+        content = await fs.readFile(fileHandle);
       }
 
       if (fs.mode !== 'local' && shouldLoadText) {
@@ -135,7 +158,7 @@ export default function useSidebarFileLoader({
               label: row.item.name,
               viewType,
               file: { ...row.item, path: row.path, content },
-              fsHandle: row.item.handle,
+              fsHandle: fileHandle,
             },
           ];
         } else {
@@ -146,7 +169,12 @@ export default function useSidebarFileLoader({
         if (existingTab && shouldLoadText) {
           draft.openTabs = draft.openTabs.map((tab) =>
             tab.id === row.pathStr
-              ? { ...tab, file: { ...tab.file, path: row.path, content } }
+              ? {
+                  ...tab,
+                  file: tab.file
+                    ? { ...tab.file, path: row.path, content }
+                    : { name: row.item.name, path: row.path, content },
+                }
               : tab,
           );
         }
@@ -168,7 +196,7 @@ export default function useSidebarFileLoader({
   );
 
   const handleRename = useCallback(
-    async (row, nextName) => {
+    async (row: SidebarRow, nextName: string) => {
       if (row.item.isRoot) {
         appState((draft) => {
           draft.projectName = nextName;
@@ -181,10 +209,11 @@ export default function useSidebarFileLoader({
       const nextPath = [...row.path.slice(0, -1), nextName];
       const nextPathStr = getPathStr(nextPath);
 
-      if (fs.mode === 'local' && row.item.handle) {
+      const entryHandle = row.item.handle;
+      if (fs.mode === 'local' && entryHandle) {
         try {
-          if (!row.item.handle.move) throw new Error('Rename is not supported by this browser.');
-          await row.item.handle.move(nextName);
+          if (!entryHandle.move) throw new Error('Rename is not supported by this browser.');
+          await (entryHandle as unknown as { move: (name: string) => Promise<void> }).move(nextName);
           fs.triggerRefresh();
         } catch (err) {
           console.error('Failed to rename local file:', err);
@@ -194,7 +223,7 @@ export default function useSidebarFileLoader({
 
       sidebarState((draft) => {
         draft.folderTree = renameNodeAtPath(draft.folderTree, row.path, nextName);
-        const nextExpanded = {};
+        const nextExpanded: Record<string, boolean> = {};
         for (const key in draft.expandedFolders) {
           if (key === oldPathStr || key.startsWith(`${oldPathStr}/`)) {
             nextExpanded[nextPathStr + key.substring(oldPathStr.length)] =
@@ -207,7 +236,7 @@ export default function useSidebarFileLoader({
       });
 
       editorState((draft) => {
-        remapKeysInDraft(draft, EDITOR_PATH_MAPS, oldPathStr, nextPathStr);
+        remapKeysInDraft(draft, [...EDITOR_PATH_MAPS], oldPathStr, nextPathStr);
       });
 
       tabState((draft) => {
@@ -223,7 +252,7 @@ export default function useSidebarFileLoader({
           return tab;
         });
         if (draft.activeTabId === oldPathStr || draft.activeTabId?.startsWith(`${oldPathStr}/`)) {
-          draft.activeTabId = nextPathStr + draft.activeTabId.substring(oldPathStr.length);
+          draft.activeTabId = nextPathStr + (draft.activeTabId?.substring(oldPathStr.length) || '');
         }
       });
 
@@ -234,15 +263,16 @@ export default function useSidebarFileLoader({
   );
 
   const handleCreate = useCallback(
-    async (row, type, name) => {
-      if (fs.mode === 'local' && row.item.handle) {
+    async (row: SidebarRow, type: string, name: string) => {
+      const dirHandle = row.item.handle as FileSystemDirectoryHandle | undefined;
+      if (fs.mode === 'local' && dirHandle) {
         try {
           if (type === 'file') {
-            const fileHandle = await row.item.handle.getFileHandle(name, { create: true });
+            const fileHandle = await dirHandle.getFileHandle(name, { create: true });
             const writable = await fileHandle.createWritable();
             await writable.close();
           } else {
-            await row.item.handle.getDirectoryHandle(name, { create: true });
+            await dirHandle.getDirectoryHandle(name, { create: true });
           }
           await loadChildren(row, true);
           fs.triggerRefresh();
@@ -254,9 +284,8 @@ export default function useSidebarFileLoader({
         sidebarState((draft) => {
           draft.folderTree = addNodeAtPath(draft.folderTree, row.path, {
             name,
-            type: type === 'folder' ? 'folder' : 'file',
-            children: type === 'folder' ? [] : undefined,
-          });
+            kind: type === 'folder' ? 'directory' : 'file',
+          } as import('@/components/state/domain-types').TreeNode);
         });
       }
       addNotification(`${type === 'folder' ? 'Folder' : 'File'} "${name}" created`, 'success');
@@ -266,12 +295,13 @@ export default function useSidebarFileLoader({
   );
 
   const handleDelete = useCallback(
-    async (row) => {
+    async (row: SidebarRow) => {
       const parentPath = row.path.slice(0, -1);
       const parent = parentPath.length ? findNodeAtPath(folderTree, parentPath) : null;
-      if (fs.mode === 'local' && parent?.handle) {
+      const parentHandle = parent?.handle as FileSystemDirectoryHandle | undefined;
+      if (fs.mode === 'local' && parentHandle) {
         try {
-          await parent.handle.removeEntry(row.item.name, { recursive: true });
+          await parentHandle.removeEntry(row.item.name, { recursive: true });
           fs.triggerRefresh();
         } catch (err) {
           console.error('Failed to delete:', err);
@@ -294,7 +324,7 @@ export default function useSidebarFileLoader({
       });
 
       editorState((draft) => {
-        deleteKeysWithPrefixInDraft(draft, EDITOR_PATH_MAPS, row.pathStr);
+        deleteKeysWithPrefixInDraft(draft, [...EDITOR_PATH_MAPS], row.pathStr);
       });
 
       addNotification(`"${row.item.name}" deleted`, 'info');

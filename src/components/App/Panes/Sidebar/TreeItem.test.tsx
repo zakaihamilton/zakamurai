@@ -1,6 +1,9 @@
 import { AppState } from '@/components/App/AppState';
+import { makeAppState } from '@/test-utils/stateMocks';
+import { asNormalizedTreeNode, makeFlatTreeRow } from '@/test-utils/treeMocks';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { SidebarTreeRow } from './sidebar-types';
 import TreeItem from './TreeItem';
 
 vi.mock('@/components/App/AppState', () => ({
@@ -29,16 +32,32 @@ const baseHandlers = {
   onDragEnd: vi.fn(),
 };
 
-const makeRow = (name) => ({
-  item: { name, type: 'file' },
-  level: 0,
-  path: [name],
-  pathStr: name,
-});
+const makeRow = (name: string): SidebarTreeRow =>
+  makeFlatTreeRow({
+    item: asNormalizedTreeNode({ name, type: 'file', path: [name] }),
+    path: [name],
+    pathStr: name,
+  }) as SidebarTreeRow;
+
+const makeFolderRow = (
+  name: string,
+  path: string[] = [name],
+  extra: Record<string, unknown> = {},
+): SidebarTreeRow =>
+  makeFlatTreeRow({
+    item: asNormalizedTreeNode({ name, type: 'folder', path, children: [], ...extra }),
+    level: path.length - 1,
+    path,
+    pathStr: path.join('/'),
+  }) as SidebarTreeRow;
+
+function draggableElement(label: string): Element {
+  return screen.getByText(label).closest('[draggable="true"]')!;
+}
 
 describe('TreeItem', () => {
   beforeEach(() => {
-    vi.spyOn(AppState, 'useState').mockReturnValue({ theme: 'dark' });
+    vi.mocked(AppState.useState).mockReturnValue(makeAppState({ theme: 'dark' }));
     if (typeof window !== 'undefined') {
       window.ontouchstart = () => {};
     }
@@ -62,12 +81,7 @@ describe('TreeItem', () => {
   });
 
   it('starts editing the project root on double click', async () => {
-    const rootRow = {
-      item: { name: 'Test Project', type: 'folder', isRoot: true, children: [] },
-      level: 0,
-      path: [],
-      pathStr: '',
-    };
+    const rootRow = makeFolderRow('Test Project', [], { isRoot: true });
 
     render(<TreeItem row={rootRow} {...baseHandlers} />);
 
@@ -90,12 +104,7 @@ describe('TreeItem', () => {
 
   it('toggles a folder when its row is clicked', () => {
     const onToggle = vi.fn();
-    const folderRow = {
-      item: { name: 'src', type: 'folder', children: [] },
-      level: 0,
-      path: ['src'],
-      pathStr: 'src',
-    };
+    const folderRow = makeFolderRow('src');
 
     render(<TreeItem row={folderRow} {...baseHandlers} onToggle={onToggle} />);
 
@@ -108,7 +117,7 @@ describe('TreeItem', () => {
     vi.useFakeTimers();
     render(<TreeItem row={makeRow('app.js')} {...baseHandlers} />);
 
-    const itemElement = screen.getByText('app.js').closest('[draggable="true"]');
+    const itemElement = draggableElement('app.js');
 
     fireEvent.touchStart(itemElement, {
       touches: [{ clientX: 10, clientY: 20, pageX: 10, pageY: 20 }],
@@ -132,7 +141,7 @@ describe('TreeItem', () => {
     vi.useFakeTimers();
     render(<TreeItem row={makeRow('app.js')} {...baseHandlers} />);
 
-    const itemElement = screen.getByText('app.js').closest('[draggable="true"]');
+    const itemElement = draggableElement('app.js');
 
     fireEvent.touchStart(itemElement, {
       touches: [{ clientX: 10, clientY: 20, pageX: 10, pageY: 20 }],
@@ -154,7 +163,7 @@ describe('TreeItem', () => {
     vi.useFakeTimers();
     render(<TreeItem row={makeRow('app.js')} {...baseHandlers} />);
 
-    const itemElement = screen.getByText('app.js').closest('[draggable="true"]');
+    const itemElement = draggableElement('app.js');
 
     fireEvent.touchStart(itemElement, {
       touches: [{ clientX: 10, clientY: 20, pageX: 10, pageY: 20 }],
@@ -171,19 +180,19 @@ describe('TreeItem', () => {
   });
 
   it('displays a header showing file/folder name and path in context menu', async () => {
-    const customRow = {
-      item: { name: 'app.js', type: 'file' },
+    const customRow = makeFlatTreeRow({
+      item: asNormalizedTreeNode({ name: 'app.js', type: 'file', path: ['sub', 'dir', 'app.js'] }),
       level: 2,
       path: ['sub', 'dir', 'app.js'],
       pathStr: 'sub/dir/app.js',
-    };
+    }) as SidebarTreeRow;
     render(<TreeItem row={customRow} {...baseHandlers} />);
 
     const itemElement = screen.getByText('app.js').closest('[draggable="true"]');
 
     // Right click to open context menu wrapped in act
     act(() => {
-      fireEvent.contextMenu(itemElement);
+      fireEvent.contextMenu(itemElement!);
     });
 
     await waitFor(() => {
@@ -201,7 +210,7 @@ describe('TreeItem', () => {
     render(<TreeItem row={row} {...baseHandlers} onOpenFile={onOpenFile} />);
 
     await act(async () => {
-      fireEvent.contextMenu(screen.getByText('app.js').closest('[draggable="true"]'));
+      fireEvent.contextMenu(draggableElement('app.js'));
     });
 
     await waitFor(() => {
@@ -222,7 +231,7 @@ describe('TreeItem', () => {
     render(<TreeItem row={row} {...baseHandlers} onOpenFile={onOpenFile} />);
 
     await act(async () => {
-      fireEvent.contextMenu(screen.getByText('logo.svg').closest('[draggable="true"]'));
+      fireEvent.contextMenu(draggableElement('logo.svg'));
     });
 
     await waitFor(() => {
@@ -238,16 +247,11 @@ describe('TreeItem', () => {
   });
 
   it('shows the delete dialog with a readable path preview', async () => {
-    const row = {
-      item: { name: 'components', type: 'folder', children: [] },
-      level: 1,
-      path: ['src', 'components'],
-      pathStr: 'src/components',
-    };
+    const row = makeFolderRow('components', ['src', 'components']);
     render(<TreeItem row={row} {...baseHandlers} />);
 
     await act(async () => {
-      fireEvent.contextMenu(screen.getByText('components').closest('[draggable="true"]'));
+      fireEvent.contextMenu(draggableElement('components'));
     });
 
     await waitFor(() => {
@@ -266,18 +270,13 @@ describe('TreeItem', () => {
   });
 
   it('shows rename but not delete for the project root context menu', async () => {
-    const rootRow = {
-      item: { name: 'Test Project', type: 'folder', isRoot: true, children: [] },
-      level: 0,
-      path: [],
-      pathStr: '',
-    };
+    const rootRow = makeFolderRow('Test Project', [], { isRoot: true });
     render(<TreeItem row={rootRow} {...baseHandlers} />);
 
-    const itemElement = screen.getByText('Test Project').closest('[draggable="false"]');
+    const itemElement = screen.getByText('Test Project').closest('[draggable="false"]')!;
 
     act(() => {
-      fireEvent.contextMenu(itemElement);
+      fireEvent.contextMenu(itemElement!);
     });
 
     await waitFor(() => {
@@ -289,16 +288,11 @@ describe('TreeItem', () => {
 
   it('starts create via context menu', async () => {
     const onStartCreate = vi.fn();
-    const folderRow = {
-      item: { name: 'src', type: 'folder', children: [] },
-      level: 0,
-      path: ['src'],
-      pathStr: 'src',
-    };
+    const folderRow = makeFolderRow('src');
     render(<TreeItem row={folderRow} {...baseHandlers} onStartCreate={onStartCreate} />);
 
     await act(async () => {
-      fireEvent.contextMenu(screen.getByText('src').closest('[draggable="true"]'));
+      fireEvent.contextMenu(draggableElement('src'));
     });
 
     await waitFor(() => {

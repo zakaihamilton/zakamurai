@@ -5,21 +5,22 @@ import { useShouldShowKeyboardShortcuts } from '@/utils/keyboard';
 import { formatShortcut, isMac } from '@/utils/os';
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import type { ShortcutsHelpProps } from '../popup-types';
 import styles from './ShortcutsHelp.module.css';
 
 const SHORTCUTS = getShortcutsByGroup();
 
-export default function ShortcutsHelp({ isOpen, onClose }) {
+export default function ShortcutsHelp({ isOpen, onClose }: ShortcutsHelpProps) {
   const showShortcuts = useShouldShowKeyboardShortcuts();
-  const itemRefs = useRef({});
-  const closeButtonRef = useRef(null);
-  const [highlightedShortcutId, setHighlightedShortcutId] = useState(null);
+  const itemRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const closeButtonRef = useRef<HTMLButtonElement | null>(null);
+  const [highlightedShortcutId, setHighlightedShortcutId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isOpen || !showShortcuts) return undefined;
 
-    const handleShortcutHighlight = (event) => {
-      const shortcutId = event.detail?.shortcutId;
+    const handleShortcutHighlight = (event: Event) => {
+      const shortcutId = (event as CustomEvent<{ shortcutId?: string }>).detail?.shortcutId;
       if (!shortcutId) return;
 
       setHighlightedShortcutId(shortcutId);

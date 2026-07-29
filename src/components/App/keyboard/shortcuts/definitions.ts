@@ -401,7 +401,6 @@ export const SHORTCUTS: ShortcutDefinition[] = [
     action: ({ tabState, editorState, fs, showNotification }) => {
       const activeTabId = tabState.activeTabId;
       if (!activeTabId) return;
-      const tabPath = activeTabId.split('/');
       const hasDeletion = editorState.pendingDeletions?.[activeTabId];
       const hasDiff = editorState.pendingDiffs?.[activeTabId];
       if (hasDeletion) {
@@ -431,7 +430,7 @@ export const SHORTCUTS: ShortcutDefinition[] = [
           }
         });
         if (fs?.deleteFileAtPath) {
-          fs.deleteFileAtPath(tabPath);
+          fs.deleteFileAtPath(activeTabId);
         }
         showNotification?.('Deletion approved', 'success');
       } else if (hasDiff) {
@@ -444,7 +443,7 @@ export const SHORTCUTS: ShortcutDefinition[] = [
         });
         const content = editorState.fileContents?.[activeTabId];
         if (fs?.writeFileAtPath && content !== undefined) {
-          fs.writeFileAtPath(tabPath, content);
+          fs.writeFileAtPath(activeTabId, content);
         }
         showNotification?.('Changes approved & saved', 'success');
       } else {
@@ -463,7 +462,6 @@ export const SHORTCUTS: ShortcutDefinition[] = [
     action: ({ tabState, editorState, fs, showNotification }) => {
       const activeTabId = tabState.activeTabId;
       if (!activeTabId) return;
-      const tabPath = activeTabId.split('/');
       const pendingDeletion = editorState.pendingDeletions?.[activeTabId];
       if (pendingDeletion) {
         editorState((draft) => {
@@ -492,7 +490,7 @@ export const SHORTCUTS: ShortcutDefinition[] = [
           }
         });
         if (fs?.writeFileAtPath) {
-          fs.writeFileAtPath(tabPath, prevContent);
+          fs.writeFileAtPath(activeTabId, prevContent);
         }
         showNotification?.('Changes cancelled', 'info');
       }
@@ -661,7 +659,7 @@ export const SHORTCUTS: ShortcutDefinition[] = [
       logState((draft) => {
         draft.logs = [];
       });
-      showNotification('Logs cleared', 'info');
+      showNotification?.('Logs cleared', 'info');
     },
   },
   {

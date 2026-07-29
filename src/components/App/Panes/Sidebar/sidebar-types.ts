@@ -1,11 +1,16 @@
-import type { FlatTreeRow, NormalizedTreeNode } from '@/components/App/types';
-import type { SidebarUiStateShape } from '@/components/state/domain-types';
+import type { FileSystemApi, FlatTreeRow, NormalizedTreeNode } from '@/components/App/types';
+import type { SidebarStateShape, SidebarUiStateShape } from '@/components/state/domain-types';
+import type { StateStore } from '@/components/state/types';
 import type {
   ChangeEvent,
   CSSProperties,
+  Dispatch,
   DragEvent,
+  MouseEvent,
   ReactNode,
   RefObject,
+  SetStateAction,
+  TouchEvent,
 } from 'react';
 
 export type SidebarCreateRow = FlatTreeRow & {
@@ -22,7 +27,7 @@ export type CreateRowInputProps = {
     parentRow: FlatTreeRow | undefined,
     createType: string,
     name: string,
-  ) => Promise<boolean | void>;
+  ) => Promise<boolean | undefined>;
   onCancelCreate: () => void;
 };
 
@@ -38,6 +43,18 @@ export type SidebarMountSectionProps = {
 };
 
 export type SidebarUiKey = keyof SidebarUiStateShape;
+
+export type SidebarContentProps = {
+  isMobile: boolean;
+  isOpen: boolean;
+  desktopWidth: string;
+  children: ReactNode;
+};
+
+export type SidebarCreateAt = {
+  pathStr: string;
+  type: string;
+};
 
 export type SidebarTreeRow = FlatTreeRow & {
   key: string;
@@ -58,13 +75,13 @@ export type SidebarTreeProps = {
   isOpen: boolean;
   hasFileSystem: boolean;
   onToggle: (row: FlatTreeRow) => void;
-  onOpenFile: (row: FlatTreeRow) => void;
-  onRename: (row: FlatTreeRow, name: string) => Promise<void> | void;
+  onOpenFile: (row: FlatTreeRow, options?: { viewType?: string }) => void;
+  onRename: (row: FlatTreeRow, name: string) => Promise<boolean | undefined> | boolean | undefined;
   onCreate: (
     parentRow: FlatTreeRow | undefined,
     type: string,
     name: string,
-  ) => Promise<boolean | void>;
+  ) => Promise<boolean | undefined>;
   onStartCreate: (row: FlatTreeRow, type: string) => void;
   onCancelCreate: () => void;
   onDelete: (row: FlatTreeRow) => Promise<void> | void;
@@ -96,7 +113,7 @@ export type TreeItemControls = {
   showDeleteDialog: boolean;
   setShowDeleteDialog: (value: boolean) => void;
   longPressHandlers: Record<string, unknown>;
-  handleContextMenu: (event: React.MouseEvent) => void;
+  handleContextMenu: (event: MouseEvent) => void;
   startRename: () => void;
   stopEditing: () => void;
   submitRename: () => void;
@@ -121,13 +138,70 @@ export type TreeItemContentProps = {
   onDragOver: (event: DragEvent, row: FlatTreeRow) => void;
   onDragStart: (event: DragEvent, row: FlatTreeRow) => void;
   onDrop: (event: DragEvent, row: FlatTreeRow) => void;
-  onOpenFile: (row: FlatTreeRow) => void;
+  onOpenFile: (row: FlatTreeRow, options?: { viewType?: string }) => void;
   onToggle: (row: FlatTreeRow) => void;
   row: SidebarTreeRow;
 };
 
 export type NormalizedTreeItem = NormalizedTreeNode & {
   isRoot?: boolean;
-  handle?: FileSystemDirectoryHandle | null;
+  handle?: FileSystemFileHandle | FileSystemDirectoryHandle | null;
+};
+
+export type SidebarContextMenuProps = {
+  item: NormalizedTreeItem;
+  pathStr: string;
+  isLoading: boolean;
+  isExpanded: boolean;
+  position: { x: number; y: number } | null;
+  onClose: () => void;
+  onStartCreate: (type: string) => void;
+  onStartRename: () => void;
+  onStartDelete: () => void;
+  onOpenWith: (viewType: string) => void;
+};
+
+export type UseSidebarDragAndDropParams = {
+  fs: FileSystemApi;
+  sidebarState: StateStore<SidebarStateShape>;
+  setDropTargetPath: Dispatch<SetStateAction<string | null>>;
+};
+
+export type UseSidebarLayoutParams = {
+  isMobile: boolean;
+  isOpen: boolean;
+  sidebarWidth: number;
+  animatedWidth: number;
+  setAnimatedWidth: Dispatch<SetStateAction<number>>;
+};
+
+export type UseTreeItemControlsParams = {
+  row: SidebarTreeRow;
+  onOpenFile: (row: FlatTreeRow, options?: { viewType?: string }) => void;
+  onRename: (row: FlatTreeRow, name: string) => Promise<boolean | undefined> | boolean | undefined;
+  onStartCreate: (row: FlatTreeRow, type: string) => void;
+};
+
+export type TreeItemProps = {
+  row: SidebarTreeRow;
+  filterText?: string;
+  onCancelCreate: () => void;
+  onCreate: SidebarTreeProps['onCreate'];
+  onOpenFile: SidebarTreeProps['onOpenFile'];
+  onRename: SidebarTreeProps['onRename'];
+  onStartCreate: SidebarTreeProps['onStartCreate'];
+  onDelete: SidebarTreeProps['onDelete'];
+  onToggle: SidebarTreeProps['onToggle'];
+  onDragStart: SidebarTreeProps['onDragStart'];
+  onDragOver: SidebarTreeProps['onDragOver'];
+  onDragEnter: SidebarTreeProps['onDragEnter'];
+  onDragLeave: SidebarTreeProps['onDragLeave'];
+  onDrop: SidebarTreeProps['onDrop'];
+  onDragEnd: SidebarTreeProps['onDragEnd'];
+  isActive: boolean;
+  isDragged: boolean;
+  isDropTarget: boolean;
+  isExpanded: boolean;
+  isLoading: boolean;
 };
 

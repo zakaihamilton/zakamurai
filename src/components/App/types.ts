@@ -1,3 +1,5 @@
+import type { ExtendedEditorState } from '@/components/App/Views/EditorArea/types';
+import type { CSSProperties, Dispatch, SetStateAction } from 'react';
 import type {
   AgentSession,
   AgentSessionMessage,
@@ -27,10 +29,19 @@ export type NormalizedTreeNode = TreeNode & {
 };
 
 export type FlatTreeRow = {
-  node: NormalizedTreeNode;
+  item: NormalizedTreeNode & {
+    isRoot?: boolean;
+    handle?: FileSystemFileHandle | FileSystemDirectoryHandle | null;
+  };
   level: number;
+  path: string[];
   pathStr: string;
+  key?: string;
 };
+
+/** CSS module custom properties (e.g. `--panel-width`). */
+export type CssCustomProperties = CSSProperties &
+  Record<`--${string}`, string | number>;
 
 /** Return type of `useFileSystem` from LocalFS. */
 export type FileSystemApi = {
@@ -45,17 +56,46 @@ export type FileSystemApi = {
   refreshDirectory: (
     dirHandle: FileSystemDirectoryHandle,
     updateSidebar?: boolean,
-  ) => Promise<void>;
+  ) => Promise<
+    Array<{ name: string; kind: FileSystemHandleKind; handle: FileSystemHandle }> | undefined
+  >;
   triggerRefresh: () => void;
   readFile: (handle: FileSystemFileHandle) => Promise<string>;
-  writeFile: (handle: FileSystemFileHandle, content: string) => Promise<void>;
-  writeFileAtPath: (path: string[], content: string) => Promise<void>;
-  readFileAtPath: (path: string[]) => Promise<string>;
-  deleteFileAtPath: (path: string[]) => Promise<void>;
-  getFileHandleAtPath: (path: string[]) => Promise<FileSystemFileHandle | null>;
-  createFolder: (path: string[]) => Promise<void>;
-  deleteEntry: (path: string[]) => Promise<void>;
-  moveEntry: (fromPath: string[], toPath: string[]) => Promise<void>;
+  writeFile: (
+    filename: string,
+    content: string,
+    dirHandle?: FileSystemDirectoryHandle | null,
+  ) => Promise<void>;
+  writeFileAtPath: (
+    path: string,
+    content: string,
+    root?: FileSystemDirectoryHandle | null,
+  ) => Promise<boolean>;
+  readFileAtPath: (
+    path: string,
+    root?: FileSystemDirectoryHandle | null,
+  ) => Promise<string>;
+  deleteFileAtPath: (
+    path: string,
+    root?: FileSystemDirectoryHandle | null,
+  ) => Promise<boolean>;
+  getFileHandleAtPath: (
+    path: string,
+    root?: FileSystemDirectoryHandle | null,
+  ) => Promise<FileSystemFileHandle | null>;
+  createFolder: (
+    folderName: string,
+    dirHandle?: FileSystemDirectoryHandle | null,
+  ) => Promise<void>;
+  deleteEntry: (
+    name: string,
+    dirHandle?: FileSystemDirectoryHandle | null,
+  ) => Promise<void>;
+  moveEntry: (
+    sourceHandle: FileSystemHandle,
+    destinationDirHandle: FileSystemDirectoryHandle,
+    newName?: string | null,
+  ) => Promise<void>;
   unlinkProject: () => Promise<void>;
   isReady: boolean;
 };
@@ -120,7 +160,7 @@ export type ShortcutActionContext = {
   appState: StateStore<AppStateShape>;
   sidebarState: StateStore<SidebarStateShape>;
   tabState: StateStore<TabStateShape>;
-  editorState: StateStore<EditorStateShape>;
+  editorState: StateStore<ExtendedEditorState>;
   logState: StateStore<LogStateShape>;
   promptState?: StateStore<PromptStateShape>;
   promptUiState?: StateStore<PromptUiStateShape>;
@@ -143,7 +183,7 @@ export type SidebarFileLoaderParams = {
   appState: StateStore<AppStateShape>;
   sidebarState: StateStore<SidebarStateShape>;
   tabState: StateStore<TabStateShape>;
-  editorState: StateStore<EditorStateShape>;
+  editorState: StateStore<import('@/components/App/Views/EditorArea/types').ExtendedEditorState>;
   setLoadingPaths: Dispatch<SetStateAction<Record<string, boolean>>>;
   addNotification: (
     message: string,

@@ -1,6 +1,7 @@
+import type { TokenJsonSectionProps } from './token-breakdown-types';
 import styles from './TokenJsonSection.module.css';
 
-export default function TokenJsonSection({ report }) {
+export default function TokenJsonSection({ report }: TokenJsonSectionProps) {
   return (
     <>
       <div className={styles.sectionHeader}>

@@ -19,8 +19,9 @@ import SidebarTree from './Tree';
 import { flattenTree, insertCreateRow, isNodeModulesPath, normalizeChildren } from './TreeUtils';
 import WorkspaceHealth from './WorkspaceHealth';
 import useSidebarLayout from './useSidebarLayout';
-import type { SidebarUiKey } from './sidebar-types';
-import type { SetStateAction } from 'react';
+import type { NormalizedTreeNode } from '@/components/App/types';
+import type { SidebarTreeRow, SidebarTreeProps, SidebarUiKey } from './sidebar-types';
+import type { ChangeEvent, SetStateAction } from 'react';
 import { requireStore } from '../../types';
 
 export const SidebarState = createState<SidebarStateShape>('SidebarState');
@@ -120,10 +121,10 @@ export default function Sidebar() {
   const { loadChildren, handleToggle, handleOpenFile, handleRename, handleCreate, handleDelete } =
     useSidebarFileLoader({
       fs,
-      appState,
+      appState: requireStore(appState),
       sidebarState,
       tabState,
-      editorState,
+      editorState: requireStore(editorState),
       setLoadingPaths,
       addNotification,
     });
@@ -171,9 +172,10 @@ export default function Sidebar() {
         if (!node.children) {
           if (fs.mode === 'local') {
             const row = {
-              item: node,
+              item: node as NormalizedTreeNode,
               path: [...currentPath],
               pathStr,
+              level: currentPath.length,
             };
             await loadChildren(row);
           }
@@ -220,7 +222,10 @@ export default function Sidebar() {
     [deferredFilterText, expandedFolders, folderTree, fs.rootHandle, projectName],
   );
 
-  const rows = useMemo(() => insertCreateRow(baseRows, creatingAt), [baseRows, creatingAt]);
+  const rows = useMemo(
+    () => insertCreateRow(baseRows as Parameters<typeof insertCreateRow>[0], creatingAt),
+    [baseRows, creatingAt],
+  );
 
   const activeIndex = useMemo(() => {
     if (!tabState.activeTabId) return -1;
@@ -236,7 +241,7 @@ export default function Sidebar() {
   }, [creatingAt, rows, activeIndex]);
 
   const handleStartCreate = useCallback(
-    (row, type) => {
+    (row: SidebarTreeRow, type: string) => {
       sidebarUiState((draft) => {
         draft.creatingAt = { pathStr: row.pathStr, type };
       });
@@ -269,7 +274,7 @@ export default function Sidebar() {
       <SidebarFilter
         inputRef={searchInputRef}
         value={filterText}
-        onChange={(event) =>
+        onChange={(event: ChangeEvent<HTMLInputElement>) =>
           sidebarUiState((draft) => {
             draft.filterText = event.target.value;
           })
@@ -279,19 +284,19 @@ export default function Sidebar() {
       <SidebarTree
         rows={rows}
         activeTabId={tabState.activeTabId}
-        scrollToIndex={scrollToIndex}
+        scrollToIndex={scrollToIndex ?? undefined}
         filterText={deferredFilterText}
         expandedFolders={expandedFolders}
         loadingPaths={loadingPaths}
-        draggedPath={sidebarState.draggedItem?.path?.join('/')}
+        draggedPath={sidebarState.draggedItem?.path?.join('/') ?? null}
         dropTargetPath={dropTargetPath}
         isOpen={isOpen}
         hasFileSystem={Boolean(fs.mode)}
-        onToggle={handleToggle}
-        onOpenFile={handleOpenFile}
-        onRename={handleRename}
-        onCreate={handleCreate}
-        onStartCreate={handleStartCreate}
+        onToggle={handleToggle as SidebarTreeProps['onToggle']}
+        onOpenFile={handleOpenFile as SidebarTreeProps['onOpenFile']}
+        onRename={handleRename as unknown as SidebarTreeProps['onRename']}
+        onCreate={handleCreate as unknown as SidebarTreeProps['onCreate']}
+        onStartCreate={handleStartCreate as SidebarTreeProps['onStartCreate']}
         onCancelCreate={handleCancelCreate}
         onDelete={handleDelete}
         onDragStart={handleDragStart}

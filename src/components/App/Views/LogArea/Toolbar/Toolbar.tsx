@@ -2,6 +2,7 @@ import { Icons } from '@/components/ui/Icons';
 import Tooltip from '@/components/ui/Tooltip';
 import { formatShortcut } from '@/utils/os';
 import React from 'react';
+import type { LogToolbarProps } from '../log-area-types';
 import styles from './Toolbar.module.css';
 
 export default function LogToolbar({
@@ -11,7 +12,7 @@ export default function LogToolbar({
   copied,
   onCopyAll,
   onClearLogs,
-}) {
+}: LogToolbarProps) {
   return (
     <div className={styles.header}>
       <div className={styles.headerActions}>

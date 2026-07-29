@@ -27,17 +27,27 @@ export default function StatusBar() {
   const activeTab = openTabs.find((t) => t.id === activeTabId);
   const { cursorPos = {} } = editorState;
 
-  const currentCursor = cursorPos[activeTabId] || { line: 1, col: 1 };
+  const currentCursor = (activeTabId ? cursorPos[activeTabId] : undefined) || { line: 1, col: 1 };
   const { line, col } = currentCursor;
-  const isCompleting = editorState.isCompleting?.[activeTabId];
+  const isCompleting = activeTabId ? editorState.isCompleting?.[activeTabId] : undefined;
   const aiCompletionEnabled = editorState.aiCompletionEnabled === true;
   const completionDebug = editorState.aiCompletionDebug;
-  const completionActivityState = editorState.completionActivity?.[activeTabId];
+  const completionActivityState = activeTabId
+    ? editorState.completionActivity?.[activeTabId]
+    : undefined;
   const completionError =
     completionDebug?.status === 'error' && completionDebug?.filePath === activeTabId
       ? completionDebug.error
       : '';
-  const completionActivity = getCompletionStatusMessage(completionActivityState, isCompleting);
+  const completionActivity = getCompletionStatusMessage(
+    completionActivityState
+      ? {
+          phase: typeof completionActivityState.phase === 'string' ? completionActivityState.phase : undefined,
+          model: typeof completionActivityState.model === 'string' ? completionActivityState.model : undefined,
+        }
+      : null,
+    !!isCompleting,
+  );
   const aiStatusLabel = !aiCompletionEnabled
     ? 'AI Off'
     : isCompleting

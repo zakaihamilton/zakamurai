@@ -1,24 +1,12 @@
 import type { ShortcutActionContext } from '@/components/App/types';
-import type { CursorPosition } from '@/components/state/domain-types';
+import type { CursorPosition, NavigationHistoryEntry } from '@/components/state/domain-types';
+import type { EditorStateDraft } from '@/components/App/Views/EditorArea/types';
 import {
   findClassInCss,
   findClassReferenceInJs,
   getAssociatedFilePath,
   getStyleAtCursor,
 } from '@/utils/navigation';
-
-type HistoryItem = {
-  filePath: string;
-  loc: CursorPosition;
-};
-
-type EditorStateWithScroll = ShortcutActionContext['editorState'] & {
-  shouldScrollTo?: {
-    filePath: string;
-    line: number;
-    timestamp: number;
-  };
-};
 
 export const toggleCssJsAction = ({
   editorState,
@@ -107,7 +95,7 @@ export const toggleCssJsAction = ({
     draft.activeTabId = targetPath;
   });
 
-  (editorState as EditorStateWithScroll)((draft) => {
+  editorState((draft: EditorStateDraft) => {
     draft.cursorPos = { ...(draft.cursorPos || {}), [targetPath]: targetLoc };
     draft.shouldScrollTo = {
       filePath: targetPath,
@@ -117,6 +105,15 @@ export const toggleCssJsAction = ({
   });
 };
 
+const toCursorPosition = (loc: NavigationHistoryEntry['loc']): CursorPosition => {
+  const cursorLoc = loc as CursorPosition & { column?: number };
+  return {
+    line: cursorLoc.line,
+    col: cursorLoc.col ?? cursorLoc.column ?? 1,
+    index: cursorLoc.index,
+  };
+};
+
 export const navigateToHistoryItem = (
   { editorState, tabState }: ShortcutActionContext,
   nextIndex: number,
@@ -124,11 +121,11 @@ export const navigateToHistoryItem = (
   if (!editorState || !tabState) return;
   const history = editorState.navigationHistory;
   if (!history || !history.stack) return;
-  const item = history.stack[nextIndex] as HistoryItem | undefined;
+  const item = history.stack[nextIndex];
   if (!item) return;
 
   const targetPath = item.filePath;
-  const targetLoc = item.loc;
+  const targetLoc = toCursorPosition(item.loc);
   const targetContent = editorState.fileContents?.[targetPath] ?? '';
 
   const fileName = targetPath.substring(targetPath.lastIndexOf('/') + 1);
@@ -152,7 +149,7 @@ export const navigateToHistoryItem = (
     draft.activeTabId = targetPath;
   });
 
-  (editorState as EditorStateWithScroll)((draft) => {
+  editorState((draft: EditorStateDraft) => {
     draft.cursorPos = { ...(draft.cursorPos || {}), [targetPath]: targetLoc };
     draft.shouldScrollTo = {
       filePath: targetPath,

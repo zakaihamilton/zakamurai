@@ -3,7 +3,10 @@ import { Icons } from '@/components/ui/Icons';
 import { isMediaFile } from '@/utils/file';
 import { getFileViews } from '@/utils/fileViews';
 import React from 'react';
+import type { SidebarContextMenuProps } from './sidebar-types';
 import styles from './SidebarContextMenu.module.css';
+
+type IconName = keyof typeof Icons;
 
 export default function SidebarContextMenu({
   item,
@@ -16,7 +19,7 @@ export default function SidebarContextMenu({
   onStartRename,
   onStartDelete,
   onOpenWith,
-}) {
+}: SidebarContextMenuProps) {
   const openWithViews = item.type === 'file' ? getFileViews(item.name) : [];
 
   return (
@@ -73,7 +76,7 @@ export default function SidebarContextMenu({
         <>
           <div className={styles.sectionLabel}>Open With</div>
           {openWithViews.map((view) => {
-            const Icon = Icons[view.icon] || Icons.File;
+            const Icon = Icons[view.icon as IconName] || Icons.File;
             return (
               <button
                 key={view.id}

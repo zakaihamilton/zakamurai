@@ -3,6 +3,7 @@ import { Icons } from '@/components/ui/Icons';
 import Tooltip from '@/components/ui/Tooltip';
 import { FILE_VIEW_TYPES } from '@/utils/fileViews';
 import React from 'react';
+import type { TokenBreakdownHeaderProps } from './token-breakdown-types';
 import styles from './TokenBreakdownHeader.module.css';
 
 export default function TokenBreakdownHeader({
@@ -15,7 +16,7 @@ export default function TokenBreakdownHeader({
   onCopyCombined,
   onVerifyMatch,
   onSelectView,
-}) {
+}: TokenBreakdownHeaderProps) {
   const isDevelopment = process.env.NODE_ENV === 'development';
   return (
     <div className={styles.header}>

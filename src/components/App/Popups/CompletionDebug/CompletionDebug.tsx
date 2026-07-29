@@ -1,15 +1,17 @@
 import { EditorState } from '@/components/App/Views/EditorArea';
+import type { AiCompletionDebug } from '@/components/state/domain-types';
 import type { CompletionDebugStateShape } from '@/components/state/domain-types';
 import { createState } from '@/components/state/State';
 import { Icons } from '@/components/ui/Icons';
 import React from 'react';
 import { createPortal } from 'react-dom';
+import type { CompletionDebugProps } from '../popup-types';
 import styles from './CompletionDebug.module.css';
 import { requireStore } from '../../types';
 
 const CompletionDebugState = createState<CompletionDebugStateShape>('CompletionDebugState');
 
-const EMPTY_DEBUG = {
+const EMPTY_DEBUG: AiCompletionDebug = {
   status: 'idle',
   filePath: '',
   prompt: '',
@@ -18,7 +20,7 @@ const EMPTY_DEBUG = {
   error: '',
 };
 
-const formatDebugPayload = (debug) =>
+const formatDebugPayload = (debug: AiCompletionDebug) =>
   [
     `Status: ${debug.status || 'idle'}`,
     `File: ${debug.filePath || '(none)'}`,
@@ -43,7 +45,7 @@ const formatDebugPayload = (debug) =>
     .filter((line) => line !== '')
     .join('\n');
 
-export default function CompletionDebug({ isOpen, onClose }) {
+export default function CompletionDebug({ isOpen, onClose }: CompletionDebugProps) {
   const editorState = requireStore(EditorState.useState(['aiCompletionDebug']));
   const debug = editorState.aiCompletionDebug || EMPTY_DEBUG;
   const completionDebugState = requireStore(CompletionDebugState.useState(null, { copied: false }));
@@ -52,7 +54,7 @@ export default function CompletionDebug({ isOpen, onClose }) {
   React.useEffect(() => {
     if (!isOpen) return;
 
-    const handleKeyDown = (e) => {
+    const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
     };
 

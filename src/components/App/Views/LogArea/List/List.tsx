@@ -1,5 +1,6 @@
 import React from 'react';
 import LogItem, { ProcessingLogItem } from '../Item';
+import type { LogListProps } from '../log-area-types';
 import styles from './List.module.css';
 
 export default function LogList({
@@ -9,7 +10,7 @@ export default function LogList({
   isProcessing,
   isAIProcessing,
   isSystemProcessing,
-}) {
+}: LogListProps) {
   return (
     <div className={styles.logContainer}>
       {visibleLogs.map(({ log, displayIndex }) => (

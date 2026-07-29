@@ -34,7 +34,7 @@ export default function WelcomePrompt() {
   }));
 
   const setSelectedModel = useCallback(
-    (modelId) => {
+    (modelId: string) => {
       promptUiState?.((draft) => {
         draft.selectedModel = modelId;
       });
@@ -57,7 +57,7 @@ export default function WelcomePrompt() {
   }, [isAIProcessing, isMobile, promptUiState, sidebarState, value]);
 
   const handleSubmit = useCallback(
-    async (event) => {
+    async (event: React.FormEvent<HTMLFormElement>) => {
       event.preventDefault();
       if (!value.trim() || isAIProcessing) return;
 
@@ -76,9 +76,10 @@ export default function WelcomePrompt() {
     [cachedModelIds, isAIProcessing, selectedModel, startRequest, value],
   );
 
-  const handleKeyDown = (event) => {
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (event.key === 'Enter' && !event.shiftKey) {
-      void handleSubmit(event);
+      event.preventDefault();
+      event.currentTarget.form?.requestSubmit();
     }
   };
 

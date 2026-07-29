@@ -1,4 +1,5 @@
 import { Icons } from '@/components/ui/Icons';
+import type { TokenTableSectionProps } from './token-breakdown-types';
 import styles from './TokenTableSection.module.css';
 import { getTokenLabel } from './tokenUtils';
 
@@ -27,7 +28,7 @@ export default function TokenTableSection({
   typeFilter,
   setTypeFilter,
   presentTypes,
-}) {
+}: TokenTableSectionProps) {
   return (
     <>
       <div className={styles.sectionHeader}>

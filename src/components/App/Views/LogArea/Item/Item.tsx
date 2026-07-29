@@ -1,7 +1,8 @@
 import React from 'react';
+import type { LogItemProps, ProcessingLogItemProps } from '../log-area-types';
 import styles from './Item.module.css';
 
-export function ProcessingLogItem({ lineNumber, message, processingClassName }) {
+export function ProcessingLogItem({ lineNumber, message, processingClassName }: ProcessingLogItemProps) {
   return (
     <div className={styles.logItem}>
       <span className={styles.lineNumber}>{lineNumber}</span>
@@ -12,7 +13,7 @@ export function ProcessingLogItem({ lineNumber, message, processingClassName }) 
   );
 }
 
-export default function LogItem({ log, displayIndex }) {
+export default function LogItem({ log, displayIndex }: LogItemProps) {
   const isError =
     log.text?.startsWith('ERR:') || log.text?.startsWith('Stack:') || /\berror\b/i.test(log.text);
 

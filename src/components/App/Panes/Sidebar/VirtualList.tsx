@@ -2,7 +2,7 @@ import Node from '@/components/state/Node';
 import type { VirtualListStateShape } from '@/components/state/domain-types';
 import { createState } from '@/components/state/State';
 import React, { useCallback, useLayoutEffect, useMemo, useRef } from 'react';
-import type { VirtualListProps } from '../sidebar-types';
+import type { VirtualListProps } from './sidebar-types';
 import styles from './VirtualList.module.css';
 import { requireStore } from '../../types';
 
@@ -122,7 +122,7 @@ function VirtualListInner<T extends { key?: string; pathStr?: string }>({
   return (
     <div ref={containerRef} className={className} style={style} onScroll={handleScroll}>
       <div className={styles.spacer} style={{ ['--virtual-total-height' as string]: `${totalHeight}px` }}>
-        {items.slice(range.start, range.end).map((item, offset) => {
+        {items.slice(range.start, range.end).map((item: T, offset: number) => {
           const index = range.start + offset;
           return (
             <div

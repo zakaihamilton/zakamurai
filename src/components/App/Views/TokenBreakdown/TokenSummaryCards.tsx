@@ -1,7 +1,8 @@
 import { Icons } from '@/components/ui/Icons';
+import type { TokenSummaryCardsProps } from './token-breakdown-types';
 import styles from './TokenSummaryCards.module.css';
 
-export default function TokenSummaryCards({ report }) {
+export default function TokenSummaryCards({ report }: TokenSummaryCardsProps) {
   return (
     <section className={styles.summaryGrid} aria-label="Token breakdown summary">
       <div className={styles.summaryCard}>

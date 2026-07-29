@@ -11,6 +11,14 @@ import { AppState } from '@/components/App/AppState';
 import { TabState } from '@/components/App/Panes/TabBar';
 import { EditorState } from '@/components/App/Views/EditorArea';
 import { useFileSystem } from '@/components/Storage';
+import { asMockUseFileSystem } from '@/test-utils/fsMocks';
+import { createMockEditorState, createMockTab, createMockTabState } from '@/test-utils/editorMocks';
+import {
+  makeAppState,
+  makeSidebarState,
+  makeSidebarUiState,
+} from '@/test-utils/stateMocks';
+import { asTreeNode } from '@/test-utils/treeMocks';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { SidebarState, SidebarUiState } from './Sidebar';
@@ -42,111 +50,87 @@ vi.mock('@/components/App/Views/EditorArea', () => ({
 }));
 
 describe('Sidebar', () => {
-  const createUiState = (values = {}) =>
-    Object.assign(vi.fn(), {
-      filterText: '',
-      loadingPaths: {},
-      dropTargetPath: null,
-      animatedWidth: 250,
-      ...values,
-    });
-
   const folderTree = [
-    {
+    asTreeNode({
       name: 'src',
       type: 'folder',
+      path: ['src'],
       children: [
-        {
+        asTreeNode({
           name: 'components',
           type: 'folder',
+          path: ['src', 'components'],
           children: [
-            { name: 'AnimatedCard.jsx', type: 'file' },
-            { name: 'Icons.jsx', type: 'file' },
+            asTreeNode({ name: 'AnimatedCard.jsx', type: 'file', path: ['src', 'components', 'AnimatedCard.jsx'] }),
+            asTreeNode({ name: 'Icons.jsx', type: 'file', path: ['src', 'components', 'Icons.jsx'] }),
           ],
-        },
-        { name: 'App.jsx', type: 'file' },
+        }),
+        asTreeNode({ name: 'App.jsx', type: 'file', path: ['src', 'App.jsx'] }),
       ],
-    },
-    { name: 'package.json', type: 'file' },
+    }),
+    asTreeNode({ name: 'package.json', type: 'file', path: ['package.json'] }),
   ];
 
   beforeEach(() => {
-    AppState.usePassiveState.mockReturnValue(
-      Object.assign(vi.fn(), { projectName: 'App', isMobile: false }),
+    vi.mocked(AppState.usePassiveState).mockReturnValue(
+      makeAppState({ projectName: 'App', isMobile: false }),
     );
-    useFileSystem.mockReturnValue({
-      mode: null,
-      files: [],
-      version: 0,
-      mountLocal: vi.fn(),
-      rootHandle: null,
-    });
+    vi.mocked(useFileSystem).mockReturnValue(asMockUseFileSystem());
 
     vi.clearAllMocks();
   });
 
   it('renders the project name', () => {
-    vi.spyOn(SidebarState, 'useState').mockReturnValue({
-      isSidebarOpen: true,
-      folderTree: [],
-      showAIInput: true,
-    });
-    vi.spyOn(SidebarUiState, 'useState').mockReturnValue(createUiState());
-    vi.spyOn(AppState, 'useState').mockReturnValue({
-      projectName: 'Test Project',
-      fs: { mode: null, mountLocal: vi.fn() },
-    });
-    vi.spyOn(TabState, 'useState').mockReturnValue({
-      activeTabId: null,
-    });
-    vi.spyOn(EditorState, 'usePassiveState').mockReturnValue({});
+    vi.mocked(SidebarState.useState).mockReturnValue(
+      makeSidebarState({ isSidebarOpen: true, folderTree: [], showAIInput: true }),
+    );
+    vi.mocked(SidebarUiState.useState).mockReturnValue(makeSidebarUiState());
+    vi.mocked(AppState.useState).mockReturnValue(makeAppState({ projectName: 'Test Project' }));
+    vi.mocked(TabState.useState).mockReturnValue(createMockTabState({ activeTabId: null }));
+    vi.mocked(EditorState.usePassiveState).mockReturnValue(createMockEditorState());
 
     render(<Sidebar />);
     expect(screen.getByText('Test Project')).toBeDefined();
   });
 
   it('filters files by their full relative path', async () => {
-    vi.spyOn(SidebarState, 'useState').mockReturnValue({
-      isSidebarOpen: true,
-      folderTree,
-      showAIInput: true,
-      expandedFolders: {},
-    });
-    const uiStateUpdater = createUiState();
-    vi.spyOn(SidebarUiState, 'useState').mockReturnValue(uiStateUpdater);
-    vi.spyOn(AppState, 'useState').mockReturnValue({
-      projectName: 'Test Project',
-      fs: { mode: null, mountLocal: vi.fn() },
-    });
-    vi.spyOn(TabState, 'useState').mockReturnValue({
-      activeTabId: null,
-    });
-    vi.spyOn(EditorState, 'usePassiveState').mockReturnValue({});
+    const sidebarUiState = makeSidebarUiState();
+    vi.mocked(SidebarState.useState).mockReturnValue(
+      makeSidebarState({
+        isSidebarOpen: true,
+        folderTree,
+        showAIInput: true,
+        expandedFolders: {},
+      }),
+    );
+    vi.mocked(SidebarUiState.useState).mockReturnValue(sidebarUiState);
+    vi.mocked(AppState.useState).mockReturnValue(makeAppState({ projectName: 'Test Project' }));
+    vi.mocked(TabState.useState).mockReturnValue(createMockTabState({ activeTabId: null }));
+    vi.mocked(EditorState.usePassiveState).mockReturnValue(createMockEditorState());
 
     render(<Sidebar />);
     fireEvent.change(screen.getByPlaceholderText(/Search files/i), {
       target: { value: 'src/components/icons' },
     });
 
-    expect(uiStateUpdater).toHaveBeenCalled();
+    expect(sidebarUiState).toHaveBeenCalled();
   });
 
   it('highlights the matching letters in visible file names', async () => {
-    vi.spyOn(SidebarState, 'useState').mockReturnValue({
-      isSidebarOpen: true,
-      folderTree,
-      showAIInput: true,
-      expandedFolders: {},
-    });
-    vi.spyOn(SidebarUiState, 'useState').mockReturnValue(createUiState({ filterText: 'icons' }));
-    vi.spyOn(AppState, 'useState').mockReturnValue({
-      projectName: 'Test Project',
-      fs: { mode: null, mountLocal: vi.fn() },
-    });
-    vi.spyOn(TabState, 'useState').mockReturnValue({
-      activeTabId: null,
-    });
-    vi.spyOn(EditorState, 'usePassiveState').mockReturnValue({});
+    vi.mocked(SidebarState.useState).mockReturnValue(
+      makeSidebarState({
+        isSidebarOpen: true,
+        folderTree,
+        showAIInput: true,
+        expandedFolders: {},
+      }),
+    );
+    vi.mocked(SidebarUiState.useState).mockReturnValue(
+      makeSidebarUiState({ filterText: 'icons' }),
+    );
+    vi.mocked(AppState.useState).mockReturnValue(makeAppState({ projectName: 'Test Project' }));
+    vi.mocked(TabState.useState).mockReturnValue(createMockTabState({ activeTabId: null }));
+    vi.mocked(EditorState.usePassiveState).mockReturnValue(createMockEditorState());
 
     render(<Sidebar />);
 
@@ -157,23 +141,20 @@ describe('Sidebar', () => {
   });
 
   it('keeps a matching folder visible with its children', async () => {
-    vi.spyOn(SidebarState, 'useState').mockReturnValue({
-      isSidebarOpen: true,
-      folderTree,
-      showAIInput: true,
-      expandedFolders: {},
-    });
-    vi.spyOn(SidebarUiState, 'useState').mockReturnValue(
-      createUiState({ filterText: 'components' }),
+    vi.mocked(SidebarState.useState).mockReturnValue(
+      makeSidebarState({
+        isSidebarOpen: true,
+        folderTree,
+        showAIInput: true,
+        expandedFolders: {},
+      }),
     );
-    vi.spyOn(AppState, 'useState').mockReturnValue({
-      projectName: 'Test Project',
-      fs: { mode: null, mountLocal: vi.fn() },
-    });
-    vi.spyOn(TabState, 'useState').mockReturnValue({
-      activeTabId: null,
-    });
-    vi.spyOn(EditorState, 'usePassiveState').mockReturnValue({});
+    vi.mocked(SidebarUiState.useState).mockReturnValue(
+      makeSidebarUiState({ filterText: 'components' }),
+    );
+    vi.mocked(AppState.useState).mockReturnValue(makeAppState({ projectName: 'Test Project' }));
+    vi.mocked(TabState.useState).mockReturnValue(createMockTabState({ activeTabId: null }));
+    vi.mocked(EditorState.usePassiveState).mockReturnValue(createMockEditorState());
 
     render(<Sidebar />);
 
@@ -185,25 +166,28 @@ describe('Sidebar', () => {
   });
 
   it('auto-expands parent folders for active tab', async () => {
-    const stateUpdater = vi.fn();
-    vi.spyOn(SidebarState, 'useState').mockReturnValue(
-      Object.assign(stateUpdater, {
-        isSidebarOpen: true,
-        folderTree,
-        showAIInput: true,
-        expandedFolders: {},
+    const sidebarState = makeSidebarState({
+      isSidebarOpen: true,
+      folderTree,
+      showAIInput: true,
+      expandedFolders: {},
+    });
+    vi.mocked(SidebarState.useState).mockReturnValue(sidebarState);
+    vi.mocked(SidebarUiState.useState).mockReturnValue(makeSidebarUiState());
+    vi.mocked(AppState.useState).mockReturnValue(makeAppState({ projectName: 'Test Project' }));
+    vi.mocked(TabState.useState).mockReturnValue(
+      createMockTabState({
+        activeTabId: 'src/components/Icons.jsx',
+        openTabs: [
+          createMockTab({
+            id: 'src/components/Icons.jsx',
+            type: 'file',
+            label: 'Icons.jsx',
+          }),
+        ],
       }),
     );
-    vi.spyOn(SidebarUiState, 'useState').mockReturnValue(createUiState());
-    vi.spyOn(AppState, 'useState').mockReturnValue({
-      projectName: 'Test Project',
-      fs: { mode: 'local', mountLocal: vi.fn() },
-    });
-    vi.spyOn(TabState, 'useState').mockReturnValue({
-      activeTabId: 'src/components/Icons.jsx',
-      openTabs: [{ id: 'src/components/Icons.jsx', type: 'file' }],
-    });
-    vi.spyOn(EditorState, 'usePassiveState').mockReturnValue({});
+    vi.mocked(EditorState.usePassiveState).mockReturnValue(createMockEditorState());
 
     render(<Sidebar />);
 

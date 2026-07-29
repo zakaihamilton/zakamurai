@@ -23,7 +23,7 @@ export default function LogArea() {
     filterText: '',
   }));
   const { copied = false, autoScroll = true, filterText = '' } = logAreaUiState || {};
-  const containerRef = useRef();
+  const containerRef = useRef<HTMLDivElement | null>(null);
   const normalizedFilter = filterText.trim().toLowerCase();
   const visibleLogs = logs
     .map((log, index) => ({ log, displayIndex: index }))

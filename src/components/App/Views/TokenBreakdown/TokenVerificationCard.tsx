@@ -1,8 +1,9 @@
 import { Icons } from '@/components/ui/Icons';
 import React from 'react';
+import type { TokenVerificationCardProps, VerificationMetricProps } from './token-breakdown-types';
 import styles from './TokenVerificationCard.module.css';
 
-export default function TokenVerificationCard({ result, onClose }) {
+export default function TokenVerificationCard({ result, onClose }: TokenVerificationCardProps) {
   if (!result) return null;
   return (
     <div className={styles.verificationCard}>
@@ -53,7 +54,7 @@ export default function TokenVerificationCard({ result, onClose }) {
   );
 }
 
-function VerificationMetric({ label, value }) {
+function VerificationMetric({ label, value }: VerificationMetricProps) {
   return (
     <div className={styles.verificationMetric}>
       <span className={styles.metricLabel}>{label}</span>

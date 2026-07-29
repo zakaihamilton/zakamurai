@@ -3,7 +3,9 @@ import {
   getJavaScriptBlockFolds,
   isJavaScriptPath,
 } from '@/components/App/Views/EditorArea/JavaScriptFolding';
+import type { HighlightDebugToken } from '@/components/App/Views/EditorArea/types';
 import { getJsonObjectFolds, isJsonPath } from '@/components/App/Views/EditorArea/JsonFolding';
+import type { TokenBreakdownReport, TokenVerificationResult } from './token-breakdown-types';
 
 const TOKEN_LABELS = {
   hlAttr: 'Attribute',
@@ -18,25 +20,27 @@ const TOKEN_LABELS = {
   hlStr: 'String',
   hlTag: 'Tag',
   hlVal: 'Value',
-};
+} as const;
+
+type TokenLabelKey = keyof typeof TOKEN_LABELS;
 
 export const getTokenLabel = (type = '') =>
-  TOKEN_LABELS[type] || type.replace(/^hl/, '') || 'Token';
+  TOKEN_LABELS[type as TokenLabelKey] || type.replace(/^hl/, '') || 'Token';
 
-export const getFolds = (code, filePath) => {
+export const getFolds = (code: string, filePath: string) => {
   if (isJsonPath(filePath)) return getJsonObjectFolds(code, filePath);
   if (isCssPath(filePath)) return getCssBlockFolds(code, filePath);
   return getJavaScriptBlockFolds(code, filePath);
 };
 
-export const getFoldLabel = (filePath) => {
+export const getFoldLabel = (filePath: string) => {
   if (isJsonPath(filePath)) return 'JSON object';
   if (isCssPath(filePath)) return 'CSS block';
   if (isJavaScriptPath(filePath)) return 'code block';
   return 'fold';
 };
 
-export const compareTokensBySourceOrder = (a, b) => {
+export const compareTokensBySourceOrder = (a: HighlightDebugToken, b: HighlightDebugToken) => {
   const aStart = a.range?.start ?? Number.POSITIVE_INFINITY;
   const bStart = b.range?.start ?? Number.POSITIVE_INFINITY;
   if (aStart !== bStart) return aStart - bStart;
@@ -46,11 +50,14 @@ export const compareTokensBySourceOrder = (a, b) => {
   return a.index - b.index;
 };
 
-export const checkTokenReportMatch = (code, report) => {
+export const checkTokenReportMatch = (
+  code: string,
+  report: Pick<TokenBreakdownReport, 'tokens'>,
+): TokenVerificationResult => {
   const tokens = [...report.tokens].sort((a, b) => (a.range?.start ?? 0) - (b.range?.start ?? 0));
   let reconstructed = '';
   let lastIdx = 0;
-  const mismatches = [];
+  const mismatches: TokenVerificationResult['mismatches'] = [];
 
   for (const token of tokens) {
     const start = token.range?.start;

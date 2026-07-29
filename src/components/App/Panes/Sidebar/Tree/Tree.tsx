@@ -41,7 +41,7 @@ export default function SidebarTree({
         itemHeight={ROW_HEIGHT}
         scrollKey={activeTabId}
         scrollToIndex={scrollToIndex}
-        renderItem={(row) => (
+        renderItem={(row: SidebarTreeProps['rows'][number]) => (
           <TreeItem
             row={row}
             filterText={filterText}

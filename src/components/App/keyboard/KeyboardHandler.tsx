@@ -42,7 +42,7 @@ export function useKeyboardHandler() {
         const closeModalShortcut = SHORTCUTS.find(
           (shortcut) => shortcut.id === 'close-modal' && isMatch(e, shortcut),
         );
-        if (closeModalShortcut) {
+        if (closeModalShortcut?.action) {
           e.preventDefault();
           closeModalShortcut.action(states);
           return;

@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import type { UseSidebarLayoutParams } from './sidebar-types';
 
 const COLLAPSED_DESKTOP_WIDTH = 0;
 
@@ -9,7 +10,7 @@ export default function useSidebarLayout({
   sidebarWidth,
   animatedWidth,
   setAnimatedWidth,
-}) {
+}: UseSidebarLayoutParams) {
   useEffect(() => {
     if (isMobile) return undefined;
     if (isOpen) {

@@ -1,12 +1,20 @@
+import type { CssCustomProperties } from '@/components/App/types';
 import Node from '@/components/state/Node';
 import React from 'react';
 import CreateRowInput from './CreateRowInput';
+import type { TreeItemContentProps, TreeItemProps } from './sidebar-types';
 import TreeItemContent from './TreeItemContent';
 import { TreeItemState, useTreeItemControls } from './useTreeItemControls';
 
 export { TreeItemState };
 
-export default function TreeItem({ row, filterText = '', onCancelCreate, onCreate, ...props }) {
+export default function TreeItem({
+  row,
+  filterText = '',
+  onCancelCreate,
+  onCreate,
+  ...props
+}: TreeItemProps) {
   if (row.isCreateRow) {
     return (
       <Node id={row.key}>
@@ -18,7 +26,9 @@ export default function TreeItem({ row, filterText = '', onCancelCreate, onCreat
   return <TreeItemWithControls row={row} filterText={filterText} {...props} />;
 }
 
-function TreeItemWithControls({ row, onOpenFile, onRename, onStartCreate, ...props }) {
+type TreeItemControlledProps = Omit<TreeItemProps, 'onCancelCreate' | 'onCreate'>;
+
+function TreeItemWithControls({ row, onOpenFile, onRename, onStartCreate, ...props }: TreeItemControlledProps) {
   return (
     <Node id={row?.pathStr || row?.item?.name || 'TreeItem'}>
       <TreeItemControlled
@@ -32,11 +42,26 @@ function TreeItemWithControls({ row, onOpenFile, onRename, onStartCreate, ...pro
   );
 }
 
-function TreeItemControlled({ row, onOpenFile, onRename, onStartCreate, ...props }) {
+function TreeItemControlled({
+  row,
+  onOpenFile,
+  onRename,
+  onStartCreate,
+  filterText = '',
+  ...props
+}: TreeItemControlledProps) {
   const controls = useTreeItemControls({ row, onOpenFile, onRename, onStartCreate });
+  const indentStyle: CssCustomProperties = { '--tree-indent': `${16 + row.level * 16}px` };
+  const contentProps: TreeItemContentProps = {
+    row,
+    controls,
+    filterText,
+    onOpenFile,
+    ...props,
+  };
   return (
-    <div style={{ '--tree-indent': `${16 + row.level * 16}px` }}>
-      <TreeItemContent row={row} controls={controls} onOpenFile={onOpenFile} {...props} />
+    <div style={indentStyle}>
+      <TreeItemContent {...contentProps} />
     </div>
   );
 }
