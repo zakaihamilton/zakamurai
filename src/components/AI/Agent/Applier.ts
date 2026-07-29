@@ -1,4 +1,5 @@
 import { computeDiff } from '@/components/AI/Processor/utils/DiffEngine';
+import { resolveFilePath } from '@/components/AI/Processor/utils/PathResolver';
 import type {
   AgentChange,
   ApplyAgentChangesResult,
@@ -106,7 +107,17 @@ export function applyAgentChanges(
     return { applied: 0, deletions: [] };
   }
 
-  const validation = validateAIChanges(changes);
+  const existingPaths = Object.keys(
+    (editorState as unknown as { fileContents?: Record<string, string> }).fileContents || {},
+  );
+
+  const resolvedChanges = changes.map((change) => {
+    const rawPath = change.path ?? change.filePath ?? '';
+    const resolvedPath = resolveFilePath(rawPath, existingPaths);
+    return { ...change, path: resolvedPath };
+  });
+
+  const validation = validateAIChanges(resolvedChanges);
   const validChanges = validation.accepted;
   if (validation.rejected.length > 0 && logState) {
     logState((draft) => {

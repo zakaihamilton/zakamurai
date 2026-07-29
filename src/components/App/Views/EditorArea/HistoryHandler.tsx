@@ -73,7 +73,7 @@ export default function HistoryHandler({ filePath, localContent, state }: Histor
             content: lastHistoryContent.current,
             cursor: lastHistoryCursor.current,
           });
-          if (past.length > 100) past.shift();
+          if (past.length > 30) past.shift();
           hist.past = past;
 
           hist.lastSnapshotContent = localContent;

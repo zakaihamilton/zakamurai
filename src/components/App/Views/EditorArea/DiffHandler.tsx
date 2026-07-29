@@ -1,6 +1,7 @@
 import { SidebarState } from '@/components/App/Panes/Sidebar';
 import { removeNodeAtPath } from '@/components/App/Panes/Sidebar/TreeUtils';
 import { TabState } from '@/components/App/Panes/TabBar';
+import Settings from '@/components/Storage/Settings';
 import { ChangeSetState, updateChangeSetFile } from '@/components/Workspace';
 import { deleteKeysWithPrefixInDraft, setInDraft } from '@/components/state/StateUtils';
 import type { CursorPosition } from '@/components/state/domain-types';
@@ -64,9 +65,15 @@ export default function DiffHandler({
         console.error('Failed to delete from FS on approve:', err);
         return;
       }
+      let remainingContents = {};
+      let remainingDiffs = {};
       state((draft) => {
         deleteKeysWithPrefixInDraft(draft, EDITOR_PATH_MAPS, filePath);
+        remainingContents = draft.fileContents || {};
+        remainingDiffs = draft.pendingDiffs || {};
       });
+      void Settings.setFileContents?.(remainingContents);
+      void Settings.setPendingDiffs?.(remainingDiffs);
       tabState?.((draft) => {
         draft.openTabs = draft.openTabs.filter(
           (tab) => tab.id !== filePath && !tab.id.startsWith(`${filePath}/`),
@@ -110,13 +117,19 @@ export default function DiffHandler({
       console.error('Failed to save to FS on approve:', err);
       return;
     }
+    let remainingDiffs = {};
+    let currentContents = {};
     state((draft) => {
       if (draft.pendingDiffs) {
         const nextDiffs = { ...draft.pendingDiffs };
         delete nextDiffs[filePath];
         draft.pendingDiffs = nextDiffs;
+        remainingDiffs = nextDiffs;
       }
+      currentContents = draft.fileContents || {};
     });
+    void Settings.setFileContents?.(currentContents);
+    void Settings.setPendingDiffs?.(remainingDiffs);
     updateChangeSetFile(changeSetState, pendingDiff?.changeSetId ?? '', filePath, 'accepted');
   }, [
     changeSetState,

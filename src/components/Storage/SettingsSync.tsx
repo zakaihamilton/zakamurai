@@ -276,6 +276,8 @@ export function useSettingsSync(
 
   useEffect(() => {
     if (!sessions || !activeSessionId) return undefined;
+    const isRunning = Object.values(sessions).some((s) => s?.status === 'running');
+    const debounceMs = isRunning ? 2000 : 500;
     const timer = setTimeout(() => {
       const payload = serializeAgentSessions({ sessions, activeSessionId });
       void Promise.resolve(Settings.setAgentSessions(payload)).then((ok) => {
@@ -284,7 +286,7 @@ export function useSettingsSync(
           Settings.setActiveAgentSessionId(payload.activeSessionId);
         }
       });
-    }, 500);
+    }, debounceMs);
     return () => clearTimeout(timer);
   }, [sessions, activeSessionId]);
 

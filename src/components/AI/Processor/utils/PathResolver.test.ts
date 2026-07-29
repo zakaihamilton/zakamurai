@@ -28,5 +28,15 @@ describe('PathResolver', () => {
     test('fallback to provided path', () => {
       expect(resolveFilePath('new/file.js', existing)).toBe('new/file.js');
     });
+
+    test('resolves new component paths into src directory when src exists', () => {
+      const srcExisting = ['src/App.jsx', 'src/main.jsx'];
+      expect(resolveFilePath('components/Todo.jsx', srcExisting)).toBe('src/components/Todo.jsx');
+      expect(resolveFilePath('Todo.jsx', srcExisting)).toBe('src/components/Todo.jsx');
+      expect(resolveFilePath('Todo.module.css', srcExisting)).toBe(
+        'src/components/Todo.module.css',
+      );
+      expect(resolveFilePath('index.css', srcExisting)).toBe('src/index.css');
+    });
   });
 });

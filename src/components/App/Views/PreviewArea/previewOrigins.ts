@@ -1,9 +1,8 @@
 const LOCAL_IDE_ORIGIN = 'http://localhost:3000';
-const LOCAL_PREVIEW_ORIGIN = 'http://localhost:3001';
 const PREVIEW_HOST_PREFIX = 'preview.';
 export const PREVIEW_SURFACE_PARAM = 'zakamurai-surface';
 export const PREVIEW_SURFACE_VALUE = 'preview';
-const PREVIEW_SERVICE_WORKER_SCOPE = '/__preview/';
+export const PREVIEW_SERVICE_WORKER_SCOPE = '/__preview/';
 export const PREVIEW_HOST_PATH = '/__preview/host';
 
 export type PreviewOrigins = {
@@ -166,10 +165,42 @@ export function getPreviewOrigins({
   }
 
   if (isLocalOrigin(windowOrigin)) {
+    if (configuredIdeOrigin && configuredPreviewOrigin) {
+      return {
+        ideOrigin: configuredIdeOrigin,
+        previewOrigin: configuredPreviewOrigin,
+        isIsolated: configuredIdeOrigin !== configuredPreviewOrigin,
+      };
+    }
+    if (configuredPreviewOrigin) {
+      const ideOrigin = windowOrigin || LOCAL_IDE_ORIGIN;
+      return {
+        ideOrigin,
+        previewOrigin: configuredPreviewOrigin,
+        isIsolated: ideOrigin !== configuredPreviewOrigin,
+      };
+    }
+    try {
+      if (windowOrigin) {
+        const url = new URL(windowOrigin);
+        if (url.port === '3001') {
+          const ideOrigin = deriveIdeHostFromPreview(windowOrigin);
+          return {
+            ideOrigin,
+            previewOrigin: windowOrigin,
+            isIsolated: ideOrigin !== windowOrigin,
+          };
+        }
+      }
+    } catch {
+      // Ignore URL parsing failure
+    }
+    const localOrigin = windowOrigin || LOCAL_IDE_ORIGIN;
     return {
-      ideOrigin: LOCAL_IDE_ORIGIN,
-      previewOrigin: LOCAL_PREVIEW_ORIGIN,
-      isIsolated: true,
+      ideOrigin: localOrigin,
+      previewOrigin: localOrigin,
+      isIsolated: false,
+      useSurfaceQuery: true,
     };
   }
 

@@ -58,6 +58,13 @@ describe('browser-bundler', () => {
       existsSync: (path: string) => path === '/src/components/index.tsx',
     });
     expect(__testables.resolveFile(indexFs, '/src/components')).toBe('/src/components/index.tsx');
+
+    const namedFs = createMinimalVfsLike({
+      existsSync: (path: string) => path === '/src/components/Todo/Todo.jsx',
+    });
+    expect(__testables.resolveFile(namedFs, '/src/components/Todo')).toBe(
+      '/src/components/Todo/Todo.jsx',
+    );
   });
 
   it('resolves absolute imports against /public when not a source file', () => {

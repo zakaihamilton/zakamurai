@@ -110,6 +110,16 @@ export class RagSearchUtility {
     return this.controller.indexFile(filePath, content);
   }
 
+  async unloadModel(): Promise<unknown> {
+    if (!this.isInitialized) return;
+    return this.controller.unloadModel();
+  }
+
+  async purgeIndex(): Promise<unknown> {
+    if (!this.isInitialized) return;
+    return this.controller.purgeIndex();
+  }
+
   formatPromptContext(results: ContextItem[]): string {
     if (!results || results.length === 0) {
       return '';

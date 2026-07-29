@@ -186,8 +186,11 @@ export function highlightCodeAsync(
     return syncResult;
   }
 
+  const fileContentsForWorker =
+    navigationLinksEnabled && state?.fileContents
+      ? Object.fromEntries(Object.keys(state.fileContents).map((k) => [k, '']))
+      : {};
   const id = ++requestSeq;
-  const fileContentsForWorker = navigationLinksEnabled ? state?.fileContents || {} : {};
   const payload: HighlightWorkerMessage = {
     id,
     code,

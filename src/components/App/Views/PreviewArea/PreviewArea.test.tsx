@@ -6,6 +6,7 @@ import type { ReactElement, ReactNode } from 'react';
 import React from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import PreviewArea, { PreviewAreaUiState } from './PreviewArea';
+import { getPreviewOrigins } from './previewOrigins';
 import { PREVIEW_MESSAGE_TYPES } from './previewSandbox';
 
 vi.mock('@/components/App/PreviewState', () => ({
@@ -194,7 +195,7 @@ describe('PreviewArea', () => {
     expect(ui).toHaveBeenCalled();
     fireEvent.click(screen.getByTitle('Open in new tab'));
     expect(window.open).toHaveBeenCalledWith(
-      expect.stringMatching(/^http:\/\/localhost:3001\/\?session=/),
+      expect.stringMatching(/^http:\/\/localhost:(3000|3001)\/.*[?&]session=/),
       expect.stringMatching(/^zakamurai-preview-tab-/),
     );
   });
@@ -236,13 +237,14 @@ describe('PreviewArea', () => {
 
     render(<PreviewArea />);
     const iframe = screen.getByTitle('Preview') as HTMLIFrameElement;
+    const origins = getPreviewOrigins({ windowOrigin: window.location.origin });
     const event = new MessageEvent('message', {
       data: {
         source: 'zakamurai-preview',
         type: PREVIEW_MESSAGE_TYPES.RUNTIME_ERROR,
         message: 'Uncaught ReferenceError: app is not defined',
       },
-      origin: 'http://localhost:3001',
+      origin: origins.previewOrigin || 'http://localhost:3000',
     });
     Object.defineProperty(event, 'source', { value: iframe.contentWindow });
 
@@ -269,13 +271,14 @@ describe('PreviewArea', () => {
 
     render(<PreviewArea />);
     const iframe = screen.getByTitle('Preview') as HTMLIFrameElement;
+    const origins = getPreviewOrigins({ windowOrigin: window.location.origin });
     const event = new MessageEvent('message', {
       data: {
         source: 'zakamurai-preview',
         type: PREVIEW_MESSAGE_TYPES.RUNTIME_ERROR,
         message: 'Script error.',
       },
-      origin: 'http://localhost:3001',
+      origin: origins.previewOrigin || 'http://localhost:3000',
     });
     Object.defineProperty(event, 'source', { value: iframe.contentWindow });
 

@@ -73,6 +73,13 @@ function resolveFile(vfs: VfsLike, candidate: string): string | null {
     const indexPath = `${candidate}/index${suffix}`;
     if (vfs.existsSync(indexPath)) return indexPath;
   }
+  const base = basename(candidate);
+  if (base) {
+    for (const suffix of SOURCE_EXTENSIONS.slice(1)) {
+      const namedPath = `${candidate}/${base}${suffix}`;
+      if (vfs.existsSync(namedPath)) return namedPath;
+    }
+  }
   return null;
 }
 

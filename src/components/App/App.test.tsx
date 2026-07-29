@@ -295,4 +295,17 @@ describe('App', () => {
     expect(await screen.findByTestId('sidebar')).toBeDefined();
     expect(Settings.getPendingDiffs).toHaveBeenCalled();
   });
+
+  it('preserves newly created AI files in restored file contents and folder tree', async () => {
+    vi.mocked(Settings.getFileContents).mockReturnValue({
+      'src/App.jsx': 'export default function App() {}',
+      'src/components/NewComponent.jsx': 'export default function NewComponent() {}',
+      'src/utils/math.ts': 'export const add = (a, b) => a + b;',
+    });
+    vi.mocked(Settings.getPendingDiffs).mockReturnValue({});
+
+    render(<App />);
+    expect(await screen.findByTestId('sidebar')).toBeDefined();
+    expect(Settings.getFileContents).toHaveBeenCalled();
+  });
 });

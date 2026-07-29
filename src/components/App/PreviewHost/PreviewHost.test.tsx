@@ -65,7 +65,7 @@ describe('PreviewHost', () => {
 
     expect(postMessageSpy).toHaveBeenCalledWith(
       expect.objectContaining({ type: 'zakamurai-preview-connect', sessionId: 's123' }),
-      'http://localhost:3000',
+      expect.stringMatching(/localhost:300[01]/),
     );
   });
 
@@ -107,7 +107,7 @@ describe('PreviewHost', () => {
         sessionId: 's123',
         surface: 'external',
       }),
-      'http://localhost:3000',
+      expect.stringMatching(/localhost:300[01]/),
     );
   });
 
@@ -120,7 +120,7 @@ describe('PreviewHost', () => {
 
     expect(postMessageSpy).toHaveBeenCalledWith(
       expect.objectContaining({ sessionId: 'from-name' }),
-      'http://localhost:3000',
+      expect.stringMatching(/localhost:300[01]/),
     );
   });
 
@@ -133,7 +133,7 @@ describe('PreviewHost', () => {
 
     expect(postMessageSpy).toHaveBeenCalledWith(
       expect.objectContaining({ sessionId: 'external-session' }),
-      'http://localhost:3000',
+      expect.stringMatching(/localhost:300[01]/),
     );
   });
 

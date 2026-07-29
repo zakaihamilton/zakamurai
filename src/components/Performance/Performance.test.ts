@@ -10,6 +10,18 @@ vi.mock('@/components/AI/WebLLMAPI', () => ({
   unloadAllWebLLMEngines: vi.fn().mockResolvedValue(undefined),
 }));
 
+vi.mock('@/utils/compiler', () => ({
+  Compiler: { reset: vi.fn().mockResolvedValue(undefined) },
+}));
+
+vi.mock('@/utils/rag/search-utility', () => ({
+  ragSearch: { unloadModel: vi.fn().mockResolvedValue(undefined) },
+}));
+
+vi.mock('@/components/App/Views/EditorArea/highlightClient', () => ({
+  _resetHighlightWorkerForTests: vi.fn(),
+}));
+
 describe('Performance service', () => {
   afterEach(() => vi.restoreAllMocks());
 
@@ -37,12 +49,14 @@ describe('Performance service', () => {
     ]);
   });
 
-  it('purges system memory and invokes WebLLM unload', async () => {
+  it('purges system memory and invokes WebLLM, compiler, and RAG unload', async () => {
     const gcMock = vi.fn();
     vi.stubGlobal('window', { gc: gcMock });
 
     const result = await purgeSystemMemory();
     expect(result.webllmUnloaded).toBe(true);
+    expect(result.compilerReset).toBe(true);
+    expect(result.ragUnloaded).toBe(true);
     expect(result.gcTriggered).toBe(true);
     expect(gcMock).toHaveBeenCalled();
   });

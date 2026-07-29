@@ -8,6 +8,7 @@ import {
 import { describe, expect, it, vi } from 'vitest';
 import {
   addNodeAtPath,
+  buildTreeFromPaths,
   findNodeAtPath,
   flattenTree,
   getInitialFileContents,
@@ -108,6 +109,28 @@ describe('TreeUtils', () => {
       expect(normalized[1]?.name).toBe('App.js');
       expect(normalized[1]?.type).toBe('file');
       expect(normalized[1]?.path).toEqual(['src', 'App.js']);
+    });
+  });
+
+  describe('buildTreeFromPaths', () => {
+    it('constructs a normalized tree structure from file path strings', () => {
+      const paths = ['src/App.jsx', 'src/components/Card.jsx', 'package.json'];
+      const tree = buildTreeFromPaths(paths);
+
+      expect(tree).toHaveLength(2);
+      expect(tree[0]?.name).toBe('src');
+      expect(tree[0]?.type).toBe('folder');
+      expect(tree[0]?.children).toHaveLength(2);
+      expect(tree[0]?.children?.[0]?.name).toBe('components');
+      expect(tree[0]?.children?.[0]?.type).toBe('folder');
+      expect(tree[0]?.children?.[0]?.children?.[0]?.name).toBe('Card.jsx');
+      expect(tree[0]?.children?.[1]?.name).toBe('App.jsx');
+      expect(tree[1]?.name).toBe('package.json');
+      expect(tree[1]?.type).toBe('file');
+    });
+
+    it('returns empty array if paths is empty', () => {
+      expect(buildTreeFromPaths([])).toEqual([]);
     });
   });
 

@@ -92,10 +92,12 @@ export const processAIResponse = async (
       : editorState?.selectedLines || {};
 
   let filesUpdated = 0;
-  const existingPaths =
-    editorState && typeof (editorState as { useState?: unknown }).useState !== 'function'
-      ? Object.keys(editorState.fileContents || {})
-      : [];
+  const existingPaths = Array.from(
+    new Set([
+      ...Object.keys(originalContents || {}),
+      ...Object.keys(editorState?.fileContents || {}),
+    ]),
+  );
 
   for (const block of fileBlocks) {
     const filePath = resolveFilePath(block.filePath ?? '', existingPaths);

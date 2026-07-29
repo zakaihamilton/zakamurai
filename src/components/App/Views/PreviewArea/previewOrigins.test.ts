@@ -32,10 +32,23 @@ describe('isolated preview configuration', () => {
     vi.unstubAllEnvs();
   });
 
-  it('uses distinct local origins for the two-port development workflow', () => {
+  it('uses distinct local origins for the two-port development workflow when configured', () => {
+    vi.stubEnv('NEXT_PUBLIC_IDE_ORIGIN', 'http://localhost:3000');
+    vi.stubEnv('NEXT_PUBLIC_PREVIEW_ORIGIN', 'http://localhost:3001');
+
     const origins = getPreviewOrigins({ windowOrigin: 'http://localhost:3000' });
     expect(origins.ideOrigin).toBe('http://localhost:3000');
     expect(origins.previewOrigin).toBe('http://localhost:3001');
+    expect(origins.isIsolated).toBe(true);
+    expect(getPreviewConfigurationError(origins)).toBeNull();
+  });
+
+  it('uses surface query preview for single-port localhost development when preview origin is not configured', () => {
+    const origins = getPreviewOrigins({ windowOrigin: 'http://localhost:3000' });
+    expect(origins.ideOrigin).toBe('http://localhost:3000');
+    expect(origins.previewOrigin).toBe('http://localhost:3000');
+    expect(origins.isIsolated).toBe(false);
+    expect(origins.useSurfaceQuery).toBe(true);
     expect(getPreviewConfigurationError(origins)).toBeNull();
   });
 

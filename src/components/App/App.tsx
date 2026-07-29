@@ -41,6 +41,7 @@ import AppBackgroundServices from './Layout/AppBackgroundServices';
 import AppContent from './Layout/AppContent';
 import AppLoading from './Layout/AppLoading';
 
+import { buildTreeFromPaths } from '@/components/App/Panes/Sidebar/TreeUtils';
 import { useSettingsSync } from '@/components/Storage/SettingsSync';
 import { useWindowResize } from './WindowResize';
 import type { InitialAppValues } from './types';
@@ -73,10 +74,14 @@ function buildInitialValues(): InitialAppValues {
       Object.entries(pendingDiffs).map(([path, diff]) => [path, diff.modifiedContent]),
     ),
   };
+  const initialFiles =
+    restoredContents && Object.keys(restoredContents).length > 0
+      ? buildTreeFromPaths(Object.keys(restoredContents))
+      : (defaultFiles as InitialAppValues['files']);
 
   return {
     projectName: Settings.getProjectName(recoveryCheckpoint?.projectName || 'My App') || 'My App',
-    files: defaultFiles as InitialAppValues['files'],
+    files: initialFiles as InitialAppValues['files'],
     contents: restoredContents,
     theme: Settings.getTheme() || 'dark',
     tabs: (Settings.getOpenTabs() ||

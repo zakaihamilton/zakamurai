@@ -44,6 +44,50 @@ export const normalizeChildren = (
     } as NormalizedTreeNode;
   });
 
+function ensurePathInLevel(
+  level: TreeNode[],
+  pathSegments: string[],
+  parentPath: string[] = [],
+): TreeNode[] {
+  const nextLevel = [...level];
+  if (pathSegments.length === 1) {
+    const fileName = pathSegments[0];
+    if (!nextLevel.some((n) => n.name === fileName && getNodeType(n) === 'file')) {
+      nextLevel.push({ name: fileName, type: 'file', path: [...parentPath, fileName] });
+    }
+    return nextLevel;
+  }
+  const folderName = pathSegments[0];
+  const folderPath = [...parentPath, folderName];
+  let folderIdx = nextLevel.findIndex((n) => n.name === folderName && getNodeType(n) === 'folder');
+  let folderNode: TreeNode;
+  if (folderIdx === -1) {
+    folderNode = { name: folderName, type: 'folder', path: folderPath, children: [] };
+    nextLevel.push(folderNode);
+    folderIdx = nextLevel.length - 1;
+  } else {
+    folderNode = { ...nextLevel[folderIdx] };
+    nextLevel[folderIdx] = folderNode;
+  }
+  folderNode.children = ensurePathInLevel(
+    folderNode.children || [],
+    pathSegments.slice(1),
+    folderPath,
+  );
+  return nextLevel;
+}
+
+export const buildTreeFromPaths = (paths: string[]): NormalizedTreeNode[] => {
+  let tree: TreeNode[] = [];
+  for (const p of paths) {
+    const parts = p.split('/').filter(Boolean);
+    if (parts.length > 0) {
+      tree = ensurePathInLevel(tree, parts);
+    }
+  }
+  return normalizeChildren(tree);
+};
+
 export const setChildrenAtPath = (
   nodes: TreeNode[],
   path: string[],

@@ -12,7 +12,11 @@ import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 import DiffHandler from './DiffHandler';
 
 vi.mock('@/components/Storage/Settings', () => ({
-  default: { getTemplate: vi.fn(() => 'default') },
+  default: {
+    getTemplate: vi.fn(() => 'default'),
+    setFileContents: vi.fn(),
+    setPendingDiffs: vi.fn(),
+  },
 }));
 
 vi.mock('@/components/App/Panes/Sidebar', () => ({

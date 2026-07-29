@@ -42,5 +42,27 @@ export function resolveFilePath(providedPath: string, existingPaths: string[]): 
   // If we found a match that covers at least the filename, use it
   if (maxSuffixLength >= 1) return bestMatch;
 
+  // 3. For new files: if existing project files reside in `src/`, ensure component/source files map to `src/`
+  const hasSrcDir = existingPaths.some((p) => p.startsWith('src/'));
+  if (hasSrcDir && !normalized.startsWith('src/') && !normalized.startsWith('public/')) {
+    if (normalized.startsWith('components/')) {
+      return `src/${normalized}`;
+    }
+    if (!normalized.includes('/')) {
+      if (normalized.endsWith('.module.css')) {
+        return `src/components/${normalized}`;
+      }
+      if (
+        /\.(jsx|tsx)$/.test(normalized) &&
+        !['App.jsx', 'App.tsx', 'main.jsx', 'main.tsx', 'index.jsx', 'index.tsx'].includes(
+          normalized,
+        )
+      ) {
+        return `src/components/${normalized}`;
+      }
+      return `src/${normalized}`;
+    }
+  }
+
   return providedPath;
 }
