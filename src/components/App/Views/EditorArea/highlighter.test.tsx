@@ -255,8 +255,16 @@ describe('highlighter', () => {
 
   it('invalidates cache when cursorPos changes', () => {
     const code = 'const value = 1;';
-    const result1 = highlightCode(code, 'test.js', {}, styles, false, '', -1, 'foo', { index: 6 });
-    const result2 = highlightCode(code, 'test.js', {}, styles, false, '', -1, 'foo', { index: 12 });
+    const result1 = highlightCode(code, 'test.js', {}, styles, false, '', -1, 'foo', {
+      line: 1,
+      col: 7,
+      index: 6,
+    });
+    const result2 = highlightCode(code, 'test.js', {}, styles, false, '', -1, 'foo', {
+      line: 1,
+      col: 13,
+      index: 12,
+    });
 
     expect(result1).not.toBe(result2);
   });

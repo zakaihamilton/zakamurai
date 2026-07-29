@@ -37,6 +37,7 @@ describe('previewErrorUtils', () => {
       const long = 'x'.repeat(4001);
       const result = truncatePreviewError(long);
       expect(result).toBeDefined();
+      if (!result) return;
       expect(result).toHaveLength(4003);
       expect(result.endsWith('...')).toBe(true);
       expect(result.startsWith('x'.repeat(4000))).toBe(true);

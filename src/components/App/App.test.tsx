@@ -235,6 +235,8 @@ describe('App', () => {
 
   it('hydrates initial values from recovery checkpoint settings', async () => {
     vi.mocked(Settings.getRecoveryCheckpoint).mockReturnValue({
+      version: 1,
+      savedAt: Date.now(),
       projectName: 'Recovered Project',
       openTabs: [{ id: 'src/App.js', label: 'App.js', type: 'file' }],
       activeTabId: 'src/App.js',
@@ -284,6 +286,7 @@ describe('App', () => {
       'src/App.js': {
         originalContent: 'const old = 1;',
         modifiedContent: 'const newer = 2;',
+        diffs: [],
       },
     });
     vi.mocked(Settings.getFileContents).mockReturnValue({ 'src/App.js': 'const newer = 2;' });

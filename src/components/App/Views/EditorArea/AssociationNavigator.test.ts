@@ -184,7 +184,9 @@ describe('useAssociationNavigator', () => {
   });
 
   it('uses string style results and falls back to the first line when no class match exists', () => {
-    vi.mocked(getStyleAtCursor).mockReturnValue('card');
+    vi.mocked(getStyleAtCursor).mockReturnValue(
+      'card' as unknown as ReturnType<typeof getStyleAtCursor>,
+    );
     vi.mocked(findClassInCss).mockReturnValue(null);
 
     const { result } = renderHook(() =>

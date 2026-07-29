@@ -761,7 +761,9 @@ describe('useFileSystem', () => {
       getDirectoryHandle: vi.fn().mockRejectedValue('not writable'),
       entries: async function* () {},
     };
-    const state = makeFileSystemState({ rootHandle: badRoot });
+    const state = makeFileSystemState({
+      rootHandle: badRoot as unknown as FileSystemDirectoryHandle,
+    });
     vi.spyOn(FileSystemState, 'useState').mockReturnValue(state);
     const { result } = renderHook(() => useFileSystem());
 
