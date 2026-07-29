@@ -7,9 +7,6 @@ import styles from './Header.module.css';
 export default function PromptHeader({
   isAIProcessing: _isAIProcessing,
   isSystemProcessing,
-  hasReasoning,
-  isReasoningVisible,
-  onToggleReasoning,
   mode = 'single',
   onModeChange,
   copyContent = '',
@@ -64,19 +61,6 @@ export default function PromptHeader({
             {copied ? <Icons.Check /> : <Icons.Copy />}
           </button>
         </Tooltip>
-        {hasReasoning && (
-          <Tooltip content={isReasoningVisible ? 'Hide Reasoning' : 'Show Reasoning'}>
-            <button
-              type="button"
-              className={`${styles.headerActionBtn} ${
-                isReasoningVisible ? styles.headerActionBtnActive : ''
-              }`}
-              onClick={onToggleReasoning}
-            >
-              <Icons.Brain />
-            </button>
-          </Tooltip>
-        )}
       </div>
     </div>
   );

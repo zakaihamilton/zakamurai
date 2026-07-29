@@ -2,6 +2,7 @@ import * as fc from 'fast-check';
 import { describe, expect, it, vi } from 'vitest';
 import {
   validateAIChanges,
+  validateComponentStyling,
   validateContentSyntax,
   validateContentSyntaxAsync,
   validateProjectPath,
@@ -82,6 +83,20 @@ describe('AI change validation', () => {
     expect(result.rejected).toHaveLength(2);
     expect(result.rejected[0]).toContain('Invalid JSON syntax');
     expect(result.rejected[1]).toContain('Unclosed');
+  });
+
+  it('rejects CSS embedded in JSX while allowing CSS Modules', () => {
+    const inline = "export default () => <main style={{ color: 'red' }} />;";
+    expect(validateComponentStyling('src/App.jsx', inline)).toContain('Inline CSS is not allowed');
+    expect(validateAIChanges([{ path: 'src/App.jsx', after: inline }]).rejected[0]).toContain(
+      'Inline CSS is not allowed',
+    );
+    expect(
+      validateComponentStyling(
+        'src/App.jsx',
+        "import styles from './App.module.css'; export default () => <main className={styles.app} />;",
+      ),
+    ).toBeNull();
   });
 
   it('accepts code with comments containing unmatched brackets', () => {

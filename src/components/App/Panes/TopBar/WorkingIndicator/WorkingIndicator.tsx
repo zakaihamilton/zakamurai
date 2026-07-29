@@ -1,5 +1,6 @@
 import { LogState } from '@/components/App/Views/LogArea';
 import { Icons } from '@/components/ui/Icons';
+import Tooltip from '@/components/ui/Tooltip';
 import { requireStore } from '../../../types';
 import styles from './WorkingIndicator.module.css';
 
@@ -9,11 +10,15 @@ export default function WorkingIndicator() {
   if (!isAIProcessing) return null;
 
   return (
-    <div className={styles.workingIndicator}>
-      <div className={styles.indicatorGroup}>
+    <Tooltip content="AI working...">
+      <div className={styles.workingIndicator} aria-label="AI working...">
         <Icons.BotSmall />
-        <span>AI working...</span>
+        <span className={styles.activityDots} aria-hidden="true">
+          <span />
+          <span />
+          <span />
+        </span>
       </div>
-    </div>
+    </Tooltip>
   );
 }

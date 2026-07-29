@@ -100,6 +100,42 @@
   white-space: normal;
 }
 
+.reasoningGroup + .reasoningGroup {
+  margin-top: 16px;
+  border-top: 1px solid var(--border-light);
+  padding-top: 16px;
+}
+
+.stepHeading {
+  margin: 0 0 10px;
+  color: var(--text-main);
+  font-size: 14px;
+  line-height: 1.35;
+}
+
+.reasoningEntry {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  column-gap: 12px;
+}
+
+.reasoningEntry + .reasoningEntry {
+  margin-top: 10px;
+}
+
+.reasoningText {
+  min-width: 0;
+}
+
+.timestamp {
+  padding-top: 2px;
+  color: var(--text-muted);
+  font-family: var(--font-mono, monospace);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
 .markdownContent *:first-child {
   margin-top: 0;
 }

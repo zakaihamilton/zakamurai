@@ -19,8 +19,6 @@ export default function PromptContent({
   isSystemProcessing,
   activeSession,
   sessionReasoning,
-  isReasoningVisible,
-  onToggleReasoning,
   onModeChange,
   onOpenTree,
   isAgentTreeOpen,
@@ -106,9 +104,6 @@ export default function PromptContent({
         <PromptHeader
           isAIProcessing={isAIProcessing}
           isSystemProcessing={isSystemProcessing}
-          hasReasoning={Boolean(sessionReasoning)}
-          isReasoningVisible={isReasoningVisible}
-          onToggleReasoning={onToggleReasoning}
           mode={activeSession?.mode || 'single'}
           onModeChange={onModeChange}
           copyContent={agentPaneContent}

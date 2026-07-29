@@ -26,6 +26,33 @@ const titleBySection = {
 
 type AISection = keyof typeof titleBySection;
 
+type ReasoningEntry = { text: string; timestamp: string };
+type ReasoningGroup = { step: number | null; entries: ReasoningEntry[] };
+
+const STEP_PREFIX = /^\*\*Step (\d+)(?: result)?:\*\*\s*/;
+
+const getReasoningEntries = (entries: ReasoningEntry[] | undefined, reasoning: string) =>
+  entries?.length ? entries : reasoning ? [{ text: reasoning, timestamp: '' }] : [];
+
+export const groupReasoningEntries = (entries: ReasoningEntry[]): ReasoningGroup[] => {
+  const groups: ReasoningGroup[] = [];
+
+  for (const entry of entries) {
+    const match = entry.text.match(STEP_PREFIX);
+    const step = match ? Number(match[1]) : null;
+    const text = match ? entry.text.slice(match[0].length) : entry.text;
+    const previousGroup = groups.at(-1);
+
+    if (step !== null && previousGroup?.step === step) {
+      previousGroup.entries.push({ ...entry, text });
+    } else {
+      groups.push({ step, entries: [{ ...entry, text }] });
+    }
+  }
+
+  return groups;
+};
+
 function getSection(tab: Tab): AISection {
   const section = tab.id.replace('ai-section:', '');
   return section in titleBySection ? (section as AISection) : 'context';
@@ -54,6 +81,19 @@ export default function AISectionView({ tab }: { tab: Tab }) {
   );
   const selectedModel = WEB_LLM_MODELS.find((model) => model.id === promptUiState.selectedModel);
   const engine = webLLMState.engines?.[promptUiState.selectedModel];
+  const reasoningEntries = getReasoningEntries(
+    activeSession?.reasoningEvents,
+    activeSession?.reasoning || '',
+  );
+  const modelProgress =
+    engine?.status === 'downloading'
+      ? `Downloading ${selectedModel?.name || 'AI model'}${engine.progressText ? ` — ${engine.progressText}` : '…'}`
+      : '';
+  const reasoningContent = [
+    ...(modelProgress ? [{ text: modelProgress, timestamp: '' }] : []),
+    ...reasoningEntries,
+  ];
+  const reasoningGroups = groupReasoningEntries(reasoningContent);
 
   const content =
     section === 'context'
@@ -87,14 +127,11 @@ export default function AISectionView({ tab }: { tab: Tab }) {
                 )
                 .join('\n\n')
             : 'Start a conversation with this agent session.'
-          : [
-              engine?.status === 'downloading'
-                ? `Downloading ${selectedModel?.name || 'AI model'}${engine.progressText ? ` — ${engine.progressText}` : '…'}`
-                : '',
-              activeSession?.reasoning || '',
-            ]
-              .filter(Boolean)
-              .join('\n\n') || 'No progress or reasoning to show yet.';
+          : reasoningContent.length
+            ? reasoningContent
+                .map(({ text, timestamp }) => `${timestamp ? `[${timestamp}] ` : ''}${text}`)
+                .join('\n\n')
+            : 'No progress or reasoning to show yet.';
 
   useEffect(() => {
     if (section !== 'reasoning' || !content || !contentRef.current) return;
@@ -130,28 +167,45 @@ export default function AISectionView({ tab }: { tab: Tab }) {
       </header>
       {section === 'reasoning' ? (
         <div ref={contentRef} className={`${styles.content} ${styles.markdownContent}`}>
-          <ReactMarkdown
-            components={{
-              a: ({ node, ...props }) => <a className={styles.link} {...props} />,
-              blockquote: ({ node, ...props }) => (
-                <blockquote className={styles.blockquote} {...props} />
-              ),
-              code: ({ node, ...props }) => <code className={styles.code} {...props} />,
-              h1: ({ node, ...props }) => <h1 className={styles.heading} {...props} />,
-              h2: ({ node, ...props }) => <h2 className={styles.heading} {...props} />,
-              h3: ({ node, ...props }) => <h3 className={styles.heading} {...props} />,
-              h4: ({ node, ...props }) => <h4 className={styles.heading} {...props} />,
-              h5: ({ node, ...props }) => <h5 className={styles.heading} {...props} />,
-              h6: ({ node, ...props }) => <h6 className={styles.heading} {...props} />,
-              li: ({ node, ...props }) => <li className={styles.listItem} {...props} />,
-              ol: ({ node, ...props }) => <ol className={styles.list} {...props} />,
-              p: ({ node, ...props }) => <p className={styles.paragraph} {...props} />,
-              pre: ({ node, ...props }) => <pre className={styles.pre} {...props} />,
-              ul: ({ node, ...props }) => <ul className={styles.list} {...props} />,
-            }}
-          >
-            {content}
-          </ReactMarkdown>
+          {(reasoningGroups.length
+            ? reasoningGroups
+            : [{ step: null, entries: [{ text: content, timestamp: '' }] }]
+          ).map((group, groupIndex) => (
+            <section className={styles.reasoningGroup} key={`${group.step}-${groupIndex}`}>
+              {group.step !== null ? (
+                <h2 className={styles.stepHeading}>Step {group.step}</h2>
+              ) : null}
+              {group.entries.map(({ text, timestamp }) => (
+                <article className={styles.reasoningEntry} key={`${timestamp}-${text}`}>
+                  {timestamp ? <time className={styles.timestamp}>{timestamp}</time> : null}
+                  <div className={styles.reasoningText}>
+                    <ReactMarkdown
+                      components={{
+                        a: ({ node, ...props }) => <a className={styles.link} {...props} />,
+                        blockquote: ({ node, ...props }) => (
+                          <blockquote className={styles.blockquote} {...props} />
+                        ),
+                        code: ({ node, ...props }) => <code className={styles.code} {...props} />,
+                        h1: ({ node, ...props }) => <h1 className={styles.heading} {...props} />,
+                        h2: ({ node, ...props }) => <h2 className={styles.heading} {...props} />,
+                        h3: ({ node, ...props }) => <h3 className={styles.heading} {...props} />,
+                        h4: ({ node, ...props }) => <h4 className={styles.heading} {...props} />,
+                        h5: ({ node, ...props }) => <h5 className={styles.heading} {...props} />,
+                        h6: ({ node, ...props }) => <h6 className={styles.heading} {...props} />,
+                        li: ({ node, ...props }) => <li className={styles.listItem} {...props} />,
+                        ol: ({ node, ...props }) => <ol className={styles.list} {...props} />,
+                        p: ({ node, ...props }) => <p className={styles.paragraph} {...props} />,
+                        pre: ({ node, ...props }) => <pre className={styles.pre} {...props} />,
+                        ul: ({ node, ...props }) => <ul className={styles.list} {...props} />,
+                      }}
+                    >
+                      {text}
+                    </ReactMarkdown>
+                  </div>
+                </article>
+              ))}
+            </section>
+          ))}
         </div>
       ) : (
         <pre className={styles.content}>{content}</pre>

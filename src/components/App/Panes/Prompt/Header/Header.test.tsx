@@ -19,15 +19,7 @@ Object.defineProperty(navigator, 'clipboard', {
 
 describe('PromptHeader', () => {
   it('renders title and status indicators', () => {
-    render(
-      <PromptHeader
-        isAIProcessing={true}
-        isSystemProcessing={true}
-        hasReasoning={false}
-        isReasoningVisible={false}
-        onToggleReasoning={vi.fn()}
-      />,
-    );
+    render(<PromptHeader isAIProcessing={true} isSystemProcessing={true} />);
     expect(screen.getByText('Agent')).toBeDefined();
     expect(screen.getByText('Compiling')).toBeDefined();
   });
@@ -38,9 +30,6 @@ describe('PromptHeader', () => {
       <PromptHeader
         isAIProcessing={false}
         isSystemProcessing={false}
-        hasReasoning={false}
-        isReasoningVisible={false}
-        onToggleReasoning={vi.fn()}
         copyContent={'--- Transcript ---\nHello world'}
       />,
     );
@@ -53,31 +42,12 @@ describe('PromptHeader', () => {
     expect(navigator.clipboard.writeText).toHaveBeenCalledWith('--- Transcript ---\nHello world');
   });
 
-  it('toggles reasoning visibility', () => {
-    const onToggleReasoning = vi.fn();
-    render(
-      <PromptHeader
-        isAIProcessing={false}
-        isSystemProcessing={false}
-        hasReasoning={true}
-        isReasoningVisible={false}
-        onToggleReasoning={onToggleReasoning}
-      />,
-    );
-    const buttons = screen.getAllByRole('button');
-    fireEvent.click(buttons[buttons.length - 1]);
-    expect(onToggleReasoning).toHaveBeenCalled();
-  });
-
   it('switches agent mode', () => {
     const onModeChange = vi.fn();
     render(
       <PromptHeader
         isAIProcessing={false}
         isSystemProcessing={false}
-        hasReasoning={false}
-        isReasoningVisible={false}
-        onToggleReasoning={vi.fn()}
         mode="single"
         onModeChange={onModeChange}
       />,

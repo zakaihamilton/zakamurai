@@ -59,7 +59,7 @@ export default function useZipExporter() {
     link.download = `${(projectName || 'project').replace(/\s+/g, '_')}.zip`;
     document.body.appendChild(link);
     link.click();
-    document.body.removeChild(link);
+    link.remove();
     URL.revokeObjectURL(url);
   }, [fs, editorState, folderTree, projectName]);
 
@@ -186,7 +186,7 @@ export default function useZipExporter() {
     link.download = `${(projectName || 'project').replace(/\s+/g, '_')}_compiled.zip`;
     document.body.appendChild(link);
     link.click();
-    document.body.removeChild(link);
+    link.remove();
     URL.revokeObjectURL(url);
   }, [projectName]);
 

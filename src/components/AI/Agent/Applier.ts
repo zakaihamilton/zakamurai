@@ -181,8 +181,15 @@ export function applyAgentChanges(
 
     editorState((draft) => {
       setInDraft(draft, ['fileContents', path], finalContent);
-      if (autoApprove) return;
       const existingDiffs = draft.pendingDiffs || {};
+      if (autoApprove) {
+        if (existingDiffs[path]) {
+          const nextDiffs = { ...existingDiffs };
+          delete nextDiffs[path];
+          draft.pendingDiffs = nextDiffs;
+        }
+        return;
+      }
       const existingCursor = existingDiffs[path]?.originalCursorPos;
       const currentCursor = editorState.cursorPos?.[path];
       setInDraft(draft, ['pendingDiffs', path], {

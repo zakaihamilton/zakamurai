@@ -3,6 +3,7 @@ import type { RoleGraph } from '@/components/AI/types';
 import type { AgentSessionTreeRow, CreateAgentSessionOptions } from '@/components/App/types';
 import { createState } from '@/components/state/State';
 import type {
+  AgentReasoningEntry,
   AgentSession,
   AgentSessionMessage,
   AgentSessionStateShape,
@@ -15,6 +16,22 @@ export const MAX_SESSION_CONTEXT_CHARACTERS = 12000;
 const CONTEXT_OMITTED_NOTICE = '[Earlier conversation omitted for length.]';
 
 export const AgentSessionState = createState<AgentSessionStateShape>('AgentSessionState');
+
+const normalizeReasoningEvents = (value: unknown): AgentReasoningEntry[] =>
+  Array.isArray(value)
+    ? value
+        .filter(
+          (entry): entry is AgentReasoningEntry =>
+            Boolean(entry) &&
+            typeof entry === 'object' &&
+            typeof (entry as AgentReasoningEntry).text === 'string',
+        )
+        .map((entry) => ({
+          text: entry.text,
+          timestamp: typeof entry.timestamp === 'string' ? entry.timestamp : '',
+        }))
+        .slice(-30)
+    : [];
 
 export function createAgentSession({
   name,
@@ -36,6 +53,7 @@ export function createAgentSession({
     roleGraph: normalizeRoleGraph(roleGraph || createDefaultRoleGraph()),
     messages: capSessionMessages(messages),
     reasoning: '',
+    reasoningEvents: [],
     status: 'idle',
   };
 }
@@ -178,6 +196,7 @@ export function normalizeAgentSessions(
       roleGraph: normalizeRoleGraph(session.roleGraph),
       messages,
       reasoning: typeof session.reasoning === 'string' ? session.reasoning : '',
+      reasoningEvents: normalizeReasoningEvents(session.reasoningEvents),
       status: 'idle',
     };
   }
@@ -219,6 +238,7 @@ export function serializeAgentSessions(state: AgentSessionStateShape | null | un
           roleGraph: normalizeRoleGraph(session.roleGraph),
           messages: capSessionMessages(session.messages),
           reasoning: session.reasoning || '',
+          reasoningEvents: normalizeReasoningEvents(session.reasoningEvents),
         },
       ]),
     ),

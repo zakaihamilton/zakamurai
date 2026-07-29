@@ -114,7 +114,7 @@ export default function TopBar() {
 
   const handleStartOver = async (template = 'default') => {
     await fs.unlinkProject();
-    await Settings.reset(template);
+    await Settings.reset(template, { preserveTheme: appState.theme });
     resetNewProjectState({
       template,
       appState,

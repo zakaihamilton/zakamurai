@@ -225,9 +225,6 @@ export type PromptContextPanelProps = {
 export type PromptHeaderProps = {
   isAIProcessing: boolean;
   isSystemProcessing: boolean;
-  hasReasoning: boolean;
-  isReasoningVisible: boolean;
-  onToggleReasoning: () => void;
   mode?: string;
   onModeChange?: (mode: string) => void;
   copyContent?: string;
@@ -259,8 +256,6 @@ export type PromptContentProps = {
   isSystemProcessing: boolean;
   activeSession: AgentSession | null;
   sessionReasoning: string;
-  isReasoningVisible: boolean;
-  onToggleReasoning: () => void;
   onModeChange: (mode: string) => void;
   onOpenTree: () => void;
   isAgentTreeOpen: boolean;

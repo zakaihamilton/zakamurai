@@ -10,6 +10,11 @@ vi.mock('@/components/ui/Icons', () => ({
     BotSmall: () => <span data-testid="icon-bot" />,
   },
 }));
+vi.mock('@/components/ui/Tooltip', () => ({
+  default: ({ content, children }: { content: string; children: React.ReactNode }) => (
+    <div data-tooltip-content={content}>{children}</div>
+  ),
+}));
 
 describe('WorkingIndicator', () => {
   beforeEach(() => {
@@ -25,7 +30,12 @@ describe('WorkingIndicator', () => {
   it('shows AI working indicator', () => {
     vi.mocked(LogState.useState).mockReturnValue(makeLogState({ isAIProcessing: true }));
     render(<WorkingIndicator />);
-    expect(screen.getByText('AI working...')).toBeDefined();
+    expect(screen.getByLabelText('AI working...')).toBeDefined();
+    expect(screen.getByTestId('icon-bot')).toBeDefined();
+    expect(screen.getByTestId('icon-bot').parentElement?.parentElement).toHaveAttribute(
+      'data-tooltip-content',
+      'AI working...',
+    );
   });
 
   it('does not show a separate system indicator', () => {

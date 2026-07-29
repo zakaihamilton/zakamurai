@@ -34,6 +34,34 @@ describe('runAgent', () => {
     expect(askWebLLM.mock.calls[0]?.[3]?.messages?.[1]?.content).toContain('Scope: current file');
   });
 
+  it('reports detailed streaming progress while waiting for a local-model action', async () => {
+    askWebLLM.mockImplementationOnce(async (_prompt, _systemPrompt, onUpdate) => {
+      onUpdate?.('{"action":"finish"');
+      return '{"action":"finish","summary":"done"}';
+    });
+    const events: AgentEvent[] = [];
+
+    await runAgent({
+      request: 'inspect',
+      files: { 'src/a.js': 'a' },
+      model: 'test',
+      onEvent: (event) => events.push(event),
+    });
+
+    expect(events).toContainEqual(
+      expect.objectContaining({
+        type: 'thinking',
+        message: expect.stringContaining('turn 1 of 20; 1 workspace file(s) available'),
+      }),
+    );
+    expect(events).toContainEqual(
+      expect.objectContaining({
+        type: 'thinking',
+        message: expect.stringContaining('streaming its next action (18 character(s) received)'),
+      }),
+    );
+  });
+
   it('frames project scope without file or selection bias and edits multiple files', async () => {
     askWebLLM
       .mockResolvedValueOnce('{"action":"write_file","path":"src/a.js","content":"a2"}')
@@ -54,6 +82,33 @@ describe('runAgent', () => {
     expect(initialPrompt).not.toContain('Active file:');
     expect(initialPrompt).not.toContain('Selected lines:');
     expect(result.changes).toHaveLength(2);
+  });
+
+  it('rejects an inline CSS write before it becomes a visible staged draft', async () => {
+    askWebLLM
+      .mockResolvedValueOnce(
+        '{"action":"write_file","path":"src/App.jsx","content":"export default () => <main style={{ color: \'red\' }} />;"}',
+      )
+      .mockResolvedValueOnce('{"action":"finish","summary":"no changes"}');
+    const events: AgentEvent[] = [];
+
+    const result = await runAgent({
+      request: 'style app',
+      files: { 'src/App.jsx': 'export default () => <main />;' },
+      model: 'test',
+      onEvent: (event) => events.push(event),
+    });
+
+    expect(result.changes).toEqual([]);
+    expect(
+      events.some(
+        (event) =>
+          event.type === 'tool' &&
+          typeof event.action === 'object' &&
+          event.action.action === 'write_file',
+      ),
+    ).toBe(false);
+    expect(events.some((event) => event.error && event.message?.includes('Inline CSS'))).toBe(true);
   });
 
   it('honors allowedActions, priorContext, and agentRole events', async () => {
@@ -122,6 +177,27 @@ describe('runAgent', () => {
     ).toBe(true);
   });
 
+  it('stages a fenced write payload from a local model', async () => {
+    askWebLLM
+      .mockResolvedValueOnce(`{"action":"write_file","path":"src/a.js"}
+\`\`\`js
+export const title = "Today";
+\`\`\``)
+      .mockResolvedValueOnce('{"action":"validate"}')
+      .mockResolvedValueOnce('{"action":"finish","summary":"created"}');
+    const validate = vi.fn().mockResolvedValue({ status: 'passed', check: 'build' });
+
+    const result = await runAgent({
+      request: 'create a todo app',
+      files: { 'src/a.js': 'export const title = "Old";' },
+      model: 'test',
+      validate,
+    });
+
+    expect(result.files['src/a.js']).toBe('export const title = "Today";');
+    expect(validate).toHaveBeenCalledOnce();
+  });
+
   it('aborts when the signal is already set', async () => {
     const controller = new AbortController();
     controller.abort();
@@ -136,8 +212,30 @@ describe('runAgent', () => {
     expect(askWebLLM).not.toHaveBeenCalled();
   });
 
-  it('stops after repeated actions and max turn limits', async () => {
+  it('recovers once from repeated actions and stops when recovery guidance is ignored', async () => {
     askWebLLM
+      .mockResolvedValueOnce('{"action":"list_files"}')
+      .mockResolvedValueOnce('{"action":"list_files"}')
+      .mockResolvedValueOnce('{"action":"list_files"}')
+      .mockResolvedValueOnce('{"action":"finish","summary":"recovered"}');
+
+    const events: AgentEvent[] = [];
+    const recovered = await runAgent({
+      request: 'loop',
+      files: { 'src/a.js': 'a' },
+      model: 'test',
+      maxTurns: 5,
+      onEvent: (event) => events.push(event),
+    });
+    expect(recovered.summary).toBe('recovered');
+    expect(events.some((event) => event.error && event.message?.includes('three times'))).toBe(
+      true,
+    );
+
+    askWebLLM.mockReset();
+    askWebLLM
+      .mockResolvedValueOnce('{"action":"list_files"}')
+      .mockResolvedValueOnce('{"action":"list_files"}')
       .mockResolvedValueOnce('{"action":"list_files"}')
       .mockResolvedValueOnce('{"action":"list_files"}')
       .mockResolvedValueOnce('{"action":"list_files"}');
@@ -147,9 +245,9 @@ describe('runAgent', () => {
         request: 'loop',
         files: { 'src/a.js': 'a' },
         model: 'test',
-        maxTurns: 5,
+        maxTurns: 6,
       }),
-    ).rejects.toThrow(/repeating the same action/);
+    ).rejects.toThrow(/despite recovery guidance/);
 
     askWebLLM.mockResolvedValue('{"action":"list_files"}');
     await expect(
@@ -160,6 +258,77 @@ describe('runAgent', () => {
         maxTurns: 2,
       }),
     ).rejects.toThrow(/2-step safety limit/);
+  });
+
+  it('automatically validates a repeated saved write so the agent can finish', async () => {
+    const todoStyles = '.app { color: rebeccapurple; }';
+    askWebLLM
+      .mockResolvedValueOnce(
+        `{"action":"write_file","path":"src/components/TodoApp.module.css","content":${JSON.stringify(todoStyles)}}`,
+      )
+      .mockResolvedValueOnce(
+        `{"action":"write_file","path":"src/components/TodoApp.module.css","content":${JSON.stringify(todoStyles)}}`,
+      )
+      .mockResolvedValueOnce(
+        `{"action":"write_file","path":"src/components/TodoApp.module.css","content":${JSON.stringify(todoStyles)}}`,
+      )
+      .mockResolvedValueOnce('{"action":"finish","summary":"Created the todo app"}');
+    const validate = vi.fn().mockResolvedValue({ status: 'passed', check: 'build' });
+    const events: AgentEvent[] = [];
+
+    const result = await runAgent({
+      request: 'create a pro todo app',
+      files: { 'src/components/TodoApp.module.css': '' },
+      model: 'test',
+      validate,
+      onEvent: (event) => events.push(event),
+    });
+
+    expect(result.summary).toBe('Created the todo app');
+    expect(result.files['src/components/TodoApp.module.css']).toBe(todoStyles);
+    expect(validate).toHaveBeenCalledOnce();
+    expect(events.some((event) => event.message?.includes('Automatically validating'))).toBe(true);
+  });
+
+  it('creates a new component file without treating its absence as a read error', async () => {
+    askWebLLM
+      .mockResolvedValueOnce(
+        '{"action":"write_file","path":"src/components/TodoApp.jsx","content":"export default function TodoApp() { return <main />; }"}',
+      )
+      .mockResolvedValueOnce('{"action":"validate"}')
+      .mockResolvedValueOnce('{"action":"finish","summary":"Created the todo app"}');
+    const validate = vi.fn().mockResolvedValue({ status: 'passed', check: 'build' });
+
+    const result = await runAgent({
+      request: 'create a pro todo app',
+      files: { 'src/App.jsx': 'export default function App() { return null; }' },
+      model: 'test',
+      validate,
+    });
+
+    expect(result.files['src/components/TodoApp.jsx']).toContain('function TodoApp');
+    expect(validate).toHaveBeenCalledOnce();
+  });
+
+  it('stops when a saved write is repeated after automatic validation', async () => {
+    const todoStyles = '.app { color: rebeccapurple; }';
+    const write = `{"action":"write_file","path":"src/components/TodoApp.module.css","content":${JSON.stringify(todoStyles)}}`;
+    askWebLLM
+      .mockResolvedValueOnce(write)
+      .mockResolvedValueOnce(write)
+      .mockResolvedValueOnce(write)
+      .mockResolvedValueOnce(write);
+    const validate = vi.fn().mockResolvedValue({ status: 'passed', check: 'build' });
+
+    await expect(
+      runAgent({
+        request: 'create a pro todo app',
+        files: { 'src/components/TodoApp.module.css': '' },
+        model: 'test',
+        validate,
+      }),
+    ).rejects.toThrow(/repeated a saved write after automatic validation/);
+    expect(validate).toHaveBeenCalledOnce();
   });
 
   it('recovers from tool errors and enforces validation before finish', async () => {

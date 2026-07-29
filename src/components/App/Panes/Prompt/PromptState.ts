@@ -18,7 +18,6 @@ export function getInitialPromptUiState() {
     val: draft,
     historyIndex: -1,
     draftVal: draft,
-    isReasoningVisible: true,
     selectedModel: getInitialPromptSelectedModel(),
     isModelManagerOpen: false,
     isRoleGraphOpen: false,

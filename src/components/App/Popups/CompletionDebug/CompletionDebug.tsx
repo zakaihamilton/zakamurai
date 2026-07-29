@@ -77,7 +77,7 @@ export default function CompletionDebug({ isOpen, onClose }: CompletionDebugProp
       document.body.appendChild(textarea);
       textarea.select();
       document.execCommand('copy');
-      document.body.removeChild(textarea);
+      textarea.remove();
     }
     completionDebugState((draft) => {
       draft.copied = true;

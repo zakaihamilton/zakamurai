@@ -151,6 +151,19 @@ export function validateContentSyntax(path: string, content: string): string | n
   return null;
 }
 
+/**
+ * Enforces the generated-project styling contract before a JSX write is staged.
+ * CSS custom properties are still expressed in CSS Modules; generated components
+ * must not embed CSS in JSX where it cannot be reviewed alongside its stylesheet.
+ */
+export function validateComponentStyling(path: string, content: string): string | null {
+  if (!/\.(jsx|tsx)$/i.test(path) || typeof content !== 'string') return null;
+  if (/\bstyle\s*=\s*\{/.test(content) || /<style\b/i.test(content)) {
+    return `Inline CSS is not allowed in ${path}. Move styles to a co-located *.module.css file and import it into the component.`;
+  }
+  return null;
+}
+
 /** Async syntax validation with esbuild transform attempt if initialized. */
 export async function validateContentSyntaxAsync(
   path: string,
@@ -215,6 +228,17 @@ export async function validateAIChangesAsync(
     }
 
     if (typeof content === 'string') {
+      const stylingError = validateComponentStyling(path as string, content);
+      if (stylingError) {
+        rejected.push(stylingError);
+        details.push({
+          path: String(path),
+          error: stylingError,
+          type: 'styling',
+          failedContent: content,
+        });
+        continue;
+      }
       const syntaxError = await validateContentSyntaxAsync(
         path as string,
         content,
@@ -267,6 +291,11 @@ export function validateAIChanges(changes: AgentChange[]): ValidatedAIChanges {
     }
 
     if (typeof content === 'string') {
+      const stylingError = validateComponentStyling(path as string, content);
+      if (stylingError) {
+        rejected.push(stylingError);
+        continue;
+      }
       const syntaxError = validateContentSyntax(path as string, content);
       if (syntaxError) {
         rejected.push(syntaxError);

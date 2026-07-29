@@ -131,6 +131,11 @@ export interface AgentSessionMessage {
   agentRole?: string;
 }
 
+export interface AgentReasoningEntry {
+  text: string;
+  timestamp: string;
+}
+
 export interface AgentSession {
   id: string;
   name: string;
@@ -142,6 +147,7 @@ export interface AgentSession {
   roleGraph: unknown;
   messages: AgentSessionMessage[];
   reasoning: string;
+  reasoningEvents?: AgentReasoningEntry[];
   status: string;
 }
 
@@ -279,7 +285,6 @@ export interface PromptUiStateShape {
   val: string;
   historyIndex: number;
   draftVal: string;
-  isReasoningVisible: boolean;
   selectedModel: string;
   isModelManagerOpen: boolean;
   isRoleGraphOpen: boolean;

@@ -450,6 +450,12 @@ describe('Settings', () => {
     expect(Settings.getProjectName()).toBe('My App');
   });
 
+  it('can preserve the active theme while resetting a project', async () => {
+    Settings.setTheme('light');
+    await Settings.reset('default', { preserveTheme: 'light' });
+    expect(Settings.getTheme()).toBe('light');
+  });
+
   it('reports storage health and quota warnings', async () => {
     const health = Settings.getStorageHealth();
     expect(health.status).toBeTruthy();

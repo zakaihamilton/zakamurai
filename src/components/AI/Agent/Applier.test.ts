@@ -102,8 +102,14 @@ describe('applyAgentChanges', () => {
 
   it('applies initial project files without staging a review', () => {
     const editorState = createEditorStateMock({
-      fileContents: {},
-      pendingDiffs: {},
+      fileContents: { 'src/App.js': 'export default function App() {}\n' },
+      pendingDiffs: {
+        'src/App.js': {
+          originalContent: '',
+          modifiedContent: 'export default function App() {}\n',
+          diffs: [],
+        },
+      },
       cursorPos: {},
     });
     const changeSetState = makeChangeSetState();

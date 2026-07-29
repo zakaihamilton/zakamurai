@@ -1,5 +1,4 @@
 import { expectAgentSession } from '@/test-utils/agentSessionMocks';
-import { makePromptUiState } from '@/test-utils/stateMocks';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { createDefaultAgentSessions } from '../AgentSessions';
@@ -23,8 +22,6 @@ vi.mock('../AgentSessions', async (importOriginal) => {
   };
 });
 
-import { PromptUiState } from '../Prompt';
-
 Object.defineProperty(navigator, 'clipboard', {
   value: {
     writeText: vi.fn(),
@@ -41,9 +38,6 @@ describe('ReasoningPanel', () => {
 
   it('renders reasoning title and text correctly', () => {
     setSessionReasoning('This is some **Markdown** content');
-    vi.mocked(PromptUiState.useState).mockReturnValue(
-      makePromptUiState({ isReasoningVisible: true }),
-    );
 
     render(<ReasoningPanel />);
 
@@ -54,9 +48,6 @@ describe('ReasoningPanel', () => {
   it('copies reasoning to clipboard when copy button is clicked', async () => {
     vi.spyOn(navigator.clipboard, 'writeText').mockResolvedValue();
     setSessionReasoning('Copied content text');
-    vi.mocked(PromptUiState.useState).mockReturnValue(
-      makePromptUiState({ isReasoningVisible: true }),
-    );
 
     render(<ReasoningPanel />);
 

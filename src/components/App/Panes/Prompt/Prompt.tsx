@@ -36,7 +36,6 @@ export default function Prompt() {
     val = '',
     historyIndex = -1,
     draftVal = '',
-    isReasoningVisible = true,
     selectedModel = RECOMMENDED_WEB_LLM_MODEL.id,
     isModelManagerOpen = false,
     isRoleGraphOpen = false,
@@ -208,11 +207,6 @@ export default function Prompt() {
     },
     [tabState],
   );
-  const toggleReasoning = useCallback(() => {
-    promptUiState((draft) => {
-      draft.isReasoningVisible = !draft.isReasoningVisible;
-    });
-  }, [promptUiState]);
   const openSessionTree = useCallback(() => {
     promptUiState((draft) => {
       draft.isAgentTreeOpen = true;
@@ -269,8 +263,6 @@ export default function Prompt() {
       isSystemProcessing={isSystemProcessing}
       activeSession={activeSession}
       sessionReasoning={activeSession?.reasoning || ''}
-      isReasoningVisible={isReasoningVisible}
-      onToggleReasoning={toggleReasoning}
       onModeChange={handleModeChange}
       onOpenTree={openSessionTree}
       isAgentTreeOpen={isAgentTreeOpen}

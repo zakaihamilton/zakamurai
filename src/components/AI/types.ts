@@ -103,6 +103,8 @@ export type AgentEvent = {
   action?: AgentActionName | AgentAction;
   error?: boolean;
   changes?: AgentChange[];
+  /** Replace the current transient progress line instead of adding a new transcript entry. */
+  replaceProgress?: boolean;
 };
 
 export type AgentEventHandler = (event: AgentEvent) => void;

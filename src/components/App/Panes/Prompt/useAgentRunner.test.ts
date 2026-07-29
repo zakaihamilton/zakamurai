@@ -135,6 +135,14 @@ describe('formatAgentEvent', () => {
       formatAgentEvent({ type: 'observation', turn: 1, message: 'ok', agentRole: 'coder' }),
     ).toContain('ok');
     expect(
+      formatAgentEvent({
+        type: 'observation',
+        turn: 1,
+        action: 'read_file',
+        message: '42 characters returned',
+      }),
+    ).toContain('read_file');
+    expect(
       formatAgentEvent({ type: 'observation', turn: 1, message: 'bad', error: true }),
     ).toContain('⚠');
     expect(
@@ -237,7 +245,10 @@ describe('useAgentRunner', () => {
     });
 
     expect(abort).toHaveBeenCalled();
-    expect(props.patchSession).toHaveBeenCalledWith('session-1', { status: 'idle', reasoning: '' });
+    expect(props.patchSession).toHaveBeenCalledWith(
+      'session-1',
+      expect.objectContaining({ status: 'idle', reasoning: '', reasoningEvents: [] }),
+    );
     expect(props.pushSessionMessage).toHaveBeenCalled();
     expect(props.promptUiState).toHaveBeenCalled();
     expect(props.logState).toHaveBeenCalled();
@@ -426,6 +437,85 @@ describe('useAgentRunner', () => {
         originalContent: '',
         modifiedContent: 'export default function Live() { return null; }',
       });
+    });
+  });
+
+  it('adds live drafts to review when the agent fails after writing', async () => {
+    runAgent.mockImplementationOnce(async (options) => {
+      options.onEvent({
+        type: 'tool',
+        action: {
+          action: 'write_file',
+          path: 'src/components/Live.jsx',
+          content: 'export default function Live() { return null; }',
+        },
+      });
+      throw new Error('model crashed');
+    });
+    const props = createRunnerProps({
+      editorState: createMockEditorState({
+        fileContents: { 'src/App.jsx': 'export default () => null;' },
+        selectedLines: {},
+      }),
+    });
+    const { result } = renderHook(() => useAgentRunner(props));
+
+    act(() => {
+      result.current.send(mockFormEvent());
+    });
+
+    await waitFor(() => {
+      expect(applyAgentChanges).toHaveBeenCalledWith(
+        [
+          expect.objectContaining({
+            path: 'src/components/Live.jsx',
+            before: '',
+            after: 'export default function Live() { return null; }',
+          }),
+        ],
+        expect.objectContaining({ autoApprove: false }),
+      );
+    });
+  });
+
+  it('replaces local-model progress updates instead of adding transcript lines', async () => {
+    runAgent.mockImplementationOnce(async (options) => {
+      options.onEvent({
+        type: 'thinking',
+        turn: 1,
+        message: 'Local model is responding — streaming its next action…',
+        replaceProgress: true,
+      });
+      options.onEvent({
+        type: 'thinking',
+        turn: 1,
+        message: 'Local model is still working (48s elapsed; 2,703 character(s) received)…',
+        replaceProgress: true,
+      });
+      return { changes: [], summary: 'done' };
+    });
+    const props = createRunnerProps();
+    const { result } = renderHook(() => useAgentRunner(props));
+
+    act(() => {
+      result.current.send(mockFormEvent());
+    });
+
+    await waitFor(() => {
+      const latestProgressUpdate = [...props.patchSession.mock.calls]
+        .reverse()
+        .map(([, update]) => update.reasoningEvents)
+        .find(
+          (reasoningEvents) =>
+            Array.isArray(reasoningEvents) &&
+            reasoningEvents.some((entry) => entry.text.includes('48s elapsed')),
+        );
+      expect(latestProgressUpdate).toBeDefined();
+      const progressEntries = latestProgressUpdate.filter((entry) =>
+        entry.text.includes('Local model is'),
+      );
+      expect(progressEntries).toHaveLength(1);
+      expect(progressEntries[0].text).toContain('48s elapsed');
     });
   });
 });

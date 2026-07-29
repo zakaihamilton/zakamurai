@@ -5,7 +5,6 @@ import { useEffect, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { requireStore } from '../../../types';
 import { AgentSessionState, getActiveAgentSession } from '../AgentSessions';
-import { PromptUiState } from '../Prompt';
 import SectionActions from '../SectionExpandButton';
 import styles from './Reasoning.module.css';
 
@@ -32,8 +31,6 @@ function ReasoningPanelInner({ modelDownloadStatus, onOpenInTab = () => {} }: Re
   );
   const activeSession = getActiveAgentSession(agentSessionState);
   const reasoning = activeSession?.reasoning || '';
-  const { isReasoningVisible = true } =
-    requireStore(PromptUiState.useState('isReasoningVisible')) || {};
   const reasoningRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -50,7 +47,7 @@ function ReasoningPanelInner({ modelDownloadStatus, onOpenInTab = () => {} }: Re
   return (
     <div
       className={`${styles.reasoningWrapper} ${
-        (reasoning || modelDownloadStatus) && isReasoningVisible ? styles.reasoningVisible : ''
+        reasoning || modelDownloadStatus ? styles.reasoningVisible : ''
       } ${!isExpanded ? styles.reasoningCollapsed : ''}`}
     >
       <div className={styles.reasoningContainer}>

@@ -14,6 +14,7 @@ export class AgentExecutionError extends Error {
     this.changes = changes;
   }
 }
+import { validateComponentStyling } from '../ChangeValidator';
 import { AgentContextManager, formatVerificationResult } from './ContextManager';
 import { listProjectChecks, runProjectCheck } from './ProjectChecks';
 import { AGENT_SYSTEM_PROMPT, ALL_AGENT_ACTIONS, parseAgentAction } from './Protocol';
@@ -95,6 +96,33 @@ export async function runAgent({
   let wroteSinceVerification = false;
   let repairAttempts = 0;
   let inspectedPreview = false;
+  let recoveredNoOpWrite = '';
+
+  const runValidation = async (): Promise<string> => {
+    const rawVerification = validate
+      ? await validate(workspace.files)
+      : { status: 'unavailable', check: 'build', diagnostics: 'Validation is unavailable.' };
+    const verification: VerificationResult =
+      typeof rawVerification === 'string'
+        ? {
+            status: /\b(passed|success|ok)\b/i.test(rawVerification) ? 'passed' : 'failed',
+            check: 'build',
+            diagnostics: rawVerification,
+          }
+        : rawVerification;
+    const result = formatVerificationResult(verification);
+    context.record('verification', verification);
+    if (verification.status === 'passed' || verification.status === 'unavailable') {
+      wroteSinceVerification = false;
+      repairAttempts = 0;
+    } else if (++repairAttempts >= 3) {
+      throw new AgentExecutionError(
+        'Validation failed after 3 repair attempts. Staged changes were preserved for review.',
+        workspace.changes(),
+      );
+    }
+    return result;
+  };
 
   for (let turn = 1; turn <= maxTurns; turn++) {
     if (signal?.aborted) throw new DOMException('Agent stopped', 'AbortError');
@@ -107,13 +135,56 @@ export async function runAgent({
           ? 'Reviewing the request and available workspace context before choosing an action…'
           : 'Reviewing the latest tool result and choosing the next action…',
     });
-    const reply = await askWebLLM('', '', null, {
-      model,
-      messages,
-      temperature: visualMode ? 0.12 : 0.15,
-      top_p: 0.8,
-      max_tokens: visualMode ? 2400 : 1800,
+    onEvent({
+      type: 'thinking',
+      turn,
+      agentRole,
+      message: `Requesting the next action from the local model (turn ${turn} of ${maxTurns}; ${Object.keys(workspace.files).length} workspace file(s) available)…`,
     });
+    let receivedModelOutput = false;
+    let streamedCharacterCount = 0;
+    const responseStartedAt = Date.now();
+    const heartbeat = setInterval(() => {
+      const elapsedSeconds = Math.max(1, Math.floor((Date.now() - responseStartedAt) / 1000));
+      const progress = receivedModelOutput
+        ? `${streamedCharacterCount.toLocaleString()} character(s) received; waiting for a complete JSON action before validation`
+        : 'the model has not started streaming yet; keeping the workspace context ready';
+      onEvent({
+        type: 'thinking',
+        turn,
+        agentRole,
+        replaceProgress: true,
+        message: `Local model is still working (${elapsedSeconds}s elapsed; ${progress})…`,
+      });
+    }, 3_000);
+    let reply: string;
+    try {
+      reply = await askWebLLM(
+        '',
+        '',
+        (output) => {
+          streamedCharacterCount = output.length;
+          if (receivedModelOutput) return;
+          receivedModelOutput = true;
+          onEvent({
+            type: 'thinking',
+            turn,
+            agentRole,
+            replaceProgress: true,
+            message: `Local model is responding — streaming its next action (${streamedCharacterCount.toLocaleString()} character(s) received). Waiting for one complete JSON action before validation…`,
+          });
+        },
+        {
+          model,
+          messages,
+          temperature: visualMode ? 0.12 : 0.15,
+          top_p: 0.8,
+          max_tokens: visualMode ? 2400 : 1800,
+        },
+      );
+    } finally {
+      clearInterval(heartbeat);
+    }
     messages.push({ role: 'assistant', content: reply });
 
     let action: ReturnType<typeof parseAgentAction> | undefined;
@@ -139,61 +210,114 @@ export async function runAgent({
     }
 
     const fingerprint = JSON.stringify(action);
+    if (fingerprint === recoveredNoOpWrite)
+      throw new AgentExecutionError(
+        'Agent repeated a saved write after automatic validation. Staged changes were preserved for review.',
+        workspace.changes(),
+      );
+    if (recoveredNoOpWrite) recoveredNoOpWrite = '';
     repeatedActions = fingerprint === lastFingerprint ? repeatedActions + 1 : 0;
     lastFingerprint = fingerprint;
-    if (repeatedActions >= 2)
+    const writePath = action.action === 'write_file' ? action.path || '' : '';
+    const isRepeatedSavedWrite =
+      action.action === 'write_file' &&
+      Object.hasOwn(workspace.files, writePath) &&
+      workspace.files[writePath] === (action.content || '');
+    if (repeatedActions === 2) {
+      if (isRepeatedSavedWrite) {
+        const message = `The proposed write to ${action.path} is already staged with identical content. Automatically validating the workspace instead of rewriting it.`;
+        try {
+          const result = await runValidation();
+          messages.push({
+            role: 'user',
+            content: observation(action.action, true, `${message}\n${result}`),
+          });
+          context.record('write_file', message);
+          onEvent({
+            type: 'observation',
+            turn,
+            action: action.action,
+            message: `${message} ${result}`.slice(0, 500),
+            agentRole,
+          });
+          recoveredNoOpWrite = fingerprint;
+          lastFingerprint = '';
+          repeatedActions = 0;
+          continue;
+        } catch (error) {
+          const err = error as Error;
+          messages.push({ role: 'user', content: observation(action.action, false, err.message) });
+          onEvent({
+            type: 'observation',
+            turn,
+            action: action.action,
+            error: true,
+            message: err.message,
+            agentRole,
+          });
+          continue;
+        }
+      }
+      const message =
+        'This exact action has already run three times in a row without new information. Do not repeat it. Use the results already available and choose the next productive action, such as reading a relevant file, writing the requested change, validating it, or finishing when appropriate.';
+      messages.push({ role: 'user', content: observation(action.action, false, message) });
+      onEvent({
+        type: 'observation',
+        turn,
+        action: action.action,
+        error: true,
+        message,
+        agentRole,
+      });
+      continue;
+    }
+    if (repeatedActions >= 3)
       throw new Error(
-        'Agent stopped after repeating the same action without progress. Inspect the latest diagnostic or choose another tool.',
+        'Agent stopped after repeating the same action despite recovery guidance. Inspect the latest diagnostic or choose another tool.',
       );
-    onEvent({ type: 'tool', turn, action, agentRole });
-
     try {
       let result: string | undefined;
-      if (action.action === 'list_files') result = workspace.list(action.query).join('\n');
-      if (action.action === 'search_workspace')
+      if (action.action === 'list_files') {
+        onEvent({ type: 'tool', turn, action, agentRole });
+        result = workspace.list(action.query).join('\n');
+      }
+      if (action.action === 'search_workspace') {
+        onEvent({ type: 'tool', turn, action, agentRole });
         result = String(await workspace.search(action.query || '', action.glob));
+      }
       if (action.action === 'search_semantic') {
+        onEvent({ type: 'tool', turn, action, agentRole });
         if (!retrieveContext) throw new Error('Semantic search is unavailable in this session.');
         result = await workspace.semanticSearch(action.query || '', retrieveContext, action.k);
       }
-      if (action.action === 'read_file') result = workspace.read(action.path || '');
+      if (action.action === 'read_file') {
+        onEvent({ type: 'tool', turn, action, agentRole });
+        result = workspace.read(action.path || '');
+      }
       if (action.action === 'write_file') {
+        const stylingError = validateComponentStyling(action.path || '', action.content || '');
+        if (stylingError) throw new Error(stylingError);
         workspace.write(action.path || '', action.content || '');
         wroteSinceVerification = true;
+        onEvent({ type: 'tool', turn, action, agentRole });
         result = `Staged ${action.path} (${(action.content || '').length} characters).`;
       }
       if (action.action === 'delete_file') {
         workspace.delete(action.path || '');
         wroteSinceVerification = true;
+        onEvent({ type: 'tool', turn, action, agentRole });
         result = `Staged deletion of ${action.path}.`;
       }
       if (action.action === 'validate') {
-        const rawVerification = validate
-          ? await validate(workspace.files)
-          : { status: 'unavailable', check: 'build', diagnostics: 'Validation is unavailable.' };
-        const verification: VerificationResult =
-          typeof rawVerification === 'string'
-            ? {
-                status: /\b(passed|success|ok)\b/i.test(rawVerification) ? 'passed' : 'failed',
-                check: 'build',
-                diagnostics: rawVerification,
-              }
-            : rawVerification;
-        result = formatVerificationResult(verification);
-        context.record('verification', verification);
-        if (verification.status === 'passed' || verification.status === 'unavailable') {
-          wroteSinceVerification = false;
-          repairAttempts = 0;
-        } else if (++repairAttempts >= 3) {
-          throw new AgentExecutionError(
-            'Validation failed after 3 repair attempts. Staged changes were preserved for review.',
-            workspace.changes(),
-          );
-        }
+        onEvent({ type: 'tool', turn, action, agentRole });
+        result = await runValidation();
       }
-      if (action.action === 'list_project_checks')
+      if (action.action === 'list_project_checks') {
+        onEvent({ type: 'tool', turn, action, agentRole });
         result = listProjectChecks(workspace.files).join('\n') || 'No eligible project checks.';
+      }
       if (action.action === 'run_project_check') {
+        onEvent({ type: 'tool', turn, action, agentRole });
         const checkResult = await runProjectCheck({
           check: action.check || '',
           files: workspace.files,
@@ -203,6 +327,7 @@ export async function runAgent({
         context.record('project-check', checkResult);
       }
       if (action.action === 'inspect_preview') {
+        onEvent({ type: 'tool', turn, action, agentRole });
         const preview = inspectPreview
           ? await inspectPreview(workspace.files)
           : { status: 'unavailable', diagnostics: 'Preview inspection is unavailable.' };
@@ -211,6 +336,7 @@ export async function runAgent({
         context.record('preview', preview);
       }
       if (action.action === 'finish') {
+        onEvent({ type: 'tool', turn, action, agentRole });
         if (requirePreviewInspection && !inspectedPreview) {
           messages.push({
             role: 'user',

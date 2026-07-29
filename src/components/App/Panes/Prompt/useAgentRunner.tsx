@@ -30,7 +30,12 @@ export const formatAgentEvent: AgentEventFormatter = (event, roleLabelById = {})
     return `${rolePrefix}**Step ${event.turn}:** \`${actionName}\`${target ? ` — ${target}` : ''}`;
   }
   if (event.type === 'observation') {
-    return event.error ? `⚠ ${event.message}` : `${rolePrefix}${event.message}`;
+    const action = typeof event.action === 'string' ? event.action : event.action?.action;
+    const prefix = action ? `\`${action}\` ${event.error ? 'failed' : 'completed'}` : '';
+    const detail = event.message ? `${prefix ? ' — ' : ''}${event.message}` : '';
+    return event.error
+      ? `⚠ ${rolePrefix}${prefix}${detail}`
+      : `${rolePrefix}**Step ${event.turn} result:** ${prefix}${detail}`;
   }
   if (event.type === 'finished') {
     return `${rolePrefix}**Ready for review:** ${event.message || 'Agent finished.'}`;
@@ -69,7 +74,7 @@ export default function useAgentRunner({
       });
       const sessionId = runningSessionId || agentSessionState?.activeSessionId;
       if (sessionId) {
-        patchSession(sessionId, { status: 'idle', reasoning: '' });
+        patchSession(sessionId, { status: 'idle', reasoning: '', reasoningEvents: [] });
         pushSessionMessage(
           sessionId,
           createSessionMessage({ role: 'system', text: 'AI generation stopped by user.' }),
@@ -123,7 +128,7 @@ export default function useAgentRunner({
         (sidebarState.folderTree || []).length === 0;
 
       pushSessionMessage(sessionId, createSessionMessage({ role: 'user', text: userMsg }));
-      patchSession(sessionId, { status: 'running', reasoning: '' });
+      patchSession(sessionId, { status: 'running', reasoning: '', reasoningEvents: [] });
       promptUiState((draft) => {
         draft.val = '';
         draft.draftVal = '';
@@ -146,6 +151,15 @@ export default function useAgentRunner({
       });
 
       const runAI = async () => {
+        const liveChanges = new Map<string, { path: string; before?: string; after?: string }>();
+        const mergeWithLiveChanges = (changes: import('@/components/AI/types').AgentChange[]) => {
+          const merged = new Map(liveChanges);
+          for (const change of changes) {
+            const path = change.path || change.filePath;
+            if (path) merged.set(path, { ...change, path });
+          }
+          return [...merged.values()];
+        };
         try {
           console.info('[Prompt] Starting AI request for:', userMsg);
           const selectedLines =
@@ -154,11 +168,19 @@ export default function useAgentRunner({
           promptUiState((draft) => {
             draft.abortController = controller;
           });
-          const events: string[] = [];
-          const appendReasoning = (line: string) => {
-            events.push(line);
-            const reasoning = events.slice(-30).join('\n\n');
-            patchSession(sessionId, { reasoning });
+          const events: Array<{ text: string; timestamp: string }> = [];
+          let progressEventIndex: number | null = null;
+          const appendReasoning = (line: string, replaceProgress = false) => {
+            const event = { text: line, timestamp: new Date().toTimeString().split(' ')[0] };
+            if (replaceProgress && progressEventIndex !== null) {
+              events[progressEventIndex] = event;
+            } else {
+              events.push(event);
+              progressEventIndex = replaceProgress ? events.length - 1 : null;
+            }
+            const reasoningEvents = events.slice(-30);
+            const reasoning = reasoningEvents.map((event) => event.text).join('\n\n');
+            patchSession(sessionId, { reasoning, reasoningEvents });
             logState((draft) => {
               (draft as typeof draft & { reasoning?: string }).reasoning = reasoning;
             });
@@ -189,6 +211,8 @@ export default function useAgentRunner({
           appendReasoning(
             `**Workspace ready:** ${Object.keys(workspaceFiles).length} file(s) available. Loading **${selectedModel}** and starting the agent…`,
           );
+          // Tool events may arrive before a run completes. The live-write ledger
+          // declared above keeps those visible drafts inside the eventual review set.
           const runOptions = {
             request: userMsg,
             priorContext,
@@ -289,7 +313,7 @@ export default function useAgentRunner({
             },
             onEvent: (event: AgentEvent) => {
               const line = formatAgentEvent(event, roleLabelById);
-              if (line) appendReasoning(line);
+              if (line) appendReasoning(line, event.replaceProgress);
 
               if (event.type === 'tool' && event.action && typeof event.action === 'object') {
                 const actionObj = event.action;
@@ -297,9 +321,10 @@ export default function useAgentRunner({
                   const filePath = actionObj.path;
                   ensureFileInTree(sidebarState, filePath);
                   const content = actionObj.content || '';
+                  let originalContent = '';
                   editorState((draft) => {
                     const existing = draft.pendingDiffs?.[filePath];
-                    const originalContent =
+                    originalContent =
                       existing?.originalContent ?? draft.fileContents?.[filePath] ?? '';
                     const pendingDiffs = { ...(draft.pendingDiffs || {}) };
                     pendingDiffs[filePath] = {
@@ -311,10 +336,20 @@ export default function useAgentRunner({
                     draft.fileContents = { ...(draft.fileContents || {}), [filePath]: content };
                     draft.pendingDiffs = pendingDiffs;
                   });
+                  liveChanges.set(filePath, {
+                    path: filePath,
+                    before: originalContent,
+                    after: content,
+                  });
                   appendReasoning(
                     `**Live draft available:** \`${filePath}\` can now be opened from the file tree.`,
                   );
                 } else if (actionObj.action === 'delete_file' && actionObj.path) {
+                  liveChanges.set(actionObj.path, {
+                    path: actionObj.path,
+                    before: editorState.fileContents?.[actionObj.path],
+                    after: undefined,
+                  });
                   removeFileFromTree(sidebarState, actionObj.path);
                 }
               }
@@ -364,14 +399,17 @@ export default function useAgentRunner({
             draft.isAIProcessing = false;
           });
 
-          const { applied, deletions, changeSet } = applyAgentChanges(result.changes, {
-            editorState: editorState as never,
-            sidebarState: sidebarState as never,
-            logState: logState as never,
-            changeSetState: changeSetState as never,
-            request: userMsg,
-            autoApprove: autoApproveInitialProject,
-          });
+          const { applied, deletions, changeSet } = applyAgentChanges(
+            mergeWithLiveChanges(result.changes),
+            {
+              editorState: editorState as never,
+              sidebarState: sidebarState as never,
+              logState: logState as never,
+              changeSetState: changeSetState as never,
+              request: userMsg,
+              autoApprove: autoApproveInitialProject,
+            },
+          );
           if (autoApproveInitialProject && applied > 0) {
             appendReasoning(
               '**Initial project ready:** starting the first build now. Preview will open automatically when it succeeds…',
@@ -423,9 +461,10 @@ export default function useAgentRunner({
             Array.isArray((err as { changes?: unknown }).changes)
               ? (err as { changes: import('@/components/AI/types').AgentChange[] }).changes
               : [];
+          const reviewableChanges = mergeWithLiveChanges(errChanges);
 
-          if (errChanges.length > 0) {
-            applyAgentChanges(errChanges, {
+          if (reviewableChanges.length > 0) {
+            applyAgentChanges(reviewableChanges, {
               editorState: editorState as never,
               sidebarState: sidebarState as never,
               logState: logState as never,

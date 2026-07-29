@@ -652,7 +652,7 @@ const Settings = {
     largeWriteGen.changeSets = 0;
   },
 
-  async reset(template = 'default') {
+  async reset(template = 'default', { preserveTheme }: { preserveTheme?: string } = {}) {
     const storage = getStorage();
     if (storage) {
       for (const key of Object.values(KEYS)) {
@@ -669,6 +669,9 @@ const Settings = {
     recoveryCheckpoint = null;
     if (template) {
       this.setTemplate(template);
+    }
+    if (preserveTheme) {
+      this.setTheme(preserveTheme);
     }
   },
 };

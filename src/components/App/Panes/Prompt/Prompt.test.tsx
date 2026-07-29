@@ -440,18 +440,6 @@ describe('Prompt', () => {
     });
   });
 
-  it('allows toggling reasoning visibility', async () => {
-    setupCommonMocks({
-      reasoning: 'Some reasoning text',
-      isAIProcessing: true,
-    });
-    render(<Prompt />);
-
-    const toggleBtn = screen.getByTitle('Hide Reasoning');
-    expect(toggleBtn).toBeDefined();
-    await act(async () => fireEvent.click(toggleBtn));
-  });
-
   it('uses the mobile popup state instead of the desktop panel', () => {
     vi.mocked(AppState.useState).mockReturnValue(makeAppState({ isMobile: true }));
     vi.mocked(SidebarState.useState).mockReturnValue(

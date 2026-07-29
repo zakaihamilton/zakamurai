@@ -15,6 +15,57 @@ describe('agent protocol', () => {
 
   it('requires complete content for writes', () => {
     expect(() => parseAgentAction('{"action":"write_file","path":"a.js"}')).toThrow(/content/);
+    expect(() => parseAgentAction('```json\n{"action":"write_file","path":"a.js"}\n```')).toThrow(
+      /content/,
+    );
+  });
+
+  it('parses a fenced source payload for writes without JSON escaping', () => {
+    expect(
+      parseAgentAction(`{"action":"write_file","path":"src/App.jsx","reason":"build UI"}
+\`\`\`jsx
+export default function App() {
+  return <h1>Today's tasks</h1>;
+}
+\`\`\``),
+    ).toEqual({
+      action: 'write_file',
+      path: 'src/App.jsx',
+      reason: 'build UI',
+      content: "export default function App() {\n  return <h1>Today's tasks</h1>;\n}",
+    });
+  });
+
+  it('recovers the first complete action when source follows its JSON metadata', () => {
+    expect(
+      parseAgentAction(`{"action":"write_file","path":"src/App.jsx"}
+\`\`\`jsx
+export default function App() {
+  return <main>{"Tasks"}</main>;
+}
+\`\`\``),
+    ).toMatchObject({
+      action: 'write_file',
+      path: 'src/App.jsx',
+      content: 'export default function App() {\n  return <main>{"Tasks"}</main>;\n}',
+    });
+  });
+
+  it('accepts separately fenced metadata and an unfinished source fence', () => {
+    expect(
+      parseAgentAction(`\`\`\`json
+{"action":"write_file","path":"src/App.jsx"}
+\`\`\`
+
+\`\`\`jsx
+export default function App() {
+  return <main>Tasks</main>;
+}`),
+    ).toMatchObject({
+      action: 'write_file',
+      path: 'src/App.jsx',
+      content: 'export default function App() {\n  return <main>Tasks</main>;\n}',
+    });
   });
 
   it('parses search_semantic and requires a query', () => {
