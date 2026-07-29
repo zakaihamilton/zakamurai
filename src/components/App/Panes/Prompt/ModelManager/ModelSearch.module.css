@@ -1,3 +1,8 @@
+.search {
+  display: block;
+  padding-left: 4px;
+}
+
 .modelSearch {
   display: flex;
   align-items: center;
