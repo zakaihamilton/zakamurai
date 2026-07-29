@@ -210,7 +210,9 @@ describe('Settings', () => {
     await writePromise;
 
     expect(Settings.getFileContents()).toEqual({ fresh: 'true' });
-    expect(JSON.parse(localStorage.getItem('zakamurai_file_contents')!)).toEqual({ fresh: 'true' });
+    expect(JSON.parse(localStorage.getItem('zakamurai_file_contents') ?? '{}')).toEqual({
+      fresh: 'true',
+    });
   });
 
   it('gets and sets sidebar width', () => {
@@ -277,7 +279,7 @@ describe('Settings', () => {
       resetIdbConnection();
 
       await expect(Settings.setFileContents(contents)).resolves.toBe(true);
-      expect(JSON.parse(localStorage.getItem('zakamurai_file_contents')!)).toEqual(contents);
+      expect(JSON.parse(localStorage.getItem('zakamurai_file_contents') ?? '{}')).toEqual(contents);
       expect(Settings.getFileContents()).toEqual(contents);
     } finally {
       globalThis.indexedDB = originalIndexedDb;

@@ -35,7 +35,8 @@ describe('previewErrorUtils', () => {
 
     it('truncates messages longer than 4000 characters', () => {
       const long = 'x'.repeat(4001);
-      const result = truncatePreviewError(long)!;
+      const result = truncatePreviewError(long);
+      expect(result).toBeDefined();
       expect(result).toHaveLength(4003);
       expect(result.endsWith('...')).toBe(true);
       expect(result.startsWith('x'.repeat(4000))).toBe(true);

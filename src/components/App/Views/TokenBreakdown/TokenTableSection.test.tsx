@@ -49,7 +49,7 @@ describe('TokenTableSection', () => {
     render(
       <TokenTableSection
         tokens={tokens}
-        filteredTokens={[tokens[1]!]}
+        filteredTokens={[tokens[1] ?? tokens[0]]}
         searchTerm="const"
         setSearchTerm={setSearchTerm}
         typeFilter="All"

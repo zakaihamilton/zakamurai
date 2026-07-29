@@ -23,7 +23,7 @@ describe('HistoryHandler', () => {
 
   it('does not update local content from history bookkeeping', () => {
     state.fileContents[filePath] = 'initial content';
-    state.cursorPos![filePath] = { line: 1, col: 1, index: 0 };
+    state.cursorPos[filePath] = { line: 1, col: 1, index: 0 };
 
     render(<HistoryHandler filePath={filePath} localContent="" state={state} />);
 
@@ -64,7 +64,7 @@ describe('HistoryHandler', () => {
 
   it('correctly captures the cursor position for the last snapshot', () => {
     state.fileContents[filePath] = 'initial';
-    state.cursorPos![filePath] = { line: 1, col: 1, index: 0 };
+    state.cursorPos[filePath] = { line: 1, col: 1, index: 0 };
 
     const { rerender } = render(
       <HistoryHandler filePath={filePath} localContent="" state={state} />,
@@ -73,7 +73,7 @@ describe('HistoryHandler', () => {
     vi.runAllTimers();
     expect(state.history?.[filePath]).toBeUndefined();
 
-    state.cursorPos![filePath] = { line: 1, col: 4, index: 3 };
+    state.cursorPos[filePath] = { line: 1, col: 4, index: 3 };
     state.fileContents[filePath] = 'abc';
     rerender(<HistoryHandler filePath={filePath} localContent="abc" state={state} />);
 

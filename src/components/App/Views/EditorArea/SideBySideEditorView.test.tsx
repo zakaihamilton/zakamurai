@@ -1,3 +1,4 @@
+import { requireElement } from '@/test-utils/domMocks';
 import { createMockPendingDiff } from '@/test-utils/editorMocks';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import type { ReactNode } from 'react';
@@ -67,10 +68,10 @@ describe('SideBySideEditorView', () => {
     expect(screen.getAllByTestId('code-editor')).toHaveLength(2);
 
     const buttons = screen.getAllByRole('button');
-    fireEvent.click(buttons[0]!);
+    fireEvent.click(requireElement(buttons[0]));
     expect(navigator.clipboard.writeText).toHaveBeenCalledWith('original code');
 
-    fireEvent.click(buttons[1]!);
+    fireEvent.click(requireElement(buttons[1]));
     expect(navigator.clipboard.writeText).toHaveBeenCalledWith('modified code');
   });
 });

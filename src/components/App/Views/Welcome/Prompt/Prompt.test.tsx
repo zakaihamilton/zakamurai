@@ -5,6 +5,7 @@ import { AppState } from '@/components/App/AppState';
 import { PromptUiState } from '@/components/App/Panes/Prompt/PromptState';
 import { SidebarState } from '@/components/App/Panes/Sidebar';
 import { LogState } from '@/components/App/Views/LogArea';
+import { requireElement } from '@/test-utils/domMocks';
 import {
   makeAppState,
   makeLogState,
@@ -293,7 +294,7 @@ describe('WelcomePrompt', () => {
     expect(form).not.toBeNull();
 
     fireEvent.change(input, { target: { value: '   ' } });
-    fireEvent.submit(form!);
+    fireEvent.submit(requireElement(form));
     expect(getCachedWebLLMModelIds).not.toHaveBeenCalled();
   });
 
@@ -307,7 +308,7 @@ describe('WelcomePrompt', () => {
     expect(form).not.toBeNull();
     expect(input).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Start building with AI' })).toBeDisabled();
-    fireEvent.submit(form!);
+    fireEvent.submit(requireElement(form));
     expect(getCachedWebLLMModelIds).not.toHaveBeenCalled();
   });
 

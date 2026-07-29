@@ -22,7 +22,7 @@ export function useWorkspaceIndexer() {
   const { isReady, version, mode, rootHandle } = fs;
   const editorState = EditorState.useState(['fileContents']);
   const profileState = WorkspaceProfileState.useState(['include', 'exclude', 'maxFileBytes']);
-  const { include = [], exclude = [], maxFileBytes = 512 * 1024 } = profileState || {};
+  const { exclude = [], maxFileBytes = 512 * 1024 } = profileState || {};
   const health = WorkspaceHealthState.useState();
   const hashesRef = useRef(new Map<string, string>());
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);

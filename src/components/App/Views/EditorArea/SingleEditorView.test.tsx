@@ -1,3 +1,4 @@
+import { requireElement } from '@/test-utils/domMocks';
 import { mockDomRect } from '@/test-utils/editorMocks';
 import { render } from '@testing-library/react';
 import type { ReactNode } from 'react';
@@ -48,9 +49,9 @@ describe('SingleEditorView', () => {
     );
 
     const codeLines = container.querySelectorAll('[data-line]');
-    codeLines[0]!.getBoundingClientRect = () =>
+    requireElement(codeLines[0]).getBoundingClientRect = () =>
       mockDomRect({ left: 0, top: 0, width: 0, height: 22 });
-    codeLines[1]!.getBoundingClientRect = () =>
+    requireElement(codeLines[1]).getBoundingClientRect = () =>
       mockDomRect({ left: 0, top: 0, width: 0, height: 44 });
 
     vi.advanceTimersByTime(50);
