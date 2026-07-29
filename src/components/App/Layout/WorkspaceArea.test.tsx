@@ -54,6 +54,7 @@ vi.mock('../Views/TokenBreakdown', () => ({
   default: () => <div data-testid="token-breakdown" />,
 }));
 vi.mock('../Views/ImageViewer', () => ({ default: () => <div data-testid="image-viewer" /> }));
+vi.mock('../Views/AISection', () => ({ default: () => <div data-testid="ai-section" /> }));
 vi.mock('../../state/Node', () => ({
   default: ({ children }: { children?: ReactNode }) => <>{children}</>,
 }));
@@ -144,6 +145,23 @@ describe('WorkspaceArea', () => {
 
     render(<WorkspaceArea />);
     expect(screen.getByTestId('token-breakdown')).toBeDefined();
+  });
+
+  it('renders an expanded AI pane section in a tab', () => {
+    vi.mocked(AppState.useState).mockReturnValue(makeAppState({ isMobile: false }));
+    vi.mocked(TabState.useState).mockReturnValue(
+      makeTabState({
+        openTabs: [
+          { id: 'ai-section:reasoning', type: 'ai-section', label: 'Progress & Reasoning' },
+        ],
+        activeTabId: 'ai-section:reasoning',
+      }),
+    );
+    vi.mocked(SidebarState.useState).mockReturnValue(makeSidebarState({ showAIInput: false }));
+    vi.mocked(PromptState.useState).mockReturnValue(makePromptState());
+
+    render(<WorkspaceArea />);
+    expect(screen.getByTestId('ai-section')).toBeDefined();
   });
 
   it('hides resizer on mobile', () => {

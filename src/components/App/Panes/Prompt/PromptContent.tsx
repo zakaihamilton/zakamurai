@@ -41,6 +41,7 @@ export default function PromptContent({
   selectedModel,
   promptScope,
   onScopeChange,
+  onOpenSectionInTab,
   activeFileName,
   activeFilePath,
   selectedLines,
@@ -117,9 +118,13 @@ export default function PromptContent({
           selectedLines={selectedLines}
           selectedLineText={selectedLineText}
           runState={runState}
+          onOpenInTab={() => onOpenSectionInTab('context')}
         />
-        <ChangeSetPanel />
-        <SessionTranscript messages={activeSession?.messages || []} />
+        <ChangeSetPanel onOpenInTab={() => onOpenSectionInTab('changes')} />
+        <SessionTranscript
+          messages={activeSession?.messages || []}
+          onOpenInTab={() => onOpenSectionInTab('transcript')}
+        />
         <ModelDownloader
           isOpen={isModelManagerOpen}
           selectedModelId={selectedModelInfo.id}
@@ -141,7 +146,16 @@ export default function PromptContent({
             activeSession && patchSession(activeSession.id, { roleGraph: nextGraph })
           }
         />
-        <ReasoningPanel />
+        <ReasoningPanel
+          modelDownloadStatus={
+            isModelDownloading
+              ? `Downloading ${selectedModelInfo.name || 'AI model'}${
+                  modelDownloadProgress ? ` — ${modelDownloadProgress}` : '…'
+                }`
+              : ''
+          }
+          onOpenInTab={() => onOpenSectionInTab('reasoning')}
+        />
         <PromptComposer
           value={value}
           onChange={onChange}
@@ -152,8 +166,6 @@ export default function PromptContent({
           isButtonActive={isButtonActive}
           isOpen={isOpen}
           selectedModelInfo={selectedModelInfo}
-          isModelDownloading={isModelDownloading}
-          modelDownloadProgress={modelDownloadProgress}
           modelOptions={modelOptions}
           onChangeModel={onChangeModel}
           onLoadCachedModelIds={onLoadCachedModelIds}

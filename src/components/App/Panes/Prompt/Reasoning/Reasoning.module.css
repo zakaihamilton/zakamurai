@@ -16,6 +16,12 @@
   margin: 4px 0 12px;
 }
 
+.reasoningCollapsed {
+  grid-template-rows: minmax(0, 1fr);
+  min-height: 48px;
+  flex: 0 0 48px;
+}
+
 .reasoningContainer {
   display: flex;
   flex-direction: column;
@@ -53,40 +59,32 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  color: var(--accent);
+  color: var(--text-muted);
   font-size: 10px;
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 1px;
 }
 
+.titleButton {
+  padding: 0;
+  border: 0;
+  color: inherit;
+  background: transparent;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  cursor: pointer;
+}
+
+.titleButton:hover {
+  color: var(--text-main);
+}
+
 .reasoningActions {
   display: flex;
   align-items: center;
   gap: 4px;
-}
-
-.iconButton {
-  background: transparent;
-  border: none;
-  color: var(--text-muted);
-  cursor: pointer;
-  padding: 4px;
-  border-radius: 4px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s;
-  outline: none;
-}
-
-.iconButton:hover {
-  background: var(--bg-hover);
-  color: var(--accent);
-}
-
-.copySuccess {
-  color: var(--success) !important;
 }
 
 .reasoningContent {
@@ -133,6 +131,33 @@
 
 .reasoningContent *:last-child {
   margin-bottom: 0;
+}
+
+.downloadStatus {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  margin-bottom: 10px;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.downloadSpinner {
+  width: 12px;
+  height: 12px;
+  flex: 0 0 auto;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: model-download-spin 0.8s linear infinite;
+}
+
+@keyframes model-download-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .reasoningParagraph,

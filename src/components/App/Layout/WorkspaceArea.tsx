@@ -5,6 +5,7 @@ import React from 'react';
 import Node from '../../state/Node';
 import { AppState } from '../AppState';
 import { Prompt, PromptState, SidebarState, TabBar, TabState } from '../Panes';
+import AISectionView from '../Views/AISection';
 import EditorArea from '../Views/EditorArea';
 import ImageViewer from '../Views/ImageViewer';
 import Instructions from '../Views/Instructions';
@@ -79,6 +80,7 @@ export default function WorkspaceArea() {
           {activeTab?.type === 'project-info' && <ProjectInfo />}
           {activeTab?.type === 'instructions' && <Instructions />}
           {activeTab?.type === 'token-breakdown' && <TokenBreakdown tab={activeTab} />}
+          {activeTab?.type === 'ai-section' && <AISectionView tab={activeTab} />}
           {!activeTab && <Welcome />}
         </div>
       </div>

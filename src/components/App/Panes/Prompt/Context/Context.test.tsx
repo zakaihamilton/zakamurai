@@ -63,4 +63,25 @@ describe('PromptContextPanel', () => {
       'true',
     );
   });
+
+  it('collapses and expands when its title is clicked', () => {
+    render(
+      <PromptContextPanel
+        activeFileName="foo.js"
+        activeFilePath="src/foo.js"
+        selectedLines={[1]}
+        selectedLineText="1"
+        runState="Ready"
+      />,
+    );
+
+    const title = screen.getByRole('button', { name: 'Context' });
+    fireEvent.click(title);
+    expect(title.getAttribute('aria-expanded')).toBe('false');
+    expect(screen.queryByText('foo.js')).toBeNull();
+
+    fireEvent.click(title);
+    expect(title.getAttribute('aria-expanded')).toBe('true');
+    expect(screen.getByText('foo.js')).toBeDefined();
+  });
 });

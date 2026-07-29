@@ -99,4 +99,24 @@ describe('applyAgentChanges', () => {
     expect(editorState.fileContents?.['src/New.js']).toContain('export default 1');
     expect(tree.folderTree?.find((n) => n.name === 'src')?.children?.[0]?.name).toBe('New.js');
   });
+
+  it('applies initial project files without staging a review', () => {
+    const editorState = createEditorStateMock({
+      fileContents: {},
+      pendingDiffs: {},
+      cursorPos: {},
+    });
+    const changeSetState = makeChangeSetState();
+
+    const { applied, changeSet } = applyAgentChanges(
+      [{ path: 'src/App.js', before: undefined, after: 'export default function App() {}\n' }],
+      { editorState, changeSetState, autoApprove: true },
+    );
+
+    expect(applied).toBe(1);
+    expect(changeSet).toBeNull();
+    expect(changeSetState).not.toHaveBeenCalled();
+    expect(editorState.fileContents?.['src/App.js']).toContain('function App');
+    expect(editorState.pendingDiffs).toEqual({});
+  });
 });

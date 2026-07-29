@@ -308,6 +308,7 @@ export type ApplyAgentChangesStates = {
   changeSetState?: StateStore<ChangeSetStateShape> | null;
   request?: string;
   validation?: unknown;
+  autoApprove?: boolean;
 };
 
 export type ApplyAgentChangesResult = {

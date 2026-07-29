@@ -206,8 +206,6 @@ export type PromptComposerProps = {
   isButtonActive: boolean;
   isOpen: boolean;
   selectedModelInfo?: { id: string; name?: string };
-  isModelDownloading?: boolean;
-  modelDownloadProgress?: string;
   modelOptions?: ModelSelectOption[];
   onChangeModel?: (modelId: string) => void;
   onLoadCachedModelIds?: () => void;
@@ -222,6 +220,7 @@ export type PromptContextPanelProps = {
   selectedLines: number[];
   selectedLineText: string;
   runState: string;
+  onOpenInTab?: () => void;
 };
 
 export type PromptHeaderProps = {
@@ -282,6 +281,7 @@ export type PromptContentProps = {
   selectedModel: string;
   promptScope: string;
   onScopeChange: (scope: string) => void;
+  onOpenSectionInTab: (section: 'context' | 'changes' | 'transcript' | 'reasoning') => void;
   activeFileName?: string;
   activeFilePath?: string;
   selectedLines: number[];

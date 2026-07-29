@@ -15,6 +15,7 @@ const getTabViewType = (tab: Tab): string => {
   if (tab.type === 'preview') return 'Preview';
   if (tab.type === 'project-info') return 'Project Info';
   if (tab.type === 'instructions') return 'Instructions';
+  if (tab.type === 'ai-section') return 'AI Pane';
   return tab.type || 'View';
 };
 
@@ -66,6 +67,8 @@ export default function TabItem({
           <Icons.Info />
         ) : tab.type === 'token-breakdown' ? (
           <Icons.Tokens size={14} />
+        ) : tab.type === 'ai-section' ? (
+          <Icons.BotSmall />
         ) : tab.viewType === FILE_VIEW_TYPES.IMAGE_VIEWER || isMediaFile(tab.file?.name) ? (
           <Icons.Image />
         ) : tab.viewType === FILE_VIEW_TYPES.TOKEN_BREAKDOWN ? (

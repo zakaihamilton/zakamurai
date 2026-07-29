@@ -28,7 +28,7 @@ export function getInitialPromptUiState() {
     modelCacheError: '',
     animatedWidth: 0,
     abortController: null,
-    promptScope: 'file',
+    promptScope: 'project',
     welcomeRequest: null,
     runningSessionId: null,
     isAgentTreeOpen: false,

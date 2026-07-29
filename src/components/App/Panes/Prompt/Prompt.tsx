@@ -45,7 +45,7 @@ export default function Prompt() {
     modelCacheError = '',
     animatedWidth = promptState?.promptWidth ?? 0,
     abortController = null,
-    promptScope = 'file',
+    promptScope = 'project',
     welcomeRequest = null,
     runningSessionId = null,
     sessionDialog = null,
@@ -177,6 +177,27 @@ export default function Prompt() {
     },
     [promptUiState],
   );
+  const openSectionInTab = useCallback(
+    (section: 'context' | 'changes' | 'transcript' | 'reasoning') => {
+      const id = `ai-section:${section}`;
+      const label =
+        section === 'context'
+          ? 'AI Context'
+          : section === 'changes'
+            ? 'Change Set'
+            : section === 'transcript'
+              ? 'Transcript'
+              : 'Progress & Reasoning';
+      tabState((draft) => {
+        const existingTab = draft.openTabs.find((tab) => tab.id === id);
+        if (!existingTab) {
+          draft.openTabs = [...draft.openTabs, { id, type: 'ai-section', label }];
+        }
+        draft.activeTabId = id;
+      });
+    },
+    [tabState],
+  );
   const toggleReasoning = useCallback(() => {
     promptUiState((draft) => {
       draft.isReasoningVisible = !draft.isReasoningVisible;
@@ -260,6 +281,7 @@ export default function Prompt() {
       selectedModel={selectedModel}
       promptScope={promptScope}
       onScopeChange={setPromptScope}
+      onOpenSectionInTab={openSectionInTab}
       activeFileName={activeFileName}
       activeFilePath={activeFilePath}
       selectedLines={selectedLines}

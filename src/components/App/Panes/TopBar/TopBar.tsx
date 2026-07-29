@@ -181,12 +181,15 @@ export default function TopBar() {
         </button>
       </Tooltip>
 
+      <div className={styles.workingIndicator}>
+        <WorkingIndicator />
+      </div>
+
       <NavigationControls />
 
       <Breadcrumb breadcrumb={breadcrumb} onBreadcrumbClick={handleBreadcrumbClick} />
       <div className={styles.centerSection} />
       <div className={styles.actions}>
-        <WorkingIndicator />
         <ActionButtons
           onCompile={handleCompile}
           onOpenLog={handleOpenLog}

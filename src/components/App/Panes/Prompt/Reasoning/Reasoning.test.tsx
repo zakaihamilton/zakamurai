@@ -60,13 +60,13 @@ describe('ReasoningPanel', () => {
 
     render(<ReasoningPanel />);
 
-    const copyButton = screen.getByRole('button');
+    const copyButton = screen.getByRole('button', { name: 'Copy to clipboard' });
     fireEvent.click(copyButton);
 
     expect(navigator.clipboard.writeText).toHaveBeenCalledWith('Copied content text');
 
     await waitFor(() => {
-      expect(copyButton.className).toMatch(/copySuccess/);
+      expect(copyButton.getAttribute('aria-label')).toBe('Copied to clipboard');
     });
   });
 });

@@ -322,6 +322,7 @@ describe('Settings', () => {
   });
 
   it('gets and sets sidebar open state', () => {
+    expect(Settings.getIsSidebarOpen()).toBe(false);
     expect(Settings.getIsSidebarOpen(true)).toBe(true);
     Settings.setIsSidebarOpen(false);
     expect(Settings.getIsSidebarOpen()).toBe(false);

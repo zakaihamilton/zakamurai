@@ -1,0 +1,25 @@
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.button {
+  width: 24px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  color: var(--text-muted);
+  background: transparent;
+  cursor: pointer;
+}
+
+.button:hover {
+  color: var(--accent);
+  background: var(--bg-hover);
+  border-color: var(--border-light);
+}

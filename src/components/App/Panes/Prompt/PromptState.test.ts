@@ -38,6 +38,7 @@ describe('PromptState helpers', () => {
       draftVal: 'hello draft',
       selectedModel: 'custom-model',
       historyIndex: -1,
+      promptScope: 'project',
     });
   });
 });

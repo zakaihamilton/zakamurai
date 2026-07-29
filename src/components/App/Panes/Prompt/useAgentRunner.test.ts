@@ -254,6 +254,42 @@ describe('useAgentRunner', () => {
     expect(props.pushSessionMessage).toHaveBeenCalled();
   });
 
+  it('auto-approves the first prompt for an empty project', async () => {
+    const props = createRunnerProps({
+      editorState: createMockEditorState({ fileContents: {}, selectedLines: {} }),
+      sidebarState: makeSidebarState({ folderTree: [] }),
+    });
+    const { result } = renderHook(() => useAgentRunner(props));
+
+    act(() => {
+      result.current.send(mockFormEvent());
+    });
+
+    await waitFor(() => {
+      expect(applyAgentChanges).toHaveBeenCalled();
+    });
+    expect(applyAgentChanges.mock.calls[0][1]).toMatchObject({ autoApprove: true });
+  });
+
+  it('keeps review enabled when the project already has files', async () => {
+    const props = createRunnerProps({
+      editorState: createMockEditorState({
+        fileContents: { 'app.js': 'existing' },
+        selectedLines: {},
+      }),
+    });
+    const { result } = renderHook(() => useAgentRunner(props));
+
+    act(() => {
+      result.current.send(mockFormEvent());
+    });
+
+    await waitFor(() => {
+      expect(applyAgentChanges).toHaveBeenCalled();
+    });
+    expect(applyAgentChanges.mock.calls[0][1]).toMatchObject({ autoApprove: false });
+  });
+
   it('records agent failures and skips duplicate sends while processing', async () => {
     runAgent.mockRejectedValueOnce(new Error('model crashed'));
     const props = createRunnerProps();

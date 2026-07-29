@@ -3,7 +3,6 @@
   grid-template-columns: 1fr;
   gap: 0;
   width: 100%;
-  border: 1px solid var(--border);
   border-radius: 6px;
   background: var(--bg-input);
   overflow: hidden;
@@ -105,4 +104,42 @@
   flex: 0 0 auto;
   border-radius: 999px;
   background: var(--accent);
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+  padding: 9px;
+  box-sizing: border-box;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-surface);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.titleButton {
+  padding: 0;
+  border: 0;
+  color: inherit;
+  background: transparent;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  cursor: pointer;
+}
+
+.titleButton:hover {
+  color: var(--text-main);
 }

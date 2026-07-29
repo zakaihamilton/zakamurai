@@ -8,12 +8,41 @@
 
 .header {
   display: flex;
+  align-items: center;
   justify-content: space-between;
+  color: var(--text-muted);
+  font-size: 10px;
   font-weight: 650;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.titleButton {
+  padding: 0;
+  border: 0;
+  color: inherit;
+  background: transparent;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  cursor: pointer;
+}
+
+.titleButton:hover {
+  color: var(--text-main);
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .status {
   color: var(--accent-light);
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0;
   text-transform: capitalize;
 }
 

@@ -1,12 +1,52 @@
-.transcript {
-  flex: 1;
+.section {
+  display: flex;
   min-height: 80px;
   max-height: 220px;
-  overflow-y: auto;
+  flex: 1;
+  flex-direction: column;
+  gap: 4px;
+  padding: 9px;
   border: 1px solid var(--border);
   border-radius: 8px;
   background: var(--bg-surface);
-  padding: 8px;
+}
+
+.collapsed {
+  min-height: 44px;
+  flex: 0 0 44px;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.titleButton {
+  padding: 0;
+  border: 0;
+  color: inherit;
+  background: transparent;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  cursor: pointer;
+}
+
+.titleButton:hover {
+  color: var(--text-main);
+}
+
+.transcript {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 4px 0;
   display: flex;
   flex-direction: column;
   gap: 8px;

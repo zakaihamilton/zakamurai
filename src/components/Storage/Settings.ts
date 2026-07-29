@@ -414,7 +414,7 @@ const Settings = {
     this.set(KEYS.PROMPT_WIDTH, width.toString());
   },
 
-  getIsSidebarOpen(defaultValue = true) {
+  getIsSidebarOpen(defaultValue = false) {
     const val = this.get(KEYS.IS_SIDEBAR_OPEN, defaultValue.toString());
     return val === 'true';
   },

@@ -46,6 +46,7 @@ export function applyAgentChanges(
     changeSetState,
     request,
     validation: validationResult,
+    autoApprove = false,
   }: ApplyAgentChangesStates,
 ): ApplyAgentChangesResult {
   if (!Array.isArray(changes) || !editorState) {
@@ -83,10 +84,11 @@ export function applyAgentChanges(
     ...writes,
     ...deletions.map(({ path, before }) => ({ path, before, after: undefined })),
   ];
-  const changeSet = stagedChanges.length
-    ? createChangeSet({ request, changes: stagedChanges, validation: validationResult })
-    : null;
-  addChangeSet(changeSetState ?? null, changeSet);
+  const changeSet =
+    !autoApprove && stagedChanges.length
+      ? createChangeSet({ request, changes: stagedChanges, validation: validationResult })
+      : null;
+  if (!autoApprove) addChangeSet(changeSetState ?? null, changeSet);
   let applied = 0;
 
   for (const { path, before, after } of writes) {
@@ -115,6 +117,7 @@ export function applyAgentChanges(
 
     editorState((draft) => {
       setInDraft(draft, ['fileContents', path], finalContent);
+      if (autoApprove) return;
       const existingDiffs = draft.pendingDiffs || {};
       const existingCursor = existingDiffs[path]?.originalCursorPos;
       const currentCursor = editorState.cursorPos?.[path];
@@ -136,7 +139,9 @@ export function applyAgentChanges(
         {
           id: Date.now() + 5,
           role: 'system',
-          text: `Successfully updated ${applied} file(s). Please review changes in the editor.`,
+          text: autoApprove
+            ? `Applied ${applied} initial project file(s).`
+            : `Successfully updated ${applied} file(s). Please review changes in the editor.`,
           timestamp: new Date().toTimeString().split(' ')[0],
         },
       ]);

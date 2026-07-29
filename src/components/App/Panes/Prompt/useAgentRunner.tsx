@@ -113,6 +113,10 @@ export default function useAgentRunner({
 
       const currentActiveTabId = tabState.activeTabId;
       const currentActiveTab = tabState.openTabs.find((t) => t.id === currentActiveTabId);
+      const autoApproveInitialProject =
+        activeSession.messages.length === 0 &&
+        Object.keys(editorState.fileContents || {}).length === 0 &&
+        (sidebarState.folderTree || []).length === 0;
 
       pushSessionMessage(sessionId, createSessionMessage({ role: 'user', text: userMsg }));
       patchSession(sessionId, { status: 'running', reasoning: '' });
@@ -314,6 +318,7 @@ export default function useAgentRunner({
             logState: logState as never,
             changeSetState: changeSetState as never,
             request: userMsg,
+            autoApprove: autoApproveInitialProject,
           });
           if (changeSet) {
             pushSessionMessage(

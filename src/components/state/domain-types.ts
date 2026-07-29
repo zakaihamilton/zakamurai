@@ -29,7 +29,8 @@ export type TabType =
   | 'logs'
   | 'token-breakdown'
   | 'project-info'
-  | 'instructions';
+  | 'instructions'
+  | 'ai-section';
 
 export interface Tab {
   id: string;

@@ -15,27 +15,25 @@ export default function PromptHeader({
 }: PromptHeaderProps) {
   return (
     <div className={styles.header}>
-      <div className={styles.titleBlock}>
-        <h2 className={styles.title}>Agent</h2>
-        <fieldset className={styles.modeToggle} aria-label="Agent mode">
-          <button
-            type="button"
-            className={`${styles.modeBtn} ${mode === 'single' ? styles.modeBtnActive : ''}`}
-            onClick={() => onModeChange?.('single')}
-            aria-pressed={mode === 'single'}
-          >
-            Single
-          </button>
-          <button
-            type="button"
-            className={`${styles.modeBtn} ${mode === 'team' ? styles.modeBtnActive : ''}`}
-            onClick={() => onModeChange?.('team')}
-            aria-pressed={mode === 'team'}
-          >
-            Team
-          </button>
-        </fieldset>
-      </div>
+      <h2 className={styles.title}>Agent</h2>
+      <fieldset className={styles.modeToggle} aria-label="Agent mode">
+        <button
+          type="button"
+          className={`${styles.modeBtn} ${mode === 'single' ? styles.modeBtnActive : ''}`}
+          onClick={() => onModeChange?.('single')}
+          aria-pressed={mode === 'single'}
+        >
+          Single
+        </button>
+        <button
+          type="button"
+          className={`${styles.modeBtn} ${mode === 'team' ? styles.modeBtnActive : ''}`}
+          onClick={() => onModeChange?.('team')}
+          aria-pressed={mode === 'team'}
+        >
+          Team
+        </button>
+      </fieldset>
       <div className={styles.headerActions}>
         {isAIProcessing && <span className={styles.status}>AI Working</span>}
         {isSystemProcessing && <span className={styles.status}>Compiling</span>}

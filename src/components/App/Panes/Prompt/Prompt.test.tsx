@@ -238,7 +238,7 @@ describe('Prompt', () => {
     expect(modelSelect.value).toBe('Qwen2.5-Coder-3B-Instruct-q4f16_1-MLC');
   });
 
-  it('shows selected model download progress in the composer', () => {
+  it('shows selected model download progress in Progress & Reasoning', () => {
     const webLLMStore = Object.assign(vi.fn(), {
       cachedModelIds: [],
       engines: {
@@ -254,9 +254,9 @@ describe('Prompt', () => {
 
     render(<Prompt />);
 
-    expect(screen.getByRole('status')).toHaveTextContent(
-      'Downloading Qwen3.5 4B — Fetching parameters: 50%',
-    );
+    const downloadStatus = screen.getByRole('status');
+    expect(downloadStatus).toHaveTextContent('Downloading Qwen3.5 4B — Fetching parameters: 50%');
+    expect(downloadStatus.closest('[class*="reasoningContent"]')).toContainElement(downloadStatus);
   });
 
   it('opens the model manager and caches models', async () => {

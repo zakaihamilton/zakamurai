@@ -1,26 +1,32 @@
 import type { AgentSessionMessage } from '@/components/state/domain-types';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import SectionActions from '../SectionExpandButton';
 import type { SessionTranscriptProps } from '../prompt-types';
 import styles from './SessionTranscript.module.css';
 
-export default function SessionTranscript({ messages = [] }: SessionTranscriptProps) {
+export default function SessionTranscript({
+  messages = [],
+  onOpenInTab = () => {},
+}: SessionTranscriptProps & { onOpenInTab?: () => void }) {
+  const [isExpanded, setIsExpanded] = useState(true);
   const endRef = useRef<HTMLDivElement | null>(null);
   const lastMessageId = messages.at(-1)?.id;
+  const transcriptText = messages.length
+    ? messages
+        .map((message) => `[${message.timestamp || 'now'}] ${message.role}: ${message.text}`)
+        .join('\n\n')
+    : 'Start a conversation with this agent session.';
 
   useEffect(() => {
     if (lastMessageId == null) return;
     endRef.current?.scrollIntoView?.({ block: 'nearest' });
   }, [lastMessageId]);
 
-  if (!messages.length) {
-    return (
-      <div className={styles.empty} aria-label="Session transcript">
-        Start a conversation with this agent session.
-      </div>
-    );
-  }
-
-  return (
+  const content = !messages.length ? (
+    <div className={styles.empty} aria-label="Session transcript">
+      Start a conversation with this agent session.
+    </div>
+  ) : (
     <div className={styles.transcript} aria-label="Session transcript">
       {messages.map((message: AgentSessionMessage) => {
         const roleClass =
@@ -45,5 +51,22 @@ export default function SessionTranscript({ messages = [] }: SessionTranscriptPr
       })}
       <div ref={endRef} />
     </div>
+  );
+
+  return (
+    <section className={`${styles.section} ${isExpanded ? '' : styles.collapsed}`}>
+      <div className={styles.header}>
+        <button
+          type="button"
+          className={styles.titleButton}
+          aria-expanded={isExpanded}
+          onClick={() => setIsExpanded((expanded) => !expanded)}
+        >
+          Transcript
+        </button>
+        <SectionActions content={transcriptText} onOpenInTab={onOpenInTab} />
+      </div>
+      {isExpanded && content}
+    </section>
   );
 }
