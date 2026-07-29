@@ -1,6 +1,6 @@
+import type { ModelOption } from '@/components/App/Panes/Prompt/prompt-types';
 import type { PromptUiStateShape } from '@/components/state/domain-types';
 import type { StateStore } from '@/components/state/types';
-import type { ModelOption } from '@/components/App/Panes/Prompt/prompt-types';
 import { useCallback, useRef } from 'react';
 
 type PromptUiKey = keyof PromptUiStateShape;

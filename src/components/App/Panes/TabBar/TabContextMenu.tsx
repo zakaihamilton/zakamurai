@@ -1,8 +1,8 @@
 import ContextMenu from '@/components/ui/ContextMenu';
 import { Icons } from '@/components/ui/Icons';
 import { isMediaFile } from '@/utils/file';
-import type { TabContextMenuProps } from './tab-types';
 import styles from './TabContextMenu.module.css';
+import type { TabContextMenuProps } from './tab-types';
 
 export default function TabContextMenu({
   tab,

@@ -98,16 +98,16 @@ describe('TreeUtils', () => {
       ];
       const normalized = normalizeChildren(rawNodes, ['src']);
 
-      expect(normalized[0]!.name).toBe('components');
-      expect(normalized[0]!.type).toBe('folder');
-      expect(normalized[0]!.path).toEqual(['src', 'components']);
-      expect(normalized[0]!.children![0]!.name).toBe('Button.js');
-      expect(normalized[0]!.children![0]!.type).toBe('file');
-      expect(normalized[0]!.children![0]!.path).toEqual(['src', 'components', 'Button.js']);
+      expect(normalized[0]?.name).toBe('components');
+      expect(normalized[0]?.type).toBe('folder');
+      expect(normalized[0]?.path).toEqual(['src', 'components']);
+      expect(normalized[0]?.children?.[0]?.name).toBe('Button.js');
+      expect(normalized[0]?.children?.[0]?.type).toBe('file');
+      expect(normalized[0]?.children?.[0]?.path).toEqual(['src', 'components', 'Button.js']);
 
-      expect(normalized[1]!.name).toBe('App.js');
-      expect(normalized[1]!.type).toBe('file');
-      expect(normalized[1]!.path).toEqual(['src', 'App.js']);
+      expect(normalized[1]?.name).toBe('App.js');
+      expect(normalized[1]?.type).toBe('file');
+      expect(normalized[1]?.path).toEqual(['src', 'App.js']);
     });
   });
 
@@ -117,7 +117,7 @@ describe('TreeUtils', () => {
       const newChildren = [makeTreeNode('Button.js', 'file')];
       const result = setChildrenAtPath(tree, ['src', 'components'], newChildren);
 
-      expect(result[0]!.children![0]!.children).toEqual(newChildren);
+      expect(result[0]?.children?.[0]?.children).toEqual(newChildren);
     });
 
     it('returns custom children if path is empty', () => {
@@ -137,8 +137,8 @@ describe('TreeUtils', () => {
         ),
       ];
       const result = renameNodeAtPath(tree, ['src', 'App.js'], 'index.js');
-      expect(result[0]!.children![0]!.name).toBe('index.js');
-      expect(result[0]!.children![0]!.path).toEqual(['src', 'index.js']);
+      expect(result[0]?.children?.[0]?.name).toBe('index.js');
+      expect(result[0]?.children?.[0]?.path).toEqual(['src', 'index.js']);
     });
   });
 
@@ -148,13 +148,13 @@ describe('TreeUtils', () => {
       const newNode = asTreeNode({ name: 'App.js', kind: 'file' });
       const result = addNodeAtPath(tree, ['src'], newNode);
 
-      expect(result[0]!.children![0]!.name).toBe('App.js');
-      expect(result[0]!.children![0]!.type).toBe('file');
+      expect(result[0]?.children?.[0]?.name).toBe('App.js');
+      expect(result[0]?.children?.[0]?.type).toBe('file');
     });
 
     it('normalizes and appends if path is empty', () => {
       const result = addNodeAtPath([], [], asTreeNode({ name: 'index.js', kind: 'file' }));
-      expect(result[0]!.name).toBe('index.js');
+      expect(result[0]?.name).toBe('index.js');
     });
   });
 
@@ -167,8 +167,8 @@ describe('TreeUtils', () => {
         ]),
       ];
       const result = removeNodeAtPath(tree, ['src', 'App.js']);
-      expect(result[0]!.children).toHaveLength(1);
-      expect(result[0]!.children![0]!.name).toBe('index.js');
+      expect(result[0]?.children).toHaveLength(1);
+      expect(result[0]?.children?.[0]?.name).toBe('index.js');
     });
   });
 
@@ -177,7 +177,7 @@ describe('TreeUtils', () => {
       const tree = [makeTreeNode('src', 'folder', [makeTreeNode('App.js', 'file')])];
 
       expect(findNodeAtPath(tree, ['src', 'App.js'])).toBeDefined();
-      expect(findNodeAtPath(tree, ['src', 'App.js'])!.name).toBe('App.js');
+      expect(findNodeAtPath(tree, ['src', 'App.js'])?.name).toBe('App.js');
       expect(findNodeAtPath(tree, ['src', 'non-existent'])).toBeNull();
     });
   });
@@ -199,22 +199,22 @@ describe('TreeUtils', () => {
     it('flattens tree elements including folders', () => {
       const flat = flattenTree(tree, {}, '');
       expect(flat).toHaveLength(4);
-      expect(flat[0]!.key).toBe('src');
-      expect(flat[1]!.key).toBe('src/components');
-      expect(flat[2]!.key).toBe('src/App.js');
-      expect(flat[3]!.key).toBe('package.json');
+      expect(flat[0]?.key).toBe('src');
+      expect(flat[1]?.key).toBe('src/components');
+      expect(flat[2]?.key).toBe('src/App.js');
+      expect(flat[3]?.key).toBe('package.json');
     });
 
     it('filters rows based on text match', () => {
       const flat = flattenTree(tree, {}, 'App');
       expect(flat).toHaveLength(2);
-      expect(flat[1]!.key).toBe('src/App.js');
+      expect(flat[1]?.key).toBe('src/App.js');
     });
 
     it('filters rows based on wildcard extension matching (*.js)', () => {
       const flat = flattenTree(tree, {}, '*.js');
       expect(flat).toHaveLength(2);
-      expect(flat[1]!.key).toBe('src/App.js');
+      expect(flat[1]?.key).toBe('src/App.js');
       expect(flat.map((f) => f.key)).not.toContain('package.json');
     });
 
@@ -254,20 +254,20 @@ describe('TreeUtils', () => {
     it('inserts create row immediately after the parent folder', () => {
       const next = insertCreateRow(rows, { pathStr: 'src', type: 'file' });
       expect(next).toHaveLength(4);
-      expect(next[2]!.isCreateRow).toBe(true);
-      expect(next[2]!.createType).toBe('file');
-      expect(next[2]!.level).toBe(2);
-      expect(next[2]!.parentRow).toBe(rows[1]);
-      expect(next[3]!.key).toBe('src/App.js');
+      expect(next[2]?.isCreateRow).toBe(true);
+      expect(next[2]?.createType).toBe('file');
+      expect(next[2]?.level).toBe(2);
+      expect(next[2]?.parentRow).toBe(rows[1]);
+      expect(next[3]?.key).toBe('src/App.js');
     });
 
     it('inserts create row after the project root', () => {
       const next = insertCreateRow(rows, { pathStr: '', type: 'folder' });
       expect(next).toHaveLength(4);
-      expect(next[1]!.isCreateRow).toBe(true);
-      expect(next[1]!.createType).toBe('folder');
-      expect(next[1]!.level).toBe(1);
-      expect(next[2]!.key).toBe('src');
+      expect(next[1]?.isCreateRow).toBe(true);
+      expect(next[1]?.createType).toBe('folder');
+      expect(next[1]?.level).toBe(1);
+      expect(next[2]?.key).toBe('src');
     });
 
     it('returns original rows when creatingAt is null', () => {

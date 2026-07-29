@@ -1,9 +1,9 @@
-import type { PromptComposerProps } from '../prompt-types';
 import { Icons } from '@/components/ui/Icons';
 import Select from '@/components/ui/Select';
 import Tooltip from '@/components/ui/Tooltip';
 import { formatShortcut } from '@/utils/os';
 import React from 'react';
+import type { PromptComposerProps } from '../prompt-types';
 import styles from './Composer.module.css';
 
 export default function PromptComposer({

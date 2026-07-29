@@ -2,8 +2,8 @@ import { SidebarState } from '@/components/App/Panes/Sidebar';
 import { removeNodeAtPath } from '@/components/App/Panes/Sidebar/TreeUtils';
 import { TabState } from '@/components/App/Panes/TabBar';
 import { ChangeSetState, updateChangeSetFile } from '@/components/Workspace';
-import type { CursorPosition } from '@/components/state/domain-types';
 import { deleteKeysWithPrefixInDraft, setInDraft } from '@/components/state/StateUtils';
+import type { CursorPosition } from '@/components/state/domain-types';
 import { useCallback, useEffect, useRef } from 'react';
 import type { DiffActions, DiffHandlerProps, PendingDeletionEntry } from './types';
 

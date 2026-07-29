@@ -1,13 +1,13 @@
-import type { ShortcutActionContext } from '@/components/App/types';
 import type { ExtendedEditorState } from '@/components/App/Views/EditorArea/types';
+import type { ShortcutActionContext } from '@/components/App/types';
 import type {
   AgentSessionStateShape,
   AppStateShape,
   ChangeSetStateShape,
   EditorStateShape,
   LogStateShape,
-  PreviewStateShape,
   PreviewAreaUiStateShape,
+  PreviewStateShape,
   ProblemsStateShape,
   PromptStateShape,
   PromptUiStateShape,
@@ -16,7 +16,7 @@ import type {
   TabStateShape,
 } from '@/components/state/domain-types';
 import type { Draft, StateStore } from '@/components/state/types';
-import { vi, type Mock } from 'vitest';
+import { type Mock, vi } from 'vitest';
 
 function createStoreInternals<T extends object>() {
   return {

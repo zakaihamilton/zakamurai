@@ -1,8 +1,8 @@
-import { beforeEach, describe, expect, it, vi, type Mock } from 'vitest';
 import { createMutableVfsLike } from '@/test-utils/vfsMocks';
 import type { MutableVfsLike } from '@/test-utils/vfsMocks';
-import type { PackageJson } from './types';
+import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 import { scaffoldMissingFiles } from './scaffold';
+import type { PackageJson } from './types';
 
 describe('scaffoldMissingFiles', () => {
   let mockVfs: MutableVfsLike & { mkdirSync: Mock<(path: string) => void> };

@@ -148,13 +148,13 @@ describe('EditorArea', () => {
     const callCount = vi.mocked(highlightCode).mock.calls.length;
 
     await act(async () => {
-      rerenderFn!(<EditorArea file={{ path: ['test.js'], name: 'test.js' }} />);
+      rerenderFn?.(<EditorArea file={{ path: ['test.js'], name: 'test.js' }} />);
     });
     expect(highlightCode).toHaveBeenCalledTimes(callCount);
 
     Object.assign(state, { unrelated: 'change' });
     await act(async () => {
-      rerenderFn!(<EditorArea file={{ path: ['test.js'], name: 'test.js' }} />);
+      rerenderFn?.(<EditorArea file={{ path: ['test.js'], name: 'test.js' }} />);
     });
     expect(highlightCode).toHaveBeenCalledTimes(callCount);
   });
@@ -189,7 +189,7 @@ describe('EditorArea', () => {
     vi.mocked(highlightCode).mockClear();
 
     await act(async () => {
-      rerenderFn!(<EditorArea file={{ path: ['next.js'], name: 'next.js' }} />);
+      rerenderFn?.(<EditorArea file={{ path: ['next.js'], name: 'next.js' }} />);
     });
 
     expect(vi.mocked(highlightCode).mock.calls.at(-1)?.[9]).toBe(true);

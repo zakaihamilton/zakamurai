@@ -50,7 +50,7 @@ describe('Settings', () => {
     Settings.setOpenTabs(tabs as never);
     const savedTabs = Settings.getOpenTabs();
     expect(savedTabs).toHaveLength(1);
-    expect(savedTabs![0].id).toBe('1');
+    expect(savedTabs?.[0].id).toBe('1');
   });
 
   it('gets and sets the last code tab id', () => {

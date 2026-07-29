@@ -1,5 +1,5 @@
-import type { TokenJsonSectionProps } from './token-breakdown-types';
 import styles from './TokenJsonSection.module.css';
+import type { TokenJsonSectionProps } from './token-breakdown-types';
 
 export default function TokenJsonSection({ report }: TokenJsonSectionProps) {
   return (

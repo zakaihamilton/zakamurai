@@ -1,10 +1,11 @@
+import { requireElement } from '@/test-utils/domMocks';
 import { AppState } from '@/components/App/AppState';
 import { makeAppState } from '@/test-utils/stateMocks';
 import { asNormalizedTreeNode, makeFlatTreeRow } from '@/test-utils/treeMocks';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { SidebarTreeRow } from './sidebar-types';
 import TreeItem from './TreeItem';
+import type { SidebarTreeRow } from './sidebar-types';
 
 vi.mock('@/components/App/AppState', () => ({
   AppState: {
@@ -61,7 +62,7 @@ const makeFolderRow = (
   }) as SidebarTreeRow;
 
 function draggableElement(label: string): Element {
-  return screen.getByText(label).closest('[draggable="true"]')!;
+  return requireElement(screen.getByText(label).closest('[draggable="true"]'));
 }
 
 describe('TreeItem', () => {
@@ -197,11 +198,11 @@ describe('TreeItem', () => {
     }) as SidebarTreeRow;
     render(<TreeItem row={customRow} {...treeItemProps} />);
 
-    const itemElement = screen.getByText('app.js').closest('[draggable="true"]');
+    const itemElement = requireElement(screen.getByText('app.js').closest('[draggable="true"]'));
 
     // Right click to open context menu wrapped in act
     act(() => {
-      fireEvent.contextMenu(itemElement!);
+      fireEvent.contextMenu(itemElement);
     });
 
     await waitFor(() => {
@@ -282,10 +283,12 @@ describe('TreeItem', () => {
     const rootRow = makeFolderRow('Test Project', [], { isRoot: true });
     render(<TreeItem row={rootRow} {...treeItemProps} />);
 
-    const itemElement = screen.getByText('Test Project').closest('[draggable="false"]')!;
+    const itemElement = requireElement(
+      screen.getByText('Test Project').closest('[draggable="false"]'),
+    );
 
     act(() => {
-      fireEvent.contextMenu(itemElement!);
+      fireEvent.contextMenu(itemElement);
     });
 
     await waitFor(() => {

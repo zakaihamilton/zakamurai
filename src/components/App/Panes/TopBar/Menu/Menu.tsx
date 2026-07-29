@@ -1,14 +1,14 @@
 import { LogState } from '@/components/App/Views/LogArea';
-import type { TopBarMenuStateShape } from '@/components/state/domain-types';
 import { createState } from '@/components/state/State';
+import type { TopBarMenuStateShape } from '@/components/state/domain-types';
 import ContextMenu from '@/components/ui/ContextMenu';
 import Dialog from '@/components/ui/Dialog';
 import { Icons } from '@/components/ui/Icons';
 import Tooltip from '@/components/ui/Tooltip';
 import { formatShortcut } from '@/utils/os';
+import { requireStore } from '../../../types';
 import type { TopBarMenuProps } from '../topbar-types';
 import styles from './Menu.module.css';
-import { requireStore } from '../../../types';
 
 const TopBarMenuState = createState<TopBarMenuStateShape>('TopBarMenuState');
 

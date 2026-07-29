@@ -1,19 +1,19 @@
+import type { ExtendedEditorState } from '@/components/App/Views/EditorArea/types';
+import type { TabStateShape } from '@/components/state/domain-types';
+import type { StateStore } from '@/components/state/types';
+import {
+  createMockEditorState,
+  createMockShouldScrollRef,
+  createMockTabState,
+} from '@/test-utils/editorMocks';
 import {
   findClassInCss,
   findClassReferenceInJs,
   getAssociatedFilePath,
   getStyleAtCursor,
 } from '@/utils/navigation';
-import {
-  createMockEditorState,
-  createMockShouldScrollRef,
-  createMockTabState,
-} from '@/test-utils/editorMocks';
-import type { ExtendedEditorState } from '@/components/App/Views/EditorArea/types';
-import type { TabStateShape } from '@/components/state/domain-types';
-import type { StateStore } from '@/components/state/types';
 import { act, renderHook } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi, type Mock } from 'vitest';
+import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 import useAssociationNavigator from './AssociationNavigator';
 
 vi.mock('@/utils/navigation', () => ({

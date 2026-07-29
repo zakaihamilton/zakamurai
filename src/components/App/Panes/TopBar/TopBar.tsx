@@ -26,6 +26,7 @@ import { Icons } from '@/components/ui/Icons';
 import Tooltip from '@/components/ui/Tooltip';
 import { formatShortcut } from '@/utils/os';
 import React, { useEffect } from 'react';
+import { requireStore } from '../../types';
 import ActionButtons from './ActionButtons';
 import Breadcrumb from './Breadcrumb';
 import TopBarMenu from './Menu';
@@ -36,7 +37,6 @@ import styles from './TopBar.module.css';
 import WorkingIndicator from './WorkingIndicator';
 import useZipExporter from './ZipExporter';
 import type { ResetNewProjectStateParams } from './topbar-types';
-import { requireStore } from '../../types';
 
 export function resetNewProjectState({
   template = 'default',

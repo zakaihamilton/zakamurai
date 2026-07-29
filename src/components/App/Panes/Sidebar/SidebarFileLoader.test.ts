@@ -1,9 +1,9 @@
-import { renderHook } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
-import { makeFileSystemApi } from '@/test-utils/fsMocks';
 import { createMockEditorState, createMockTabState } from '@/test-utils/editorMocks';
+import { makeFileSystemApi } from '@/test-utils/fsMocks';
 import { makeAppState, makeSidebarState } from '@/test-utils/stateMocks';
 import { asNormalizedTreeNode, makeFlatTreeRow } from '@/test-utils/treeMocks';
+import { renderHook } from '@testing-library/react';
+import { describe, expect, it, vi } from 'vitest';
 import useSidebarFileLoader from './SidebarFileLoader';
 
 describe('useSidebarFileLoader', () => {

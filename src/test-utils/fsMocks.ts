@@ -1,6 +1,6 @@
 import type { FileSystemApi } from '@/components/App/types';
-import type { TreeNode } from '@/components/state/domain-types';
 import type { useFileSystem } from '@/components/Storage';
+import type { TreeNode } from '@/components/state/domain-types';
 import { vi } from 'vitest';
 
 export function makeFileSystemApi(overrides: Partial<FileSystemApi> = {}): FileSystemApi {

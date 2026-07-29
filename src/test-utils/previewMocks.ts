@@ -1,7 +1,7 @@
+import type { AlmostnodeContainer } from '@/utils/compiler/types';
 import type { RefObject } from 'react';
 import type { Mock } from 'vitest';
 import { vi } from 'vitest';
-import type { AlmostnodeContainer } from '@/utils/compiler/types';
 
 export type MockPreviewWindow = {
   postMessage: Mock<(...args: unknown[]) => void>;

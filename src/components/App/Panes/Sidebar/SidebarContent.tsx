@@ -1,6 +1,6 @@
 import type { CssCustomProperties } from '@/components/App/types';
-import type { SidebarContentProps } from './sidebar-types';
 import styles from './SidebarContent.module.css';
+import type { SidebarContentProps } from './sidebar-types';
 
 /** Presentational sidebar composition; controller-provided props contain all store actions. */
 export default function SidebarContent({

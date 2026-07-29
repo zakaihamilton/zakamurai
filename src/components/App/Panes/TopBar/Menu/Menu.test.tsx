@@ -1,7 +1,7 @@
-import type { ReactNode } from 'react';
 import { LogState } from '@/components/App/Views/LogArea';
 import { makeLogState } from '@/test-utils/stateMocks';
 import { act, fireEvent, render, screen } from '@testing-library/react';
+import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import TopBarMenu from './Menu';
 

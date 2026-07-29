@@ -1,5 +1,4 @@
 import type { AgentEvent } from '@/components/AI/types';
-import type { FormEvent, MouseEvent } from 'react';
 import { makeAgentSession } from '@/test-utils/agentSessionMocks';
 import { createMockEditorState, createMockTab } from '@/test-utils/editorMocks';
 import { makeFileSystemApi } from '@/test-utils/fsMocks';
@@ -11,9 +10,10 @@ import {
   makeTabState,
 } from '@/test-utils/stateMocks';
 import { act, renderHook, waitFor } from '@testing-library/react';
+import type { FormEvent, MouseEvent } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import useAgentRunner, { formatAgentEvent } from './useAgentRunner';
 import type { UseAgentRunnerParams } from './prompt-types';
+import useAgentRunner, { formatAgentEvent } from './useAgentRunner';
 
 const runAgent = vi.fn();
 const runCollaborativeAgent = vi.fn();

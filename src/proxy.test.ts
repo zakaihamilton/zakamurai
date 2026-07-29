@@ -1,6 +1,6 @@
-import { describe, expect, it, vi } from 'vitest';
 import { createMockProxyRequest } from '@/test-utils/domMocks';
 import type { NextRequest } from 'next/server';
+import { describe, expect, it, vi } from 'vitest';
 
 type MockNextResponse = {
   body: string | null;

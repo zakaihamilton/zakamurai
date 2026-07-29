@@ -1,5 +1,5 @@
-import type { UseTabDragAndDropParams } from './tab-types';
 import { useCallback } from 'react';
+import type { UseTabDragAndDropParams } from './tab-types';
 
 export default function useTabDragAndDrop({
   tabState,

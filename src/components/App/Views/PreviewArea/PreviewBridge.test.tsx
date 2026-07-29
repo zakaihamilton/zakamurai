@@ -1,6 +1,3 @@
-import { act, render } from '@testing-library/react';
-import React from 'react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   createMockPreviewWindow,
   mockCompilerContainer,
@@ -8,6 +5,9 @@ import {
   mockIframeRef,
   stubMessageChannel,
 } from '@/test-utils/previewMocks';
+import { act, render } from '@testing-library/react';
+import React from 'react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import PreviewBridge from './PreviewBridge';
 import { PREVIEW_CONNECT, PREVIEW_CONNECT_ACK, PREVIEW_PROTOCOL_VERSION } from './previewProtocol';
 

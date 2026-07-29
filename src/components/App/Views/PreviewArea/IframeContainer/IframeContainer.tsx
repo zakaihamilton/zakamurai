@@ -1,6 +1,6 @@
 import type { CssCustomProperties } from '@/components/App/types';
-import type { PreviewIframeContainerProps } from '../preview-types';
 import { PreviewErrorBanner } from '../ErrorOverlay';
+import type { PreviewIframeContainerProps } from '../preview-types';
 import { PREVIEW_IFRAME_SANDBOX } from '../previewSandbox';
 import styles from './IframeContainer.module.css';
 

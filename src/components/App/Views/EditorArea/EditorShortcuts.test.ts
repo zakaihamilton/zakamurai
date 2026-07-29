@@ -1,7 +1,7 @@
-import { createKeyboardEvent, createMockTextareaRef } from '@/test-utils/editorMocks';
 import type { TextareaRef } from '@/components/App/Views/EditorArea/types';
+import { createKeyboardEvent, createMockTextareaRef } from '@/test-utils/editorMocks';
 import { renderHook } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi, type Mock } from 'vitest';
+import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 import useEditorShortcuts from './EditorShortcuts';
 
 vi.mock('@/utils/os', () => ({

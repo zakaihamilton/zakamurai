@@ -1,6 +1,6 @@
-import type { ReactNode } from 'react';
 import { createDefaultRoleGraph } from '@/components/AI/Agent/Roles';
 import { fireEvent, render, screen } from '@testing-library/react';
+import type { ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import RoleGraphDialog from './RoleGraphDialog';
 

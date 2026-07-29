@@ -1,7 +1,7 @@
+import type { FileSystemApi } from '@/components/App/types';
+import { createState } from '@/components/state/State';
 import type { FileSystemStateShape } from '@/components/state/domain-types';
 import type { Draft } from '@/components/state/types';
-import { createState } from '@/components/state/State';
-import type { FileSystemApi } from '@/components/App/types';
 import { useCallback, useEffect, useMemo } from 'react';
 
 const DB_NAME = 'ZakamuraiFS';

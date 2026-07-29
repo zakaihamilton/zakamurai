@@ -7,9 +7,9 @@ import { Icons } from '@/components/ui/Icons';
 import Tooltip from '@/components/ui/Tooltip';
 import { formatShortcut } from '@/utils/os';
 import { useEffect, useMemo, useRef } from 'react';
+import { requireStore } from '../../../types';
 import type { ActionButtonsProps } from '../topbar-types';
 import styles from './ActionButtons.module.css';
-import { requireStore } from '../../../types';
 
 const isViewTab = (tabId: string | null | undefined): boolean =>
   tabId === 'ai-logs' || tabId === 'preview';

@@ -37,9 +37,8 @@ export interface StateStoreInternals<T extends object> {
 
 /** Callable proxy store returned by createObject / createState hooks. */
 export type StateStore<T extends object> = StateStoreInternals<T> &
-  T & {
-    (draft: (draft: Draft<T>) => void): void;
-  };
+  T &
+  ((draft: (draft: Draft<T>) => void) => void);
 
 export type StateSelectorKey<T extends object> = keyof T & string;
 

@@ -53,7 +53,6 @@ describe('Dialog', () => {
     const { container } = render(
       <Dialog
         footer={null}
-        children={null}
         isOpen={false}
         title="T"
         message="M"
@@ -69,7 +68,6 @@ describe('Dialog', () => {
     render(
       <Dialog
         footer={null}
-        children={null}
         isOpen={true}
         title="T"
         message="M"
@@ -90,7 +88,6 @@ describe('Dialog', () => {
     render(
       <Dialog
         footer={null}
-        children={null}
         isOpen={true}
         title="T"
         message="M"

@@ -1,8 +1,8 @@
-import type { ReactNode } from 'react';
 import { useFileSystem } from '@/components/Storage';
-import { makeAppState } from '@/test-utils/stateMocks';
 import { makeFileSystemApi } from '@/test-utils/fsMocks';
+import { makeAppState } from '@/test-utils/stateMocks';
 import { render, screen } from '@testing-library/react';
+import type { ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import App from './App';
 import { AppState } from './AppState';

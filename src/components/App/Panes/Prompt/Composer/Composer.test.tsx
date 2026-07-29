@@ -1,5 +1,6 @@
-import type { ChangeEvent, ReactNode } from 'react';
+import { requireElement } from '@/test-utils/domMocks';
 import { fireEvent, render, screen } from '@testing-library/react';
+import type { ChangeEvent, ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import PromptComposer from './Composer';
 
@@ -85,7 +86,7 @@ describe('PromptComposer', () => {
     );
     const form = document.querySelector('form');
     expect(form).not.toBeNull();
-    fireEvent.submit(form!);
+    fireEvent.submit(requireElement(form));
     expect(onSubmit).toHaveBeenCalled();
   });
 

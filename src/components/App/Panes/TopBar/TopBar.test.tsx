@@ -374,12 +374,12 @@ describe('TopBar', () => {
 
     const items = screen.getAllByRole('menuitem');
     expect(items).toHaveLength(3);
-    expect(items[0]!.textContent).toContain('utils.js');
-    expect(items[0]!.textContent).toContain('L30');
-    expect(items[1]!.textContent).toContain('index.css');
-    expect(items[1]!.textContent).toContain('L20');
-    expect(items[2]!.textContent).toContain('App.js');
-    expect(items[2]!.textContent).toContain('L10');
+    expect(items[0]?.textContent).toContain('utils.js');
+    expect(items[0]?.textContent).toContain('L30');
+    expect(items[1]?.textContent).toContain('index.css');
+    expect(items[1]?.textContent).toContain('L20');
+    expect(items[2]?.textContent).toContain('App.js');
+    expect(items[2]?.textContent).toContain('L10');
 
     fireEvent.click(overlay);
     expect(screen.queryByTestId('history-dropdown')).toBeNull();

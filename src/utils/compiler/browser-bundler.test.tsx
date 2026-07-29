@@ -1,11 +1,11 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createMinimalVfsLike, createMutableVfsLike } from '@/test-utils/vfsMocks';
-import type { VfsLike } from './types';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   __testables,
   assertBrowserBuildSupported,
   isBrowserBundleCommand,
 } from './browser-bundler';
+import type { VfsLike } from './types';
 
 function vfs(files: Record<string, string> = {}): VfsLike {
   return createMutableVfsLike(files);
@@ -655,7 +655,7 @@ describe('browser-bundler', () => {
         });
 
         const resolve = (path: string, importer?: string, resolveDir?: string) =>
-          onResolve!({ path, importer, resolveDir: resolveDir || '/src' });
+          onResolve?.({ path, importer, resolveDir: resolveDir || '/src' });
 
         const entry = resolve('/src/main.jsx', undefined, '/');
         expect(entry.errors).toBeUndefined();

@@ -1,5 +1,5 @@
-import { describe, expect, it, vi } from 'vitest';
 import { asChangeSetStore } from '@/test-utils/vitest-mocks';
+import { describe, expect, it, vi } from 'vitest';
 import { addChangeSet, createChangeSet, updateChangeSetFile } from './ChangeSets';
 
 describe('ChangeSets', () => {

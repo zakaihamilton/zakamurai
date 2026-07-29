@@ -120,7 +120,7 @@ describe('Shortcuts isMatch', () => {
     const showNotification = vi.fn();
     const editorState = createMockEditorState({ isReadOnly: false });
 
-    shortcut!.action!(
+    shortcut?.action?.(
       makeShortcutActionContext({
         editorState,
         showNotification,
@@ -129,7 +129,7 @@ describe('Shortcuts isMatch', () => {
     expect(editorState.isReadOnly).toBe(true);
     expect(showNotification).toHaveBeenCalledWith('Inspection mode active', 'info');
 
-    shortcut!.action!(
+    shortcut?.action?.(
       makeShortcutActionContext({
         editorState,
         showNotification,
@@ -171,14 +171,14 @@ describe('Shortcuts isMatch', () => {
       editorState,
       tabState,
     });
-    backShortcut!.action!(ctx);
+    backShortcut?.action?.(ctx);
     expect(editorState.navigationHistory.currentIndex).toBe(1);
     expect(editorState.cursorPos?.['src/index.css']).toEqual({ line: 5, col: 1, index: 0 });
     expect(editorState.shouldScrollTo?.filePath).toBe('src/index.css');
     expect(editorState.shouldScrollTo?.line).toBe(5);
     expect(tabState.activeTabId).toBe('src/index.css');
 
-    forwardShortcut!.action!(ctx);
+    forwardShortcut?.action?.(ctx);
     expect(editorState.navigationHistory.currentIndex).toBe(2);
     expect(tabState.activeTabId).toBe('src/utils.js');
   });
@@ -199,13 +199,13 @@ describe('Shortcuts isMatch', () => {
     });
 
     const ctx = makeShortcutActionContext({ tabState });
-    nextShortcut!.action!(ctx);
+    nextShortcut?.action?.(ctx);
     expect(tabState.activeTabId).toBe('src/index.css');
-    nextShortcut!.action!(ctx);
+    nextShortcut?.action?.(ctx);
     expect(tabState.activeTabId).toBe('preview');
-    nextShortcut!.action!(ctx);
+    nextShortcut?.action?.(ctx);
     expect(tabState.activeTabId).toBe('src/App.js');
-    previousShortcut!.action!(ctx);
+    previousShortcut?.action?.(ctx);
     expect(tabState.activeTabId).toBe('preview');
   });
 
@@ -229,9 +229,9 @@ describe('Shortcuts isMatch', () => {
     const themeShortcut = SHORTCUTS.find((s) => s.id === 'toggle-theme');
     expect(themeShortcut).toBeDefined();
     const appState = makeAppState({ theme: 'dark' });
-    themeShortcut!.action!(makeShortcutActionContext({ appState }));
+    themeShortcut?.action?.(makeShortcutActionContext({ appState }));
     expect(appState.theme).toBe('light');
-    themeShortcut!.action!(makeShortcutActionContext({ appState }));
+    themeShortcut?.action?.(makeShortcutActionContext({ appState }));
     expect(appState.theme).toBe('dark');
   });
 
@@ -239,7 +239,7 @@ describe('Shortcuts isMatch', () => {
     const closeModalShortcut = SHORTCUTS.find((s) => s.id === 'close-modal');
     expect(closeModalShortcut).toBeDefined();
     const appState = makeAppState({ showShortcuts: true, showCompletionDebug: true });
-    closeModalShortcut!.action!(makeShortcutActionContext({ appState }));
+    closeModalShortcut?.action?.(makeShortcutActionContext({ appState }));
     expect(appState.showShortcuts).toBe(false);
     expect(appState.showCompletionDebug).toBe(false);
   });

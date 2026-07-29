@@ -315,7 +315,7 @@ export function findImportSource(
 
   // ESM Imports
   const esmImportRegex = /import\s+([\s\S]*?)\s+from\s+['"]([^'"]+)['"]/g;
-  let match;
+  let match: RegExpExecArray | null = null;
   // biome-ignore lint/suspicious/noAssignInExpressions: standard regex execution loop
   while ((match = esmImportRegex.exec(jsCode)) !== null) {
     const importClause = match[1].trim();

@@ -1,6 +1,6 @@
+import { PromptState } from '@/components/App/Panes/Prompt/PromptState';
 import type { PromptUiStateShape } from '@/components/state/domain-types';
 import type { StateStore } from '@/components/state/types';
-import { PromptState } from '@/components/App/Panes/Prompt/PromptState';
 import { useCallback } from 'react';
 
 export default function usePromptHistory(

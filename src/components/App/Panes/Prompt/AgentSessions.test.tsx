@@ -1,12 +1,13 @@
+import type { RoleGraph } from '@/components/AI/types';
+import type { CreateAgentSessionOptions } from '@/components/App/types';
 import type {
   AgentSession,
   AgentSessionMessage,
   AgentSessionStateShape,
 } from '@/components/state/domain-types';
-import type { CreateAgentSessionOptions } from '@/components/App/types';
-import type { RoleGraph } from '@/components/AI/types';
 import {
   expectAgentSession,
+  requireActiveSession,
   requireSessionId,
   sessionRoleGraph,
 } from '@/test-utils/agentSessionMocks';
@@ -43,9 +44,9 @@ describe('AgentSessions', () => {
     const state = createDefaultAgentSessions('model-a');
     const sessions = listAgentSessions(state.sessions);
     expect(sessions).toHaveLength(1);
-    expect(state.activeSessionId).toBe(sessions[0]!.id);
-    expect(sessions[0]!.mode).toBe('single');
-    expect(sessions[0]!.parentId).toBeNull();
+    expect(state.activeSessionId).toBe(sessions[0]?.id);
+    expect(sessions[0]?.mode).toBe('single');
+    expect(sessions[0]?.parentId).toBeNull();
     expect(active(state).modelId).toBe('model-a');
     expect(sessionRoleGraph(active(state)).roles).toHaveLength(3);
   });
@@ -61,25 +62,27 @@ describe('AgentSessions', () => {
     state = addAgentSession(state, { name: 'Research', mode: 'team' });
     expect(listAgentSessions(state.sessions)).toHaveLength(2);
     expect(state.activeSessionId).not.toBe(firstId);
-    expect(getActiveAgentSession(state)!.mode).toBe('team');
-    expect(sessionRoleGraph(getActiveAgentSession(state)!).roles).toHaveLength(3);
+    expect(getActiveAgentSession(state)?.mode).toBe('team');
+    expect(sessionRoleGraph(requireActiveSession(getActiveAgentSession(state))).roles).toHaveLength(
+      3,
+    );
 
     state = renameAgentSession(state, requireSessionId(state.activeSessionId), '  Research Ops  ');
-    expect(getActiveAgentSession(state)!.name).toBe('Research Ops');
+    expect(getActiveAgentSession(state)?.name).toBe('Research Ops');
     state = renameAgentSession(state, requireSessionId(state.activeSessionId), '   ');
-    expect(getActiveAgentSession(state)!.name).toBe('Research Ops');
+    expect(getActiveAgentSession(state)?.name).toBe('Research Ops');
 
     state = setActiveAgentSession(state, firstId);
     expect(state.activeSessionId).toBe(firstId);
 
-    const secondId = listAgentSessions(state.sessions).find((s) => s.id !== firstId)!.id;
+    const secondId = listAgentSessions(state.sessions).find((s) => s.id !== firstId)?.id;
     state = deleteAgentSession(state, firstId);
     expect(listAgentSessions(state.sessions)).toHaveLength(1);
-    expect(getActiveAgentSession(state)!.id).toBe(secondId);
+    expect(getActiveAgentSession(state)?.id).toBe(secondId);
 
     state = addAgentSession(state, { name: 'Extra' });
     const activeId = requireSessionId(state.activeSessionId);
-    const other = listAgentSessions(state.sessions).find((s) => s.id !== activeId)!.id;
+    const other = listAgentSessions(state.sessions).find((s) => s.id !== activeId)?.id;
     state = deleteAgentSession(state, other);
     expect(state.activeSessionId).toBe(activeId);
   });
@@ -89,8 +92,8 @@ describe('AgentSessions', () => {
     const onlyId = requireSessionId(state.activeSessionId);
     state = deleteAgentSession(state, onlyId);
     expect(listAgentSessions(state.sessions)).toHaveLength(1);
-    expect(getActiveAgentSession(state)!.modelId).toBe('keep-model');
-    expect(getActiveAgentSession(state)!.id).not.toBe(onlyId);
+    expect(getActiveAgentSession(state)?.modelId).toBe('keep-model');
+    expect(getActiveAgentSession(state)?.id).not.toBe(onlyId);
   });
 
   it('branches a conversation with isolated copied history and configuration', () => {
@@ -105,18 +108,18 @@ describe('AgentSessions', () => {
     });
 
     state = createAgentBranch(state, parentId);
-    const child = getActiveAgentSession(state)!;
+    const child = requireActiveSession(getActiveAgentSession(state));
     expect(child.parentId).toBe(parentId);
     expect(child.name).toBe('Agent 1 branch');
     expect(child.mode).toBe('team');
-    expect(child.messages).toEqual(state.sessions[parentId]!.messages);
+    expect(child.messages).toEqual(state.sessions[parentId]?.messages);
 
     state = appendSessionMessage(
       state,
       child.id,
       createSessionMessage({ role: 'user', text: 'Instead, focus on accessibility.' }),
     );
-    expect(state.sessions[parentId]!.messages).toHaveLength(2);
+    expect(state.sessions[parentId]?.messages).toHaveLength(2);
     expect(getAgentSessionSubtreeIds(state.sessions, parentId)).toEqual(
       new Set([parentId, child.id]),
     );
@@ -148,11 +151,11 @@ describe('AgentSessions', () => {
         b: { id: 'b', name: 'B', parentId: 'a', createdAt: 5 },
       },
     });
-    expect(normalized.sessions.child!.parentId).toBe('root');
-    expect(normalized.sessions.orphan!.parentId).toBeNull();
-    expect(normalized.sessions.a!.parentId).toBeNull();
-    expect(normalized.sessions.b!.parentId).toBeNull();
-    expect(serializeAgentSessions(normalized).sessions.child!.parentId).toBe('root');
+    expect(normalized.sessions.child?.parentId).toBe('root');
+    expect(normalized.sessions.orphan?.parentId).toBeNull();
+    expect(normalized.sessions.a?.parentId).toBeNull();
+    expect(normalized.sessions.b?.parentId).toBeNull();
+    expect(serializeAgentSessions(normalized).sessions.child?.parentId).toBe('root');
   });
 
   it('formats only the newest transcript context within its character budget', () => {
@@ -179,10 +182,10 @@ describe('AgentSessions', () => {
         edges: [],
       },
     });
-    const session = getActiveAgentSession(state)!;
+    const session = requireActiveSession(getActiveAgentSession(state));
     expect(session.mode).toBe('team');
     expect(session.messages).toHaveLength(1);
-    expect(sessionRoleGraph(session).roles[0]!.modelId).toBe('m');
+    expect(sessionRoleGraph(session).roles[0]?.modelId).toBe('m');
   });
 
   it('throws for missing sessions on mutate helpers', () => {
@@ -206,8 +209,8 @@ describe('AgentSessions', () => {
         createSessionMessage({ role: 'user', text: `msg-${i}` }),
       );
     }
-    expect(getActiveAgentSession(state)!.messages).toHaveLength(40);
-    expect(getActiveAgentSession(state)!.messages[0]!.text).toBe('msg-5');
+    expect(getActiveAgentSession(state)?.messages).toHaveLength(40);
+    expect(getActiveAgentSession(state)?.messages[0]?.text).toBe('msg-5');
 
     for (let i = 1; i < MAX_AGENT_SESSIONS; i++) {
       state = addAgentSession(state, { name: `Agent ${i + 1}` });
@@ -285,13 +288,15 @@ describe('AgentSessions', () => {
     };
     const normalized = normalizeAgentSessions(raw);
     expect(normalized.activeSessionId).toBe('a');
-    expect(normalized.sessions.a!.status).toBe('idle');
-    expect(normalized.sessions.a!.messages).toHaveLength(2);
-    expect(sessionRoleGraph(normalized.sessions.a!).roles[0]!.modelId).toBe('m1');
+    expect(normalized.sessions.a?.status).toBe('idle');
+    expect(normalized.sessions.a?.messages).toHaveLength(2);
+    expect(sessionRoleGraph(requireActiveSession(normalized.sessions.a)).roles[0]?.modelId).toBe(
+      'm1',
+    );
     const serialized = serializeAgentSessions(normalized);
-    expect(serialized.sessions.a!.messages).toHaveLength(2);
+    expect(serialized.sessions.a?.messages).toHaveLength(2);
     expect(serialized.sessions.a).not.toHaveProperty('status');
-    expect((serialized.sessions.a!.roleGraph as RoleGraph).roles[0]!.id).toBe('p');
+    expect((serialized.sessions.a?.roleGraph as RoleGraph).roles[0]?.id).toBe('p');
   });
 
   it('creates sessions with defaults and optional parent links', () => {
@@ -390,7 +395,7 @@ describe('AgentSessions', () => {
         state,
         activeId,
         createSessionMessage({ role: 'user', text: 'x' }),
-      ).sessions[activeId]!.messages.at(-1)!.text,
+      ).sessions[activeId]?.messages.at(-1)?.text,
     ).toBe('x');
     expect(
       formatSessionContext(

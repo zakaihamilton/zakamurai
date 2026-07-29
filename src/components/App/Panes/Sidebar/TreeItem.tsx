@@ -2,8 +2,8 @@ import type { CssCustomProperties } from '@/components/App/types';
 import Node from '@/components/state/Node';
 import React from 'react';
 import CreateRowInput from './CreateRowInput';
-import type { TreeItemContentProps, TreeItemProps } from './sidebar-types';
 import TreeItemContent from './TreeItemContent';
+import type { TreeItemContentProps, TreeItemProps } from './sidebar-types';
 import { TreeItemState, useTreeItemControls } from './useTreeItemControls';
 
 export { TreeItemState };

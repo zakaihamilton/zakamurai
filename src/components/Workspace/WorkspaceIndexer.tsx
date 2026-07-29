@@ -109,13 +109,13 @@ export function useWorkspaceIndexer() {
       if (timerRef.current) clearTimeout(timerRef.current);
     };
   }, [
+    editorState,
     editorState?.fileContents,
     isReady,
     version,
     mode,
     rootHandle,
     health,
-    include,
     exclude,
     maxFileBytes,
   ]);

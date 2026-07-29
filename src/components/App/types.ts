@@ -1,5 +1,5 @@
+import type { RoleGraph } from '@/components/AI/types';
 import type { ExtendedEditorState } from '@/components/App/Views/EditorArea/types';
-import type { CSSProperties, Dispatch, SetStateAction } from 'react';
 import type {
   AgentSession,
   AgentSessionMessage,
@@ -19,8 +19,8 @@ import type {
   TreeNode,
 } from '@/components/state/domain-types';
 import type { StateStore } from '@/components/state/types';
-import type { RoleGraph } from '@/components/AI/types';
 import type { LocalFsLike } from '@/utils/compiler/types';
+import type { CSSProperties, Dispatch, SetStateAction } from 'react';
 
 /** Tree node after `normalizeChildren` assigns `path` and `type`. */
 export type NormalizedTreeNode = TreeNode & {

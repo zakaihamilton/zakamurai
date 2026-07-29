@@ -48,7 +48,8 @@ describe('JsSymbolResolver', () => {
         "import styles from './App.module.css';\nconst el = <div className={styles.primary}>Hi</div>;";
       const loc = findClassReferenceInJs(jsCode, 'primary', 'src/App.js', 'src/App.module.css');
       expect(loc).not.toBeNull();
-      expect(jsCode.substring(loc!.index, loc!.index + 'styles.primary'.length)).toBe(
+      if (!loc || loc.index == null) throw new Error('expected location');
+      expect(jsCode.substring(loc.index, loc.index + 'styles.primary'.length)).toBe(
         'styles.primary',
       );
     });
@@ -58,14 +59,15 @@ describe('JsSymbolResolver', () => {
         "import styles from './App.module.css';\nconst el = <div className={styles['primary-btn']}>Hi</div>;";
       const loc = findClassReferenceInJs(jsCode, 'primary-btn');
       expect(loc).not.toBeNull();
-      expect(loc!.line).toBe(2);
+      expect(loc?.line).toBe(2);
     });
 
     it('falls back to string literal class names for standard CSS imports', () => {
       const jsCode = 'import \'./global.css\';\nconst el = <div className="btn primary">Hi</div>;';
       const loc = findClassReferenceInJs(jsCode, 'primary');
       expect(loc).not.toBeNull();
-      expect(jsCode.substring(loc!.index, loc!.index + 'primary'.length)).toBe('primary');
+      if (!loc || loc.index == null) throw new Error('expected location');
+      expect(jsCode.substring(loc.index, loc.index + 'primary'.length)).toBe('primary');
     });
 
     it('returns null when class is not referenced', () => {

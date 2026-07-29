@@ -1,7 +1,7 @@
-import type { PromptHeaderProps } from '../prompt-types';
 import { Icons } from '@/components/ui/Icons';
 import Tooltip from '@/components/ui/Tooltip';
 import React from 'react';
+import type { PromptHeaderProps } from '../prompt-types';
 import styles from './Header.module.css';
 
 export default function PromptHeader({

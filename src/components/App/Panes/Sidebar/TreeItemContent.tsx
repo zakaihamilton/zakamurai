@@ -2,10 +2,10 @@ import Dialog from '@/components/ui/Dialog';
 import { Icons } from '@/components/ui/Icons';
 import Tooltip from '@/components/ui/Tooltip';
 import { isMediaFile } from '@/utils/file';
-import React from 'react';
-import type { TreeItemContentProps } from './sidebar-types';
+import type React from 'react';
 import SidebarContextMenu from './SidebarContextMenu';
 import styles from './TreeItemContent.module.css';
+import type { TreeItemContentProps } from './sidebar-types';
 
 type HighlightRange = { start: number; end: number };
 

@@ -1,13 +1,6 @@
 import { reportDiagnostic } from '@/components/Diagnostics';
 import type { ChangeSet, LogEntry, PendingDiff, Tab } from '@/components/state/domain-types';
 import { isStringRecord, normalizeRecoveryCheckpoint } from '@/contracts/runtime';
-import type {
-  LargeCache,
-  LargeCacheKey,
-  RecoveryCheckpoint,
-  SettingsStorageHealth,
-  StorageLayer,
-} from './storage-types';
 import {
   normalizePendingDiffs,
   normalizePromptHistory,
@@ -15,6 +8,13 @@ import {
   serializeOpenTabs,
 } from './SettingsSerialization';
 import { idbClear, idbGet, idbSet } from './idbStore';
+import type {
+  LargeCache,
+  LargeCacheKey,
+  RecoveryCheckpoint,
+  SettingsStorageHealth,
+  StorageLayer,
+} from './storage-types';
 
 const KEYS = {
   PROJECT_NAME: 'zakamurai_project_name',
@@ -145,7 +145,7 @@ const largeWriteGen = {
   changeSets: 0,
 };
 
-const readLegacyLocal = <T,>(key: string, fallback: T, { raw = false } = {}): T => {
+const readLegacyLocal = <T>(key: string, fallback: T, { raw = false } = {}): T => {
   const storage = getStorage();
   if (!storage) return fallback;
   const val = storage.getItem(key);
@@ -572,7 +572,7 @@ const Settings = {
 
     hydratePromise = (async () => {
       recoveryCheckpoint = normalizeRecoveryCheckpoint(await idbGet(RECOVERY_CHECKPOINT_KEY));
-      const loadOne = async <T,>(
+      const loadOne = async <T>(
         cacheKey: LargeCacheKey,
         fallback: T,
         { raw = false }: { raw?: boolean } = {},

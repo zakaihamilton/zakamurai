@@ -1,6 +1,6 @@
+import { mockTouchEvent } from '@/test-utils/domMocks';
 import { act, renderHook } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { mockTouchEvent } from '@/test-utils/domMocks';
 import { useLongPress } from './touch';
 
 describe('useLongPress hook', () => {

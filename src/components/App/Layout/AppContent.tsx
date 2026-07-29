@@ -1,5 +1,5 @@
 import Resizer from '@/components/ui/Resizer';
-import React from 'react';
+import type React from 'react';
 import Node from '../../state/Node';
 import { AppState } from '../AppState';
 import { Sidebar, SidebarState, StatusBar, TopBar } from '../Panes';

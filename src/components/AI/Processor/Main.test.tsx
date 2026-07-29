@@ -11,7 +11,7 @@ import {
   createLogStateMock,
   createSidebarStateMock,
 } from '@/test-utils/agentMocks';
-import { beforeEach, describe, expect, test, vi, type Mock } from 'vitest';
+import { type Mock, beforeEach, describe, expect, test, vi } from 'vitest';
 import { processAIResponse } from './Main';
 
 describe('Main', () => {
@@ -187,7 +187,7 @@ added
     });
 
     test('creates missing directory nodes in sidebar state', async () => {
-      vi.mocked(mockFS.getFileHandleAtPath!).mockResolvedValue(null);
+      vi.mocked(mockFS.getFileHandleAtPath).mockResolvedValue(null);
       const sidebarStateObj: SidebarStateDraft = { folderTree: [] };
       const sidebarState = createSidebarStateMock(sidebarStateObj);
 
@@ -213,7 +213,7 @@ content
     });
 
     test('handles filesystem and processing errors gracefully by logging', async () => {
-      vi.mocked(mockFS.readFile!).mockRejectedValue(new Error('FS Read Error'));
+      vi.mocked(mockFS.readFile).mockRejectedValue(new Error('FS Read Error'));
 
       const response = `// --- File: test.js ---
 new content

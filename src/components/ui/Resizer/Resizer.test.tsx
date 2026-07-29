@@ -3,7 +3,7 @@ import type { StateStore } from '@/components/state/types';
 import { fireEvent, render, screen } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import React from 'react';
-import { beforeEach, describe, expect, it, vi, type Mock } from 'vitest';
+import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 import Resizer from './Resizer';
 
 const { mockUseState, mockStateComponent } = vi.hoisted(() => {

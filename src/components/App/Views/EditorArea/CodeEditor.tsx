@@ -1,27 +1,21 @@
-import Dialog from '@/components/ui/Dialog';
 import type { CursorPosition } from '@/components/state/domain-types';
+import Dialog from '@/components/ui/Dialog';
 import { findNavigationTargets } from '@/utils/navigation';
 import type { SourceLocation } from '@/utils/navigation/types';
-import React, {
-  useLayoutEffect,
-  useRef,
-  useCallback,
-  useState,
-  useMemo,
-  type ChangeEvent,
-} from 'react';
+import type React from 'react';
+import { type ChangeEvent, useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import styles from './CodeEditor.module.css';
 
 import useEditorShortcuts from './EditorShortcuts';
 import NavigationPopup from './NavigationPopup';
 import { shouldDeferEditorAnalysis } from './largeFile';
-import useScrollSync from './useScrollSync';
 import type {
   CodeEditorProps,
   EditorShortcutsProps,
   NavigationPopupState,
   TextareaRef,
 } from './types';
+import useScrollSync from './useScrollSync';
 
 const getCursorPosition = (content: string, index: number): CursorPosition => {
   let line = 1;
@@ -135,6 +129,7 @@ export default function CodeEditor({
     [onCopySelection],
   );
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: textareaRef is a stable ref object
   const handleJumpToLine = useCallback(() => {
     const lineNum = Number.parseInt(jumpToLineValue, 10);
     const textarea = textareaRef.current;
@@ -215,6 +210,7 @@ export default function CodeEditor({
 
   const isCssFile = filePath?.endsWith('.css') ?? false;
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: textareaRef is a stable ref object
   const handlePreClick = useCallback(
     (e: React.MouseEvent<HTMLPreElement>) => {
       if (!isReadOnly && !navigationLinksEnabled) return;

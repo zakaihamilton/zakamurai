@@ -1,10 +1,10 @@
+import { createState } from '@/components/state/State';
 import type {
   ChangeSetStateShape,
   ProblemsStateShape,
   WorkspaceHealthStateShape,
   WorkspaceProfileStateShape,
 } from '@/components/state/domain-types';
-import { createState } from '@/components/state/State';
 
 /** Project-wide metadata that is deliberately separate from editor buffers. */
 export const WorkspaceProfileState =

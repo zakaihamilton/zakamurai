@@ -1,4 +1,3 @@
-import type { ReactNode } from 'react';
 import { AppState } from '@/components/App/AppState';
 import { PromptState, SidebarState, TabState } from '@/components/App/Panes';
 import {
@@ -8,6 +7,7 @@ import {
   makeTabState,
 } from '@/test-utils/stateMocks';
 import { fireEvent, render, screen } from '@testing-library/react';
+import type { ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import WorkspaceArea from './WorkspaceArea';
 

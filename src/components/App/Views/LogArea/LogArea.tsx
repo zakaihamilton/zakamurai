@@ -1,11 +1,11 @@
-import type { LogAreaUiStateShape, LogStateShape } from '@/components/state/domain-types';
 import { createState } from '@/components/state/State';
+import type { LogAreaUiStateShape, LogStateShape } from '@/components/state/domain-types';
 import React, { useEffect, useRef } from 'react';
+import { requireStore } from '../../types';
 import LogList from './List';
 import styles from './LogArea.module.css';
 import LogScrollButton from './ScrollButton';
 import LogToolbar from './Toolbar';
-import { requireStore } from '../../types';
 
 export const LogState = createState<LogStateShape>('LogState');
 export const LogAreaUiState = createState<LogAreaUiStateShape>('LogAreaUiState');

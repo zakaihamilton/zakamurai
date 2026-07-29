@@ -1,4 +1,3 @@
-import type { FileSystemApi, CssCustomProperties } from '@/components/App/types';
 import type {
   AgentEvent,
   RoleEdge,
@@ -7,7 +6,8 @@ import type {
   RoleNode,
   WebLLMModel,
 } from '@/components/AI/types';
-import type { SelectOption } from '@/components/ui/types';
+import type { ExtendedEditorState } from '@/components/App/Views/EditorArea/types';
+import type { CssCustomProperties, FileSystemApi } from '@/components/App/types';
 import type {
   AgentSession,
   AgentSessionMessage,
@@ -19,8 +19,8 @@ import type {
   TabStateShape,
 } from '@/components/state/domain-types';
 import type { StateStore } from '@/components/state/types';
+import type { SelectOption } from '@/components/ui/types';
 import type { ChangeEvent, FormEvent, KeyboardEvent, ReactNode } from 'react';
-import type { ExtendedEditorState } from '@/components/App/Views/EditorArea/types';
 
 export type WelcomeRequest = {
   text: string;

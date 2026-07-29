@@ -1,5 +1,12 @@
 import { serializeAgentSessions } from '@/components/App/Panes/Prompt/AgentSessions';
 import { reportDiagnostic } from '@/components/Diagnostics';
+import Settings from '@/components/Storage/Settings';
+import {
+  StorageHealthState,
+  requestRecoveryExport,
+  storageFailureMessage,
+  storageHealthMessage,
+} from '@/components/Storage/StorageHealth';
 import type {
   AgentSessionStateShape,
   AppStateShape,
@@ -17,13 +24,6 @@ import type {
   WorkspaceProfileStateShape,
 } from '@/components/state/domain-types';
 import type { Draft, StateStore } from '@/components/state/types';
-import Settings from '@/components/Storage/Settings';
-import {
-  StorageHealthState,
-  requestRecoveryExport,
-  storageFailureMessage,
-  storageHealthMessage,
-} from '@/components/Storage/StorageHealth';
 import { useNotification } from '@/components/ui/Notification';
 import { useEffect, useRef } from 'react';
 
@@ -66,7 +66,7 @@ export function useSettingsSync(
   const saveFailureNotifiedRef = useRef(false);
   const quotaWarningNotifiedRef = useRef(false);
 
-  const persistRef = useRef<(ok: boolean | void) => boolean | void>((ok) => {
+  const persistRef = useRef<(ok: boolean | undefined) => boolean | undefined>((ok) => {
     if (ok === false) {
       if (saveFailureNotifiedRef.current) return ok;
       saveFailureNotifiedRef.current = true;

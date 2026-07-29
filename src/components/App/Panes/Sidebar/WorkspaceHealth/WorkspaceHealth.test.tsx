@@ -1,5 +1,5 @@
-import { makeWorkspaceHealthState } from '@/test-utils/stateMocks';
 import { WorkspaceHealthState } from '@/components/Workspace';
+import { makeWorkspaceHealthState } from '@/test-utils/stateMocks';
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import WorkspaceHealth from './WorkspaceHealth';

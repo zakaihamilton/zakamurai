@@ -1,11 +1,12 @@
-import type { HighlightEditorState } from '@/components/App/Views/EditorArea/types';
 import { TabState } from '@/components/App/Panes/TabBar';
 import { EditorState } from '@/components/App/Views/EditorArea';
 import { getHighlightBreakdown } from '@/components/App/Views/EditorArea/highlighter';
 import { shouldDeferEditorAnalysis } from '@/components/App/Views/EditorArea/largeFile';
-import type { FileViewType } from '@/utils/fileViews';
+import type { HighlightEditorState } from '@/components/App/Views/EditorArea/types';
 import { Icons } from '@/components/ui/Icons';
+import type { FileViewType } from '@/utils/fileViews';
 import { useMemo, useState } from 'react';
+import { requireStore } from '../../types';
 import styles from './TokenBreakdown.module.css';
 import TokenBreakdownHeader from './TokenBreakdownHeader';
 import TokenFoldsSection from './TokenFoldsSection';
@@ -23,7 +24,6 @@ import {
   getFolds,
   getTokenLabel,
 } from './tokenUtils';
-import { requireStore } from '../../types';
 
 export default function TokenBreakdown({ tab }: TokenBreakdownProps) {
   const editorState = requireStore(EditorState.useState(['fileContents', 'pendingDiffs']));

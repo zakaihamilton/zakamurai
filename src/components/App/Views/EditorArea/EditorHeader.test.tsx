@@ -72,10 +72,10 @@ describe('EditorHeader', () => {
 
     const editBtn = screen.getByTestId('icon-edit').parentElement;
     expect(editBtn).not.toBeNull();
-    const tooltip = editBtn!.closest('[data-testid="tooltip"]');
+    const tooltip = editBtn?.closest('[data-testid="tooltip"]');
     expect(tooltip).not.toBeNull();
-    expect(tooltip!.getAttribute('data-content')).toBe('Switch to Inspection Mode');
-    expect(tooltip!.getAttribute('data-shortcut')).toBe(formatShortcut('⌃E'));
+    expect(tooltip?.getAttribute('data-content')).toBe('Switch to Inspection Mode');
+    expect(tooltip?.getAttribute('data-shortcut')).toBe(formatShortcut('⌃E'));
 
     fireEvent.click(editBtn!);
     expect(setIsReadOnly).toHaveBeenCalledWith(true);
@@ -90,12 +90,12 @@ describe('EditorHeader', () => {
       .getAllByTestId('icon-code')
       .find((icon) => icon.closest('[data-testid="tooltip"]')?.getAttribute('data-shortcut'));
     expect(codeIcon).toBeDefined();
-    const codeBtn = codeIcon!.parentElement;
+    const codeBtn = codeIcon?.parentElement;
     expect(codeBtn).not.toBeNull();
-    const tooltip = codeBtn!.closest('[data-testid="tooltip"]');
+    const tooltip = codeBtn?.closest('[data-testid="tooltip"]');
     expect(tooltip).not.toBeNull();
-    expect(tooltip!.getAttribute('data-content')).toBe('Switch to Edit Mode');
-    expect(tooltip!.getAttribute('data-shortcut')).toBe(formatShortcut('⌃E'));
+    expect(tooltip?.getAttribute('data-content')).toBe('Switch to Edit Mode');
+    expect(tooltip?.getAttribute('data-shortcut')).toBe(formatShortcut('⌃E'));
 
     fireEvent.click(codeBtn!);
     expect(setIsReadOnly).toHaveBeenCalledWith(false);

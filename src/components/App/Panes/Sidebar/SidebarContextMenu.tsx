@@ -3,8 +3,8 @@ import { Icons } from '@/components/ui/Icons';
 import { isMediaFile } from '@/utils/file';
 import { getFileViews } from '@/utils/fileViews';
 import React from 'react';
-import type { SidebarContextMenuProps } from './sidebar-types';
 import styles from './SidebarContextMenu.module.css';
+import type { SidebarContextMenuProps } from './sidebar-types';
 
 type IconName = keyof typeof Icons;
 

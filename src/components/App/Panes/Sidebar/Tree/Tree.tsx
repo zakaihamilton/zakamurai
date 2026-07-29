@@ -1,7 +1,7 @@
 import React from 'react';
-import type { SidebarTreeProps } from '../sidebar-types';
 import TreeItem from '../TreeItem';
 import VirtualList from '../VirtualList';
+import type { SidebarTreeProps } from '../sidebar-types';
 import styles from './Tree.module.css';
 
 const ROW_HEIGHT = 34;

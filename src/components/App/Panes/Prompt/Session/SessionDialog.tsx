@@ -1,6 +1,6 @@
 import Dialog from '@/components/ui/Dialog';
-import type { SessionDialogProps } from '../prompt-types';
 import { deleteAgentSession, renameAgentSession } from '../AgentSessions';
+import type { SessionDialogProps } from '../prompt-types';
 
 export default function SessionDialog({
   sessionDialog,

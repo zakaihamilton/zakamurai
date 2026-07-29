@@ -1,7 +1,7 @@
-import { createMockTabState } from '@/test-utils/editorMocks';
-import type { ReactNode } from 'react';
 import { TabState } from '@/components/App/Panes';
+import { createMockTabState } from '@/test-utils/editorMocks';
 import { fireEvent, render, screen } from '@testing-library/react';
+import type { ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import Welcome from './Welcome';
 

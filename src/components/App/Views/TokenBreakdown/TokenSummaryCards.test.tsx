@@ -1,4 +1,4 @@
-import { makeTokenBreakdownReport, makeHighlightDebugToken } from '@/test-utils/tokenMocks';
+import { makeHighlightDebugToken, makeTokenBreakdownReport } from '@/test-utils/tokenMocks';
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import TokenSummaryCards from './TokenSummaryCards';

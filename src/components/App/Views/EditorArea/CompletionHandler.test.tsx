@@ -13,8 +13,8 @@ import { RECOMMENDED_COMPLETION_MODEL } from '@/components/AI/WebLLMModels';
 import { act, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import useCompletion from './CompletionHandler';
-import type { CompletionHandlerProps } from './types';
 import { COMPLETION_DEBOUNCE_MS, normalizeCompletion } from './completionUtils';
+import type { CompletionHandlerProps } from './types';
 
 vi.mock('@/components/AI/WebLLMAPI', () => ({
   askWebLLM: vi.fn().mockResolvedValue('<completion>Done</completion>'),

@@ -3,8 +3,8 @@ import {
   getJavaScriptBlockFolds,
   isJavaScriptPath,
 } from '@/components/App/Views/EditorArea/JavaScriptFolding';
-import type { HighlightDebugToken } from '@/components/App/Views/EditorArea/types';
 import { getJsonObjectFolds, isJsonPath } from '@/components/App/Views/EditorArea/JsonFolding';
+import type { HighlightDebugToken } from '@/components/App/Views/EditorArea/types';
 import type { TokenBreakdownReport, TokenVerificationResult } from './token-breakdown-types';
 
 const TOKEN_LABELS = {

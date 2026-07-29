@@ -1,6 +1,6 @@
 import { Icons } from '@/components/ui/Icons';
-import type { TokenTableSectionProps } from './token-breakdown-types';
 import styles from './TokenTableSection.module.css';
+import type { TokenTableSectionProps } from './token-breakdown-types';
 import { getTokenLabel } from './tokenUtils';
 
 const getTokenTone = (type = '') => {

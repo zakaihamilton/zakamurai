@@ -1,7 +1,7 @@
 import { Icons } from '@/components/ui/Icons';
-import type { PreviewErrorStateProps } from './preview-types';
 import { PreviewErrorActions } from './ErrorOverlay';
 import styles from './PreviewEmptyState.module.css';
+import type { PreviewErrorStateProps } from './preview-types';
 
 export function PreviewErrorState({
   title,

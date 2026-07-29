@@ -1,6 +1,6 @@
 import { Icons } from '@/components/ui/Icons';
-import type { TokenSummaryCardsProps } from './token-breakdown-types';
 import styles from './TokenSummaryCards.module.css';
+import type { TokenSummaryCardsProps } from './token-breakdown-types';
 
 export default function TokenSummaryCards({ report }: TokenSummaryCardsProps) {
   return (

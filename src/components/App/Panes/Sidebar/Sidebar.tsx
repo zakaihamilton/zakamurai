@@ -1,15 +1,18 @@
 import { AppState } from '@/components/App/AppState';
 import { TabState } from '@/components/App/Panes/TabBar';
 import { EditorState } from '@/components/App/Views/EditorArea';
+import type { NormalizedTreeNode } from '@/components/App/types';
 import { useFileSystem } from '@/components/Storage';
+import { createState } from '@/components/state/State';
 import type {
   SidebarStateShape,
   SidebarUiStateShape,
   TreeNode,
 } from '@/components/state/domain-types';
-import { createState } from '@/components/state/State';
 import { useNotification } from '@/components/ui/Notification';
 import React, { useCallback, useDeferredValue, useEffect, useMemo, useRef } from 'react';
+import type { ChangeEvent, SetStateAction } from 'react';
+import { requireStore } from '../../types';
 import SidebarFilter from './Filter';
 import SidebarMountSection from './MountSection';
 import SidebarContent from './SidebarContent';
@@ -18,11 +21,8 @@ import useSidebarFileLoader from './SidebarFileLoader';
 import SidebarTree from './Tree';
 import { flattenTree, insertCreateRow, isNodeModulesPath, normalizeChildren } from './TreeUtils';
 import WorkspaceHealth from './WorkspaceHealth';
+import type { SidebarTreeProps, SidebarTreeRow, SidebarUiKey } from './sidebar-types';
 import useSidebarLayout from './useSidebarLayout';
-import type { NormalizedTreeNode } from '@/components/App/types';
-import type { SidebarTreeRow, SidebarTreeProps, SidebarUiKey } from './sidebar-types';
-import type { ChangeEvent, SetStateAction } from 'react';
-import { requireStore } from '../../types';
 
 export const SidebarState = createState<SidebarStateShape>('SidebarState');
 export const SidebarUiState = createState<SidebarUiStateShape>('SidebarUiState');

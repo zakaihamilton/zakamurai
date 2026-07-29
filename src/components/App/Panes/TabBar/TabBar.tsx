@@ -1,21 +1,22 @@
 import { SidebarState } from '@/components/App/Panes/Sidebar';
+import { createState } from '@/components/state/State';
 import type {
   SidebarStateShape,
   Tab,
   TabBarUiStateShape,
   TabStateShape,
 } from '@/components/state/domain-types';
-import { createState } from '@/components/state/State';
 import type { StateStore } from '@/components/state/types';
 import { Icons } from '@/components/ui/Icons';
 import Tooltip from '@/components/ui/Tooltip';
-import React, { useRef, useState } from 'react';
+import type React from 'react';
+import { useRef, useState } from 'react';
+import { requireStore } from '../../types';
 import styles from './TabBar.module.css';
 import TabContextMenu from './TabContextMenu';
 import TabItem from './TabItem';
-import useTabDragAndDrop from './useTabDragAndDrop';
 import type { TabContextMenuState } from './tab-types';
-import { requireStore } from '../../types';
+import useTabDragAndDrop from './useTabDragAndDrop';
 
 export const TabState = createState<TabStateShape>('TabState');
 const TabBarUiState = createState<TabBarUiStateShape>('TabBarUiState');

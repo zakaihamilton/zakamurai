@@ -5,8 +5,8 @@ import {
   resolveCompletionModelId,
 } from '@/components/AI/WebLLMModels';
 import { PromptUiState } from '@/components/App/Panes/Prompt/PromptState';
-import type { CompletionStateShape, CursorPosition } from '@/components/state/domain-types';
 import { createState } from '@/components/state/State';
+import type { CompletionStateShape, CursorPosition } from '@/components/state/domain-types';
 import { useCallback, useEffect, useRef } from 'react';
 import {
   COMPLETION_DEBOUNCE_MS,

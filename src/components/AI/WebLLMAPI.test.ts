@@ -1,6 +1,5 @@
 import { CreateMLCEngine, deleteModelAllInfoInCache, hasModelInCache } from '@mlc-ai/web-llm';
-import type { WebLLMMessage } from './types';
-import { beforeEach, describe, expect, it, vi, type Mock } from 'vitest';
+import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   askWebLLM,
   cacheWebLLMModel,
@@ -8,6 +7,7 @@ import {
   getCachedWebLLMModelIds,
   interruptWebLLM,
 } from './WebLLMAPI';
+import type { WebLLMMessage } from './types';
 
 vi.mock('@mlc-ai/web-llm', () => {
   return {

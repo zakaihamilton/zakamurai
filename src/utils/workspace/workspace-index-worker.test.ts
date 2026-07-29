@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi, type Mock } from 'vitest';
+import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 
 describe('workspace-index-worker', () => {
   let messageHandler: (event: { data: Record<string, unknown> }) => void;

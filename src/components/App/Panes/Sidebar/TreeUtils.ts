@@ -1,7 +1,7 @@
 import type { FlatTreeRow, NormalizedTreeNode } from '@/components/App/types';
-import type { TreeNode } from '@/components/state/domain-types';
 import { DEFAULT_CONTENTS, SCRATCH_CONTENTS } from '@/components/Storage/InitialData';
 import Settings from '@/components/Storage/Settings';
+import type { TreeNode } from '@/components/state/domain-types';
 
 type TreeMatcher = (pathStr: string) => boolean;
 

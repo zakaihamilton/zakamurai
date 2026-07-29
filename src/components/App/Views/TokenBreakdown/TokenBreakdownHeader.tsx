@@ -3,8 +3,8 @@ import { Icons } from '@/components/ui/Icons';
 import Tooltip from '@/components/ui/Tooltip';
 import { FILE_VIEW_TYPES } from '@/utils/fileViews';
 import React from 'react';
-import type { TokenBreakdownHeaderProps } from './token-breakdown-types';
 import styles from './TokenBreakdownHeader.module.css';
+import type { TokenBreakdownHeaderProps } from './token-breakdown-types';
 
 export default function TokenBreakdownHeader({
   filePath,

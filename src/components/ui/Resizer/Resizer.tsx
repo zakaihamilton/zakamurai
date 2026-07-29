@@ -1,7 +1,8 @@
-import type { ResizerStateShape } from '@/components/state/domain-types';
 import { createState } from '@/components/state/State';
+import type { ResizerStateShape } from '@/components/state/domain-types';
 import type { ResizerProps } from '@/components/ui/types';
-import React, { useCallback, useEffect } from 'react';
+import type React from 'react';
+import { useCallback, useEffect } from 'react';
 import styles from './Resizer.module.css';
 
 const ResizerState = createState<ResizerStateShape>('ResizerState');

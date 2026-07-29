@@ -91,7 +91,7 @@ for (const { from, to, content } of renames) {
 // Update import paths in all ts/tsx files after renames.
 const allSources = walk(ROOT).filter((f) => /\.(ts|tsx)$/.test(f));
 for (const file of allSources) {
-  let content = fs.readFileSync(file, 'utf8');
+  const content = fs.readFileSync(file, 'utf8');
   const next = updateImports(content);
   if (next !== content) fs.writeFileSync(file, next);
 }

@@ -1,5 +1,5 @@
-import type { KeyboardShortcutStateShape } from '@/components/state/domain-types';
 import { createState } from '@/components/state/State';
+import type { KeyboardShortcutStateShape } from '@/components/state/domain-types';
 import { useEffect } from 'react';
 
 export const KeyboardShortcutState =

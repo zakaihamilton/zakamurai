@@ -1,5 +1,5 @@
-import type { TokenNavigationSectionProps } from './token-breakdown-types';
 import styles from './TokenNavigationSection.module.css';
+import type { TokenNavigationSectionProps } from './token-breakdown-types';
 
 export default function TokenNavigationSection({
   navigationTargets,

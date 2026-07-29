@@ -1,9 +1,9 @@
-import type { PreviewSurfaceProps } from './preview-types';
 import React from 'react';
 import PreviewIframeContainer from './IframeContainer';
 import PreviewBridge from './PreviewBridge';
 import styles from './PreviewSurface.module.css';
 import PreviewToolbar from './Toolbar';
+import type { PreviewSurfaceProps } from './preview-types';
 
 export default function PreviewSurface({
   containerRef,

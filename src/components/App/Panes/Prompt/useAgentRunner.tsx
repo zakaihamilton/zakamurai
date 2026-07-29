@@ -2,9 +2,9 @@ import type { AgentEvent } from '@/components/AI/types';
 import { ChangeSetState, getWorkspaceIndex } from '@/components/Workspace';
 import type { FormEvent } from 'react';
 import { useCallback } from 'react';
+import { requireStore, toCompilerFs } from '../../types';
 import { formatSessionContext } from './AgentSessions';
 import type { AgentEventFormatter, UseAgentRunnerParams } from './prompt-types';
-import { requireStore, toCompilerFs } from '../../types';
 
 const ROLE_LABELS: Record<string, string> = {
   planner: 'Planner',

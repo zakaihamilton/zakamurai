@@ -1,13 +1,13 @@
-import type { NavigationHistory } from '@/components/state/domain-types';
 import { TabState } from '@/components/App/Panes/TabBar';
 import { EditorState } from '@/components/App/Views/EditorArea';
+import type { NavigationHistory } from '@/components/state/domain-types';
 import { Icons } from '@/components/ui/Icons';
 import Tooltip from '@/components/ui/Tooltip';
 import { formatShortcut } from '@/utils/os';
-import { useState, useRef, useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { requireStore } from '../../../types';
 import HistoryDropdown from '../HistoryDropdown';
 import styles from './NavigationControls.module.css';
-import { requireStore } from '../../../types';
 
 export default function NavigationControls() {
   const tabState = TabState.usePassiveState();

@@ -1,7 +1,7 @@
 /**
  * @fileoverview React context tree for scoping state objects and hierarchical lookup.
  */
-import { createContext, useContext, useRef, type ReactNode } from 'react';
+import { type ReactNode, createContext, useContext, useRef } from 'react';
 import type { NodeListener, StateNode } from './types';
 
 const root: StateNode = {

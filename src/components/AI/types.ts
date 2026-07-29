@@ -1,6 +1,6 @@
-import type { AiChange } from '@/contracts/ai';
 import type { ChangeSetStateShape } from '@/components/state/domain-types';
 import type { StateStore } from '@/components/state/types';
+import type { AiChange } from '@/contracts/ai';
 
 /** Updater callback for proxy-based state stores. */
 export type DraftUpdater<T extends Record<string, unknown> = Record<string, unknown>> = (
@@ -8,9 +8,8 @@ export type DraftUpdater<T extends Record<string, unknown> = Record<string, unkn
 ) => void;
 
 /** State handle: callable updater with snapshot properties on the function object. */
-export type StateHandle<T extends Record<string, unknown> = Record<string, unknown>> = T & {
-  (updater: DraftUpdater<T>): void;
-};
+export type StateHandle<T extends Record<string, unknown> = Record<string, unknown>> = T &
+  ((updater: DraftUpdater<T>) => void);
 
 export type FileMap = Record<string, string>;
 

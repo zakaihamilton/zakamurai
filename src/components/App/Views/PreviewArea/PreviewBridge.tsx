@@ -1,11 +1,18 @@
 import { Compiler } from '@/utils/compiler';
 import { useEffect, useRef } from 'react';
+import type {
+  PreviewBridgeProps,
+  PreviewConnectMessage,
+  PreviewRequestMessage,
+  PreviewResponsePayload,
+  PreviewSurfaceKind,
+} from './preview-types';
 import {
+  type PreviewHandshakeEvent,
   getPreviewOrigins,
   getPreviewServiceWorkerScope,
   isValidPreviewHandshake,
   originMatches,
-  type PreviewHandshakeEvent,
 } from './previewOrigins';
 import {
   PREVIEW_CONNECT,
@@ -18,13 +25,6 @@ import {
   isPreviewRequest,
   toBase64,
 } from './previewProtocol';
-import type {
-  PreviewBridgeProps,
-  PreviewConnectMessage,
-  PreviewRequestMessage,
-  PreviewResponsePayload,
-  PreviewSurfaceKind,
-} from './preview-types';
 
 const STREAM_CHUNK_SIZE = 64 * 1024;
 const EXTERNAL_HANDSHAKE_INTERVAL_MS = 400;

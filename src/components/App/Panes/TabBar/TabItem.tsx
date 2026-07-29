@@ -1,11 +1,11 @@
 import type { Tab } from '@/components/state/domain-types';
-import type { MouseEvent } from 'react';
 import { Icons } from '@/components/ui/Icons';
 import Tooltip from '@/components/ui/Tooltip';
 import { isMediaFile } from '@/utils/file';
-import { FILE_VIEW_TYPES, getFileViewByType, type FileViewType } from '@/utils/fileViews';
-import type { TabItemProps } from './tab-types';
+import { FILE_VIEW_TYPES, type FileViewType, getFileViewByType } from '@/utils/fileViews';
+import type { MouseEvent } from 'react';
 import styles from './TabItem.module.css';
+import type { TabItemProps } from './tab-types';
 
 const getTabViewType = (tab: Tab): string => {
   if (tab.type === 'file')

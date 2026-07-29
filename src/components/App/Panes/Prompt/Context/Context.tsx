@@ -1,7 +1,7 @@
-import type { PromptContextPanelProps } from '../prompt-types';
 import { Icons } from '@/components/ui/Icons';
 import Tooltip from '@/components/ui/Tooltip';
 import React from 'react';
+import type { PromptContextPanelProps } from '../prompt-types';
 import styles from './Context.module.css';
 
 export default function PromptContextPanel({

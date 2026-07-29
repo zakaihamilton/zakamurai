@@ -3,8 +3,8 @@ import { SidebarState } from '@/components/App/Panes/Sidebar';
 import { TabState } from '@/components/App/Panes/TabBar';
 import { EditorState } from '@/components/App/Views/EditorArea';
 import { LogState } from '@/components/App/Views/LogArea';
-import type { AgentSessionStateShape } from '@/components/state/domain-types';
 import Settings from '@/components/Storage/Settings';
+import type { AgentSessionStateShape } from '@/components/state/domain-types';
 import { expectAgentSession } from '@/test-utils/agentSessionMocks';
 import {
   makeAppState,
@@ -283,7 +283,7 @@ describe('Prompt', () => {
     const codeBlock = container.querySelector('pre code');
 
     expect(codeBlock).not.toBeNull();
-    expect(codeBlock!.textContent).toContain('this-is-a-very-long-agent-output-line');
+    expect(codeBlock?.textContent).toContain('this-is-a-very-long-agent-output-line');
   });
 
   it('calls state update when form is submitted', async () => {
@@ -309,9 +309,7 @@ describe('Prompt', () => {
   });
 
   it('creates a new root agent from the tree manager', async () => {
-    vi.mocked(PromptUiState.useState).mockReturnValue(
-      makePromptUiState({ isAgentTreeOpen: true }),
-    );
+    vi.mocked(PromptUiState.useState).mockReturnValue(makePromptUiState({ isAgentTreeOpen: true }));
     render(<Prompt />);
     await waitFor(() => expect(screen.getByLabelText('New agent')).toBeDefined());
     await act(async () => {

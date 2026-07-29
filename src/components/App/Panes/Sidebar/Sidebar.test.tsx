@@ -11,13 +11,18 @@ import { AppState } from '@/components/App/AppState';
 import { TabState } from '@/components/App/Panes/TabBar';
 import { EditorState } from '@/components/App/Views/EditorArea';
 import { useFileSystem } from '@/components/Storage';
-import { asMockUseFileSystem } from '@/test-utils/fsMocks';
+import { WorkspaceHealthState } from '@/components/Workspace';
 import { createMockEditorState, createMockTab, createMockTabState } from '@/test-utils/editorMocks';
-import { makeAppState, makeSidebarState, makeSidebarUiState, makeWorkspaceHealthState } from '@/test-utils/stateMocks';
+import { asMockUseFileSystem } from '@/test-utils/fsMocks';
+import {
+  makeAppState,
+  makeSidebarState,
+  makeSidebarUiState,
+  makeWorkspaceHealthState,
+} from '@/test-utils/stateMocks';
 import { asTreeNode } from '@/test-utils/treeMocks';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { WorkspaceHealthState } from '@/components/Workspace';
 import { SidebarState, SidebarUiState } from './Sidebar';
 import Sidebar from './Sidebar';
 

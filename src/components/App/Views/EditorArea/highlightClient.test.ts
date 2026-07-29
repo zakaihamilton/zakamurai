@@ -1,3 +1,4 @@
+import { createMockHighlightState } from '@/test-utils/editorMocks';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   HIGHLIGHT_WORKER_THRESHOLD,
@@ -5,7 +6,6 @@ import {
   highlightCodeAsync,
   highlightCodeSync,
 } from './highlightClient';
-import { createMockHighlightState } from '@/test-utils/editorMocks';
 
 vi.mock('./highlighter', () => ({
   highlightCode: vi.fn(() => 'SYNC_HTML'),

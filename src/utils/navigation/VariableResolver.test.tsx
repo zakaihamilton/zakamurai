@@ -29,16 +29,16 @@ describe('VariableResolver', () => {
       // We should have a target for definition (pointing to usage)
       const defTarget = targets.find((t) => t.start === 6);
       expect(defTarget).toBeDefined();
-      expect(defTarget!.name).toBe('x');
-      expect(defTarget!.targets).toHaveLength(1);
-      expect(defTarget!.targets[0].loc.line).toBe(2);
+      expect(defTarget?.name).toBe('x');
+      expect(defTarget?.targets).toHaveLength(1);
+      expect(defTarget?.targets[0].loc.line).toBe(2);
 
       // We should have a target for usage (pointing to definition)
       const useTarget = targets.find((t) => t.start === 26);
       expect(useTarget).toBeDefined();
-      expect(useTarget!.name).toBe('x');
-      expect(useTarget!.targets).toHaveLength(1);
-      expect(useTarget!.targets[0].loc.line).toBe(1);
+      expect(useTarget?.name).toBe('x');
+      expect(useTarget?.targets).toHaveLength(1);
+      expect(useTarget?.targets[0].loc.line).toBe(1);
     });
 
     it('handles function scopes and parameters correctly', () => {
@@ -91,7 +91,7 @@ describe('VariableResolver', () => {
       // x usage on line 2 (RHS of y declaration) should point to line 1
       const xUse = targets.find((t) => t.name === 'x' && t.start === 23);
       expect(xUse).toBeDefined();
-      expect(xUse!.targets[0].loc.line).toBe(1);
+      expect(xUse?.targets[0].loc.line).toBe(1);
     });
 
     it('pops inline arrow function scopes correctly so subsequent outer declarations are resolved', () => {
@@ -106,7 +106,7 @@ describe('VariableResolver', () => {
       // nextVar usage on line 3 should point to line 2
       const nextUse = targets.find((t) => t.name === 'nextVar' && t.start === 73);
       expect(nextUse).toBeDefined();
-      expect(nextUse!.targets[0].loc.line).toBe(2);
+      expect(nextUse?.targets[0].loc.line).toBe(2);
     });
 
     it('correctly resolves variables around regex literals', () => {
@@ -221,11 +221,11 @@ describe('VariableResolver', () => {
 
       const importedAliasUse = targets.find((t) => t.name === 'selectedModel' && t.start === 78);
       expect(importedAliasUse).toBeDefined();
-      expect(importedAliasUse!.targets[0].loc.line).toBe(1);
+      expect(importedAliasUse?.targets[0].loc.line).toBe(1);
 
       const importedFnUse = targets.find((t) => t.name === 'CreateThing' && t.start === 96);
       expect(importedFnUse).toBeDefined();
-      expect(importedFnUse!.targets[0].loc.line).toBe(1);
+      expect(importedFnUse?.targets[0].loc.line).toBe(1);
     });
 
     it('walks arrow function initializers so params and body locals get links', () => {
@@ -288,13 +288,13 @@ describe('VariableResolver', () => {
 
       const messagesUse = targets.find((t) => t.name === 'messages' && t.start === 106);
       expect(messagesUse).toBeDefined();
-      expect(messagesUse!.targets[0].loc.line).toBe(1);
+      expect(messagesUse?.targets[0].loc.line).toBe(1);
 
       const generationOptionsUse = targets.find(
         (t) => t.name === 'generationOptions' && t.start === 121,
       );
       expect(generationOptionsUse).toBeDefined();
-      expect(generationOptionsUse!.targets[0].loc.line).toBe(2);
+      expect(generationOptionsUse?.targets[0].loc.line).toBe(2);
     });
 
     it('resolves object argument usages inside exported async arrow function blocks', () => {
@@ -330,13 +330,13 @@ describe('VariableResolver', () => {
         (t) => t.name === 'messages' && t.start === messagesUseIndex,
       );
       expect(messagesUse).toBeDefined();
-      expect(messagesUse!.targets[0].loc.line).toBe(4);
+      expect(messagesUse?.targets[0].loc.line).toBe(4);
 
       const generationOptionsUse = targets.find(
         (t) => t.name === 'generationOptions' && t.start === generationOptionsUseIndex,
       );
       expect(generationOptionsUse).toBeDefined();
-      expect(generationOptionsUse!.targets[0].loc.line).toBe(8);
+      expect(generationOptionsUse?.targets[0].loc.line).toBe(8);
     });
 
     it('does not leak catch parameter scope into later module declarations', () => {
@@ -357,7 +357,7 @@ describe('VariableResolver', () => {
       const useIndex = code.indexOf('interruptWebLLM()');
       const useTarget = targets.find((t) => t.name === 'interruptWebLLM' && t.start === useIndex);
       expect(useTarget).toBeDefined();
-      expect(useTarget!.targets[0].loc.line).toBe(11);
+      expect(useTarget?.targets[0].loc.line).toBe(11);
     });
 
     it('resolves forward references to exported const arrow functions', () => {
@@ -371,7 +371,7 @@ describe('VariableResolver', () => {
       const useIndex = code.indexOf('interruptWebLLM()');
       const useTarget = targets.find((t) => t.name === 'interruptWebLLM' && t.start === useIndex);
       expect(useTarget).toBeDefined();
-      expect(useTarget!.targets[0].loc.line).toBe(4);
+      expect(useTarget?.targets[0].loc.line).toBe(4);
     });
 
     it('resolves interruptWebLLM forward reference in WebLLMAPI', () => {
@@ -383,7 +383,7 @@ describe('VariableResolver', () => {
       const declLine = code
         .slice(0, code.search(/export const interruptWebLLM\s*=\s*async/))
         .split('\n').length;
-      expect(useTarget!.targets[0].loc.line).toBe(declLine);
+      expect(useTarget?.targets[0].loc.line).toBe(declLine);
     });
 
     it('resolves object argument usages in WebLLMAPI', () => {
@@ -399,7 +399,7 @@ describe('VariableResolver', () => {
       );
       expect(messagesUse).toBeDefined();
       const messagesDeclLine = code.slice(0, code.search(/const messages\s*=/)).split('\n').length;
-      expect(messagesUse!.targets[0].loc.line).toBe(messagesDeclLine);
+      expect(messagesUse?.targets[0].loc.line).toBe(messagesDeclLine);
 
       const generationOptionsUse = targets.find(
         (t) => t.name === 'generationOptions' && t.start === generationOptionsUseIndex,
@@ -408,7 +408,7 @@ describe('VariableResolver', () => {
       const generationOptionsDeclLine = code
         .slice(0, code.search(/const generationOptions\b[^=]*=/))
         .split('\n').length;
-      expect(generationOptionsUse!.targets[0].loc.line).toBe(generationOptionsDeclLine);
+      expect(generationOptionsUse?.targets[0].loc.line).toBe(generationOptionsDeclLine);
     });
 
     it('registers rest parameters in destructuring and function params', () => {
@@ -446,7 +446,7 @@ describe('VariableResolver', () => {
         (t) => t.name === 'fallback' && t.start === code.indexOf('fallback)'),
       );
       expect(fallbackUse).toBeDefined();
-      expect(fallbackUse!.targets[0].loc.line).toBe(1);
+      expect(fallbackUse?.targets[0].loc.line).toBe(1);
 
       const nameDef = targets.find(
         (t) => t.name === 'name' && t.targets.some((u) => u.loc.line === 3),
@@ -464,7 +464,7 @@ describe('VariableResolver', () => {
         (t) => t.name === 'models' && t.start === code.indexOf('models.selected'),
       );
       expect(modelsUse).toBeDefined();
-      expect(modelsUse!.targets[0].loc.line).toBe(1);
+      expect(modelsUse?.targets[0].loc.line).toBe(1);
     });
 
     it('registers trailing-comma named import bindings', () => {
@@ -473,7 +473,7 @@ describe('VariableResolver', () => {
 
       const betaUse = targets.find((t) => t.name === 'Beta' && t.start === code.indexOf('Beta)'));
       expect(betaUse).toBeDefined();
-      expect(betaUse!.targets[0].loc.line).toBe(1);
+      expect(betaUse?.targets[0].loc.line).toBe(1);
     });
 
     it('registers class declarations', () => {
@@ -524,7 +524,7 @@ describe('VariableResolver', () => {
         (t) => t.name === 'fallback' && t.start === code.indexOf('fallback,'),
       );
       expect(fallbackUse).toBeDefined();
-      expect(fallbackUse!.targets[0].loc.line).toBe(1);
+      expect(fallbackUse?.targets[0].loc.line).toBe(1);
 
       const valueDef = targets.find(
         (t) => t.name === 'value' && t.targets.some((u) => u.loc.line === 3),

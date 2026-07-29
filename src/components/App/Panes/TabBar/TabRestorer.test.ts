@@ -107,7 +107,7 @@ describe('useTabRestorer', () => {
     });
 
     expect(tabState.openTabs).toHaveLength(1);
-    expect(tabState.openTabs[0]!.id).toBe('file2.js');
+    expect(tabState.openTabs[0]?.id).toBe('file2.js');
     expect(tabState.activeTabId).toBe('file2.js');
     expect(editorState.fileContents['file2.js']).toBe('content2');
   });

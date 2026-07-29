@@ -1,6 +1,6 @@
-import type { PendingDiff } from '@/components/state/domain-types';
 import { EditorState } from '@/components/App/Views/EditorArea';
 import Settings from '@/components/Storage/Settings';
+import type { PendingDiff } from '@/components/state/domain-types';
 import { useEffect } from 'react';
 
 /**

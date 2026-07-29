@@ -1,6 +1,6 @@
-import type { ReactNode } from 'react';
 import { asNormalizedTreeNode, makeFlatTreeRow } from '@/test-utils/treeMocks';
 import { render, screen } from '@testing-library/react';
+import type { ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import type { SidebarTreeRow } from '../sidebar-types';
 import SidebarTree from './Tree';

@@ -1,10 +1,10 @@
 import Node from '@/components/state/Node';
-import type { VirtualListStateShape } from '@/components/state/domain-types';
 import { createState } from '@/components/state/State';
+import type { VirtualListStateShape } from '@/components/state/domain-types';
 import React, { useCallback, useLayoutEffect, useMemo, useRef } from 'react';
-import type { VirtualListProps } from './sidebar-types';
-import styles from './VirtualList.module.css';
 import { requireStore } from '../../types';
+import styles from './VirtualList.module.css';
+import type { VirtualListProps } from './sidebar-types';
 
 const VirtualListState = createState<VirtualListStateShape>('VirtualListState');
 

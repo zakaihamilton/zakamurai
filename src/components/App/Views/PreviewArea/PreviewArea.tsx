@@ -1,16 +1,16 @@
 'use client';
 
-import type { PreviewAreaUiStateShape } from '@/components/state/domain-types';
 import { createState } from '@/components/state/State';
+import type { PreviewAreaUiStateShape } from '@/components/state/domain-types';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { PreviewState } from '../../PreviewState';
+import { requireStore } from '../../types';
 import { PreviewErrorState, PreviewUnavailableState } from './PreviewEmptyState';
 import PreviewSurface from './PreviewSurface';
 import { isOpaqueScriptError } from './previewErrorUtils';
 import { getPreviewConfigurationError, getPreviewOrigins } from './previewOrigins';
 import usePreviewRuntimeBridge from './usePreviewRuntimeBridge';
 import usePreviewSessionLifecycle from './usePreviewSessionLifecycle';
-import { requireStore } from '../../types';
 
 const SW_INIT_TIMEOUT_MS = 15000;
 

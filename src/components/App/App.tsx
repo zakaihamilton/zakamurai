@@ -42,9 +42,9 @@ import AppContent from './Layout/AppContent';
 import AppLoading from './Layout/AppLoading';
 
 import { useSettingsSync } from '@/components/Storage/SettingsSync';
+import { useWindowResize } from './WindowResize';
 import type { InitialAppValues } from './types';
 import { requireStore } from './types';
-import { useWindowResize } from './WindowResize';
 
 function buildInitialValues(): InitialAppValues {
   const recoveryCheckpoint = Settings.getRecoveryCheckpoint?.();

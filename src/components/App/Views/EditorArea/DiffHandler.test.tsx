@@ -8,7 +8,7 @@ import {
 } from '@/test-utils/editorMocks';
 import { makeSidebarState } from '@/test-utils/stateMocks';
 import { act, render } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi, type Mock } from 'vitest';
+import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 import DiffHandler from './DiffHandler';
 
 vi.mock('@/components/Storage/Settings', () => ({

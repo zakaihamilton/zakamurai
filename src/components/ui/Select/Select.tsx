@@ -1,6 +1,6 @@
 import Node from '@/components/state/Node';
-import type { SelectStateShape } from '@/components/state/domain-types';
 import { createState } from '@/components/state/State';
+import type { SelectStateShape } from '@/components/state/domain-types';
 import { Icons } from '@/components/ui/Icons';
 import type { SelectOption, SelectProps } from '@/components/ui/types';
 import React, { useEffect, useRef } from 'react';

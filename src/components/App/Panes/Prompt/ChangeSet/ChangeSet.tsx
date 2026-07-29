@@ -1,7 +1,7 @@
 import { ChangeSetState } from '@/components/Workspace';
 import React from 'react';
-import styles from './ChangeSet.module.css';
 import { requireStore } from '../../../types';
+import styles from './ChangeSet.module.css';
 
 export default function ChangeSetPanel() {
   const state = requireStore(ChangeSetState.useState(['activeId', 'items']));

@@ -9,11 +9,11 @@ import type {
   ShouldScrollRef,
   TextareaRef,
 } from '@/components/App/Views/EditorArea/types';
-import type { KeyboardEvent } from 'react';
 import type { PendingDiff, Tab, TabStateShape } from '@/components/state/domain-types';
 import type { Draft, StateStore } from '@/components/state/types';
 import type { NavigationTarget, SourceLocation } from '@/utils/navigation/types';
-import { vi, type Mock } from 'vitest';
+import type { KeyboardEvent } from 'react';
+import { type Mock, vi } from 'vitest';
 
 function createStoreInternals<T extends object>() {
   return {

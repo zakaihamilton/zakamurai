@@ -1,12 +1,12 @@
+import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { AgentEvent, AskWebLLM, RoleGraph } from '../types';
-import { beforeEach, describe, expect, it, vi, type Mock } from 'vitest';
 import { runCollaborativeAgent } from './CollaborativeRunner';
 import {
+  ROLE_GRAPH_VERSION,
   createDefaultRoleGraph,
   createRoleNode,
   parsePlanSummary,
   parseReviewSummary,
-  ROLE_GRAPH_VERSION,
 } from './Roles';
 
 vi.mock('../WebLLMAPI', () => ({ askWebLLM: vi.fn() }));
@@ -63,8 +63,8 @@ describe('runCollaborativeAgent', () => {
     });
 
     expect(result.changes[0].after).toBe('const a = 2;');
-    expect(result.review!.approved).toBe(true);
-    expect(result.plan!.files).toContain('src/a.js');
+    expect(result.review?.approved).toBe(true);
+    expect(result.plan?.files).toContain('src/a.js');
     expect(events.some((event) => event.agentRole === 'planner')).toBe(true);
     expect(events.some((event) => event.agentRole === 'coder')).toBe(true);
     expect(events.some((event) => event.agentRole === 'reviewer')).toBe(true);
@@ -94,7 +94,7 @@ describe('runCollaborativeAgent', () => {
     });
 
     expect(result.changes[0].after).toBe('const a = 2;');
-    expect(result.review!.approved).toBe(true);
+    expect(result.review?.approved).toBe(true);
     expect(askWebLLM).toHaveBeenCalledTimes(7);
   });
 
@@ -213,7 +213,7 @@ describe('runCollaborativeAgent', () => {
     });
 
     expect(result.changes[0].after).toBe('v2');
-    expect(result.review!.approved).toBe(false);
+    expect(result.review?.approved).toBe(false);
     expect(result.summary).toContain('unresolved notes');
   });
 
@@ -246,7 +246,7 @@ describe('runCollaborativeAgent', () => {
     });
 
     expect(result.roleSummaries.sec).toBe('secured');
-    expect(result.review!.approved).toBe(true);
+    expect(result.review?.approved).toBe(true);
     expect(askWebLLM).toHaveBeenCalledTimes(2);
   });
 
@@ -332,7 +332,7 @@ describe('runCollaborativeAgent', () => {
       roleGraph: graph,
     });
 
-    expect(result.review!.approved).toBe(false);
+    expect(result.review?.approved).toBe(false);
     expect(result.summary).toContain('unresolved notes');
     expect(result.summary).toContain('needs work');
   });

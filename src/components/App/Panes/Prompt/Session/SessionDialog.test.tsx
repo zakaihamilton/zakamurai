@@ -1,7 +1,7 @@
-import type { ReactNode } from 'react';
 import type { SessionDialogState } from '@/components/App/Panes/Prompt/prompt-types';
 import { makeAgentSessionState, makePromptUiState } from '@/test-utils/stateMocks';
 import { fireEvent, render, screen } from '@testing-library/react';
+import type { ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import SessionDialog from './SessionDialog';
 

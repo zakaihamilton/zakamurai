@@ -1,6 +1,6 @@
-import { beforeEach, describe, expect, it, vi, type Mock } from 'vitest';
-import type { AlmostnodeContainer, FolderTreeNode, LocalFsLike } from './types';
+import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 import { syncFilesToContainer } from './syncer';
+import type { AlmostnodeContainer, FolderTreeNode, LocalFsLike } from './types';
 
 type DirectoryHandleWithEntries = FileSystemDirectoryHandle & {
   entries: () => AsyncIterableIterator<[string, FileSystemHandle]>;

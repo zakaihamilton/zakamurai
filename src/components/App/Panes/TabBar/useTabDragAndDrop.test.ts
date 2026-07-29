@@ -1,7 +1,7 @@
 import type { TabBarUiStateShape, TabStateShape } from '@/components/state/domain-types';
+import { mockDragEvent } from '@/test-utils/domMocks';
 import { createMockTab, createMockTabState } from '@/test-utils/editorMocks';
 import { createMockStateStore } from '@/test-utils/stateMocks';
-import { mockDragEvent } from '@/test-utils/domMocks';
 import { act, renderHook } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import useTabDragAndDrop from './useTabDragAndDrop';

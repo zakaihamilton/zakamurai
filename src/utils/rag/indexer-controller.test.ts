@@ -104,7 +104,7 @@ describe('IndexerController', () => {
     });
 
     // Simulate worker responding successfully
-    messageListener!({
+    messageListener?.({
       data: {
         id: 1,
         type: 'SUCCESS',
@@ -136,7 +136,7 @@ describe('IndexerController', () => {
     await controller.init();
 
     const sendPromise = controller.sendMessage('SEARCH', 'test');
-    messageListener!({
+    messageListener?.({
       data: {
         id: 1,
         type: 'ERROR',
@@ -167,7 +167,7 @@ describe('IndexerController', () => {
     await controller.init();
 
     const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-    messageListener!({
+    messageListener?.({
       data: {
         id: 999, // unknown id
         type: 'ERROR',

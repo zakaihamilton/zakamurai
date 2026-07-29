@@ -71,7 +71,9 @@ export class IndexerController {
     this.worker.addEventListener('message', (event: MessageEvent<WorkerMessage>) => {
       const { id, type, payload, error } = event.data;
       if (this.resolvers.has(id)) {
-        const { resolve, reject } = this.resolvers.get(id)!;
+        const resolver = this.resolvers.get(id);
+        if (!resolver) return;
+        const { resolve, reject } = resolver;
         if (type === 'ERROR') {
           reject(new Error(error));
         } else {

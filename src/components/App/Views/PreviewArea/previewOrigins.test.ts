@@ -1,5 +1,5 @@
-import type { PreviewOrigins } from './previewOrigins';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import type { PreviewOrigins } from './previewOrigins';
 import {
   buildPreviewUrl,
   deriveIdeHostFromPreview,

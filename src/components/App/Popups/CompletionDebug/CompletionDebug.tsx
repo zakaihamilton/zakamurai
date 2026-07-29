@@ -1,13 +1,13 @@
 import { EditorState } from '@/components/App/Views/EditorArea';
+import { createState } from '@/components/state/State';
 import type { AiCompletionDebug } from '@/components/state/domain-types';
 import type { CompletionDebugStateShape } from '@/components/state/domain-types';
-import { createState } from '@/components/state/State';
 import { Icons } from '@/components/ui/Icons';
 import React from 'react';
 import { createPortal } from 'react-dom';
+import { requireStore } from '../../types';
 import type { CompletionDebugProps } from '../popup-types';
 import styles from './CompletionDebug.module.css';
-import { requireStore } from '../../types';
 
 const CompletionDebugState = createState<CompletionDebugStateShape>('CompletionDebugState');
 

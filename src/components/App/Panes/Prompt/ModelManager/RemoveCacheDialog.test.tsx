@@ -1,6 +1,6 @@
-import type { ReactNode } from 'react';
 import { WEB_LLM_MODELS } from '@/components/AI/WebLLMModels';
 import { fireEvent, render, screen } from '@testing-library/react';
+import type { ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import RemoveCacheDialog from './RemoveCacheDialog';
 

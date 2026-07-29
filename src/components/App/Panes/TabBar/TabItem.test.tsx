@@ -1,9 +1,9 @@
-import type { ReactNode } from 'react';
-import type { TabItemProps } from './tab-types';
 import { createMockTab } from '@/test-utils/editorMocks';
 import { fireEvent, render, screen } from '@testing-library/react';
+import type { ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import TabItem from './TabItem';
+import type { TabItemProps } from './tab-types';
 
 type TooltipMockProps = { children?: ReactNode; content?: string };
 

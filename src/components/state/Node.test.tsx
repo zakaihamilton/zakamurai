@@ -8,6 +8,7 @@ import Node, {
   nodeSetProperty,
   subscribeToNode,
 } from './Node';
+import type { StateNode } from './types';
 
 describe('Node', () => {
   beforeEach(() => {
@@ -15,8 +16,8 @@ describe('Node', () => {
   });
 
   it('provides nested node context and property helpers', async () => {
-    let childNode;
-    let parentNode;
+    let childNode: StateNode | null = null;
+    let parentNode: StateNode | null | undefined = null;
 
     function Child() {
       childNode = Node.useNode();
@@ -55,7 +56,7 @@ describe('Node', () => {
   });
 
   it('walks ancestors when looking up a property by id', () => {
-    let found;
+    let found: unknown;
 
     function Reader() {
       found = Node.useNode('shared');

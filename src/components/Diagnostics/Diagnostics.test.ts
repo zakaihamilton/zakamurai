@@ -28,8 +28,8 @@ describe('support reports', () => {
     expect(report.logs).toEqual([
       { role: 'system', text: 'Build failed token=[redacted]', timestamp: '10:02' },
     ]);
-    expect(report.diagnostics[0]!.message).toContain('[redacted]');
-    expect(report.diagnostics[0]!.message).toContain('[local-path]');
+    expect(report.diagnostics[0]?.message).toContain('[redacted]');
+    expect(report.diagnostics[0]?.message).toContain('[local-path]');
     expect(JSON.stringify(report)).not.toContain('private source');
     expect(JSON.stringify(report)).not.toContain('my private prompt');
     expect(JSON.stringify(report)).not.toContain('model output');

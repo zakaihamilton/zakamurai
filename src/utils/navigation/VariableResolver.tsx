@@ -7,7 +7,7 @@ export { tokenizeJs } from './JsTokenizer';
 
 import type { JsToken } from './types';
 
-import { Scope } from './Scope';
+import type { Scope } from './Scope';
 
 type ArrowScope = {
   hasBlock: boolean;

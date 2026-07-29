@@ -1,4 +1,3 @@
-import { vi } from 'vitest';
 import type {
   AgentEvent,
   ChangeSetStateDraft,
@@ -8,6 +7,7 @@ import type {
   SidebarStateDraft,
   StateHandle,
 } from '@/components/AI/types';
+import { vi } from 'vitest';
 
 export function createEditorStateMock(
   initial: EditorStateDraft = {},

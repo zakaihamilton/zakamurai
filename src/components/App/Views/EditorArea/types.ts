@@ -47,8 +47,8 @@ export interface EditorFileSystem {
   rootHandle?: FileSystemDirectoryHandle | null;
   readFile?: (handle: FileSystemFileHandle) => Promise<string>;
   getFileHandleAtPath?: (path: string) => Promise<FileSystemFileHandle | null>;
-  writeFileAtPath?: (path: string, content: string) => Promise<boolean | void>;
-  deleteFileAtPath?: (path: string) => Promise<boolean | void>;
+  writeFileAtPath?: (path: string, content: string) => Promise<boolean | undefined>;
+  deleteFileAtPath?: (path: string) => Promise<boolean | undefined>;
   readFileAtPath?: (path: string) => Promise<string>;
 }
 

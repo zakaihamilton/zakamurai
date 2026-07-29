@@ -1,5 +1,5 @@
-import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { mockStorageManager } from '@/test-utils/domMocks';
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const transformersMock = vi.hoisted(() => ({
   shouldFail: false,

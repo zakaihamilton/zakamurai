@@ -5,17 +5,17 @@ import { PreviewState } from '@/components/App/PreviewState';
 import { EditorState } from '@/components/App/Views/EditorArea';
 import { LogState } from '@/components/App/Views/LogArea';
 import { useFileSystem } from '@/components/Storage';
+import { ProblemsState } from '@/components/Workspace';
 import { createMockEditorState } from '@/test-utils/editorMocks';
 import { asMockUseFileSystem } from '@/test-utils/fsMocks';
 import {
   makeAppState,
   makeLogState,
   makePreviewState,
+  makeProblemsState,
   makeSidebarState,
   makeTabState,
-  makeProblemsState,
 } from '@/test-utils/stateMocks';
-import { ProblemsState } from '@/components/Workspace';
 import { act, renderHook } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import useProjectCompiler from './ProjectCompiler';

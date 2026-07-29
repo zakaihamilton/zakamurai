@@ -1,7 +1,7 @@
-import { act, renderHook } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
 import { requireSessionId } from '@/test-utils/agentSessionMocks';
 import { makeAgentSessionState, makePromptUiState } from '@/test-utils/stateMocks';
+import { act, renderHook } from '@testing-library/react';
+import { describe, expect, it } from 'vitest';
 import { createDefaultAgentSessions } from './AgentSessions';
 import usePromptSessionControls from './usePromptSessionControls';
 

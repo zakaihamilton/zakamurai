@@ -1,6 +1,5 @@
-import type { CssCustomProperties, NormalizedTreeNode } from '@/components/App/types';
 import type { RoleGraph } from '@/components/AI/types';
-import type { PromptContentProps } from './prompt-types';
+import type { CssCustomProperties, NormalizedTreeNode } from '@/components/App/types';
 import ChangeSetPanel from './ChangeSet';
 import PromptComposer from './Composer';
 import PromptContextPanel from './Context';
@@ -10,6 +9,7 @@ import styles from './PromptContent.module.css';
 import ReasoningPanel from './Reasoning';
 import { RoleGraphDialog, RoleGraphSummary } from './RoleGraph';
 import { SessionDialog, SessionManager, SessionTranscript, SessionTreeDialog } from './Session';
+import type { PromptContentProps } from './prompt-types';
 
 export default function PromptContent({
   isMobile,

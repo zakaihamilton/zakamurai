@@ -328,13 +328,15 @@ describe('PreviewArea', () => {
     render(<PreviewArea />);
 
     fireEvent.click(screen.getByTitle('Zoom in'));
-    const zoomInUpdater = vi.mocked(ui).mock.calls.at(-1)![0] as (draft: { scale: number }) => void;
+    const zoomInUpdater = vi.mocked(ui).mock.calls.at(-1)?.[0] as (draft: {
+      scale: number;
+    }) => void;
     const draftIn = { scale: 1.1 };
     zoomInUpdater(draftIn);
     expect(draftIn.scale).toBe(1.2);
 
     fireEvent.click(screen.getByTitle('Zoom out'));
-    const zoomOutUpdater = vi.mocked(ui).mock.calls.at(-1)![0] as (draft: {
+    const zoomOutUpdater = vi.mocked(ui).mock.calls.at(-1)?.[0] as (draft: {
       scale: number;
     }) => void;
     const draftOut = { scale: 1.3 };

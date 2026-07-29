@@ -1,12 +1,12 @@
 import type { ShortcutDefinition } from '@/components/App/types';
 import { deleteKeysWithPrefixInDraft } from '@/components/state/StateUtils';
-import { SHORTCUT_GROUPS } from './constants';
 import {
   navigateBackAction,
   navigateForwardAction,
   switchTabAction,
   toggleCssJsAction,
 } from './actions';
+import { SHORTCUT_GROUPS } from './constants';
 
 export const SHORTCUTS: ShortcutDefinition[] = [
   {

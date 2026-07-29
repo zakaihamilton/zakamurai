@@ -1,7 +1,7 @@
 import { AppState } from '@/components/App/AppState';
 import Node from '@/components/state/Node';
-import type { TooltipStateShape } from '@/components/state/domain-types';
 import { createState } from '@/components/state/State';
+import type { TooltipStateShape } from '@/components/state/domain-types';
 import type { TooltipProps } from '@/components/ui/types';
 import { useShouldShowKeyboardShortcuts } from '@/utils/keyboard';
 import React, { useCallback, useEffect, useLayoutEffect, useRef } from 'react';

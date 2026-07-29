@@ -1,5 +1,5 @@
-import type { TokenFoldsSectionProps } from './token-breakdown-types';
 import styles from './TokenFoldsSection.module.css';
+import type { TokenFoldsSectionProps } from './token-breakdown-types';
 
 export default function TokenFoldsSection({
   folds,

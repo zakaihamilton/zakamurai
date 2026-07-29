@@ -1,10 +1,10 @@
-import { findNavigationTargets } from '@/utils/navigation';
 import {
   createDefaultCodeEditorProps,
   createMockNavigationTarget,
   createMockSourceLocation,
   mockDomRect,
 } from '@/test-utils/editorMocks';
+import { findNavigationTargets } from '@/utils/navigation';
 import { fireEvent, render, screen } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';

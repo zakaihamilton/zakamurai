@@ -1,6 +1,6 @@
 import type { PendingDiff, Tab } from '@/components/state/domain-types';
 
-export const parseStoredJson = <T,>(value: unknown, fallback: T): T => {
+export const parseStoredJson = <T>(value: unknown, fallback: T): T => {
   if (value == null || value === '') return fallback;
   if (typeof value !== 'string') return value as T;
   try {

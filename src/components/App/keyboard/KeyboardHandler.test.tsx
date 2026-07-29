@@ -85,7 +85,7 @@ describe('KeyboardHandler', () => {
     fireEvent.keyDown(window, { key: 'b', ctrlKey: true });
 
     expect(sidebarState).toHaveBeenCalled();
-    const updateFn = vi.mocked(sidebarState).mock.calls[0]![0] as (draft: {
+    const updateFn = vi.mocked(sidebarState).mock.calls[0]?.[0] as (draft: {
       isSidebarOpen: boolean;
     }) => void;
     const draft = { isSidebarOpen: true };
@@ -99,7 +99,7 @@ describe('KeyboardHandler', () => {
     fireEvent.keyDown(window, { key: 'u', ctrlKey: true });
 
     expect(tabState).toHaveBeenCalled();
-    const updateFn = vi.mocked(tabState).mock.calls[0]![0] as (draft: {
+    const updateFn = vi.mocked(tabState).mock.calls[0]?.[0] as (draft: {
       activeTabId: string;
     }) => void;
     const draft = { activeTabId: 'test.js' };
@@ -133,7 +133,7 @@ describe('KeyboardHandler', () => {
 
     expect(sidebarState).not.toHaveBeenCalled();
     expect(highlightHandler).toHaveBeenCalledTimes(1);
-    expect(highlightHandler.mock.calls[0]![0].detail).toEqual({ shortcutId: 'toggle-sidebar' });
+    expect(highlightHandler.mock.calls[0]?.[0].detail).toEqual({ shortcutId: 'toggle-sidebar' });
 
     window.removeEventListener(SHORTCUT_HIGHLIGHT_EVENT, highlightHandler);
   });
@@ -147,7 +147,7 @@ describe('KeyboardHandler', () => {
     fireEvent.keyDown(window, { key: 'Tab', shiftKey: true });
 
     expect(highlightHandler).toHaveBeenCalledTimes(1);
-    expect(highlightHandler.mock.calls[0]![0].detail).toEqual({ shortcutId: 'outdent' });
+    expect(highlightHandler.mock.calls[0]?.[0].detail).toEqual({ shortcutId: 'outdent' });
 
     window.removeEventListener(SHORTCUT_HIGHLIGHT_EVENT, highlightHandler);
   });
@@ -162,7 +162,7 @@ describe('KeyboardHandler', () => {
 
     expect(highlightHandler).not.toHaveBeenCalled();
     expect(appState).toHaveBeenCalled();
-    const updateFn = vi.mocked(appState).mock.calls[0]![0] as (draft: {
+    const updateFn = vi.mocked(appState).mock.calls[0]?.[0] as (draft: {
       showShortcuts: boolean;
     }) => void;
     const draft = { showShortcuts: true };

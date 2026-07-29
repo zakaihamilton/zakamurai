@@ -1,5 +1,5 @@
-import type { FileMap } from '@/components/AI/types';
 import { RagState } from '@/components/AI/RagState';
+import type { FileMap } from '@/components/AI/types';
 import { EditorState } from '@/components/App/Views/EditorArea';
 import { reportDiagnostic } from '@/components/Diagnostics';
 import { useFileSystem } from '@/components/Storage';

@@ -1,14 +1,15 @@
 import { RECOMMENDED_WEB_LLM_MODEL, WEB_LLM_MODELS } from '@/components/AI/WebLLMModels';
 import { WebLLMState } from '@/components/AI/WebLLMState';
 import { AppState } from '@/components/App/AppState';
+import type { WelcomeRequest } from '@/components/App/Panes/Prompt/prompt-types';
 import { SidebarState } from '@/components/App/Panes/Sidebar';
 import { TabState } from '@/components/App/Panes/TabBar';
 import { EditorState } from '@/components/App/Views/EditorArea';
 import { LogState } from '@/components/App/Views/LogArea';
 import { useFileSystem } from '@/components/Storage';
-import type { WelcomeRequest } from '@/components/App/Panes/Prompt/prompt-types';
 import { useCallback, useEffect } from 'react';
 import type { ChangeEvent, FormEvent, KeyboardEvent, MouseEvent } from 'react';
+import { requireStore } from '../../types';
 import { AgentSessionState, createSessionMessage } from './AgentSessions';
 import useModelDownloader from './ModelDownloader';
 import PromptContent from './PromptContent';
@@ -17,7 +18,6 @@ import { PromptState, PromptUiState, getInitialPromptUiState } from './PromptSta
 import useAgentRunner from './useAgentRunner';
 import usePromptLayout from './usePromptLayout';
 import usePromptSessionControls from './usePromptSessionControls';
-import { requireStore } from '../../types';
 
 export { PromptState, PromptUiState } from './PromptState';
 

@@ -1,8 +1,8 @@
-import { createMockEditorState, createMockTabState } from '@/test-utils/editorMocks';
-import type { ReactNode } from 'react';
 import { TabState } from '@/components/App/Panes/TabBar';
 import { EditorState } from '@/components/App/Views/EditorArea';
+import { createMockEditorState, createMockTabState } from '@/test-utils/editorMocks';
 import { fireEvent, render, screen } from '@testing-library/react';
+import type { ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import HistoryDropdown from '../HistoryDropdown';
 import NavigationControls from './NavigationControls';

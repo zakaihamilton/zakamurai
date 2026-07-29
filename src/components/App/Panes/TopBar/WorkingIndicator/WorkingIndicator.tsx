@@ -1,8 +1,8 @@
 import { LogState } from '@/components/App/Views/LogArea';
 import { Icons } from '@/components/ui/Icons';
 import React from 'react';
-import styles from './WorkingIndicator.module.css';
 import { requireStore } from '../../../types';
+import styles from './WorkingIndicator.module.css';
 
 export default function WorkingIndicator() {
   const { isAIProcessing } = requireStore(LogState.useState(['isAIProcessing']));

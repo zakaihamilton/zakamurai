@@ -1,12 +1,12 @@
 import { createDefaultRoleGraph, normalizeRoleGraph } from '@/components/AI/Agent/Roles';
 import type { RoleGraph } from '@/components/AI/types';
+import type { AgentSessionTreeRow, CreateAgentSessionOptions } from '@/components/App/types';
+import { createState } from '@/components/state/State';
 import type {
   AgentSession,
   AgentSessionMessage,
   AgentSessionStateShape,
 } from '@/components/state/domain-types';
-import { createState } from '@/components/state/State';
-import type { AgentSessionTreeRow, CreateAgentSessionOptions } from '@/components/App/types';
 
 export const MAX_AGENT_SESSIONS = 50;
 export const MAX_SESSION_MESSAGES = 40;

@@ -280,7 +280,7 @@ export function findNavigationTargets(
   // Symbol-level click navigation in ES6 imports
   if (!isCss) {
     const esmImportRegex = /import\s+([\s\S]*?)\s+from\s+['"]([^'"]+)['"]/g;
-    let match;
+    let match: RegExpExecArray | null = null;
     // biome-ignore lint/suspicious/noAssignInExpressions: standard regex matching loop
     while ((match = esmImportRegex.exec(code)) !== null) {
       const importClause = match[1].trim();
@@ -305,7 +305,7 @@ export function findNavigationTargets(
 
           if (defaultImport) {
             const defaultRegex = new RegExp(`\\b${defaultImport}\\b`, 'g');
-            let defMatch;
+            let defMatch: RegExpExecArray | null = null;
             // biome-ignore lint/suspicious/noAssignInExpressions: standard regex matching loop
             while ((defMatch = defaultRegex.exec(importClause)) !== null) {
               const start = startOfImport + clauseIndex + defMatch.index;
@@ -334,7 +334,7 @@ export function findNavigationTargets(
           if (namespaceMatch) {
             const namespaceName = namespaceMatch[1];
             const nsRegex = new RegExp(`\\b${namespaceName}\\b`, 'g');
-            let nsMatch;
+            let nsMatch: RegExpExecArray | null = null;
             // biome-ignore lint/suspicious/noAssignInExpressions: standard regex matching loop
             while ((nsMatch = nsRegex.exec(importClause)) !== null) {
               const start = startOfImport + clauseIndex + nsMatch.index;
@@ -379,7 +379,7 @@ export function findNavigationTargets(
 
               for (const sym of symbolsToResolve) {
                 const symRegex = new RegExp(`\\b${sym}\\b`, 'g');
-                let symMatch;
+                let symMatch: RegExpExecArray | null = null;
                 // biome-ignore lint/suspicious/noAssignInExpressions: standard regex matching loop
                 while ((symMatch = symRegex.exec(importClause)) !== null) {
                   const start = startOfImport + clauseIndex + symMatch.index;
@@ -415,7 +415,7 @@ export function findNavigationTargets(
   if (isCss) {
     // In CSS: find all selector definitions (e.g. .title)
     const selectorRegex = /\.([a-zA-Z0-9_\-]+)\b/g;
-    let match;
+    let match: RegExpExecArray | null = null;
     // biome-ignore lint/suspicious/noAssignInExpressions: standard regex execution loop
     while ((match = selectorRegex.exec(code)) !== null) {
       const className = match[1];
@@ -444,7 +444,7 @@ export function findNavigationTargets(
     // CSS Keyframe definitions & usages
     const definedKeyframes = new Map(); // name -> loc
     const keyframeDefRegex = /@keyframes\s+([a-zA-Z0-9_\-]+)\b/g;
-    let defMatch;
+    let defMatch: RegExpExecArray | null = null;
     // biome-ignore lint/suspicious/noAssignInExpressions: standard regex matching loop
     while ((defMatch = keyframeDefRegex.exec(code)) !== null) {
       const name = defMatch[1];
@@ -476,7 +476,7 @@ export function findNavigationTargets(
 
     // Add targets for animation keyframe usages pointing to the definition
     const animRegex = /\b(animation|animation-name)\s*:\s*([^;]+);/g;
-    let useMatch;
+    let useMatch: RegExpExecArray | null = null;
     // biome-ignore lint/suspicious/noAssignInExpressions: standard regex matching loop
     while ((useMatch = animRegex.exec(code)) !== null) {
       const value = useMatch[2];
@@ -484,7 +484,7 @@ export function findNavigationTargets(
 
       for (const [keyframeName, loc] of definedKeyframes.entries()) {
         const keyframeRegex = new RegExp(`\\b${keyframeName}\\b`, 'g');
-        let keyframeMatch;
+        let keyframeMatch: RegExpExecArray | null = null;
         // biome-ignore lint/suspicious/noAssignInExpressions: standard regex matching loop
         while ((keyframeMatch = keyframeRegex.exec(value)) !== null) {
           const start = valIndex + keyframeMatch.index;
@@ -519,7 +519,7 @@ export function findNavigationTargets(
           // Standard CSS import (anonymous)
           // Find all class selector definitions in the CSS content
           const selectorRegex = /\.([a-zA-Z0-9_\-]+)\b/g;
-          let selMatch;
+          let selMatch: RegExpExecArray | null = null;
           const classesInCss = new Set<string>();
           // biome-ignore lint/suspicious/noAssignInExpressions: standard regex loop
           while ((selMatch = selectorRegex.exec(cssContent)) !== null) {
@@ -532,7 +532,7 @@ export function findNavigationTargets(
               `['"\\\`][^'"\\\`]*?(?<![a-zA-Z0-9_\\\\-])${escapedClassName}(?![a-zA-Z0-9_\\\\-])`,
               'g',
             );
-            let classMatch;
+            let classMatch: RegExpExecArray | null = null;
             // biome-ignore lint/suspicious/noAssignInExpressions: standard regex loop
             while ((classMatch = stringLiteralRegex.exec(code)) !== null) {
               const fullMatchText = classMatch[0];
@@ -570,7 +570,7 @@ export function findNavigationTargets(
 
         // Pattern 1: identifier.className
         const dotRegex = new RegExp(`\\b${escapedId}\\.([a-zA-Z0-9_\\-]+)\\b`, 'g');
-        let match;
+        let match: RegExpExecArray | null = null;
         // biome-ignore lint/suspicious/noAssignInExpressions: standard regex execution loop
         while ((match = dotRegex.exec(code)) !== null) {
           const className = match[1];
@@ -653,7 +653,7 @@ export function findNavigationTargets(
   // 4. Components in JSX tags
   if (!isCss) {
     const jsxTagRegex = /(?:<|<\/)([A-Z][a-zA-Z0-9_$]*)\b/g;
-    let match;
+    let match: RegExpExecArray | null = null;
     // biome-ignore lint/suspicious/noAssignInExpressions: standard regex matching loop
     while ((match = jsxTagRegex.exec(code)) !== null) {
       const componentName = match[1];

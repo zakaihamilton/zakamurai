@@ -1,9 +1,9 @@
-import type { ReactNode } from 'react';
-import type { Tab } from '@/components/state/domain-types';
 import { SidebarState } from '@/components/App/Panes/Sidebar';
+import type { Tab } from '@/components/state/domain-types';
 import { createMockTab } from '@/test-utils/editorMocks';
 import { makeSidebarState, makeTabState } from '@/test-utils/stateMocks';
 import { act, fireEvent, render, screen } from '@testing-library/react';
+import type { ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { TabState } from './TabBar';
 import TabBar from './TabBar';

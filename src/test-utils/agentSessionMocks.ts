@@ -1,5 +1,5 @@
-import type { AgentSession, AgentSessionStateShape } from '@/components/state/domain-types';
 import type { RoleGraph } from '@/components/AI/types';
+import type { AgentSession, AgentSessionStateShape } from '@/components/state/domain-types';
 
 /** Build a minimal AgentSession fixture for tests. */
 export function makeAgentSession(overrides: Partial<AgentSession> = {}): AgentSession {
@@ -30,6 +30,12 @@ export function expectAgentSession(state: AgentSessionStateShape | null | undefi
 export function requireSessionId(id: string | null | undefined): string {
   if (!id) throw new Error('Expected session id');
   return id;
+}
+
+/** Assert a single agent session is defined in tests. */
+export function requireActiveSession(session: AgentSession | null | undefined): AgentSession {
+  if (!session) throw new Error('Expected active session');
+  return session;
 }
 
 /** Cast role graph from session for test assertions. */

@@ -1,6 +1,6 @@
-import type { UsePromptLayoutParams, UsePromptLayoutResult } from './prompt-types';
 import type { PromptUiStateShape } from '@/components/state/domain-types';
 import { useCallback, useEffect } from 'react';
+import type { UsePromptLayoutParams, UsePromptLayoutResult } from './prompt-types';
 
 /** Drives the desktop drawer transition without introducing local shared state. */
 export default function usePromptLayout({

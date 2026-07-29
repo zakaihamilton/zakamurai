@@ -221,7 +221,7 @@ describe('useFileSystem', () => {
     vi.spyOn(FileSystemState, 'useState').mockReturnValue(makeFileSystemState());
     const { result } = renderHook(() => useFileSystem());
 
-    let content;
+    let content: string | undefined;
     await act(async () => {
       content = await result.current.readFile(fileHandle as never);
     });
@@ -295,8 +295,8 @@ describe('useFileSystem', () => {
 
     // Should have sorted the entries (directories first)
     expect(Array.isArray(entries)).toBe(true);
-    expect(entries!.length).toBe(2);
-    expect(entries![0].kind).toBe('directory'); // sorted first
+    expect(entries?.length).toBe(2);
+    expect(entries?.[0].kind).toBe('directory'); // sorted first
   });
 
   it('createFolder creates a new directory', async () => {
@@ -322,7 +322,7 @@ describe('useFileSystem', () => {
     vi.spyOn(FileSystemState, 'useState').mockReturnValue(makeFileSystemState());
     const { result } = renderHook(() => useFileSystem());
 
-    let handle;
+    let handle: FileSystemFileHandle | null | undefined;
     await act(async () => {
       handle = await result.current.getFileHandleAtPath('src/test.js', rootHandle as never);
     });
@@ -339,7 +339,7 @@ describe('useFileSystem', () => {
     vi.spyOn(FileSystemState, 'useState').mockReturnValue(makeFileSystemState());
     const { result } = renderHook(() => useFileSystem());
 
-    let handle;
+    let handle: FileSystemFileHandle | null | undefined;
     await act(async () => {
       handle = await result.current.getFileHandleAtPath('src/test.js', rootHandle as never);
     });

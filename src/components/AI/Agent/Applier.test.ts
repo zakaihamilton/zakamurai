@@ -1,10 +1,10 @@
+import type { FolderTreeNode, SidebarStateDraft } from '@/components/AI/types';
 import {
   createEditorStateMock,
   createLogStateMock,
   createSidebarStateMock,
 } from '@/test-utils/agentMocks';
 import { makeChangeSetState } from '@/test-utils/stateMocks';
-import type { FolderTreeNode, SidebarStateDraft } from '@/components/AI/types';
 import { describe, expect, it } from 'vitest';
 import { applyAgentChanges } from './Applier';
 

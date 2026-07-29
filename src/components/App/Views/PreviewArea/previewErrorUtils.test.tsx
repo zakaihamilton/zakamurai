@@ -1,6 +1,6 @@
-import { describe, expect, it, vi } from 'vitest';
 import { asFetchImpl } from '@/test-utils/fetchMocks';
 import { asPartialError, asPreviewDocument } from '@/test-utils/previewMocks';
+import { describe, expect, it, vi } from 'vitest';
 import {
   createTransformErrorResponse,
   decodeResponseBody,

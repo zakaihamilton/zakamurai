@@ -1,6 +1,6 @@
 import React from 'react';
-import type { TokenSectionTabsProps } from './token-breakdown-types';
 import styles from './TokenSectionTabs.module.css';
+import type { TokenSectionTabsProps } from './token-breakdown-types';
 
 export default function TokenSectionTabs({
   activeSection,

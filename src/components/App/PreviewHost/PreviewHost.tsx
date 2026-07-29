@@ -3,13 +3,13 @@
 import type { PreviewConnectMessage } from '@/components/App/Views/PreviewArea/preview-types';
 import { useEffect, useState } from 'react';
 import {
+  type PreviewHandshakeEvent,
   expandOriginAliases,
   getPreviewConfigurationError,
   getPreviewOrigins,
   getPreviewServiceWorkerScope,
   isValidPreviewHandshake,
   originMatches,
-  type PreviewHandshakeEvent,
 } from '../Views/PreviewArea/previewOrigins';
 import {
   PREVIEW_CONNECT,

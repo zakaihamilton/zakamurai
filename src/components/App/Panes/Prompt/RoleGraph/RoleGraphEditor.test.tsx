@@ -1,7 +1,8 @@
-import type { ReactNode } from 'react';
-import type { RoleGraph } from '@/components/AI/types';
+import { requireElement } from '@/test-utils/domMocks';
 import { createDefaultRoleGraph } from '@/components/AI/Agent/Roles';
+import type { RoleGraph } from '@/components/AI/types';
 import { fireEvent, render, screen } from '@testing-library/react';
+import type { ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import RoleGraphEditor from './RoleGraphEditor';
 
@@ -22,7 +23,7 @@ vi.mock('@/components/ui/Icons', () => ({
 function lastGraph(onChange: ReturnType<typeof vi.fn>): RoleGraph {
   const call = onChange.mock.calls.at(-1);
   expect(call).toBeDefined();
-  return call![0] as RoleGraph;
+  return call?.[0] as RoleGraph;
 }
 
 describe('RoleGraphEditor', () => {
@@ -72,14 +73,14 @@ describe('RoleGraphEditor', () => {
       />,
     );
 
-    const coderCard = container.querySelector('[data-role-id="coder"]')!;
+    const coderCard = requireElement(container.querySelector('[data-role-id="coder"]'));
     const coderSelects = coderCard.querySelectorAll('select');
-    fireEvent.change(coderSelects[1]!, { target: { value: 'model-b' } });
+    fireEvent.change(requireElement(coderSelects[1]), { target: { value: 'model-b' } });
     expect(lastGraph(onChange).roles[1]?.modelId).toBe('model-b');
 
-    const reviewerCard = container.querySelector('[data-role-id="reviewer"]')!;
+    const reviewerCard = requireElement(container.querySelector('[data-role-id="reviewer"]'));
     const reviewerSelects = reviewerCard.querySelectorAll('select');
-    fireEvent.change(reviewerSelects[2]!, { target: { value: 'planner' } });
+    fireEvent.change(requireElement(reviewerSelects[2]), { target: { value: 'planner' } });
     expect(
       lastGraph(onChange).edges.some(
         (edge: RoleGraph['edges'][number]) => edge.when === 'reject' && edge.to === 'planner',
@@ -103,7 +104,9 @@ describe('RoleGraphEditor', () => {
   it('edits custom prompts, kinds, and reject retry limits', () => {
     const onChange = vi.fn();
     const graph = createDefaultRoleGraph();
-    graph.roles[0] = { ...graph.roles[0]!, kind: 'custom', label: 'Custom', systemPrompt: null };
+    const firstRole = graph.roles[0];
+    if (!firstRole) throw new Error('expected first role');
+    graph.roles[0] = { ...firstRole, kind: 'custom', label: 'Custom', systemPrompt: null };
     const { container } = render(
       <RoleGraphEditor roleGraph={graph} modelOptions={modelOptions} onChange={onChange} />,
     );
@@ -112,12 +115,14 @@ describe('RoleGraphEditor', () => {
     fireEvent.change(textarea, { target: { value: 'Be careful.' } });
     expect(lastGraph(onChange).roles[0]?.systemPrompt).toBe('Be careful.');
 
-    const customCard = container.querySelector('[data-role-id="planner"]')!;
-    fireEvent.change(customCard.querySelectorAll('select')[0]!, { target: { value: 'coder' } });
+    const customCard = requireElement(container.querySelector('[data-role-id="planner"]'));
+    fireEvent.change(requireElement(customCard.querySelectorAll('select')[0]), {
+      target: { value: 'coder' },
+    });
     expect(lastGraph(onChange).roles[0]?.kind).toBe('coder');
 
-    const reviewerCard = container.querySelector('[data-role-id="reviewer"]')!;
-    const retryInput = reviewerCard.querySelector('input[type="number"]')!;
+    const reviewerCard = requireElement(container.querySelector('[data-role-id="reviewer"]'));
+    const retryInput = requireElement(reviewerCard.querySelector('input[type="number"]'));
     fireEvent.change(retryInput, { target: { value: '2' } });
     expect(
       lastGraph(onChange).edges.find((edge: RoleGraph['edges'][number]) => edge.when === 'reject')

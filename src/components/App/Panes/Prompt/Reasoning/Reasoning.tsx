@@ -1,14 +1,14 @@
 import Node from '@/components/state/Node';
-import type { ReasoningPanelStateShape } from '@/components/state/domain-types';
 import { createState } from '@/components/state/State';
+import type { ReasoningPanelStateShape } from '@/components/state/domain-types';
 import { Icons } from '@/components/ui/Icons';
 import Tooltip from '@/components/ui/Tooltip';
 import React, { useEffect, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
+import { requireStore } from '../../../types';
 import { AgentSessionState, getActiveAgentSession } from '../AgentSessions';
 import { PromptUiState } from '../Prompt';
 import styles from './Reasoning.module.css';
-import { requireStore } from '../../../types';
 
 const ReasoningPanelState = createState<ReasoningPanelStateShape>('ReasoningPanelState');
 

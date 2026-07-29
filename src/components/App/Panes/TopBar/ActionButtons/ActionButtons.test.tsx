@@ -1,4 +1,3 @@
-import type { ReactNode } from 'react';
 import { AppState } from '@/components/App/AppState';
 import { SidebarState } from '@/components/App/Panes/Sidebar';
 import { TabState } from '@/components/App/Panes/TabBar';
@@ -13,6 +12,7 @@ import {
   makeTabState,
 } from '@/test-utils/stateMocks';
 import { fireEvent, render, screen } from '@testing-library/react';
+import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import ActionButtons from './ActionButtons';
 

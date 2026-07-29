@@ -1,5 +1,5 @@
-import type { NotificationItem, NotificationStateShape } from '@/components/state/domain-types';
 import { createState } from '@/components/state/State';
+import type { NotificationItem, NotificationStateShape } from '@/components/state/domain-types';
 import { Icons } from '@/components/ui/Icons';
 import React, { useCallback, useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';

@@ -8,8 +8,8 @@ import { setInDraft } from '@/components/state/StateUtils';
 import { Icons } from '@/components/ui/Icons';
 import Tooltip from '@/components/ui/Tooltip';
 import React from 'react';
-import styles from './StatusBar.module.css';
 import { requireStore } from '../../types';
+import styles from './StatusBar.module.css';
 
 export default function StatusBar() {
   const { theme, projectName } = requireStore(AppState.useState(['theme', 'projectName']));

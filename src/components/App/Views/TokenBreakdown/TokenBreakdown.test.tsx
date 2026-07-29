@@ -1,9 +1,9 @@
-import type { ReactNode } from 'react';
 import { TabState } from '@/components/App/Panes/TabBar';
 import { EditorState } from '@/components/App/Views/EditorArea';
 import { createMockEditorState, createMockTabState } from '@/test-utils/editorMocks';
 import { makeTokenBreakdownTab } from '@/test-utils/tokenMocks';
 import { act, fireEvent, render, screen } from '@testing-library/react';
+import type { ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import TokenBreakdown from './TokenBreakdown';
 
@@ -197,7 +197,7 @@ describe('TokenBreakdown', () => {
     });
     expect(writeText).toHaveBeenCalled();
 
-    const rawCopiedText = writeText.mock.calls[0]![0];
+    const rawCopiedText = writeText.mock.calls[0]?.[0];
     expect(rawCopiedText).toContain(
       'Explain why the tokens in the token breakdown do not match the source file. Here is the source file:',
     );

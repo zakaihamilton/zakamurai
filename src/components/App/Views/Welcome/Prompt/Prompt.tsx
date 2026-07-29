@@ -8,9 +8,10 @@ import { LogState } from '@/components/App/Views/LogArea';
 import Dialog from '@/components/ui/Dialog';
 import { Icons } from '@/components/ui/Icons';
 import Select from '@/components/ui/Select';
-import React, { useCallback, useState } from 'react';
-import styles from './Prompt.module.css';
+import type React from 'react';
+import { useCallback, useState } from 'react';
 import { requireStore } from '../../../types';
+import styles from './Prompt.module.css';
 
 export default function WelcomePrompt() {
   const [value, setValue] = useState('');

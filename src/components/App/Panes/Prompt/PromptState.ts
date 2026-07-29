@@ -1,7 +1,7 @@
 import { RECOMMENDED_WEB_LLM_MODEL, resolveWebLLMModelId } from '@/components/AI/WebLLMModels';
 import Settings from '@/components/Storage/Settings';
-import type { PromptStateShape, PromptUiStateShape } from '@/components/state/domain-types';
 import { createState } from '@/components/state/State';
+import type { PromptStateShape, PromptUiStateShape } from '@/components/state/domain-types';
 
 export const PromptState = createState<PromptStateShape>('PromptState');
 export const PromptUiState = createState<PromptUiStateShape>('PromptUiState');
