@@ -1,6 +1,12 @@
 import type { LogItemProps, ProcessingLogItemProps } from '../log-area-types';
 import styles from './Item.module.css';
 
+function isErrorLog(text: string): boolean {
+  return /^(?:ERR:|Stack:|Compilation error:|Unexpected error:|Error\s*:|Failed to |Command .+ failed\b|npm ERR!|\[ERROR\])/i.test(
+    text,
+  );
+}
+
 export function ProcessingLogItem({
   lineNumber,
   message,
@@ -17,8 +23,7 @@ export function ProcessingLogItem({
 }
 
 export default function LogItem({ log, displayIndex }: LogItemProps) {
-  const isError =
-    log.text?.startsWith('ERR:') || log.text?.startsWith('Stack:') || /\berror\b/i.test(log.text);
+  const isError = isErrorLog(log.text || '');
 
   const roleClass =
     log.role === 'ai' ? styles.aiRow : log.role === 'system' ? styles.systemRow : styles.userRow;

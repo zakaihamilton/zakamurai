@@ -2,6 +2,7 @@ import {
   reportPreviewError,
   shouldReportPreviewError,
 } from '@/components/App/Views/PreviewArea/previewErrorBridge';
+import { ALMOSTNODE_RUNTIME_URL } from './almostnode';
 import type { AlmostnodeContainer, OnLog } from './types';
 
 let _sharedContainer: AlmostnodeContainer | null = null;
@@ -69,7 +70,7 @@ export async function initContainer(
       ) => Promise<{
         createContainer: (options: Record<string, unknown>) => Promise<AlmostnodeContainer>;
       }>;
-      const { createContainer } = await nativeImport('/lib/almostnode/index.mjs');
+      const { createContainer } = await nativeImport(ALMOSTNODE_RUNTIME_URL);
 
       const container = await createContainer({
         onConsole: (level: string, ...args: unknown[]) => {

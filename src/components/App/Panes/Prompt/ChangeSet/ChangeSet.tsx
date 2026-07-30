@@ -20,6 +20,27 @@ export default function ChangeSetPanel({ onOpenInTab = () => {} }: { onOpenInTab
   const tabState = TabState.usePassiveState();
   const fs = useFileSystem();
   const changeSet = (state.items || []).find((item) => item.id === state.activeId);
+  const openFile = useCallback(
+    (filePath: string) => {
+      const fileName = filePath.substring(filePath.lastIndexOf('/') + 1);
+      const content = editorState.fileContents?.[filePath] ?? '';
+      tabState?.((draft) => {
+        if (!draft.openTabs.some((tab) => tab.id === filePath)) {
+          draft.openTabs = [
+            ...draft.openTabs,
+            {
+              id: filePath,
+              type: 'file',
+              label: fileName,
+              file: { name: fileName, path: filePath.split('/'), content },
+            },
+          ];
+        }
+        draft.activeTabId = filePath;
+      });
+    },
+    [editorState.fileContents, tabState],
+  );
   const runBulkAction = useCallback(
     async (action: 'approve' | 'undo') => {
       if (!changeSet) return;
@@ -99,11 +120,17 @@ export default function ChangeSetPanel({ onOpenInTab = () => {} }: { onOpenInTab
             </button>
           </div>
           <div className={styles.files}>
-            {changeSet.files.slice(0, 6).map((file) => (
-              <span key={file.path} className={styles.file}>
+            {changeSet.files.map((file) => (
+              <button
+                key={file.path}
+                type="button"
+                className={styles.file}
+                title={file.path}
+                onClick={() => openFile(file.path)}
+              >
                 {file.status === 'conflicted' ? '⚠ ' : ''}
                 {file.path}
-              </span>
+              </button>
             ))}
           </div>
         </>

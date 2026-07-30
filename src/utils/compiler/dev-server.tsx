@@ -8,6 +8,7 @@ import {
   extractTransformErrorFromResponse,
   formatEsbuildTransformError,
 } from '@/components/App/Views/PreviewArea/previewErrorUtils';
+import { ALMOSTNODE_RUNTIME_URL } from './almostnode';
 import type { AlmostnodeContainer, OnLog, VfsLike } from './types';
 
 type CssModuleResult = {
@@ -150,7 +151,7 @@ export async function setupSmartDevServer(
       options: { port: number; root: string },
     ) => ViteDevServerInstance;
   }>;
-  const { ViteDevServer } = await nativeImport('/lib/almostnode/index.mjs');
+  const { ViteDevServer } = await nativeImport(ALMOSTNODE_RUNTIME_URL);
 
   class SmartViteDevServer extends (ViteDevServer as new (
     vfs: VfsLike,

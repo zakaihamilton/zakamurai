@@ -54,9 +54,28 @@
 
 .files {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
+  align-items: stretch;
   gap: 4px;
   margin-top: 8px;
+  max-height: 132px;
+  overflow-y: auto;
+  padding-right: 4px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-light) transparent;
+}
+
+.files::-webkit-scrollbar {
+  width: 6px;
+}
+
+.files::-webkit-scrollbar-thumb {
+  border-radius: 3px;
+  background: var(--border-light);
+}
+
+.files::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
 }
 
 .bulkActions {
@@ -91,11 +110,27 @@
 }
 
 .file {
-  max-width: 100%;
+  display: block;
+  width: 100%;
+  min-height: 28px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  padding: 2px 5px;
+  border: 0;
   border-radius: 4px;
+  appearance: none;
   background: var(--bg-panel);
+  color: var(--text-main);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 20px;
+  padding: 4px 8px;
+  text-align: left;
+}
+
+.file:hover,
+.file:focus-visible {
+  background: var(--bg-hover);
 }

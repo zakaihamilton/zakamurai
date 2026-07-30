@@ -375,6 +375,7 @@ function createHtml(
 
 export function isBrowserBundleCommand(cmd: string, args: string[] = []): boolean {
   const runners = new Set(['npx', 'npm', 'pnpm', 'yarn', 'bunx']);
+  const supportedBuildTools = new Set(['vite', 'react-scripts']);
   let binary = cmd;
   let binaryArgs = args;
 
@@ -392,7 +393,9 @@ export function isBrowserBundleCommand(cmd: string, args: string[] = []): boolea
 
   if (!binary) return false;
   const name = binary.split('/').pop();
-  return (name === 'vite' && binaryArgs.includes('build')) || name === 'esbuild';
+  return (
+    (supportedBuildTools.has(name || '') && binaryArgs.includes('build')) || name === 'esbuild'
+  );
 }
 
 export function parseBuildCommand(command: string): string[][] {

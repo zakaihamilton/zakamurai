@@ -30,4 +30,20 @@ describe('LogItem', () => {
 
     expect(screen.getByText('$')).toBeDefined();
   });
+
+  it('does not style npm progress for error-named packages as an error', () => {
+    const { container } = render(
+      <LogItem
+        log={{
+          id: 3,
+          role: 'system',
+          text: '[NPM] Downloading error-stack-parser@2.1.4...',
+          timestamp: '14:32:00',
+        }}
+        displayIndex={2}
+      />,
+    );
+
+    expect(container.querySelector('[class*="errorRow"]')).toBeNull();
+  });
 });

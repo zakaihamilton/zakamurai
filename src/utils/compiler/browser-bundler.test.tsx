@@ -488,7 +488,10 @@ describe('browser-bundler', () => {
     expect(isBrowserBundleCommand('yarn', ['vite', 'build'])).toBe(true);
     expect(isBrowserBundleCommand('esbuild', [])).toBe(true);
     expect(isBrowserBundleCommand('./node_modules/.bin/vite', ['build'])).toBe(true);
+    expect(isBrowserBundleCommand('react-scripts', ['build'])).toBe(true);
+    expect(isBrowserBundleCommand('npx', ['react-scripts', 'build'])).toBe(true);
     expect(isBrowserBundleCommand('vite', ['dev'])).toBe(false);
+    expect(isBrowserBundleCommand('react-scripts', ['start'])).toBe(false);
     expect(isBrowserBundleCommand('npx', ['tsc'])).toBe(false);
   });
 
