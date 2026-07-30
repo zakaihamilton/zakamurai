@@ -287,10 +287,11 @@ async function handleVirtualRequest(sessionId, request, path) {
 
 function lostConnectionPage(sessionId = null) {
   // Top-level external tabs cannot talk to the IDE via parent.postMessage.
-  // Send them back through the handshake route for the same session id.
+  // Send them through the explicit preview handshake route. Using / would
+  // reload the IDE itself when local previews share the IDE origin.
   const reconnectToHandshake =
     sessionId &&
-    `<script>(function(){try{if(window.parent!==window)return;location.replace('/?session='+encodeURIComponent(${JSON.stringify(sessionId)}));}catch(_e){}})();</script>`;
+    `<script>(function(){try{if(window.parent!==window)return;location.replace('/__preview/host?session='+encodeURIComponent(${JSON.stringify(sessionId)})+'&zakamurai-surface=preview');}catch(_e){}})();</script>`;
   const reconnectScript = `<script>(function(){try{var m=location.pathname.match(/^\\/(__preview\\/)([^/]+)/);var sessionId=m&&m[2];if(!sessionId||window.parent===window)return;window.parent.postMessage({source:'zakamurai-preview',type:'reconnect',sessionId:decodeURIComponent(sessionId),message:'Preview connection was lost.'},'*');}catch(_e){}})();</script>`;
   return previewResponse(
     `<!doctype html><html><head><meta charset="utf-8"><title>Preview</title>

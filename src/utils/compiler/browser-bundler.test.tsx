@@ -428,8 +428,8 @@ describe('browser-bundler', () => {
     ).toThrow("does not provide './hidden'");
   });
 
-  it('uses CSS module and static asset loaders', () => {
-    expect(__testables.getLoader('/src/Button.module.css')).toBe('local-css');
+  it('uses JavaScript injection for CSS Modules and file loaders for static assets', () => {
+    expect(__testables.getLoader('/src/Button.module.css')).toBe('js');
     expect(__testables.getLoader('/public/logo.svg')).toBe('file');
     expect(__testables.getLoader('/src/data.json')).toBe('json');
   });
@@ -574,6 +574,49 @@ describe('browser-bundler', () => {
         entryPoints: ['/src/main.jsx'],
       }),
     );
+  });
+
+  it('turns CSS Modules into self-injecting JavaScript during browser builds', async () => {
+    type LoadCallback = (args: { path: string }) => {
+      contents: string;
+      loader: string;
+      resolveDir: string;
+    };
+    let onLoad: LoadCallback | undefined;
+    const build = vi.fn().mockImplementation(
+      async (options: {
+        plugins: Array<{
+          setup: (build: {
+            onResolve: () => void;
+            onLoad: (opts: unknown, callback: LoadCallback) => void;
+          }) => void;
+        }>;
+      }) => {
+        options.plugins[0].setup({
+          onResolve: () => {},
+          onLoad: (_opts, callback) => {
+            onLoad = callback;
+          },
+        });
+        return {
+          outputFiles: [{ path: '/dist/assets/main-abc.js', contents: new Uint8Array([1]) }],
+        };
+      },
+    );
+    vi.doMock('esbuild-wasm/lib/browser', () => ({ initialize: vi.fn(), build }));
+
+    const { bundleBrowserProject } = await import('./browser-bundler');
+    const fs = createMutableVfsLike({
+      '/src/main.jsx': 'import styles from "./App.module.css"; console.log(styles);',
+      '/src/App.module.css': '.app { color: tomato; }',
+    });
+
+    await bundleBrowserProject(fs, { name: 'demo' }, 'vite build');
+
+    const result = onLoad?.({ path: '/src/App.module.css' });
+    expect(result).toMatchObject({ loader: 'js', resolveDir: '/src' });
+    expect(result?.contents).toContain("document.createElement('style')");
+    expect(result?.contents).toContain('app_');
   });
 
   it('clears stale output and copies public assets into dist', async () => {

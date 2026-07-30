@@ -1,3 +1,4 @@
+import { buildCssModuleJavaScript } from './css-modules';
 import type {
   EsbuildApi,
   EsbuildBuild,
@@ -240,7 +241,7 @@ function resolveSpecifier(vfs: VfsLike, specifier: string, resolveDir: string): 
 
 function getLoader(path: string): string {
   const ext = extension(path);
-  if (path.endsWith('.module.css')) return 'local-css';
+  if (path.endsWith('.module.css')) return 'js';
   if (ext === '.tsx') return 'tsx';
   if (ext === '.ts') return 'ts';
   if (ext === '.jsx') return 'jsx';
@@ -499,11 +500,15 @@ export async function bundleBrowserProject(
               };
             return { path, namespace: 'vfs' };
           });
-          build.onLoad({ filter: /.*/, namespace: 'vfs' }, (args) => ({
-            contents: vfs.readFileSync(args.path),
-            loader: getLoader(args.path),
-            resolveDir: dirname(args.path),
-          }));
+          build.onLoad({ filter: /.*/, namespace: 'vfs' }, (args) => {
+            const contents = vfs.readFileSync(args.path, 'utf8');
+            const cssModule = args.path.endsWith('.module.css');
+            return {
+              contents: cssModule ? buildCssModuleJavaScript(args.path, contents).js : contents,
+              loader: getLoader(args.path),
+              resolveDir: dirname(args.path),
+            };
+          });
         },
       },
     ],
