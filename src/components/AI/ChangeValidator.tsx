@@ -152,6 +152,35 @@ export function validateContentSyntax(path: string, content: string): string | n
 }
 
 /**
+ * Reject CSS values that are syntactically balanced but cannot resolve at runtime.
+ * This also bounds runaway local-model output such as deeply nested var() fallbacks.
+ */
+export function validateCssContentSafety(path: string, content: string): string | null {
+  if (!/\.css$/i.test(path) || typeof content !== 'string') return null;
+
+  const customProperty = /(?:^|[;{])\s*(--[\w-]+)\s*:\s*([^;{}]*)/gm;
+  for (const match of content.matchAll(customProperty)) {
+    const [, name, value] = match;
+    const escapedName = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    if (new RegExp(`\\bvar\\(\\s*${escapedName}(?:\\s*[,)]|$)`).test(value)) {
+      return `CSS custom property ${name} cannot reference itself in ${path}.`;
+    }
+  }
+
+  let depth = 0;
+  let maxDepth = 0;
+  for (const char of stripComments(content)) {
+    if (char === '(') maxDepth = Math.max(maxDepth, ++depth);
+    else if (char === ')') depth--;
+  }
+  if (maxDepth > 16) {
+    return `CSS function nesting exceeds 16 levels in ${path}. Simplify the declaration.`;
+  }
+
+  return null;
+}
+
+/**
  * Enforces the generated-project styling contract before a JSX write is staged.
  * CSS custom properties are still expressed in CSS Modules; generated components
  * must not embed CSS in JSX where it cannot be reviewed alongside its stylesheet.
@@ -273,6 +302,17 @@ export async function validateAIChangesAsync(
         });
         continue;
       }
+      const cssSafetyError = validateCssContentSafety(path as string, content);
+      if (cssSafetyError) {
+        rejected.push(cssSafetyError);
+        details.push({
+          path: String(path),
+          error: cssSafetyError,
+          type: 'content',
+          failedContent: content,
+        });
+        continue;
+      }
       const syntaxError = await validateContentSyntaxAsync(
         path as string,
         content,
@@ -333,6 +373,11 @@ export function validateAIChanges(changes: AgentChange[]): ValidatedAIChanges {
       const contentTypeError = validateFileContentType(path as string, content);
       if (contentTypeError) {
         rejected.push(contentTypeError);
+        continue;
+      }
+      const cssSafetyError = validateCssContentSafety(path as string, content);
+      if (cssSafetyError) {
+        rejected.push(cssSafetyError);
         continue;
       }
       const syntaxError = validateContentSyntax(path as string, content);

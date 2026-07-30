@@ -5,6 +5,7 @@ import {
   validateComponentStyling,
   validateContentSyntax,
   validateContentSyntaxAsync,
+  validateCssContentSafety,
   validateFileContentType,
   validateProjectPath,
 } from './ChangeValidator';
@@ -61,6 +62,21 @@ describe('AI change validation', () => {
     expect(validateContentSyntax('src/style.css', '.class { background: url(; }')).toContain(
       'Unmatched',
     );
+  });
+
+  it('rejects cyclic custom properties and runaway CSS function nesting', () => {
+    expect(
+      validateCssContentSafety('src/Todo.module.css', '--mobile-padding: var(--mobile-padding);'),
+    ).toContain('cannot reference itself');
+    expect(
+      validateCssContentSafety(
+        'src/Todo.module.css',
+        `.todo { width: ${'calc('.repeat(17)}100%${')'.repeat(17)}; }`,
+      ),
+    ).toContain('nesting exceeds');
+    expect(
+      validateCssContentSafety('src/Todo.module.css', '.todo { width: calc(100% - 2rem); }'),
+    ).toBeNull();
   });
 
   it('ignores brackets inside template literals and comments', () => {

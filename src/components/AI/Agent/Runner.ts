@@ -14,7 +14,12 @@ export class AgentExecutionError extends Error {
     this.changes = changes;
   }
 }
-import { validateComponentStyling, validateFileContentType } from '../ChangeValidator';
+import {
+  validateComponentStyling,
+  validateContentSyntax,
+  validateCssContentSafety,
+  validateFileContentType,
+} from '../ChangeValidator';
 import { AgentContextManager, formatVerificationResult } from './ContextManager';
 import { listProjectChecks, runProjectCheck } from './ProjectChecks';
 import { AGENT_SYSTEM_PROMPT, ALL_AGENT_ACTIONS, parseAgentAction } from './Protocol';
@@ -64,7 +69,7 @@ export async function runAgent({
   retrieveContext,
   signal,
   onEvent = () => {},
-  maxTurns = 20,
+  maxTurns = 30,
   systemPrompt = AGENT_SYSTEM_PROMPT,
   allowedActions = ALL_AGENT_ACTIONS,
   priorContext = '',
@@ -97,6 +102,7 @@ export async function runAgent({
   let repairAttempts = 0;
   let inspectedPreview = false;
   let recoveredNoOpWrite = '';
+  let failedCssWritePath = '';
 
   const runValidation = async (): Promise<string> => {
     const rawVerification = validate
@@ -179,7 +185,9 @@ export async function runAgent({
           messages,
           temperature: visualMode ? 0.12 : 0.15,
           top_p: 0.8,
-          max_tokens: visualMode ? 2400 : 1800,
+          // Give a repair turn enough room to close its stylesheet instead of
+          // repeating a truncated payload from the preceding attempt.
+          max_tokens: visualMode || failedCssWritePath ? 2400 : 1800,
         },
       );
     } finally {
@@ -302,8 +310,13 @@ export async function runAgent({
         if (stylingError) throw new Error(stylingError);
         const contentTypeError = validateFileContentType(action.path || '', action.content || '');
         if (contentTypeError) throw new Error(contentTypeError);
+        const cssSafetyError = validateCssContentSafety(action.path || '', action.content || '');
+        if (cssSafetyError) throw new Error(cssSafetyError);
+        const syntaxError = validateContentSyntax(action.path || '', action.content || '');
+        if (syntaxError) throw new Error(syntaxError);
         workspace.write(action.path || '', action.content || '');
         wroteSinceVerification = true;
+        failedCssWritePath = '';
         onEvent({ type: 'tool', turn, action, agentRole });
         result = `Staged ${action.path} (${(action.content || '').length} characters).`;
       }
@@ -388,7 +401,18 @@ export async function runAgent({
       const recovery =
         action.action === 'read_file' && /^File not found: /.test(err.message)
           ? ' The requested file is absent. Do not call read_file for this path again. If this is a new component or stylesheet you need, create it with write_file; otherwise use one of the paths returned by list_files.'
-          : '';
+          : action.action === 'write_file' && /CSS content cannot be written/.test(err.message)
+            ? ' The rejected content was not staged. You put CSS in a JSX/TSX action: return exactly one write_file action with a JSX/TSX source fence for this path. Create the matching *.module.css as a separate action on a later turn.'
+            : action.action === 'write_file' &&
+                /(?:Unclosed|Unmatched|nesting exceeds|cannot reference itself)/.test(err.message)
+              ? ` The rejected stylesheet was not staged. Your next action must write only ${action.path}, using one css fence. Start with a small complete rule if necessary (for example, .app { display: block; }) and check that every { has one }. Do not include another file or source fence in this response.`
+              : '';
+      if (
+        action.action === 'write_file' &&
+        /(?:Unclosed|Unmatched|nesting exceeds|cannot reference itself)/.test(err.message)
+      ) {
+        failedCssWritePath = action.path || '';
+      }
       const diagnostic = `${err.message}${recovery}`;
       messages.push({ role: 'user', content: observation(action.action, false, diagnostic) });
       onEvent({

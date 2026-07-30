@@ -68,6 +68,31 @@ export default function App() {
     });
   });
 
+  it('uses the source fence matching the destination when a model emits multiple files', () => {
+    expect(
+      parseAgentAction(`{"action":"write_file","path":"src/components/TodoItem.jsx"}
+\`\`\`jsx
+export default function TodoItem() { return <li />; }
+\`\`\`
+\`\`\`css
+.item { display: flex; }
+\`\`\``),
+    ).toMatchObject({
+      action: 'write_file',
+      path: 'src/components/TodoItem.jsx',
+      content: 'export default function TodoItem() { return <li />; }',
+    });
+  });
+
+  it('rejects a labeled source fence that does not match the destination extension', () => {
+    expect(() =>
+      parseAgentAction(`{"action":"write_file","path":"src/components/TodoItem.jsx"}
+\`\`\`css
+.item { display: flex; }
+\`\`\``),
+    ).toThrow(/content/);
+  });
+
   it('parses search_semantic and requires a query', () => {
     expect(parseAgentAction('{"action":"search_semantic","query":"auth flow","k":3}')).toEqual({
       action: 'search_semantic',

@@ -51,7 +51,7 @@ describe('runAgent', () => {
     expect(events).toContainEqual(
       expect.objectContaining({
         type: 'thinking',
-        message: expect.stringContaining('turn 1 of 20; 1 workspace file(s) available'),
+        message: expect.stringContaining('turn 1 of 30; 1 workspace file(s) available'),
       }),
     );
     expect(events).toContainEqual(
@@ -130,6 +130,48 @@ describe('runAgent', () => {
     expect(events.some((event) => event.error && event.message?.includes('CSS content'))).toBe(
       true,
     );
+  });
+
+  it('rejects a cyclic CSS custom property before it becomes a visible staged draft', async () => {
+    askWebLLM
+      .mockResolvedValueOnce(
+        '{"action":"write_file","path":"src/components/Todo.module.css","content":"--mobile-padding: var(--mobile-padding, 1rem);"}',
+      )
+      .mockResolvedValueOnce('{"action":"finish","summary":"no changes"}');
+    const events: AgentEvent[] = [];
+
+    const result = await runAgent({
+      request: 'style todo',
+      files: {},
+      model: 'test',
+      onEvent: (event) => events.push(event),
+    });
+
+    expect(result.changes).toEqual([]);
+    expect(
+      events.some((event) => event.error && event.message?.includes('cannot reference itself')),
+    ).toBe(true);
+  });
+
+  it('gives a malformed stylesheet a path-specific, complete-rule recovery instruction', async () => {
+    askWebLLM
+      .mockResolvedValueOnce(
+        '{"action":"write_file","path":"src/components/Todo.module.css","content":".todo { color: red;"}',
+      )
+      .mockResolvedValueOnce('{"action":"finish","summary":"no changes"}');
+
+    await runAgent({
+      request: 'style todo',
+      files: {},
+      model: 'test',
+    });
+
+    const repairMessage = askWebLLM.mock.calls[1]?.[3]?.messages
+      ?.map((message: { content: string }) => message.content)
+      .find((content: string) => content.includes('must write only'));
+    expect(repairMessage).toContain('must write only src/components/Todo.module.css');
+    expect(repairMessage).toContain('.app { display: block; }');
+    expect(askWebLLM.mock.calls[1]?.[3]).toMatchObject({ max_tokens: 2400 });
   });
 
   it('honors allowedActions, priorContext, and agentRole events', async () => {

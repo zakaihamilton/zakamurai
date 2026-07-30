@@ -67,24 +67,40 @@ const parseFencedWrite = (text: string, metadata?: AgentAction): AgentAction | n
   }
   if (value.action !== 'write_file' || typeof value.path !== 'string') return null;
 
-  // Models sometimes wrap the action JSON, source, or both in code fences. Use the
-  // final fence because it is the source payload when a JSON metadata fence precedes it.
-  // An unfinished final fence is also accepted so a truncated but otherwise useful write
-  // can be staged and validated instead of being discarded as a protocol failure.
-  const blocks = [...text.matchAll(/```[^\r\n]*\r?\n([\s\S]*?)(?:\r?\n```|$)/g)].map(
-    (match) => match[1],
-  );
-  const source = blocks.reverse().find((block) => {
+  // A smaller local model can emit several files in one response despite the one-action
+  // protocol. Prefer the source fence whose language matches the requested destination
+  // so a trailing CSS fence is never accidentally written to a .jsx file.
+  const blocks = [...text.matchAll(/```([^\r\n]*)\r?\n([\s\S]*?)(?:\r?\n```|$)/g)].map((match) => ({
+    language: match[1].trim().toLowerCase(),
+    content: match[2],
+  }));
+  const sourceBlocks = blocks.filter((block) => {
     try {
-      const parsed = JSON.parse(block) as { action?: unknown };
+      const parsed = JSON.parse(block.content) as { action?: unknown };
       return typeof parsed.action !== 'string';
     } catch {
       return true;
     }
   });
+  const extension = value.path.split('.').pop()?.toLowerCase();
+  const languagesByExtension: Record<string, string[]> = {
+    css: ['css'],
+    html: ['html'],
+    js: ['js', 'javascript', 'jsx'],
+    jsx: ['jsx', 'javascript', 'js'],
+    ts: ['ts', 'typescript'],
+    tsx: ['tsx', 'typescript', 'jsx'],
+    json: ['json'],
+  };
+  const acceptedLanguages = languagesByExtension[extension || ''] || [];
+  const matchingSource = sourceBlocks
+    .filter((block) => acceptedLanguages.includes(block.language))
+    .at(-1);
+  const hasLabeledSource = sourceBlocks.some((block) => block.language);
+  const source = matchingSource || (hasLabeledSource ? undefined : sourceBlocks.at(-1));
   if (source === undefined) return null;
 
-  return { ...value, content: source };
+  return { ...value, content: source.content };
 };
 
 export function parseAgentAction(
@@ -153,7 +169,7 @@ For a stylesheet, keep both the path and fence language aligned:
 \`\`\`css
 .example { color: rebeccapurple; }
 \`\`\`
-The JSON metadata must be on one line and the following single code fence is the content to write. The path extension determines the destination: never write raw CSS to a .jsx or .tsx path. Do not include a content property when using this format.`.trim();
+The JSON metadata must be on one line and the following single code fence is the content to write. The path extension determines the destination: never write raw CSS to a .jsx or .tsx path. Do not include a content property when using this format. If multiple files are needed, create exactly one file per turn; never append another source fence to an action.`.trim();
 
 export const AGENT_SYSTEM_PROMPT = `
 You are a local coding agent operating in a private browser workspace. Work autonomously until the request is complete.
