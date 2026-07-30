@@ -38,6 +38,7 @@ export default function useProjectCompiler() {
   const { isSystemProcessing } = requireStore(LogState.useState(['isSystemProcessing']));
   const { addNotification } = useNotification();
   const isCompilingRef = useRef(false);
+  const isRebuildingRef = useRef(false);
   const lastCompileRequestRef = useRef(0);
   const lastSilentCompileRequestRef = useRef(0);
 
@@ -282,8 +283,38 @@ export default function useProjectCompiler() {
     }
   }, [previewState, logState, handleOpenLog, addNotification]);
 
+  const handleRebuild = useCallback(async () => {
+    if (isSystemProcessingRef.current || isCompilingRef.current || isRebuildingRef.current) return;
+    isRebuildingRef.current = true;
+
+    try {
+      const { Compiler } = await loadCompiler();
+      await Compiler.reset();
+      await handleCompile();
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : String(err);
+      reportDiagnostic({ source: 'compiler', severity: 'error', message: errorMsg });
+      addNotification(`Failed to rebuild: ${errorMsg}`, 'error');
+      logState((draft) => {
+        draft.logs = [
+          ...draft.logs,
+          {
+            id: `${Date.now()}-${Math.random()}`,
+            role: 'system',
+            text: `Failed to rebuild: ${errorMsg}`,
+            timestamp: new Date().toTimeString().split(' ')[0],
+          },
+        ];
+      });
+      handleOpenLog();
+    } finally {
+      isRebuildingRef.current = false;
+    }
+  }, [handleCompile, logState, handleOpenLog, addNotification]);
+
   return {
     handleCompile,
+    handleRebuild,
     handleOpenLog,
     handleOpenPreview,
     handleClearFS,

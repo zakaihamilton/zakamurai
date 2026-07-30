@@ -11,9 +11,9 @@ import {
   makeSidebarState,
   makeTabState,
 } from '@/test-utils/stateMocks';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import type { ReactNode } from 'react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import ActionButtons from './ActionButtons';
 
 vi.mock('@/components/App/AppState', () => ({ AppState: { useState: vi.fn() } }));
@@ -49,6 +49,10 @@ describe('ActionButtons', () => {
     );
   });
 
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it('renders action buttons', () => {
     const tabState = makeTabState({
       activeTabId: 'src/foo.js',
@@ -67,6 +71,7 @@ describe('ActionButtons', () => {
     render(
       <ActionButtons
         onCompile={vi.fn()}
+        onRebuild={vi.fn()}
         onOpenLog={vi.fn()}
         onOpenPreview={vi.fn()}
         onToggleAIInput={vi.fn()}
@@ -82,6 +87,7 @@ describe('ActionButtons', () => {
 
   it('calls handlers when buttons clicked', () => {
     const onCompile = vi.fn();
+    const onRebuild = vi.fn();
     const onOpenLog = vi.fn();
     const onOpenPreview = vi.fn();
     const onToggleAIInput = vi.fn();
@@ -102,6 +108,7 @@ describe('ActionButtons', () => {
     render(
       <ActionButtons
         onCompile={onCompile}
+        onRebuild={onRebuild}
         onOpenLog={onOpenLog}
         onOpenPreview={onOpenPreview}
         onToggleAIInput={onToggleAIInput}
@@ -114,9 +121,39 @@ describe('ActionButtons', () => {
     fireEvent.click(screen.getByTestId('ai-prompt-toggle'));
 
     expect(onCompile).toHaveBeenCalled();
+    expect(onRebuild).not.toHaveBeenCalled();
     expect(onOpenLog).toHaveBeenCalled();
     expect(onOpenPreview).toHaveBeenCalled();
     expect(onToggleAIInput).toHaveBeenCalled();
+  });
+
+  it('changes to Rebuild and starts a fresh build after a held press', () => {
+    vi.useFakeTimers();
+    const onCompile = vi.fn();
+    const onRebuild = vi.fn();
+    vi.mocked(TabState.useState).mockReturnValue(makeTabState());
+
+    render(
+      <ActionButtons
+        onCompile={onCompile}
+        onRebuild={onRebuild}
+        onOpenLog={vi.fn()}
+        onOpenPreview={vi.fn()}
+        onToggleAIInput={vi.fn()}
+      />,
+    );
+
+    const button = screen.getByTestId('compile-btn');
+    fireEvent.pointerDown(button);
+    act(() => vi.advanceTimersByTime(600));
+
+    expect(screen.getByText('Rebuild')).toBeDefined();
+
+    fireEvent.pointerUp(button);
+    fireEvent.click(button);
+
+    expect(onRebuild).toHaveBeenCalledTimes(1);
+    expect(onCompile).not.toHaveBeenCalled();
   });
 
   it('shows the active compile phase in the build tooltip', () => {
@@ -144,6 +181,7 @@ describe('ActionButtons', () => {
     render(
       <ActionButtons
         onCompile={vi.fn()}
+        onRebuild={vi.fn()}
         onOpenLog={vi.fn()}
         onOpenPreview={vi.fn()}
         onToggleAIInput={vi.fn()}
@@ -175,6 +213,7 @@ describe('ActionButtons', () => {
     render(
       <ActionButtons
         onCompile={vi.fn()}
+        onRebuild={vi.fn()}
         onOpenLog={vi.fn()}
         onOpenPreview={vi.fn()}
         onToggleAIInput={vi.fn()}

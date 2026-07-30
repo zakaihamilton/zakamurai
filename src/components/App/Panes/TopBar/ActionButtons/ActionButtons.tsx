@@ -6,7 +6,7 @@ import { LogState } from '@/components/App/Views/LogArea';
 import { Icons } from '@/components/ui/Icons';
 import Tooltip from '@/components/ui/Tooltip';
 import { formatShortcut } from '@/utils/os';
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { requireStore } from '../../../types';
 import type { ActionButtonsProps } from '../topbar-types';
 import styles from './ActionButtons.module.css';
@@ -14,12 +14,18 @@ import styles from './ActionButtons.module.css';
 const isViewTab = (tabId: string | null | undefined): boolean =>
   tabId === 'ai-logs' || tabId === 'preview';
 
+const REBUILD_HOLD_DELAY = 600;
+
 export default function ActionButtons({
   onCompile,
+  onRebuild,
   onOpenLog,
   onOpenPreview,
   onToggleAIInput,
 }: ActionButtonsProps) {
+  const [isRebuildReady, setIsRebuildReady] = useState(false);
+  const rebuildTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const didLongPressRef = useRef(false);
   const { isSystemProcessing } = requireStore(LogState.useState('isSystemProcessing'));
   const { compileStatus, compilePhase } = requireStore(
     PreviewState.useState(['compileStatus', 'compilePhase']),
@@ -31,8 +37,6 @@ export default function ActionButtons({
     SidebarState.useState(['showAIInput', 'isAIInputPopupOpen']),
   );
   const isAIInputActive = isMobile ? isAIInputPopupOpen : showAIInput;
-  const buildTooltip =
-    compileStatus === 'building' ? compilePhase || 'Compiling…' : 'Build Project';
   const lastContentTabIdRef = useRef(lastCodeTabId);
   const lastContentTabId =
     activeTabId && !isViewTab(activeTabId) ? activeTabId : lastContentTabIdRef.current;
@@ -51,6 +55,57 @@ export default function ActionButtons({
     }
   }, [activeTabId, tabState]);
 
+  useEffect(
+    () => () => {
+      if (rebuildTimerRef.current) clearTimeout(rebuildTimerRef.current);
+    },
+    [],
+  );
+
+  const clearRebuildTimer = () => {
+    if (!rebuildTimerRef.current) return;
+    clearTimeout(rebuildTimerRef.current);
+    rebuildTimerRef.current = null;
+  };
+
+  const handleBuildPointerDown = () => {
+    if (isSystemProcessing) return;
+    didLongPressRef.current = false;
+    rebuildTimerRef.current = setTimeout(() => {
+      rebuildTimerRef.current = null;
+      didLongPressRef.current = true;
+      setIsRebuildReady(true);
+    }, REBUILD_HOLD_DELAY);
+  };
+
+  const handleBuildPointerUp = () => {
+    clearRebuildTimer();
+    if (!didLongPressRef.current) return;
+    setIsRebuildReady(false);
+    onRebuild();
+  };
+
+  const handleBuildPointerCancel = () => {
+    clearRebuildTimer();
+    didLongPressRef.current = false;
+    setIsRebuildReady(false);
+  };
+
+  const handleBuildClick = () => {
+    if (didLongPressRef.current) {
+      didLongPressRef.current = false;
+      return;
+    }
+    onCompile();
+  };
+
+  const buildTooltip =
+    compileStatus === 'building'
+      ? compilePhase || 'Compiling…'
+      : isRebuildReady
+        ? 'Release to rebuild from a fresh compiler environment'
+        : 'Build Project (hold to rebuild)';
+
   const handleOpenLastContentTab = () => {
     if (!lastContentTab) return;
 
@@ -66,13 +121,17 @@ export default function ActionButtons({
           <button
             type="button"
             className={styles.compileBtn}
-            onClick={onCompile}
+            onClick={handleBuildClick}
+            onPointerDown={handleBuildPointerDown}
+            onPointerUp={handleBuildPointerUp}
+            onPointerCancel={handleBuildPointerCancel}
+            onPointerLeave={handleBuildPointerCancel}
             disabled={isSystemProcessing}
-            aria-label="Build project"
+            aria-label={isRebuildReady ? 'Release to rebuild project' : 'Build project'}
             data-testid="compile-btn"
           >
             <Icons.Play />
-            <span className={styles.hideOnMobile}>Build</span>
+            <span className={styles.hideOnMobile}>{isRebuildReady ? 'Rebuild' : 'Build'}</span>
           </button>
         </Tooltip>
       </div>

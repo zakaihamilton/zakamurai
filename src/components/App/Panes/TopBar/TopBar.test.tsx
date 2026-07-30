@@ -28,6 +28,7 @@ global.URL.revokeObjectURL = vi.fn();
 vi.mock('./ProjectCompiler', () => ({
   default: vi.fn(() => ({
     handleCompile: vi.fn(),
+    handleRebuild: vi.fn(),
     handleOpenLog: vi.fn(),
     handleOpenPreview: vi.fn(),
     handleClearFS: vi.fn(),

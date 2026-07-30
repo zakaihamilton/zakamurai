@@ -22,6 +22,7 @@ import useProjectCompiler from './ProjectCompiler';
 
 const addNotification = vi.fn();
 const compilerReset = vi.fn();
+const compilerCompile = vi.fn();
 
 vi.mock('@/components/ui/Notification', () => ({
   useNotification: () => ({
@@ -77,8 +78,16 @@ vi.mock('@/components/Workspace', () => ({
 }));
 
 vi.mock('@/utils/compiler', () => ({
-  Compiler: {
-    reset: (...args: unknown[]) => compilerReset(...args),
+  Compiler: class {
+    static reset(...args: unknown[]) {
+      return compilerReset(...args);
+    }
+
+    container = null;
+
+    compile(...args: unknown[]) {
+      return compilerCompile(...args);
+    }
   },
 }));
 
@@ -104,12 +113,14 @@ describe('useProjectCompiler', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     compilerReset.mockResolvedValue(undefined);
+    compilerCompile.mockResolvedValue(undefined);
   });
 
   it('returns compilation control functions', () => {
     const { result } = renderCompilerHook();
 
     expect(result.current.handleCompile).toBeTypeOf('function');
+    expect(result.current.handleRebuild).toBeTypeOf('function');
     expect(result.current.handleOpenLog).toBeTypeOf('function');
     expect(result.current.handleOpenPreview).toBeTypeOf('function');
     expect(result.current.handleClearFS).toBeTypeOf('function');
@@ -144,6 +155,17 @@ describe('useProjectCompiler', () => {
     );
     expect(mockTabState).toHaveBeenCalled();
     expect(addNotification).not.toHaveBeenCalledWith(expect.anything(), 'error');
+  });
+
+  it('resets the compiler before compiling on rebuild', async () => {
+    const { result } = renderCompilerHook();
+
+    await act(async () => {
+      await result.current.handleRebuild();
+    });
+
+    expect(compilerReset).toHaveBeenCalledBefore(compilerCompile);
+    expect(compilerCompile).toHaveBeenCalled();
   });
 
   it('notifies and logs on clear filesystem failure without throwing', async () => {

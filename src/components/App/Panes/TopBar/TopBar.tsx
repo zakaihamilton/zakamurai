@@ -91,7 +91,8 @@ export default function TopBar() {
   const storageHealthState = StorageHealthState.usePassiveState();
   const logState = LogState.usePassiveState();
 
-  const { handleCompile, handleOpenLog, handleOpenPreview, handleClearFS } = useProjectCompiler();
+  const { handleCompile, handleRebuild, handleOpenLog, handleOpenPreview, handleClearFS } =
+    useProjectCompiler();
   const { handleExportZip, handleExportCompiledZip, exportError, clearExportError } =
     useZipExporter();
 
@@ -192,6 +193,7 @@ export default function TopBar() {
       <div className={styles.actions}>
         <ActionButtons
           onCompile={handleCompile}
+          onRebuild={handleRebuild}
           onOpenLog={handleOpenLog}
           onOpenPreview={handleOpenPreview}
           onToggleAIInput={() =>
