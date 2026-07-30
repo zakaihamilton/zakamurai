@@ -329,6 +329,25 @@ describe('CodeEditor', () => {
     expect(setData).toHaveBeenCalledWith('text/plain', 'full folded text');
   });
 
+  it('reports the selection when a shortcut emits a synthetic change event', () => {
+    const onCursorUpdate = vi.fn();
+    render(
+      <CodeEditor
+        {...defaultProps}
+        isReadOnly={false}
+        navigationLinksEnabled={false}
+        onCursorUpdate={onCursorUpdate}
+      />,
+    );
+
+    const textarea = screen.getByRole('textbox') as HTMLTextAreaElement;
+    textarea.setSelectionRange(4, 4);
+
+    fireEvent.keyDown(textarea, { key: 'Tab' });
+
+    expect(onCursorUpdate).toHaveBeenCalledWith({ line: 1, col: 5, index: 4 });
+  });
+
   it('shows variable definition popup headers and toggles closed on repeat click', () => {
     const mockTargets = [
       createMockNavigationTarget({

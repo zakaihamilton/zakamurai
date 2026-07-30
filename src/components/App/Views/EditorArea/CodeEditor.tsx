@@ -92,9 +92,13 @@ export default function CodeEditor({
     lastReportedIndex.current = -1;
   }, [filePath]);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: textareaRef is a stable ref object
   const handleSelectionChange = useCallback(
     (e: ChangeEvent<HTMLTextAreaElement> | React.SyntheticEvent<HTMLTextAreaElement>) => {
-      const textarea = e.currentTarget;
+      // Editor shortcuts synthesize a minimal change event, which has a target value
+      // but no currentTarget. Use the mounted textarea for its actual selection.
+      const textarea = e.currentTarget ?? textareaRef.current;
+      if (!textarea) return;
       const start = textarea.selectionStart;
 
       lastReportedIndex.current = start;
