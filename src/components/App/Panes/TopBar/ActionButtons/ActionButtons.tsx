@@ -101,7 +101,7 @@ export default function ActionButtons({
 
   const buildTooltip =
     compileStatus === 'building'
-      ? compilePhase || 'Compiling…'
+      ? `Stop Build — ${compilePhase || 'Compiling…'}`
       : isRebuildReady
         ? 'Release to rebuild from a fresh compiler environment'
         : 'Build Project (hold to rebuild)';
@@ -127,11 +127,19 @@ export default function ActionButtons({
             onPointerCancel={handleBuildPointerCancel}
             onPointerLeave={handleBuildPointerCancel}
             disabled={isSystemProcessing}
-            aria-label={isRebuildReady ? 'Release to rebuild project' : 'Build project'}
+            aria-label={
+              compileStatus === 'building'
+                ? 'Stop Build'
+                : isRebuildReady
+                  ? 'Release to rebuild project'
+                  : 'Build project'
+            }
             data-testid="compile-btn"
           >
             <Icons.Play />
-            <span className={styles.hideOnMobile}>{isRebuildReady ? 'Rebuild' : 'Build'}</span>
+            <span className={styles.hideOnMobile}>
+              {compileStatus === 'building' ? 'Stop Build' : isRebuildReady ? 'Rebuild' : 'Build'}
+            </span>
           </button>
         </Tooltip>
       </div>

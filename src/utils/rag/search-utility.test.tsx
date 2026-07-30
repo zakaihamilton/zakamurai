@@ -1,18 +1,23 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { mockStorageManager } from '../../test-utils/domMocks';
-import { RagSearchUtility } from './search-utility';
+import { releaseWebLLMGpuMemory, reserveWebLLMGpuMemory } from '../ai-memory-governor';
+import { RAG_EXTRACTOR_IDLE_UNLOAD_MS, RagSearchUtility } from './search-utility';
 
-const { mockInit, mockSearch } = vi.hoisted(() => ({
+const { mockDispose, mockInit, mockSearch, mockUnloadModel } = vi.hoisted(() => ({
+  mockDispose: vi.fn(),
   mockInit: vi.fn(),
   mockSearch: vi.fn(),
+  mockUnloadModel: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock('./indexer-controller.js', () => {
   return {
     IndexerController: vi.fn().mockImplementation(() => {
       return {
+        dispose: mockDispose,
         init: mockInit,
         search: mockSearch,
+        unloadModel: mockUnloadModel,
       };
     }),
   };
@@ -22,11 +27,15 @@ describe('RagSearchUtility', () => {
   let originalNavigator: Navigator;
 
   beforeEach(() => {
+    vi.useFakeTimers();
     vi.clearAllMocks();
     originalNavigator = global.navigator;
   });
 
   afterEach(() => {
+    vi.clearAllTimers();
+    vi.useRealTimers();
+    releaseWebLLMGpuMemory();
     global.navigator = originalNavigator;
   });
 
@@ -62,6 +71,59 @@ describe('RagSearchUtility', () => {
     const utility = new RagSearchUtility();
     const formatted = utility.formatPromptContext([]);
     expect(formatted).toBe('');
+  });
+
+  it('uses WASM and releases the extractor after an idle delay while WebLLM owns WebGPU', async () => {
+    mockInit.mockResolvedValue(undefined);
+    mockSearch.mockResolvedValue([]);
+    reserveWebLLMGpuMemory();
+    const utility = new RagSearchUtility();
+
+    await utility.retrieveContext('button', 1);
+
+    expect(mockSearch).toHaveBeenCalledWith('button', 1, 'wasm');
+    expect(mockUnloadModel).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(RAG_EXTRACTOR_IDLE_UNLOAD_MS);
+    expect(mockUnloadModel).toHaveBeenCalledOnce();
+  });
+
+  it('reuses the extractor across nearby requests and resets the idle delay', async () => {
+    mockInit.mockResolvedValue(undefined);
+    mockSearch.mockResolvedValue([]);
+    const utility = new RagSearchUtility();
+
+    await utility.retrieveContext('first', 1);
+    await vi.advanceTimersByTimeAsync(RAG_EXTRACTOR_IDLE_UNLOAD_MS - 1);
+    await utility.retrieveContext('second', 1);
+    await vi.advanceTimersByTimeAsync(RAG_EXTRACTOR_IDLE_UNLOAD_MS - 1);
+
+    expect(mockUnloadModel).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(1);
+    expect(mockUnloadModel).toHaveBeenCalledOnce();
+  });
+
+  it('supports immediate coordinated unload and cancels the idle unload', async () => {
+    mockInit.mockResolvedValue(undefined);
+    mockSearch.mockResolvedValue([]);
+    const utility = new RagSearchUtility();
+
+    await utility.retrieveContext('button', 1);
+    await utility.unloadModel();
+
+    expect(mockUnloadModel).toHaveBeenCalledOnce();
+    await vi.advanceTimersByTimeAsync(RAG_EXTRACTOR_IDLE_UNLOAD_MS);
+    expect(mockUnloadModel).toHaveBeenCalledOnce();
+  });
+
+  it('can terminate a stuck extractor operation before WebLLM starts', async () => {
+    mockInit.mockResolvedValue(undefined);
+    const utility = new RagSearchUtility();
+    await utility.init();
+
+    utility.forceUnloadModel();
+
+    expect(mockDispose).toHaveBeenCalledOnce();
+    expect(utility.isInitialized).toBe(false);
   });
 
   it('retrieves and enriches context with CSS modules from OPFS', async () => {
@@ -101,6 +163,8 @@ describe('RagSearchUtility', () => {
     expect(results[0].linkedCss).toHaveLength(1);
     expect(results[0].linkedCss[0].filePath).toBe('Button.module.css');
     expect(results[0].linkedCss[0].content).toBe('.btn { color: red; }');
+    expect(mockSearch).toHaveBeenCalledWith('button', 1, 'webgpu');
+    expect(mockUnloadModel).not.toHaveBeenCalled();
   });
 
   it('handles OPFS read errors and parsing errors gracefully', async () => {

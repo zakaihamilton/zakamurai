@@ -3,7 +3,7 @@
  * Heavy deps (browser-bundler / esbuild-wasm, almostnode) load only when compile runs.
  */
 
-import { parseBuildCommand } from './browser-bundler';
+import { isBrowserBundleCommand, parseBuildCommand } from './browser-bundler';
 import { getSharedContainer, initContainer, resetContainer } from './container';
 import { setupSmartDevServer } from './dev-server';
 import { scaffoldMissingFiles } from './scaffold';
@@ -11,6 +11,20 @@ import { syncFilesToContainer } from './syncer';
 import type { AlmostnodeContainer, FolderTreeNode, LocalFsLike, OnLog, OnPhase } from './types';
 
 const loadBrowserBundler = () => import('./browser-bundler');
+
+function usesBrowserBundler(buildCommand: string | undefined): boolean {
+  if (!buildCommand) return false;
+  try {
+    const commands = parseBuildCommand(buildCommand);
+    return (
+      commands.length > 0 &&
+      commands.every(([command, ...args]) => isBrowserBundleCommand(command, args))
+    );
+  } catch {
+    // Preserve the existing command parser error later in compile(), where it is surfaced to the user.
+    return false;
+  }
+}
 
 function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
   let timeoutId: ReturnType<typeof setTimeout>;
@@ -85,13 +99,6 @@ export class Compiler {
           throw new Error('package.json is empty or invalid');
         }
 
-        const installPromise = npm.installFromPackageJson({
-          includeDev: true,
-          onProgress: (msg: string) => this.onLog(`[NPM] ${msg}`),
-        });
-
-        await withTimeout(installPromise, 60000, 'NPM install timed out after 60s');
-
         let packageJson: Record<string, unknown>;
         try {
           packageJson = JSON.parse(content) as Record<string, unknown>;
@@ -101,6 +108,16 @@ export class Compiler {
         }
 
         const scripts = packageJson.scripts as Record<string, string> | undefined;
+        const buildCommand = scripts?.build;
+        const installPromise = npm.installFromPackageJson({
+          // Vite/esbuild builds use our browser bundler, so installing lint/test tooling only
+          // pulls unsupported development fixtures into the virtual runtime.
+          includeDev: !usesBrowserBundler(buildCommand),
+          onProgress: (msg: string) => this.onLog(`[NPM] ${msg}`),
+        });
+
+        await withTimeout(installPromise, 60000, 'NPM install timed out after 60s');
+
         if (scripts?.build) {
           this.onPhase('bundling');
           const buildCommand = scripts.build;

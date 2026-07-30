@@ -31,6 +31,22 @@ describe('LogArea', () => {
     expect(screen.getByText('Hello bot')).toBeDefined();
   });
 
+  it('shows up to 1,000 recent logs', () => {
+    const logs = Array.from({ length: 500 }, (_, index) => ({
+      id: index,
+      role: 'system' as const,
+      text: `Log ${index}`,
+      timestamp: logTimestamp,
+    }));
+    vi.spyOn(LogState, 'useState').mockReturnValue(makeLogState({ logs }));
+    vi.spyOn(LogAreaUiState, 'useState').mockReturnValue(makeLogAreaUiState());
+
+    render(<LogArea />);
+
+    expect(screen.getByText('Log 0')).toBeDefined();
+    expect(screen.getByText('Log 499')).toBeDefined();
+  });
+
   it('filters logs by partial matches', async () => {
     vi.spyOn(LogState, 'useState').mockReturnValue(
       makeLogState({

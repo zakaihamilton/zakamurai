@@ -189,9 +189,11 @@ describe('ActionButtons', () => {
     );
 
     expect(screen.getByTestId('compile-btn')).toBeDisabled();
+    expect(screen.getByTestId('compile-btn')).toHaveAccessibleName('Stop Build');
+    expect(screen.getByText('Stop Build')).toBeDefined();
     expect(screen.getByTestId('compile-btn').parentElement).toHaveAttribute(
       'data-tooltip-content',
-      '[NPM] Downloading nanoid@3.3.16…',
+      'Stop Build — [NPM] Downloading nanoid@3.3.16…',
     );
   });
 

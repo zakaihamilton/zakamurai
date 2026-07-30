@@ -15,6 +15,31 @@ const ROLE_LABELS: Record<string, string> = {
   reviewer: 'Reviewer',
 };
 
+const quoteDetail = (value: string): string => `\`${value.replaceAll('`', '\\`')}\``;
+
+const summarizeDetail = (value: string, maxCharacters = 240): string =>
+  value.length > maxCharacters ? `${value.slice(0, maxCharacters)}…` : value;
+
+const formatActionDetails = (action: Exclude<AgentEvent['action'], string | undefined>): string => {
+  const details: string[] = [];
+  if (action.path) details.push(`file ${quoteDetail(action.path)}`);
+  if (action.query) details.push(`query ${quoteDetail(action.query)}`);
+  if (action.glob) details.push(`filter ${quoteDetail(action.glob)}`);
+  if (action.check) details.push(`check ${quoteDetail(action.check)}`);
+  if (action.k) details.push(`top ${action.k} results`);
+  if (action.action === 'write_file' && typeof action.content === 'string') {
+    details.push(`${action.content.length.toLocaleString()} characters`);
+  }
+  if (action.reason) details.push(summarizeDetail(action.reason));
+
+  if (details.length) return details.join(' · ');
+  if (action.action === 'list_files') return 'all workspace files';
+  if (action.action === 'validate') return 'staged workspace';
+  if (action.action === 'list_project_checks') return 'available package scripts';
+  if (action.action === 'inspect_preview') return 'staged preview';
+  return '';
+};
+
 export const formatAgentEvent: AgentEventFormatter = (event, roleLabelById = {}) => {
   const roleKey = event.agentRole ?? '';
   const roleName = roleLabelById[roleKey] || ROLE_LABELS[roleKey] || event.agentRole || null;
@@ -25,20 +50,34 @@ export const formatAgentEvent: AgentEventFormatter = (event, roleLabelById = {})
   if (event.type === 'tool') {
     const action = event.action;
     const actionObj = typeof action === 'object' && action ? action : null;
-    const target = actionObj?.path || actionObj?.query || '';
+    const detail = actionObj ? formatActionDetails(actionObj) : '';
     const actionName = actionObj?.action || (typeof action === 'string' ? action : '');
-    return `${rolePrefix}**Step ${event.turn}:** \`${actionName}\`${target ? ` — ${target}` : ''}`;
+    return `${rolePrefix}**Step ${event.turn}:** \`${actionName}\`${detail ? ` — ${detail}` : ''}`;
   }
   if (event.type === 'observation') {
-    const action = typeof event.action === 'string' ? event.action : event.action?.action;
-    const prefix = action ? `\`${action}\` ${event.error ? 'failed' : 'completed'}` : '';
+    const actionObj = typeof event.action === 'object' && event.action ? event.action : null;
+    const action = typeof event.action === 'string' ? event.action : actionObj?.action;
+    const actionDetail = actionObj ? formatActionDetails(actionObj) : '';
+    const prefix = action
+      ? `\`${action}\` ${event.error ? 'failed' : 'completed'}${actionDetail ? ` for ${actionDetail}` : ''}`
+      : '';
     const detail = event.message ? `${prefix ? ' — ' : ''}${event.message}` : '';
     return event.error
       ? `⚠ ${rolePrefix}${prefix}${detail}`
       : `${rolePrefix}**Step ${event.turn} result:** ${prefix}${detail}`;
   }
   if (event.type === 'finished') {
-    return `${rolePrefix}**Ready for review:** ${event.message || 'Agent finished.'}`;
+    const paths = [
+      ...new Set(
+        (event.changes || [])
+          .map((change) => change.path || change.filePath)
+          .filter((path): path is string => Boolean(path)),
+      ),
+    ];
+    const files = paths.length
+      ? `\n\n**Changed files (${paths.length}):** ${paths.map(quoteDetail).join(', ')}`
+      : '';
+    return `${rolePrefix}**Ready for review:** ${event.message || 'Agent finished.'}${files}`;
   }
   return '';
 };
@@ -208,8 +247,16 @@ export default function useAgentRunner({
             toCompilerFs(fs) as never,
             editorState.fileContents || {},
           );
+          const workspacePaths = Object.keys(workspaceFiles).sort();
+          const displayedPaths = workspacePaths.slice(0, 60);
+          const omittedPathCount = workspacePaths.length - displayedPaths.length;
+          const fileList = displayedPaths.length
+            ? `\n\n**Files:** ${displayedPaths.map(quoteDetail).join(', ')}${
+                omittedPathCount > 0 ? `, and ${omittedPathCount} more` : ''
+              }`
+            : '\n\n**Files:** none';
           appendReasoning(
-            `**Workspace ready:** ${Object.keys(workspaceFiles).length} file(s) available. Loading **${selectedModel}** and starting the agent…`,
+            `**Workspace ready:** ${workspacePaths.length} file(s) available. Loading **${selectedModel}** and starting the agent…${fileList}`,
           );
           // Tool events may arrive before a run completes. The live-write ledger
           // declared above keeps those visible drafts inside the eventual review set.

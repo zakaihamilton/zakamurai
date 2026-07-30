@@ -164,10 +164,45 @@ describe('formatAgentEvent', () => {
       formatAgentEvent({
         type: 'tool',
         turn: 1,
+        agentRole: 'coder',
+        action: {
+          action: 'write_file',
+          path: 'src/App.jsx',
+          content: 'export default function App() { return null; }',
+          reason: 'compose the page',
+        },
+      }),
+    ).toContain('file `src/App.jsx` · 46 characters · compose the page');
+    expect(
+      formatAgentEvent({
+        type: 'tool',
+        turn: 1,
         agentRole: 'custom',
         action: { action: 'list_files' },
       }),
-    ).not.toContain(' — ');
+    ).toContain('all workspace files');
+  });
+
+  it('keeps action targets in observation lines and lists changed files on completion', () => {
+    expect(
+      formatAgentEvent({
+        type: 'observation',
+        turn: 2,
+        action: { action: 'read_file', path: 'src/App.jsx' },
+        message: 'Read src/App.jsx (120 characters).',
+      }),
+    ).toContain('read_file` completed for file `src/App.jsx`');
+    expect(
+      formatAgentEvent({
+        type: 'finished',
+        turn: 3,
+        message: 'Updated the page.',
+        changes: [
+          { path: 'src/App.jsx', after: 'next' },
+          { path: 'src/App.module.css', after: 'next' },
+        ],
+      }),
+    ).toContain('Changed files (2):** `src/App.jsx`, `src/App.module.css`');
   });
 
   it('uses the finished fallback message when summary is missing', () => {
@@ -232,6 +267,31 @@ describe('useAgentRunner', () => {
     expect(props.addToHistory).toHaveBeenCalledWith('welcome build');
     expect(props.patchSession).toHaveBeenCalled();
     expect(props.promptUiState).toHaveBeenCalled();
+  });
+
+  it('records workspace filenames in the reasoning log', async () => {
+    collectWorkspaceFiles.mockResolvedValueOnce({
+      'package.json': '{}',
+      'src/App.jsx': 'export default function App() { return null; }',
+      'src/App.module.css': '.app {}',
+    });
+    const props = createRunnerProps();
+    const { result } = renderHook(() => useAgentRunner(props));
+
+    act(() => {
+      result.current.send(mockFormEvent());
+    });
+
+    await waitFor(() => {
+      const reasoningUpdates = vi
+        .mocked(props.patchSession)
+        .mock.calls.map(([, update]) => update.reasoning)
+        .filter((reasoning): reasoning is string => typeof reasoning === 'string');
+      expect(reasoningUpdates.some((reasoning) => reasoning.includes('`src/App.jsx`'))).toBe(true);
+      expect(reasoningUpdates.some((reasoning) => reasoning.includes('`src/App.module.css`'))).toBe(
+        true,
+      );
+    });
   });
 
   it('stops generation and clears running session state', async () => {
@@ -502,7 +562,7 @@ describe('useAgentRunner', () => {
     });
 
     await waitFor(() => {
-      const latestProgressUpdate = [...props.patchSession.mock.calls]
+      const latestProgressUpdate = [...vi.mocked(props.patchSession).mock.calls]
         .reverse()
         .map(([, update]) => update.reasoningEvents)
         .find(
@@ -511,11 +571,11 @@ describe('useAgentRunner', () => {
             reasoningEvents.some((entry) => entry.text.includes('48s elapsed')),
         );
       expect(latestProgressUpdate).toBeDefined();
-      const progressEntries = latestProgressUpdate.filter((entry) =>
+      const progressEntries = (latestProgressUpdate ?? []).filter((entry) =>
         entry.text.includes('Local model is'),
       );
       expect(progressEntries).toHaveLength(1);
-      expect(progressEntries[0].text).toContain('48s elapsed');
+      expect(progressEntries[0]?.text).toContain('48s elapsed');
     });
   });
 });

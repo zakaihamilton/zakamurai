@@ -389,7 +389,8 @@ describe('VariableResolver', () => {
     it('resolves object argument usages in WebLLMAPI', () => {
       const code = fs.readFileSync('src/components/AI/WebLLMAPI.tsx', 'utf8');
       const targets = resolveVariables(code, 'src/components/AI/WebLLMAPI.tsx');
-      const messagesUseIndex = code.indexOf('messages,', code.indexOf('completions.create'));
+      const messagesDeclarationIndex = code.indexOf('const messages =');
+      const messagesUseIndex = code.indexOf('messages,', messagesDeclarationIndex);
       const generationOptionsUseIndex = code.indexOf(
         'generationOptions,',
         code.indexOf('completions.create'),
@@ -398,15 +399,19 @@ describe('VariableResolver', () => {
         (t) => t.name === 'messages' && t.start === messagesUseIndex,
       );
       expect(messagesUse).toBeDefined();
-      const messagesDeclLine = code.slice(0, code.search(/const messages\s*=/)).split('\n').length;
+      const messagesDeclLine = code.slice(0, messagesDeclarationIndex).split('\n').length;
       expect(messagesUse?.targets[0].loc.line).toBe(messagesDeclLine);
 
       const generationOptionsUse = targets.find(
         (t) => t.name === 'generationOptions' && t.start === generationOptionsUseIndex,
       );
       expect(generationOptionsUse).toBeDefined();
+      const generationOptionsDeclarationIndex = code.lastIndexOf(
+        'const generationOptions',
+        generationOptionsUseIndex,
+      );
       const generationOptionsDeclLine = code
-        .slice(0, code.search(/const generationOptions\b[^=]*=/))
+        .slice(0, generationOptionsDeclarationIndex)
         .split('\n').length;
       expect(generationOptionsUse?.targets[0].loc.line).toBe(generationOptionsDeclLine);
     });

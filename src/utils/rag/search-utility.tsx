@@ -1,4 +1,5 @@
-import { IndexerController } from './indexer-controller';
+import { isWebLLMGpuMemoryReserved } from '@/utils/ai-memory-governor';
+import { IndexerController, type RagInferenceDevice } from './indexer-controller';
 
 type LinkedCss = {
   filePath: string;
@@ -20,13 +21,61 @@ type RawSearchResult = {
   cssLinks?: string;
 };
 
+export const RAG_EXTRACTOR_IDLE_UNLOAD_MS = 15_000;
+
 export class RagSearchUtility {
   controller: IndexerController;
   isInitialized: boolean;
+  operationQueue: Promise<void>;
+  unloadTimer: ReturnType<typeof setTimeout> | null;
 
   constructor() {
     this.controller = new IndexerController();
     this.isInitialized = false;
+    this.operationQueue = Promise.resolve();
+    this.unloadTimer = null;
+  }
+
+  private enqueue<T>(operation: () => Promise<T>): Promise<T> {
+    const queued = this.operationQueue.then(operation, operation);
+    this.operationQueue = queued.then(
+      () => undefined,
+      () => undefined,
+    );
+    return queued;
+  }
+
+  private inferenceDevice(): RagInferenceDevice {
+    return isWebLLMGpuMemoryReserved() ? 'wasm' : 'webgpu';
+  }
+
+  private clearUnloadTimer(): void {
+    if (!this.unloadTimer) return;
+    clearTimeout(this.unloadTimer);
+    this.unloadTimer = null;
+  }
+
+  private scheduleExtractorUnload(): void {
+    this.clearUnloadTimer();
+    this.unloadTimer = setTimeout(() => {
+      this.unloadTimer = null;
+      void this.enqueue(() => this.controller.unloadModel()).catch((error) => {
+        console.warn('[RAG] Failed to release idle inference model:', error);
+      });
+    }, RAG_EXTRACTOR_IDLE_UNLOAD_MS);
+  }
+
+  private withTransientExtractor<T>(
+    operation: (device: RagInferenceDevice) => Promise<T>,
+  ): Promise<T> {
+    return this.enqueue(async () => {
+      this.clearUnloadTimer();
+      try {
+        return await operation(this.inferenceDevice());
+      } finally {
+        this.scheduleExtractorUnload();
+      }
+    });
   }
 
   async init(): Promise<void> {
@@ -62,7 +111,9 @@ export class RagSearchUtility {
   async retrieveContext(query: string, k = 5): Promise<ContextItem[]> {
     await this.init();
 
-    const rawResults = (await this.controller.search(query, k)) as RawSearchResult[];
+    const rawResults = (await this.withTransientExtractor((device) =>
+      this.controller.search(query, k, device),
+    )) as RawSearchResult[];
     const enrichedResults: ContextItem[] = [];
 
     for (const result of rawResults) {
@@ -102,22 +153,35 @@ export class RagSearchUtility {
 
   async indexWorkspaceFiles(files: Record<string, string> = {}): Promise<number> {
     await this.init();
-    return this.controller.indexWorkspaceFiles(files);
+    return this.withTransientExtractor((device) =>
+      this.controller.indexWorkspaceFiles(files, device),
+    );
   }
 
   async indexFile(filePath: string, content: string): Promise<unknown> {
     await this.init();
-    return this.controller.indexFile(filePath, content);
+    return this.withTransientExtractor((device) =>
+      this.controller.indexFile(filePath, content, device),
+    );
   }
 
   async unloadModel(): Promise<unknown> {
+    this.clearUnloadTimer();
     if (!this.isInitialized) return;
-    return this.controller.unloadModel();
+    return this.enqueue(() => this.controller.unloadModel());
+  }
+
+  forceUnloadModel(): void {
+    this.clearUnloadTimer();
+    this.controller.dispose();
+    this.operationQueue = Promise.resolve();
+    this.isInitialized = false;
   }
 
   async purgeIndex(): Promise<unknown> {
+    this.clearUnloadTimer();
     if (!this.isInitialized) return;
-    return this.controller.purgeIndex();
+    return this.enqueue(() => this.controller.purgeIndex());
   }
 
   formatPromptContext(results: ContextItem[]): string {

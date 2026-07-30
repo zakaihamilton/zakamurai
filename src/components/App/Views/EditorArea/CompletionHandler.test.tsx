@@ -1,6 +1,6 @@
 const { mockRagState, mockPromptUiState } = vi.hoisted(() => ({
   mockRagState: { status: 'ready' },
-  mockPromptUiState: { selectedModel: null },
+  mockPromptUiState: { selectedModel: null as string | null },
 }));
 
 vi.mock('@/components/AI/RagState', () => ({
@@ -10,6 +10,7 @@ vi.mock('@/components/App/Panes/Prompt/PromptState', () => ({
   PromptUiState: { usePassiveState: vi.fn(() => mockPromptUiState) },
 }));
 import { RECOMMENDED_COMPLETION_MODEL } from '@/components/AI/WebLLMModels';
+import { hasModelInCache } from '@mlc-ai/web-llm';
 import { act, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import useCompletion from './CompletionHandler';
@@ -53,6 +54,8 @@ describe('useCompletion', () => {
   beforeEach(() => {
     vi.useFakeTimers();
     vi.clearAllMocks();
+    mockPromptUiState.selectedModel = null;
+    vi.mocked(hasModelInCache).mockResolvedValue(true);
   });
 
   afterEach(() => {
@@ -250,7 +253,68 @@ describe('useCompletion', () => {
     expect(mockedAskWebLLM).toHaveBeenCalledTimes(1);
     expect(mockedAskWebLLM.mock.calls[0]?.[3]?.model).toBe(RECOMMENDED_COMPLETION_MODEL.id);
     expect(mockedAskWebLLM.mock.calls[0]?.[3]?.max_tokens).toBe(128);
+    expect(mockedAskWebLLM.mock.calls[0]?.[3]?.contextWindowSize).toBe(1024);
+    expect(mockedAskWebLLM.mock.calls[0]?.[3]?.requestKind).toBe('completion');
+    expect(mockedAskWebLLM.mock.calls[0]?.[3]?.signal).toBeInstanceOf(AbortSignal);
     expect(ragSearch.retrieveContext).toHaveBeenCalledWith('const valu\nvalu', 3);
+  });
+
+  it('keeps the full context when completion falls back to the active prompt model', async () => {
+    const promptModel = 'Qwen3.5-4B-q4f16_1-MLC';
+    mockPromptUiState.selectedModel = promptModel;
+    vi.mocked(hasModelInCache).mockImplementation(async (modelId) => modelId === promptModel);
+    const { rerender } = renderHook((props) => useCompletion(props), {
+      initialProps: {
+        localContent: 'const val',
+        cursorPos: { line: 1, col: 10, index: 9 },
+        filePath: 'test.js',
+      },
+    });
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+    rerender({
+      localContent: 'const valu',
+      cursorPos: { line: 1, col: 11, index: 10 },
+      filePath: 'test.js',
+    });
+    await flushCompletionDelay();
+
+    expect(mockedAskWebLLM.mock.calls[0]?.[3]).toMatchObject({
+      model: promptModel,
+      contextWindowSize: 4096,
+    });
+  });
+
+  it('aborts only the owned completion request when cancelled', async () => {
+    let requestSignal: AbortSignal | undefined;
+    mockedAskWebLLM.mockImplementation((_prompt, _systemPrompt, _onUpdate, options) => {
+      requestSignal = options?.signal;
+      return new Promise(() => {});
+    });
+    const { result, rerender } = renderHook((props) => useCompletion(props), {
+      initialProps: {
+        localContent: 'const val',
+        cursorPos: { line: 1, col: 10, index: 9 },
+        filePath: 'test.js',
+      },
+    });
+    rerender({
+      localContent: 'const valu',
+      cursorPos: { line: 1, col: 11, index: 10 },
+      filePath: 'test.js',
+    });
+    await flushCompletionDelay();
+    expect(requestSignal?.aborted).toBe(false);
+
+    await act(async () => {
+      result.current.cancelSuggestion();
+      await Promise.resolve();
+    });
+
+    expect(requestSignal?.aborted).toBe(true);
+    expect(result.current.loading).toBe(false);
   });
 
   it('shows suggestion only after the final completion is ready', async () => {

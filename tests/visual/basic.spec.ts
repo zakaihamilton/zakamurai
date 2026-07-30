@@ -2,6 +2,9 @@ import { expect, test } from '@playwright/test';
 
 test.describe('Zakamurai Basic Tests', () => {
   test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      localStorage.setItem('zakamurai_is_sidebar_open', 'true');
+    });
     // Using 127.0.0.1 for better reliability
     await page.goto('/');
     // Wait for the loading screen to disappear

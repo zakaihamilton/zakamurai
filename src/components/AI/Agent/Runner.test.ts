@@ -32,6 +32,7 @@ describe('runAgent', () => {
     expect(validate).toHaveBeenCalledWith({ 'src/a.js': 'const a = 2;' });
     expect(result.changes[0].after).toBe('const a = 2;');
     expect(askWebLLM.mock.calls[0]?.[3]?.messages?.[1]?.content).toContain('Scope: current file');
+    expect(askWebLLM.mock.calls[0]?.[3]?.requestKind).toBe('agent');
   });
 
   it('reports detailed streaming progress while waiting for a local-model action', async () => {
@@ -58,6 +59,38 @@ describe('runAgent', () => {
       expect.objectContaining({
         type: 'thinking',
         message: expect.stringContaining('streaming its next action (18 character(s) received)'),
+      }),
+    );
+  });
+
+  it('forwards cancellation ownership and reports model recovery progress', async () => {
+    askWebLLM.mockImplementationOnce(async (_prompt, _systemPrompt, _onUpdate, options) => {
+      options?.onRecovery?.({
+        requestedModelId: 'large',
+        modelId: 'small',
+        phase: 'initialization',
+        action: 'fallback',
+        reason: 'out-of-memory',
+        attempt: 2,
+      });
+      return '{"action":"finish","summary":"done"}';
+    });
+    const controller = new AbortController();
+    const events: AgentEvent[] = [];
+
+    await runAgent({
+      request: 'inspect',
+      files: { 'src/a.js': 'a' },
+      model: 'large',
+      signal: controller.signal,
+      onEvent: (event) => events.push(event),
+    });
+
+    expect(askWebLLM.mock.calls[0]?.[3]?.signal).toBe(controller.signal);
+    expect(events).toContainEqual(
+      expect.objectContaining({
+        type: 'thinking',
+        message: expect.stringContaining('cached fallback small'),
       }),
     );
   });
@@ -174,6 +207,53 @@ describe('runAgent', () => {
     expect(askWebLLM.mock.calls[1]?.[3]).toMatchObject({ max_tokens: 2400 });
   });
 
+  it('gives malformed JSX source-specific recovery without mislabeling it as CSS', async () => {
+    askWebLLM
+      .mockResolvedValueOnce(
+        '{"action":"write_file","path":"src/App.jsx","content":"export default function App() { return <main />; }}"}',
+      )
+      .mockResolvedValueOnce('{"action":"finish","summary":"no changes"}');
+
+    await runAgent({
+      request: 'build app',
+      files: { 'src/App.jsx': 'export default function App() { return null; }' },
+      model: 'test',
+    });
+
+    const repairMessage = askWebLLM.mock.calls[1]?.[3]?.messages
+      ?.map((message: { content: string }) => message.content)
+      .find((content: string) => content.includes('rejected source file'));
+    expect(repairMessage).toContain('write only src/App.jsx');
+    expect(repairMessage).toContain('using one jsx fence');
+    expect(repairMessage).not.toContain('rejected stylesheet');
+    expect(repairMessage).not.toContain('using one css fence');
+    expect(askWebLLM.mock.calls[1]?.[3]).toMatchObject({ max_tokens: 2400 });
+  });
+
+  it('points an inline-style retry at an available co-located CSS Module', async () => {
+    askWebLLM
+      .mockResolvedValueOnce(
+        '{"action":"write_file","path":"src/App.jsx","content":"export default () => <main style={{ color: \'red\' }} />;"}',
+      )
+      .mockResolvedValueOnce('{"action":"finish","summary":"no changes"}');
+
+    await runAgent({
+      request: 'style app',
+      files: {
+        'src/App.jsx': 'export default () => <main />;',
+        'src/App.module.css': '.app { color: red; }',
+      },
+      model: 'test',
+    });
+
+    const repairMessage = askWebLLM.mock.calls[1]?.[3]?.messages
+      ?.map((message: { content: string }) => message.content)
+      .find((content: string) => content.includes('rejected component'));
+    expect(repairMessage).toContain('src/App.module.css is already available');
+    expect(repairMessage).toContain('using one jsx source fence');
+    expect(repairMessage).toContain('no style prop');
+  });
+
   it('honors allowedActions, priorContext, and agentRole events', async () => {
     askWebLLM.mockResolvedValueOnce('{"action":"finish","summary":"done"}');
     const events: AgentEvent[] = [];
@@ -240,6 +320,43 @@ describe('runAgent', () => {
     ).toBe(true);
   });
 
+  it('includes filenames and action metadata in detailed reasoning observations', async () => {
+    askWebLLM
+      .mockResolvedValueOnce('{"action":"list_files","query":"src/"}')
+      .mockResolvedValueOnce('{"action":"read_file","path":"src/components/Dashboard.jsx"}')
+      .mockResolvedValueOnce('{"action":"finish","summary":"inspected"}');
+    const events: AgentEvent[] = [];
+
+    await runAgent({
+      request: 'inspect dashboard',
+      files: {
+        'src/App.jsx': 'export default function App() { return null; }',
+        'src/components/Dashboard.jsx':
+          'export default function Dashboard() { return <main>Dashboard</main>; }',
+      },
+      model: 'test',
+      onEvent: (event) => events.push(event),
+    });
+
+    expect(events).toContainEqual(
+      expect.objectContaining({
+        type: 'observation',
+        action: expect.objectContaining({ action: 'list_files', query: 'src/' }),
+        message: expect.stringContaining('src/components/Dashboard.jsx'),
+      }),
+    );
+    expect(events).toContainEqual(
+      expect.objectContaining({
+        type: 'observation',
+        action: expect.objectContaining({
+          action: 'read_file',
+          path: 'src/components/Dashboard.jsx',
+        }),
+        message: expect.stringContaining('Read src/components/Dashboard.jsx'),
+      }),
+    );
+  });
+
   it('stages a fenced write payload from a local model', async () => {
     askWebLLM
       .mockResolvedValueOnce(`{"action":"write_file","path":"src/a.js"}
@@ -291,9 +408,14 @@ export const title = "Today";
       onEvent: (event) => events.push(event),
     });
     expect(recovered.summary).toBe('recovered');
-    expect(events.some((event) => event.error && event.message?.includes('three times'))).toBe(
-      true,
-    );
+    expect(
+      events.some(
+        (event) =>
+          !event.error &&
+          event.message?.includes('Duplicate list_files skipped') &&
+          event.message.includes('read-only action'),
+      ),
+    ).toBe(true);
 
     askWebLLM.mockReset();
     askWebLLM
@@ -356,6 +478,9 @@ export const title = "Today";
   it('creates a new component file without treating its absence as a read error', async () => {
     askWebLLM
       .mockResolvedValueOnce(
+        '{"action":"write_file","path":"src/App.jsx","content":"import TodoApp from \\"./components/TodoApp\\"; export default function App() { return <TodoApp />; }"}',
+      )
+      .mockResolvedValueOnce(
         '{"action":"write_file","path":"src/components/TodoApp.jsx","content":"export default function TodoApp() { return <main />; }"}',
       )
       .mockResolvedValueOnce('{"action":"validate"}')
@@ -370,6 +495,90 @@ export const title = "Today";
     });
 
     expect(result.files['src/components/TodoApp.jsx']).toContain('function TodoApp');
+    expect(validate).toHaveBeenCalledOnce();
+  });
+
+  it('requires a referenced CSS Module to exist before staging a component', async () => {
+    askWebLLM
+      .mockResolvedValueOnce(
+        '{"action":"write_file","path":"src/App.jsx","content":"import styles from \\"./App.module.css\\"; export default function App() { return <main className={styles.app} />; }"}',
+      )
+      .mockResolvedValueOnce(
+        '{"action":"write_file","path":"src/App.module.css","content":".app { display: block; }"}',
+      )
+      .mockResolvedValueOnce(
+        '{"action":"write_file","path":"src/App.jsx","content":"import styles from \\"./App.module.css\\"; export default function App() { return <main className={styles.app} />; }"}',
+      )
+      .mockResolvedValueOnce('{"action":"finish","summary":"done"}');
+    const events: AgentEvent[] = [];
+
+    const result = await runAgent({
+      request: 'style the app',
+      files: { 'src/App.jsx': 'export default function App() { return null; }' },
+      model: 'test',
+      onEvent: (event) => events.push(event),
+    });
+
+    expect(result.files['src/App.module.css']).toContain('display: block');
+    expect(events).toContainEqual(
+      expect.objectContaining({
+        error: true,
+        message: expect.stringContaining('Missing CSS Module import'),
+      }),
+    );
+    expect(
+      askWebLLM.mock.calls[1]?.[3]?.messages?.some((message: { content: string }) =>
+        message.content.includes('Create the missing co-located stylesheet now'),
+      ),
+    ).toBe(true);
+  });
+
+  it('stages a safe stylesheet after repeated malformed CSS writes', async () => {
+    askWebLLM
+      .mockResolvedValueOnce(
+        '{"action":"write_file","path":"src/App.module.css","content":".app { color: red;"}',
+      )
+      .mockResolvedValueOnce(
+        '{"action":"write_file","path":"src/App.module.css","content":".app { color: blue;"}',
+      )
+      .mockResolvedValueOnce('{"action":"finish","summary":"done"}');
+    const events: AgentEvent[] = [];
+
+    const result = await runAgent({
+      request: 'style the app',
+      files: { 'src/App.jsx': 'export default function App() { return null; }' },
+      model: 'test',
+      onEvent: (event) => events.push(event),
+    });
+
+    expect(result.files['src/App.module.css']).toBe('.component {\n  display: block;\n}\n');
+    expect(
+      events.some((event) => event.message?.includes('safe minimal stylesheet was staged')),
+    ).toBe(true);
+  });
+
+  it('validates and returns after the model repeatedly reads unchanged files', async () => {
+    askWebLLM
+      .mockResolvedValueOnce(
+        '{"action":"write_file","path":"src/App.jsx","content":"export default function App() { return <main>Todos</main>; }"}',
+      )
+      .mockResolvedValueOnce('{"action":"read_file","path":"src/App.module.css"}')
+      .mockResolvedValueOnce('{"action":"read_file","path":"src/App.jsx"}')
+      .mockResolvedValueOnce('{"action":"read_file","path":"src/App.module.css"}')
+      .mockResolvedValueOnce('{"action":"read_file","path":"src/App.jsx"}');
+    const validate = vi.fn().mockResolvedValue({ status: 'passed', check: 'build' });
+
+    const result = await runAgent({
+      request: 'update app',
+      files: {
+        'src/App.jsx': 'export default function App() { return null; }',
+        'src/App.module.css': '.app { display: block; }',
+      },
+      model: 'test',
+      validate,
+    });
+
+    expect(result.summary).toContain('repeatedly read unchanged files');
     expect(validate).toHaveBeenCalledOnce();
   });
 
@@ -395,6 +604,38 @@ export const title = "Today";
     expect(validate).toHaveBeenCalledOnce();
   });
 
+  it('labels an unwired multi-file draft as partial at the safety limit', async () => {
+    askWebLLM
+      .mockResolvedValueOnce(
+        '{"action":"write_file","path":"src/components/TodoForm.jsx","content":"export default function TodoForm() { return <form />; }"}',
+      )
+      .mockResolvedValueOnce(
+        '{"action":"write_file","path":"src/components/TodoList.jsx","content":"export default function TodoList() { return <ul />; }"}',
+      )
+      .mockResolvedValueOnce(
+        JSON.stringify({
+          action: 'write_file',
+          path: 'src/components/TodoForm.jsx',
+          content: 'export default function TodoForm() { return <form aria-label="New task" />; }',
+        }),
+      );
+    const validate = vi.fn().mockResolvedValue({ status: 'passed', check: 'build' });
+
+    const result = await runAgent({
+      request: 'create todo components',
+      files: { 'src/App.jsx': 'export default function App() { return null; }' },
+      model: 'test',
+      maxTurns: 3,
+      validate,
+    });
+
+    expect(result.summary).toContain('partial draft');
+    expect(result.summary).toContain('without wiring them into the application entry point');
+    expect(result.files['src/components/TodoForm.jsx']).toContain('New task');
+    expect(result.files['src/components/TodoList.jsx']).toContain('<ul />');
+    expect(validate).toHaveBeenCalledOnce();
+  });
+
   it('recovers from tool errors and enforces validation before finish', async () => {
     askWebLLM
       .mockResolvedValueOnce('{"action":"read_file","path":"missing.js"}')
@@ -416,11 +657,11 @@ export const title = "Today";
     });
 
     expect(result.summary).toBe('done');
-    expect(events.some((event) => event.error)).toBe(true);
+    expect(events.some((event) => event.error)).toBe(false);
     expect(validate).toHaveBeenCalled();
   });
 
-  it('tells the model how to recover when a requested file is missing', async () => {
+  it('treats a missing file read as an actionable observation', async () => {
     askWebLLM
       .mockResolvedValueOnce('{"action":"read_file","path":"src/components/TaskList.module.css"}')
       .mockResolvedValueOnce('{"action":"finish","summary":"no changes"}');
@@ -435,19 +676,22 @@ export const title = "Today";
 
     expect(events).toContainEqual(
       expect.objectContaining({
-        error: true,
         message: expect.stringContaining('create it with write_file'),
       }),
     );
     expect(
       askWebLLM.mock.calls[1]?.[3]?.messages?.some((message: { content: string }) =>
-        message.content.includes('Do not call read_file for this path again'),
+        message.content.includes('Do not read it again'),
       ),
     ).toBe(true);
   });
 
-  it('throws after repeated protocol failures', async () => {
-    askWebLLM.mockResolvedValueOnce('bad').mockResolvedValueOnce('still bad');
+  it('retries malformed protocol replies before failing', async () => {
+    askWebLLM
+      .mockResolvedValueOnce('bad')
+      .mockResolvedValueOnce('still bad')
+      .mockResolvedValueOnce('still malformed')
+      .mockResolvedValueOnce('not an action');
     await expect(
       runAgent({
         request: 'broken',

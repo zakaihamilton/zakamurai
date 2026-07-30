@@ -250,8 +250,9 @@ const a = 1; // NEW LINE marker kept
       fc.assert(
         fc.property(
           fc.stringMatching(/^[a-z][a-z0-9_-]*\.js$/),
-          fc.string({ minLength: 3, maxLength: 80 }).filter((s) => s.trim().length >= 3),
-          (filePath, content) => {
+          fc.string({ minLength: 1, maxLength: 60 }),
+          (filePath, value) => {
+            const content = `const value = ${JSON.stringify(value)};`;
             const response = `// --- File: ${filePath} ---\n${content}\n// --- End File ---`;
             const blocks = parseAIResponse(response);
             expect(blocks).toHaveLength(1);

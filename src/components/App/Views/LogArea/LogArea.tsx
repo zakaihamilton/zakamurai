@@ -10,6 +10,8 @@ import LogToolbar from './Toolbar';
 export const LogState = createState<LogStateShape>('LogState');
 export const LogAreaUiState = createState<LogAreaUiStateShape>('LogAreaUiState');
 
+const MAX_VISIBLE_LOGS = 1000;
+
 export default function LogArea() {
   const logState = requireStore(
     LogState.useState(['logs', 'isSystemProcessing', 'isAIProcessing']),
@@ -34,7 +36,7 @@ export default function LogArea() {
         .filter(Boolean)
         .some((value) => String(value).toLowerCase().includes(normalizedFilter));
     })
-    .slice(-200);
+    .slice(-MAX_VISIBLE_LOGS);
 
   useEffect(() => {
     if (autoScroll && containerRef.current && (logs.length || isProcessing)) {

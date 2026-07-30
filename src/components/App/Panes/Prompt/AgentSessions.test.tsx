@@ -53,7 +53,7 @@ describe('AgentSessions', () => {
     });
 
     expect(normalized.sessions[session.id]?.reasoningEvents).toHaveLength(MAX_REASONING_EVENTS);
-    expect(normalized.sessions[session.id]?.reasoningEvents[0]?.text).toBe('Step 2');
+    expect(normalized.sessions[session.id]?.reasoningEvents?.[0]?.text).toBe('Step 2');
   });
 
   it('creates a default session store', () => {

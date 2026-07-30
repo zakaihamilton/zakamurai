@@ -68,6 +68,19 @@ export default function App() {
     });
   });
 
+  it('recovers loose single-quoted write metadata next to a source fence', () => {
+    expect(
+      parseAgentAction(`{action: 'write_file', path: 'src/App.jsx', reason: 'create app'}
+\`\`\`jsx
+export default function App() { return <main>Tasks</main>; }
+\`\`\``),
+    ).toMatchObject({
+      action: 'write_file',
+      path: 'src/App.jsx',
+      content: 'export default function App() { return <main>Tasks</main>; }',
+    });
+  });
+
   it('uses the source fence matching the destination when a model emits multiple files', () => {
     expect(
       parseAgentAction(`{"action":"write_file","path":"src/components/TodoItem.jsx"}

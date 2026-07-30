@@ -104,6 +104,8 @@ npm run test          # Unit tests (Vitest)
 npm run test:watch    # Vitest in watch mode
 npm run test:coverage # Unit tests with coverage thresholds
 npm run test:promptfoo # Static AI compliance eval (no API keys)
+npm run test:ai-soak # Mocked 200-request AI lifecycle and cleanup regression
+npm run analyze:ai -- report.json # Summarize AI metrics from an exported support report
 npm run check:architecture # Enforce component architecture rules
 npm run test:e2e      # Chromium smoke e2e (basic + advanced)
 npm run test:e2e:chromium # Alias for test:e2e
@@ -124,8 +126,10 @@ across browsers (`test:visual`, including WebKit) remains available locally whil
 host-level browser dependencies are stabilized.
 
 `verify:ai` runs [scripts/verify-ai.sh](./scripts/verify-ai.sh) for optional extended checks:
-architectural drift scan when `lucid` or `lucidshark` is on PATH, promptfoo eval, performance
-budget, and full visual regression. Install lucidshark separately to enable the drift scan.
+architectural drift scan when `lucid` or `lucidshark` is on PATH, the AI lifecycle soak, promptfoo
+eval, performance budget, and full visual regression. Install lucidshark separately to enable the
+drift scan. For physical-device validation, follow the
+[AI memory profiling workflow](./docs/ai-memory-profiling.md).
 
 Static `npm run test:promptfoo` uses the `echo` provider in [promptfooconfig.yaml](./promptfooconfig.yaml)
 and golden fixtures in `tests/ai-golden/` — **no API keys required**. It is included in `verify` and CI.

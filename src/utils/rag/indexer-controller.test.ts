@@ -28,6 +28,7 @@ describe('IndexerController', () => {
   });
 
   afterEach(() => {
+    vi.useRealTimers();
     global.Worker = originalWorker;
     global.navigator = originalNavigator;
     window.FileSystemObserver = originalFileSystemObserver;
@@ -145,6 +146,51 @@ describe('IndexerController', () => {
     } as MessageEvent);
 
     await expect(sendPromise).rejects.toThrow('Worker crashed');
+  });
+
+  it('terminates and resets a worker when a request times out', async () => {
+    vi.useFakeTimers();
+    const mockWorker = {
+      addEventListener: vi.fn(),
+      postMessage: vi.fn(),
+      terminate: vi.fn(),
+    };
+    global.Worker = createMockWorkerClass(() => mockWorker);
+
+    const controller = new IndexerController();
+    await controller.init();
+
+    const sendPromise = controller.sendMessage('SEARCH', 'test', 5);
+    const rejection = expect(sendPromise).rejects.toThrow('SEARCH request timed out after 5ms');
+    await vi.advanceTimersByTimeAsync(5);
+
+    await rejection;
+    expect(mockWorker.terminate).toHaveBeenCalledOnce();
+    expect(controller.worker).toBeNull();
+    expect(controller.initPromise).toBeNull();
+    expect(controller.resolvers.size).toBe(0);
+  });
+
+  it('rejects pending requests and resets after a worker crash', async () => {
+    let errorListener: ((event: ErrorEvent) => void) | undefined;
+    const mockWorker = {
+      addEventListener: vi.fn((event: string, listener: (event: ErrorEvent) => void) => {
+        if (event === 'error') errorListener = listener;
+      }),
+      postMessage: vi.fn(),
+      terminate: vi.fn(),
+    };
+    global.Worker = createMockWorkerClass(() => mockWorker);
+
+    const controller = new IndexerController();
+    await controller.init();
+    const sendPromise = controller.sendMessage('SEARCH', 'test');
+
+    errorListener?.({ message: 'worker exploded' } as ErrorEvent);
+
+    await expect(sendPromise).rejects.toThrow('worker exploded');
+    expect(mockWorker.terminate).toHaveBeenCalledOnce();
+    expect(controller.worker).toBeNull();
   });
 
   it('logs unhandled error messages from worker', async () => {
@@ -274,6 +320,9 @@ describe('IndexerController', () => {
 
   it('indexes files successfully and handles index errors in processFile', async () => {
     const controller = new IndexerController();
+    controller.init = vi.fn().mockImplementation(async () => {
+      controller.worker = { postMessage: vi.fn() } as unknown as Worker;
+    });
     controller.sendMessage = vi.fn().mockResolvedValue({});
 
     const mockFileHandle = {
@@ -286,7 +335,9 @@ describe('IndexerController', () => {
     expect(controller.sendMessage).toHaveBeenCalledWith('INDEX_FILE', {
       filePath: 'src/test.js',
       content: 'file content',
+      device: 'webgpu',
     });
+    expect(controller.init).toHaveBeenCalledOnce();
 
     // Test error case
     const failingFileHandle = {

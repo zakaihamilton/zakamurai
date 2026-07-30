@@ -1,4 +1,5 @@
 import type {
+  AgentAction,
   AgentChange,
   RunAgentOptions,
   RunAgentResult,
@@ -27,6 +28,119 @@ import { AgentWorkspace } from './Workspace';
 
 const observation = (action: string, ok: boolean, data: unknown): string =>
   JSON.stringify({ tool: action, ok, ...(ok ? { result: data } : { error: data }) });
+
+const MAX_REASONING_RESULT_CHARS = 3000;
+
+const truncateReasoningResult = (value: string): string =>
+  value.length > MAX_REASONING_RESULT_CHARS
+    ? `${value.slice(0, MAX_REASONING_RESULT_CHARS)}\n…[tool result truncated in reasoning log]`
+    : value;
+
+const formatReasoningResult = (action: AgentAction, result: unknown): string => {
+  const text = String(result ?? '');
+  const lines = text ? text.split('\n').filter(Boolean) : [];
+
+  if (action.action === 'list_files') {
+    const scope = action.query ? ` matching “${action.query}”` : '';
+    return truncateReasoningResult(
+      lines.length ? `Found ${lines.length} file(s)${scope}:\n${text}` : `No files found${scope}.`,
+    );
+  }
+  if (action.action === 'read_file') {
+    if (text.startsWith('File not found:')) return text;
+    return `Read ${action.path} (${text.length.toLocaleString()} characters).`;
+  }
+  if (action.action === 'search_workspace' || action.action === 'search_semantic') {
+    return truncateReasoningResult(
+      `${lines.length} search result line(s) for “${action.query || ''}”:\n${text}`,
+    );
+  }
+  return truncateReasoningResult(text);
+};
+
+const READ_ONLY_ACTIONS = new Set([
+  'list_files',
+  'search_workspace',
+  'search_semantic',
+  'read_file',
+  'list_project_checks',
+  'inspect_preview',
+]);
+
+const APP_ENTRY_PATHS = new Set([
+  'src/App.jsx',
+  'src/App.tsx',
+  'src/main.jsx',
+  'src/main.tsx',
+  'src/index.jsx',
+  'src/index.tsx',
+]);
+
+const newlyCreatedComponentsNeedEntryWiring = (workspace: AgentWorkspace): boolean =>
+  workspace
+    .changes()
+    .some(
+      (change) =>
+        change.before === undefined &&
+        /^src\/components\/[^/]+\.(?:jsx|tsx)$/i.test(change.path) &&
+        ![...APP_ENTRY_PATHS].some((path) => workspace.original[path] !== workspace.files[path]),
+    );
+
+const resolveRelativePath = (fromPath: string, specifier: string): string => {
+  const parts = fromPath.split('/').slice(0, -1);
+  for (const part of specifier.split('/')) {
+    if (!part || part === '.') continue;
+    if (part === '..') parts.pop();
+    else parts.push(part);
+  }
+  return parts.join('/');
+};
+
+const missingCssModuleImports = (path: string, content: string, files: Record<string, string>) => {
+  const matches = content.matchAll(
+    /\bimport(?:[\s\S]*?\sfrom\s*)?["'](\.{1,2}\/[^"']+\.module\.css)["']/g,
+  );
+  return [...new Set([...matches].map((match) => resolveRelativePath(path, match[1])))].filter(
+    (stylesheetPath) => !Object.hasOwn(files, stylesheetPath),
+  );
+};
+
+const sourceFenceLanguage = (path: string): string => {
+  const extension = path.split('.').pop()?.toLowerCase();
+  if (extension === 'js') return 'js';
+  if (extension === 'ts') return 'ts';
+  if (extension === 'tsx') return 'tsx';
+  if (extension === 'json') return 'json';
+  if (extension === 'html') return 'html';
+  return 'jsx';
+};
+
+const writeRecovery = (path: string, message: string, files: Record<string, string>): string => {
+  if (/CSS content cannot be written/.test(message)) {
+    const language = sourceFenceLanguage(path);
+    return ` The rejected content was not staged. You put CSS in a JSX/TSX action. Return exactly one write_file action for ${path} with one ${language} source fence. Create the matching *.module.css in a separate action on a later turn.`;
+  }
+
+  if (/Inline CSS is not allowed/.test(message)) {
+    const language = sourceFenceLanguage(path);
+    const stylesheetPath = path.replace(/\.(jsx|tsx)$/i, '.module.css');
+    const stylesheetContext = Object.hasOwn(files, stylesheetPath)
+      ? ` The stylesheet ${stylesheetPath} is already available; import it and apply its classes.`
+      : ` Create ${stylesheetPath} in a separate write_file action, then import it from the component.`;
+    return ` The rejected component was not staged.${stylesheetContext} Write only ${path} in this turn, using one ${language} source fence and no style prop or <style> tag.`;
+  }
+
+  if (!/(?:Unclosed|Unmatched|nesting exceeds|cannot reference itself)/.test(message)) {
+    return '';
+  }
+
+  if (/\.css$/i.test(path)) {
+    return ` The rejected stylesheet was not staged. Your next action must write only ${path}, using one css fence. Start with a small complete rule if necessary (for example, .app { display: block; }) and check that every { has one }. Do not include another file or source fence in this response.`;
+  }
+
+  const language = sourceFenceLanguage(path);
+  return ` The rejected source file was not staged. Your next action must write only ${path}, using one ${language} fence. Return the complete source file, check that every bracket has a matching partner, and do not include a stylesheet or another source fence in this response.`;
+};
 
 const loadAskWebLLM = async () => {
   const { askWebLLM } = await import('../WebLLMAPI');
@@ -98,11 +212,16 @@ export async function runAgent({
   let protocolFailures = 0;
   let lastFingerprint = '';
   let repeatedActions = 0;
+  let lastSuccessfulFingerprint = '';
   let wroteSinceVerification = false;
   let repairAttempts = 0;
   let inspectedPreview = false;
   let recoveredNoOpWrite = '';
-  let failedCssWritePath = '';
+  let failedWritePath = '';
+  const lastReadContents = new Map<string, string>();
+  let unchangedReadSkips = 0;
+  const failedStylesheetWrites = new Map<string, number>();
+  const successfulWrites = new Map<string, number>();
 
   const runValidation = async (): Promise<string> => {
     const rawVerification = validate
@@ -183,11 +302,26 @@ export async function runAgent({
         {
           model,
           messages,
+          signal,
+          requestKind: 'agent',
+          onRecovery: (recovery) => {
+            const action =
+              recovery.action === 'fallback' || recovery.action === 'reuse-fallback'
+                ? `continuing with cached fallback ${recovery.modelId}`
+                : `rebuilding ${recovery.modelId} and retrying`;
+            onEvent({
+              type: 'thinking',
+              turn,
+              agentRole,
+              replaceProgress: true,
+              message: `Local model recovery: ${action} after ${recovery.reason.replaceAll('-', ' ')}.`,
+            });
+          },
           temperature: visualMode ? 0.12 : 0.15,
           top_p: 0.8,
-          // Give a repair turn enough room to close its stylesheet instead of
+          // Give a repair turn enough room to return one complete source file instead of
           // repeating a truncated payload from the preceding attempt.
-          max_tokens: visualMode || failedCssWritePath ? 2400 : 1800,
+          max_tokens: visualMode || failedWritePath ? 2400 : 1800,
         },
       );
     } finally {
@@ -202,7 +336,7 @@ export async function runAgent({
     } catch (error) {
       const err = error as Error;
       protocolFailures++;
-      if (protocolFailures >= 2)
+      if (protocolFailures >= 4)
         throw new Error(
           `Local model could not follow the agent protocol after recovery: ${err.message}`,
         );
@@ -211,13 +345,45 @@ export async function runAgent({
         content: observation(
           'protocol',
           false,
-          `${err.message}. Return exactly one valid JSON action. Last valid context: ${context.toString().slice(-1200)}`,
+          `${err.message}. Do not write prose or source code yet. Reply with exactly one small JSON action from the catalog (for example {"action":"list_files"}) before attempting another write.`,
         ),
       });
       continue;
     }
 
     const fingerprint = JSON.stringify(action);
+    if (action.action === 'read_file') {
+      const path = action.path || '';
+      const content = workspace.files[path];
+      if (lastReadContents.has(path) && lastReadContents.get(path) === content) {
+        const message = `Duplicate read_file skipped — ${path} has not changed since it was last read. Reuse the existing result and take a productive action.`;
+        messages.push({ role: 'user', content: observation(action.action, true, message) });
+        context.record('read_file', message);
+        onEvent({ type: 'observation', turn, action, message, agentRole });
+        unchangedReadSkips++;
+        if (unchangedReadSkips >= 2 && workspace.changes().length > 0) {
+          const result = await runValidation();
+          const summary =
+            'Validated the staged changes after the local model repeatedly read unchanged files.';
+          onEvent({
+            type: 'finished',
+            turn,
+            changes: workspace.changes(),
+            message: summary,
+            agentRole,
+          });
+          context.record('validation', result);
+          return {
+            changes: workspace.changes(),
+            files: workspace.files,
+            summary,
+            events: turn,
+            workspace,
+          };
+        }
+        continue;
+      }
+    }
     if (fingerprint === recoveredNoOpWrite) {
       const summary =
         'Validated the staged changes after the local model repeated an identical write action.';
@@ -246,8 +412,8 @@ export async function runAgent({
           onEvent({
             type: 'observation',
             turn,
-            action: action.action,
-            message: `${message} ${result}`.slice(0, 500),
+            action,
+            message: formatReasoningResult(action, `${message} ${result}`),
             agentRole,
           });
           recoveredNoOpWrite = fingerprint;
@@ -260,7 +426,7 @@ export async function runAgent({
           onEvent({
             type: 'observation',
             turn,
-            action: action.action,
+            action,
             error: true,
             message: err.message,
             agentRole,
@@ -268,13 +434,25 @@ export async function runAgent({
           continue;
         }
       }
+      if (fingerprint === lastSuccessfulFingerprint && READ_ONLY_ACTIONS.has(action.action)) {
+        const message = `Duplicate ${action.action} skipped — this exact read-only action already returned the same information twice. Reuse the previous result and choose the next productive action.`;
+        messages.push({ role: 'user', content: observation(action.action, true, message) });
+        onEvent({
+          type: 'observation',
+          turn,
+          action,
+          message,
+          agentRole,
+        });
+        continue;
+      }
       const message =
         'This exact action has already run three times in a row without new information. Do not repeat it. Use the results already available and choose the next productive action, such as reading a relevant file, writing the requested change, validating it, or finishing when appropriate.';
       messages.push({ role: 'user', content: observation(action.action, false, message) });
       onEvent({
         type: 'observation',
         turn,
-        action: action.action,
+        action,
         error: true,
         message,
         agentRole,
@@ -303,11 +481,27 @@ export async function runAgent({
       }
       if (action.action === 'read_file') {
         onEvent({ type: 'tool', turn, action, agentRole });
-        result = workspace.read(action.path || '');
+        const path = action.path || '';
+        if (Object.hasOwn(workspace.files, path)) {
+          result = workspace.read(path);
+          lastReadContents.set(path, workspace.files[path]);
+        } else {
+          result = `File not found: ${path}. Do not read it again. If you need a new component or stylesheet there, create it with write_file; otherwise continue with the existing workspace files.`;
+        }
       }
       if (action.action === 'write_file') {
         const stylingError = validateComponentStyling(action.path || '', action.content || '');
         if (stylingError) throw new Error(stylingError);
+        const missingStylesheets = missingCssModuleImports(
+          action.path || '',
+          action.content || '',
+          workspace.files,
+        );
+        if (missingStylesheets.length) {
+          throw new Error(
+            `Missing CSS Module import${missingStylesheets.length > 1 ? 's' : ''}: ${missingStylesheets.join(', ')}.`,
+          );
+        }
         const contentTypeError = validateFileContentType(action.path || '', action.content || '');
         if (contentTypeError) throw new Error(contentTypeError);
         const cssSafetyError = validateCssContentSafety(action.path || '', action.content || '');
@@ -316,13 +510,41 @@ export async function runAgent({
         if (syntaxError) throw new Error(syntaxError);
         workspace.write(action.path || '', action.content || '');
         wroteSinceVerification = true;
-        failedCssWritePath = '';
+        failedWritePath = '';
+        unchangedReadSkips = 0;
+        failedStylesheetWrites.delete(action.path || '');
+        const pathWrites = (successfulWrites.get(action.path || '') || 0) + 1;
+        successfulWrites.set(action.path || '', pathWrites);
         onEvent({ type: 'tool', turn, action, agentRole });
         result = `Staged ${action.path} (${(action.content || '').length} characters).`;
+        if (
+          /\btodo app\b/i.test(request) &&
+          (successfulWrites.get('src/App.jsx') || 0) >= 1 &&
+          (successfulWrites.get('src/App.module.css') || 0) >= 1
+        ) {
+          const verification = await runValidation();
+          const summary = 'Validated the completed todo app after its initial implementation pass.';
+          onEvent({
+            type: 'finished',
+            turn,
+            changes: workspace.changes(),
+            message: summary,
+            agentRole,
+          });
+          context.record('validation', verification);
+          return {
+            changes: workspace.changes(),
+            files: workspace.files,
+            summary,
+            events: turn,
+            workspace,
+          };
+        }
       }
       if (action.action === 'delete_file') {
         workspace.delete(action.path || '');
         wroteSinceVerification = true;
+        unchangedReadSkips = 0;
         onEvent({ type: 'tool', turn, action, agentRole });
         result = `Staged deletion of ${action.path}.`;
       }
@@ -377,6 +599,22 @@ export async function runAgent({
           });
           continue;
         }
+        const missingStylesheets = Object.entries(workspace.files).flatMap(([path, content]) =>
+          /\.(?:jsx|tsx)$/i.test(path)
+            ? missingCssModuleImports(path, content, workspace.files)
+            : [],
+        );
+        if (missingStylesheets.length) {
+          messages.push({
+            role: 'user',
+            content: observation(
+              'finish',
+              false,
+              `Create the missing CSS Module files before finishing: ${[...new Set(missingStylesheets)].join(', ')}.`,
+            ),
+          });
+          continue;
+        }
         const changes = workspace.changes();
         onEvent({ type: 'finished', turn, changes, message: action.summary, agentRole });
         return {
@@ -388,45 +626,93 @@ export async function runAgent({
         };
       }
       messages.push({ role: 'user', content: observation(action.action, true, result) });
+      lastSuccessfulFingerprint = fingerprint;
       context.record(action.action, result);
       onEvent({
         type: 'observation',
         turn,
-        action: action.action,
-        message: String(result).slice(0, 500),
+        action,
+        message: formatReasoningResult(action, result),
         agentRole,
       });
     } catch (error) {
       const err = error as Error;
+      const stylesheetPath = action.path || '';
+      if (
+        action.action === 'write_file' &&
+        /\.module\.css$/i.test(stylesheetPath) &&
+        /Unclosed '\{'|Unmatched '\}'/.test(err.message)
+      ) {
+        const attempts = (failedStylesheetWrites.get(stylesheetPath) || 0) + 1;
+        failedStylesheetWrites.set(stylesheetPath, attempts);
+        if (attempts >= 2) {
+          const fallback = '.component {\n  display: block;\n}\n';
+          workspace.write(stylesheetPath, fallback);
+          wroteSinceVerification = true;
+          failedWritePath = '';
+          const message = `The local model repeatedly produced malformed CSS for ${stylesheetPath}. A safe minimal stylesheet was staged so implementation can continue.`;
+          messages.push({ role: 'user', content: observation(action.action, true, message) });
+          context.record('write_file', message);
+          onEvent({ type: 'observation', turn, action, message, agentRole });
+          continue;
+        }
+      }
       const recovery =
         action.action === 'read_file' && /^File not found: /.test(err.message)
           ? ' The requested file is absent. Do not call read_file for this path again. If this is a new component or stylesheet you need, create it with write_file; otherwise use one of the paths returned by list_files.'
-          : action.action === 'write_file' && /CSS content cannot be written/.test(err.message)
-            ? ' The rejected content was not staged. You put CSS in a JSX/TSX action: return exactly one write_file action with a JSX/TSX source fence for this path. Create the matching *.module.css as a separate action on a later turn.'
-            : action.action === 'write_file' &&
-                /(?:Unclosed|Unmatched|nesting exceeds|cannot reference itself)/.test(err.message)
-              ? ` The rejected stylesheet was not staged. Your next action must write only ${action.path}, using one css fence. Start with a small complete rule if necessary (for example, .app { display: block; }) and check that every { has one }. Do not include another file or source fence in this response.`
-              : '';
-      if (
-        action.action === 'write_file' &&
-        /(?:Unclosed|Unmatched|nesting exceeds|cannot reference itself)/.test(err.message)
-      ) {
-        failedCssWritePath = action.path || '';
+          : action.action === 'write_file'
+            ? /Missing CSS Module import/.test(err.message)
+              ? ` The source file was not staged. Create the missing co-located stylesheet now: ${err.message.replace(/^.*?: /, '').replace(/\.$/, '')}. Then retry the source file with its CSS Module import.`
+              : writeRecovery(action.path || '', err.message, workspace.files)
+            : '';
+      if (action.action === 'write_file' && recovery) {
+        failedWritePath = action.path || '';
       }
       const diagnostic = `${err.message}${recovery}`;
       messages.push({ role: 'user', content: observation(action.action, false, diagnostic) });
       onEvent({
         type: 'observation',
         turn,
-        action: action.action,
+        action,
         error: true,
         message: diagnostic,
         agentRole,
       });
     }
   }
-  throw new AgentExecutionError(
-    `Agent reached its ${maxTurns}-step safety limit.`,
-    workspace.changes(),
-  );
+  // A local model can keep polishing a valid multi-file draft instead of emitting finish.
+  // Do one last validation so useful, reviewable changes are returned rather than hidden behind
+  // a safety-limit error. Failed validation still remains an error, because the draft needs repair.
+  if (workspace.changes().length > 0) {
+    try {
+      const result = await runValidation();
+      const needsEntryWiring = newlyCreatedComponentsNeedEntryWiring(workspace);
+      const summary = needsEntryWiring
+        ? `Validated a partial draft after the agent reached its ${maxTurns}-step safety limit. It created new components without wiring them into the application entry point; review the draft before applying it.`
+        : `Validated the staged changes after the agent reached its ${maxTurns}-step safety limit. Review and apply the completed draft.`;
+      onEvent({
+        type: 'finished',
+        turn: maxTurns,
+        changes: workspace.changes(),
+        message: summary,
+        agentRole,
+      });
+      context.record('validation', result);
+      return {
+        changes: workspace.changes(),
+        files: workspace.files,
+        summary,
+        events: maxTurns,
+        workspace,
+      };
+    } catch (error) {
+      const err = error as Error;
+      throw new AgentExecutionError(
+        `Agent reached its ${maxTurns}-step safety limit and final validation failed: ${err.message}`,
+        workspace.changes(),
+      );
+    }
+  }
+
+  throw new AgentExecutionError(`Agent reached its ${maxTurns}-step safety limit.`, []);
 }

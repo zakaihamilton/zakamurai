@@ -56,6 +56,30 @@ const parseJsonAction = (text: string): AgentAction => {
   }
 };
 
+// Small local models occasionally produce JavaScript-like action metadata (single quotes or
+// unquoted property names) next to an otherwise valid source fence. Keep this deliberately
+// narrow: it only recovers the action fields the runner accepts, never evaluates model output.
+const parseLooseActionMetadata = (text: string): AgentAction | null => {
+  const action = text.match(/(?:["']?action["']?)\s*:\s*["']([a-z_]+)["']/i)?.[1];
+  if (!action) return null;
+
+  const field = (name: string): string | undefined =>
+    text.match(new RegExp(`(?:["']?${name}["']?)\\s*:\\s*["']([^"']*)["']`, 'i'))?.[1];
+  const path = field('path');
+  const query = field('query');
+  const check = field('check');
+  const summary = field('summary');
+  const reason = field('reason');
+  return {
+    action,
+    ...(path ? { path } : {}),
+    ...(query ? { query } : {}),
+    ...(check ? { check } : {}),
+    ...(summary ? { summary } : {}),
+    ...(reason ? { reason } : {}),
+  } as AgentAction;
+};
+
 const parseFencedWrite = (text: string, metadata?: AgentAction): AgentAction | null => {
   let value = metadata;
   if (!value) {
@@ -114,9 +138,11 @@ export function parseAgentAction(
     const fenced = text.match(/^\s*```json\s*([\s\S]*?)\s*```\s*$/i);
     value = parseJsonAction(fenced?.[1] || text);
   } catch (error) {
-    const fencedWrite = parseFencedWrite(text);
-    if (!fencedWrite) throw error;
-    value = fencedWrite;
+    const metadata = parseLooseActionMetadata(text);
+    const fencedWrite = parseFencedWrite(text, metadata || undefined);
+    if (fencedWrite) value = fencedWrite;
+    else if (metadata) value = metadata;
+    else throw error;
   }
   if (value.action === 'write_file' && typeof value.content !== 'string') {
     const fencedWrite = parseFencedWrite(text, value);
@@ -179,8 +205,10 @@ ${ACTION_CATALOG}
 
 ${WRITE_FILE_PAYLOAD_FORMAT}
 
-Use list_files to check file existence or list paths by extension (e.g., list_files query: ".module.css"). Use search_workspace to search text inside file contents. Do not repeatedly search_workspace for file extensions. If read_file reports that a file is missing, do not retry it: use write_file to create the intended new file, or choose an existing path from list_files.
+Use list_files to check file existence or list paths by extension (e.g., list_files query: ".module.css"). Use search_workspace to search text inside file contents. Never repeat an identical read-only action after it succeeds; use the result already in the conversation and take the next productive action. Do not repeatedly search_workspace for file extensions. If read_file reports that a file is missing, do not retry it: use write_file to create the intended new file, or choose an existing path from list_files.
 Inspect before editing. You may edit any relevant workspace file. Validate after meaningful changes. Always run validate before calling finish when edits have been made. Fix validation failures when possible. Never claim success without either validation or a clear explanation.
+
+For a request to create a todo app, use exactly two files: src/App.module.css first, then src/App.jsx. Implement the form, task list, completion toggle, and deletion directly in App.jsx; do not create src/components files. Import the stylesheet from App.jsx and use its classes. Keep the stylesheet short, with complete balanced rules only. Do not create index.html for a standard Vite app: the compiler scaffolds it automatically. After those two writes, validate and finish. For other application requests, update the existing app entry (normally src/App.jsx or src/App.tsx) first and avoid repeatedly rewriting already-staged files unless a tool or validation result identifies a specific defect.
 
 Architecture Rules:
 - Decompose UI applications into modular sub-components inside src/components/.

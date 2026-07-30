@@ -2,6 +2,9 @@ import { expect, test } from '@playwright/test';
 
 test.describe('Zakamurai Advanced Tests', () => {
   test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      localStorage.setItem('zakamurai_is_sidebar_open', 'true');
+    });
     await page.goto('/');
     await expect(page.getByText('Initializing workspace...')).not.toBeVisible({ timeout: 60000 });
     await page.waitForSelector('[data-testid]', { state: 'visible', timeout: 30000 });
@@ -48,6 +51,9 @@ test.describe('Zakamurai Advanced Tests', () => {
 
 test.describe('Zakamurai Navigation Tests', () => {
   test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      localStorage.setItem('zakamurai_is_sidebar_open', 'true');
+    });
     await page.goto('/');
     await expect(page.getByText('Initializing workspace...')).not.toBeVisible({ timeout: 60000 });
     await page.waitForSelector('[data-testid]', { state: 'visible', timeout: 30000 });

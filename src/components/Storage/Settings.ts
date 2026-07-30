@@ -70,6 +70,7 @@ const LARGE_IDB_KEYS = {
   changeSets: KEYS.CHANGE_SETS,
 };
 const RECOVERY_CHECKPOINT_KEY = 'zakamurai_recovery_checkpoint_v1';
+const MAX_PERSISTED_AI_LOGS = 1000;
 
 const largeCache: LargeCache = {
   fileContents: null,
@@ -352,7 +353,7 @@ const Settings = {
   },
 
   async setAILogs(logs: LogEntry[]) {
-    const logsToSave = (logs || []).slice(-50);
+    const logsToSave = (logs || []).slice(-MAX_PERSISTED_AI_LOGS);
     return writeLarge('aiLogs', logsToSave);
   },
 

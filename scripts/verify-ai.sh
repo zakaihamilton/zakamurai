@@ -16,6 +16,9 @@ fi
 echo "--- Starting Static AI Compliance Checks ---"
 npx tsx scripts/run-promptfoo-checks.ts
 
+echo "--- Starting AI Lifecycle Soak Regression ---"
+npm run test:ai-soak
+
 echo "--- Starting promptfoo eval (optional report) ---"
 npx promptfoo eval || echo "Warning: promptfoo eval reported failures; static checks above are authoritative."
 

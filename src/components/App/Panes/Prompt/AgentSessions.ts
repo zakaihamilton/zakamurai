@@ -14,9 +14,10 @@ export const MAX_SESSION_MESSAGES = 40;
 export const MAX_SESSION_CONTEXT_CHARACTERS = 12000;
 /**
  * The transcript is rendered as Markdown and persisted while an agent runs.
- * Keeping it short avoids costly re-renders on machines already running WebLLM.
+ * Keep enough history to diagnose a full multi-role run while still bounding
+ * persisted session size and Markdown rendering work.
  */
-export const MAX_REASONING_EVENTS = 40;
+export const MAX_REASONING_EVENTS = 160;
 
 const CONTEXT_OMITTED_NOTICE = '[Earlier conversation omitted for length.]';
 

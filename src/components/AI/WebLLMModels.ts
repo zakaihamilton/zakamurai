@@ -74,6 +74,20 @@ export const WEB_LLM_MODELS: WebLLMModel[] = [
     ],
     recommended: false,
   },
+  {
+    id: 'Qwen3.5-0.8B-q4f16_1-MLC',
+    name: 'Qwen3.5 0.8B',
+    ramMB: 1629.49,
+    storageMB: 470,
+    requirement: 'Lowest-memory recovery tier for constrained WebGPU devices.',
+    details: [
+      ['System', 'Low-resource WebGPU devices with ~1.6 GB available GPU/unified memory'],
+      ['Storage', 'Small browser cache footprint'],
+      ['Speed', 'Fastest startup and generation in this list'],
+      ['Best for', 'Emergency fallback, simple edits, and short explanations'],
+    ],
+    recommended: false,
+  },
 ];
 
 export const LEGACY_WEB_LLM_MODEL_IDS: Record<string, string> = {
@@ -82,18 +96,19 @@ export const LEGACY_WEB_LLM_MODEL_IDS: Record<string, string> = {
   'Qwen3-1.7B-q4f16_1-MLC': 'Qwen3.5-2B-q4f16_1-MLC',
 };
 
-export const RECOMMENDED_WEB_LLM_MODEL =
-  WEB_LLM_MODELS.find((model) => model.recommended) || WEB_LLM_MODELS[0];
+// biome-ignore lint/style/noNonNullAssertion: the catalog compatibility test enforces one recommended entry
+export const RECOMMENDED_WEB_LLM_MODEL = WEB_LLM_MODELS.find((model) => model.recommended)!;
 
-export const RECOMMENDED_COMPLETION_MODEL =
-  WEB_LLM_MODELS.find((model) => model.id === 'Qwen2.5-Coder-3B-Instruct-q4f16_1-MLC') ||
-  WEB_LLM_MODELS.find((model) => model.id.includes('Coder-3B')) ||
-  RECOMMENDED_WEB_LLM_MODEL;
+// biome-ignore lint/style/noNonNullAssertion: the catalog compatibility test enforces this model ID
+export const RECOMMENDED_COMPLETION_MODEL = WEB_LLM_MODELS.find(
+  (model) => model.id === 'Qwen2.5-Coder-3B-Instruct-q4f16_1-MLC',
+)!;
 
 /** Optional quality tier for visual planning and review on capable WebGPU devices. */
-export const RECOMMENDED_VISUAL_REVIEW_MODEL =
-  WEB_LLM_MODELS.find((model) => model.id === 'Qwen3.5-9B-q4f16_1-MLC') ||
-  RECOMMENDED_WEB_LLM_MODEL;
+// biome-ignore lint/style/noNonNullAssertion: the catalog compatibility test enforces this model ID
+export const RECOMMENDED_VISUAL_REVIEW_MODEL = WEB_LLM_MODELS.find(
+  (model) => model.id === 'Qwen3.5-9B-q4f16_1-MLC',
+)!;
 
 const VALID_WEB_LLM_MODEL_IDS = new Set(WEB_LLM_MODELS.map((model) => model.id));
 
@@ -121,4 +136,18 @@ export const resolveCompletionModelId = async (preferredModelId?: string): Promi
   }
 
   return RECOMMENDED_COMPLETION_MODEL.id;
+};
+
+export const findCachedFallbackModelId = (
+  failedModelId: string,
+  cachedModelIds: string[],
+): string | null => {
+  const failedModel = WEB_LLM_MODELS.find((model) => model.id === failedModelId);
+  if (!failedModel) return null;
+  const cached = new Set(cachedModelIds);
+  return (
+    WEB_LLM_MODELS.filter((model) => model.ramMB < failedModel.ramMB && cached.has(model.id)).sort(
+      (left, right) => right.ramMB - left.ramMB,
+    )[0]?.id || null
+  );
 };

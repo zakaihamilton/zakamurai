@@ -293,18 +293,18 @@ describe('Settings', () => {
     expect(Settings.getActiveTabId()).toBe('src/App.js');
   });
 
-  it('gets and sets AI logs and truncates to 50 entries', async () => {
+  it('gets and sets AI logs and truncates to 1,000 entries', async () => {
     expect(Settings.getAILogs()).toEqual([]);
-    const logs = Array.from({ length: 55 }, (_, index) => ({
+    const logs = Array.from({ length: 1005 }, (_, index) => ({
       id: index,
       role: 'system',
       text: `log ${index}`,
       timestamp: '00:00',
     }));
     await Settings.setAILogs(logs);
-    expect(Settings.getAILogs()).toHaveLength(50);
+    expect(Settings.getAILogs()).toHaveLength(1000);
     expect(Settings.getAILogs()[0].id).toBe(5);
-    expect(Settings.getAILogs()[49].id).toBe(54);
+    expect(Settings.getAILogs()[999].id).toBe(1004);
   });
 
   it('gets and sets preview html', async () => {

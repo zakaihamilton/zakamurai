@@ -219,6 +219,38 @@ export type WebLLMMessage = {
   content: string;
 };
 
+export type WebLLMRequestKind = 'agent' | 'completion' | 'model-cache' | 'general';
+
+export type WebLLMRecoveryReason = 'device-lost' | 'out-of-memory' | 'worker-failure' | 'stalled';
+
+export type WebLLMRecoveryEvent = {
+  requestedModelId: string;
+  modelId: string;
+  phase: 'initialization' | 'generation';
+  action: 'retry' | 'fallback' | 'reuse-fallback';
+  reason: WebLLMRecoveryReason;
+  attempt: number;
+};
+
+export type WebLLMGenerationMetrics = {
+  requestKind: WebLLMRequestKind;
+  requestedModelId: string;
+  modelId: string;
+  outcome: 'success' | 'aborted' | 'error';
+  startedAt: number;
+  totalMs: number;
+  initializationMs?: number;
+  timeToFirstTokenMs?: number;
+  promptTokens?: number;
+  completionTokens?: number;
+  decodeTokensPerSecond?: number;
+  finishReason?: string | null;
+  recoveryCount: number;
+  jsHeapUsedMBAtStart?: number;
+  jsHeapUsedMBAtEnd?: number;
+  jsHeapDeltaMB?: number;
+};
+
 export type WebLLMOptions = {
   model?: string;
   messages?: WebLLMMessage[];
@@ -230,6 +262,12 @@ export type WebLLMOptions = {
   signal?: AbortSignal;
   contextWindowSize?: number;
   onInitProgress?: ((progress: string) => void) | null;
+  requestKind?: WebLLMRequestKind;
+  initStallTimeoutMs?: number;
+  firstTokenTimeoutMs?: number;
+  chunkIdleTimeoutMs?: number;
+  onRecovery?: ((event: WebLLMRecoveryEvent) => void) | null;
+  onMetrics?: ((metrics: WebLLMGenerationMetrics) => void) | null;
 };
 
 export type AskWebLLM = (

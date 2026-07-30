@@ -83,10 +83,19 @@ test.describe('Zakamurai Visual Regression', () => {
 
   test('Editor View', async ({ page }) => {
     // Open package.json from sidebar
-    await page.getByText('package.json').click();
+    const packageFile = page.getByText('package.json');
+    if (!(await packageFile.isVisible())) {
+      await page.getByTestId('sidebar-toggle').filter({ visible: true }).click();
+    }
+    await packageFile.click();
 
     // Wait for breadcrumb to update
     await expect(page.locator('header')).toContainText('package.json');
+    const agentInput = page.getByPlaceholder('Tell the Agent what to do...');
+    if (!(await agentInput.isVisible())) {
+      await page.getByTestId('ai-prompt-toggle').filter({ visible: true }).click();
+    }
+    await expect(agentInput).toBeVisible();
 
     // Wait for editor to settle (content loading, highlighting)
     await page.waitForTimeout(2000);

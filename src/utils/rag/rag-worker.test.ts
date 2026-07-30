@@ -1,14 +1,28 @@
 import { mockStorageManager } from '@/test-utils/domMocks';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const transformersMock = vi.hoisted(() => ({
-  shouldFail: false,
-  pipeline: vi.fn().mockResolvedValue(
+const transformersMock = vi.hoisted(() => {
+  const extractor = Object.assign(
     vi.fn().mockResolvedValue({
       data: [0.1, 0.2, 0.3],
     }),
-  ),
-}));
+    { dispose: vi.fn().mockResolvedValue(undefined) },
+  );
+  const mock = {
+    shouldFail: false,
+    webGPUShouldFail: false,
+    extractor,
+    pipeline: vi.fn(),
+  };
+  mock.pipeline.mockImplementation(async (...args: unknown[]) => {
+    const options = args[2] as { device?: string } | undefined;
+    if (mock.webGPUShouldFail && options?.device === 'webgpu') {
+      throw new Error('WebGPU unavailable');
+    }
+    return extractor;
+  });
+  return mock;
+});
 
 vi.mock('@huggingface/transformers', () => {
   return {
@@ -86,9 +100,11 @@ describe('rag-worker', () => {
     testables = mod.__testables;
   });
 
-  beforeEach(() => {
+  beforeEach(async () => {
+    await testables.resetRuntime();
     vi.clearAllMocks();
     transformersMock.shouldFail = false;
+    transformersMock.webGPUShouldFail = false;
   });
 
   it('registers a message listener', () => {
@@ -132,6 +148,83 @@ describe('rag-worker', () => {
       type: 'SEARCH_SUCCESS',
       payload: expect.any(Array),
     });
+  });
+
+  it('uses WASM while WebLLM owns WebGPU and disposes the extractor', async () => {
+    const onMessage = listeners.message;
+    await onMessage({
+      data: {
+        id: 'msg-wasm',
+        type: 'SEARCH',
+        payload: {
+          query: 'hello',
+          k: 2,
+          device: 'wasm',
+        },
+      },
+    });
+    expect(transformersMock.pipeline).toHaveBeenCalledWith(
+      'feature-extraction',
+      'Xenova/all-MiniLM-L6-v2',
+      { device: 'wasm' },
+    );
+
+    await onMessage({
+      data: {
+        id: 'msg-unload',
+        type: 'UNLOAD_MODEL',
+        payload: {},
+      },
+    });
+    expect(transformersMock.extractor.dispose).toHaveBeenCalled();
+    expect(mockSelf.postMessage).toHaveBeenCalledWith({
+      id: 'msg-unload',
+      type: 'UNLOAD_MODEL_SUCCESS',
+    });
+  });
+
+  it('keeps WebGPU fallback sticky for the worker lifetime', async () => {
+    const onMessage = listeners.message;
+    const consoleWarn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    transformersMock.webGPUShouldFail = true;
+
+    await onMessage({
+      data: {
+        id: 'msg-fallback-1',
+        type: 'INDEX_FILE',
+        payload: {
+          filePath: 'src/first.js',
+          content: 'const firstValue = "long enough to index";',
+          device: 'webgpu',
+        },
+      },
+    });
+    await onMessage({
+      data: {
+        id: 'msg-fallback-2',
+        type: 'INDEX_FILE',
+        payload: {
+          filePath: 'src/second.js',
+          content: 'const secondValue = "also long enough";',
+          device: 'webgpu',
+        },
+      },
+    });
+
+    expect(transformersMock.pipeline).toHaveBeenCalledTimes(2);
+    expect(transformersMock.pipeline).toHaveBeenNthCalledWith(
+      1,
+      'feature-extraction',
+      'Xenova/all-MiniLM-L6-v2',
+      { device: 'webgpu', dtype: 'fp16' },
+    );
+    expect(transformersMock.pipeline).toHaveBeenNthCalledWith(
+      2,
+      'feature-extraction',
+      'Xenova/all-MiniLM-L6-v2',
+      { device: 'wasm' },
+    );
+    consoleWarn.mockRestore();
   });
 
   it('handles errors and posts ERROR message', async () => {

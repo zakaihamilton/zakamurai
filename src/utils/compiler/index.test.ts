@@ -45,7 +45,7 @@ vi.mock('./scaffold', () => ({
 }));
 
 vi.mock('./browser-bundler', () => ({
-  parseBuildCommand: vi.fn((cmd: string) => [[cmd]]),
+  parseBuildCommand: vi.fn((cmd: string) => [cmd.split(' ')]),
   bundleBrowserProject: vi.fn().mockResolvedValue(true),
   isBrowserBundleCommand: vi.fn((cmd: string) => cmd === 'vite'),
 }));
@@ -94,14 +94,33 @@ describe('Compiler', () => {
     expect(onPhase).toHaveBeenCalledWith('syncing');
   });
 
-  it('compiles project with package.json build script (browser bundler command)', async () => {
+  it('omits dev dependencies for browser-bundled projects', async () => {
     const container = getContainer();
     container.vfs.existsSync.mockImplementation((p) => p === '/package.json' || p === '/dist');
-    container.vfs.readFileSync.mockReturnValue(JSON.stringify({ scripts: { build: 'vite' } }));
+    container.vfs.readFileSync.mockReturnValue(
+      JSON.stringify({ scripts: { build: 'vite build' } }),
+    );
 
     await compiler.compile({ mode: 'opfs' }, [], {});
     expect(onPhase).toHaveBeenCalledWith('bundling');
     expect(onLog).toHaveBeenCalledWith('Build sequence completed.');
+    expect(container.npm.installFromPackageJson).toHaveBeenCalledWith(
+      expect.objectContaining({ includeDev: false }),
+    );
+  });
+
+  it('keeps dev dependencies for non-browser build tools', async () => {
+    const container = getContainer();
+    container.vfs.existsSync.mockImplementation(
+      (p) => p === '/package.json' || p === '/node_modules/typescript/bin/tsc',
+    );
+    container.vfs.readFileSync.mockReturnValue(JSON.stringify({ scripts: { build: 'tsc' } }));
+
+    await compiler.compile({ mode: 'opfs' }, [], {});
+
+    expect(container.npm.installFromPackageJson).toHaveBeenCalledWith(
+      expect.objectContaining({ includeDev: true }),
+    );
   });
 
   it('compiles project with known binary script (tsc)', async () => {

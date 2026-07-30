@@ -96,6 +96,7 @@ export default function useCompletion({
   const deferredEditRef = useRef<{ content: string; filePath: string } | null>(null);
   const cursorPosRef = useRef(cursorPos);
   const activeCompletionModelRef = useRef<string | null>(null);
+  const activeCompletionControllerRef = useRef<AbortController | null>(null);
   const onDebugUpdateRef = useRef(onDebugUpdate);
 
   const reportDebug = useCallback((payload: CompletionDebugPayload) => {
@@ -122,7 +123,12 @@ export default function useCompletion({
   const stopThinking = useCallback(
     (options: CancelSuggestionOptions = {}) => {
       const modelToInterrupt = activeCompletionModelRef.current;
-      if (modelToInterrupt && options.interrupt !== false) {
+      const controllerToAbort = activeCompletionControllerRef.current;
+      if (controllerToAbort && options.interrupt !== false) {
+        activeCompletionControllerRef.current = null;
+        activeCompletionModelRef.current = null;
+        controllerToAbort.abort();
+      } else if (modelToInterrupt && options.interrupt !== false) {
         activeCompletionModelRef.current = null;
         import('@/components/AI/WebLLMAPI').then(({ interruptWebLLMModel }) => {
           interruptWebLLMModel(modelToInterrupt);
@@ -166,7 +172,12 @@ export default function useCompletion({
       lastRequestRef.current = ++requestCounterRef.current;
 
       const modelToInterrupt = activeCompletionModelRef.current;
-      if (modelToInterrupt) {
+      const controllerToAbort = activeCompletionControllerRef.current;
+      if (controllerToAbort) {
+        activeCompletionControllerRef.current = null;
+        activeCompletionModelRef.current = null;
+        controllerToAbort.abort();
+      } else if (modelToInterrupt) {
         activeCompletionModelRef.current = null;
         import('@/components/AI/WebLLMAPI').then(({ interruptWebLLMModel }) => {
           interruptWebLLMModel(modelToInterrupt);
@@ -346,8 +357,14 @@ export default function useCompletion({
         try {
           const completionModelId = await resolveCompletionModelId(selectedModel);
           if (lastRequestRef.current !== scheduledRequestId) return;
+          const usesDedicatedCompletionEngine =
+            completionModelId === RECOMMENDED_COMPLETION_MODEL.id &&
+            completionModelId !== selectedModel;
 
           activeCompletionModelRef.current = completionModelId;
+          const completionController = new AbortController();
+          activeCompletionControllerRef.current = completionController;
+          let actualCompletionModelId = completionModelId;
 
           reportDebug(
             createDebugPayload({
@@ -364,11 +381,30 @@ export default function useCompletion({
           const { askWebLLM } = await import('@/components/AI/WebLLMAPI');
           const result = await askWebLLM(scheduledPrompt, COMPLETION_SYSTEM_PROMPT, null, {
             model: completionModelId,
+            signal: completionController.signal,
+            requestKind: 'completion',
+            onRecovery: (recovery) => {
+              actualCompletionModelId = recovery.modelId;
+              activeCompletionModelRef.current = recovery.modelId;
+              reportDebug(
+                createDebugPayload({
+                  status: 'thinking',
+                  phase: COMPLETION_PHASES.GENERATING,
+                  filePath,
+                  prompt: scheduledPrompt,
+                  error: `Recovering with ${recovery.modelId} after ${recovery.reason.replaceAll('-', ' ')}.`,
+                  cursor: { ...activeCursor, index },
+                  model: recovery.modelId,
+                  requestedAt: new Date().toISOString(),
+                }),
+              );
+            },
             temperature: 0.1,
             top_p: 0.7,
             presence_penalty: 0,
             frequency_penalty: 0.2,
             max_tokens: 128,
+            contextWindowSize: usesDedicatedCompletionEngine ? 1024 : 4096,
           });
 
           if (lastRequestRef.current === scheduledRequestId) {
@@ -384,7 +420,7 @@ export default function useCompletion({
                 completion: cleaned,
                 error: cleaned ? '' : 'Model returned an empty completion.',
                 cursor: { ...activeCursor, index },
-                model: completionModelId,
+                model: actualCompletionModelId,
                 completedAt: new Date().toISOString(),
               }),
             );
@@ -418,6 +454,7 @@ export default function useCompletion({
         } finally {
           if (lastRequestRef.current === scheduledRequestId) {
             activeCompletionModelRef.current = null;
+            activeCompletionControllerRef.current = null;
           }
           finishRequest();
         }

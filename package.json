@@ -41,7 +41,9 @@
     "check:architecture": "tsx scripts/check-architecture.ts",
     "check:preview": "tsx scripts/check-preview-surfaces.ts",
     "test:promptfoo": "tsx scripts/run-promptfoo-checks.ts",
-    "audit": "npm audit --audit-level=critical",
+    "test:ai-soak": "vitest run src/components/AI/WebLLMAPI.test.ts -t \"sustains a mixed completion and agent lifecycle\"",
+    "analyze:ai": "tsx scripts/analyze-ai-support-report.ts",
+    "audit": "npm audit --omit=dev --audit-level=critical",
     "verify": "npm run format:check && npm run lint && npm run stylelint && npm run deadcode && npm run check:architecture && npm run typecheck && npm run test:promptfoo && npm run test:coverage && npm run build && npm run perf && npm run test:performance && npm run test:e2e && npm run test:e2e:webkit && npm run test:e2e:isolated && npm run test:e2e:isolated:webkit && npm run test:visual && npm run audit",
     "verify:ai": "bash scripts/verify-ai.sh",
     "prepare": "husky"

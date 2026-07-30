@@ -14,12 +14,19 @@ type SearchResult = {
   score: number;
 };
 
-type FeatureExtractor = (
-  text: string,
-  options: { pooling: string; normalize: boolean },
-) => Promise<{ data: Float32Array | number[] }>;
+type RagInferenceDevice = 'webgpu' | 'wasm';
+
+type FeatureExtractor = {
+  (
+    text: string,
+    options: { pooling: string; normalize: boolean },
+  ): Promise<{ data: Float32Array | number[] }>;
+  dispose?: () => void | Promise<void>;
+};
 
 let extractor: FeatureExtractor | undefined;
+let extractorDevice: RagInferenceDevice | undefined;
+let webGPUUnavailable = false;
 let index: RagChunk[] = [];
 let hashes = new Set<string>();
 const DB_NAME = 'zakamurai-rag-data.json';
@@ -119,19 +126,42 @@ async function saveIndex(): Promise<void> {
   }
 }
 
-async function init(): Promise<void> {
+async function disposeExtractor(): Promise<void> {
+  const currentExtractor = extractor;
+  extractor = undefined;
+  extractorDevice = undefined;
+  transformersPromise = undefined;
+  await currentExtractor?.dispose?.();
+}
+
+async function init(device: RagInferenceDevice = 'webgpu'): Promise<void> {
+  const effectiveDevice: RagInferenceDevice =
+    device === 'webgpu' && !webGPUUnavailable ? 'webgpu' : 'wasm';
+  if (extractor && extractorDevice !== effectiveDevice) {
+    await disposeExtractor();
+  }
   if (!extractor) {
     const { pipeline } = await loadTransformers();
-    try {
-      extractor = await pipeline('feature-extraction', 'Xenova/all-MiniLM-L6-v2', {
-        device: 'webgpu',
-        dtype: 'fp16',
-      });
-    } catch (e) {
-      console.warn('[RAG] WebGPU failed, falling back to WASM:', e);
+    if (effectiveDevice === 'wasm') {
       extractor = await pipeline('feature-extraction', 'Xenova/all-MiniLM-L6-v2', {
         device: 'wasm',
       });
+      extractorDevice = 'wasm';
+    } else {
+      try {
+        extractor = await pipeline('feature-extraction', 'Xenova/all-MiniLM-L6-v2', {
+          device: 'webgpu',
+          dtype: 'fp16',
+        });
+        extractorDevice = 'webgpu';
+      } catch (e) {
+        console.warn('[RAG] WebGPU failed, falling back to WASM:', e);
+        webGPUUnavailable = true;
+        extractor = await pipeline('feature-extraction', 'Xenova/all-MiniLM-L6-v2', {
+          device: 'wasm',
+        });
+        extractorDevice = 'wasm';
+      }
     }
   }
   if (index.length === 0) {
@@ -149,8 +179,9 @@ async function getHash(text: string): Promise<string> {
 async function indexFile({
   filePath,
   content,
-}: { filePath: string; content: string }): Promise<void> {
-  await init();
+  device,
+}: { filePath: string; content: string; device?: RagInferenceDevice }): Promise<void> {
+  await init(device);
 
   if (!content || content.length > MAX_FILE_BYTES) {
     return;
@@ -195,8 +226,16 @@ async function indexFile({
   }
 }
 
-async function search({ query, k = 5 }: { query: string; k?: number }): Promise<SearchResult[]> {
-  await init();
+async function search({
+  query,
+  k = 5,
+  device,
+}: {
+  query: string;
+  k?: number;
+  device?: RagInferenceDevice;
+}): Promise<SearchResult[]> {
+  await init(device);
 
   if (!extractor) return [];
   const output = await extractor(query, { pooling: 'mean', normalize: true });
@@ -219,7 +258,13 @@ async function search({ query, k = 5 }: { query: string; k?: number }): Promise<
 self.addEventListener('message', async (event: MessageEvent) => {
   const { type, payload, id } = event.data as {
     type: string;
-    payload: { filePath?: string; content?: string; query?: string; k?: number };
+    payload: {
+      filePath?: string;
+      content?: string;
+      query?: string;
+      k?: number;
+      device?: RagInferenceDevice;
+    };
     id: number;
   };
 
@@ -228,20 +273,23 @@ self.addEventListener('message', async (event: MessageEvent) => {
       await indexFile({
         filePath: payload.filePath || '',
         content: payload.content || '',
+        device: payload.device,
       });
       self.postMessage({ id, type: 'INDEX_FILE_SUCCESS' });
     } else if (type === 'SEARCH') {
-      const results = await search({ query: payload.query || '', k: payload.k });
+      const results = await search({
+        query: payload.query || '',
+        k: payload.k,
+        device: payload.device,
+      });
       self.postMessage({ id, type: 'SEARCH_SUCCESS', payload: results });
     } else if (type === 'UNLOAD_MODEL') {
-      extractor = undefined;
-      transformersPromise = undefined;
+      await disposeExtractor();
       self.postMessage({ id, type: 'UNLOAD_MODEL_SUCCESS' });
     } else if (type === 'PURGE_INDEX') {
       index = [];
       hashes = new Set();
-      extractor = undefined;
-      transformersPromise = undefined;
+      await disposeExtractor();
       self.postMessage({ id, type: 'PURGE_INDEX_SUCCESS' });
     }
   } catch (error) {
@@ -255,5 +303,9 @@ export const __testables = {
   loadTransformers,
   resetTransformers() {
     transformersPromise = undefined;
+  },
+  async resetRuntime() {
+    await disposeExtractor();
+    webGPUUnavailable = false;
   },
 };

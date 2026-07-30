@@ -5,6 +5,7 @@ import {
   RECOMMENDED_VISUAL_REVIEW_MODEL,
   RECOMMENDED_WEB_LLM_MODEL,
   WEB_LLM_MODELS,
+  findCachedFallbackModelId,
   resolveCompletionModelId,
   resolveWebLLMModelId,
 } from './WebLLMModels';
@@ -30,6 +31,35 @@ describe('WebLLMModels', () => {
 
   it('offers Qwen3.5 9B as the opt-in visual planning and review tier', () => {
     expect(RECOMMENDED_VISUAL_REVIEW_MODEL.id).toBe('Qwen3.5-9B-q4f16_1-MLC');
+  });
+
+  it('offers Qwen3.5 0.8B as the low-resource recovery tier', () => {
+    expect(WEB_LLM_MODELS).toContainEqual(
+      expect.objectContaining({
+        id: 'Qwen3.5-0.8B-q4f16_1-MLC',
+        ramMB: 1629.49,
+      }),
+    );
+  });
+
+  it('selects the closest smaller cached fallback by RAM', () => {
+    expect(
+      findCachedFallbackModelId('Qwen3.5-9B-q4f16_1-MLC', [
+        'Qwen3.5-0.8B-q4f16_1-MLC',
+        'Qwen3.5-4B-q4f16_1-MLC',
+        'Qwen2.5-Coder-7B-Instruct-q4f16_1-MLC',
+      ]),
+    ).toBe('Qwen2.5-Coder-7B-Instruct-q4f16_1-MLC');
+    expect(findCachedFallbackModelId('Qwen3.5-2B-q4f16_1-MLC', ['Qwen3.5-0.8B-q4f16_1-MLC'])).toBe(
+      'Qwen3.5-0.8B-q4f16_1-MLC',
+    );
+  });
+
+  it('does not select an uncached, equal-size, or larger fallback', () => {
+    expect(
+      findCachedFallbackModelId('Qwen3.5-4B-q4f16_1-MLC', ['Qwen3.5-9B-q4f16_1-MLC']),
+    ).toBeNull();
+    expect(findCachedFallbackModelId('unknown-model', ['Qwen3.5-0.8B-q4f16_1-MLC'])).toBeNull();
   });
 
   it('migrates legacy Qwen3 model IDs to Qwen3.5 equivalents', () => {
@@ -78,6 +108,12 @@ describe('WebLLMModels', () => {
       RECOMMENDED_COMPLETION_MODEL.id,
     );
     expect(hasModelInCache).toHaveBeenNthCalledWith(2, 'Qwen3.5-9B-q4f16_1-MLC');
+  });
+
+  it('treats an empty preferred model as the recommended prompt model', async () => {
+    hasModelInCache.mockResolvedValueOnce(false).mockResolvedValueOnce(true);
+
+    await expect(resolveCompletionModelId('')).resolves.toBe(RECOMMENDED_WEB_LLM_MODEL.id);
   });
 
   it('recovers from cache API failures and reports the diagnostic', async () => {
