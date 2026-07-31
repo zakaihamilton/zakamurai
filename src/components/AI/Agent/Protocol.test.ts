@@ -7,6 +7,12 @@ describe('agent protocol', () => {
     expect(AGENT_SYSTEM_PROMPT).toContain('Never side-effect import *.module.css');
   });
 
+  it('gives todo apps a specific visual direction instead of generic default styling', () => {
+    expect(AGENT_SYSTEM_PROMPT).toContain('warm editorial task planner');
+    expect(AGENT_SYSTEM_PROMPT).toContain('CSS custom properties');
+    expect(AGENT_SYSTEM_PROMPT).toContain('generic white card, system font, blue primary button');
+  });
+
   it('parses a JSON action from a fenced response', () => {
     expect(parseAgentAction('```json\n{"action":"read_file","path":"src/App.js"}\n```')).toEqual({
       action: 'read_file',

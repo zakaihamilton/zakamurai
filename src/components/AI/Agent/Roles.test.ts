@@ -220,6 +220,7 @@ describe('summary parsers', () => {
 
   it('recognizes visual UI requests and preserves a compact visual brief', () => {
     expect(isVisualRequest('Build a responsive dashboard UI')).toBe(true);
+    expect(isVisualRequest('Create a todo app')).toBe(true);
     expect(isVisualRequest('Rename a TypeScript variable')).toBe(false);
     const plan = parsePlanSummary(
       '{"goals":[],"files":[],"steps":[],"visualBrief":{"palette":["navy and mint"],"responsive":["single column on mobile"],"components":["Hero"]}}',

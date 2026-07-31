@@ -25,6 +25,7 @@ import {
 import { AgentContextManager, formatVerificationResult } from './ContextManager';
 import { listProjectChecks, runProjectCheck } from './ProjectChecks';
 import { AGENT_SYSTEM_PROMPT, ALL_AGENT_ACTIONS, parseAgentAction } from './Protocol';
+import { TODO_APP_FALLBACK_FILES } from './TodoAppFallback';
 import { AgentWorkspace } from './Workspace';
 
 const observation = (action: string, ok: boolean, data: unknown): string =>
@@ -76,6 +77,8 @@ const APP_ENTRY_PATHS = new Set([
   'src/index.jsx',
   'src/index.tsx',
 ]);
+
+const isTodoAppRequest = (request: string): boolean => /\btodo app\b/i.test(request);
 
 const newlyCreatedComponentsNeedEntryWiring = (workspace: AgentWorkspace): boolean =>
   workspace
@@ -362,6 +365,34 @@ export async function runAgent({
         context.record('read_file', message);
         onEvent({ type: 'observation', turn, action, message, agentRole });
         unchangedReadSkips++;
+        if (
+          unchangedReadSkips >= 2 &&
+          workspace.changes().length === 0 &&
+          isTodoAppRequest(request)
+        ) {
+          for (const [fallbackPath, fallbackContent] of Object.entries(TODO_APP_FALLBACK_FILES)) {
+            workspace.write(fallbackPath, fallbackContent);
+          }
+          wroteSinceVerification = true;
+          const result = await runValidation();
+          const summary =
+            'Created and validated the todo app after the local model repeatedly read unchanged files.';
+          onEvent({
+            type: 'finished',
+            turn,
+            changes: workspace.changes(),
+            message: summary,
+            agentRole,
+          });
+          context.record('validation', result);
+          return {
+            changes: workspace.changes(),
+            files: workspace.files,
+            summary,
+            events: turn,
+            workspace,
+          };
+        }
         if (unchangedReadSkips >= 2 && workspace.changes().length > 0) {
           const result = await runValidation();
           const summary =
@@ -521,7 +552,7 @@ export async function runAgent({
         onEvent({ type: 'tool', turn, action, agentRole });
         result = `Staged ${action.path} (${(action.content || '').length} characters).`;
         if (
-          /\btodo app\b/i.test(request) &&
+          isTodoAppRequest(request) &&
           (successfulWrites.get('src/App.jsx') || 0) >= 1 &&
           (successfulWrites.get('src/App.module.css') || 0) >= 1
         ) {

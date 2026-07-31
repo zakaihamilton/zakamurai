@@ -35,6 +35,27 @@ describe('runAgent', () => {
     expect(askWebLLM.mock.calls[0]?.[3]?.requestKind).toBe('agent');
   });
 
+  it('recovers a todo app when the local model repeatedly reads an unchanged entry file', async () => {
+    askWebLLM
+      .mockResolvedValueOnce('{"action":"read_file","path":"src/App.jsx"}')
+      .mockResolvedValueOnce('{"action":"read_file","path":"src/App.jsx"}')
+      .mockResolvedValueOnce('{"action":"read_file","path":"src/App.jsx"}');
+    const validate = vi.fn().mockResolvedValue('Checks passed.');
+
+    const result = await runAgent({
+      request: 'create a todo app',
+      files: { 'src/App.jsx': 'export default function App() { return null; }' },
+      validate,
+      model: 'test',
+    });
+
+    expect(result.summary).toContain('Created and validated the todo app');
+    expect(result.files['src/App.jsx']).toContain('function addTask');
+    expect(result.files['src/App.module.css']).toContain('--paper:');
+    expect(validate).toHaveBeenCalledWith(result.files);
+    expect(askWebLLM).toHaveBeenCalledTimes(3);
+  });
+
   it('reports detailed streaming progress while waiting for a local-model action', async () => {
     askWebLLM.mockImplementationOnce(async (_prompt, _systemPrompt, onUpdate) => {
       onUpdate?.('{"action":"finish"');

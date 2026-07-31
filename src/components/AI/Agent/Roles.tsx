@@ -366,7 +366,7 @@ export function normalizeVisualBrief(value: unknown): VisualBrief | null {
 }
 
 export function isVisualRequest(request: string | null | undefined): boolean {
-  return /\b(ui|ux|visual|design|layout|landing page|dashboard|responsive|stylesheet|css|theme)\b/i.test(
+  return /\b(ui|ux|visual|design|layout|landing page|dashboard|responsive|stylesheet|css|theme|todo app)\b/i.test(
     request || '',
   );
 }
