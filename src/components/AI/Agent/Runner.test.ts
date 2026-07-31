@@ -362,6 +362,35 @@ describe('runAgent', () => {
     ).toBe(true);
   });
 
+  it('keeps a CSS Module that is still imported by an application component', async () => {
+    askWebLLM
+      .mockResolvedValueOnce(
+        '{"action":"delete_file","path":"src/App.module.css","reason":"replace styles"}',
+      )
+      .mockResolvedValueOnce('{"action":"finish","summary":"kept stylesheet"}');
+    const events: AgentEvent[] = [];
+
+    const result = await runAgent({
+      request: 'replace styles',
+      files: {
+        'src/App.jsx':
+          'import styles from "./App.module.css"; export default function App() { return <main className={styles.app} />; }',
+        'src/App.module.css': '.app { display: block; }',
+      },
+      model: 'test',
+      onEvent: (event) => events.push(event),
+    });
+
+    expect(result.summary).toBe('kept stylesheet');
+    expect(result.files['src/App.module.css']).toBe('.app { display: block; }');
+    expect(events).toContainEqual(
+      expect.objectContaining({
+        error: true,
+        message: expect.stringContaining('Cannot delete CSS Module src/App.module.css'),
+      }),
+    );
+  });
+
   it('includes filenames and action metadata in detailed reasoning observations', async () => {
     askWebLLM
       .mockResolvedValueOnce('{"action":"list_files","query":"src/"}')

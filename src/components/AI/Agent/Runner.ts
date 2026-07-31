@@ -109,6 +109,15 @@ const missingCssModuleImports = (path: string, content: string, files: Record<st
   );
 };
 
+const cssModuleImporters = (stylesheetPath: string, files: Record<string, string>): string[] =>
+  Object.entries(files).flatMap(([path, content]) => {
+    if (!/\.(?:jsx|tsx)$/i.test(path)) return [];
+    const importsStylesheet = [
+      ...content.matchAll(/\bimport(?:[\s\S]*?\sfrom\s*)?["'](\.{1,2}\/[^"']+\.module\.css)["']/g),
+    ].some((match) => resolveRelativePath(path, match[1]) === stylesheetPath);
+    return importsStylesheet ? [path] : [];
+  });
+
 const sourceFenceLanguage = (path: string): string => {
   const extension = path.split('.').pop()?.toLowerCase();
   if (extension === 'js') return 'js';
@@ -576,7 +585,14 @@ export async function runAgent({
         }
       }
       if (action.action === 'delete_file') {
-        workspace.delete(action.path || '');
+        const path = action.path || '';
+        const importers = cssModuleImporters(path, workspace.files);
+        if (importers.length) {
+          throw new Error(
+            `Cannot delete CSS Module ${path} because it is imported by ${importers.join(', ')}. Update or delete the importing component files first.`,
+          );
+        }
+        workspace.delete(path);
         wroteSinceVerification = true;
         unchangedReadSkips = 0;
         onEvent({ type: 'tool', turn, action, agentRole });
@@ -698,7 +714,9 @@ export async function runAgent({
             ? /Missing CSS Module import/.test(err.message)
               ? ` The source file was not staged. Create the missing co-located stylesheet now: ${err.message.replace(/^.*?: /, '').replace(/\.$/, '')}. Then retry the source file with its CSS Module import.`
               : writeRecovery(action.path || '', err.message, workspace.files)
-            : '';
+            : action.action === 'delete_file' && /Cannot delete CSS Module/.test(err.message)
+              ? ' The stylesheet was not deleted. Update or remove its importing component files first, then retry the deletion.'
+              : '';
       if (action.action === 'write_file' && recovery) {
         failedWritePath = action.path || '';
       }
