@@ -364,18 +364,11 @@ describe('WebLLMAPI', () => {
     expect(onProgress).toHaveBeenCalledWith('50%');
   });
 
-  it('supports main-thread initialization and disposes an engine-owned worker', async () => {
-    const terminate = vi.fn();
+  it('rejects initialization when Web Workers are unavailable instead of blocking the UI thread', async () => {
     vi.stubGlobal('Worker', undefined);
-    mockEngine.worker = { terminate };
 
-    await cacheWebLLMModel('main-thread-model');
-    const progressCallback = mockedCreateMLCEngine.mock.calls.at(-1)?.[1]?.initProgressCallback;
-    progressCallback?.({} as never);
-    await deleteCachedWebLLMModel('main-thread-model');
-
-    expect(mockedCreateMLCEngine).toHaveBeenCalled();
-    expect(terminate).toHaveBeenCalled();
+    await expect(cacheWebLLMModel('main-thread-model')).rejects.toThrow(/requires Web Workers/);
+    expect(mockedCreateMLCEngine).not.toHaveBeenCalled();
   });
 
   it('resets failed engine initialization so retries can succeed', async () => {

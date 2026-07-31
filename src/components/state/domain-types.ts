@@ -134,6 +134,25 @@ export interface AgentSessionMessage {
 export interface AgentReasoningEntry {
   text: string;
   timestamp: string;
+  turn?: number;
+  input?: string;
+  output?: string;
+}
+
+export interface AgentRunUsage {
+  modelIds: string[];
+  modelCalls: number;
+  outcomes: { success: number; error: number; aborted: number };
+  promptTokens: number;
+  promptTokenCalls: number;
+  completionTokens: number;
+  completionTokenCalls: number;
+  totalMs: number;
+  timeToFirstTokenMs: number;
+  timeToFirstTokenCalls: number;
+  decodeTokensPerSecond: number;
+  decodeTokensPerSecondCalls: number;
+  toolCalls: Record<string, number>;
 }
 
 export interface AgentSession {
@@ -148,6 +167,8 @@ export interface AgentSession {
   messages: AgentSessionMessage[];
   reasoning: string;
   reasoningEvents?: AgentReasoningEntry[];
+  showStepIO?: boolean;
+  runUsage?: AgentRunUsage;
   status: string;
 }
 
@@ -285,6 +306,7 @@ export interface PromptUiStateShape {
   val: string;
   historyIndex: number;
   draftVal: string;
+  welcomePrompt: string;
   selectedModel: string;
   isModelManagerOpen: boolean;
   isRoleGraphOpen: boolean;

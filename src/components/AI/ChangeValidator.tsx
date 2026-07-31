@@ -124,7 +124,13 @@ export function validateContentSyntax(path: string, content: string): string | n
         continue;
       }
 
-      if (char === "'" || char === '"' || char === '`') {
+      // Apostrophes in JSX text (for example, <h1>Let's play</h1>) are not
+      // JavaScript string delimiters. This lightweight parser cannot fully parse JSX,
+      // so only treat a single quote as a string opener in an expression position.
+      const previousNonWhitespace = cleanContent.slice(0, i).trimEnd().at(-1) || '';
+      const isSingleQuoteStringStart =
+        char === "'" && (!previousNonWhitespace || /[=([{,:;?!]/.test(previousNonWhitespace));
+      if (isSingleQuoteStringStart || char === '"' || char === '`') {
         inString = char;
         continue;
       }
@@ -201,7 +207,7 @@ export function validateCssModuleUsage(path: string, content: string): string | 
   const matches = [...content.matchAll(cssModuleImport)];
   if (matches.length === 0) return null;
   if (matches.some((match) => !match[1])) {
-    return `CSS Modules in ${path} must be default-imported as a class map (for example, import styles from './App.module.css') instead of side-effect imported.`;
+    return `CSS Modules in ${path} must be default-imported as a class map (for example, use a styles binding from the co-located module) instead of side-effect imported.`;
   }
   if (/\bclassName\s*=\s*["'][^"']+["']/.test(content)) {
     return `Use the imported CSS Module class map in ${path} (for example, className={styles.container}) instead of literal className strings.`;

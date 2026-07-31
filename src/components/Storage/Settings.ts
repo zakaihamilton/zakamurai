@@ -24,6 +24,7 @@ const KEYS = {
   LAST_CODE_TAB_ID: 'zakamurai_last_code_tab_id',
   PROMPT_HISTORY: 'zakamurai_prompt_history',
   PROMPT_DRAFT: 'zakamurai_prompt_draft',
+  WELCOME_PROMPT_DRAFT: 'zakamurai_welcome_prompt_draft',
   FILE_CONTENTS: 'zakamurai_file_contents',
   PENDING_DIFFS: 'zakamurai_pending_diffs',
   AI_LOGS: 'zakamurai_ai_logs',
@@ -348,6 +349,14 @@ const Settings = {
     this.set(KEYS.PROMPT_DRAFT, prompt || null);
   },
 
+  getWelcomePromptDraft(defaultValue = '') {
+    return this.get(KEYS.WELCOME_PROMPT_DRAFT, defaultValue);
+  },
+
+  setWelcomePromptDraft(prompt: string) {
+    this.set(KEYS.WELCOME_PROMPT_DRAFT, prompt || null);
+  },
+
   getAILogs() {
     return Array.isArray(largeCache.aiLogs) ? largeCache.aiLogs : [];
   },
@@ -653,7 +662,18 @@ const Settings = {
     largeWriteGen.changeSets = 0;
   },
 
-  async reset(template = 'default', { preserveTheme }: { preserveTheme?: string } = {}) {
+  async reset(
+    template = 'default',
+    {
+      preserveTheme,
+      preserveAIPromptModel,
+      preserveWelcomePrompt,
+    }: {
+      preserveTheme?: string;
+      preserveAIPromptModel?: string;
+      preserveWelcomePrompt?: string;
+    } = {},
+  ) {
     const storage = getStorage();
     if (storage) {
       for (const key of Object.values(KEYS)) {
@@ -673,6 +693,12 @@ const Settings = {
     }
     if (preserveTheme) {
       this.setTheme(preserveTheme);
+    }
+    if (preserveAIPromptModel) {
+      this.setAIPromptModel(preserveAIPromptModel);
+    }
+    if (preserveWelcomePrompt) {
+      this.setWelcomePromptDraft(preserveWelcomePrompt);
     }
   },
 };

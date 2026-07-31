@@ -19,6 +19,7 @@ vi.mock('@/components/Storage/Settings', () => {
       setEditorReadOnly: vi.fn(),
       setAIPromptModel: vi.fn(),
       setPromptDraft: vi.fn(),
+      setWelcomePromptDraft: vi.fn(),
       setPromptHistory: vi.fn(() => true),
       setOpenTabs: vi.fn(() => true),
       setActiveTabId: vi.fn(),
@@ -110,6 +111,7 @@ describe('useSettingsSync', () => {
     const previewState = { htmlContent: '<html></html>' };
     const promptUiState = {
       val: 'draft text',
+      welcomePrompt: 'welcome draft',
       selectedModel: 'Qwen3.5-4B-q4f16_1-MLC',
     };
 
@@ -150,6 +152,7 @@ describe('useSettingsSync', () => {
     expect(Settings.setPreviewHtml).not.toHaveBeenCalled();
     expect(Settings.setAgentSessions).not.toHaveBeenCalled();
     expect(Settings.setPromptDraft).not.toHaveBeenCalled();
+    expect(Settings.setWelcomePromptDraft).not.toHaveBeenCalled();
     expect(Settings.setFileContents).not.toHaveBeenCalled();
     expect(Settings.setPendingDiffs).not.toHaveBeenCalled();
 
@@ -157,6 +160,7 @@ describe('useSettingsSync', () => {
       vi.advanceTimersByTime(250);
     });
     expect(Settings.setPromptDraft).toHaveBeenCalledWith('draft text');
+    expect(Settings.setWelcomePromptDraft).toHaveBeenCalledWith('welcome draft');
 
     act(() => {
       vi.advanceTimersByTime(250);
@@ -199,7 +203,11 @@ describe('useSettingsSync', () => {
       tabs: { openTabs: [] as never[], activeTabId: null, lastCodeTabId: null } as never,
       logs: { logs: [] },
       preview: { htmlContent: null } as never,
-      promptUi: { val: '', selectedModel: 'Qwen3.5-9B-q4f16_1-MLC' },
+      promptUi: {
+        val: '',
+        welcomePrompt: '',
+        selectedModel: 'Qwen3.5-9B-q4f16_1-MLC',
+      },
     });
 
     expect(Settings.setTheme).toHaveBeenCalledWith('light');
@@ -325,7 +333,7 @@ describe('useSettingsSync', () => {
         { openTabs: [], activeTabId: null as string | null, lastCodeTabId: null as string | null },
         { logs: [] },
         { htmlContent: null as string | null },
-        { val: '', selectedModel: 'model' },
+        { val: '', welcomePrompt: '', selectedModel: 'model' },
       ),
     );
 
@@ -382,7 +390,7 @@ describe('useSettingsSync', () => {
         },
         { logs: [] },
         { htmlContent: null },
-        { val: 'draft', selectedModel: 'model' },
+        { val: 'draft', welcomePrompt: '', selectedModel: 'model' },
         workspaceProfileState as never,
         changeSetState as never,
       ),
@@ -437,7 +445,7 @@ describe('useSettingsSync', () => {
           { openTabs: [], activeTabId: null, lastCodeTabId: null },
           { logs: [] },
           { htmlContent: null },
-          { val: '', selectedModel: 'model' },
+          { val: '', welcomePrompt: '', selectedModel: 'model' },
         ),
       { initialProps: { contents: { 'a.js': 'first' } } },
     );

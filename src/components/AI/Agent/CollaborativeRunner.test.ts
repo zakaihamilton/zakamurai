@@ -54,6 +54,7 @@ describe('runCollaborativeAgent', () => {
 
     const validate = vi.fn().mockResolvedValue('Checks passed.');
     const events: AgentEvent[] = [];
+    const onMetrics = vi.fn();
     const result = await runCollaborativeAgent({
       request: 'update a',
       activeFile: 'src/a.js',
@@ -61,6 +62,7 @@ describe('runCollaborativeAgent', () => {
       validate,
       model: 'test',
       onEvent: (event) => events.push(event),
+      onMetrics,
     });
 
     expect(result.changes[0].after).toBe('const a = 2;');
@@ -70,6 +72,7 @@ describe('runCollaborativeAgent', () => {
     expect(events.some((event) => event.agentRole === 'coder')).toBe(true);
     expect(events.some((event) => event.agentRole === 'reviewer')).toBe(true);
     expect(validate).toHaveBeenCalled();
+    expect(askWebLLM.mock.calls.every((call) => call[3]?.onMetrics === onMetrics)).toBe(true);
   });
 
   it('passes a visual brief through the team and requires reviewer preview evidence', async () => {

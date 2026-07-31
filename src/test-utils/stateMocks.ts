@@ -175,6 +175,7 @@ export function makePromptUiState(
     val: '',
     historyIndex: -1,
     draftVal: '',
+    welcomePrompt: '',
     selectedModel: '',
     isModelManagerOpen: false,
     isRoleGraphOpen: false,

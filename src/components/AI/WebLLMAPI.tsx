@@ -12,14 +12,13 @@ import { reportDiagnostic } from '@/components/Diagnostics/Diagnostics';
 import { releaseWebLLMGpuMemory, reserveWebLLMGpuMemory } from '@/utils/ai-memory-governor';
 import { DEFAULT_SYSTEM_PROMPT } from './Prompts';
 import {
-  RECOMMENDED_WEB_LLM_MODEL,
   WEB_LLM_MODELS,
   findCachedFallbackModelId,
+  getDeviceAppropriateDefaultModelId,
 } from './WebLLMModels';
 import { setWebLLMCachedModelIds, updateWebLLMEngine } from './WebLLMState';
 export { RECOMMENDED_WEB_LLM_MODEL, WEB_LLM_MODELS } from './WebLLMModels';
 
-const DEFAULT_WEB_LLM_MODEL_ID = RECOMMENDED_WEB_LLM_MODEL.id;
 const DEFAULT_INIT_STALL_TIMEOUT_MS = 120_000;
 const DEFAULT_FIRST_TOKEN_TIMEOUT_MS = 120_000;
 const DEFAULT_CHUNK_IDLE_TIMEOUT_MS = 60_000;
@@ -397,7 +396,7 @@ const createEngine = async (
     });
     throw error;
   }
-  const { CreateMLCEngine, CreateWebWorkerMLCEngine } = factories;
+  const { CreateWebWorkerMLCEngine } = factories;
   const stallTimeoutMs = options.initStallTimeoutMs ?? DEFAULT_INIT_STALL_TIMEOUT_MS;
   let stallTimer: ReturnType<typeof setTimeout> | null = null;
   let rejectStall: (error: Error) => void = () => {};
@@ -433,20 +432,15 @@ const createEngine = async (
 
   try {
     if (typeof Worker === 'undefined') {
-      rawEnginePromise = CreateMLCEngine(
-        selectedModel,
-        engineConfig,
-        chatOptions,
-      ) as unknown as Promise<WebLLMEngine>;
-    } else {
-      worker = new Worker(new URL('./WebLLM.worker.ts', import.meta.url), { type: 'module' });
-      rawEnginePromise = CreateWebWorkerMLCEngine(
-        worker,
-        selectedModel,
-        engineConfig,
-        chatOptions,
-      ) as unknown as Promise<WebLLMEngine>;
+      throw new Error('Local AI requires Web Workers. Update or switch to a supported browser.');
     }
+    worker = new Worker(new URL('./WebLLM.worker.ts', import.meta.url), { type: 'module' });
+    rawEnginePromise = CreateWebWorkerMLCEngine(
+      worker,
+      selectedModel,
+      engineConfig,
+      chatOptions,
+    ) as unknown as Promise<WebLLMEngine>;
   } catch (error) {
     releaseWebLLMGpuMemory();
     updateWebLLMEngine(selectedModel, {
@@ -924,7 +918,7 @@ export const askWebLLM = async (
   options: WebLLMOptions = {},
 ): Promise<string> => {
   clearIdleUnloadTimer();
-  const requestedModelId = options.model || DEFAULT_WEB_LLM_MODEL_ID;
+  const requestedModelId = options.model || getDeviceAppropriateDefaultModelId();
   const startedAt = Date.now();
   const jsHeapUsedMBAtStart = readUsedJSHeapMB();
   const heapMetrics = () => {

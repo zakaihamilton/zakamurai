@@ -47,7 +47,11 @@ export function useSettingsSync(
   tabState: Pick<TabStateShape, 'openTabs' | 'activeTabId' | 'lastCodeTabId'> | null | undefined,
   logState: Pick<LogStateShape, 'logs'> | null | undefined,
   previewState: Pick<PreviewStateShape, 'htmlContent'> | null | undefined,
-  promptUiState: Pick<PromptUiStateShape, 'val' | 'selectedModel'> | null | undefined,
+  promptUiState:
+    | (Pick<PromptUiStateShape, 'val' | 'selectedModel'> &
+        Partial<Pick<PromptUiStateShape, 'welcomePrompt'>>)
+    | null
+    | undefined,
   workspaceProfileState: StateStore<WorkspaceProfileStateShape> | null = null,
   changeSetState: StateStore<ChangeSetStateShape> | null = null,
 ) {
@@ -126,7 +130,7 @@ export function useSettingsSync(
   const { openTabs, activeTabId, lastCodeTabId } = tabState || {};
   const { logs } = logState || {};
   const { htmlContent } = previewState || {};
-  const { val: promptDraft, selectedModel } = promptUiState || {};
+  const { val: promptDraft, welcomePrompt, selectedModel } = promptUiState || {};
   const workspaceProfile: WorkspaceProfileStateShape = workspaceProfileState ?? {
     include: [],
     exclude: [],
@@ -188,6 +192,14 @@ export function useSettingsSync(
     }, 250);
     return () => clearTimeout(timer);
   }, [promptDraft]);
+
+  useEffect(() => {
+    if (typeof welcomePrompt !== 'string') return undefined;
+    const timer = setTimeout(() => {
+      Settings.setWelcomePromptDraft(welcomePrompt || '');
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [welcomePrompt]);
 
   useEffect(() => {
     if (!Array.isArray(promptHistory)) return undefined;

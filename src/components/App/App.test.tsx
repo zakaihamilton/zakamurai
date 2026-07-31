@@ -229,7 +229,7 @@ describe('App', () => {
 
     render(<App />);
     expect(await screen.findByTestId('sidebar')).toBeDefined();
-    expect(appStateMock).toHaveBeenCalled();
+    expect(appStateMock).toHaveBeenCalledWith(expect.any(Function));
     expect(appStateMock.projectName).toBe('MountedFolder');
   });
 

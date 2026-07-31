@@ -2,6 +2,7 @@ import { WEB_LLM_MODELS } from '@/components/AI/WebLLMModels';
 import { WebLLMState } from '@/components/AI/WebLLMState';
 import {
   AgentSessionState,
+  formatReasoningEvents,
   getActiveAgentSession,
 } from '@/components/App/Panes/Prompt/AgentSessions';
 import { PromptUiState } from '@/components/App/Panes/Prompt/PromptState';
@@ -10,7 +11,7 @@ import { EditorState } from '@/components/App/Views/EditorArea';
 import { LogState } from '@/components/App/Views/LogArea';
 import { requireStore } from '@/components/App/types';
 import { ChangeSetState } from '@/components/Workspace';
-import type { Tab } from '@/components/state/domain-types';
+import type { AgentReasoningEntry, AgentRunUsage, Tab } from '@/components/state/domain-types';
 import { Icons } from '@/components/ui/Icons';
 import Tooltip from '@/components/ui/Tooltip';
 import { useEffect, useRef, useState } from 'react';
@@ -26,13 +27,68 @@ const titleBySection = {
 
 type AISection = keyof typeof titleBySection;
 
-type ReasoningEntry = { text: string; timestamp: string };
+type ReasoningEntry = AgentReasoningEntry;
 type ReasoningGroup = { step: number | null; entries: ReasoningEntry[] };
 
 const STEP_PREFIX = /^\*\*Step (\d+)(?: result)?:\*\*\s*/;
 
 const getReasoningEntries = (entries: ReasoningEntry[] | undefined, reasoning: string) =>
   entries?.length ? entries : reasoning ? [{ text: reasoning, timestamp: '' }] : [];
+
+const formatMetric = (value: number, digits = 0): string =>
+  value.toLocaleString(undefined, { maximumFractionDigits: digits });
+
+export const formatRunUsageSummary = (usage: AgentRunUsage | undefined): string => {
+  if (!usage) return '';
+  const hasUsage = usage.modelCalls > 0 || Object.keys(usage.toolCalls).length > 0;
+  if (!hasUsage) return '';
+  const tokenCoverage = (reportedCalls: number) =>
+    reportedCalls ? `${reportedCalls}/${usage.modelCalls} calls reported` : 'unavailable';
+  const reportedTokenCalls = Math.max(usage.promptTokenCalls, usage.completionTokenCalls);
+  const hasPartialTokenReporting =
+    usage.promptTokenCalls !== usage.modelCalls || usage.completionTokenCalls !== usage.modelCalls;
+  const hasPartialPerformanceReporting =
+    usage.timeToFirstTokenCalls !== usage.modelCalls ||
+    usage.decodeTokensPerSecondCalls !== usage.modelCalls;
+  const outcomeText = Object.entries(usage.outcomes)
+    .filter(([, count]) => count > 0)
+    .map(([outcome, count]) => `${outcome}: ${count}`)
+    .join(', ');
+  const toolText = Object.entries(usage.toolCalls)
+    .sort(([left], [right]) => left.localeCompare(right))
+    .map(([name, count]) => `- \`${name}\`: ${count}`);
+
+  return [
+    '## Run summary',
+    '',
+    `**Models:** ${usage.modelIds.length ? usage.modelIds.map((id) => `\`${id}\``).join(', ') : 'Unavailable'}`,
+    `**Model calls:** ${usage.modelCalls}${outcomeText ? ` (${outcomeText})` : ''}`,
+    `**Input tokens:** ${usage.promptTokenCalls ? formatMetric(usage.promptTokens) : 'Unavailable'}`,
+    `**Output tokens:** ${usage.completionTokenCalls ? formatMetric(usage.completionTokens) : 'Unavailable'}`,
+    `**Total tokens:** ${reportedTokenCalls ? formatMetric(usage.promptTokens + usage.completionTokens) : 'Unavailable'}`,
+    ...(hasPartialTokenReporting
+      ? [
+          `**Token reporting:** Input ${tokenCoverage(usage.promptTokenCalls)} · Output ${tokenCoverage(usage.completionTokenCalls)}`,
+        ]
+      : []),
+    `**Model time:** ${formatMetric(usage.totalMs / 1000, 2)} s`,
+    `**Avg. first token:** ${usage.timeToFirstTokenCalls ? `${formatMetric(usage.timeToFirstTokenMs / usage.timeToFirstTokenCalls, 0)} ms` : 'Unavailable'}`,
+    `**Avg. generation speed:** ${usage.decodeTokensPerSecondCalls ? `${formatMetric(usage.decodeTokensPerSecond / usage.decodeTokensPerSecondCalls, 1)} tokens/s` : 'Unavailable'}`,
+    ...(hasPartialPerformanceReporting
+      ? [
+          `**Performance reporting:** First token ${tokenCoverage(usage.timeToFirstTokenCalls)} · Generation speed ${tokenCoverage(usage.decodeTokensPerSecondCalls)}`,
+        ]
+      : []),
+    '',
+    '**Tools used:**',
+    ...(toolText.length ? toolText : ['None']),
+  ].join('\n\n');
+};
+
+export const getCompletedRunUsageSummary = (
+  status: string | undefined,
+  usage: AgentRunUsage | undefined,
+): string => (status === 'running' ? '' : formatRunUsageSummary(usage));
 
 export const groupReasoningEntries = (entries: ReasoningEntry[]): ReasoningGroup[] => {
   const groups: ReasoningGroup[] = [];
@@ -72,6 +128,7 @@ export default function AISectionView({ tab }: { tab: Tab }) {
   const [copied, setCopied] = useState(false);
   const contentRef = useRef<HTMLDivElement | null>(null);
   const activeSession = getActiveAgentSession(agentSessionState);
+  const [showStepIO, setShowStepIO] = useState(activeSession?.showStepIO === true);
   const scope = promptUiState.promptScope || 'project';
   const activeTab = tabState.openTabs.find((openTab) => openTab.id === tabState.activeTabId);
   const selectedLines =
@@ -85,15 +142,38 @@ export default function AISectionView({ tab }: { tab: Tab }) {
     activeSession?.reasoningEvents,
     activeSession?.reasoning || '',
   );
+  const displayedReasoningEntries = reasoningEntries
+    .map((entry) => ({
+      ...entry,
+      text: showStepIO ? formatReasoningEvents([entry], true) : entry.text,
+    }))
+    .filter((entry) => entry.text);
   const modelProgress =
     engine?.status === 'downloading'
       ? `Downloading ${selectedModel?.name || 'AI model'}${engine.progressText ? ` — ${engine.progressText}` : '…'}`
       : '';
   const reasoningContent = [
     ...(modelProgress ? [{ text: modelProgress, timestamp: '' }] : []),
-    ...reasoningEntries,
+    ...displayedReasoningEntries,
   ];
   const reasoningGroups = groupReasoningEntries(reasoningContent);
+  const runUsageSummary = getCompletedRunUsageSummary(
+    activeSession?.status,
+    activeSession?.runUsage,
+  );
+
+  useEffect(() => {
+    setShowStepIO(activeSession?.showStepIO === true);
+  }, [activeSession?.showStepIO]);
+
+  const toggleStepIO = () => {
+    const next = !showStepIO;
+    setShowStepIO(next);
+    agentSessionState((draft) => {
+      const sessionId = draft.activeSessionId;
+      if (sessionId && draft.sessions[sessionId]) draft.sessions[sessionId].showStepIO = next;
+    });
+  };
 
   const content =
     section === 'context'
@@ -128,10 +208,15 @@ export default function AISectionView({ tab }: { tab: Tab }) {
                 .join('\n\n')
             : 'Start a conversation with this agent session.'
           : reasoningContent.length
-            ? reasoningContent
-                .map(({ text, timestamp }) => `${timestamp ? `[${timestamp}] ` : ''}${text}`)
+            ? [
+                ...reasoningContent.map(
+                  ({ text, timestamp }) => `${timestamp ? `[${timestamp}] ` : ''}${text}`,
+                ),
+                runUsageSummary,
+              ]
+                .filter(Boolean)
                 .join('\n\n')
-            : 'No progress or reasoning to show yet.';
+            : runUsageSummary || 'No progress or reasoning to show yet.';
 
   useEffect(() => {
     if (section !== 'reasoning' || !content || !contentRef.current) return;
@@ -154,16 +239,31 @@ export default function AISectionView({ tab }: { tab: Tab }) {
           <span className={styles.eyebrow}>AI pane</span>
           <h1>{titleBySection[section]}</h1>
         </div>
-        <Tooltip content={copied ? 'Copied!' : 'Copy to clipboard'}>
-          <button
-            type="button"
-            className={styles.copyButton}
-            onClick={copy}
-            aria-label={copied ? 'Copied to clipboard' : 'Copy to clipboard'}
-          >
-            {copied ? <Icons.Check size={16} /> : <Icons.Copy size={16} />}
-          </button>
-        </Tooltip>
+        <div className={styles.actions}>
+          {section === 'reasoning' ? (
+            <Tooltip content={`${showStepIO ? 'Hide' : 'Show'} input/output for each agent step`}>
+              <button
+                type="button"
+                className={`${styles.stepIOToggle} ${showStepIO ? styles.stepIOToggleActive : ''}`}
+                onClick={toggleStepIO}
+                aria-label={`${showStepIO ? 'Hide' : 'Show'} input/output for each agent step`}
+                aria-pressed={showStepIO}
+              >
+                <Icons.Terminal size={16} />
+              </button>
+            </Tooltip>
+          ) : null}
+          <Tooltip content={copied ? 'Copied!' : 'Copy to clipboard'}>
+            <button
+              type="button"
+              className={styles.copyButton}
+              onClick={copy}
+              aria-label={copied ? 'Copied to clipboard' : 'Copy to clipboard'}
+            >
+              {copied ? <Icons.Check size={16} /> : <Icons.Copy size={16} />}
+            </button>
+          </Tooltip>
+        </div>
       </header>
       {section === 'reasoning' ? (
         <div ref={contentRef} className={`${styles.content} ${styles.markdownContent}`}>
@@ -206,6 +306,21 @@ export default function AISectionView({ tab }: { tab: Tab }) {
               ))}
             </section>
           ))}
+          {runUsageSummary ? (
+            <section className={styles.runSummary}>
+              <ReactMarkdown
+                components={{
+                  code: ({ node, ...props }) => <code className={styles.code} {...props} />,
+                  h2: ({ node, ...props }) => <h2 className={styles.stepHeading} {...props} />,
+                  li: ({ node, ...props }) => <li className={styles.listItem} {...props} />,
+                  p: ({ node, ...props }) => <p className={styles.paragraph} {...props} />,
+                  ul: ({ node, ...props }) => <ul className={styles.list} {...props} />,
+                }}
+              >
+                {runUsageSummary}
+              </ReactMarkdown>
+            </section>
+          ) : null}
         </div>
       ) : (
         <pre className={styles.content}>{content}</pre>

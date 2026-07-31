@@ -8,16 +8,17 @@ import { LogState } from '@/components/App/Views/LogArea';
 import Dialog from '@/components/ui/Dialog';
 import { Icons } from '@/components/ui/Icons';
 import Select from '@/components/ui/Select';
+import Tooltip from '@/components/ui/Tooltip';
 import type React from 'react';
 import { useCallback, useState } from 'react';
 import { requireStore } from '../../../types';
 import styles from './Prompt.module.css';
 
 export default function WelcomePrompt() {
-  const [value, setValue] = useState('');
+  const promptUiState = PromptUiState.usePassiveState();
+  const [value, setValue] = useState(() => promptUiState?.welcomePrompt || '');
   const [isDownloadConfirmationOpen, setDownloadConfirmationOpen] = useState(false);
   const { isMobile } = requireStore(AppState.useState(['isMobile']));
-  const promptUiState = PromptUiState.usePassiveState();
   const sidebarState = SidebarState.usePassiveState();
   const { isAIProcessing } = requireStore(LogState.useState(['isAIProcessing']));
   const { cachedModelIds = [] } = requireStore(WebLLMState.useState(['cachedModelIds']));
@@ -43,6 +44,16 @@ export default function WelcomePrompt() {
     [promptUiState],
   );
 
+  const handleValueChange = useCallback(
+    (nextValue: string) => {
+      setValue(nextValue);
+      promptUiState?.((draft) => {
+        draft.welcomePrompt = nextValue;
+      });
+    },
+    [promptUiState],
+  );
+
   const startRequest = useCallback(() => {
     const request = value.trim();
     if (!request || isAIProcessing || !promptUiState || !sidebarState) return;
@@ -54,8 +65,8 @@ export default function WelcomePrompt() {
       if (isMobile) draft.isAIInputPopupOpen = true;
       else draft.showAIInput = true;
     });
-    setValue('');
-  }, [isAIProcessing, isMobile, promptUiState, sidebarState, value]);
+    handleValueChange('');
+  }, [handleValueChange, isAIProcessing, isMobile, promptUiState, sidebarState, value]);
 
   const handleSubmit = useCallback(
     async (event: React.FormEvent<HTMLFormElement>) => {
@@ -88,16 +99,31 @@ export default function WelcomePrompt() {
     <>
       <form className={styles.form} onSubmit={handleSubmit}>
         <div className={styles.composer}>
-          <textarea
-            value={value}
-            onChange={(event) => setValue(event.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="Describe what you want to build..."
-            aria-label="Describe what you want to build"
-            disabled={isAIProcessing}
-            className={styles.input}
-            rows={2}
-          />
+          <div className={styles.inputWrap}>
+            <textarea
+              value={value}
+              onChange={(event) => handleValueChange(event.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="Describe what you want to build..."
+              aria-label="Describe what you want to build"
+              disabled={isAIProcessing}
+              className={styles.input}
+              rows={2}
+            />
+            {value && (
+              <Tooltip content="Clear prompt" className={styles.clearTooltip}>
+                <button
+                  type="button"
+                  className={styles.clearButton}
+                  onClick={() => handleValueChange('')}
+                  disabled={isAIProcessing}
+                  aria-label="Clear prompt"
+                >
+                  <Icons.Close size={15} />
+                </button>
+              </Tooltip>
+            )}
+          </div>
           <div className={styles.composerFooter}>
             <Select
               id="welcome-model-select"

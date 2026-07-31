@@ -125,6 +125,20 @@ export async function syncFilesToContainer(
     }
   }
 
+  // AI writes update the canonical in-memory buffers immediately, while the
+  // sidebar tree or a local directory can lag by a render or disk flush.
+  // Include any buffer that is not yet present in the traversed source so
+  // validation and the following build use the same workspace.
+  for (const [path, content] of Object.entries(fileContents)) {
+    const vfsPath = path.startsWith('/') ? path : `/${path}`;
+    if (currentFiles.has(vfsPath)) continue;
+    const parentPath = vfsPath.slice(0, vfsPath.lastIndexOf('/'));
+    if (parentPath && !container.vfs.existsSync(parentPath)) {
+      container.vfs.mkdirSync?.(parentPath, { recursive: true });
+    }
+    await syncFile(path, async () => content);
+  }
+
   const previousFiles = syncedFiles.get(container) || new Set<string>();
   for (const path of previousFiles) {
     if (currentFiles.has(path)) continue;

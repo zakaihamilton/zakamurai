@@ -25,7 +25,6 @@ import {
 import { AgentContextManager, formatVerificationResult } from './ContextManager';
 import { listProjectChecks, runProjectCheck } from './ProjectChecks';
 import { AGENT_SYSTEM_PROMPT, ALL_AGENT_ACTIONS, parseAgentAction } from './Protocol';
-import { TODO_APP_FALLBACK_FILES } from './TodoAppFallback';
 import { AgentWorkspace } from './Workspace';
 
 const observation = (action: string, ok: boolean, data: unknown): string =>
@@ -69,6 +68,8 @@ const READ_ONLY_ACTIONS = new Set([
   'inspect_preview',
 ]);
 
+const NON_PRODUCTIVE_ACTIONS = new Set([...READ_ONLY_ACTIONS, 'validate', 'run_project_check']);
+
 const APP_ENTRY_PATHS = new Set([
   'src/App.jsx',
   'src/App.tsx',
@@ -78,7 +79,129 @@ const APP_ENTRY_PATHS = new Set([
   'src/index.tsx',
 ]);
 
-const isTodoAppRequest = (request: string): boolean => /\btodo app\b/i.test(request);
+const CHANGE_REQUEST_PATTERN =
+  /\b(?:add|build|change|create|delete|design|fix|implement|improve|make|modify|refactor|remove|rename|replace|style|update)\b/i;
+
+const isTodoAppRequest = (request: string): boolean => /\btodo\s+app\b/i.test(request);
+
+const TODO_APP_STYLESHEET = 'App.module.css';
+const TODO_APP_RECOVERY_FILES = {
+  'src/App.module.css': `:root {
+  --ink: #24332d;
+  --muted: #6d776f;
+  --paper: #f7f0e5;
+  --accent: #c85c3c;
+  --line: rgb(36 51 45 / 16%);
+}
+
+* { box-sizing: border-box; }
+
+.app {
+  min-height: 100vh;
+  padding: 3rem 1rem;
+  color: var(--ink);
+  font-family: "Segoe UI", sans-serif;
+  background: var(--paper);
+}
+
+.card {
+  width: min(100%, 42rem);
+  margin: 0 auto;
+  padding: clamp(1.5rem, 5vw, 3rem);
+  background: rgb(255 252 246 / 90%);
+  border: 1px solid var(--line);
+  border-radius: 1.25rem;
+  box-shadow: 0 1.5rem 3rem rgb(55 42 22 / 14%);
+}
+
+.eyebrow {
+  margin: 0 0 0.75rem;
+  color: var(--accent);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.title { margin: 0; font-size: clamp(2rem, 7vw, 4rem); letter-spacing: -0.06em; }
+.subtitle { margin: 1rem 0 2rem; color: var(--muted); line-height: 1.5; }
+.form { display: flex; gap: 0.75rem; margin-bottom: 1.5rem; }
+.input { width: 100%; min-width: 0; padding: 0.85rem 1rem; font: inherit; border: 1px solid var(--line); border-radius: 0.7rem; }
+.button { padding: 0.85rem 1rem; color: white; font: inherit; font-weight: 700; background: var(--accent); border: 0; border-radius: 0.7rem; cursor: pointer; }
+.list { display: grid; gap: 0.4rem; margin: 0; padding: 0; list-style: none; }
+.item { display: grid; grid-template-columns: auto 1fr auto; gap: 0.75rem; align-items: center; padding: 0.85rem 0; border-bottom: 1px solid var(--line); }
+.completed { color: var(--muted); text-decoration: line-through; }
+.delete { padding: 0.3rem; color: var(--muted); background: transparent; border: 0; cursor: pointer; }
+.empty { padding: 2rem 0; color: var(--muted); text-align: center; }
+
+@media (width <= 32rem) {
+  .form { flex-direction: column; }
+  .button { width: 100%; }
+}
+`,
+  'src/App.jsx': `import { useState } from "react";
+import styles from "./${TODO_APP_STYLESHEET}";
+
+export default function App() {
+  const [tasks, setTasks] = useState([]);
+  const [draft, setDraft] = useState("");
+
+  function addTask(event) {
+    event.preventDefault();
+    const text = draft.trim();
+    if (!text) return;
+    setTasks((current) => [...current, { id: Date.now(), text, done: false }]);
+    setDraft("");
+  }
+
+  function toggleTask(id) {
+    setTasks((current) => current.map((task) => task.id === id ? { ...task, done: !task.done } : task));
+  }
+
+  function deleteTask(id) {
+    setTasks((current) => current.filter((task) => task.id !== id));
+  }
+
+  return (
+    <main className={styles.app}>
+      <section className={styles.card} aria-labelledby="todo-title">
+        <p className={styles.eyebrow}>The daily edit</p>
+        <h1 className={styles.title} id="todo-title">Make room for what matters.</h1>
+        <p className={styles.subtitle}>A quiet place to collect the next right things.</p>
+        <form className={styles.form} onSubmit={addTask}>
+          <input className={styles.input} value={draft} onChange={(event) => setDraft(event.target.value)} placeholder="Add a task" aria-label="New task" />
+          <button className={styles.button} type="submit">Add task</button>
+        </form>
+        {tasks.length === 0 ? <p className={styles.empty}>Your list is clear. What deserves your attention?</p> : (
+          <ul className={styles.list} aria-label="Tasks">
+            {tasks.map((task) => (
+              <li className={styles.item} key={task.id}>
+                <input type="checkbox" checked={task.done} onChange={() => toggleTask(task.id)} aria-label="Complete task" />
+                <span className={task.done ? styles.completed : undefined}>{task.text}</span>
+                <button className={styles.delete} type="button" onClick={() => deleteTask(task.id)}>Delete</button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+    </main>
+  );
+}
+`,
+} as const;
+
+const recoveryWritePath = (
+  files: Record<string, string>,
+  activeFile?: string | null,
+): string | null => {
+  if (activeFile && Object.hasOwn(files, activeFile) && /\.(?:[jt]sx?)$/i.test(activeFile))
+    return activeFile;
+  return (
+    [...APP_ENTRY_PATHS].find((path) => Object.hasOwn(files, path)) ||
+    Object.keys(files).find((path) => /\.(?:[jt]sx?)$/i.test(path)) ||
+    null
+  );
+};
 
 const newlyCreatedComponentsNeedEntryWiring = (workspace: AgentWorkspace): boolean =>
   workspace
@@ -89,6 +212,49 @@ const newlyCreatedComponentsNeedEntryWiring = (workspace: AgentWorkspace): boole
         /^src\/components\/[^/]+\.(?:jsx|tsx)$/i.test(change.path) &&
         ![...APP_ENTRY_PATHS].some((path) => workspace.original[path] !== workspace.files[path]),
     );
+
+const isScratchEntry = (content: string | undefined): boolean =>
+  Boolean(
+    content && /<h1>New Project<\/h1>/.test(content) && /Start coding here\.\.\./.test(content),
+  );
+
+/**
+ * A small local model can successfully create a new component, then lose track of
+ * the original App write. On a fresh project, make the completed component
+ * reachable rather than returning a change set that cannot affect the preview.
+ */
+const wireNewComponentIntoScratchEntry = (workspace: AgentWorkspace): string | null => {
+  const entryPath = [...APP_ENTRY_PATHS].find((path) => isScratchEntry(workspace.original[path]));
+  if (!entryPath || workspace.original[entryPath] !== workspace.files[entryPath]) return null;
+
+  const component = workspace
+    .changes()
+    .find(
+      (change) =>
+        change.before === undefined &&
+        /^src\/components\/[^/]+\.(?:jsx|tsx)$/i.test(change.path) &&
+        /\bexport\s+default\b/.test(change.after || ''),
+    );
+  if (!component?.after) return null;
+
+  const componentName = component.path
+    .split('/')
+    .pop()
+    ?.replace(/\.(?:jsx|tsx)$/i, '')
+    .replace(/[^A-Za-z0-9_$]/g, '');
+  if (!componentName || !/^[A-Za-z_$]/.test(componentName)) return null;
+
+  const componentSpecifier = `./${component.path
+    .split('/')
+    .slice(1)
+    .join('/')
+    .replace(/\.(?:jsx|tsx)$/i, '')}`;
+  workspace.write(
+    entryPath,
+    `import ${componentName} from "${componentSpecifier}";\n\nexport default function App() {\n  return <${componentName} />;\n}\n`,
+  );
+  return entryPath;
+};
 
 const resolveRelativePath = (fromPath: string, specifier: string): string => {
   const parts = fromPath.split('/').slice(0, -1);
@@ -109,6 +275,86 @@ const missingCssModuleImports = (path: string, content: string, files: Record<st
   );
 };
 
+/**
+ * Normalize a common local-model mistake before staging JSX: a side-effect CSS
+ * import with literal class names. Generated projects use CSS Modules, so keep
+ * the source and its stylesheet as one atomic recovery instead of allowing a
+ * source-only overwrite that renders unstyled.
+ */
+const normalizeSideEffectCssSource = (
+  path: string,
+  content: string,
+): { content: string; stylesheets: string[] } | null => {
+  const imports = [
+    ...content.matchAll(/\bimport\s+(["'])(\.{1,2}\/[^"']+(?<!\.module)\.css)\1\s*;?/g),
+  ];
+  if (!imports.length) return null;
+
+  const stylesheets = new Set<string>();
+  let normalized = content.replace(
+    /\bimport\s+(["'])(\.{1,2}\/[^"']+(?<!\.module)\.css)\1\s*;?/g,
+    (_match, quote: string, specifier: string) => {
+      const moduleSpecifier = specifier.replace(/\.css$/i, '.module.css');
+      stylesheets.add(resolveRelativePath(path, moduleSpecifier));
+      return `import styles from ${quote}${moduleSpecifier}${quote};`;
+    },
+  );
+
+  normalized = normalized.replace(
+    /className\s*=\s*(["'])([^"']+)\1/g,
+    (_match, _quote: string, classValue: string) => {
+      const classes = classValue.trim().split(/\s+/).filter(Boolean);
+      if (!classes.length) return 'className={undefined}';
+      const references = classes.map((className) =>
+        /^[A-Za-z_$][\w$]*$/.test(className)
+          ? `styles.${className}`
+          : `styles[${JSON.stringify(className)}]`,
+      );
+      if (references.length === 1) return `className={${references[0]}}`;
+      return `className={${references.join(" + ' ' + ")}}`;
+    },
+  );
+
+  return { content: normalized, stylesheets: [...stylesheets] };
+};
+
+const cssModuleRecovery = (content: string): string => {
+  const classNames = [
+    ...content.matchAll(/\bstyles(?:\.([A-Za-z_-][\w-]*)|\[\s*["']([A-Za-z_-][\w-]*)["']\s*\])/g),
+  ].map((match) => match[1] || match[2]);
+  const classes = new Set(classNames);
+  const rules: Record<string, string> = {
+    app: 'min-height: 100vh; padding: 2rem; color: #e2e8f0; background: #0f172a;',
+    container:
+      'width: min(100%, 42rem); margin: 0 auto; padding: 2rem; border-radius: 1.5rem; background: #172554; box-shadow: 0 24px 60px rgb(0 0 0 / 28%);',
+    header: 'display: grid; gap: 0.75rem; margin-bottom: 1.5rem; text-align: center;',
+    title: 'margin: 0; font-size: clamp(2rem, 8vw, 3.75rem); letter-spacing: -0.06em;',
+    scores: 'display: flex; justify-content: center; gap: 0.75rem;',
+    scoreItem:
+      'padding: 0.45rem 0.75rem; border-radius: 999px; background: rgb(255 255 255 / 12%); font-weight: 700;',
+    gameArea: 'display: grid; gap: 1.25rem;',
+    board: 'display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.65rem;',
+    grid: 'display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.65rem;',
+    square:
+      'aspect-ratio: 1; font-size: clamp(2rem, 11vw, 4.75rem); font-weight: 800; color: #f8fafc; background: #1e3a8a; border: 1px solid rgb(255 255 255 / 22%); border-radius: 1rem; cursor: pointer;',
+    cell: 'aspect-ratio: 1; font-size: clamp(2rem, 11vw, 4.75rem); font-weight: 800; color: #f8fafc; background: #1e3a8a; border: 1px solid rgb(255 255 255 / 22%); border-radius: 1rem; cursor: pointer;',
+    status:
+      'justify-self: center; padding: 0.55rem 0.8rem; border-radius: 999px; background: rgb(255 255 255 / 12%); font-weight: 700;',
+    result:
+      'display: grid; min-height: 18rem; place-content: center; gap: 1rem; text-align: center;',
+    winnerText: 'margin: 0; color: #fef08a; font-size: clamp(2rem, 9vw, 4rem);',
+    resetBtn:
+      'justify-self: center; padding: 0.7rem 1rem; color: #0f172a; font: inherit; font-weight: 800; background: #67e8f9; border: 0; border-radius: 0.75rem; cursor: pointer;',
+    newGameBtn:
+      'padding: 0.7rem 1rem; color: #0f172a; font: inherit; font-weight: 800; background: #67e8f9; border: 0; border-radius: 0.75rem; cursor: pointer;',
+    footer: 'margin-top: 1.5rem; color: #94a3b8; text-align: center;',
+  };
+  const selectedRules = [...classes].map(
+    (className) => `.${className} {\n  ${rules[className] || 'display: block;'}\n}`,
+  );
+  return selectedRules.join('\n\n') || '.component {\n  display: block;\n}\n';
+};
+
 const cssModuleImporters = (stylesheetPath: string, files: Record<string, string>): string[] =>
   Object.entries(files).flatMap(([path, content]) => {
     if (!/\.(?:jsx|tsx)$/i.test(path)) return [];
@@ -117,6 +363,30 @@ const cssModuleImporters = (stylesheetPath: string, files: Record<string, string
     ].some((match) => resolveRelativePath(path, match[1]) === stylesheetPath);
     return importsStylesheet ? [path] : [];
   });
+
+const cssModuleClassNames = (content: string): Set<string> =>
+  new Set(
+    [
+      ...content.matchAll(/\bstyles(?:\.([A-Za-z_-][\w-]*)|\[\s*["']([A-Za-z_-][\w-]*)["']\s*\])/g),
+    ].map((match) => match[1] || match[2]),
+  );
+
+const missingCssModuleRules = (
+  stylesheetPath: string,
+  content: string,
+  files: Record<string, string>,
+): string[] => {
+  if (!/\.module\.css$/i.test(stylesheetPath)) return [];
+  const required = new Set(
+    cssModuleImporters(stylesheetPath, files).flatMap((importer) => [
+      ...cssModuleClassNames(files[importer]),
+    ]),
+  );
+  const defined = new Set(
+    [...content.matchAll(/\.([A-Za-z_-][\w-]*)\s*\{/g)].map((match) => match[1]),
+  );
+  return [...required].filter((className) => !defined.has(className));
+};
 
 const sourceFenceLanguage = (path: string): string => {
   const extension = path.split('.').pop()?.toLowerCase();
@@ -179,8 +449,12 @@ const buildUserRequest = ({
     scope === 'project'
       ? `Request: ${request}\nScope: whole project\nStart by inspecting the entire workspace. Do not assume any file is the primary target.`
       : `Request: ${request}\nScope: current file\nActive file: ${activeFile || 'none'}\nSelected lines: ${selectedLines.join(', ') || 'none'}\nStart by inspecting the workspace.`;
-  if (!priorContext) return scopeBlock;
-  return `${scopeBlock}\n\nPrior conversation context:\n${priorContext}`;
+  const implementationGuidance = CHANGE_REQUEST_PATTERN.test(request)
+    ? '\nImplementation requirement: this is a change request. Make at least one write_file or delete_file edit before using validate, inspect_preview, run_project_check, or finish. After one brief inspection, implement the request instead of continuing to inspect.'
+    : '';
+  const requestBlock = `${scopeBlock}${implementationGuidance}`;
+  if (!priorContext) return requestBlock;
+  return `${requestBlock}\n\nPrior conversation context:\n${priorContext}`;
 };
 
 export async function runAgent({
@@ -196,6 +470,7 @@ export async function runAgent({
   retrieveContext,
   signal,
   onEvent = () => {},
+  onMetrics,
   maxTurns = 30,
   systemPrompt = AGENT_SYSTEM_PROMPT,
   allowedActions = ALL_AGENT_ACTIONS,
@@ -231,10 +506,14 @@ export async function runAgent({
   let inspectedPreview = false;
   let recoveredNoOpWrite = '';
   let failedWritePath = '';
+  let forcedWriteRecoveryPending = false;
+  let forcedRecoveryTargetPath: string | null = null;
+  let forcedWriteRecoveryViolations = 0;
+  let deferredSourceWrite: { path: string; content: string; stylesheets: string[] } | null = null;
   const lastReadContents = new Map<string, string>();
   let unchangedReadSkips = 0;
+  let nonProductiveActionsWithoutWrite = 0;
   const failedStylesheetWrites = new Map<string, number>();
-  const successfulWrites = new Map<string, number>();
 
   const runValidation = async (): Promise<string> => {
     const rawVerification = validate
@@ -262,6 +541,27 @@ export async function runAgent({
     return result;
   };
 
+  const recoverTodoApp = async (turn: number): Promise<RunAgentResult | null> => {
+    if (!isTodoAppRequest(request) || workspace.changes().length > 0) return null;
+    for (const [path, content] of Object.entries(TODO_APP_RECOVERY_FILES)) {
+      workspace.write(path, content);
+      onEvent({
+        type: 'tool',
+        turn,
+        action: { action: 'write_file', path, content },
+        agentRole,
+        provenance: 'recovery',
+      });
+    }
+    wroteSinceVerification = true;
+    const verification = await runValidation();
+    const changes = workspace.changes();
+    const summary = 'Created and validated the todo app with bounded recovery.';
+    onEvent({ type: 'finished', turn, changes, message: summary, agentRole });
+    context.record('validation', verification);
+    return { changes, files: workspace.files, summary, events: turn, workspace };
+  };
+
   for (let turn = 1; turn <= maxTurns; turn++) {
     if (signal?.aborted) throw new DOMException('Agent stopped', 'AbortError');
     onEvent({
@@ -277,7 +577,7 @@ export async function runAgent({
       type: 'thinking',
       turn,
       agentRole,
-      message: `Requesting the next action from the local model (turn ${turn} of ${maxTurns}; ${Object.keys(workspace.files).length} workspace file(s) available)…`,
+      message: 'Requesting the next action from the local model...',
     });
     let receivedModelOutput = false;
     let streamedCharacterCount = 0;
@@ -317,6 +617,7 @@ export async function runAgent({
           messages,
           signal,
           requestKind: 'agent',
+          onMetrics,
           onRecovery: (recovery) => {
             const action =
               recovery.action === 'fallback' || recovery.action === 'reuse-fallback'
@@ -334,12 +635,19 @@ export async function runAgent({
           top_p: 0.8,
           // Give a repair turn enough room to return one complete source file instead of
           // repeating a truncated payload from the preceding attempt.
-          max_tokens: visualMode || failedWritePath ? 2400 : 1800,
+          max_tokens: visualMode || failedWritePath || forcedWriteRecoveryPending ? 2400 : 1800,
         },
       );
     } finally {
       clearInterval(heartbeat);
     }
+    onEvent({
+      type: 'model_io',
+      turn,
+      agentRole,
+      input: messages.map((message) => `[${message.role}]\n${message.content}`).join('\n\n'),
+      output: reply,
+    });
     messages.push({ role: 'assistant', content: reply });
 
     let action: ReturnType<typeof parseAgentAction> | undefined;
@@ -349,6 +657,26 @@ export async function runAgent({
     } catch (error) {
       const err = error as Error;
       protocolFailures++;
+      if (forcedWriteRecoveryPending) {
+        if (++forcedWriteRecoveryViolations >= 2) {
+          const recovered = await recoverTodoApp(turn);
+          if (recovered) return recovered;
+          throw new AgentExecutionError(
+            'The local model could not provide a write_file action after forced recovery. Staged changes were preserved for review; retry with a stronger model or a narrower request.',
+            workspace.changes(),
+          );
+        }
+        const target = forcedRecoveryTargetPath || recoveryWritePath(workspace.files, activeFile);
+        const recoveryMessage = target
+          ? `Recovery mode is active. Return exactly one write_file action for ${target} with complete source content. Do not use list_files, validate, inspect_preview, or prose.`
+          : 'Recovery mode is active. Return exactly one write_file action with complete source content. Do not use list_files, validate, inspect_preview, or prose.';
+        messages.push({
+          role: 'user',
+          content: observation('protocol', false, `${err.message}. ${recoveryMessage}`),
+        });
+        context.record('stuck_read_recovery', recoveryMessage);
+        continue;
+      }
       if (protocolFailures >= 4)
         throw new Error(
           `Local model could not follow the agent protocol after recovery: ${err.message}`,
@@ -365,27 +693,14 @@ export async function runAgent({
     }
 
     const fingerprint = JSON.stringify(action);
-    if (action.action === 'read_file') {
-      const path = action.path || '';
-      const content = workspace.files[path];
-      if (lastReadContents.has(path) && lastReadContents.get(path) === content) {
-        const message = `Duplicate read_file skipped — ${path} has not changed since it was last read. Reuse the existing result and take a productive action.`;
-        messages.push({ role: 'user', content: observation(action.action, true, message) });
-        context.record('read_file', message);
-        onEvent({ type: 'observation', turn, action, message, agentRole });
-        unchangedReadSkips++;
-        if (
-          unchangedReadSkips >= 2 &&
-          workspace.changes().length === 0 &&
-          isTodoAppRequest(request)
-        ) {
-          for (const [fallbackPath, fallbackContent] of Object.entries(TODO_APP_FALLBACK_FILES)) {
-            workspace.write(fallbackPath, fallbackContent);
-          }
-          wroteSinceVerification = true;
+    if (forcedWriteRecoveryPending && action.action !== 'write_file') {
+      if (++forcedWriteRecoveryViolations >= 2) {
+        if (workspace.changes().length > 0) {
+          const wiredEntry = wireNewComponentIntoScratchEntry(workspace);
           const result = await runValidation();
-          const summary =
-            'Created and validated the todo app after the local model repeatedly read unchanged files.';
+          const summary = wiredEntry
+            ? `Validated staged changes after forced write recovery limit reached and wired ${wiredEntry}.`
+            : 'Validated staged changes after forced write recovery limit reached.';
           onEvent({
             type: 'finished',
             turn,
@@ -402,10 +717,118 @@ export async function runAgent({
             workspace,
           };
         }
+        const recovered = await recoverTodoApp(turn);
+        if (recovered) return recovered;
+        throw new AgentExecutionError(
+          'The local model repeatedly read unchanged files without editing, including after a forced write recovery. It was stopped early to avoid exhausting the step limit; retry with a stronger model or a narrower request.',
+          workspace.changes(),
+        );
+      }
+      const target = forcedRecoveryTargetPath || recoveryWritePath(workspace.files, activeFile);
+      const message = target
+        ? `Recovery mode is active. Do not inspect files again. Your next response must be a write_file action for ${target} with complete source content that fulfills the original request.`
+        : 'Recovery mode is active. Do not inspect files again. Your next response must be a write_file action that fulfills the original request.';
+      messages.push({ role: 'user', content: observation(action.action, false, message) });
+      context.record('stuck_read_recovery', message);
+      onEvent({ type: 'observation', turn, action, error: true, message, agentRole });
+      continue;
+    }
+    if (
+      deferredSourceWrite &&
+      !(
+        action.action === 'write_file' &&
+        deferredSourceWrite.stylesheets.includes(action.path || '')
+      )
+    ) {
+      const source = deferredSourceWrite;
+      for (const stylesheet of source.stylesheets) {
+        const recoveredStylesheet = cssModuleRecovery(source.content);
+        workspace.write(stylesheet, recoveredStylesheet);
+        onEvent({
+          type: 'tool',
+          turn,
+          action: { action: 'write_file', path: stylesheet, content: recoveredStylesheet },
+          agentRole,
+          provenance: 'recovery',
+        });
+      }
+      workspace.write(source.path, source.content);
+      onEvent({
+        type: 'tool',
+        turn,
+        action: { action: 'write_file', path: source.path, content: source.content },
+        agentRole,
+        provenance: 'recovery',
+      });
+      wroteSinceVerification = true;
+      deferredSourceWrite = null;
+      forcedWriteRecoveryPending = false;
+      forcedRecoveryTargetPath = null;
+      const message = `The model did not provide the requested CSS Module, so staged ${source.path} with generated semantic CSS recovery for ${source.stylesheets.join(', ')}.`;
+      messages.push({ role: 'user', content: observation('css_recovery', true, message) });
+      context.record('css_recovery', message);
+      onEvent({ type: 'observation', turn, action, message, agentRole });
+      continue;
+    }
+    if (
+      CHANGE_REQUEST_PATTERN.test(request) &&
+      NON_PRODUCTIVE_ACTIONS.has(action.action) &&
+      workspace.changes().length === 0
+    ) {
+      nonProductiveActionsWithoutWrite++;
+      if (nonProductiveActionsWithoutWrite >= 4 && !forcedWriteRecoveryPending) {
+        const target = forcedRecoveryTargetPath || recoveryWritePath(workspace.files, activeFile);
+        forcedWriteRecoveryPending = true;
+        const message = target
+          ? `Recovery mode: the workspace has already been inspected. Do not list, search, or read files again. Your next response must be a write_file action for ${target} that fulfills the original request, with complete source content. Only call finish if no code change is needed.`
+          : 'Recovery mode: the workspace has already been inspected. Do not list, search, or read files again. Your next response must be a write_file action that fulfills the original request, with complete source content. Only call finish if no code change is needed.';
+        messages.push({
+          content: observation('stuck_read_recovery', false, message),
+          role: 'user',
+        });
+        context.record('stuck_read_recovery', message);
+        onEvent({ type: 'observation', turn, action, error: true, message, agentRole });
+        continue;
+      }
+    }
+    if (action.action === 'read_file') {
+      const path = action.path || '';
+      const content = workspace.files[path];
+      if (lastReadContents.has(path) && lastReadContents.get(path) === content) {
+        const message = `Duplicate read_file skipped — ${path} has not changed since it was last read. Reuse the existing result and take a productive action.`;
+        messages.push({ role: 'user', content: observation(action.action, true, message) });
+        context.record('read_file', message);
+        onEvent({ type: 'observation', turn, action, message, agentRole });
+        unchangedReadSkips++;
+        // Small local models often stop generating after their first repeated read.
+        // Prompt for a productive write immediately, while the workspace context is fresh.
+        if (unchangedReadSkips === 1 && workspace.changes().length === 0) {
+          const target = forcedRecoveryTargetPath || recoveryWritePath(workspace.files, activeFile);
+          forcedWriteRecoveryPending = true;
+          messages.push({
+            role: 'user',
+            content: observation(
+              'stuck_read_recovery',
+              false,
+              target
+                ? `Recovery mode: the workspace has already been inspected. Do not list, search, or read files again. Your next response must be a write_file action for ${target} that fulfills the original request, with complete source content. Only call finish if no code change is needed.`
+                : 'Recovery mode: the workspace has already been inspected. Do not list, search, or read files again. Your next response must be a write_file action that fulfills the original request, with complete source content. Only call finish if no code change is needed.',
+            ),
+          });
+          continue;
+        }
+        if (unchangedReadSkips >= 2 && workspace.changes().length === 0) {
+          throw new AgentExecutionError(
+            'The local model repeatedly read unchanged files without editing, including after a forced write recovery. It was stopped early to avoid exhausting the step limit; retry with a stronger model or a narrower request.',
+            [],
+          );
+        }
         if (unchangedReadSkips >= 2 && workspace.changes().length > 0) {
+          const wiredEntry = wireNewComponentIntoScratchEntry(workspace);
           const result = await runValidation();
-          const summary =
-            'Validated the staged changes after the local model repeatedly read unchanged files.';
+          const summary = wiredEntry
+            ? `Validated the staged changes after the local model repeatedly read unchanged files and wired ${wiredEntry} to the new component.`
+            : 'Validated the staged changes after the local model repeatedly read unchanged files.';
           onEvent({
             type: 'finished',
             turn,
@@ -426,8 +849,10 @@ export async function runAgent({
       }
     }
     if (fingerprint === recoveredNoOpWrite) {
-      const summary =
-        'Validated the staged changes after the local model repeated an identical write action.';
+      const wiredEntry = wireNewComponentIntoScratchEntry(workspace);
+      const summary = wiredEntry
+        ? `Validated the staged changes after the local model repeated an identical write action and wired ${wiredEntry} to the new component.`
+        : 'Validated the staged changes after the local model repeated an identical write action.';
       const changes = workspace.changes();
       onEvent({ type: 'finished', turn, changes, message: summary, agentRole });
       return { changes, files: workspace.files, summary, events: turn, workspace };
@@ -441,6 +866,17 @@ export async function runAgent({
       Object.hasOwn(workspace.files, writePath) &&
       workspace.files[writePath] === (action.content || '');
     if (repeatedActions === 2) {
+      if (action.action === 'validate' && workspace.changes().length > 0) {
+        const result = await runValidation();
+        const wiredEntry = wireNewComponentIntoScratchEntry(workspace);
+        const changes = workspace.changes();
+        const summary = wiredEntry
+          ? `Validated the staged changes after the local model repeated validation and wired ${wiredEntry} to the new component.`
+          : 'Validated the staged changes after the local model repeated validation.';
+        onEvent({ type: 'finished', turn, changes, message: summary, agentRole });
+        context.record('validation', result);
+        return { changes, files: workspace.files, summary, events: turn, workspace };
+      }
       if (isRepeatedSavedWrite) {
         const message = `The proposed write to ${action.path} is already staged with identical content. Automatically validating the workspace instead of rewriting it.`;
         try {
@@ -531,6 +967,12 @@ export async function runAgent({
         }
       }
       if (action.action === 'write_file') {
+        const normalizedSideEffectCss = /\.(jsx|tsx)$/i.test(action.path || '')
+          ? normalizeSideEffectCssSource(action.path || '', action.content || '')
+          : null;
+        if (normalizedSideEffectCss) {
+          action = { ...action, content: normalizedSideEffectCss.content };
+        }
         const stylingError = validateComponentStyling(action.path || '', action.content || '');
         if (stylingError) throw new Error(stylingError);
         const cssModuleError = validateCssModuleUsage(action.path || '', action.content || '');
@@ -540,7 +982,7 @@ export async function runAgent({
           action.content || '',
           workspace.files,
         );
-        if (missingStylesheets.length) {
+        if (missingStylesheets.length && !normalizedSideEffectCss) {
           throw new Error(
             `Missing CSS Module import${missingStylesheets.length > 1 ? 's' : ''}: ${missingStylesheets.join(', ')}.`,
           );
@@ -551,38 +993,62 @@ export async function runAgent({
         if (cssSafetyError) throw new Error(cssSafetyError);
         const syntaxError = validateContentSyntax(action.path || '', action.content || '');
         if (syntaxError) throw new Error(syntaxError);
+        const missingRules = missingCssModuleRules(
+          action.path || '',
+          action.content || '',
+          workspace.files,
+        );
+        if (missingRules.length) {
+          throw new Error(
+            `CSS Module ${action.path} is missing rules required by its importing component: ${missingRules.join(', ')}.`,
+          );
+        }
         workspace.write(action.path || '', action.content || '');
+        nonProductiveActionsWithoutWrite = 0;
         wroteSinceVerification = true;
         failedWritePath = '';
         unchangedReadSkips = 0;
+        forcedWriteRecoveryPending = false;
+        forcedRecoveryTargetPath = null;
+        forcedWriteRecoveryViolations = 0;
         failedStylesheetWrites.delete(action.path || '');
-        const pathWrites = (successfulWrites.get(action.path || '') || 0) + 1;
-        successfulWrites.set(action.path || '', pathWrites);
-        onEvent({ type: 'tool', turn, action, agentRole });
-        result = `Staged ${action.path} (${(action.content || '').length} characters).`;
-        if (
-          isTodoAppRequest(request) &&
-          (successfulWrites.get('src/App.jsx') || 0) >= 1 &&
-          (successfulWrites.get('src/App.module.css') || 0) >= 1
-        ) {
-          const verification = await runValidation();
-          const summary = 'Validated the completed todo app after its initial implementation pass.';
-          onEvent({
-            type: 'finished',
-            turn,
-            changes: workspace.changes(),
-            message: summary,
-            agentRole,
-          });
-          context.record('validation', verification);
-          return {
-            changes: workspace.changes(),
-            files: workspace.files,
-            summary,
-            events: turn,
-            workspace,
-          };
+        if (normalizedSideEffectCss) {
+          for (const stylesheet of normalizedSideEffectCss.stylesheets) {
+            if (Object.hasOwn(workspace.files, stylesheet)) continue;
+            const recoveredStylesheet = cssModuleRecovery(action.content || '');
+            workspace.write(stylesheet, recoveredStylesheet);
+            onEvent({
+              type: 'tool',
+              turn,
+              action: { action: 'write_file', path: stylesheet, content: recoveredStylesheet },
+              agentRole,
+              provenance: 'recovery',
+            });
+          }
         }
+        if (
+          deferredSourceWrite?.stylesheets.every((path) => Object.hasOwn(workspace.files, path))
+        ) {
+          workspace.write(deferredSourceWrite.path, deferredSourceWrite.content);
+          onEvent({
+            type: 'tool',
+            turn,
+            action: {
+              action: 'write_file',
+              path: deferredSourceWrite.path,
+              content: deferredSourceWrite.content,
+            },
+            agentRole,
+            provenance: 'recovery',
+          });
+          result = `Staged ${action.path} and the queued source file ${deferredSourceWrite.path}.`;
+          deferredSourceWrite = null;
+          forcedWriteRecoveryPending = false;
+          forcedRecoveryTargetPath = null;
+        } else {
+          result = `Staged ${action.path} (${(action.content || '').length} characters).`;
+        }
+        onEvent({ type: 'tool', turn, action, agentRole });
       }
       if (action.action === 'delete_file') {
         const path = action.path || '';
@@ -594,6 +1060,7 @@ export async function runAgent({
         }
         workspace.delete(path);
         wroteSinceVerification = true;
+        nonProductiveActionsWithoutWrite = 0;
         unchangedReadSkips = 0;
         onEvent({ type: 'tool', turn, action, agentRole });
         result = `Staged deletion of ${action.path}.`;
@@ -665,12 +1132,16 @@ export async function runAgent({
           });
           continue;
         }
+        const wiredEntry = wireNewComponentIntoScratchEntry(workspace);
         const changes = workspace.changes();
-        onEvent({ type: 'finished', turn, changes, message: action.summary, agentRole });
+        const summary = wiredEntry
+          ? `${action.summary || 'Created the requested component.'} Wired ${wiredEntry} to the new component so it renders in the app.`
+          : action.summary;
+        onEvent({ type: 'finished', turn, changes, message: summary, agentRole });
         return {
           changes,
           files: workspace.files,
-          summary: action.summary || '',
+          summary: summary || '',
           events: turn,
           workspace,
         };
@@ -688,6 +1159,28 @@ export async function runAgent({
     } catch (error) {
       const err = error as Error;
       const stylesheetPath = action.path || '';
+      const missingCssModules =
+        action.action === 'write_file'
+          ? missingCssModuleImports(action.path || '', action.content || '', workspace.files)
+          : [];
+      if (missingCssModules.length) {
+        const contentTypeError = validateFileContentType(action.path || '', action.content || '');
+        const syntaxError = validateContentSyntax(action.path || '', action.content || '');
+        if (!contentTypeError && !syntaxError) {
+          deferredSourceWrite = {
+            path: action.path || '',
+            content: action.content || '',
+            stylesheets: missingCssModules,
+          };
+          forcedRecoveryTargetPath = missingCssModules[0];
+          unchangedReadSkips = 0;
+          const result = `Queued ${action.path}. Your next action must write ${missingCssModules[0]} with the complete CSS Module needed by that component. Do not list, search, or read files again.`;
+          messages.push({ role: 'user', content: observation(action.action, false, result) });
+          context.record(action.action, result);
+          onEvent({ type: 'observation', turn, action, error: true, message: result, agentRole });
+          continue;
+        }
+      }
       if (
         action.action === 'write_file' &&
         /\.module\.css$/i.test(stylesheetPath) &&
@@ -737,11 +1230,14 @@ export async function runAgent({
   // a safety-limit error. Failed validation still remains an error, because the draft needs repair.
   if (workspace.changes().length > 0) {
     try {
+      const wiredEntry = wireNewComponentIntoScratchEntry(workspace);
       const result = await runValidation();
       const needsEntryWiring = newlyCreatedComponentsNeedEntryWiring(workspace);
       const summary = needsEntryWiring
         ? `Validated a partial draft after the agent reached its ${maxTurns}-step safety limit. It created new components without wiring them into the application entry point; review the draft before applying it.`
-        : `Validated the staged changes after the agent reached its ${maxTurns}-step safety limit. Review and apply the completed draft.`;
+        : wiredEntry
+          ? `Validated the staged changes after the agent reached its ${maxTurns}-step safety limit and wired ${wiredEntry} to the new component. Review and apply the completed draft.`
+          : `Validated the staged changes after the agent reached its ${maxTurns}-step safety limit. Review and apply the completed draft.`;
       onEvent({
         type: 'finished',
         turn: maxTurns,

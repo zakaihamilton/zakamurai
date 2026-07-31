@@ -2,7 +2,7 @@ import { EditorState } from '@/components/App/Views/EditorArea';
 import Settings from '@/components/Storage/Settings';
 import { act, renderHook } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { useContentSaver } from './ContentSaver';
+import { skipEditorBufferFlushOnce, useContentSaver } from './ContentSaver';
 
 vi.mock('@/components/App/Views/EditorArea', () => {
   return {
@@ -91,5 +91,20 @@ describe('useContentSaver', () => {
         modifiedContent: '',
       },
     });
+  });
+
+  it('skips one unload flush during an intentional project reset', () => {
+    vi.mocked(EditorState.usePassiveState).mockReturnValue({
+      fileContents: { 'test.js': 'old project' },
+      pendingDiffs: {},
+    } as never);
+    renderHook(() => useContentSaver());
+    skipEditorBufferFlushOnce();
+
+    act(() => {
+      window.dispatchEvent(new Event('beforeunload'));
+    });
+
+    expect(Settings.flushEditorBuffersSync).not.toHaveBeenCalled();
   });
 });

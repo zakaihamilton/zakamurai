@@ -87,6 +87,12 @@ describe('AI change validation', () => {
     expect(validateContentSyntax('src/app.ts', withBacktickComment)).toBeNull();
   });
 
+  it('does not mistake apostrophes in JSX text for unterminated strings', () => {
+    expect(
+      validateContentSyntax('src/App.jsx', "export default () => <h1>Let's play</h1>;"),
+    ).toBeNull();
+  });
+
   it('returns null for non-string content or missing path in sync validation', () => {
     expect(validateContentSyntax('src/app.js', null as never)).toBeNull();
     expect(validateContentSyntax('', 'const x = 1;')).toBeNull();

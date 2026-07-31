@@ -93,16 +93,20 @@ export type AgentAction = {
   summary?: string;
 };
 
-export type AgentEventType = 'thinking' | 'tool' | 'observation' | 'finished';
+export type AgentEventType = 'thinking' | 'tool' | 'observation' | 'model_io' | 'finished';
 
 export type AgentEvent = {
   type: AgentEventType;
   turn: number;
   agentRole?: string | null;
   message?: string;
+  input?: string;
+  output?: string;
   action?: AgentActionName | AgentAction;
   error?: boolean;
   changes?: AgentChange[];
+  /** Marks synthetic writes produced by a recovery path rather than the model. */
+  provenance?: 'model' | 'recovery';
   /** Replace the current transient progress line instead of adding a new transcript entry. */
   replaceProgress?: boolean;
 };
@@ -401,6 +405,7 @@ export type RunAgentOptions = {
   retrieveContext?: (query: string, k: number) => Promise<SemanticSearchResult[]>;
   signal?: AbortSignal;
   onEvent?: AgentEventHandler;
+  onMetrics?: (metrics: WebLLMGenerationMetrics) => void;
   maxTurns?: number;
   systemPrompt?: string;
   allowedActions?: string[];

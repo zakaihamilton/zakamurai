@@ -176,6 +176,14 @@ describe('formatAgentEvent', () => {
     expect(
       formatAgentEvent({
         type: 'tool',
+        turn: 2,
+        action: { action: 'write_file', path: 'src/App.module.css', content: '.app {}' },
+        provenance: 'recovery',
+      }),
+    ).toContain('recovery write');
+    expect(
+      formatAgentEvent({
+        type: 'tool',
         turn: 1,
         agentRole: 'custom',
         action: { action: 'list_files' },
@@ -290,6 +298,48 @@ describe('useAgentRunner', () => {
       expect(reasoningUpdates.some((reasoning) => reasoning.includes('`src/App.jsx`'))).toBe(true);
       expect(reasoningUpdates.some((reasoning) => reasoning.includes('`src/App.module.css`'))).toBe(
         true,
+      );
+    });
+  });
+
+  it('resets and aggregates current-run model metrics and tool calls', async () => {
+    runAgent.mockImplementationOnce(async (options) => {
+      options.onMetrics({
+        requestKind: 'agent',
+        requestedModelId: 'requested',
+        modelId: 'fallback',
+        outcome: 'success',
+        startedAt: 0,
+        totalMs: 250,
+        timeToFirstTokenMs: 40,
+        promptTokens: 12,
+        completionTokens: 4,
+        decodeTokensPerSecond: 20,
+        recoveryCount: 0,
+      });
+      options.onEvent({ type: 'tool', turn: 1, action: { action: 'read_file', path: 'app.js' } });
+      options.onEvent({ type: 'tool', turn: 2, action: { action: 'read_file', path: 'app.js' } });
+      return { summary: 'done', changes: [] };
+    });
+    const props = createRunnerProps();
+    const { result } = renderHook(() => useAgentRunner(props));
+
+    act(() => {
+      result.current.send(mockFormEvent());
+    });
+
+    await waitFor(() => {
+      expect(props.patchSession).toHaveBeenCalledWith(
+        'session-1',
+        expect.objectContaining({
+          runUsage: expect.objectContaining({
+            modelIds: ['fallback'],
+            modelCalls: 1,
+            promptTokens: 12,
+            completionTokens: 4,
+            toolCalls: { read_file: 2 },
+          }),
+        }),
       );
     });
   });

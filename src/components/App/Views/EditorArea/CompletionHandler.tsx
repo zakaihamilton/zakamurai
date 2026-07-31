@@ -357,10 +357,6 @@ export default function useCompletion({
         try {
           const completionModelId = await resolveCompletionModelId(selectedModel);
           if (lastRequestRef.current !== scheduledRequestId) return;
-          const usesDedicatedCompletionEngine =
-            completionModelId === RECOMMENDED_COMPLETION_MODEL.id &&
-            completionModelId !== selectedModel;
-
           activeCompletionModelRef.current = completionModelId;
           const completionController = new AbortController();
           activeCompletionControllerRef.current = completionController;
@@ -404,7 +400,10 @@ export default function useCompletion({
             presence_penalty: 0,
             frequency_penalty: 0.2,
             max_tokens: 128,
-            contextWindowSize: usesDedicatedCompletionEngine ? 1024 : 4096,
+            // Completions are capped at 128 tokens. A 4K KV cache adds GPU/unified-memory
+            // pressure without improving their quality; a larger agent engine is still reused
+            // when it is already loaded.
+            contextWindowSize: 1024,
           });
 
           if (lastRequestRef.current === scheduledRequestId) {

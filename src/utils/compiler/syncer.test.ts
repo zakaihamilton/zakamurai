@@ -53,9 +53,19 @@ describe('syncFilesToContainer', () => {
       rootHandle: mockRootHandle,
     };
 
-    await syncFilesToContainer(mockContainer, fs, [], {}, onLogMock);
+    await syncFilesToContainer(
+      mockContainer,
+      fs,
+      [],
+      { 'src/App.module.css': '.app { display: block; }' },
+      onLogMock,
+    );
 
     expect(mockContainer.vfs.writeFileSync).toHaveBeenCalledWith('/test.js', 'file content');
+    expect(mockContainer.vfs.writeFileSync).toHaveBeenCalledWith(
+      '/src/App.module.css',
+      '.app { display: block; }',
+    );
     expect(onLogMock).toHaveBeenCalledWith('File synchronization complete.');
   });
 
@@ -99,6 +109,33 @@ describe('syncFilesToContainer', () => {
       'console.log("app in-memory");',
     );
     expect(mockContainer.vfs.writeFileSync).toHaveBeenCalledWith('/package.json', '{}');
+  });
+
+  it('syncs staged buffers that have not yet reached the folder tree', async () => {
+    const folderTree: FolderTreeNode[] = [
+      {
+        name: 'src',
+        isDir: true,
+        children: [{ name: 'App.jsx', isDir: false, content: 'export default null;' }],
+      },
+    ];
+    const fs: LocalFsLike = { mode: 'opfs' };
+
+    await syncFilesToContainer(
+      mockContainer,
+      fs,
+      folderTree,
+      {
+        'src/App.jsx': 'import styles from "./App.module.css"; export default null;',
+        'src/App.module.css': '.app { display: block; }',
+      },
+      onLogMock,
+    );
+
+    expect(mockContainer.vfs.writeFileSync).toHaveBeenCalledWith(
+      '/src/App.module.css',
+      '.app { display: block; }',
+    );
   });
 
   it('handles file read errors gracefully during sync', async () => {

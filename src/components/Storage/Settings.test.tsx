@@ -86,6 +86,14 @@ describe('Settings', () => {
     expect(Settings.getPromptDraft()).toBe('');
   });
 
+  it('gets, sets, and clears the welcome prompt draft', () => {
+    expect(Settings.getWelcomePromptDraft()).toBe('');
+    Settings.setWelcomePromptDraft('build a game');
+    expect(Settings.getWelcomePromptDraft()).toBe('build a game');
+    Settings.setWelcomePromptDraft('');
+    expect(Settings.getWelcomePromptDraft()).toBe('');
+  });
+
   it('gets and sets validated pending diffs in IndexedDB-backed cache', async () => {
     const pendingDiffs = {
       'src/App.js': {
@@ -454,6 +462,17 @@ describe('Settings', () => {
     Settings.setTheme('light');
     await Settings.reset('default', { preserveTheme: 'light' });
     expect(Settings.getTheme()).toBe('light');
+  });
+
+  it('preserves the selected AI prompt model while resetting a project', async () => {
+    Settings.setAIPromptModel('Qwen3.5-4B-q4f16_1-MLC');
+    Settings.setWelcomePromptDraft('build a game');
+    await Settings.reset('scratch', {
+      preserveAIPromptModel: 'Qwen3.5-4B-q4f16_1-MLC',
+      preserveWelcomePrompt: 'build a game',
+    });
+    expect(Settings.getAIPromptModel()).toBe('Qwen3.5-4B-q4f16_1-MLC');
+    expect(Settings.getWelcomePromptDraft()).toBe('build a game');
   });
 
   it('reports storage health and quota warnings', async () => {

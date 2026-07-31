@@ -119,7 +119,14 @@ vi.mock('@/components/ui/Select', () => ({
 vi.mock('@/components/ui/Icons', () => ({
   Icons: {
     Send: () => <span data-testid="send-icon" />,
+    Close: () => <span data-testid="close-icon" />,
   },
+}));
+
+vi.mock('@/components/ui/Tooltip', () => ({
+  default: ({ content, children }: { content: ReactNode; children: ReactNode }) => (
+    <span data-tooltip={content}>{children}</span>
+  ),
 }));
 
 describe('WelcomePrompt', () => {
@@ -144,6 +151,38 @@ describe('WelcomePrompt', () => {
     expect(screen.getByLabelText('Describe what you want to build')).toBeDefined();
     expect(screen.getByRole('button', { name: 'Start building with AI' })).toBeDisabled();
     expect(screen.getByText(/Runs locally in your browser/)).toBeDefined();
+  });
+
+  it('restores the remembered welcome prompt draft', () => {
+    promptUiState = makePromptUiState({
+      selectedModel: RECOMMENDED_WEB_LLM_MODEL.id,
+      welcomePrompt: 'build a tic tac toe game',
+    });
+    vi.mocked(PromptUiState.usePassiveState).mockReturnValue(promptUiState);
+
+    render(<WelcomePrompt />);
+
+    expect(screen.getByLabelText('Describe what you want to build')).toHaveValue(
+      'build a tic tac toe game',
+    );
+  });
+
+  it('clears the welcome prompt with the clear button and shows its tooltip label', () => {
+    promptUiState = makePromptUiState({
+      selectedModel: RECOMMENDED_WEB_LLM_MODEL.id,
+      welcomePrompt: 'draft prompt',
+    });
+    vi.mocked(PromptUiState.usePassiveState).mockReturnValue(promptUiState);
+
+    render(<WelcomePrompt />);
+
+    const clearButton = screen.getByRole('button', { name: 'Clear prompt' });
+    expect(clearButton.parentElement).toHaveAttribute('data-tooltip', 'Clear prompt');
+
+    fireEvent.click(clearButton);
+
+    expect(screen.getByLabelText('Describe what you want to build')).toHaveValue('');
+    expect(promptUiState.welcomePrompt).toBe('');
   });
 
   it('starts a request immediately when the selected model is cached', async () => {

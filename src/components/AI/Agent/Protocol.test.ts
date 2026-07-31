@@ -7,10 +7,17 @@ describe('agent protocol', () => {
     expect(AGENT_SYSTEM_PROMPT).toContain('Never side-effect import *.module.css');
   });
 
-  it('gives todo apps a specific visual direction instead of generic default styling', () => {
-    expect(AGENT_SYSTEM_PROMPT).toContain('warm editorial task planner');
+  it('gives application interfaces a general visual direction instead of prompt-specific styling', () => {
+    expect(AGENT_SYSTEM_PROMPT).not.toContain('warm editorial task planner');
     expect(AGENT_SYSTEM_PROMPT).toContain('CSS custom properties');
     expect(AGENT_SYSTEM_PROMPT).toContain('generic white card, system font, blue primary button');
+  });
+
+  it('requires new CSS Modules before the components that import them', () => {
+    expect(AGENT_SYSTEM_PROMPT).toContain(
+      'write that complete *.module.css file before writing the importing JSX or TSX file',
+    );
+    expect(AGENT_SYSTEM_PROMPT).toContain('immediately write the named stylesheet');
   });
 
   it('parses a JSON action from a fenced response', () => {

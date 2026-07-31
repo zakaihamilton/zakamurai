@@ -1,17 +1,22 @@
 import { AppState } from '@/components/App/AppState';
+import { createAgentSession } from '@/components/App/Panes/Prompt/AgentSessions';
 import { PromptUiState } from '@/components/App/Panes/Prompt/PromptState';
 import { SidebarState } from '@/components/App/Panes/Sidebar';
 import { TabState } from '@/components/App/Panes/TabBar';
 import { PreviewState } from '@/components/App/PreviewState';
 import { EditorState } from '@/components/App/Views/EditorArea';
 import { LogState } from '@/components/App/Views/LogArea';
-import { DEFAULT_CONTENTS, DEFAULT_FILES } from '@/components/Storage/InitialData';
+import { SCRATCH_CONTENTS, SCRATCH_FILES } from '@/components/Storage/InitialData';
 import Settings from '@/components/Storage/Settings';
+import { ChangeSetState } from '@/components/Workspace';
 import { createMockEditorState } from '@/test-utils/editorMocks';
 import {
+  makeAgentSessionState,
   makeAppState,
+  makeChangeSetState,
   makeLogState,
   makePreviewState,
+  makePromptState,
   makePromptUiState,
   makeSidebarState,
   makeTabState,
@@ -109,6 +114,12 @@ vi.mock('@/components/App/Panes/Prompt/PromptState', () => ({
   },
 }));
 
+vi.mock('@/components/Workspace', () => ({
+  ChangeSetState: {
+    usePassiveState: vi.fn(),
+  },
+}));
+
 describe('TopBar', () => {
   beforeEach(() => {
     localStorage.clear();
@@ -125,6 +136,7 @@ describe('TopBar', () => {
       createMockEditorState() as ReturnType<typeof EditorState.usePassiveState>,
     );
     vi.mocked(PromptUiState.usePassiveState).mockReturnValue(makePromptUiState());
+    vi.mocked(ChangeSetState.usePassiveState).mockReturnValue(makeChangeSetState());
   });
 
   function setupCommonMocks({
@@ -314,29 +326,91 @@ describe('TopBar', () => {
       pendingDiffs: {
         'old.js': { originalContent: 'older content', modifiedContent: '', diffs: [] },
       },
+      pendingDeletions: {
+        'deleted.js': { originalContent: 'old content', changeSetId: 'old-change-set' },
+      },
+    });
+    const changeSetState = makeChangeSetState({
+      activeId: 'old-change-set',
+      items: [
+        {
+          id: 'old-change-set',
+          request: 'old request',
+          files: [],
+          status: 'pending-review',
+          createdAt: 0,
+        },
+      ],
     });
     const previewState = makePreviewState({ htmlContent: '<p>old</p>' });
-    const promptUiState = makePromptUiState({ val: 'draft', draftVal: 'draft', historyIndex: 0 });
+    const promptUiState = makePromptUiState({
+      val: 'draft',
+      draftVal: 'draft',
+      welcomePrompt: 'build a game',
+      historyIndex: 0,
+      welcomeRequest: { prompt: 'old request' },
+      runningSessionId: 'old-session',
+      isAgentTreeOpen: true,
+      sessionDialog: { type: 'error', message: 'old error' },
+      modelCacheProgress: 'old progress',
+      modelCacheError: 'old error',
+    });
+    const promptState = makePromptState({ promptHistory: ['old request'] });
+    const oldSession = createAgentSession({
+      name: 'Old session',
+      messages: [{ id: 1, role: 'user', text: 'old', timestamp: '00:00:00' }],
+    });
+    const agentSessionState = makeAgentSessionState({
+      sessions: { [oldSession.id]: oldSession },
+      activeSessionId: oldSession.id,
+    });
+    const logState = makeLogState({
+      isSystemProcessing: true,
+      isAIProcessing: true,
+      logs: [{ id: 'old-log', role: 'system', text: 'old progress', timestamp: '00:00:00' }],
+      reasoning: 'old reasoning',
+    });
 
-    Settings.reset('default');
+    Settings.reset('scratch');
     resetNewProjectState({
-      template: 'default',
+      template: 'scratch',
       appState,
       sidebarState,
       tabState,
       editorState,
       previewState,
       promptUiState,
+      promptState,
+      agentSessionState,
+      logState,
+      changeSetState,
     });
 
     expect(appState.projectName).toBe('My App');
-    expect(sidebarState.folderTree).toBe(DEFAULT_FILES);
+    expect(sidebarState.folderTree).toBe(SCRATCH_FILES);
     expect(tabState.openTabs).toEqual([]);
     expect(tabState.activeTabId).toBeNull();
-    expect(editorState.fileContents).toBe(DEFAULT_CONTENTS);
+    expect(editorState.fileContents).toBe(SCRATCH_CONTENTS);
     expect(editorState.pendingDiffs).toEqual({});
+    expect(editorState.pendingDeletions).toEqual({});
+    expect(changeSetState.activeId).toBeNull();
+    expect(changeSetState.items).toEqual([]);
     expect(previewState.htmlContent).toBeNull();
     expect(promptUiState.val).toBe('');
+    expect(promptUiState.welcomePrompt).toBe('build a game');
+    expect(promptUiState.welcomeRequest).toBeNull();
+    expect(promptUiState.runningSessionId).toBeNull();
+    expect(promptUiState.isAgentTreeOpen).toBe(false);
+    expect(promptUiState.modelCacheProgress).toBe('');
+    expect(promptState.promptHistory).toEqual([]);
+    expect(agentSessionState.activeSessionId).not.toBe(oldSession.id);
+    const activeSession = agentSessionState.sessions[agentSessionState.activeSessionId || ''];
+    expect(activeSession?.messages).toEqual([]);
+    expect(activeSession?.reasoning).toBe('');
+    expect(activeSession?.reasoningEvents).toEqual([]);
+    expect(logState.logs).toEqual([]);
+    expect(logState.reasoning).toBe('');
+    expect(logState.isAIProcessing).toBe(false);
   });
 
   it('handles dynamic tooltips, history dropdown toggle, reverse order list, and clearing history', async () => {

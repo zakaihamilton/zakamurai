@@ -1,12 +1,18 @@
 import { applyAgentChanges } from '@/components/AI/Agent';
 import { computeDiff } from '@/components/AI/Processor/utils/DiffEngine';
-import type { AgentEvent } from '@/components/AI/types';
+import type { AgentEvent, WebLLMGenerationMetrics } from '@/components/AI/types';
 import { AppState } from '@/components/App/AppState';
 import { ChangeSetState, getWorkspaceIndex } from '@/components/Workspace';
+import type { AgentReasoningEntry } from '@/components/state/domain-types';
 import type { FormEvent } from 'react';
 import { useCallback } from 'react';
 import { requireStore, toCompilerFs } from '../../types';
-import { MAX_REASONING_EVENTS, formatSessionContext } from './AgentSessions';
+import {
+  MAX_REASONING_EVENTS,
+  clipReasoningStepIO,
+  createAgentRunUsage,
+  formatSessionContext,
+} from './AgentSessions';
 import type { AgentEventFormatter, UseAgentRunnerParams } from './prompt-types';
 
 const ROLE_LABELS: Record<string, string> = {
@@ -52,7 +58,8 @@ export const formatAgentEvent: AgentEventFormatter = (event, roleLabelById = {})
     const actionObj = typeof action === 'object' && action ? action : null;
     const detail = actionObj ? formatActionDetails(actionObj) : '';
     const actionName = actionObj?.action || (typeof action === 'string' ? action : '');
-    return `${rolePrefix}**Step ${event.turn}:** \`${actionName}\`${detail ? ` — ${detail}` : ''}`;
+    const provenance = event.provenance === 'recovery' ? ' · recovery write' : '';
+    return `${rolePrefix}**Step ${event.turn}:** \`${actionName}\`${detail ? ` — ${detail}` : ''}${provenance}`;
   }
   if (event.type === 'observation') {
     const actionObj = typeof event.action === 'object' && event.action ? event.action : null;
@@ -66,6 +73,7 @@ export const formatAgentEvent: AgentEventFormatter = (event, roleLabelById = {})
       ? `⚠ ${rolePrefix}${prefix}${detail}`
       : `${rolePrefix}**Step ${event.turn} result:** ${prefix}${detail}`;
   }
+  if (event.type === 'model_io') return '';
   if (event.type === 'finished') {
     const paths = [
       ...new Set(
@@ -167,7 +175,12 @@ export default function useAgentRunner({
         (sidebarState.folderTree || []).length === 0;
 
       pushSessionMessage(sessionId, createSessionMessage({ role: 'user', text: userMsg }));
-      patchSession(sessionId, { status: 'running', reasoning: '', reasoningEvents: [] });
+      patchSession(sessionId, {
+        status: 'running',
+        reasoning: '',
+        reasoningEvents: [],
+        runUsage: createAgentRunUsage(),
+      });
       promptUiState((draft) => {
         draft.val = '';
         draft.draftVal = '';
@@ -207,10 +220,62 @@ export default function useAgentRunner({
           promptUiState((draft) => {
             draft.abortController = controller;
           });
-          const events: Array<{ text: string; timestamp: string }> = [];
+          const events: AgentReasoningEntry[] = [];
           let progressEventIndex: number | null = null;
-          const appendReasoning = (line: string, replaceProgress = false) => {
-            const event = { text: line, timestamp: new Date().toTimeString().split(' ')[0] };
+          let runUsage = createAgentRunUsage();
+          const publishRunUsage = () => patchSession(sessionId, { runUsage });
+          const recordMetrics = (metrics: WebLLMGenerationMetrics) => {
+            const modelIds = new Set(runUsage.modelIds);
+            if (metrics.modelId) modelIds.add(metrics.modelId);
+            const outcomes = {
+              ...runUsage.outcomes,
+              [metrics.outcome]: runUsage.outcomes[metrics.outcome] + 1,
+            };
+            runUsage = {
+              ...runUsage,
+              modelIds: [...modelIds],
+              modelCalls: runUsage.modelCalls + 1,
+              outcomes,
+              promptTokens: runUsage.promptTokens + (metrics.promptTokens ?? 0),
+              promptTokenCalls:
+                runUsage.promptTokenCalls + (metrics.promptTokens === undefined ? 0 : 1),
+              completionTokens: runUsage.completionTokens + (metrics.completionTokens ?? 0),
+              completionTokenCalls:
+                runUsage.completionTokenCalls + (metrics.completionTokens === undefined ? 0 : 1),
+              totalMs: runUsage.totalMs + metrics.totalMs,
+              timeToFirstTokenMs: runUsage.timeToFirstTokenMs + (metrics.timeToFirstTokenMs ?? 0),
+              timeToFirstTokenCalls:
+                runUsage.timeToFirstTokenCalls + (metrics.timeToFirstTokenMs === undefined ? 0 : 1),
+              decodeTokensPerSecond:
+                runUsage.decodeTokensPerSecond + (metrics.decodeTokensPerSecond ?? 0),
+              decodeTokensPerSecondCalls:
+                runUsage.decodeTokensPerSecondCalls +
+                (metrics.decodeTokensPerSecond === undefined ? 0 : 1),
+            };
+            publishRunUsage();
+          };
+          const recordTool = (actionName: string) => {
+            runUsage = {
+              ...runUsage,
+              toolCalls: {
+                ...runUsage.toolCalls,
+                [actionName]: (runUsage.toolCalls[actionName] || 0) + 1,
+              },
+            };
+            publishRunUsage();
+          };
+          const appendReasoning = (
+            line: string,
+            replaceProgress = false,
+            metadata: Pick<AgentReasoningEntry, 'turn' | 'input' | 'output'> = {},
+          ) => {
+            const event = {
+              text: line,
+              timestamp: new Date().toTimeString().split(' ')[0],
+              ...metadata,
+              ...(metadata.input ? { input: clipReasoningStepIO(metadata.input) } : {}),
+              ...(metadata.output ? { output: clipReasoningStepIO(metadata.output) } : {}),
+            };
             if (replaceProgress && progressEventIndex !== null) {
               events[progressEventIndex] = event;
             } else {
@@ -218,7 +283,10 @@ export default function useAgentRunner({
               progressEventIndex = replaceProgress ? events.length - 1 : null;
             }
             const reasoningEvents = events.slice(-MAX_REASONING_EVENTS);
-            const reasoning = reasoningEvents.map((event) => event.text).join('\n\n');
+            const reasoning = reasoningEvents
+              .map((event) => event.text)
+              .filter(Boolean)
+              .join('\n\n');
             patchSession(sessionId, { reasoning, reasoningEvents });
             logState((draft) => {
               (draft as typeof draft & { reasoning?: string }).reasoning = reasoning;
@@ -285,6 +353,7 @@ export default function useAgentRunner({
               }));
             },
             workspaceIndex: getWorkspaceIndex(),
+            onMetrics: recordMetrics,
             validate: async (stagedFiles: Record<string, string>) => {
               const validationLogs: string[] = [];
               const compiler = new Compiler((line: string) => validationLogs.push(line));
@@ -359,6 +428,19 @@ export default function useAgentRunner({
               }
             },
             onEvent: (event: AgentEvent) => {
+              if (event.type === 'model_io') {
+                appendReasoning('', false, {
+                  turn: event.turn,
+                  input: event.input,
+                  output: event.output,
+                });
+                return;
+              }
+              if (event.type === 'tool') {
+                const actionName =
+                  typeof event.action === 'string' ? event.action : event.action?.action || '';
+                if (actionName) recordTool(actionName);
+              }
               const line = formatAgentEvent(event, roleLabelById);
               if (line) appendReasoning(line, event.replaceProgress);
 
@@ -388,8 +470,9 @@ export default function useAgentRunner({
                     before: originalContent,
                     after: content,
                   });
+                  const changeLabel = originalContent === content ? 'unchanged' : 'changed';
                   appendReasoning(
-                    `**Live draft available:** \`${filePath}\` can now be opened from the file tree.`,
+                    `**Trace:** staged \`${filePath}\` (${originalContent.length.toLocaleString()} → ${content.length.toLocaleString()} characters; ${changeLabel}).`,
                   );
                 } else if (actionObj.action === 'delete_file' && actionObj.path) {
                   liveChanges.set(actionObj.path, {

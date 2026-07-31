@@ -61,6 +61,20 @@ export const WEB_LLM_MODELS: WebLLMModel[] = [
     recommended: false,
   },
   {
+    id: 'Qwen2.5-Coder-1.5B-Instruct-q4f16_1-MLC',
+    name: 'Qwen2.5 Coder 1.5B',
+    ramMB: 1629.75,
+    storageMB: 920,
+    requirement: 'Compact coding-focused model for lower-memory WebGPU devices.',
+    details: [
+      ['System', 'Lower-memory WebGPU-capable devices with ~1.6 GB VRAM'],
+      ['Storage', 'Small browser cache footprint'],
+      ['Speed', 'Fast startup and responsive generation'],
+      ['Best for', 'Small code edits, autocomplete, and short coding questions'],
+    ],
+    recommended: false,
+  },
+  {
     id: 'Qwen3.5-2B-q4f16_1-MLC',
     name: 'Qwen3.5 2B',
     ramMB: 2245.44,
@@ -109,6 +123,20 @@ export const RECOMMENDED_COMPLETION_MODEL = WEB_LLM_MODELS.find(
 export const RECOMMENDED_VISUAL_REVIEW_MODEL = WEB_LLM_MODELS.find(
   (model) => model.id === 'Qwen3.5-9B-q4f16_1-MLC',
 )!;
+
+/**
+ * Choose a conservative first-run default on memory-constrained machines.
+ * `deviceMemory` is deliberately coarse, so an explicit user selection is
+ * never changed by this helper.
+ */
+export const getDeviceAppropriateDefaultModelId = (): string => {
+  if (typeof navigator === 'undefined') return RECOMMENDED_WEB_LLM_MODEL.id;
+  const deviceMemory = (navigator as Navigator & { deviceMemory?: number }).deviceMemory;
+  if (!Number.isFinite(deviceMemory)) return RECOMMENDED_WEB_LLM_MODEL.id;
+  if ((deviceMemory || 0) <= 4) return 'Qwen3.5-0.8B-q4f16_1-MLC';
+  if ((deviceMemory || 0) <= 8) return 'Qwen3.5-2B-q4f16_1-MLC';
+  return RECOMMENDED_WEB_LLM_MODEL.id;
+};
 
 const VALID_WEB_LLM_MODEL_IDS = new Set(WEB_LLM_MODELS.map((model) => model.id));
 

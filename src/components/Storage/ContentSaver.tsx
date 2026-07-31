@@ -3,6 +3,13 @@ import Settings from '@/components/Storage/Settings';
 import type { PendingDiff } from '@/components/state/domain-types';
 import { useEffect } from 'react';
 
+let skipNextEditorBufferFlush = false;
+
+/** Prevent the old workspace from overwriting a deliberately persisted new project on reload. */
+export function skipEditorBufferFlushOnce() {
+  skipNextEditorBufferFlush = true;
+}
+
 /**
  * Flushes editor contents on beforeunload. Regular persistence lives in SettingsSync;
  * this keeps a synchronous last-chance write when the tab closes.
@@ -14,6 +21,10 @@ export function useContentSaver() {
     if (!state) return undefined;
 
     const saveContents = () => {
+      if (skipNextEditorBufferFlush) {
+        skipNextEditorBufferFlush = false;
+        return;
+      }
       // Read directly from the Proxy to bypass React closure staleness
       // in the event of a synchronous beforeunload firing.
       const currentContents = state.fileContents;

@@ -259,7 +259,7 @@ describe('useCompletion', () => {
     expect(ragSearch.retrieveContext).toHaveBeenCalledWith('const valu\nvalu', 3);
   });
 
-  it('keeps the full context when completion falls back to the active prompt model', async () => {
+  it('keeps completions on the small context window when using the active prompt model', async () => {
     const promptModel = 'Qwen3.5-4B-q4f16_1-MLC';
     mockPromptUiState.selectedModel = promptModel;
     vi.mocked(hasModelInCache).mockImplementation(async (modelId) => modelId === promptModel);
@@ -283,7 +283,7 @@ describe('useCompletion', () => {
 
     expect(mockedAskWebLLM.mock.calls[0]?.[3]).toMatchObject({
       model: promptModel,
-      contextWindowSize: 4096,
+      contextWindowSize: 1024,
     });
   });
 

@@ -1,4 +1,7 @@
-import { RECOMMENDED_WEB_LLM_MODEL, resolveWebLLMModelId } from '@/components/AI/WebLLMModels';
+import {
+  getDeviceAppropriateDefaultModelId,
+  resolveWebLLMModelId,
+} from '@/components/AI/WebLLMModels';
 import Settings from '@/components/Storage/Settings';
 import { createState } from '@/components/state/State';
 import type { PromptStateShape, PromptUiStateShape } from '@/components/state/domain-types';
@@ -7,17 +10,18 @@ export const PromptState = createState<PromptStateShape>('PromptState');
 export const PromptUiState = createState<PromptUiStateShape>('PromptUiState');
 
 export function getInitialPromptSelectedModel() {
-  return resolveWebLLMModelId(
-    Settings.getAIPromptModel(RECOMMENDED_WEB_LLM_MODEL.id) || RECOMMENDED_WEB_LLM_MODEL.id,
-  );
+  const savedModelId = Settings.getAIPromptModel('');
+  return resolveWebLLMModelId(savedModelId || getDeviceAppropriateDefaultModelId());
 }
 
 export function getInitialPromptUiState() {
   const draft = Settings.getPromptDraft() || '';
+  const welcomePrompt = Settings.getWelcomePromptDraft() || '';
   return {
     val: draft,
     historyIndex: -1,
     draftVal: draft,
+    welcomePrompt,
     selectedModel: getInitialPromptSelectedModel(),
     isModelManagerOpen: false,
     isRoleGraphOpen: false,

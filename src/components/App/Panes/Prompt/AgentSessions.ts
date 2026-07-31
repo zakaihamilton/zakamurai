@@ -4,6 +4,7 @@ import type { AgentSessionTreeRow, CreateAgentSessionOptions } from '@/component
 import { createState } from '@/components/state/State';
 import type {
   AgentReasoningEntry,
+  AgentRunUsage,
   AgentSession,
   AgentSessionMessage,
   AgentSessionStateShape,
@@ -18,6 +19,54 @@ export const MAX_SESSION_CONTEXT_CHARACTERS = 12000;
  * persisted session size and Markdown rendering work.
  */
 export const MAX_REASONING_EVENTS = 160;
+
+export const createAgentRunUsage = (): AgentRunUsage => ({
+  modelIds: [],
+  modelCalls: 0,
+  outcomes: { success: 0, error: 0, aborted: 0 },
+  promptTokens: 0,
+  promptTokenCalls: 0,
+  completionTokens: 0,
+  completionTokenCalls: 0,
+  totalMs: 0,
+  timeToFirstTokenMs: 0,
+  timeToFirstTokenCalls: 0,
+  decodeTokensPerSecond: 0,
+  decodeTokensPerSecondCalls: 0,
+  toolCalls: {},
+});
+
+export const MAX_STEP_IO_CHARACTERS = 24000;
+
+export const clipReasoningStepIO = (value: string): string =>
+  value.length > MAX_STEP_IO_CHARACTERS
+    ? `${value.slice(0, MAX_STEP_IO_CHARACTERS)}\n…[truncated]`
+    : value;
+
+const formatStepIOBlock = (label: string, value: string): string => {
+  const clipped = clipReasoningStepIO(value);
+  let fence = '```';
+  while (clipped.includes(fence)) fence += '`';
+  return `**${label}**\n\n${fence}text\n${clipped}\n${fence}`;
+};
+
+/** Formats persisted reasoning events, optionally expanding model I/O blocks. */
+export const formatReasoningEvents = (
+  entries: AgentReasoningEntry[] = [],
+  showStepIO = false,
+): string =>
+  entries
+    .map((entry) => {
+      const blocks = entry.text ? [entry.text] : [];
+      if (showStepIO && (entry.input || entry.output)) {
+        const step = entry.turn ? `Step ${entry.turn}` : 'Agent step';
+        if (entry.input) blocks.push(formatStepIOBlock(`${step} input`, entry.input));
+        if (entry.output) blocks.push(formatStepIOBlock(`${step} output`, entry.output));
+      }
+      return blocks.join('\n\n');
+    })
+    .filter(Boolean)
+    .join('\n\n');
 
 const CONTEXT_OMITTED_NOTICE = '[Earlier conversation omitted for length.]';
 
@@ -35,9 +84,56 @@ const normalizeReasoningEvents = (value: unknown): AgentReasoningEntry[] =>
         .map((entry) => ({
           text: entry.text,
           timestamp: typeof entry.timestamp === 'string' ? entry.timestamp : '',
+          ...(typeof entry.turn === 'number' ? { turn: entry.turn } : {}),
+          ...(typeof entry.input === 'string' ? { input: clipReasoningStepIO(entry.input) } : {}),
+          ...(typeof entry.output === 'string'
+            ? { output: clipReasoningStepIO(entry.output) }
+            : {}),
         }))
         .slice(-MAX_REASONING_EVENTS)
     : [];
+
+const finiteNonNegative = (value: unknown): number =>
+  typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : 0;
+
+const normalizeAgentRunUsage = (value: unknown): AgentRunUsage => {
+  const usage = value && typeof value === 'object' ? (value as Partial<AgentRunUsage>) : {};
+  const outcomes: Partial<AgentRunUsage['outcomes']> =
+    usage.outcomes && typeof usage.outcomes === 'object' ? usage.outcomes : {};
+  const toolCalls: Record<string, unknown> =
+    usage.toolCalls && typeof usage.toolCalls === 'object' ? usage.toolCalls : {};
+  return {
+    modelIds: Array.isArray(usage.modelIds)
+      ? [
+          ...new Set(
+            usage.modelIds.filter((id): id is string => typeof id === 'string' && Boolean(id)),
+          ),
+        ]
+      : [],
+    modelCalls: finiteNonNegative(usage.modelCalls),
+    outcomes: {
+      success: finiteNonNegative(outcomes.success),
+      error: finiteNonNegative(outcomes.error),
+      aborted: finiteNonNegative(outcomes.aborted),
+    },
+    promptTokens: finiteNonNegative(usage.promptTokens),
+    promptTokenCalls: finiteNonNegative(usage.promptTokenCalls),
+    completionTokens: finiteNonNegative(usage.completionTokens),
+    completionTokenCalls: finiteNonNegative(usage.completionTokenCalls),
+    totalMs: finiteNonNegative(usage.totalMs),
+    timeToFirstTokenMs: finiteNonNegative(usage.timeToFirstTokenMs),
+    timeToFirstTokenCalls: finiteNonNegative(usage.timeToFirstTokenCalls),
+    decodeTokensPerSecond: finiteNonNegative(usage.decodeTokensPerSecond),
+    decodeTokensPerSecondCalls: finiteNonNegative(usage.decodeTokensPerSecondCalls),
+    toolCalls: Object.fromEntries(
+      Object.entries(toolCalls).flatMap(([name, count]) =>
+        typeof name === 'string' && finiteNonNegative(count) > 0
+          ? [[name, finiteNonNegative(count)]]
+          : [],
+      ),
+    ),
+  };
+};
 
 export function createAgentSession({
   name,
@@ -60,6 +156,8 @@ export function createAgentSession({
     messages: capSessionMessages(messages),
     reasoning: '',
     reasoningEvents: [],
+    showStepIO: false,
+    runUsage: createAgentRunUsage(),
     status: 'idle',
   };
 }
@@ -203,6 +301,8 @@ export function normalizeAgentSessions(
       messages,
       reasoning: typeof session.reasoning === 'string' ? session.reasoning : '',
       reasoningEvents: normalizeReasoningEvents(session.reasoningEvents),
+      showStepIO: session.showStepIO === true,
+      runUsage: normalizeAgentRunUsage(session.runUsage),
       status: 'idle',
     };
   }
@@ -245,6 +345,8 @@ export function serializeAgentSessions(state: AgentSessionStateShape | null | un
           messages: capSessionMessages(session.messages),
           reasoning: session.reasoning || '',
           reasoningEvents: normalizeReasoningEvents(session.reasoningEvents),
+          showStepIO: session.showStepIO === true,
+          runUsage: normalizeAgentRunUsage(session.runUsage),
         },
       ]),
     ),

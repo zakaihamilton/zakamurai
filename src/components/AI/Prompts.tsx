@@ -40,7 +40,7 @@ Rules:
 4. Use SEARCH/REPLACE for most edits.
 5. If providing a snippet WITHOUT SEARCH/REPLACE, you MUST include 1-2 lines of existing code as context (anchors) so the change can be located.
 6. Architecture: Decompose UI into modular sub-components in src/components/ with co-located CSS Modules (*.module.css). Avoid single-file App.jsx monoliths.
-7. CSS Modules: Import every *.module.css file as its default class map (for example, \`import styles from "./App.module.css"\`). Apply module-local classes with \`styles.className\` or \`styles["kebab-case"]\`; never side-effect import a CSS Module or use its local class names as literal \`className="…"\` strings.
+7. CSS Modules: Import every *.module.css file as its default class map (for example, bind the co-located module to \`styles\`). Apply module-local classes with \`styles.className\` or \`styles["kebab-case"]\`; never side-effect import a CSS Module or pass its local class names as raw JSX class values.
 `.trim();
 
 export const SEARCH_REPLACE_INSTRUCTION = `

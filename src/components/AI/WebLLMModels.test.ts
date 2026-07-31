@@ -6,6 +6,7 @@ import {
   RECOMMENDED_WEB_LLM_MODEL,
   WEB_LLM_MODELS,
   findCachedFallbackModelId,
+  getDeviceAppropriateDefaultModelId,
   resolveCompletionModelId,
   resolveWebLLMModelId,
 } from './WebLLMModels';
@@ -29,6 +30,19 @@ describe('WebLLMModels', () => {
     expect(RECOMMENDED_WEB_LLM_MODEL.id).toBe('Qwen3.5-4B-q4f16_1-MLC');
   });
 
+  it('uses smaller first-run defaults on reported low-memory devices', () => {
+    const originalNavigator = globalThis.navigator;
+    Object.defineProperty(globalThis, 'navigator', {
+      configurable: true,
+      value: { deviceMemory: 8 },
+    });
+    expect(getDeviceAppropriateDefaultModelId()).toBe('Qwen3.5-2B-q4f16_1-MLC');
+    Object.defineProperty(globalThis, 'navigator', {
+      configurable: true,
+      value: originalNavigator,
+    });
+  });
+
   it('offers Qwen3.5 9B as the opt-in visual planning and review tier', () => {
     expect(RECOMMENDED_VISUAL_REVIEW_MODEL.id).toBe('Qwen3.5-9B-q4f16_1-MLC');
   });
@@ -38,6 +52,18 @@ describe('WebLLMModels', () => {
       expect.objectContaining({
         id: 'Qwen3.5-0.8B-q4f16_1-MLC',
         ramMB: 1629.49,
+      }),
+    );
+  });
+
+  it('supports Qwen2.5 Coder 1.5B as a selectable compact coding model', () => {
+    expect(resolveWebLLMModelId('Qwen2.5-Coder-1.5B-Instruct-q4f16_1-MLC')).toBe(
+      'Qwen2.5-Coder-1.5B-Instruct-q4f16_1-MLC',
+    );
+    expect(WEB_LLM_MODELS).toContainEqual(
+      expect.objectContaining({
+        id: 'Qwen2.5-Coder-1.5B-Instruct-q4f16_1-MLC',
+        ramMB: 1629.75,
       }),
     );
   });

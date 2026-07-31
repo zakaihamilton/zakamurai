@@ -19,10 +19,12 @@ import {
   appendSessionMessage,
   capSessionMessages,
   createAgentBranch,
+  createAgentRunUsage,
   createAgentSession,
   createDefaultAgentSessions,
   createSessionMessage,
   deleteAgentSession,
+  formatReasoningEvents,
   formatSessionContext,
   getActiveAgentSession,
   getAgentSessionChildren,
@@ -41,6 +43,42 @@ function active(state: AgentSessionStateShape): AgentSession {
 }
 
 describe('AgentSessions', () => {
+  it('creates and normalizes persisted run usage', () => {
+    const session = createAgentSession();
+    expect(session.runUsage).toEqual(createAgentRunUsage());
+
+    const normalized = normalizeAgentSessions({
+      activeSessionId: session.id,
+      sessions: {
+        [session.id]: {
+          ...session,
+          runUsage: {
+            modelIds: ['model-a', 'model-a', 1],
+            modelCalls: 2,
+            outcomes: { success: 1, error: -1, aborted: 1 },
+            promptTokens: 12,
+            promptTokenCalls: 1,
+            completionTokens: 4,
+            completionTokenCalls: 1,
+            totalMs: 250,
+            timeToFirstTokenMs: 30,
+            timeToFirstTokenCalls: 1,
+            decodeTokensPerSecond: 20,
+            decodeTokensPerSecondCalls: 1,
+            toolCalls: { read_file: 2, invalid: -1 },
+          },
+        },
+      },
+    });
+
+    expect(normalized.sessions[session.id]?.runUsage).toMatchObject({
+      modelIds: ['model-a'],
+      outcomes: { success: 1, error: 0, aborted: 1 },
+      toolCalls: { read_file: 2 },
+    });
+    expect(serializeAgentSessions(normalized).sessions[session.id]?.runUsage).toBeDefined();
+  });
+
   it('retains the configured amount of persisted reasoning history', () => {
     const session = createAgentSession();
     const entries = Array.from({ length: MAX_REASONING_EVENTS + 1 }, (_, index) => ({
@@ -65,6 +103,26 @@ describe('AgentSessions', () => {
     expect(sessions[0]?.parentId).toBeNull();
     expect(active(state).modelId).toBe('model-a');
     expect(sessionRoleGraph(active(state)).roles).toHaveLength(3);
+  });
+
+  it('keeps nested model fences inside code-formatted step I/O blocks', () => {
+    const formatted = formatReasoningEvents(
+      [
+        {
+          text: '',
+          timestamp: '',
+          turn: 3,
+          input: 'prompt with ```jsx\n<div />\n```',
+          output: '{"action":"write_file","content":"```css"}',
+        },
+      ],
+      true,
+    );
+
+    expect(formatted).toContain('**Step 3 input**');
+    expect(formatted).toContain('````text');
+    expect(formatted).toContain('prompt with ```jsx');
+    expect(formatted).toContain('**Step 3 output**');
   });
 
   it('returns null for missing active sessions', () => {

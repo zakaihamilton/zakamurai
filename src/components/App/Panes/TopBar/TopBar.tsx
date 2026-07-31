@@ -1,5 +1,9 @@
 import { AppState } from '@/components/App/AppState';
-import { PromptUiState } from '@/components/App/Panes/Prompt/PromptState';
+import {
+  AgentSessionState,
+  createDefaultAgentSessions,
+} from '@/components/App/Panes/Prompt/AgentSessions';
+import { PromptState, PromptUiState } from '@/components/App/Panes/Prompt/PromptState';
 import { SidebarState } from '@/components/App/Panes/Sidebar';
 import { TabState } from '@/components/App/Panes/TabBar';
 import { PreviewState } from '@/components/App/PreviewState';
@@ -20,6 +24,7 @@ import {
 import Settings from '@/components/Storage/Settings';
 import { STORAGE_RECOVERY_EVENT } from '@/components/Storage/StorageHealth';
 import { StorageHealthState } from '@/components/Storage/StorageHealth';
+import { ChangeSetState } from '@/components/Workspace';
 import { setInDraft } from '@/components/state/StateUtils';
 import Dialog from '@/components/ui/Dialog';
 import { Icons } from '@/components/ui/Icons';
@@ -46,6 +51,10 @@ export function resetNewProjectState({
   editorState,
   previewState,
   promptUiState,
+  promptState,
+  agentSessionState,
+  logState,
+  changeSetState,
 }: ResetNewProjectStateParams) {
   const isScratch = template === 'scratch';
   const initialFiles = isScratch ? SCRATCH_FILES : DEFAULT_FILES;
@@ -65,14 +74,43 @@ export function resetNewProjectState({
   editorState((draft) => {
     draft.fileContents = initialContents;
     draft.pendingDiffs = {};
+    draft.pendingDeletions = {};
   });
-  previewState((draft) => {
-    draft.htmlContent = null;
+  promptState?.((draft) => {
+    draft.promptHistory = [];
+  });
+  agentSessionState?.((draft) => {
+    const next = createDefaultAgentSessions(promptUiState?.selectedModel || null);
+    draft.sessions = next.sessions;
+    draft.activeSessionId = next.activeSessionId;
+  });
+  logState?.((draft) => {
+    draft.isSystemProcessing = false;
+    draft.isAIProcessing = false;
+    draft.logs = [];
+    draft.reasoning = '';
   });
   promptUiState?.((draft) => {
     draft.val = '';
     draft.draftVal = '';
     draft.historyIndex = -1;
+    draft.welcomeRequest = null;
+    draft.runningSessionId = null;
+    draft.isAgentTreeOpen = false;
+    draft.sessionDialog = null;
+    draft.isModelManagerOpen = false;
+    draft.isRoleGraphOpen = false;
+    draft.modelCacheWork = null;
+    draft.modelCacheProgress = '';
+    draft.modelCacheError = '';
+    draft.abortController = null;
+  });
+  changeSetState?.((draft) => {
+    draft.activeId = null;
+    draft.items = [];
+  });
+  previewState((draft) => {
+    draft.htmlContent = null;
   });
 }
 
@@ -85,8 +123,11 @@ export default function TopBar() {
   const sidebarState = requireStore(SidebarState.useState(['isSidebarOpen', 'isSidebarPopupOpen']));
   const { isSidebarOpen, isSidebarPopupOpen } = sidebarState;
   const editorState = requireStore(EditorState.useState());
+  const changeSetState = ChangeSetState.usePassiveState();
   const previewState = requireStore(PreviewState.useState());
   const promptUiState = PromptUiState.usePassiveState();
+  const promptState = PromptState.usePassiveState();
+  const agentSessionState = AgentSessionState.usePassiveState();
   const diagnosticsState = DiagnosticsState.usePassiveState();
   const storageHealthState = StorageHealthState.usePassiveState();
   const logState = LogState.usePassiveState();
@@ -114,8 +155,17 @@ export default function TopBar() {
   const activeTab = openTabs.find((t) => t.id === activeTabId);
 
   const handleStartOver = async (template = 'default') => {
+    const initialContents = template === 'scratch' ? SCRATCH_CONTENTS : DEFAULT_CONTENTS;
     await fs.unlinkProject();
-    await Settings.reset(template, { preserveTheme: appState.theme });
+    await Settings.reset(template, {
+      preserveTheme: appState.theme,
+      preserveAIPromptModel: promptUiState?.selectedModel,
+      preserveWelcomePrompt: promptUiState?.welcomePrompt,
+    });
+    // Persist the selected starter before any background sync can observe the reset state.
+    await Settings.setFileContents(initialContents);
+    await Settings.setPendingDiffs({});
+    await Settings.setPreviewHtml(null);
     resetNewProjectState({
       template,
       appState,
@@ -124,8 +174,11 @@ export default function TopBar() {
       editorState,
       previewState,
       promptUiState,
+      promptState,
+      agentSessionState,
+      logState,
+      changeSetState,
     });
-    window.location.reload();
   };
 
   let breadcrumb = ['Welcome'];

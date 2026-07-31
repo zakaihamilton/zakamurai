@@ -1,5 +1,6 @@
 import type { RoleGraph } from '@/components/AI/types';
 import type { CssCustomProperties } from '@/components/App/types';
+import { formatReasoningEvents } from './AgentSessions';
 import ChangeSetPanel from './ChangeSet';
 import PromptComposer from './Composer';
 import PromptContextPanel from './Context';
@@ -75,13 +76,18 @@ export default function PromptContent({
         .join('\n\n')
     : '';
 
+  const displayedReasoning =
+    formatReasoningEvents(
+      activeSession?.reasoningEvents || [],
+      activeSession?.showStepIO === true,
+    ) || sessionReasoning;
   const reasoningText = [
     isModelDownloading
       ? `Downloading ${selectedModelInfo.name || 'AI model'}${
           modelDownloadProgress ? ` — ${modelDownloadProgress}` : '…'
         }`
       : '',
-    sessionReasoning,
+    displayedReasoning,
   ]
     .filter(Boolean)
     .join('\n\n');
@@ -179,6 +185,10 @@ export default function PromptContent({
               : ''
           }
           onOpenInTab={() => onOpenSectionInTab('reasoning')}
+          showStepIO={activeSession?.showStepIO === true}
+          onToggleStepIO={(show) =>
+            activeSession && patchSession(activeSession.id, { showStepIO: show })
+          }
         />
         <PromptComposer
           value={value}

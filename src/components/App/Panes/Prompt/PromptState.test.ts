@@ -5,11 +5,13 @@ vi.mock('@/components/Storage/Settings', () => ({
   default: {
     getAIPromptModel: vi.fn(),
     getPromptDraft: vi.fn(),
+    getWelcomePromptDraft: vi.fn(),
   },
 }));
 
 vi.mock('@/components/AI/WebLLMModels', () => ({
   RECOMMENDED_WEB_LLM_MODEL: { id: 'recommended-model' },
+  getDeviceAppropriateDefaultModelId: vi.fn(() => 'recommended-model'),
   resolveWebLLMModelId: vi.fn((id) => id || 'recommended-model'),
 }));
 
@@ -25,17 +27,19 @@ describe('PromptState helpers', () => {
     vi.mocked(Settings.getAIPromptModel).mockReturnValue(null);
     vi.mocked(resolveWebLLMModelId).mockImplementation((id) => id);
     expect(getInitialPromptSelectedModel()).toBe('recommended-model');
-    expect(Settings.getAIPromptModel).toHaveBeenCalledWith('recommended-model');
+    expect(Settings.getAIPromptModel).toHaveBeenCalledWith('');
   });
 
   it('getInitialPromptUiState hydrates draft and selected model', () => {
     vi.mocked(Settings.getPromptDraft).mockReturnValue('hello draft');
+    vi.mocked(Settings.getWelcomePromptDraft).mockReturnValue('welcome draft');
     vi.mocked(Settings.getAIPromptModel).mockReturnValue('custom-model');
     vi.mocked(resolveWebLLMModelId).mockReturnValue('custom-model');
 
     expect(getInitialPromptUiState()).toMatchObject({
       val: 'hello draft',
       draftVal: 'hello draft',
+      welcomePrompt: 'welcome draft',
       selectedModel: 'custom-model',
       historyIndex: -1,
       promptScope: 'project',

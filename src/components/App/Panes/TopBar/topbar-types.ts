@@ -1,7 +1,10 @@
 import type {
+  AgentSessionStateShape,
   AppStateShape,
+  LogStateShape,
   NavigationHistory,
   PreviewStateShape,
+  PromptStateShape,
   PromptUiStateShape,
   SidebarStateShape,
   TabStateShape,
@@ -15,6 +18,10 @@ export type ResetNewProjectStateParams = {
   editorState: StateStore<import('@/components/App/Views/EditorArea/types').ExtendedEditorState>;
   previewState: StateStore<PreviewStateShape>;
   promptUiState?: StateStore<PromptUiStateShape> | null;
+  promptState?: StateStore<PromptStateShape> | null;
+  agentSessionState?: StateStore<AgentSessionStateShape> | null;
+  logState?: StateStore<LogStateShape> | null;
+  changeSetState?: StateStore<import('@/components/state/domain-types').ChangeSetStateShape> | null;
 };
 
 export type BreadcrumbProps = {

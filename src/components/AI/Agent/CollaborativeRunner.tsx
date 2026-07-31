@@ -47,6 +47,7 @@ export async function runCollaborativeAgent({
   workspaceIndex = null,
   signal,
   onEvent = () => {},
+  onMetrics,
   priorContext = '',
 }: RunCollaborativeAgentOptions): Promise<RunCollaborativeAgentResult> {
   const graph = normalizeRoleGraph(roleGraph || createDefaultRoleGraph());
@@ -67,6 +68,7 @@ export async function runCollaborativeAgent({
     retrieveContext,
     workspaceIndex,
     signal,
+    onMetrics,
     workspace,
   };
 
