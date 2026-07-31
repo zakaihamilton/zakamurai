@@ -17,6 +17,7 @@ export default function EditorHeader({
   showSideBySide,
   setShowSideBySide,
   handleFormat,
+  onCopy,
   isReadOnly,
   setIsReadOnly,
   fileName,
@@ -63,6 +64,16 @@ export default function EditorHeader({
             aria-label="Format code"
           >
             <Icons.Layout />
+          </button>
+        </Tooltip>
+        <Tooltip content="Copy Code to Clipboard">
+          <button
+            type="button"
+            className={styles.actionBtn}
+            onClick={onCopy}
+            aria-label="Copy code to clipboard"
+          >
+            <Icons.Copy />
           </button>
         </Tooltip>
         {hasPendingDeletion && (

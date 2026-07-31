@@ -14,6 +14,7 @@ vi.mock('@/components/ui/Icons', () => ({
     Undo: () => <div data-testid="icon-undo" />,
     Columns: () => <div data-testid="icon-columns" />,
     Layout: () => <div data-testid="icon-layout" />,
+    Copy: () => <div data-testid="icon-copy" />,
     Code: () => <div data-testid="icon-code" />,
     Tokens: () => <div data-testid="icon-tokens" />,
     Edit: () => <div data-testid="icon-edit" />,
@@ -47,6 +48,7 @@ describe('EditorHeader', () => {
     showSideBySide: false,
     setShowSideBySide: vi.fn(),
     handleFormat: vi.fn(),
+    onCopy: vi.fn(),
     isReadOnly: false,
     setIsReadOnly: vi.fn(),
     onSelectView: vi.fn(),
@@ -63,6 +65,14 @@ describe('EditorHeader', () => {
     const searchBtn = requireElement(screen.getByTestId('icon-search').parentElement);
     fireEvent.click(searchBtn);
     expect(defaultProps.setShowFind).toHaveBeenCalledWith(true);
+  });
+
+  it('copies the current file when the copy button is clicked', () => {
+    const onCopy = vi.fn();
+    render(<EditorHeader {...defaultProps} onCopy={onCopy} />);
+
+    fireEvent.click(screen.getByLabelText('Copy code to clipboard'));
+    expect(onCopy).toHaveBeenCalledOnce();
   });
 
   it('renders edit icon by default when isReadOnly is false', () => {

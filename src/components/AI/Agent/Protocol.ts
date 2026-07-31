@@ -208,11 +208,12 @@ ${WRITE_FILE_PAYLOAD_FORMAT}
 Use list_files to check file existence or list paths by extension (e.g., list_files query: ".module.css"). Use search_workspace to search text inside file contents. Never repeat an identical read-only action after it succeeds; use the result already in the conversation and take the next productive action. Do not repeatedly search_workspace for file extensions. If read_file reports that a file is missing, do not retry it: use write_file to create the intended new file, or choose an existing path from list_files.
 Inspect before editing. You may edit any relevant workspace file. Validate after meaningful changes. Always run validate before calling finish when edits have been made. Fix validation failures when possible. Never claim success without either validation or a clear explanation.
 
-For a request to create a todo app, use exactly two files: src/App.module.css first, then src/App.jsx. Implement the form, task list, completion toggle, and deletion directly in App.jsx; do not create src/components files. Import the stylesheet from App.jsx and use its classes. Keep the stylesheet short, with complete balanced rules only. Do not create index.html for a standard Vite app: the compiler scaffolds it automatically. After those two writes, validate and finish. For other application requests, update the existing app entry (normally src/App.jsx or src/App.tsx) first and avoid repeatedly rewriting already-staged files unless a tool or validation result identifies a specific defect.
+For a request to create a todo app, use exactly two files: src/App.module.css first, then src/App.jsx. Implement the form, task list, completion toggle, and deletion directly in App.jsx; do not create src/components files. In App.jsx, default-import the stylesheet class map as import styles from "./App.module.css"; and apply every module-local class through it, for example className={styles.container} or className={styles["task-item"]}. Never side-effect import *.module.css files or use their local class names as literal className strings. Keep the stylesheet short, with complete balanced rules only. Do not create index.html for a standard Vite app: the compiler scaffolds it automatically. After those two writes, validate and finish. For other application requests, update the existing app entry (normally src/App.jsx or src/App.tsx) first and avoid repeatedly rewriting already-staged files unless a tool or validation result identifies a specific defect.
 
 Architecture Rules:
 - Decompose UI applications into modular sub-components inside src/components/.
 - Co-locate a CSS Module (*.module.css) with each component (e.g., src/components/Header.jsx and src/components/Header.module.css).
+- Default-import CSS Modules and use their exported class map for module-local classes; do not side-effect import them or use their module-local classes as literal className strings.
 - Never put CSS in JSX/TSX: do not use style props, <style> tags, or CSS-in-JS. Put visual rules in the component's CSS Module.
 - Avoid putting all state, logic, and JSX inside a single monolithic App.jsx file.
 `.trim();
@@ -252,8 +253,9 @@ Inspect before editing. Prefer the files listed in the plan. Validate after mean
 Architecture Rules:
 1. Break down UI into reusable sub-components in src/components/.
 2. Style each component using co-located CSS Modules (*.module.css) imported inside the component (e.g., import styles from './SubComp.module.css').
-3. Never put CSS in JSX/TSX: do not use style props, <style> tags, or CSS-in-JS. Put visual rules in the component's CSS Module.
-4. Keep App.jsx clean, using it primarily to compose sub-components.
+3. Apply module-local CSS classes through the imported class map (for example, styles.container or styles["task-item"]), never literal className strings.
+4. Never put CSS in JSX/TSX: do not use style props, <style> tags, or CSS-in-JS. Put visual rules in the component's CSS Module.
+5. Keep App.jsx clean, using it primarily to compose sub-components.
 
 Visual UI mode (only when supplied in prior context): Implement the approved visual brief rather than inventing an unrelated style. Use semantic landmarks, CSS custom properties for the declared design tokens, responsive layout rules, sufficient color contrast, and visible keyboard focus states. Keep each meaningful visual section in a reusable component with a co-located CSS Module.
 `.trim();

@@ -19,6 +19,7 @@ import {
   validateComponentStyling,
   validateContentSyntax,
   validateCssContentSafety,
+  validateCssModuleUsage,
   validateFileContentType,
 } from '../ChangeValidator';
 import { AgentContextManager, formatVerificationResult } from './ContextManager';
@@ -492,6 +493,8 @@ export async function runAgent({
       if (action.action === 'write_file') {
         const stylingError = validateComponentStyling(action.path || '', action.content || '');
         if (stylingError) throw new Error(stylingError);
+        const cssModuleError = validateCssModuleUsage(action.path || '', action.content || '');
+        if (cssModuleError) throw new Error(cssModuleError);
         const missingStylesheets = missingCssModuleImports(
           action.path || '',
           action.content || '',

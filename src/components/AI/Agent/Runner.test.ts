@@ -144,6 +144,27 @@ describe('runAgent', () => {
     expect(events.some((event) => event.error && event.message?.includes('Inline CSS'))).toBe(true);
   });
 
+  it('rejects a side-effect CSS Module import before it becomes a visible staged draft', async () => {
+    askWebLLM
+      .mockResolvedValueOnce(
+        '{"action":"write_file","path":"src/App.jsx","content":"import \\"./App.module.css\\"; export default () => <main className=\\"app\\" />;"}',
+      )
+      .mockResolvedValueOnce('{"action":"finish","summary":"no changes"}');
+    const events: AgentEvent[] = [];
+
+    const result = await runAgent({
+      request: 'style app',
+      files: { 'src/App.jsx': 'export default () => <main />;', 'src/App.module.css': '.app {}' },
+      model: 'test',
+      onEvent: (event) => events.push(event),
+    });
+
+    expect(result.changes).toEqual([]);
+    expect(events.some((event) => event.error && event.message?.includes('default-imported'))).toBe(
+      true,
+    );
+  });
+
   it('rejects raw CSS assigned to a JSX file before it becomes a visible staged draft', async () => {
     askWebLLM
       .mockResolvedValueOnce(

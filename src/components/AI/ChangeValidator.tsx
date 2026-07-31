@@ -193,6 +193,22 @@ export function validateComponentStyling(path: string, content: string): string 
   return null;
 }
 
+/** Ensures generated components use the scoped names exported by CSS Modules. */
+export function validateCssModuleUsage(path: string, content: string): string | null {
+  if (!/\.(jsx|tsx)$/i.test(path) || typeof content !== 'string') return null;
+
+  const cssModuleImport = /\bimport\s+(?:(\w+)\s+from\s+)?["'][^"']+\.module\.css["']/g;
+  const matches = [...content.matchAll(cssModuleImport)];
+  if (matches.length === 0) return null;
+  if (matches.some((match) => !match[1])) {
+    return `CSS Modules in ${path} must be default-imported as a class map (for example, import styles from './App.module.css') instead of side-effect imported.`;
+  }
+  if (/\bclassName\s*=\s*["'][^"']+["']/.test(content)) {
+    return `Use the imported CSS Module class map in ${path} (for example, className={styles.container}) instead of literal className strings.`;
+  }
+  return null;
+}
+
 /** Reject a stylesheet that was accidentally assigned a JSX or TSX path. */
 export function validateFileContentType(path: string, content: string): string | null {
   if (!/\.(jsx|tsx)$/i.test(path) || typeof content !== 'string') return null;
@@ -291,6 +307,17 @@ export async function validateAIChangesAsync(
         });
         continue;
       }
+      const cssModuleError = validateCssModuleUsage(path as string, content);
+      if (cssModuleError) {
+        rejected.push(cssModuleError);
+        details.push({
+          path: String(path),
+          error: cssModuleError,
+          type: 'styling',
+          failedContent: content,
+        });
+        continue;
+      }
       const contentTypeError = validateFileContentType(path as string, content);
       if (contentTypeError) {
         rejected.push(contentTypeError);
@@ -368,6 +395,11 @@ export function validateAIChanges(changes: AgentChange[]): ValidatedAIChanges {
       const stylingError = validateComponentStyling(path as string, content);
       if (stylingError) {
         rejected.push(stylingError);
+        continue;
+      }
+      const cssModuleError = validateCssModuleUsage(path as string, content);
+      if (cssModuleError) {
+        rejected.push(cssModuleError);
         continue;
       }
       const contentTypeError = validateFileContentType(path as string, content);

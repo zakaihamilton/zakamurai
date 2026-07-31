@@ -28,6 +28,14 @@ describe('AI Prompts', () => {
     expect(DEFAULT_SYSTEM_PROMPT).toBeDefined();
     expect(DEFAULT_SYSTEM_PROMPT).toContain('SEARCH');
     expect(DEFAULT_SYSTEM_PROMPT).toContain('REPLACE');
+    expect(DEFAULT_SYSTEM_PROMPT).toContain('never side-effect import a CSS Module');
+    expect(DEFAULT_SYSTEM_PROMPT).toContain('styles["kebab-case"]');
+  });
+
+  it('requires CSS Module class maps in every code-generation prompt', () => {
+    expect(PLANNING_SYSTEM_PROMPT).toContain('default `styles` map');
+    expect(PATCH_SYSTEM_PROMPT).toContain('default-import the class map');
+    expect(REPAIR_SYSTEM_PROMPT).toContain('default class map');
   });
 
   it('has SEARCH_REPLACE_INSTRUCTION', () => {

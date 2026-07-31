@@ -6,6 +6,7 @@ import {
   validateContentSyntax,
   validateContentSyntaxAsync,
   validateCssContentSafety,
+  validateCssModuleUsage,
   validateFileContentType,
   validateProjectPath,
 } from './ChangeValidator';
@@ -110,6 +111,27 @@ describe('AI change validation', () => {
     );
     expect(
       validateComponentStyling(
+        'src/App.jsx',
+        "import styles from './App.module.css'; export default () => <main className={styles.app} />;",
+      ),
+    ).toBeNull();
+  });
+
+  it('rejects CSS Module side-effect imports and literal module class names', () => {
+    const sideEffectImport =
+      'import \'./App.module.css\'; export default () => <main className="app" />;';
+    expect(validateCssModuleUsage('src/App.jsx', sideEffectImport)).toContain('default-imported');
+    expect(
+      validateAIChanges([{ path: 'src/App.jsx', after: sideEffectImport }]).rejected[0],
+    ).toContain('default-imported');
+
+    const literalClass =
+      'import styles from \'./App.module.css\'; export default () => <main className="app" />;';
+    expect(validateCssModuleUsage('src/App.jsx', literalClass)).toContain(
+      'className={styles.container}',
+    );
+    expect(
+      validateCssModuleUsage(
         'src/App.jsx',
         "import styles from './App.module.css'; export default () => <main className={styles.app} />;",
       ),

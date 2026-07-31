@@ -386,6 +386,7 @@ export interface EditorHeaderProps {
   showSideBySide: boolean;
   setShowSideBySide: (value: boolean | ((prev: boolean) => boolean)) => void;
   handleFormat: () => void;
+  onCopy: () => void;
   isReadOnly: boolean;
   setIsReadOnly: (value: boolean | ((prev: boolean) => boolean)) => void;
   fileName?: string;

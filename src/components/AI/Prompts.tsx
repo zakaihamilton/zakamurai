@@ -40,6 +40,7 @@ Rules:
 4. Use SEARCH/REPLACE for most edits.
 5. If providing a snippet WITHOUT SEARCH/REPLACE, you MUST include 1-2 lines of existing code as context (anchors) so the change can be located.
 6. Architecture: Decompose UI into modular sub-components in src/components/ with co-located CSS Modules (*.module.css). Avoid single-file App.jsx monoliths.
+7. CSS Modules: Import every *.module.css file as its default class map (for example, \`import styles from "./App.module.css"\`). Apply module-local classes with \`styles.className\` or \`styles["kebab-case"]\`; never side-effect import a CSS Module or use its local class names as literal \`className="…"\` strings.
 `.trim();
 
 export const SEARCH_REPLACE_INSTRUCTION = `
@@ -67,6 +68,7 @@ You are a software architect planning a codebase modification.
 Analyze the user request and provided code files.
 Produce a concise, structured action plan.
 Architecture requirement: Decompose UI applications into modular sub-components in src/components/ with matching co-located CSS Modules (*.module.css).
+CSS Module requirement: Plan to import each *.module.css file as a default \`styles\` map and reference every module-local CSS class through that map (use bracket notation for kebab-case names).
 
 Format your output as:
 // --- Plan ---
@@ -93,6 +95,7 @@ Rules:
 1. Output ONLY file blocks. No explanations outside blocks.
 2. Ensure exact character matching for the SEARCH section.
 3. Never use placeholders like "[...rest of code...]".
+4. For CSS Modules, default-import the class map and use it for every module-local class. Do not side-effect import *.module.css files or use their local class names as literal className strings.
 `.trim();
 
 export const REPAIR_SYSTEM_PROMPT = `
@@ -101,6 +104,7 @@ The previous edit attempt caused a syntax error or failed to apply cleanly to th
 
 Review the diagnostic error trace carefully and fix the issue.
 Produce a corrected SEARCH/REPLACE patch for the file.
+When repairing a component that imports *.module.css, use its default class map for module-local class names rather than literal className strings.
 
 Format:
 // --- File: path/to/file.js ---

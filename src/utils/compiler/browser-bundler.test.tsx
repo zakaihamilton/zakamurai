@@ -127,7 +127,7 @@ describe('browser-bundler', () => {
       '/src/main.js',
       [{ path: '/dist/assets/main.js', contents: new Uint8Array() }],
     );
-    expect(jsOnly).toContain('src="/dist/assets/main.js"');
+    expect(jsOnly).toContain('src="assets/main.js"');
     expect(jsOnly).not.toContain('stylesheet');
 
     const noClosers = __testables.createHtml(
@@ -428,8 +428,8 @@ describe('browser-bundler', () => {
     ).toThrow("does not provide './hidden'");
   });
 
-  it('uses JavaScript injection for CSS Modules and file loaders for static assets', () => {
-    expect(__testables.getLoader('/src/Button.module.css')).toBe('js');
+  it('uses esbuild CSS Module and file loaders for static assets', () => {
+    expect(__testables.getLoader('/src/Button.module.css')).toBe('local-css');
     expect(__testables.getLoader('/public/logo.svg')).toBe('file');
     expect(__testables.getLoader('/src/data.json')).toBe('json');
   });
@@ -443,7 +443,7 @@ describe('browser-bundler', () => {
     );
   });
 
-  it('keeps /dist prefixes in generated HTML asset URLs', () => {
+  it('uses dist-relative generated HTML asset URLs for session-scoped previews', () => {
     const html = __testables.createHtml(
       vfs({
         '/index.html':
@@ -457,9 +457,9 @@ describe('browser-bundler', () => {
       ],
     );
 
-    expect(html).toContain('src="/dist/assets/main-abc123.js"');
-    expect(html).toContain('href="/dist/assets/main-abc123.css"');
-    expect(html).not.toContain('src="/assets/main-abc123.js"');
+    expect(html).toContain('src="assets/main-abc123.js"');
+    expect(html).toContain('href="assets/main-abc123.css"');
+    expect(html).not.toContain('src="/dist/assets/main-abc123.js"');
     expect(html).not.toContain('/src/main.tsx');
   });
 
@@ -477,7 +477,7 @@ describe('browser-bundler', () => {
     expect(html).toContain('<main>Custom</main>');
     expect(html).toContain('src="/keep.js"');
     expect(html).not.toContain('src="src/main.tsx"');
-    expect(html).toContain('src="/dist/assets/main.js"');
+    expect(html).toContain('src="assets/main.js"');
   });
 
   it('detects bare and package-runner SPA build commands', () => {
@@ -576,7 +576,7 @@ describe('browser-bundler', () => {
     );
   });
 
-  it('turns CSS Modules into self-injecting JavaScript during browser builds', async () => {
+  it('passes CSS Modules to esbuild native local-css processing during browser builds', async () => {
     type LoadCallback = (args: { path: string }) => {
       contents: string;
       loader: string;
@@ -614,9 +614,8 @@ describe('browser-bundler', () => {
     await bundleBrowserProject(fs, { name: 'demo' }, 'vite build');
 
     const result = onLoad?.({ path: '/src/App.module.css' });
-    expect(result).toMatchObject({ loader: 'js', resolveDir: '/src' });
-    expect(result?.contents).toContain("document.createElement('style')");
-    expect(result?.contents).toContain('app_');
+    expect(result).toMatchObject({ loader: 'local-css', resolveDir: '/src' });
+    expect(result?.contents).toBe('.app { color: tomato; }');
   });
 
   it('clears stale output and copies public assets into dist', async () => {
@@ -645,7 +644,7 @@ describe('browser-bundler', () => {
     await bundleBrowserProject(fs, {}, 'vite build');
     expect(removed).toContain('/dist/stale.js');
     expect(files['/dist/logo.svg']).toBe('<svg/>');
-    expect(files['/dist/index.html']).toContain('/dist/assets/main-new.js');
+    expect(files['/dist/index.html']).toContain('assets/main-new.js');
   });
 
   it('bundleBrowserProject succeeds for react-dom-like VFS (client requires react-dom)', async () => {
@@ -749,6 +748,6 @@ describe('browser-bundler', () => {
       files: expect.arrayContaining(['index.html']),
     });
     expect(build).toHaveBeenCalled();
-    expect(files['/dist/index.html']).toContain('/dist/assets/main-abc.js');
+    expect(files['/dist/index.html']).toContain('assets/main-abc.js');
   });
 });

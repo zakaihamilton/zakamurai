@@ -33,6 +33,20 @@ let requestId = 0;
 // Registered virtual server ports
 const registeredPorts = new Set();
 
+function replayPendingRequests() {
+  if (!mainPort) return;
+  for (const [id, pending] of pendingRequests) {
+    if (!pending.request) continue;
+    try {
+      mainPort.postMessage({ type: 'request', id, data: pending.request });
+    } catch (error) {
+      pendingRequests.delete(id);
+      clearTimeout(pending.timeoutId);
+      pending.reject(error instanceof Error ? error : new Error(String(error)));
+    }
+  }
+}
+
 function isCacheableAppRequest(request, url) {
   if (request.method !== 'GET' || url.origin !== self.location.origin) {
     return false;
@@ -152,6 +166,12 @@ self.addEventListener('message', (event) => {
     // Initialize communication channel
     mainPort = event.ports[0];
     mainPort.onmessage = handleMainMessage;
+    mainPort.onmessageerror = () => {
+      mainPort = null;
+    };
+    // A reload can leave fetches waiting on the previous page's MessagePort.
+    // Re-send them through the freshly initialized compiler bridge.
+    replayPendingRequests();
     console.log('[SW] Initialized communication channel with transferred port');
     // Re-claim clients so that pages opened after SW activation get controlled.
     // Without this, controllerchange never fires for late-arriving pages.
@@ -183,6 +203,7 @@ function handleMainMessage(event) {
 
     if (pending) {
       pendingRequests.delete(id);
+      clearTimeout(pending.timeoutId);
 
       if (error) {
         DEBUG && console.log('[SW] Response error:', error);
@@ -274,21 +295,22 @@ async function sendRequest(port, method, url, headers, body) {
   const id = ++requestId;
 
   return new Promise((resolve, reject) => {
-    pendingRequests.set(id, { resolve, reject });
-
-    // Set timeout for request
-    setTimeout(() => {
+    const request = { port, method, url, headers, body };
+    const timeoutId = setTimeout(() => {
       if (pendingRequests.has(id)) {
         pendingRequests.delete(id);
         reject(new Error('Request timeout'));
       }
     }, 30000);
+    pendingRequests.set(id, { resolve, reject, request, timeoutId });
 
-    mainPort.postMessage({
-      type: 'request',
-      id,
-      data: { port, method, url, headers, body },
-    });
+    try {
+      mainPort.postMessage({ type: 'request', id, data: request });
+    } catch (error) {
+      pendingRequests.delete(id);
+      clearTimeout(timeoutId);
+      reject(error instanceof Error ? error : new Error(String(error)));
+    }
   });
 }
 

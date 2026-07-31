@@ -1,4 +1,3 @@
-import { buildCssModuleJavaScript } from './css-modules';
 import type {
   EsbuildApi,
   EsbuildBuild,
@@ -241,7 +240,7 @@ function resolveSpecifier(vfs: VfsLike, specifier: string, resolveDir: string): 
 
 function getLoader(path: string): string {
   const ext = extension(path);
-  if (path.endsWith('.module.css')) return 'js';
+  if (path.endsWith('.module.css')) return 'local-css';
   if (ext === '.tsx') return 'tsx';
   if (ext === '.ts') return 'ts';
   if (ext === '.jsx') return 'jsx';
@@ -358,8 +357,12 @@ function createHtml(
     : defaultHtml(packageJson.name, entryPath);
   const js = outputFiles.find((file) => file.path.endsWith('.js'));
   const css = outputFiles.find((file) => file.path.endsWith('.css'));
-  const script = js ? `<script type="module" src="${js.path}"></script>` : '';
-  const style = css ? `<link rel="stylesheet" href="${css.path}">` : '';
+  // Preview documents are relocated into a session-specific URL by PreviewHost.
+  // Keep build assets relative to dist/index.html so they remain in that preview
+  // session instead of escaping to the IDE origin via an absolute /dist URL.
+  const assetUrl = (path: string) => path.replace(/^\/dist\//, '');
+  const script = js ? `<script type="module" src="${assetUrl(js.path)}"></script>` : '';
+  const style = css ? `<link rel="stylesheet" href="${assetUrl(css.path)}">` : '';
   const escapedEntry = entryPath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const sourceScript = new RegExp(
     `<script\\b(?=[^>]*\\btype=["']module["'])[^>]*\\bsrc=["'](?:/?${escapedEntry.slice(1)}|${escapedEntry})["'][^>]*>\\s*<\\/script>\\s*`,
@@ -501,10 +504,8 @@ export async function bundleBrowserProject(
             return { path, namespace: 'vfs' };
           });
           build.onLoad({ filter: /.*/, namespace: 'vfs' }, (args) => {
-            const contents = vfs.readFileSync(args.path, 'utf8');
-            const cssModule = args.path.endsWith('.module.css');
             return {
-              contents: cssModule ? buildCssModuleJavaScript(args.path, contents).js : contents,
+              contents: vfs.readFileSync(args.path, 'utf8'),
               loader: getLoader(args.path),
               resolveDir: dirname(args.path),
             };

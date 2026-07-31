@@ -211,6 +211,7 @@ function EditorAreaInner({ file, fsHandle }: EditorAreaProps) {
         showSideBySide={showSideBySide}
         setShowSideBySide={setShowSideBySide}
         handleFormat={handleFormat}
+        onCopy={() => navigator.clipboard?.writeText(localContent)}
         associatedPath={associatedPath}
         onNavigateToAssociated={handleNavigateToAssociated}
         isReadOnly={isReadOnly}
