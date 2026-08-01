@@ -41,6 +41,7 @@
 button.item {
   border-top: 0;
   border-bottom: 0;
+  color: inherit;
   font: inherit;
   background: transparent;
 }
