@@ -42,8 +42,8 @@ test.describe('Zakamurai Basic Tests', () => {
     await expect(page.getByText('Logs', { exact: true })).toBeVisible({ timeout: 10000 });
   });
 
-  test('should interact with the Agent', async ({ page }) => {
-    const textarea = page.getByPlaceholder('Tell the Agent what to do...');
+  test('should interact with the AI Manager', async ({ page }) => {
+    const textarea = page.getByPlaceholder('Tell the AI Manager what to do...');
 
     await expect(textarea).not.toBeVisible();
     await page.getByTestId('ai-prompt-toggle').filter({ visible: true }).click();

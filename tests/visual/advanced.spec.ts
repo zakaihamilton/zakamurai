@@ -101,8 +101,8 @@ test.describe('Zakamurai Navigation Tests', () => {
     await expect(page.getByText('package.json', { exact: true })).toBeVisible();
   });
 
-  test('should toggle Agent panel', async ({ page }) => {
-    const textarea = page.getByPlaceholder('Tell the Agent what to do...');
+  test('should toggle AI Manager panel', async ({ page }) => {
+    const textarea = page.getByPlaceholder('Tell the AI Manager what to do...');
     await expect(textarea).not.toBeVisible();
 
     await page.getByTestId('ai-prompt-toggle').filter({ visible: true }).click();
