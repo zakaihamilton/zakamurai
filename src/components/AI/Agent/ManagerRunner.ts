@@ -363,8 +363,10 @@ async function executeManager({
           output: JSON.stringify(verification.value),
         });
         const status = (verification.value as { status?: string })?.status;
+        const verificationMessage =
+          verification.text || `Validation ${status || 'failed'} without diagnostics.`;
         if (status === 'failed' && repair < MAX_REPAIR_ATTEMPTS) {
-          diagnostics = verification.text;
+          diagnostics = verificationMessage;
           task = 'repair-changes';
           toolResults.push(verification);
           const prompt = buildManagerModelPrompt(
@@ -374,6 +376,13 @@ async function executeManager({
             diagnostics,
           );
           messages.push({ role: 'user', content: prompt });
+          onEvent({
+            type: 'model',
+            turn: repair + 2,
+            task,
+            message: 'Calling the model for repair-changes…',
+            input: prompt,
+          });
           const reply = await askModel({
             model,
             messages,
@@ -385,13 +394,21 @@ async function executeManager({
             max_tokens: 2600,
           });
           messages.push({ role: 'assistant', content: reply });
-          result = parseModelResult(reply);
-          if (result.kind !== 'changes')
-            throw new Error('The repair response did not return changes.');
+          onEvent({ type: 'model', turn: repair + 2, task, output: reply });
+          try {
+            result = parseModelResult(reply);
+          } catch (error) {
+            throw new Error(
+              `The repair response was invalid: ${error instanceof Error ? error.message : String(error)}`,
+              { cause: error },
+            );
+          }
+          if (result.kind !== 'changes' || !result.changes.length)
+            throw new Error('The repair response did not return any changes.');
           changes = normalizeModelChanges(result, workspace.files);
           continue;
         }
-        if (status === 'failed') throw new Error(verification.text);
+        if (status === 'failed') throw new Error(verificationMessage);
       }
       let previewSummary = '';
       if (planIncludesTool(plan, 'inspect_preview')) {
@@ -411,8 +428,10 @@ async function executeManager({
         workspace,
       };
     }
-    if (repair >= MAX_REPAIR_ATTEMPTS) throw new Error(validation.rejected.join(' '));
     diagnostics = validation.rejected.join('\n');
+    if (repair >= MAX_REPAIR_ATTEMPTS) {
+      throw new Error(diagnostics || 'The generated changes failed deterministic validation.');
+    }
     task = 'repair-changes';
     const prompt = buildManagerModelPrompt(request, contextText(toolResults), task, diagnostics);
     messages.push({ role: 'user', content: prompt });
