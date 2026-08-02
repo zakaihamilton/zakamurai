@@ -1,9 +1,15 @@
 import editFixture from './fixtures/edit-title.json';
 import listFixture from './fixtures/list-files.json';
 import partialFixture from './fixtures/partial-validation-error.json';
+import deleteFixture from './fixtures/delete-file.json';
 import { replayManagerFixture, type ManagerReplayFixture } from '@/components/AI/Agent';
 
-const fixtures = [listFixture, editFixture, partialFixture] as ManagerReplayFixture[];
+const fixtures = [
+  listFixture,
+  editFixture,
+  deleteFixture,
+  partialFixture,
+] as ManagerReplayFixture[];
 
 describe('AI Manager replay fixtures', () => {
   it.each(fixtures)('replays $name through the real manager', async (fixture) => {

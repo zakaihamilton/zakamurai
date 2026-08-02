@@ -55,6 +55,7 @@ export type AgentChange = {
   after?: string;
   content?: string;
   filePath?: string;
+  delete?: boolean;
 };
 
 export type ValidatedAIChanges = {
@@ -110,8 +111,6 @@ export type AgentEvent = {
   /** Replace the current transient progress line instead of adding a new transcript entry. */
   replaceProgress?: boolean;
 };
-
-export type AgentEventHandler = (event: AgentEvent) => void;
 
 export type ManagerIntent =
   | 'workspace-query'
@@ -291,13 +290,6 @@ export type WebLLMOptions = {
   onRecovery?: ((event: WebLLMRecoveryEvent) => void) | null;
   onMetrics?: ((metrics: WebLLMGenerationMetrics) => void) | null;
 };
-
-export type AskWebLLM = (
-  prompt: string,
-  systemPrompt?: string,
-  onUpdate?: ((text: string) => void) | null,
-  options?: WebLLMOptions,
-) => Promise<string>;
 
 export type WebLLMModel = {
   id: string;

@@ -52,6 +52,20 @@ describe('manager model protocol', () => {
     expect(() => parseModelResult('{"kind":"tool"}')).toThrow(/Unknown/);
   });
 
+  it('preserves explicit deletion proposals', () => {
+    expect(
+      parseModelResult(
+        JSON.stringify({
+          kind: 'changes',
+          changes: [{ path: 'src/old.js', delete: true }],
+        }),
+      ),
+    ).toMatchObject({
+      kind: 'changes',
+      changes: [{ path: 'src/old.js', delete: true }],
+    });
+  });
+
   it('handles escaped embedded JSON and defensive protocol shapes', () => {
     const escaped = JSON.stringify({ kind: 'answer', summary: 'A "quoted" answer' });
     expect(parseModelResult(`prefix ${escaped} suffix`)).toMatchObject({

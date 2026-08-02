@@ -46,8 +46,6 @@ export type ManagerTrace = {
   events: ManagerTraceEvent[];
 };
 
-export type ManagerTraceHandler = (trace: ManagerTrace) => void;
-
 export type ManagerErrorCode =
   | 'cancelled'
   | 'model'

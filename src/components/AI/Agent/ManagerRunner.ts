@@ -44,7 +44,7 @@ const summarizeToolResult = (tool: ManagerToolName, value: unknown): string => {
 };
 
 const extractQuery = (request: string): string => {
-  const quoted = request.match(/["'“”]([^"'“”]+)["'“”]/)?.[1];
+  const quoted = request.match(/["'“”`]([^"'“”`]+)["'“”`]/)?.[1];
   if (quoted) return quoted;
   return request
     .replace(/\b(?:please|search|find|grep|show|list|files?|for|in|the|workspace|src)\b/gi, ' ')
@@ -53,7 +53,7 @@ const extractQuery = (request: string): string => {
 };
 
 const extractPath = (request: string, activeFile?: string | null): string | null => {
-  const quoted = request.match(/["'“”]([^"'“”]+)["'“”]/)?.[1];
+  const quoted = request.match(/["'“”`]([^"'“”`]+)["'“”`]/)?.[1];
   const path = request.match(
     /(?:^|\s)((?:[\w.-]+\/)*[\w.-]+\.(?:json|jsx?|tsx?|css|html|md|txt)\b)/i,
   )?.[1];

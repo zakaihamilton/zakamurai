@@ -21,6 +21,9 @@ If more source context is required:
 For code changes:
 {"kind":"changes","summary":"what changed","changes":[{"path":"src/App.jsx","content":"complete file content"}]}
 
+For deletions, use an explicit delete proposal:
+{"kind":"changes","summary":"what changed","changes":[{"path":"src/old-file.js","delete":true}]}
+
 Use only project-relative paths. Never use absolute paths or .. traversal. Return complete file contents for every changed file.
 Do not return tool actions, write_file actions, role names, plans, or prose outside the JSON object.
 `.trim();
@@ -99,11 +102,14 @@ const normalizeChanges = (value: unknown): AgentChange[] => {
       ...(typeof change.before === 'string' ? { before: change.before } : {}),
       ...(typeof change.after === 'string' ? { after: change.after } : {}),
       ...(typeof change.content === 'string' ? { content: change.content } : {}),
+      ...(change.delete === true ? { delete: true } : {}),
     }))
     .filter(
       (change) =>
         Boolean(change.path) &&
-        (typeof change.after === 'string' || typeof change.content === 'string'),
+        (typeof change.after === 'string' ||
+          typeof change.content === 'string' ||
+          change.delete === true),
     );
 };
 

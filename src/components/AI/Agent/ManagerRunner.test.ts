@@ -57,6 +57,41 @@ describe('runManager', () => {
     expect(askWebLLM).not.toHaveBeenCalled();
   });
 
+  it('preserves backtick-wrapped search terms in deterministic workspace routing', async () => {
+    const { askWebLLM } = (await import('../WebLLMAPI')) as unknown as {
+      askWebLLM: ReturnType<typeof vi.fn>;
+    };
+    const result = await runManager({
+      request: 'search for `answer`',
+      files: { 'src/App.jsx': 'export const answer = 42;' },
+      model: 'test-model',
+    });
+    expect(result.summary).toContain('src/App.jsx');
+    expect(askWebLLM).not.toHaveBeenCalled();
+  });
+
+  it('stages explicit model deletion proposals in the isolated workspace', async () => {
+    const { askWebLLM } = (await import('../WebLLMAPI')) as unknown as {
+      askWebLLM: ReturnType<typeof vi.fn>;
+    };
+    askWebLLM.mockResolvedValue(
+      JSON.stringify({
+        kind: 'changes',
+        summary: 'Removed the old file.',
+        changes: [{ path: 'src/old.js', delete: true }],
+      }),
+    );
+    const result = await runManager({
+      request: 'delete src/old.js',
+      files: { 'src/old.js': 'export const old = true;' },
+      model: 'test-model',
+    });
+    expect(result.files['src/old.js']).toBeUndefined();
+    expect(result.changes).toEqual([
+      { path: 'src/old.js', before: 'export const old = true;', after: undefined },
+    ]);
+  });
+
   it('uses the model only for generated changes and validates the result', async () => {
     const { askWebLLM } = (await import('../WebLLMAPI')) as unknown as {
       askWebLLM: ReturnType<typeof vi.fn>;
