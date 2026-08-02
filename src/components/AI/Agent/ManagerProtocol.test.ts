@@ -52,6 +52,15 @@ describe('manager model protocol', () => {
     expect(() => parseModelResult('{"kind":"tool"}')).toThrow(/Unknown/);
   });
 
+  it('recovers literal control characters inside model-generated JSON strings', () => {
+    const malformed =
+      '{"kind":"changes","changes":[{"path":"src/App.jsx","content":"line 1\nline 2\tready"}]}';
+    expect(parseModelResult(malformed)).toMatchObject({
+      kind: 'changes',
+      changes: [{ path: 'src/App.jsx', content: 'line 1\nline 2\tready' }],
+    });
+  });
+
   it('preserves explicit deletion proposals', () => {
     expect(
       parseModelResult(

@@ -28,11 +28,70 @@ Use only project-relative paths. Never use absolute paths or .. traversal. Retur
 Do not return tool actions, write_file actions, role names, plans, or prose outside the JSON object.
 `.trim();
 
+const repairJsonStringControls = (candidate: string): string => {
+  let inString = false;
+  let escaped = false;
+  let repaired = '';
+
+  for (const char of candidate) {
+    if (!inString) {
+      repaired += char;
+      if (char === '"') inString = true;
+      continue;
+    }
+    if (escaped) {
+      repaired += char;
+      escaped = false;
+      continue;
+    }
+    if (char === '\\') {
+      repaired += char;
+      escaped = true;
+      continue;
+    }
+    if (char === '"') {
+      repaired += char;
+      inString = false;
+      continue;
+    }
+    const code = char.charCodeAt(0);
+    if (code < 0x20) {
+      repaired +=
+        char === '\n'
+          ? '\\n'
+          : char === '\r'
+            ? '\\r'
+            : char === '\t'
+              ? '\\t'
+              : `\\u${code.toString(16).padStart(4, '0')}`;
+    } else {
+      repaired += char;
+    }
+  }
+  return repaired;
+};
+
+const parseJsonCandidate = (candidate: string): unknown => {
+  try {
+    return JSON.parse(candidate);
+  } catch (error) {
+    const repaired = repairJsonStringControls(candidate);
+    if (repaired !== candidate) {
+      try {
+        return JSON.parse(repaired);
+      } catch {
+        // Preserve the original parser error when recovery is not sufficient.
+      }
+    }
+    throw error;
+  }
+};
+
 const firstJsonObject = (text: string): unknown => {
   const fenced = text.match(/```json\s*([\s\S]*?)\s*```/i);
   const candidate = (fenced?.[1] || text).trim();
   try {
-    return JSON.parse(candidate);
+    return parseJsonCandidate(candidate);
   } catch {
     const start = candidate.indexOf('{');
     if (start < 0) throw new Error('Model response did not contain a JSON object.');
@@ -49,7 +108,8 @@ const firstJsonObject = (text: string): unknown => {
       }
       if (char === '"') string = true;
       if (char === '{') depth += 1;
-      if (char === '}' && --depth === 0) return JSON.parse(candidate.slice(start, index + 1));
+      if (char === '}' && --depth === 0)
+        return parseJsonCandidate(candidate.slice(start, index + 1));
     }
     throw new Error('Model response did not contain a complete JSON object.');
   }
