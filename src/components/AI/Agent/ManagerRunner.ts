@@ -301,7 +301,16 @@ async function executeManager({
     });
     messages.push({ role: 'assistant', content: reply });
     onEvent({ type: 'model', turn: round + 1, task, output: reply });
-    result = parseModelResult(reply);
+    try {
+      result = parseModelResult(reply);
+    } catch (error) {
+      if (round === MAX_CONTEXT_ROUNDS - 1) throw error;
+      diagnostics = `The previous model response was not valid manager JSON: ${
+        error instanceof Error ? error.message : String(error)
+      }. Return one valid JSON object matching the requested protocol.`;
+      task = task === 'answer' ? 'answer' : 'generate-changes';
+      continue;
+    }
     if (
       task !== 'answer' &&
       (result.kind === 'answer' || (result.kind === 'changes' && result.changes.length === 0))

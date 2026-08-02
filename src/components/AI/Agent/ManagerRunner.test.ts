@@ -175,6 +175,29 @@ describe('runManager', () => {
     ).toBe(true);
   });
 
+  it('retries malformed edit responses before failing the run', async () => {
+    const modelClient = vi
+      .fn()
+      .mockResolvedValueOnce('{"kind":"changes","changes":[{"path":"src/App.jsx"')
+      .mockResolvedValueOnce('{"kind":"changes","changes":[{"path":"src/App.jsx"')
+      .mockResolvedValueOnce(
+        JSON.stringify({
+          kind: 'changes',
+          summary: 'Recovered edit.',
+          changes: [{ path: 'src/App.jsx', content: 'export default function App() {}' }],
+        }),
+      );
+    const result = await runManager({
+      request: 'create a todo app',
+      files: { 'src/App.jsx': 'export default function App() { return null; }' },
+      model: 'test-model',
+      modelClient,
+    });
+
+    expect(result.summary).toBe('Recovered edit.');
+    expect(modelClient).toHaveBeenCalledTimes(3);
+  });
+
   it('accepts an injected model client for deterministic replay', async () => {
     const { askWebLLM } = (await import('../WebLLMAPI')) as unknown as {
       askWebLLM: ReturnType<typeof vi.fn>;
