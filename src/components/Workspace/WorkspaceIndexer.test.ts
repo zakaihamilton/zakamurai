@@ -88,10 +88,11 @@ describe('WorkspaceIndexer', () => {
     vi.useRealTimers();
   });
 
-  const flushIndex = async () => {
+  const flushIndex = async (ready?: () => void) => {
     await act(async () => {
       await vi.advanceTimersByTimeAsync(1000);
     });
+    if (ready) await vi.waitFor(ready, { timeout: 1000 });
   };
 
   it('returns global workspaceIndex instance', () => {
@@ -102,7 +103,7 @@ describe('WorkspaceIndexer', () => {
 
   it('indexes the initial workspace and disposes on unmount', async () => {
     const { unmount } = renderHook(() => useWorkspaceIndexer());
-    await flushIndex();
+    await flushIndex(() => expect(workspaceController.getHealth).toHaveBeenCalledOnce());
     unmount();
 
     expect(collectWorkspaceFiles).toHaveBeenCalledOnce();
@@ -134,7 +135,7 @@ describe('WorkspaceIndexer', () => {
     collectWorkspaceFiles.mockResolvedValue({});
 
     renderHook(() => useWorkspaceIndexer());
-    await flushIndex();
+    await flushIndex(() => expect(workspaceController.getHealth).toHaveBeenCalledOnce());
 
     expect(collectWorkspaceFiles).toHaveBeenCalledWith(
       { mode: 'local', rootHandle: null },
@@ -152,7 +153,7 @@ describe('WorkspaceIndexer', () => {
       'src/latest.js': 'export default true;',
     });
     rerender();
-    await flushIndex();
+    await flushIndex(() => expect(workspaceController.applyFileChanges).toHaveBeenCalled());
 
     expect(collectWorkspaceFiles).toHaveBeenCalledOnce();
     expect(workspaceController.applyFileChanges).toHaveBeenCalledWith([
@@ -162,12 +163,12 @@ describe('WorkspaceIndexer', () => {
 
   it('reuses the editor snapshot after the first disk scan and removes deleted paths', async () => {
     const { rerender } = renderHook(() => useWorkspaceIndexer());
-    await flushIndex();
+    await flushIndex(() => expect(workspaceController.getHealth).toHaveBeenCalledOnce());
     workspaceController.applyFileChanges.mockClear();
 
     mockEditorState.mockReturnValue({ fileContents: {} } as never);
     rerender();
-    await flushIndex();
+    await flushIndex(() => expect(workspaceController.applyFileChanges).toHaveBeenCalled());
 
     expect(collectWorkspaceFiles).toHaveBeenCalledOnce();
     expect(workspaceController.applyFileChanges).toHaveBeenCalledWith([
@@ -177,7 +178,7 @@ describe('WorkspaceIndexer', () => {
 
   it('does not resend unchanged content on a profile-only update', async () => {
     const { rerender } = renderHook(() => useWorkspaceIndexer());
-    await flushIndex();
+    await flushIndex(() => expect(workspaceController.getHealth).toHaveBeenCalledOnce());
     workspaceController.applyFileChanges.mockClear();
 
     mockProfileState.mockReturnValue({
@@ -186,7 +187,7 @@ describe('WorkspaceIndexer', () => {
       maxFileBytes: 512 * 1024,
     } as never);
     rerender();
-    await flushIndex();
+    await flushIndex(() => expect(workspaceController.getHealth).toHaveBeenCalledTimes(2));
 
     expect(workspaceController.applyFileChanges).not.toHaveBeenCalled();
     expect(workspaceController.getHealth).toHaveBeenCalledTimes(2);
@@ -200,7 +201,7 @@ describe('WorkspaceIndexer', () => {
     } as never);
 
     renderHook(() => useWorkspaceIndexer());
-    await flushIndex();
+    await flushIndex(() => expect(workspaceController.getHealth).toHaveBeenCalledOnce());
 
     const finalHealthUpdate = health.mock.calls.at(-1)?.[0];
     const draft = {} as Record<string, unknown>;
@@ -214,7 +215,7 @@ describe('WorkspaceIndexer', () => {
     workspaceController.getHealth.mockRejectedValue(new Error('health failed'));
 
     renderHook(() => useWorkspaceIndexer());
-    await flushIndex();
+    await flushIndex(() => expect(workspaceController.getHealth).toHaveBeenCalledOnce());
 
     const finalHealthUpdate = health.mock.calls.at(-1)?.[0];
     const draft = {} as Record<string, unknown>;
