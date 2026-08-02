@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "name": "tool-only-list-files",
+  "request": "list the files in src",
+  "files": {
+    "src/App.jsx": "export default function App() {}",
+    "README.md": "readme"
+  },
+  "expected": {
+    "intent": "workspace-query",
+    "outcome": "success",
+    "modelCalls": 0,
+    "toolOrder": ["list_files"]
+  }
+}

@@ -64,11 +64,11 @@ describe('SessionTreeDialog', () => {
       />,
     );
 
-    expect(screen.getByRole('navigation', { name: 'Agent tree' })).toBeDefined();
+    expect(screen.getByRole('navigation', { name: 'Conversation history' })).toBeDefined();
     fireEvent.click(screen.getByRole('button', { name: 'Branch Root' }));
     fireEvent.click(screen.getByRole('button', { name: 'Rename Root' }));
     fireEvent.click(screen.getByRole('button', { name: 'Delete Root and branches' }));
-    fireEvent.click(screen.getByRole('button', { name: 'New agent' }));
+    fireEvent.click(screen.getByRole('button', { name: 'New conversation' }));
     fireEvent.click(screen.getByText('Branch'));
 
     expect(onBranch).toHaveBeenCalledWith('root');

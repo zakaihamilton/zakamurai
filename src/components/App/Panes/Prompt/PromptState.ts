@@ -24,7 +24,6 @@ export function getInitialPromptUiState() {
     welcomePrompt,
     selectedModel: getInitialPromptSelectedModel(),
     isModelManagerOpen: false,
-    isRoleGraphOpen: false,
     cachedModelIds: [],
     modelCacheWork: null,
     modelCacheProgress: '',
@@ -35,5 +34,6 @@ export function getInitialPromptUiState() {
     welcomeRequest: null,
     runningSessionId: null,
     isAgentTreeOpen: false,
+    latestManagerTrace: null,
   };
 }

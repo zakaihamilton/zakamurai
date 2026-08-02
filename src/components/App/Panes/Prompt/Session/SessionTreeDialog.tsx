@@ -76,7 +76,7 @@ export default function SessionTreeDialog({
             onClick={() => onSelect(session.id)}
           >
             <span className={styles.name}>{session.name}</span>
-            <span className={styles.mode}>{session.mode === 'team' ? 'Team' : 'Single'}</span>
+            <span className={styles.mode}>Conversation</span>
             {session.status === 'running' && (
               <span className={styles.running} aria-label="Running" />
             )}
@@ -115,24 +115,24 @@ export default function SessionTreeDialog({
   return (
     <Dialog
       isOpen={isOpen}
-      title="Agent tree"
+      title="Conversation history"
       onCancel={onCancel}
       onConfirm={onCancel}
       footer={null}
       className={styles.dialog}
     >
       <div className={styles.toolbar}>
-        <p>Branch an agent to continue its conversation independently.</p>
+        <p>Branch a conversation to continue it independently.</p>
         <button
           type="button"
           className={styles.newRootButton}
           onClick={() => onCreate()}
-          aria-label="New agent"
+          aria-label="New conversation"
         >
-          <Icons.Plus size={15} /> New agent
+          <Icons.Plus size={15} /> New conversation
         </button>
       </div>
-      <nav className={styles.treeRegion} aria-label="Agent tree">
+      <nav className={styles.treeRegion} aria-label="Conversation history">
         <ul className={styles.tree}>{roots.map((root) => renderNode(root))}</ul>
       </nav>
     </Dialog>

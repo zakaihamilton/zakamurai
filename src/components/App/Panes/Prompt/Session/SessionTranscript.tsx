@@ -16,7 +16,7 @@ export default function SessionTranscript({
     ? messages
         .map((message) => `[${message.timestamp || 'now'}] ${message.role}: ${message.text}`)
         .join('\n\n')
-    : 'Start a conversation with this agent session.';
+    : 'Start a conversation with the AI Manager.';
 
   useEffect(() => {
     if (lastMessageId == null) return;
@@ -25,7 +25,7 @@ export default function SessionTranscript({
 
   const content = !messages.length ? (
     <div className={styles.empty} aria-label="Session transcript">
-      Start a conversation with this agent session.
+      Start a conversation with the AI Manager.
     </div>
   ) : (
     <div className={styles.transcript} aria-label="Session transcript">
@@ -59,7 +59,7 @@ export default function SessionTranscript({
       <div className={styles.header}>
         <Tooltip
           content={
-            'Transcript\nConversation history between you and the agent.\nIncludes prompts, replies, and system messages.'
+            'Transcript\nConversation history between you and the AI Manager.\nIncludes prompts, replies, and system messages.'
           }
         >
           <button

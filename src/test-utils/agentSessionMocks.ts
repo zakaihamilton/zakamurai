@@ -1,4 +1,3 @@
-import type { RoleGraph } from '@/components/AI/types';
 import type { AgentSession, AgentSessionStateShape } from '@/components/state/domain-types';
 
 /** Build a minimal AgentSession fixture for tests. */
@@ -39,6 +38,3 @@ export function requireActiveSession(session: AgentSession | null | undefined): 
 }
 
 /** Cast role graph from session for test assertions. */
-export function sessionRoleGraph(session: AgentSession): RoleGraph {
-  return session.roleGraph as RoleGraph;
-}

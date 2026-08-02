@@ -38,7 +38,6 @@ export default function Prompt() {
     draftVal = '',
     selectedModel = RECOMMENDED_WEB_LLM_MODEL.id,
     isModelManagerOpen = false,
-    isRoleGraphOpen = false,
     modelCacheWork = null,
     modelCacheProgress = '',
     modelCacheError = '',
@@ -49,6 +48,7 @@ export default function Prompt() {
     runningSessionId = null,
     sessionDialog = null,
     isAgentTreeOpen = false,
+    latestManagerTrace = null,
   } = promptUiState || {};
   const { cachedModelIds = [], engines = {} } = requireStore(
     WebLLMState.useState(['cachedModelIds', 'engines']),
@@ -69,20 +69,16 @@ export default function Prompt() {
     activeSession,
     patchSession,
     pushSessionMessage,
-    openRoleGraph,
-    closeRoleGraph,
     handleCreateSession,
     handleRenameSession,
     handleDeleteSession,
     handleBranchSession,
     handleSelectSession,
-    handleModeChange,
   } = usePromptSessionControls({
     agentSessionState,
     promptUiState,
     selectedModel,
     isAIProcessing,
-    isRoleGraphOpen,
   });
   const { desktopWidth } = usePromptLayout({
     isMobile,
@@ -263,7 +259,6 @@ export default function Prompt() {
       isSystemProcessing={isSystemProcessing}
       activeSession={activeSession}
       sessionReasoning={activeSession?.reasoning || ''}
-      onModeChange={handleModeChange}
       onOpenTree={openSessionTree}
       isAgentTreeOpen={isAgentTreeOpen}
       sessionDialog={sessionDialog}
@@ -276,11 +271,7 @@ export default function Prompt() {
       onDeleteSession={handleDeleteSession}
       runningSessionId={runningSessionId}
       promptUiState={promptUiState}
-      isRoleGraphOpen={isRoleGraphOpen}
-      onOpenRoleGraph={openRoleGraph}
-      onCloseRoleGraph={closeRoleGraph}
       modelOptions={modelOptions}
-      selectedModel={selectedModel}
       promptScope={promptScope}
       onScopeChange={setPromptScope}
       onOpenSectionInTab={openSectionInTab}
@@ -309,6 +300,7 @@ export default function Prompt() {
       onLoadCachedModelIds={loadCachedModelIds}
       onOpenModelManager={openModelManager}
       patchSession={patchSession}
+      latestManagerTrace={latestManagerTrace}
     />
   );
 }

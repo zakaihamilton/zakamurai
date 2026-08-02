@@ -1,3 +1,4 @@
+import type { ManagerTrace } from '@/components/AI/Agent/ManagerTrace';
 import type { DiagnosticEvent } from '@/contracts/runtime';
 import type { SourceLocation } from '@/utils/navigation/types';
 
@@ -309,7 +310,6 @@ export interface PromptUiStateShape {
   welcomePrompt: string;
   selectedModel: string;
   isModelManagerOpen: boolean;
-  isRoleGraphOpen: boolean;
   cachedModelIds: string[];
   modelCacheWork: unknown;
   modelCacheProgress: string;
@@ -320,6 +320,7 @@ export interface PromptUiStateShape {
   welcomeRequest: unknown;
   runningSessionId: string | null;
   isAgentTreeOpen: boolean;
+  latestManagerTrace: ManagerTrace | null;
   sessionDialog?: import('@/components/App/Panes/Prompt/prompt-types').SessionDialogState;
 }
 

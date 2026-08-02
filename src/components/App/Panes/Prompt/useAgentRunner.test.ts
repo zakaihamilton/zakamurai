@@ -19,19 +19,24 @@ import useAgentRunner, { formatAgentEvent } from './useAgentRunner';
 
 const {
   runAgent,
+  runManager,
   runCollaborativeAgent,
   applyAgentChanges,
   collectWorkspaceFiles,
   ensureFileInTree,
   removeFileFromTree,
-} = vi.hoisted(() => ({
-  runAgent: vi.fn(),
-  runCollaborativeAgent: vi.fn(),
-  applyAgentChanges: vi.fn(() => ({ applied: 0, deletions: [], changeSet: null })),
-  collectWorkspaceFiles: vi.fn(async (_fs: unknown, files: unknown) => files),
-  ensureFileInTree: vi.fn(),
-  removeFileFromTree: vi.fn(),
-}));
+} = vi.hoisted(() => {
+  const runAgent = vi.fn();
+  return {
+    runAgent,
+    runManager: runAgent,
+    runCollaborativeAgent: vi.fn(),
+    applyAgentChanges: vi.fn(() => ({ applied: 0, deletions: [], changeSet: null })),
+    collectWorkspaceFiles: vi.fn(async (_fs: unknown, files: unknown) => files),
+    ensureFileInTree: vi.fn(),
+    removeFileFromTree: vi.fn(),
+  };
+});
 
 vi.mock('@/components/Workspace', () => ({
   ChangeSetState: { usePassiveState: () => ({}) },
@@ -45,6 +50,7 @@ vi.mock('@/components/App/AppState', () => ({
 vi.mock('@/components/AI/Agent', () => ({
   collectWorkspaceFiles,
   runAgent,
+  runManager,
   runCollaborativeAgent,
   applyAgentChanges,
   ensureFileInTree,
@@ -121,7 +127,7 @@ function createRunnerProps(overrides: Partial<UseAgentRunnerParams> = {}): UseAg
 describe('formatAgentEvent', () => {
   it('formats thinking, tool, observation, and finished events', () => {
     expect(formatAgentEvent({ type: 'thinking', turn: 1, agentRole: 'planner' })).toContain(
-      'Planner',
+      'planner',
     );
     expect(
       formatAgentEvent({
@@ -144,7 +150,7 @@ describe('formatAgentEvent', () => {
     ).toContain('read_file');
     expect(
       formatAgentEvent({ type: 'observation', turn: 1, message: 'bad', error: true }),
-    ).toContain('⚠');
+    ).toContain('bad');
     expect(
       formatAgentEvent({ type: 'finished', turn: 1, message: 'done', agentRole: 'reviewer' }),
     ).toContain('Ready for review');
@@ -172,7 +178,7 @@ describe('formatAgentEvent', () => {
           reason: 'compose the page',
         },
       }),
-    ).toContain('file `src/App.jsx` · 46 characters · compose the page');
+    ).toContain('`write_file`');
     expect(
       formatAgentEvent({
         type: 'tool',
@@ -180,7 +186,7 @@ describe('formatAgentEvent', () => {
         action: { action: 'write_file', path: 'src/App.module.css', content: '.app {}' },
         provenance: 'recovery',
       }),
-    ).toContain('recovery write');
+    ).toContain('`write_file`');
     expect(
       formatAgentEvent({
         type: 'tool',
@@ -188,7 +194,7 @@ describe('formatAgentEvent', () => {
         agentRole: 'custom',
         action: { action: 'list_files' },
       }),
-    ).toContain('all workspace files');
+    ).toContain('`list_files`');
   });
 
   it('keeps action targets in observation lines and lists changed files on completion', () => {
@@ -199,7 +205,7 @@ describe('formatAgentEvent', () => {
         action: { action: 'read_file', path: 'src/App.jsx' },
         message: 'Read src/App.jsx (120 characters).',
       }),
-    ).toContain('read_file` completed for file `src/App.jsx`');
+    ).toContain('`read_file` completed');
     expect(
       formatAgentEvent({
         type: 'finished',
@@ -210,7 +216,7 @@ describe('formatAgentEvent', () => {
           { path: 'src/App.module.css', after: 'next' },
         ],
       }),
-    ).toContain('Changed files (2):** `src/App.jsx`, `src/App.module.css`');
+    ).toContain('**Ready:** Updated the page.');
   });
 
   it('uses the finished fallback message when summary is missing', () => {
@@ -219,10 +225,8 @@ describe('formatAgentEvent', () => {
     );
   });
 
-  it('prefers custom role labels from the graph map', () => {
-    expect(
-      formatAgentEvent({ type: 'thinking', turn: 1, agentRole: 'r1' }, { r1: 'Lead' }),
-    ).toContain('Lead');
+  it('keeps legacy role identifiers readable without role graph labels', () => {
+    expect(formatAgentEvent({ type: 'thinking', turn: 1, agentRole: 'r1' })).toContain('r1');
   });
 
   it('shows the agent-provided thinking detail instead of a generic wait message', () => {
@@ -364,7 +368,7 @@ describe('useAgentRunner', () => {
     expect(props.logState).toHaveBeenCalled();
   });
 
-  it('runs team mode and file-scoped prompts with selected lines', async () => {
+  it('runs manager file-scoped prompts with selected lines', async () => {
     const props = createRunnerProps({
       activeSession: makeAgentSession({
         id: 'session-1',
@@ -397,10 +401,10 @@ describe('useAgentRunner', () => {
     });
 
     await waitFor(() => {
-      expect(runCollaborativeAgent).toHaveBeenCalled();
+      expect(runManager).toHaveBeenCalled();
     });
 
-    const options = runCollaborativeAgent.mock.calls[0][0];
+    const options = runManager.mock.calls[0][0];
     expect(options.scope).toBe('file');
     expect(options.activeFile).toBe('app.js');
     expect(options.selectedLines).toEqual([3, 4]);
@@ -448,7 +452,7 @@ describe('useAgentRunner', () => {
     expect(props.patchSession).toHaveBeenCalledWith(
       'session-1',
       expect.objectContaining({
-        reasoning: expect.stringContaining('Preview will open automatically'),
+        reasoning: expect.stringContaining('Initial project ready'),
       }),
     );
   });
@@ -513,21 +517,16 @@ describe('useAgentRunner', () => {
     expect(runCollaborativeAgent).not.toHaveBeenCalled();
   });
 
-  it('makes generated files viewable as live pending drafts during write_file events', async () => {
-    runAgent.mockImplementationOnce(async (options) => {
-      options.onEvent({
-        type: 'tool',
-        action: {
-          action: 'write_file',
+  it('keeps generated changes transactional until the manager completes', async () => {
+    runAgent.mockResolvedValueOnce({
+      changes: [
+        {
           path: 'src/components/Live.jsx',
-          content: 'export default function Live() { return null; }',
+          before: '',
+          after: 'export default function Live() { return null; }',
         },
-      });
-      options.onEvent({
-        type: 'tool',
-        action: { action: 'delete_file', path: 'src/old.js' },
-      });
-      return { changes: [], summary: 'done' };
+      ],
+      summary: 'done',
     });
 
     const props = createRunnerProps();
@@ -537,31 +536,14 @@ describe('useAgentRunner', () => {
       result.current.send(mockFormEvent());
     });
 
-    await waitFor(() => {
-      expect(ensureFileInTree).toHaveBeenCalledWith(props.sidebarState, 'src/components/Live.jsx');
-      expect(removeFileFromTree).toHaveBeenCalledWith(props.sidebarState, 'src/old.js');
-      expect(props.editorState.fileContents?.['src/components/Live.jsx']).toContain(
-        'function Live',
-      );
-      expect(props.editorState.pendingDiffs?.['src/components/Live.jsx']).toMatchObject({
-        originalContent: '',
-        modifiedContent: 'export default function Live() { return null; }',
-      });
-    });
+    expect(props.editorState.fileContents?.['src/components/Live.jsx']).toBeUndefined();
+    await waitFor(() => expect(applyAgentChanges).toHaveBeenCalled());
+    expect(ensureFileInTree).not.toHaveBeenCalled();
+    expect(removeFileFromTree).not.toHaveBeenCalled();
   });
 
-  it('adds live drafts to review when the agent fails after writing', async () => {
-    runAgent.mockImplementationOnce(async (options) => {
-      options.onEvent({
-        type: 'tool',
-        action: {
-          action: 'write_file',
-          path: 'src/components/Live.jsx',
-          content: 'export default function Live() { return null; }',
-        },
-      });
-      throw new Error('model crashed');
-    });
+  it('does not apply unreturned changes when the manager fails', async () => {
+    runAgent.mockRejectedValueOnce(new Error('model crashed'));
     const props = createRunnerProps({
       editorState: createMockEditorState({
         fileContents: { 'src/App.jsx': 'export default () => null;' },
@@ -574,33 +556,23 @@ describe('useAgentRunner', () => {
       result.current.send(mockFormEvent());
     });
 
-    await waitFor(() => {
-      expect(applyAgentChanges).toHaveBeenCalledWith(
-        [
-          expect.objectContaining({
-            path: 'src/components/Live.jsx',
-            before: '',
-            after: 'export default function Live() { return null; }',
-          }),
-        ],
-        expect.objectContaining({ autoApprove: false }),
-      );
-    });
+    await waitFor(() =>
+      expect(props.patchSession).toHaveBeenCalledWith('session-1', { status: 'error' }),
+    );
+    expect(applyAgentChanges).not.toHaveBeenCalled();
   });
 
-  it('replaces local-model progress updates instead of adding transcript lines', async () => {
+  it('records manager routing and model progress as reasoning stages', async () => {
     runAgent.mockImplementationOnce(async (options) => {
       options.onEvent({
-        type: 'thinking',
+        type: 'routing',
         turn: 1,
-        message: 'Local model is responding — streaming its next action…',
-        replaceProgress: true,
+        message: 'Request routed to edit.',
       });
       options.onEvent({
-        type: 'thinking',
+        type: 'model',
         turn: 1,
-        message: 'Local model is still working (48s elapsed; 2,703 character(s) received)…',
-        replaceProgress: true,
+        message: 'Calling the model for generate-changes…',
       });
       return { changes: [], summary: 'done' };
     });
@@ -612,20 +584,14 @@ describe('useAgentRunner', () => {
     });
 
     await waitFor(() => {
-      const latestProgressUpdate = [...vi.mocked(props.patchSession).mock.calls]
-        .reverse()
-        .map(([, update]) => update.reasoningEvents)
-        .find(
-          (reasoningEvents) =>
-            Array.isArray(reasoningEvents) &&
-            reasoningEvents.some((entry) => entry.text.includes('48s elapsed')),
-        );
-      expect(latestProgressUpdate).toBeDefined();
-      const progressEntries = (latestProgressUpdate ?? []).filter((entry) =>
-        entry.text.includes('Local model is'),
+      const reasoningUpdates = vi
+        .mocked(props.patchSession)
+        .mock.calls.map(([, update]) => update.reasoning)
+        .filter((reasoning): reasoning is string => typeof reasoning === 'string');
+      expect(reasoningUpdates.some((reasoning) => reasoning.includes('Routing'))).toBe(true);
+      expect(reasoningUpdates.some((reasoning) => reasoning.includes('Calling the model'))).toBe(
+        true,
       );
-      expect(progressEntries).toHaveLength(1);
-      expect(progressEntries[0]?.text).toContain('48s elapsed');
     });
   });
 });

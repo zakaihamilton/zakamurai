@@ -99,7 +99,6 @@ export function resetNewProjectState({
     draft.isAgentTreeOpen = false;
     draft.sessionDialog = null;
     draft.isModelManagerOpen = false;
-    draft.isRoleGraphOpen = false;
     draft.modelCacheWork = null;
     draft.modelCacheProgress = '';
     draft.modelCacheError = '';

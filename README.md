@@ -103,6 +103,10 @@ npm run deadcode      # Check unused files and dependencies (Knip)
 npm run test          # Unit tests (Vitest)
 npm run test:watch    # Vitest in watch mode
 npm run test:coverage # Unit tests with coverage thresholds
+npm run test:ai-manager # Focused manager, replay, trace, and prompt-runner tests
+npm run test:ai-manager:watch # Watch the focused manager suite while debugging
+npm run test:ai-manager:replay # Replay deterministic JSON manager fixtures
+npm run test:ai-manager:smoke # Opt-in real WebLLM manager smoke test
 npm run test:promptfoo # Static AI compliance eval (no API keys)
 npm run test:ai-soak # Mocked 200-request AI lifecycle and cleanup regression
 npm run analyze:ai -- report.json # Summarize AI metrics from an exported support report
@@ -133,6 +137,14 @@ drift scan. For physical-device validation, follow the
 
 Static `npm run test:promptfoo` uses the `echo` provider in [promptfooconfig.yaml](./promptfooconfig.yaml)
 and golden fixtures in `tests/ai-golden/` — **no API keys required**. It is included in `verify` and CI.
+
+The AI Manager has a fast deterministic debugging loop. Add or update a versioned fixture under
+`tests/ai-manager/fixtures/`, then run `npm run test:ai-manager:replay` to exercise the real manager
+and deterministic tools without loading WebLLM. During development, the Manager debug trace is
+available in non-production builds and can be exported as JSON from the prompt pane. The trace
+contains clipped and redacted inputs/outputs, routing/tool/model/validation events, timings, and
+structured error codes. Run `npm run test:ai-manager:smoke` only when validating the browser’s real
+WebLLM integration; set `ZAKAMURAI_AI_MODEL` to override the model.
 
 Knip exclusions are intentional: browser-only build/runtime dependencies (`almostnode`
 and `esbuild-wasm`) and optional developer tooling (`fast-check` and `promptfoo`) are loaded

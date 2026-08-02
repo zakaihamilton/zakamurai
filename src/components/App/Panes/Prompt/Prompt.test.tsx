@@ -107,6 +107,7 @@ vi.mock('@/components/AI/Processor', () => ({
 
 const {
   runAgent,
+  runManager,
   runCollaborativeAgent,
   applyAgentChanges,
   collectWorkspaceFiles,
@@ -115,6 +116,7 @@ const {
 } = vi.hoisted(() => ({
   collectWorkspaceFiles: vi.fn().mockResolvedValue({}),
   runAgent: vi.fn().mockResolvedValue({ summary: 'done', changes: [] }),
+  runManager: vi.fn().mockResolvedValue({ summary: 'done', changes: [] }),
   runCollaborativeAgent: vi.fn().mockResolvedValue({ summary: 'done', changes: [] }),
   applyAgentChanges: vi.fn(() => ({ deletions: [], changeSet: null })),
   ensureFileInTree: vi.fn(),
@@ -124,6 +126,7 @@ const {
 vi.mock('@/components/AI/Agent', () => ({
   collectWorkspaceFiles,
   runAgent,
+  runManager,
   runCollaborativeAgent,
   applyAgentChanges,
   ensureFileInTree,
@@ -242,12 +245,13 @@ describe('Prompt', () => {
 
   it('renders input and button when showAIInput is true', async () => {
     render(<Prompt />);
-    expect(screen.getByPlaceholderText('Tell the Agent what to do...')).toBeDefined();
+    expect(screen.getByPlaceholderText('Tell the AI Manager what to do...')).toBeDefined();
     expect(screen.getByTitle('Execute prompt')).toBeDefined();
-    expect(screen.getByLabelText('Active agent')).toBeDefined();
-    expect(screen.getByLabelText('Open agent tree')).toBeDefined();
-    expect(screen.getByRole('button', { name: 'Single' })).toBeDefined();
-    expect(screen.getByRole('button', { name: 'Team' })).toBeDefined();
+    expect(screen.getByLabelText('Active conversation')).toBeDefined();
+    expect(screen.getByLabelText('Open conversation history')).toBeDefined();
+    expect(screen.getByRole('heading', { name: 'AI Manager' })).toBeDefined();
+    expect(screen.queryByRole('button', { name: 'Single' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Team' })).toBeNull();
 
     const modelSelect = screen.getByLabelText('Model') as HTMLSelectElement;
     expect(modelSelect).toBeDefined();
@@ -351,7 +355,7 @@ describe('Prompt', () => {
   });
 
   it('calls state update when form is submitted', async () => {
-    const { runAgent } = await import('@/components/AI/Agent');
+    const { runManager } = await import('@/components/AI/Agent');
     const mockLogState = makeLogState({ isAIProcessing: false });
     vi.mocked(LogState.useState).mockReturnValue(mockLogState);
     vi.mocked(LogState.usePassiveState).mockReturnValue(mockLogState);
@@ -371,15 +375,15 @@ describe('Prompt', () => {
     expect(
       listAgentSessions(mockAgentSessionStore.sessions)[0].messages.length,
     ).toBeGreaterThanOrEqual(1);
-    await waitFor(() => expect(runAgent).toHaveBeenCalledOnce());
+    await waitFor(() => expect(runManager).toHaveBeenCalledOnce());
   });
 
-  it('creates a new root agent from the tree manager', async () => {
+  it('creates a new root conversation from the history manager', async () => {
     vi.mocked(PromptUiState.useState).mockReturnValue(makePromptUiState({ isAgentTreeOpen: true }));
     render(<Prompt />);
-    await waitFor(() => expect(screen.getByLabelText('New agent')).toBeDefined());
+    await waitFor(() => expect(screen.getByLabelText('New conversation')).toBeDefined());
     await act(async () => {
-      fireEvent.click(screen.getByLabelText('New agent'));
+      fireEvent.click(screen.getByLabelText('New conversation'));
     });
     expect(listAgentSessions(mockAgentSessionStore.sessions)).toHaveLength(2);
   });
@@ -388,49 +392,33 @@ describe('Prompt', () => {
     const promptUi = makePromptUiState({ isAgentTreeOpen: true });
     vi.mocked(PromptUiState.useState).mockReturnValue(promptUi);
     const view = render(<Prompt />);
-    await waitFor(() => expect(screen.getByLabelText('New agent')).toBeDefined());
+    await waitFor(() => expect(screen.getByLabelText('New conversation')).toBeDefined());
 
     await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: 'Rename Agent 1' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Rename Session 1' }));
     });
     view.rerender(<Prompt />);
     await waitFor(() => expect(screen.getByText('Rename session')).toBeDefined());
-    expect(screen.queryByRole('navigation', { name: 'Agent tree' })).toBeNull();
+    expect(screen.queryByRole('navigation', { name: 'Conversation history' })).toBeNull();
 
     await act(async () => {
       fireEvent.keyDown(document, { key: 'Escape' });
     });
     view.rerender(<Prompt />);
     await waitFor(() =>
-      expect(screen.getByRole('navigation', { name: 'Agent tree' })).toBeDefined(),
+      expect(screen.getByRole('navigation', { name: 'Conversation history' })).toBeDefined(),
     );
   });
 
-  it('shows the role graph summary in team mode and opens the editor dialog', async () => {
-    const active = expectAgentSession(mockAgentSessionStore);
-    mockAgentSessionStore.sessions[active.id] = {
-      ...active,
-      mode: 'team',
-    };
-    const promptUi = makePromptUiState();
-    vi.mocked(PromptUiState.useState).mockReturnValue(promptUi);
-    const view = render(<Prompt />);
-    expect(screen.getByLabelText('Team role graph summary')).toBeDefined();
-    expect(screen.getByText('Planner → Coder → Reviewer')).toBeDefined();
-    expect(screen.queryByLabelText('Role graph editor')).toBeNull();
-
-    await act(async () => {
-      fireEvent.click(screen.getByLabelText('Edit role graph'));
-    });
-    promptUi.isRoleGraphOpen = true;
-    view.rerender(<Prompt />);
-    expect(screen.getByLabelText('Role graph editor')).toBeDefined();
-    expect(screen.getByRole('dialog', { name: 'Team role graph' })).toBeDefined();
+  it('does not expose team or role graph controls', () => {
+    render(<Prompt />);
+    expect(screen.queryByText('Planner → Coder → Reviewer')).toBeNull();
+    expect(screen.queryByRole('dialog', { name: 'Team role graph' })).toBeNull();
   });
 
   it('handles input keydown events correctly', async () => {
     render(<Prompt />);
-    const input = screen.getByPlaceholderText('Tell the Agent what to do...');
+    const input = screen.getByPlaceholderText('Tell the AI Manager what to do...');
 
     await act(async () => {
       fireEvent.keyDown(input, { key: 'Enter', shiftKey: true });
@@ -447,7 +435,7 @@ describe('Prompt', () => {
       makeSidebarState({ showAIInput: false, isAIInputPopupOpen: true }),
     );
     render(<Prompt />);
-    expect(screen.getByPlaceholderText('Tell the Agent what to do...')).toBeDefined();
+    expect(screen.getByPlaceholderText('Tell the AI Manager what to do...')).toBeDefined();
   });
 
   it('shows compiling state and active file metadata', () => {
@@ -480,7 +468,7 @@ describe('Prompt', () => {
       render(<Prompt />);
     });
 
-    await waitFor(() => expect(runAgent).toHaveBeenCalled());
+    await waitFor(() => expect(runManager).toHaveBeenCalled());
     expect(promptUi.welcomeRequest).toBeNull();
   });
 
@@ -488,7 +476,7 @@ describe('Prompt', () => {
     const promptUi = makePromptUiState({ val: 'draft', historyIndex: -1, draftVal: '' });
     vi.mocked(PromptUiState.useState).mockReturnValue(promptUi);
     render(<Prompt />);
-    const input = screen.getByPlaceholderText('Tell the Agent what to do...');
+    const input = screen.getByPlaceholderText('Tell the AI Manager what to do...');
 
     await act(async () => {
       fireEvent.change(input, { target: { value: 'updated draft' } });
@@ -506,7 +494,7 @@ describe('Prompt', () => {
     );
     vi.mocked(LogState.useState).mockReturnValue(makeLogState({ isAIProcessing: true }));
     render(<Prompt />);
-    const input = screen.getByPlaceholderText('Agent is working... Please wait.');
+    const input = screen.getByPlaceholderText('AI Manager is working... Please wait.');
 
     await act(async () => {
       fireEvent.keyDown(input, { key: '.', ctrlKey: true });

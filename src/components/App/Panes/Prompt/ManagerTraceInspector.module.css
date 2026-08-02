@@ -1,0 +1,69 @@
+.panel {
+  border: 1px solid var(--border-color, #334155);
+  border-radius: 8px;
+  margin: 8px 0;
+  padding: 8px 10px;
+  background: var(--surface-color, rgb(15 23 42 / 40%));
+  color: var(--text-color, #e2e8f0);
+  font-size: 12px;
+}
+
+.summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 8px 0;
+}
+
+.button {
+  border: 1px solid var(--border-color, #475569);
+  border-radius: 5px;
+  padding: 3px 7px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+}
+
+.button:hover {
+  background: var(--hover-color, rgb(148 163 184 / 15%));
+}
+
+.meta {
+  color: var(--muted-text-color, #94a3b8);
+  margin: 0;
+}
+
+.events {
+  display: grid;
+  gap: 5px;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.event {
+  border-left: 2px solid var(--border-color, #475569);
+  padding-left: 7px;
+}
+
+.eventError {
+  border-left-color: var(--error-color, #f87171);
+}
+
+.eventLabel {
+  font-weight: 600;
+}
+
+.eventDetail {
+  display: block;
+  color: var(--muted-text-color, #94a3b8);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}

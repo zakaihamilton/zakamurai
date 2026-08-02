@@ -113,90 +113,108 @@ export type AgentEvent = {
 
 export type AgentEventHandler = (event: AgentEvent) => void;
 
-export type RoleKind = 'planner' | 'coder' | 'reviewer' | 'custom';
+export type ManagerIntent =
+  | 'workspace-query'
+  | 'project-check'
+  | 'preview-inspection'
+  | 'explanation'
+  | 'edit'
+  | 'mixed';
 
-export type EdgeCondition = 'always' | 'approve' | 'reject' | 'success' | 'failure';
+export type ManagerToolName =
+  | 'list_files'
+  | 'search_workspace'
+  | 'search_semantic'
+  | 'read_file'
+  | 'validate'
+  | 'list_project_checks'
+  | 'run_project_check'
+  | 'inspect_preview';
 
-export type RoleNodeInput = {
-  kind?: RoleKind | string;
-  id?: string | null;
-  label?: string | null;
-  modelId?: string | null;
-  systemPrompt?: string | null;
-  allowedActions?: string[] | null;
-  maxTurns?: number | null;
-  join?: 'all' | 'any';
-  maxRetries?: number;
+export type ContextRequest = {
+  tool: Extract<
+    ManagerToolName,
+    'list_files' | 'search_workspace' | 'search_semantic' | 'read_file'
+  >;
+  input?: Record<string, unknown>;
 };
 
-export type RoleNode = {
-  id: string;
-  kind: RoleKind;
-  label: string;
-  modelId: string | null;
-  systemPrompt: string | null;
-  allowedActions: string[] | null;
-  maxTurns: number | null;
-  join: 'all' | 'any';
-  maxRetries: number;
+export type ManagerStep =
+  | { kind: 'tool'; tool: ManagerToolName; input?: Record<string, unknown>; reason: string }
+  | { kind: 'model'; task: 'answer' | 'generate-changes' | 'repair-changes'; reason: string };
+
+export type ManagerPlan = {
+  intent: ManagerIntent;
+  steps: ManagerStep[];
+  modelRequired: boolean;
+  confidence: 'high' | 'fallback';
 };
 
-export type ResolvedRoleConfig = {
-  id: string;
-  kind: RoleKind;
-  label: string;
-  modelId: string | null;
-  systemPrompt: string;
-  allowedActions: string[];
-  maxTurns: number;
-  join: 'all' | 'any';
-  maxRetries: number;
+export type ModelResult =
+  | { kind: 'answer'; summary: string }
+  | { kind: 'request-context'; requests: ContextRequest[] }
+  | { kind: 'changes'; summary: string; changes: AgentChange[] };
+
+export type ManagerEventType = 'routing' | 'tool' | 'context' | 'model' | 'validation' | 'finished';
+
+export type ManagerEvent = {
+  type: ManagerEventType;
+  turn: number;
+  message?: string;
+  tool?: ManagerToolName;
+  task?: 'answer' | 'generate-changes' | 'repair-changes';
+  input?: string;
+  output?: string;
+  error?: boolean;
+  plan?: ManagerPlan;
 };
 
-export type RoleEdge = {
-  from: string;
-  to: string;
-  when: EdgeCondition;
-  maxTimes?: number;
+export type ManagerEventHandler = (event: ManagerEvent) => void;
+
+export type ManagerModelCall = {
+  model: string;
+  messages: WebLLMMessage[];
+  signal?: AbortSignal;
+  task: 'answer' | 'generate-changes' | 'repair-changes';
+  temperature: number;
+  top_p: number;
+  max_tokens: number;
+  onMetrics?: (metrics: WebLLMGenerationMetrics) => void;
 };
 
-export type RoleGraph = {
-  version: number;
-  entryRoleId: string | null;
-  roles: RoleNode[];
-  edges: RoleEdge[];
+export type ManagerModelClient = (call: ManagerModelCall) => Promise<string>;
+
+export type ManagerToolOptions = {
+  validate?: (files: FileMap) => Promise<VerificationResult | string> | VerificationResult | string;
+  runProjectCheck?: (check: string, files: FileMap) => Promise<string>;
+  inspectPreview?: (files: FileMap) => Promise<unknown>;
+  retrieveContext?: (query: string, k: number) => Promise<SemanticSearchResult[]>;
 };
 
-export type RoleGraphValidation = {
-  valid: boolean;
-  errors: string[];
-  graph: RoleGraph;
+export type RunManagerOptions = ManagerToolOptions & {
+  request: string;
+  scope?: 'file' | 'project';
+  activeFile?: string | null;
+  selectedLines?: number[];
+  files: FileMap;
+  model: string;
+  signal?: AbortSignal;
+  onEvent?: ManagerEventHandler;
+  onMetrics?: (metrics: WebLLMGenerationMetrics) => void;
+  priorContext?: string;
+  workspaceIndex?: WorkspaceIndex | null;
+  modelClient?: ManagerModelClient;
+  onTrace?: (trace: import('./Agent/ManagerTrace').ManagerTrace) => void;
 };
 
-export type PlanSummary = {
-  goals: string[];
-  files: string[];
-  steps: string[];
-  visualBrief: VisualBrief | null;
-  raw: string;
-};
-
-export type VisualBrief = {
-  pageHierarchy: string[];
-  components: string[];
-  palette: string[];
-  typography: string[];
-  tokens: string[];
-  responsive: string[];
-  interactions: string[];
-  accessibility: string[];
-};
-
-export type ReviewSummary = {
-  approved: boolean;
-  fixes: string[];
-  notes: string;
-  raw: string;
+export type RunManagerResult = {
+  changes: AgentChange[];
+  files: FileMap;
+  summary: string;
+  plan: ManagerPlan;
+  events: number;
+  workspace: import('./Agent/Workspace').AgentWorkspace;
+  trace: import('./Agent/ManagerTrace').ManagerTrace;
 };
 
 export type VerificationResult = {
@@ -390,58 +408,6 @@ export type AgentContextSnapshot = {
   request: string;
   entries: ContextEntry[];
   text: string;
-};
-
-export type RunAgentOptions = {
-  request: string;
-  scope?: 'file' | 'project';
-  activeFile?: string | null;
-  selectedLines?: number[];
-  files: FileMap;
-  model: string;
-  validate?: (files: FileMap) => Promise<VerificationResult | string> | VerificationResult | string;
-  runProjectCheck?: (check: string, files: FileMap) => Promise<string>;
-  inspectPreview?: (files: FileMap) => Promise<unknown>;
-  retrieveContext?: (query: string, k: number) => Promise<SemanticSearchResult[]>;
-  signal?: AbortSignal;
-  onEvent?: AgentEventHandler;
-  onMetrics?: (metrics: WebLLMGenerationMetrics) => void;
-  maxTurns?: number;
-  systemPrompt?: string;
-  allowedActions?: string[];
-  priorContext?: string;
-  workspace?: import('./Agent/Workspace').AgentWorkspace | null;
-  agentRole?: string | null;
-  workspaceIndex?: WorkspaceIndex | null;
-  visualMode?: boolean;
-  requirePreviewInspection?: boolean;
-};
-
-export type RunAgentResult = {
-  changes: AgentChange[];
-  files: FileMap;
-  summary: string;
-  events: number;
-  workspace: import('./Agent/Workspace').AgentWorkspace;
-};
-
-export type RunCollaborativeAgentOptions = Omit<
-  RunAgentOptions,
-  'systemPrompt' | 'allowedActions' | 'maxTurns' | 'agentRole' | 'workspace'
-> & {
-  roleGraph?: RoleGraph | null;
-  onEvent?: AgentEventHandler;
-};
-
-export type RunCollaborativeAgentResult = {
-  changes: AgentChange[];
-  files: FileMap;
-  summary: string;
-  plan: PlanSummary | null;
-  review: ReviewSummary | null;
-  roleSummaries: Record<string, string>;
-  roleGraph: RoleGraph;
-  events: string;
 };
 
 export type SnapshotOptions = {

@@ -178,7 +178,6 @@ export function makePromptUiState(
     welcomePrompt: '',
     selectedModel: '',
     isModelManagerOpen: false,
-    isRoleGraphOpen: false,
     cachedModelIds: [],
     modelCacheWork: null,
     modelCacheProgress: '',
@@ -189,6 +188,7 @@ export function makePromptUiState(
     welcomeRequest: null,
     runningSessionId: null,
     isAgentTreeOpen: false,
+    latestManagerTrace: null,
     ...overrides,
   });
 }

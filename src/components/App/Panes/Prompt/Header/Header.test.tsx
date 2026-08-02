@@ -20,7 +20,7 @@ Object.defineProperty(navigator, 'clipboard', {
 describe('PromptHeader', () => {
   it('renders title and status indicators', () => {
     render(<PromptHeader isAIProcessing={true} isSystemProcessing={true} />);
-    expect(screen.getByText('Agent')).toBeDefined();
+    expect(screen.getByText('AI Manager')).toBeDefined();
     expect(screen.getByText('Compiling')).toBeDefined();
   });
 
@@ -42,17 +42,8 @@ describe('PromptHeader', () => {
     expect(navigator.clipboard.writeText).toHaveBeenCalledWith('--- Transcript ---\nHello world');
   });
 
-  it('switches agent mode', () => {
-    const onModeChange = vi.fn();
-    render(
-      <PromptHeader
-        isAIProcessing={false}
-        isSystemProcessing={false}
-        mode="single"
-        onModeChange={onModeChange}
-      />,
-    );
-    fireEvent.click(screen.getByRole('button', { name: 'Team' }));
-    expect(onModeChange).toHaveBeenCalledWith('team');
+  it('does not expose agent mode controls', () => {
+    render(<PromptHeader isAIProcessing={false} isSystemProcessing={false} />);
+    expect(screen.queryByRole('button', { name: 'Team' })).toBeNull();
   });
 });
