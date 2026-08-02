@@ -44,6 +44,12 @@ const summarizeToolResult = (tool: ManagerToolName, value: unknown): string => {
 };
 
 const extractQuery = (request: string): string => {
+  const listDirectory = request.match(
+    /\b(?:list|show)\b.*\bfiles?\b.*\b(?:in|under|within)\s+(?:the\s+)?[`'“”`]?((?:[\w.-]+\/)*[\w.-]+)[`'“”`]?\s*$/i,
+  )?.[1];
+  if (listDirectory && !/^(?:workspace|project|repository|repo)$/i.test(listDirectory)) {
+    return `${listDirectory.replace(/\/+$/, '')}/`;
+  }
   const quoted = request.match(/["'“”`]([^"'“”`]+)["'“”`]/)?.[1];
   if (quoted) return quoted;
   return request
@@ -51,6 +57,9 @@ const extractQuery = (request: string): string => {
     .replace(/\s+/g, ' ')
     .trim();
 };
+
+const planIncludesTool = (plan: ReturnType<typeof createManagerPlan>, tool: ManagerToolName) =>
+  plan.steps.some((step) => step.kind === 'tool' && step.tool === tool);
 
 const extractPath = (request: string, activeFile?: string | null): string | null => {
   const quoted = request.match(/["'“”`]([^"'“”`]+)["'“”`]/)?.[1];
@@ -361,6 +370,11 @@ async function executeManager({
         }
         if (status === 'failed') throw new Error(verification.text);
       }
+      let previewSummary = '';
+      if (planIncludesTool(plan, 'inspect_preview')) {
+        const preview = await notifyTool('inspect_preview');
+        previewSummary = `\n\nPreview inspection:\n${summarizeToolResult(preview.tool, preview.value)}`;
+      }
       const summary =
         (result.kind === 'changes' ? result.summary : '') ||
         `Prepared ${changes.length} file(s) for review.`;
@@ -368,7 +382,7 @@ async function executeManager({
       return {
         changes: workspace.changes(),
         files: workspace.files,
-        summary,
+        summary: `${summary}${previewSummary}`,
         plan,
         events: messages.length,
         workspace,

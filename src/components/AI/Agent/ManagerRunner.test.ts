@@ -21,6 +21,22 @@ describe('runManager', () => {
     expect(askWebLLM).not.toHaveBeenCalled();
   });
 
+  it('keeps directory scopes for list-file requests', async () => {
+    const result = await runManager({
+      request: 'list the files in src',
+      files: {
+        'src/App.jsx': 'export default function App() {}',
+        'src/components/Button.jsx': 'export default function Button() {}',
+        'README.md': 'readme',
+      },
+      model: 'test-model',
+    });
+
+    expect(result.summary).toContain('src/App.jsx');
+    expect(result.summary).toContain('src/components/Button.jsx');
+    expect(result.summary).not.toContain('README.md');
+  });
+
   it('executes build, read, and check-list requests without WebLLM', async () => {
     const { askWebLLM } = (await import('../WebLLMAPI')) as unknown as {
       askWebLLM: ReturnType<typeof vi.fn>;
@@ -190,6 +206,37 @@ describe('runManager', () => {
     expect(check.summary).toContain('tests passed');
     expect(inspectPreview).toHaveBeenCalled();
     expect(runProjectCheck).toHaveBeenCalledWith('test', files);
+  });
+
+  it('inspects the updated workspace for mixed preview requests', async () => {
+    const { askWebLLM } = (await import('../WebLLMAPI')) as unknown as {
+      askWebLLM: ReturnType<typeof vi.fn>;
+    };
+    askWebLLM.mockResolvedValue(
+      JSON.stringify({
+        kind: 'changes',
+        summary: 'Updated the app.',
+        changes: [{ path: 'src/App.jsx', content: 'export default function App() {}' }],
+      }),
+    );
+    const validate = vi.fn().mockResolvedValue({ status: 'passed' });
+    const inspectPreview = vi
+      .fn()
+      .mockResolvedValue({ status: 'passed', title: 'Updated preview' });
+    const result = await runManager({
+      request: 'change the app and inspect the preview',
+      files: { 'src/App.jsx': 'export default function App() { return null; }' },
+      activeFile: 'src/App.jsx',
+      model: 'test-model',
+      validate,
+      inspectPreview,
+    });
+
+    expect(result.plan.steps).toContainEqual(
+      expect.objectContaining({ kind: 'tool', tool: 'inspect_preview' }),
+    );
+    expect(inspectPreview).toHaveBeenCalledWith(result.files);
+    expect(result.summary).toContain('Updated preview');
   });
 
   it('returns semantic answers and allows bounded follow-up context', async () => {

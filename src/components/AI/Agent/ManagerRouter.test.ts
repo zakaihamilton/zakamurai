@@ -56,6 +56,18 @@ describe('manager router', () => {
     });
   });
 
+  it('keeps semantic diagnostics on the model path', () => {
+    expect(createManagerPlan('why is the build failing?')).toMatchObject({
+      intent: 'explanation',
+      modelRequired: true,
+    });
+    expect(createManagerPlan('diagnose this test error')).toMatchObject({
+      intent: 'explanation',
+      modelRequired: true,
+    });
+    expect(classifyManagerIntent('search for error')).toBe('workspace-query');
+  });
+
   it('keeps the legacy request predicates deterministic', () => {
     expect(isLikelyProjectCheck('perform a lint check')).toBe(true);
     expect(isLikelyProjectCheck('explain the check')).toBe(false);

@@ -562,6 +562,31 @@ describe('useAgentRunner', () => {
     expect(applyAgentChanges).not.toHaveBeenCalled();
   });
 
+  it('does not stage partial changes when the manager is cancelled', async () => {
+    runAgent.mockRejectedValueOnce({
+      code: 'cancelled',
+      changes: [{ path: 'src/App.jsx', before: 'old', after: 'partial' }],
+    });
+    const props = createRunnerProps({
+      editorState: createMockEditorState({
+        fileContents: { 'src/App.jsx': 'old' },
+        selectedLines: {},
+      }),
+    });
+    const { result } = renderHook(() => useAgentRunner(props));
+
+    act(() => {
+      result.current.send(mockFormEvent());
+    });
+
+    await waitFor(() =>
+      expect(props.patchSession).toHaveBeenCalledWith('session-1', { status: 'idle' }),
+    );
+    expect(applyAgentChanges).not.toHaveBeenCalled();
+    expect(props.patchSession).not.toHaveBeenCalledWith('session-1', { status: 'error' });
+    expect(props.createSessionMessage).toHaveBeenCalledTimes(1);
+  });
+
   it('records manager routing and model progress as reasoning stages', async () => {
     runAgent.mockImplementationOnce(async (options) => {
       options.onEvent({

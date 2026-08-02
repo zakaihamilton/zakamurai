@@ -478,6 +478,22 @@ export default function useAgentRunner({
             });
           }
         } catch (error) {
+          const isCancelled =
+            error != null &&
+            typeof error === 'object' &&
+            'code' in error &&
+            (error as { code?: unknown }).code === 'cancelled';
+          if (isCancelled) {
+            patchSession(sessionId, { status: 'idle' });
+            promptUiState((draft) => {
+              draft.runningSessionId = null;
+              draft.abortController = null;
+            });
+            logState((draft) => {
+              draft.isAIProcessing = false;
+            });
+            return;
+          }
           const managerError =
             error &&
             typeof error === 'object' &&

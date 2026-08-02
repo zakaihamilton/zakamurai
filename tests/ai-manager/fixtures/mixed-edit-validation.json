@@ -1,7 +1,7 @@
 {
   "version": 1,
   "name": "mixed-edit-and-validation",
-  "request": "change the title and verify the result",
+  "request": "change the title and inspect the preview",
   "activeFile": "src/App.jsx",
   "files": {
     "package.json": "{\"scripts\":{\"build\":\"build\"}}",
@@ -11,10 +11,11 @@
     "{\"kind\":\"changes\",\"summary\":\"Updated title\",\"changes\":[{\"path\":\"src/App.jsx\",\"content\":\"export default function App() { return <h1>New</h1>; }\"}]}"
   ],
   "validationResponses": [{ "status": "passed", "check": "build" }],
+  "previewResponse": { "status": "passed", "title": "Updated preview" },
   "expected": {
     "intent": "mixed",
     "outcome": "success",
     "modelCalls": 1,
-    "toolOrder": ["read_file", "validate"]
+    "toolOrder": ["read_file", "validate", "inspect_preview"]
   }
 }
