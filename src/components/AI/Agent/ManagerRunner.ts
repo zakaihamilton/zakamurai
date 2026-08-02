@@ -323,12 +323,13 @@ async function executeManager({
         else workspace.write(change.path, change.after);
       }
       if (validate) {
+        const verification = await executeManagerTool({ tool: 'validate' }, tools);
         onEvent({
           type: 'validation',
           turn: repair + 1,
           message: 'Validating generated changes…',
+          output: JSON.stringify(verification.value),
         });
-        const verification = await executeManagerTool({ tool: 'validate' }, tools);
         const status = (verification.value as { status?: string })?.status;
         if (status === 'failed' && repair < MAX_REPAIR_ATTEMPTS) {
           diagnostics = verification.text;

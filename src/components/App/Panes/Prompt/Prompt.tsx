@@ -59,7 +59,7 @@ export default function Prompt() {
   );
   const sidebarState = requireStore(SidebarState.useState(['showAIInput', 'isAIInputPopupOpen']));
   const tabState = requireStore(TabState.useState(['activeTabId', 'openTabs']));
-  const editorState = requireStore(EditorState.useState(['selectedLines']));
+  const editorState = requireStore(EditorState.useState(['selectedLines', 'fileContents']));
   const agentSessionState = requireStore(
     AgentSessionState.useState(['sessions', 'activeSessionId']),
   );
@@ -178,6 +178,16 @@ export default function Prompt() {
     (scope: string) => {
       promptUiState((draft) => {
         draft.promptScope = scope;
+      });
+    },
+    [promptUiState],
+  );
+  const replayManagerRequest = useCallback(
+    (request: string) => {
+      promptUiState((draft) => {
+        draft.val = request;
+        draft.draftVal = request;
+        draft.historyIndex = -1;
       });
     },
     [promptUiState],
@@ -301,6 +311,8 @@ export default function Prompt() {
       onOpenModelManager={openModelManager}
       patchSession={patchSession}
       latestManagerTrace={latestManagerTrace}
+      traceFiles={editorState.fileContents}
+      onReplayRequest={replayManagerRequest}
     />
   );
 }

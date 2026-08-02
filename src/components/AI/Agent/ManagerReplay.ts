@@ -38,6 +38,63 @@ export type ManagerReplayResult = {
   modelCalls: ManagerModelCall[];
 };
 
+const parseEventInput = (input?: string): Record<string, unknown> | null => {
+  if (!input) return null;
+  try {
+    const value = JSON.parse(input);
+    return value && typeof value === 'object' ? (value as Record<string, unknown>) : null;
+  } catch {
+    return null;
+  }
+};
+
+const parseValidationOutput = (output?: string): VerificationResult | string | null => {
+  if (!output) return null;
+  try {
+    const value = JSON.parse(output);
+    return value && typeof value === 'object' ? (value as VerificationResult) : output;
+  } catch {
+    return output;
+  }
+};
+
+/**
+ * Converts a development trace into a portable replay fixture using the
+ * caller's current workspace snapshot. Trace values are already clipped and
+ * redacted, so this intentionally produces a best-effort diagnostic fixture.
+ */
+export function createManagerReplayFixtureFromTrace(
+  trace: ManagerTrace,
+  files: FileMap,
+): ManagerReplayFixture {
+  const modelResponses = trace.events
+    .filter((event) => event.phase === 'model' && event.output)
+    .map((event) => event.output as string);
+  const readEvent = trace.events.find(
+    (event) => event.phase === 'tool' && event.tool === 'read_file',
+  );
+  const readInput = parseEventInput(readEvent?.input);
+  const validationResponses = trace.events
+    .filter((event) => event.phase === 'validation' && event.output)
+    .map((event) => parseValidationOutput(event.output))
+    .filter((value): value is VerificationResult | string => value !== null);
+
+  return {
+    version: 1,
+    name: `trace-${trace.runId}`,
+    request: trace.request,
+    files: { ...files },
+    activeFile: typeof readInput?.path === 'string' ? readInput.path : undefined,
+    modelResponses,
+    ...(validationResponses.length ? { validationResponses } : {}),
+    expected: {
+      intent: trace.plan?.intent,
+      ...(trace.outcome === 'running' ? {} : { outcome: trace.outcome }),
+      modelCalls: modelResponses.length,
+    },
+  };
+}
+
 export async function replayManagerFixture(
   fixture: ManagerReplayFixture,
 ): Promise<ManagerReplayResult> {
@@ -77,6 +134,7 @@ export async function replayManagerFixture(
         fixture.previewResponse === undefined ? undefined : async () => fixture.previewResponse,
       onEvent: (event) => {
         if (event.type === 'tool' && event.tool) toolOrder.push(event.tool);
+        if (event.type === 'validation') toolOrder.push('validate');
       },
       onTrace: (nextTrace) => {
         trace = nextTrace;

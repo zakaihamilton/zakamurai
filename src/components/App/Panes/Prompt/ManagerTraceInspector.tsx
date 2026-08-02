@@ -1,8 +1,11 @@
-import type { ManagerTrace } from '@/components/AI/Agent';
+import { type ManagerTrace, createManagerReplayFixtureFromTrace } from '@/components/AI/Agent';
+import type { FileMap } from '@/components/AI/types';
 import styles from './ManagerTraceInspector.module.css';
 
 type ManagerTraceInspectorProps = {
   trace: ManagerTrace | null;
+  files?: FileMap;
+  onReplayRequest?: (request: string) => void;
 };
 
 const formatEventDetail = (trace: ManagerTrace, sequence: number): string => {
@@ -11,7 +14,11 @@ const formatEventDetail = (trace: ManagerTrace, sequence: number): string => {
   return [event.tool, event.task, event.message, event.errorCode].filter(Boolean).join(' · ');
 };
 
-export default function ManagerTraceInspector({ trace }: ManagerTraceInspectorProps) {
+export default function ManagerTraceInspector({
+  trace,
+  files = {},
+  onReplayRequest,
+}: ManagerTraceInspectorProps) {
   if (process.env.NODE_ENV === 'production' || !trace) return null;
 
   const exportTrace = () => {
@@ -33,6 +40,14 @@ export default function ManagerTraceInspector({ trace }: ManagerTraceInspectorPr
     if (createObjectURL) revokeObjectURL?.(url);
   };
 
+  const copy = async (value: string) => {
+    await navigator.clipboard?.writeText(value);
+  };
+
+  const copyTrace = () => copy(JSON.stringify(trace, null, 2));
+  const copyReplayFixture = () =>
+    copy(JSON.stringify(createManagerReplayFixtureFromTrace(trace, files), null, 2));
+
   return (
     <details className={styles.panel} data-testid="manager-trace-inspector">
       <summary className={styles.summary}>Manager debug trace</summary>
@@ -43,6 +58,21 @@ export default function ManagerTraceInspector({ trace }: ManagerTraceInspectorPr
         <button type="button" className={styles.button} onClick={exportTrace}>
           Export JSON
         </button>
+        <button type="button" className={styles.button} onClick={copyTrace}>
+          Copy trace
+        </button>
+        <button type="button" className={styles.button} onClick={copyReplayFixture}>
+          Copy replay fixture
+        </button>
+        {onReplayRequest && (
+          <button
+            type="button"
+            className={styles.button}
+            onClick={() => onReplayRequest(trace.request)}
+          >
+            Replay request
+          </button>
+        )}
       </div>
       <ul className={styles.events}>
         {trace.events.map((event) => (

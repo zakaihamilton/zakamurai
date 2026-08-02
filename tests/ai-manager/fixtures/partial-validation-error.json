@@ -14,6 +14,6 @@
     "intent": "edit",
     "outcome": "error",
     "modelCalls": 2,
-    "toolOrder": ["read_file"]
+    "toolOrder": ["read_file", "validate"]
   }
 }

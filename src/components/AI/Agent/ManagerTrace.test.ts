@@ -1,4 +1,5 @@
 import type { ManagerEvent } from '@/components/AI/types';
+import { createManagerReplayFixtureFromTrace } from './ManagerReplay';
 import {
   ManagerRunError,
   ManagerTraceRecorder,
@@ -55,5 +56,37 @@ describe('manager traces', () => {
     expect(error).toMatchObject({ name: 'ManagerRunError', code: 'tool', phase: 'tool' });
     expect(error.changes).toHaveLength(1);
     expect(error.trace.outcome).toBe('error');
+  });
+
+  it('creates a replay fixture from a trace using the current workspace snapshot', () => {
+    const recorder = new ManagerTraceRecorder('change the app', { runId: 'replay-run' });
+    recorder.setPlan({
+      intent: 'edit',
+      steps: [],
+      modelRequired: true,
+      confidence: 'high',
+    });
+    recorder.record({
+      phase: 'tool',
+      turn: 1,
+      tool: 'read_file',
+      input: JSON.stringify({ path: 'src/App.jsx' }),
+    });
+    recorder.record({
+      phase: 'model',
+      turn: 1,
+      task: 'generate-changes',
+      output: '{"kind":"changes","changes":[]}',
+    });
+    const trace = recorder.finish('success');
+    const fixture = createManagerReplayFixtureFromTrace(trace, { 'src/App.jsx': 'old' });
+
+    expect(fixture).toMatchObject({
+      name: 'trace-replay-run',
+      request: 'change the app',
+      files: { 'src/App.jsx': 'old' },
+      activeFile: 'src/App.jsx',
+      modelResponses: ['{"kind":"changes","changes":[]}'],
+    });
   });
 });

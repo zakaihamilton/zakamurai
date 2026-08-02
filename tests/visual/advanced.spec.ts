@@ -111,4 +111,15 @@ test.describe('Zakamurai Navigation Tests', () => {
     await page.getByTestId('ai-prompt-toggle').filter({ visible: true }).click();
     await expect(textarea).not.toBeVisible({ timeout: 5000 });
   });
+
+  test('should preserve conversation history branching controls', async ({ page }) => {
+    await page.getByTestId('ai-prompt-toggle').filter({ visible: true }).click();
+    await page.getByRole('button', { name: 'Open conversation history' }).click();
+
+    const dialog = page.getByRole('dialog');
+    await expect(dialog).toBeVisible();
+    await expect(dialog.getByText('Session 1', { exact: true })).toBeVisible();
+    await dialog.getByRole('button', { name: 'Branch Session 1' }).click();
+    await expect(page.getByLabel('Active conversation')).toContainText('Session 1 branch');
+  });
 });

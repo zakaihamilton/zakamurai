@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "name": "tool-only-preview-inspection",
+  "request": "inspect the current preview",
+  "files": {
+    "src/App.jsx": "export default function App() { return <h1>Preview</h1>; }"
+  },
+  "previewResponse": {
+    "status": "passed",
+    "title": "Preview",
+    "elements": ["h1: Preview"]
+  },
+  "expected": {
+    "intent": "preview-inspection",
+    "outcome": "success",
+    "modelCalls": 0,
+    "toolOrder": ["inspect_preview"]
+  }
+}

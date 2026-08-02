@@ -50,4 +50,28 @@ describe('ManagerTraceInspector', () => {
     expect(click).toHaveBeenCalledOnce();
     click.mockRestore();
   });
+
+  it('copies a trace and a replay fixture and can reload the request', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText },
+    });
+    const onReplayRequest = vi.fn();
+
+    render(
+      <ManagerTraceInspector
+        trace={trace}
+        files={{ 'src/App.jsx': 'old' }}
+        onReplayRequest={onReplayRequest}
+      />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Copy trace' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Copy replay fixture' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Replay request' }));
+
+    expect(writeText).toHaveBeenCalledTimes(2);
+    expect(writeText.mock.calls[1][0]).toContain('trace-test-run');
+    expect(onReplayRequest).toHaveBeenCalledWith('list files');
+  });
 });

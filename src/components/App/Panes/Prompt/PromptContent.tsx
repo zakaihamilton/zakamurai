@@ -61,6 +61,8 @@ export default function PromptContent({
   onOpenModelManager,
   patchSession,
   latestManagerTrace,
+  traceFiles,
+  onReplayRequest,
 }: PromptContentProps) {
   const transcriptText = activeSession?.messages?.length
     ? activeSession.messages
@@ -162,7 +164,11 @@ export default function PromptContent({
             activeSession && patchSession(activeSession.id, { showStepIO: show })
           }
         />
-        <ManagerTraceInspector trace={latestManagerTrace || null} />
+        <ManagerTraceInspector
+          trace={latestManagerTrace || null}
+          files={traceFiles}
+          onReplayRequest={onReplayRequest}
+        />
         <PromptComposer
           value={value}
           onChange={onChange}

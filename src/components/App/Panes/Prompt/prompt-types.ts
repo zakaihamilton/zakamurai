@@ -1,5 +1,5 @@
 import type { ManagerTrace } from '@/components/AI/Agent/ManagerTrace';
-import type { AgentEvent, WebLLMModel } from '@/components/AI/types';
+import type { AgentEvent, FileMap, WebLLMModel } from '@/components/AI/types';
 import type { ExtendedEditorState } from '@/components/App/Views/EditorArea/types';
 import type { FileSystemApi } from '@/components/App/types';
 import type {
@@ -233,6 +233,8 @@ export type PromptContentProps = {
   onOpenModelManager: () => void;
   patchSession: (sessionId: string, patch: Partial<AgentSession>) => void;
   latestManagerTrace?: ManagerTrace | null;
+  traceFiles?: FileMap;
+  onReplayRequest?: (request: string) => void;
 };
 
 export type UseAgentRunnerParams = {

@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "name": "tool-only-search-workspace",
+  "request": "search for useState",
+  "files": {
+    "src/App.jsx": "import { useState } from 'react';\nexport default function App() { return useState(0); }",
+    "README.md": "workspace notes"
+  },
+  "expected": {
+    "intent": "workspace-query",
+    "outcome": "success",
+    "modelCalls": 0,
+    "toolOrder": ["search_workspace"]
+  }
+}

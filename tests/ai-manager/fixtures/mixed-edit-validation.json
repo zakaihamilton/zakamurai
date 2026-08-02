@@ -1,9 +1,10 @@
 {
   "version": 1,
-  "name": "model-edit-with-validation",
-  "request": "change the title",
+  "name": "mixed-edit-and-validation",
+  "request": "change the title and verify the result",
   "activeFile": "src/App.jsx",
   "files": {
+    "package.json": "{\"scripts\":{\"build\":\"build\"}}",
     "src/App.jsx": "export default function App() { return <h1>Old</h1>; }"
   },
   "modelResponses": [
@@ -11,7 +12,7 @@
   ],
   "validationResponses": [{ "status": "passed", "check": "build" }],
   "expected": {
-    "intent": "edit",
+    "intent": "mixed",
     "outcome": "success",
     "modelCalls": 1,
     "toolOrder": ["read_file", "validate"]
