@@ -302,6 +302,18 @@ async function executeManager({
     messages.push({ role: 'assistant', content: reply });
     onEvent({ type: 'model', turn: round + 1, task, output: reply });
     result = parseModelResult(reply);
+    if (
+      task !== 'answer' &&
+      (result.kind === 'answer' || (result.kind === 'changes' && result.changes.length === 0))
+    ) {
+      if (round === MAX_CONTEXT_ROUNDS - 1) {
+        throw new Error('The model did not return changes for an edit request.');
+      }
+      diagnostics =
+        'The previous model response did not return changes for an edit request. Return a kind=changes response with complete file contents.';
+      task = task === 'repair-changes' ? 'repair-changes' : 'generate-changes';
+      continue;
+    }
     if (result.kind !== 'request-context') break;
     if (!result.requests.length) throw new Error('The model requested no usable context.');
     for (const requestContext of result.requests) {
@@ -310,6 +322,8 @@ async function executeManager({
   }
 
   if (!result) throw new Error('The manager did not receive a model result.');
+  if (task !== 'answer' && result.kind !== 'changes')
+    throw new Error('The model did not return changes for an edit request.');
   if (result.kind === 'answer') {
     onEvent({ type: 'finished', turn: messages.length, message: result.summary });
     return {

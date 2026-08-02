@@ -140,6 +140,41 @@ describe('runManager', () => {
     expect(askWebLLM).toHaveBeenCalledOnce();
   });
 
+  it('does not treat an answer-only edit response as a successful write', async () => {
+    const modelClient = vi
+      .fn()
+      .mockResolvedValueOnce(JSON.stringify({ kind: 'answer', summary: 'The app is implemented.' }))
+      .mockResolvedValueOnce(
+        JSON.stringify({
+          kind: 'changes',
+          summary: 'Implemented the todo app.',
+          changes: [{ path: 'src/App.jsx', content: 'export default function App() {}' }],
+        }),
+      );
+    const result = await runManager({
+      request: 'create a todo app',
+      files: { 'src/App.jsx': 'export default function App() { return null; }' },
+      activeFile: 'src/App.jsx',
+      model: 'test-model',
+      modelClient,
+    });
+
+    expect(result.files['src/App.jsx']).toBe('export default function App() {}');
+    expect(result.changes).toEqual([
+      {
+        path: 'src/App.jsx',
+        before: 'export default function App() { return null; }',
+        after: 'export default function App() {}',
+      },
+    ]);
+    expect(modelClient).toHaveBeenCalledTimes(2);
+    expect(
+      modelClient.mock.calls[1][0].messages.some((message: { content: string }) =>
+        message.content.includes('return changes for an edit request'),
+      ),
+    ).toBe(true);
+  });
+
   it('accepts an injected model client for deterministic replay', async () => {
     const { askWebLLM } = (await import('../WebLLMAPI')) as unknown as {
       askWebLLM: ReturnType<typeof vi.fn>;
