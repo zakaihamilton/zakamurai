@@ -4,20 +4,15 @@ import { useFileSystem } from '@/components/Storage';
 import Node from '@/components/state/Node';
 import { createState } from '@/components/state/State';
 import { setInDraft } from '@/components/state/StateUtils';
-import { FILE_VIEW_TYPES } from '@/utils/fileViews';
 import { useCallback, useEffect, useRef } from 'react';
 import useAssociationNavigator from './AssociationNavigator';
 import useCompletion from './CompletionHandler';
-import DiffHandler from './DiffHandler';
 import styles from './EditorArea.module.css';
 import EditorContent from './EditorContent';
-import EditorHeader from './EditorHeader';
-import FindHandler from './FindHandler';
+import EditorTooling from './EditorTooling';
 import { getExpandedFoldedSelection } from './Folding';
 import useHighlightLoader from './HighlightLoader';
-import HistoryHandler from './HistoryHandler';
 import useScrollHandler from './ScrollHandler';
-import SyncHandler from './SyncHandler';
 import type {
   DiffActions,
   EditorAreaProps,
@@ -199,11 +194,25 @@ function EditorAreaInner({ file, fsHandle }: EditorAreaProps) {
 
   return (
     <div className={styles.editorArea}>
-      <HistoryHandler filePath={filePath} localContent={localContent} state={state} />
-      <EditorHeader
+      <EditorTooling
         filePath={filePath}
+        fileName={file?.name}
+        localContent={localContent}
+        setLocalContent={setLocalContent}
+        state={state}
+        fs={fs}
+        tabState={tabState}
+        scrollContainerRef={scrollContainerRef}
         showFind={showFind}
         setShowFind={setShowFind}
+        findQuery={findQuery}
+        setFindQuery={setFindQuery}
+        replaceQuery={replaceQuery}
+        setReplaceQuery={setReplaceQuery}
+        matchIndex={matchIndex}
+        setMatchIndex={setMatchIndex}
+        matches={matches as FindMatch[]}
+        setMatches={setMatches}
         hasDiff={hasDiff}
         hasPendingDeletion={hasPendingDeletion}
         handleApprove={(diffActions as DiffActions).handleApprove ?? (() => {})}
@@ -216,39 +225,9 @@ function EditorAreaInner({ file, fsHandle }: EditorAreaProps) {
         onNavigateToAssociated={handleNavigateToAssociated}
         isReadOnly={isReadOnly}
         setIsReadOnly={setIsReadOnly}
-        fileName={file?.name}
-        viewType={FILE_VIEW_TYPES.EDITOR}
         onSelectView={handleSelectView}
-      />
-      <FindHandler
-        localContent={localContent}
-        scrollContainerRef={scrollContainerRef}
-        showFind={showFind}
-        setShowFind={setShowFind}
-        findQuery={findQuery}
-        setFindQuery={setFindQuery}
-        replaceQuery={replaceQuery}
-        setReplaceQuery={setReplaceQuery}
-        matchIndex={matchIndex}
-        setMatchIndex={setMatchIndex}
-        matches={matches as FindMatch[]}
-        setMatches={setMatches}
-        handleChange={handleChange}
-      />
-      <SyncHandler
-        fs={fs}
-        filePath={filePath}
-        localContent={localContent}
-        state={state}
-        tabState={tabState}
-      />
-      <DiffHandler
-        filePath={filePath}
-        localContent={localContent}
-        setLocalContent={setLocalContent}
-        state={state}
-        fs={fs}
         onStateChange={setDiffActions}
+        handleChange={handleChange}
       />
       <EditorContent
         showSideBySide={showSideBySide}

@@ -40,6 +40,8 @@ describe('ManagerTraceInspector', () => {
     expect(screen.queryByRole('dialog', { name: 'Manager debug trace' })).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: /Open manager debug trace/ }));
     expect(screen.getByRole('dialog', { name: 'Manager debug trace' })).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Export JSON' }).textContent).toBe('');
+    expect(screen.getByRole('button', { name: 'Copy trace' }).textContent).toBe('');
     expect(screen.getByText(/success · 2 events · 25 ms/)).toBeDefined();
     expect(screen.getByText(/#2 tool · 5 ms/)).toBeDefined();
     expect(screen.getByText(/source: model/)).toBeDefined();

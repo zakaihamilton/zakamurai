@@ -7,9 +7,7 @@ import { TabState } from '@/components/App/Panes/TabBar';
 import { EditorState } from '@/components/App/Views/EditorArea';
 import { LogState } from '@/components/App/Views/LogArea';
 import { useFileSystem } from '@/components/Storage';
-import type { TreeNode } from '@/components/state/domain-types';
 import { useCallback, useEffect, useState } from 'react';
-import type { ChangeEvent, FormEvent, KeyboardEvent, MouseEvent } from 'react';
 import { requireStore } from '../../types';
 import { AgentSessionState, createSessionMessage } from './AgentSessions';
 import FileScopeDialog from './FileScopeDialog';
@@ -17,19 +15,12 @@ import useModelDownloader from './ModelDownloader';
 import PromptContent from './PromptContent';
 import usePromptHistory from './PromptHistory';
 import { PromptState, PromptUiState, getInitialPromptUiState } from './PromptState';
-import { parseFileCommand } from './filePrompt';
 import useAgentRunner from './useAgentRunner';
+import usePromptComposer from './usePromptComposer';
 import usePromptLayout from './usePromptLayout';
 import usePromptSessionControls from './usePromptSessionControls';
 
 export { PromptState, PromptUiState } from './PromptState';
-
-function collectProjectFiles(nodes: TreeNode[], parentPath: string[] = []): string[] {
-  return nodes.flatMap((node) => {
-    const path = node.path || [...parentPath, node.name];
-    return node.type === 'file' ? [path.join('/')] : collectProjectFiles(node.children || [], path);
-  });
-}
 
 export default function Prompt() {
   const { isMobile } = requireStore(AppState.useState(['isMobile']));
@@ -75,8 +66,6 @@ export default function Prompt() {
     AgentSessionState.useState(['sessions', 'activeSessionId']),
   );
   const isOpen = isMobile ? sidebarState.isAIInputPopupOpen : sidebarState.showAIInput;
-  const [isFilePickerOpen, setIsFilePickerOpen] = useState(false);
-  const [filePickerQuery, setFilePickerQuery] = useState('');
   const [filePromptRemainder, setFilePromptRemainder] = useState('');
   const [isFileScopeArmed, setIsFileScopeArmed] = useState(false);
 
@@ -131,6 +120,32 @@ export default function Prompt() {
     logState,
   });
 
+  const {
+    isFilePickerOpen,
+    filePickerQuery,
+    files,
+    handleKeyDown,
+    handleChange: handleComposerChange,
+    handleSubmit,
+    handleFileSelect,
+    handleFilePickerCancel,
+    setFilePickerQuery,
+  } = usePromptComposer({
+    promptUiState,
+    editorState,
+    tabState,
+    sidebarState,
+    historyIndex,
+    fileScopeArmed: isFileScopeArmed,
+    setFileScopeArmed: setIsFileScopeArmed,
+    filePromptRemainder,
+    setFilePromptRemainder,
+    send,
+    handleStop,
+    handleArrowUp,
+    handleArrowDown,
+  });
+
   useEffect(() => {
     if (!welcomeRequest || isAIProcessing || !activeSession) return;
 
@@ -151,105 +166,6 @@ export default function Prompt() {
     send(null, request.text, request.scope);
   }, [activeSession, isAIProcessing, promptUiState, send, tabState, welcomeRequest]);
 
-  const handleKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
-    const mac = navigator.platform.toUpperCase().includes('MAC');
-    if ((mac ? event.metaKey : event.ctrlKey) && event.key === '.') {
-      handleStop(event as unknown as MouseEvent<HTMLButtonElement>);
-      return;
-    }
-    if (event.key === 'Enter') {
-      if (event.metaKey || event.ctrlKey) {
-        event.preventDefault();
-        event.stopPropagation();
-        const target = event.target as HTMLTextAreaElement;
-        const { selectionStart, selectionEnd, value } = target;
-        const nextValue = `${value.substring(0, selectionStart)}\n${value.substring(selectionEnd)}`;
-        promptUiState((draft) => {
-          draft.val = nextValue;
-        });
-        requestAnimationFrame(() => {
-          target.selectionStart = target.selectionEnd = selectionStart + 1;
-        });
-        return;
-      }
-      if (!event.shiftKey) handleSubmit(event);
-    } else if (event.key === 'ArrowUp') {
-      handleArrowUp();
-    } else if (event.key === 'ArrowDown') {
-      handleArrowDown();
-    }
-  };
-
-  const handleComposerChange = useCallback(
-    (event: ChangeEvent<HTMLTextAreaElement>) => {
-      const nextValue = event.target.value;
-      const fileCommand = parseFileCommand(nextValue);
-      if (fileCommand) {
-        setFilePromptRemainder(fileCommand.prompt);
-        setFilePickerQuery('');
-        setIsFilePickerOpen(true);
-        promptUiState((draft) => {
-          draft.val = fileCommand.prompt;
-          if (historyIndex === -1) draft.draftVal = fileCommand.prompt;
-        });
-        return;
-      }
-      promptUiState((draft) => {
-        draft.val = nextValue;
-        if (historyIndex === -1) draft.draftVal = nextValue;
-      });
-    },
-    [historyIndex, promptUiState],
-  );
-  const handleSubmit = useCallback(
-    (event: FormEvent<HTMLFormElement> | KeyboardEvent<HTMLTextAreaElement>) => {
-      send(event as FormEvent<HTMLFormElement>);
-      setIsFileScopeArmed(false);
-      promptUiState((draft) => {
-        draft.promptScope = 'project';
-      });
-    },
-    [promptUiState, send],
-  );
-  const handleFileSelect = useCallback(
-    (filePath: string) => {
-      const fileName = filePath.split('/').pop() || filePath;
-      const fileContent = editorState.fileContents?.[filePath] || '';
-      tabState((draft) => {
-        if (!draft.openTabs.some((tab) => tab.id === filePath)) {
-          draft.openTabs = [
-            ...draft.openTabs,
-            {
-              id: filePath,
-              type: 'file',
-              label: fileName,
-              file: { name: fileName, path: filePath.split('/'), content: fileContent },
-            },
-          ];
-        }
-        draft.activeTabId = filePath;
-      });
-      promptUiState((draft) => {
-        draft.promptScope = 'file';
-        draft.val = filePromptRemainder;
-        draft.draftVal = filePromptRemainder;
-      });
-      setIsFileScopeArmed(true);
-      setIsFilePickerOpen(false);
-      setFilePromptRemainder('');
-      setFilePickerQuery('');
-    },
-    [editorState.fileContents, filePromptRemainder, promptUiState, tabState],
-  );
-  const handleFilePickerCancel = useCallback(() => {
-    setIsFilePickerOpen(false);
-    setFilePromptRemainder('');
-    setFilePickerQuery('');
-    setIsFileScopeArmed(false);
-    promptUiState((draft) => {
-      draft.promptScope = 'project';
-    });
-  }, [promptUiState]);
   const replayManagerRequest = useCallback(
     (request: string) => {
       promptUiState((draft) => {
@@ -358,10 +274,7 @@ export default function Prompt() {
       />
       <FileScopeDialog
         isOpen={isFilePickerOpen}
-        files={[
-          ...Object.keys(editorState.fileContents || {}),
-          ...collectProjectFiles(sidebarState.folderTree || []),
-        ]}
+        files={files}
         query={filePickerQuery}
         onQueryChange={setFilePickerQuery}
         onSelect={handleFileSelect}

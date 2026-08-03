@@ -1,12 +1,5 @@
 import { serializeAgentSessions } from '@/components/App/Panes/Prompt/AgentSessions';
-import { reportDiagnostic } from '@/components/Diagnostics';
 import Settings from '@/components/Storage/Settings';
-import {
-  StorageHealthState,
-  requestRecoveryExport,
-  storageFailureMessage,
-  storageHealthMessage,
-} from '@/components/Storage/StorageHealth';
 import type {
   AgentSessionStateShape,
   AppStateShape,
@@ -18,16 +11,12 @@ import type {
   PromptStateShape,
   PromptUiStateShape,
   SidebarStateShape,
-  StorageHealthStateShape,
   TabStateShape,
   WorkspaceProfileStateShape,
 } from '@/components/state/domain-types';
-import type { Draft, StateStore } from '@/components/state/types';
-import { useNotification } from '@/components/ui/Notification';
-import { useEffect, useRef } from 'react';
-
-const SAVE_FAIL_MESSAGE =
-  'Could not save project data — browser storage is full. Export or free space to avoid data loss.';
+import type { StateStore } from '@/components/state/types';
+import { useEffect } from 'react';
+import useStoragePersistenceStatus from './useStoragePersistenceStatus';
 
 export function useSettingsSync(
   appState: Pick<AppStateShape, 'theme' | 'projectName'>,
@@ -55,71 +44,7 @@ export function useSettingsSync(
   workspaceProfileState: StateStore<WorkspaceProfileStateShape> | null = null,
   changeSetState: StateStore<ChangeSetStateShape> | null = null,
 ) {
-  const { addNotification } = useNotification();
-  const storageHealthState = StorageHealthState.usePassiveState();
-  const updateStorageHealth = (
-    update: Partial<StorageHealthStateShape> | ((draft: Draft<StorageHealthStateShape>) => void),
-  ) => {
-    if (typeof storageHealthState === 'function') {
-      storageHealthState(update as (draft: Draft<StorageHealthStateShape>) => void);
-    }
-  };
-  const addNotificationRef = useRef(addNotification);
-  addNotificationRef.current = addNotification;
-  const saveFailureNotifiedRef = useRef(false);
-  const quotaWarningNotifiedRef = useRef(false);
-
-  const persistRef = useRef<(ok: boolean | undefined) => boolean | undefined>((ok) => {
-    if (ok === false) {
-      if (saveFailureNotifiedRef.current) return ok;
-      saveFailureNotifiedRef.current = true;
-      updateStorageHealth((draft) => {
-        draft.status = 'write-failed';
-        draft.layer = 'fallback';
-        draft.message = storageFailureMessage('fallback');
-      });
-      addNotificationRef.current(SAVE_FAIL_MESSAGE, 'error', 12000, {
-        label: 'Export ZIP',
-        onClick: requestRecoveryExport,
-      });
-      reportDiagnostic({ source: 'storage', severity: 'error', message: SAVE_FAIL_MESSAGE });
-    } else if (ok === true) {
-      saveFailureNotifiedRef.current = false;
-      const health = Settings.getStorageHealth?.() || { status: 'healthy', layer: null };
-      updateStorageHealth((draft) => {
-        draft.status = health.status;
-        draft.layer = health.layer;
-        draft.usage = health.usage ?? undefined;
-        draft.quota = health.quota ?? undefined;
-        draft.lastSuccessfulPersistAt = health.lastSuccessfulPersistAt ?? null;
-        draft.message =
-          storageHealthMessage({
-            ...health,
-            usage: health.usage ?? undefined,
-            quota: health.quota ?? undefined,
-          }) ?? null;
-      });
-      if (health.quotaWarning && !quotaWarningNotifiedRef.current) {
-        quotaWarningNotifiedRef.current = true;
-        addNotificationRef.current(
-          storageHealthMessage({
-            ...health,
-            usage: health.usage ?? undefined,
-            quota: health.quota ?? undefined,
-          }) ?? '',
-          'warning',
-          12000,
-          {
-            label: 'Export ZIP',
-            onClick: requestRecoveryExport,
-          },
-        );
-      } else if (!health.quotaWarning) {
-        quotaWarningNotifiedRef.current = false;
-      }
-    }
-    return ok;
-  });
+  const persist = useStoragePersistenceStatus();
 
   const { theme, projectName } = appState;
   const { sidebarWidth, isSidebarOpen, showAIInput, expandedFolders } = sidebarState;
@@ -204,18 +129,18 @@ export function useSettingsSync(
   useEffect(() => {
     if (!Array.isArray(promptHistory)) return undefined;
     const timer = setTimeout(() => {
-      persistRef.current(Settings.setPromptHistory(promptHistory));
+      persist(Settings.setPromptHistory(promptHistory));
     }, 400);
     return () => clearTimeout(timer);
-  }, [promptHistory]);
+  }, [persist, promptHistory]);
 
   useEffect(() => {
     if (!Array.isArray(openTabs)) return undefined;
     const timer = setTimeout(() => {
-      persistRef.current(Settings.setOpenTabs(openTabs));
+      persist(Settings.setOpenTabs(openTabs));
     }, 400);
     return () => clearTimeout(timer);
-  }, [openTabs]);
+  }, [openTabs, persist]);
 
   useEffect(() => {
     Settings.setActiveTabId(activeTabId || null);
@@ -228,30 +153,26 @@ export function useSettingsSync(
   useEffect(() => {
     if (!Array.isArray(logs)) return undefined;
     const timer = setTimeout(() => {
-      void Promise.resolve(Settings.setAILogs(logs)).then((ok) => persistRef.current(ok));
+      void Promise.resolve(Settings.setAILogs(logs)).then((ok) => persist(ok));
     }, 500);
     return () => clearTimeout(timer);
-  }, [logs]);
+  }, [logs, persist]);
 
   useEffect(() => {
     if (htmlContent === undefined) return undefined;
     const timer = setTimeout(() => {
-      void Promise.resolve(Settings.setPreviewHtml(htmlContent || null)).then((ok) =>
-        persistRef.current(ok),
-      );
+      void Promise.resolve(Settings.setPreviewHtml(htmlContent || null)).then((ok) => persist(ok));
     }, 500);
     return () => clearTimeout(timer);
-  }, [htmlContent]);
+  }, [htmlContent, persist]);
 
   useEffect(() => {
     if (!fileContents || typeof fileContents !== 'object') return undefined;
     const timer = setTimeout(() => {
-      void Promise.resolve(Settings.setFileContents({ ...fileContents })).then((ok) =>
-        persistRef.current(ok),
-      );
+      void Promise.resolve(Settings.setFileContents({ ...fileContents })).then((ok) => persist(ok));
     }, 1000);
     return () => clearTimeout(timer);
-  }, [fileContents]);
+  }, [fileContents, persist]);
 
   useEffect(() => {
     if (!pendingDiffs || typeof pendingDiffs !== 'object') return undefined;
@@ -264,12 +185,10 @@ export function useSettingsSync(
           modifiedContent: fileContents?.[path] ?? diff.modifiedContent ?? '',
         };
       }
-      void Promise.resolve(Settings.setPendingDiffs(diffsToSave)).then((ok) =>
-        persistRef.current(ok),
-      );
+      void Promise.resolve(Settings.setPendingDiffs(diffsToSave)).then((ok) => persist(ok));
     }, 1000);
     return () => clearTimeout(timer);
-  }, [pendingDiffs, fileContents]);
+  }, [fileContents, pendingDiffs, persist]);
 
   useEffect(() => {
     if (!fileContents || typeof fileContents !== 'object') return undefined;
@@ -292,14 +211,14 @@ export function useSettingsSync(
     const timer = setTimeout(() => {
       const payload = serializeAgentSessions({ sessions, activeSessionId });
       void Promise.resolve(Settings.setAgentSessions(payload)).then((ok) => {
-        persistRef.current(ok);
+        persist(ok);
         if (ok) {
           Settings.setActiveAgentSessionId(payload.activeSessionId);
         }
       });
     }, debounceMs);
     return () => clearTimeout(timer);
-  }, [sessions, activeSessionId]);
+  }, [activeSessionId, persist, sessions]);
 
   useEffect(() => {
     if (!workspaceProfileState || typeof Settings.setWorkspaceProfile !== 'function') return;
@@ -320,8 +239,8 @@ export function useSettingsSync(
     const timer = setTimeout(() => {
       void Promise.resolve(
         Settings.setChangeSets({ activeId: changeSetActiveId, items: changeSetItems }),
-      ).then((ok) => persistRef.current(ok));
+      ).then((ok) => persist(ok));
     }, 500);
     return () => clearTimeout(timer);
-  }, [changeSetState, changeSetActiveId, changeSetItems]);
+  }, [changeSetActiveId, changeSetItems, changeSetState, persist]);
 }

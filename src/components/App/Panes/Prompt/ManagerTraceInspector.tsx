@@ -88,26 +88,50 @@ export default function ManagerTraceInspector({
               {trace.outcome} · {trace.events.length} events · {trace.durationMs ?? 0} ms
             </p>
             <div className={styles.actions}>
-              <button type="button" className={styles.button} onClick={exportTrace}>
-                Export JSON
-              </button>
-              <button type="button" className={styles.button} onClick={copyTrace}>
-                Copy trace
-              </button>
-              <button type="button" className={styles.button} onClick={copyReplayFixture}>
-                Copy replay fixture
-              </button>
-              {onReplayRequest && (
+              <Tooltip content="Export JSON">
                 <button
                   type="button"
                   className={styles.button}
-                  onClick={() => {
-                    setIsOpen(false);
-                    onReplayRequest(trace.request);
-                  }}
+                  onClick={exportTrace}
+                  aria-label="Export JSON"
                 >
-                  Replay request
+                  <Icons.Download />
                 </button>
+              </Tooltip>
+              <Tooltip content="Copy trace">
+                <button
+                  type="button"
+                  className={styles.button}
+                  onClick={copyTrace}
+                  aria-label="Copy trace"
+                >
+                  <Icons.Copy />
+                </button>
+              </Tooltip>
+              <Tooltip content="Copy replay fixture">
+                <button
+                  type="button"
+                  className={styles.button}
+                  onClick={copyReplayFixture}
+                  aria-label="Copy replay fixture"
+                >
+                  <Icons.Code />
+                </button>
+              </Tooltip>
+              {onReplayRequest && (
+                <Tooltip content="Replay request">
+                  <button
+                    type="button"
+                    className={styles.button}
+                    onClick={() => {
+                      setIsOpen(false);
+                      onReplayRequest(trace.request);
+                    }}
+                    aria-label="Replay request"
+                  >
+                    <Icons.Play />
+                  </button>
+                </Tooltip>
               )}
             </div>
           </div>

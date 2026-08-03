@@ -9,11 +9,11 @@ import { PromptUiState } from '@/components/App/Panes/Prompt/PromptState';
 import { requireStore } from '@/components/App/types';
 import { ChangeSetState } from '@/components/Workspace';
 import type { AgentReasoningEntry, AgentRunUsage, Tab } from '@/components/state/domain-types';
-import { Icons } from '@/components/ui/Icons';
-import Tooltip from '@/components/ui/Tooltip';
 import { useEffect, useRef, useState } from 'react';
-import ReactMarkdown from 'react-markdown';
 import styles from './AISection.module.css';
+import AISectionChanges from './AISectionChanges';
+import AISectionHeader from './AISectionHeader';
+import AISectionReasoning, { type ReasoningGroup } from './AISectionReasoning';
 
 const titleBySection = {
   changes: 'Change Set',
@@ -23,8 +23,6 @@ const titleBySection = {
 type AISection = keyof typeof titleBySection;
 
 type ReasoningEntry = AgentReasoningEntry;
-type ReasoningGroup = { step: number | null; entries: ReasoningEntry[] };
-type KeyedReasoningEntry = ReasoningEntry & { renderKey: string };
 
 const STEP_PREFIX = /^\*\*Step (\d+)(?: result)?:\*\*\s*/;
 
@@ -105,15 +103,7 @@ export const groupReasoningEntries = (entries: ReasoningEntry[]): ReasoningGroup
   return groups;
 };
 
-export const keyReasoningEntries = (entries: ReasoningEntry[]): KeyedReasoningEntry[] => {
-  const occurrences = new Map<string, number>();
-  return entries.map((entry) => {
-    const baseKey = `${entry.timestamp}-${entry.text}`;
-    const occurrence = occurrences.get(baseKey) || 0;
-    occurrences.set(baseKey, occurrence + 1);
-    return { ...entry, renderKey: `${baseKey}-${occurrence}` };
-  });
-};
+export { keyReasoningEntries } from './AISectionReasoning';
 
 function getSection(tab: Tab): AISection {
   const section = tab.id.replace('ai-section:', '');
@@ -202,14 +192,6 @@ export default function AISectionView({ tab }: { tab: Tab }) {
             .join('\n\n')
         : runUsageSummary || 'No progress or reasoning to show yet.';
 
-  useEffect(() => {
-    if (section !== 'reasoning' || !content || !contentRef.current) return;
-    contentRef.current.scrollTo({
-      top: contentRef.current.scrollHeight,
-      behavior: 'smooth',
-    });
-  }, [content, section]);
-
   const copy = async () => {
     await navigator.clipboard.writeText(content);
     setCopied(true);
@@ -218,126 +200,25 @@ export default function AISectionView({ tab }: { tab: Tab }) {
 
   return (
     <section className={styles.page} aria-label={titleBySection[section]}>
-      <header className={styles.header}>
-        <div>
-          <span className={styles.eyebrow}>AI pane</span>
-          <h1>{titleBySection[section]}</h1>
-        </div>
-        <div className={styles.actions}>
-          {section === 'reasoning' ? (
-            <Tooltip content={`${showStepIO ? 'Hide' : 'Show'} input/output for each agent step`}>
-              <button
-                type="button"
-                className={`${styles.stepIOToggle} ${showStepIO ? styles.stepIOToggleActive : ''}`}
-                onClick={toggleStepIO}
-                aria-label={`${showStepIO ? 'Hide' : 'Show'} input/output for each agent step`}
-                aria-pressed={showStepIO}
-              >
-                <Icons.Terminal size={16} />
-              </button>
-            </Tooltip>
-          ) : null}
-          <Tooltip content={copied ? 'Copied!' : 'Copy to clipboard'}>
-            <button
-              type="button"
-              className={styles.copyButton}
-              onClick={copy}
-              aria-label={copied ? 'Copied to clipboard' : 'Copy to clipboard'}
-            >
-              {copied ? <Icons.Check size={16} /> : <Icons.Copy size={16} />}
-            </button>
-          </Tooltip>
-        </div>
-      </header>
+      <AISectionHeader
+        title={titleBySection[section]}
+        showStepIOToggle={section === 'reasoning'}
+        showStepIO={section === 'reasoning' && showStepIO}
+        copied={copied}
+        onToggleStepIO={toggleStepIO}
+        onCopy={copy}
+      />
       {section === 'reasoning' ? (
-        <div ref={contentRef} className={`${styles.content} ${styles.markdownContent}`}>
-          {activeSession?.messages?.length ? (
-            <section className={styles.transcriptSection} aria-label="Session transcript">
-              {activeSession.messages.map((message) => {
-                const label =
-                  message.role === 'user'
-                    ? 'You'
-                    : message.role === 'ai'
-                      ? message.agentRole
-                        ? `AI · ${message.agentRole}`
-                        : 'AI'
-                      : 'System';
-                return (
-                  <article className={styles.reasoningEntry} key={message.id}>
-                    <div className={styles.timestamp}>
-                      {message.timestamp ? <time>{message.timestamp}</time> : null}
-                      {message.timestamp ? ' · ' : ''}
-                      <span className={styles.transcriptType}>{label}</span>
-                    </div>
-                    <div className={`${styles.reasoningText} ${styles.transcriptText}`}>
-                      {message.text}
-                    </div>
-                  </article>
-                );
-              })}
-            </section>
-          ) : null}
-          {reasoningGroups.map((group, groupIndex) => (
-            <section className={styles.reasoningGroup} key={`${group.step}-${groupIndex}`}>
-              {group.step !== null ? (
-                <h2 className={styles.stepHeading}>Step {group.step}</h2>
-              ) : null}
-              {keyReasoningEntries(group.entries).map(({ text, timestamp, renderKey }) => (
-                <article className={styles.reasoningEntry} key={renderKey}>
-                  {timestamp ? <time className={styles.timestamp}>{timestamp}</time> : null}
-                  <div className={styles.reasoningText}>
-                    <ReactMarkdown
-                      components={{
-                        a: ({ node, ...props }) => <a className={styles.link} {...props} />,
-                        blockquote: ({ node, ...props }) => (
-                          <blockquote className={styles.blockquote} {...props} />
-                        ),
-                        code: ({ node, ...props }) => <code className={styles.code} {...props} />,
-                        h1: ({ node, ...props }) => <h1 className={styles.heading} {...props} />,
-                        h2: ({ node, ...props }) => <h2 className={styles.heading} {...props} />,
-                        h3: ({ node, ...props }) => <h3 className={styles.heading} {...props} />,
-                        h4: ({ node, ...props }) => <h4 className={styles.heading} {...props} />,
-                        h5: ({ node, ...props }) => <h5 className={styles.heading} {...props} />,
-                        h6: ({ node, ...props }) => <h6 className={styles.heading} {...props} />,
-                        li: ({ node, ...props }) => <li className={styles.listItem} {...props} />,
-                        ol: ({ node, ...props }) => <ol className={styles.list} {...props} />,
-                        p: ({ node, ...props }) => <p className={styles.paragraph} {...props} />,
-                        pre: ({ node, ...props }) => <pre className={styles.pre} {...props} />,
-                        ul: ({ node, ...props }) => <ul className={styles.list} {...props} />,
-                      }}
-                    >
-                      {text}
-                    </ReactMarkdown>
-                  </div>
-                </article>
-              ))}
-            </section>
-          ))}
-          {runUsageSummary ? (
-            <section className={styles.runSummary}>
-              <ReactMarkdown
-                components={{
-                  code: ({ node, ...props }) => <code className={styles.code} {...props} />,
-                  h2: ({ node, ...props }) => <h2 className={styles.stepHeading} {...props} />,
-                  li: ({ node, ...props }) => <li className={styles.listItem} {...props} />,
-                  p: ({ node, ...props }) => <p className={styles.paragraph} {...props} />,
-                  ul: ({ node, ...props }) => <ul className={styles.list} {...props} />,
-                }}
-              >
-                {runUsageSummary}
-              </ReactMarkdown>
-            </section>
-          ) : null}
-          {!reasoningGroups.length && !runUsageSummary && !transcriptText ? (
-            <section className={styles.reasoningGroup}>
-              <article className={styles.reasoningEntry}>
-                <div className={styles.reasoningText}>{content}</div>
-              </article>
-            </section>
-          ) : null}
-        </div>
+        <AISectionReasoning
+          activeSession={activeSession}
+          reasoningGroups={reasoningGroups}
+          runUsageSummary={runUsageSummary}
+          fallbackContent={content}
+          content={content}
+          contentRef={contentRef}
+        />
       ) : (
-        <pre className={styles.content}>{content}</pre>
+        <AISectionChanges content={content} />
       )}
     </section>
   );
