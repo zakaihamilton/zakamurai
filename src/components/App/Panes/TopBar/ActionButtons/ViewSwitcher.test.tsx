@@ -2,6 +2,10 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import ViewSwitcher from './ViewSwitcher';
 
+vi.mock('@/components/ui/Tooltip', () => ({
+  default: ({ children }: { children?: React.ReactNode }) => <>{children}</>,
+}));
+
 vi.mock('@/components/ui/Icons', () => ({
   Icons: {
     Code: () => <span />,

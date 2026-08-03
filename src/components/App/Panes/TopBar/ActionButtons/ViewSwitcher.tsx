@@ -1,4 +1,5 @@
 import { Icons } from '@/components/ui/Icons';
+import Tooltip from '@/components/ui/Tooltip';
 import { useEffect, useRef, useState } from 'react';
 import styles from './ViewSwitcher.module.css';
 
@@ -64,20 +65,21 @@ export default function ViewSwitcher({
 
   return (
     <div ref={switcherRef} className={styles.switcher}>
-      <button
-        type="button"
-        className={`${styles.trigger} ${isOpen ? styles.triggerActive : ''}`}
-        onClick={() => setIsOpen((open) => !open)}
-        aria-label={`Switch view, current ${activeView}`}
-        aria-haspopup="menu"
-        aria-expanded={isOpen}
-        aria-controls="mobile-view-switcher-menu"
-        data-testid="mobile-view-switcher"
-        title="Switch view"
-      >
-        <ActiveIcon size={18} />
-        <Icons.ChevronDown size={12} />
-      </button>
+      <Tooltip content="Switch view">
+        <button
+          type="button"
+          className={`${styles.trigger} ${isOpen ? styles.triggerActive : ''}`}
+          onClick={() => setIsOpen((open) => !open)}
+          aria-label={`Switch view, current ${activeView}`}
+          aria-haspopup="menu"
+          aria-expanded={isOpen}
+          aria-controls="mobile-view-switcher-menu"
+          data-testid="mobile-view-switcher"
+        >
+          <ActiveIcon size={18} />
+          <Icons.ChevronDown size={12} />
+        </button>
+      </Tooltip>
       {isOpen && (
         <div id="mobile-view-switcher-menu" className={styles.menu} role="menu">
           {viewOptions.map(({ label, icon: Icon }) => (

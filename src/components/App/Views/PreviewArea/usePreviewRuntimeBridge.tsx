@@ -41,9 +41,10 @@ export default function usePreviewRuntimeBridge({
     try {
       const doc = iframeRef.current.contentDocument;
       const scripts = doc?.querySelectorAll('script[type="module"][src]') || [];
+      const previewFetch = doc?.defaultView?.fetch?.bind(doc.defaultView);
       for (const script of scripts) {
         const src = (script as HTMLScriptElement).src;
-        const fetched = await fetchScriptErrorBody(src);
+        const fetched = await fetchScriptErrorBody(src, previewFetch);
         if (fetched) {
           setPreviewError(fetched);
           return;
@@ -105,6 +106,7 @@ export default function usePreviewRuntimeBridge({
       const win = iframeRef.current.contentWindow;
       const doc = iframeRef.current.contentDocument;
       if (!win || !doc) return;
+      const previewFetch = win.fetch.bind(win);
       const path = win.location.pathname;
       if (path && path !== 'blank') {
         previewAreaUiState((draft) => {
@@ -119,12 +121,15 @@ export default function usePreviewRuntimeBridge({
 
       const onError = (event: ErrorEvent) => {
         void (async () => {
-          const missingExportError = await resolveMissingExportError({
-            message: event.message,
-            filename: event.filename,
-            lineno: event.lineno,
-            colno: event.colno,
-          });
+          const missingExportError = await resolveMissingExportError(
+            {
+              message: event.message,
+              filename: event.filename,
+              lineno: event.lineno,
+              colno: event.colno,
+            },
+            previewFetch,
+          );
           if (missingExportError) {
             setPreviewError(missingExportError);
             return;
@@ -138,7 +143,7 @@ export default function usePreviewRuntimeBridge({
           const target = event.target as HTMLScriptElement | null;
           const scriptUrl = target?.src || event.filename;
           if (scriptUrl) {
-            const fetched = await fetchScriptErrorBody(scriptUrl);
+            const fetched = await fetchScriptErrorBody(scriptUrl, previewFetch);
             if (fetched) message = fetched;
           }
           setPreviewError(message);
@@ -149,12 +154,18 @@ export default function usePreviewRuntimeBridge({
           const reason = event.reason;
           const missingExportError =
             reason instanceof Error
-              ? await resolveMissingExportError({
-                  message: reason.message,
-                  filename: (reason as Error & { fileName?: string }).fileName,
-                })
+              ? await resolveMissingExportError(
+                  {
+                    message: reason.message,
+                    filename: (reason as Error & { fileName?: string }).fileName,
+                  },
+                  previewFetch,
+                )
               : typeof reason === 'object' && reason?.message
-                ? await resolveMissingExportError(reason as { message?: string; filename?: string })
+                ? await resolveMissingExportError(
+                    reason as { message?: string; filename?: string },
+                    previewFetch,
+                  )
                 : null;
           if (missingExportError) {
             setPreviewError(missingExportError);

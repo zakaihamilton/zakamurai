@@ -39,6 +39,14 @@
   vertical-align: middle;
 }
 
+.segmentTooltip {
+  display: flex;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
 .breadcrumbSegment:hover:not(.active) {
   color: var(--text-main);
   background: var(--accent-light);
@@ -76,7 +84,9 @@
 
   .breadcrumb > span {
     display: inline-flex;
+    flex: 1 1 0;
     min-width: 0;
+    max-width: 96px;
     align-items: center;
   }
 
@@ -85,7 +95,10 @@
   }
 
   .breadcrumbSegment {
-    max-width: 96px;
+    flex: 1 1 auto;
+    width: 100%;
+    max-width: none;
+    min-width: 0;
     padding: 4px 3px;
     text-overflow: ellipsis;
   }
