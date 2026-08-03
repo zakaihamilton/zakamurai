@@ -481,6 +481,14 @@ const buildForcedWriteRecoveryMessages = ({
   const context = targetPath
     ? `Current contents of ${targetPath}:\n${targetContent ?? '(file does not exist yet)'}`
     : 'No existing application entry file was identified. Choose a project-relative entry path.';
+  const recoveryPath = targetPath || 'src/App.jsx';
+  const recoveryLanguage = sourceFenceLanguage(recoveryPath);
+  const writeFormat = [
+    `{"action":"write_file","path":"${recoveryPath}","reason":"implement the request"}`,
+    `\`\`\`${recoveryLanguage}`,
+    'complete source content here',
+    '```',
+  ].join('\n');
   const recoveryInstruction = targetPath
     ? `Recovery mode is active. Your next response must be a write_file action for ${targetPath} with complete source content. Return exactly one write_file action for ${targetPath}.`
     : 'Recovery mode is active. Your next response must be a write_file action with complete source content. Return exactly one write_file action.';
@@ -488,8 +496,7 @@ const buildForcedWriteRecoveryMessages = ({
   return [
     {
       role: 'system',
-      content:
-        'You are in emergency write mode. Ignore normal inspection guidance: the workspace has already been inspected. Return exactly one write_file action now. Do not list, search, read, validate, inspect the preview, finish, or explain.',
+      content: `You are in emergency write mode. Ignore normal inspection guidance: the workspace has already been inspected. Return exactly one write_file action now using this exact format:\n${writeFormat}\nReplace only the source fence contents. Do not put source code in a JSON content field. Do not list, search, read, validate, inspect the preview, finish, or explain.`,
     },
     {
       role: 'user',
@@ -500,7 +507,7 @@ const buildForcedWriteRecoveryMessages = ({
           ? `Required destination: ${targetPath}`
           : 'Required destination: choose the appropriate application source file.',
         context,
-        'Implement the original request with complete source content. Return exactly one write_file action and nothing else.',
+        `Implement the original request with complete source content. Return exactly one write_file action and nothing else. Use this format:\n${writeFormat}`,
       ].join('\n\n'),
     },
   ];
@@ -518,11 +525,18 @@ const buildDirectChangesRecoveryMessages = ({
   const context = targetPath
     ? `Current contents of ${targetPath}:\n${files[targetPath] ?? '(file does not exist yet)'}`
     : 'No existing application entry file was identified. Choose an appropriate project-relative path.';
+  const recoveryPath = targetPath || 'src/App.jsx';
+  const recoveryLanguage = sourceFenceLanguage(recoveryPath);
+  const fencedWriteFormat = [
+    `{"action":"write_file","path":"${recoveryPath}","reason":"implement the request"}`,
+    `\`\`\`${recoveryLanguage}`,
+    'complete source content here',
+    '```',
+  ].join('\n');
   return [
     {
       role: 'system',
-      content:
-        'You are in direct recovery mode. Return exactly one JSON object with kind "changes" and complete file contents. Do not return an action, list files, read files, or explain.',
+      content: `You are in direct recovery mode. Return exactly one complete change response. Prefer this parser-safe write format:\n${fencedWriteFormat}\nYou may use the kind "changes" JSON format below when every file content is correctly JSON-escaped. Do not list files, read files, or explain.`,
     },
     {
       role: 'user',
@@ -533,6 +547,7 @@ const buildDirectChangesRecoveryMessages = ({
           : 'Primary file: choose the application entry file.',
         context,
         'Return this exact shape: {"kind":"changes","summary":"...","changes":[{"path":"...","content":"complete file content"}]}',
+        `For source code, the safer accepted alternative is:\n${fencedWriteFormat}`,
         'Implement the original request now. Include every file required for the implementation and no placeholder content.',
       ].join('\n\n'),
     },

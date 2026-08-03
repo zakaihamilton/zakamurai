@@ -368,6 +368,37 @@ describe('runActionLoop', () => {
     ).toBe(true);
   });
 
+  it('accepts the parser-safe fenced write format during forced recovery', async () => {
+    const modelClient = vi
+      .fn()
+      .mockResolvedValueOnce('{"action":"list_files","query":"*.jsx"}')
+      .mockResolvedValueOnce('{"action":"list_files","query":"*.tsx"}')
+      .mockResolvedValueOnce('{"action":"list_files","query":"*.css"}')
+      .mockResolvedValueOnce('{"action":"list_files","query":"*.html"}')
+      .mockResolvedValueOnce(
+        [
+          '{"action":"write_file","path":"src/App.jsx","reason":"build calculator"}',
+          '```jsx',
+          'export default function App() { return <main>Calculator</main>; }',
+          '```',
+        ].join('\n'),
+      )
+      .mockResolvedValueOnce('{"action":"finish","summary":"Created calculator"}');
+
+    const result = await runActionLoop({
+      request: 'build a calculator',
+      files: { 'src/App.jsx': 'export default function App() { return null; }' },
+      model: 'test',
+      modelClient,
+    });
+
+    expect(result.files['src/App.jsx']).toContain('Calculator');
+    expect(modelClient.mock.calls[4][0].messages[0].content).toContain('```jsx');
+    expect(modelClient.mock.calls[4][0].messages[0].content).toContain(
+      'Do not put source code in a JSON content field',
+    );
+  });
+
   it('stops early when a model ignores forced write recovery', async () => {
     askWebLLM.mockResolvedValue('{"action":"read_file","path":"src/App.jsx"}');
 
