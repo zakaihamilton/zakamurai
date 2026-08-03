@@ -344,7 +344,7 @@ export default function TopBar() {
           aria-label={isSidebarActive ? 'Collapse Sidebar' : 'Expand Sidebar'}
           data-testid="sidebar-toggle"
         >
-          <Icons.ZLogo size={32} />
+          <Icons.ZLogo size={isMobile ? 28 : 32} />
           <span className={styles.brandTitle}>
             ZAKAMUR<span className={styles.aiHighlight}>AI</span>
           </span>

@@ -39,6 +39,14 @@
   vertical-align: middle;
 }
 
+.segmentTooltip {
+  display: flex;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
 .breadcrumbSegment:hover:not(.active) {
   color: var(--text-main);
   background: var(--accent-light);
@@ -61,6 +69,43 @@
 
 @media (width <= 768px) {
   .breadcrumb {
-    display: none;
+    grid-column: 2;
+    grid-row: 1;
+    display: flex;
+    flex: 0 1 auto;
+    width: auto;
+    min-width: 0;
+    margin-right: 0;
+    padding: 0;
+    overflow: hidden;
+    font-size: 11px;
+    scrollbar-width: none;
+  }
+
+  .breadcrumb > span {
+    display: inline-flex;
+    flex: 1 1 0;
+    min-width: 0;
+    max-width: 96px;
+    align-items: center;
+  }
+
+  .breadcrumb > span:not(:first-child) {
+    min-width: 0;
+  }
+
+  .breadcrumbSegment {
+    flex: 1 1 auto;
+    width: 100%;
+    max-width: none;
+    min-width: 0;
+    padding: 4px 3px;
+    text-overflow: ellipsis;
+  }
+
+  .breadcrumb svg {
+    width: 12px;
+    height: 12px;
+    flex: 0 0 auto;
   }
 }

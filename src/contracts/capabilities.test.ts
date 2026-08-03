@@ -70,6 +70,19 @@ describe('device capability contracts', () => {
     expect(getRecommendedModelId('full-ai', [{ id: 'medium', ramMB: 3500 }])).toBe('medium');
   });
 
+  it('prefers the catalog recommendation over the largest capable model', () => {
+    expect(
+      getRecommendedModelId(
+        'full-ai',
+        [
+          { id: 'large', ramMB: 6000, recommended: false },
+          { id: 'conservative', ramMB: 1600, recommended: true },
+        ],
+        16,
+      ),
+    ).toBe('conservative');
+  });
+
   it('reports browser capabilities and storage estimates', async () => {
     const originalWorker = globalThis.Worker;
     const originalGpu = (navigator as Navigator & { gpu?: unknown }).gpu;

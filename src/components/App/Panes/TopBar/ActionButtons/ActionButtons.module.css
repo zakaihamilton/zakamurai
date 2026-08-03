@@ -131,6 +131,10 @@
     display: none;
   }
 
+  .viewTabs {
+    display: none;
+  }
+
   .compileBtn {
     min-width: 40px;
     padding: 8px 10px;

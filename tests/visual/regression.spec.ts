@@ -142,10 +142,10 @@ test.describe('Zakamurai Visual Regression', () => {
     // Click Instructions button on Welcome screen
     await page.getByRole('button', { name: 'Instructions' }).click();
 
-    // Wait for instructions tab - using the actual title from Instructions.js
-    await expect(page.getByText('Welcome to Zakamurai')).toBeVisible();
+    // Wait for the refreshed instructions view to be ready.
+    await expect(page.getByText('Build your next idea here')).toBeVisible();
     await expect(
-      page.getByText('Master your browser-based IDE with this quick guide.'),
+      page.getByText(/Zakamurai keeps the editor, local AI, browser build/),
     ).toBeVisible();
 
     await page.waitForTimeout(1000);
@@ -157,13 +157,25 @@ test.describe('Zakamurai Visual Regression', () => {
     // Click Project info button on Welcome screen
     await page.getByRole('button', { name: 'Project info' }).click();
 
-    // Wait for project info tab - using text from ProjectInfo.js
+    // Wait for the refreshed project info view.
     await expect(page.getByText('About the Project')).toBeVisible();
     await expect(page.getByText('Technologies')).toBeVisible();
 
     await page.waitForTimeout(1000);
 
     await expect(page).toHaveScreenshot('project-info-view.png');
+  });
+
+  test('Readiness View', async ({ page }) => {
+    await page.getByRole('button', { name: 'Show runtime and device readiness' }).click();
+
+    await expect(page.getByRole('heading', { name: 'Runtime & device readiness' })).toBeVisible();
+    await expect(page.getByRole('region', { name: 'Project compatibility' })).toBeVisible();
+    await expect(page.getByRole('region', { name: 'Device and AI readiness' })).toBeVisible();
+
+    await page.waitForTimeout(1000);
+
+    await expect(page).toHaveScreenshot('readiness-view.png');
   });
 
   test('Dialogs - Keyboard Shortcuts', async ({ page }) => {

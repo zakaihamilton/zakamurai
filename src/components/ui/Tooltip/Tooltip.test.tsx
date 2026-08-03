@@ -137,6 +137,48 @@ describe('Tooltip', () => {
     expect(screen.getByText('⌘S')).toBeDefined();
   });
 
+  it('shows a tooltip while a touch trigger is held', async () => {
+    render(
+      <Tooltip content="Helper text">
+        <button type="button">Touch me</button>
+      </Tooltip>,
+    );
+
+    const trigger = getTrigger('Touch me');
+    fireEvent.touchStart(trigger);
+    expect(screen.queryByRole('tooltip')).toBeNull();
+
+    await act(async () => {
+      vi.advanceTimersByTime(400);
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(screen.getByRole('tooltip')).toBeDefined();
+
+    await act(async () => {
+      fireEvent.touchEnd(trigger);
+      await Promise.resolve();
+    });
+    expect(screen.queryByRole('tooltip')).toBeNull();
+  });
+
+  it('cancels a touch tooltip when released before the delay', () => {
+    render(
+      <Tooltip content="Helper text">
+        <button type="button">Touch me</button>
+      </Tooltip>,
+    );
+
+    const trigger = getTrigger('Touch me');
+    fireEvent.touchStart(trigger);
+    act(() => vi.advanceTimersByTime(200));
+    fireEvent.touchEnd(trigger);
+    act(() => vi.advanceTimersByTime(300));
+
+    expect(screen.queryByRole('tooltip')).toBeNull();
+  });
+
   it('does not show a tooltip for suppressed initial focus', async () => {
     render(
       <Tooltip content="Helper text" suppressInitialFocus>

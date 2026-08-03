@@ -88,6 +88,12 @@
     "typescript": "^5.9.3",
     "vitest": "3.2.7"
   },
+  "overrides": {
+    "adm-zip": "0.6.0",
+    "postcss": "8.5.25",
+    "sharp": "0.35.3",
+    "uuid": "11.1.1"
+  },
   "lint-staged": {
     "src/**/*.{js,jsx,ts,tsx}": ["biome check --write", "vitest related --run"],
     "src/**/*.module.css": ["stylelint --fix"]

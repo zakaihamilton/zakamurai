@@ -17,6 +17,7 @@ vi.mock('@/components/ui/Icons', () => ({
     Code: () => <span />,
     Github: () => <span />,
     Linkedin: () => <span />,
+    AlertCircle: () => <span />,
   },
 }));
 
@@ -27,6 +28,7 @@ describe('Welcome', () => {
     render(<Welcome />);
     expect(screen.getByText('Project info')).toBeDefined();
     expect(screen.getByText('Instructions')).toBeDefined();
+    expect(screen.getByText('Readiness')).toBeDefined();
   });
 
   it('opens project info tab', () => {
@@ -60,5 +62,28 @@ describe('Welcome', () => {
     fireEvent.click(screen.getByText('Instructions'));
     expect(tabState.activeTabId).toBe('instructions');
     expect(tabState.openTabs.filter((t) => t.id === 'instructions')).toHaveLength(1);
+  });
+
+  it('opens the readiness tab when clicked', () => {
+    const tabState = createMockTabState();
+    vi.spyOn(TabState, 'usePassiveState').mockReturnValue(tabState);
+
+    render(<Welcome />);
+    fireEvent.click(screen.getByText('Readiness'));
+    expect(tabState.activeTabId).toBe('readiness');
+    expect(tabState.openTabs.some((t) => t.id === 'readiness')).toBe(true);
+  });
+
+  it('does not duplicate the readiness tab if already open', () => {
+    const tabState = createMockTabState({
+      openTabs: [{ id: 'readiness', type: 'readiness', label: 'Readiness' }],
+      activeTabId: null,
+    });
+    vi.spyOn(TabState, 'usePassiveState').mockReturnValue(tabState);
+
+    render(<Welcome />);
+    fireEvent.click(screen.getByText('Readiness'));
+    expect(tabState.activeTabId).toBe('readiness');
+    expect(tabState.openTabs.filter((t) => t.id === 'readiness')).toHaveLength(1);
   });
 });

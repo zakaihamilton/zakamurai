@@ -29,6 +29,7 @@ vi.mock('@/components/ui/Icons', () => ({
     File: () => <span />,
     Close: () => <span />,
     ListX: () => <span />,
+    AlertCircle: () => <span />,
   },
 }));
 
@@ -71,6 +72,13 @@ describe('TabContextMenu', () => {
     render(<TabContextMenu tab={tab} position={{ x: 0, y: 0 }} {...handlers} />);
 
     expect(screen.getByText('AI Logs')).toBeDefined();
+  });
+
+  it('shows Readiness sublabel for readiness tabs', () => {
+    const tab = createMockTab({ id: 'readiness', label: 'Readiness', type: 'readiness' });
+    render(<TabContextMenu tab={tab} position={{ x: 0, y: 0 }} {...handlers} />);
+
+    expect(screen.getAllByText('Readiness')).toHaveLength(2);
   });
 
   it('invokes close actions and closes menu', () => {

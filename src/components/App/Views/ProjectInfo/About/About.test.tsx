@@ -12,6 +12,7 @@ describe('ProjectAbout', () => {
   it('renders the about section copy', () => {
     render(<ProjectAbout />);
     expect(screen.getByText('About the Project')).toBeDefined();
-    expect(screen.getByText(/browser-based Integrated Development Environment/)).toBeDefined();
+    expect(screen.getByText(/browser-based development workspace/)).toBeDefined();
+    expect(screen.getByText(/IndexedDB is used when available/)).toBeDefined();
   });
 });

@@ -10,6 +10,7 @@ vi.mock('@/components/ui/Icons', () => ({
   Icons: {
     Info: () => <span />,
     Code: () => <span />,
+    AlertCircle: () => <span />,
   },
 }));
 
@@ -17,13 +18,23 @@ describe('WelcomeActions', () => {
   it('triggers action callbacks when buttons are clicked', () => {
     const onShowInfo = vi.fn();
     const onShowInstructions = vi.fn();
+    const onShowReadiness = vi.fn();
 
-    render(<WelcomeActions onShowInfo={onShowInfo} onShowInstructions={onShowInstructions} />);
+    render(
+      <WelcomeActions
+        onShowInfo={onShowInfo}
+        onShowInstructions={onShowInstructions}
+        onShowReadiness={onShowReadiness}
+      />,
+    );
 
     fireEvent.click(screen.getByText('Project info'));
     expect(onShowInfo).toHaveBeenCalledTimes(1);
 
     fireEvent.click(screen.getByText('Instructions'));
     expect(onShowInstructions).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(screen.getByText('Readiness'));
+    expect(onShowReadiness).toHaveBeenCalledTimes(1);
   });
 });

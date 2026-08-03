@@ -8,9 +8,9 @@ export default function ProjectVision() {
         <Icons.Brain size={24} /> The Vision
       </h2>
       <p>
-        We believe the future of coding is collaborative, not just between humans, but between
-        developers and intelligent agents. Zakamurai is our step toward that future—a workspace
-        where the boundary between your thoughts and your code is thinner than ever.
+        The best tools reduce the distance between an idea and a working experiment. Zakamurai aims
+        to make that loop feel immediate: humans set the direction, local tools handle the friction,
+        and every suggested change stays reviewable before it becomes part of the project.
       </p>
     </section>
   );

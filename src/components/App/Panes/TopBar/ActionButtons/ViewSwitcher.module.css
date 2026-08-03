@@ -1,0 +1,104 @@
+.switcher {
+  position: relative;
+  display: none;
+  flex: 0 0 auto;
+}
+
+.trigger {
+  display: flex;
+  width: var(--topbar-control-height);
+  min-width: var(--topbar-control-height);
+  height: var(--topbar-control-height);
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 0 4px;
+  border: 1px solid var(--border);
+  border-radius: var(--topbar-control-radius);
+  background: var(--bg-surface);
+  color: var(--text-muted);
+  cursor: pointer;
+  font: inherit;
+}
+
+.trigger:hover,
+.triggerActive {
+  border-color: var(--accent);
+  background: var(--bg-hover);
+  color: var(--text-main);
+}
+
+.trigger:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 2200;
+  display: grid;
+  min-width: 150px;
+  gap: 4px;
+  padding: 6px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--glass-bg);
+  box-shadow: var(--shadow-lg);
+  backdrop-filter: var(--glass-blur);
+}
+
+.option {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  min-height: 34px;
+  padding: 7px 9px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-main);
+  cursor: pointer;
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+}
+
+.option:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.option:hover,
+.optionActive {
+  background: var(--accent-light);
+  color: var(--accent);
+}
+
+.option:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+@media (width <= 768px) {
+  .switcher {
+    display: block;
+  }
+}
+
+@media (width <= 380px) {
+  .trigger {
+    width: 36px;
+    min-width: 36px;
+    height: 36px;
+    border-radius: 6px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .menu {
+    animation: none;
+  }
+}

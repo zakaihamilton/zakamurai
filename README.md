@@ -6,9 +6,10 @@ Zakamurai is a browser-based IDE built for editing, AI-assisted changes, in-brow
 
 ## Features
 
-- **File explorer & editor** — Manage HTML, CSS, JavaScript, and JSON files with syntax highlighting, smart formatting, and automatic saves to browser local storage.
+- **File explorer & editor** — Manage HTML, CSS, JavaScript, and JSON files with syntax highlighting, smart formatting, and browser persistence through IndexedDB with a localStorage fallback.
 - **AI collaboration** — Prompt an integrated AI that understands your project context. Review suggested changes in a side-by-side diff before applying them. Models run locally in the browser via WebLLM for a private, fast experience.
 - **Build & preview** — Compile projects directly in the browser using [almostnode](https://www.npmjs.com/package/almostnode), a virtual Node.js-like environment. Preview the result and inspect build or runtime output in the logs panel.
+- **Readiness diagnostics** — Use the read-only Runtime & Device Readiness page to check project compatibility, WebGPU, Web Workers, memory, storage, and the recommended local AI model.
 - **Focused workflow** — Tabbed workspace, light/dark themes, keyboard shortcuts, CSS/JS navigation, and project export as a ZIP.
 
 ## Getting Started
@@ -73,6 +74,16 @@ npm start
 2. **Prompt** — Toggle the AI sidebar with `Ctrl+J` (or the top bar button) to ask questions or request changes.
 3. **Build** — Press `Cmd+Enter` (Mac) or click **Build** in the top bar.
 4. **Preview** — After a successful build, the Preview tab opens with your running app.
+
+### In-app reference pages
+
+The Welcome page links to three reference views:
+
+- **Project Info** — Product overview, privacy and browser-storage notes, technology stack, and project vision.
+- **Instructions** — A complete workflow for editing, local AI, reviewing changes, building, previewing, recovery, and troubleshooting.
+- **Runtime & Device Readiness** — Read-only live status cards for project health and browser/device AI support. The device card includes WebGPU, Web Workers, memory, storage quota, and the recommended model. Use **Recheck** after changing browser or device conditions.
+
+Local AI requires WebGPU and Web Workers. If the device is not compatible, you can continue editing and building browser projects without downloading a model.
 
 Press `?` in the app to view the full keyboard shortcut reference.
 

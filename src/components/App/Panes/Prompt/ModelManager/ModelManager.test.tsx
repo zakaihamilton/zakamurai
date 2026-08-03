@@ -1,7 +1,15 @@
+import { WEB_LLM_MODELS } from '@/components/AI/WebLLMModels';
+import { detectDeviceCapabilities } from '@/contracts/capabilities';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import ModelManager from './index';
+
+const capabilityMock = vi.hoisted(() => ({
+  report: null as Awaited<ReturnType<typeof detectDeviceCapabilities>> | null,
+  isChecking: false,
+  refreshCapabilities: vi.fn(),
+}));
 
 const defaultModelManagerProps = {
   modelCacheWork: null,
@@ -50,6 +58,14 @@ vi.mock('@/components/ui/Dialog', () => ({
 vi.mock('@/components/ui/Tooltip', () => ({
   __esModule: true,
   default: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
+}));
+
+vi.mock('@/components/AI/useDeviceCapabilities', () => ({
+  useDeviceCapabilities: () => ({
+    capabilityReport: capabilityMock.report,
+    isChecking: capabilityMock.isChecking,
+    refreshCapabilities: capabilityMock.refreshCapabilities,
+  }),
 }));
 
 describe('ModelManager', () => {
@@ -130,6 +146,7 @@ describe('ModelManager', () => {
   });
 
   it('shows the capability-specific local AI diagnostics card', async () => {
+    capabilityMock.report = await detectDeviceCapabilities(WEB_LLM_MODELS);
     render(
       <ModelManager
         isOpen={true}
@@ -158,6 +175,7 @@ describe('ModelManager', () => {
     });
     Object.defineProperty(navigator, 'deviceMemory', { configurable: true, value: 2 });
     Object.defineProperty(window, 'innerWidth', { configurable: true, value: 375 });
+    capabilityMock.report = await detectDeviceCapabilities(WEB_LLM_MODELS);
 
     render(
       <ModelManager
@@ -184,17 +202,20 @@ describe('ModelManager', () => {
   it('shows the full local AI recommendation on capable desktop hardware', async () => {
     const originalGpu = (navigator as Navigator & { gpu?: unknown }).gpu;
     const originalMemory = (navigator as Navigator & { deviceMemory?: number }).deviceMemory;
+    const originalConcurrency = navigator.hardwareConcurrency;
     const originalWidth = window.innerWidth;
     Object.defineProperty(navigator, 'gpu', {
       configurable: true,
       value: { requestAdapter: vi.fn().mockResolvedValue({}) },
     });
     Object.defineProperty(navigator, 'deviceMemory', { configurable: true, value: 16 });
+    Object.defineProperty(navigator, 'hardwareConcurrency', { configurable: true, value: 8 });
     Object.defineProperty(window, 'innerWidth', { configurable: true, value: 1440 });
     Object.defineProperty(navigator, 'storage', {
       configurable: true,
       value: { estimate: vi.fn().mockResolvedValue({ quota: 2_000_000_000 }) },
     });
+    capabilityMock.report = await detectDeviceCapabilities(WEB_LLM_MODELS);
 
     render(
       <ModelManager
@@ -214,6 +235,10 @@ describe('ModelManager', () => {
     Object.defineProperty(navigator, 'deviceMemory', {
       configurable: true,
       value: originalMemory,
+    });
+    Object.defineProperty(navigator, 'hardwareConcurrency', {
+      configurable: true,
+      value: originalConcurrency,
     });
     Object.defineProperty(window, 'innerWidth', { configurable: true, value: originalWidth });
   });

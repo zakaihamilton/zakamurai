@@ -40,12 +40,32 @@ export default function Welcome() {
     tabState.activeTabId = 'instructions';
   };
 
+  const handleShowReadiness = () => {
+    if (!tabState) return;
+    const exists = tabState.openTabs.some((t) => t.id === 'readiness');
+    if (!exists) {
+      tabState.openTabs = [
+        ...tabState.openTabs,
+        {
+          id: 'readiness',
+          type: 'readiness',
+          label: 'Readiness',
+        },
+      ];
+    }
+    tabState.activeTabId = 'readiness';
+  };
+
   return (
     <div className={styles.welcome}>
       <div className={styles.hero}>
         <WelcomeHero />
         <WelcomePrompt />
-        <WelcomeActions onShowInfo={handleShowInfo} onShowInstructions={handleShowInstructions} />
+        <WelcomeActions
+          onShowInfo={handleShowInfo}
+          onShowInstructions={handleShowInstructions}
+          onShowReadiness={handleShowReadiness}
+        />
         <WelcomeFooter />
       </div>
     </div>

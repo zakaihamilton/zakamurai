@@ -129,6 +129,23 @@ function TooltipInner({
     showTooltip();
   }, [showTooltip]);
 
+  const showTooltipOnTouch = useCallback(
+    (event: React.PointerEvent<HTMLDivElement>) => {
+      if (event.pointerType === 'touch') showTooltip();
+    },
+    [showTooltip],
+  );
+
+  const hideTooltipOnTouch = useCallback(
+    (event: React.PointerEvent<HTMLDivElement>) => {
+      if (event.pointerType === 'touch') hideTooltip();
+    },
+    [hideTooltip],
+  );
+
+  const showTooltipOnTouchStart = useCallback(() => showTooltip(), [showTooltip]);
+  const hideTooltipOnTouchEnd = useCallback(() => hideTooltip(), [hideTooltip]);
+
   useLayoutEffect(() => {
     const updatePosition = () => {
       if (tooltipRef.current && triggerRef.current) {
@@ -268,6 +285,12 @@ function TooltipInner({
         className={`${styles.container} ${className}`}
         onMouseEnter={showTooltip}
         onMouseLeave={hideTooltip}
+        onPointerDown={showTooltipOnTouch}
+        onPointerUp={hideTooltipOnTouch}
+        onPointerCancel={hideTooltipOnTouch}
+        onTouchStart={showTooltipOnTouchStart}
+        onTouchEnd={hideTooltipOnTouchEnd}
+        onTouchCancel={hideTooltipOnTouchEnd}
         onFocus={showTooltipOnFocus}
         onBlur={hideTooltip}
       >

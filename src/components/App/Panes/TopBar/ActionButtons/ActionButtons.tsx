@@ -10,6 +10,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { requireStore } from '../../../types';
 import type { ActionButtonsProps } from '../topbar-types';
 import styles from './ActionButtons.module.css';
+import ViewSwitcher from './ViewSwitcher';
 
 const isViewTab = (tabId: string | null | undefined): boolean =>
   tabId === 'ai-logs' || tabId === 'preview';
@@ -45,6 +46,8 @@ export default function ActionButtons({
     () => openTabs.find((tab) => tab.id === lastContentTabId && !isViewTab(tab.id)),
     [lastContentTabId, openTabs],
   );
+  const activeView =
+    activeTabId === 'ai-logs' ? 'Logs' : activeTabId === 'preview' ? 'Preview' : 'Code';
 
   useEffect(() => {
     if (activeTabId && !isViewTab(activeTabId)) {
@@ -180,6 +183,13 @@ export default function ActionButtons({
           </button>
         </Tooltip>
       </div>
+      <ViewSwitcher
+        activeView={activeView}
+        canOpenCode={Boolean(lastContentTab)}
+        onOpenCode={handleOpenLastContentTab}
+        onOpenLog={onOpenLog}
+        onOpenPreview={onOpenPreview}
+      />
 
       <div className={styles.sidebarToggleGroup}>
         <Tooltip

@@ -17,5 +17,6 @@ describe('ProjectInfo', () => {
     expect(screen.getByText('About the Project')).toBeDefined();
     expect(screen.getByText('Technologies')).toBeDefined();
     expect(screen.getByText('The Vision')).toBeDefined();
+    expect(screen.queryByText('Device readiness')).toBeNull();
   });
 });

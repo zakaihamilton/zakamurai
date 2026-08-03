@@ -12,6 +12,6 @@ describe('ProjectVision', () => {
   it('renders the vision section copy', () => {
     render(<ProjectVision />);
     expect(screen.getByText('The Vision')).toBeDefined();
-    expect(screen.getByText(/future of coding is collaborative/)).toBeDefined();
+    expect(screen.getByText(/distance between an idea and a working experiment/)).toBeDefined();
   });
 });

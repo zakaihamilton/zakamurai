@@ -9,16 +9,14 @@ export default function ProjectAbout() {
           <Icons.Sparkles size={24} /> About the Project
         </h2>
         <p>
-          Zakamurai is a next-generation, browser-based Integrated Development Environment (IDE)
-          designed from the ground up for speed and AI-assisted creativity. It eliminates the
-          traditional setup hurdles of local development environments, allowing developers to start
-          coding the moment they open their browser.
+          Zakamurai is a browser-based development workspace for turning an idea into a working web
+          project without a local setup. Open the app, edit files, ask for help, and see the result
+          in a live preview.
         </p>
         <p>
-          Whether you are prototyping a new idea or building a complex web application, Zakamurai
-          provides the tools you need: a high-performance code editor, real-time compilation, a live
-          preview area, and an integrated AI that understands your project's context to help you
-          write better code faster.
+          Projects, builds, and local AI models stay in the browser. IndexedDB is used when
+          available, with localStorage as a fallback, so your workspace can remain useful even
+          without a backend service.
         </p>
       </div>
     </section>

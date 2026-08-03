@@ -21,6 +21,7 @@ vi.mock('@/components/ui/Icons', () => ({
     Tokens: () => <span data-testid="icon-tokens" />,
     Image: () => <span data-testid="icon-image" />,
     File: () => <span data-testid="icon-file" />,
+    AlertCircle: () => <span data-testid="icon-alert" />,
     Close: () => <span data-testid="icon-close" />,
   },
 }));
@@ -69,6 +70,14 @@ describe('TabItem', () => {
     expect(
       screen.getByText('test.js').closest('[data-content]')?.getAttribute('data-content'),
     ).toBe('Token Breakdown\nsrc/test.js');
+  });
+
+  it('renders readiness tab with the diagnostics icon', () => {
+    const tab = createMockTab({ id: 'readiness', label: 'Readiness', type: 'readiness' });
+    render(<TabItem tab={tab} isActive={false} {...defaultHandlers} />);
+
+    expect(screen.getByText('Readiness')).toBeDefined();
+    expect(screen.getByTestId('icon-alert')).toBeDefined();
   });
 
   it('calls onTabClick when clicked or Enter pressed', () => {

@@ -1,7 +1,7 @@
 import { WEB_LLM_MODELS } from '@/components/AI/WebLLMModels';
+import { useDeviceCapabilities } from '@/components/AI/useDeviceCapabilities';
 import Dialog from '@/components/ui/Dialog';
-import { type DeviceCapabilityReport, detectDeviceCapabilities } from '@/contracts/capabilities';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import type { ModelManagerProps, ModelOption, ModelSortKey, ModelSortState } from '../prompt-types';
 import styles from './ModelManager.module.css';
 import ModelSearch from './ModelSearch';
@@ -22,15 +22,9 @@ export default function ModelManager({
   const [searchTerm, setSearchTerm] = useState('');
   const [sort, setSort] = useState<ModelSortState>(null);
   const [modelPendingRemoval, setModelPendingRemoval] = useState<ModelOption | null>(null);
-  const [capabilityReport, setCapabilityReport] = useState<DeviceCapabilityReport | null>(null);
-
-  const refreshCapabilities = useCallback(async () => {
-    setCapabilityReport(await detectDeviceCapabilities(WEB_LLM_MODELS));
-  }, []);
-
-  useEffect(() => {
-    if (isOpen) void refreshCapabilities();
-  }, [isOpen, refreshCapabilities]);
+  const { capabilityReport, isChecking, refreshCapabilities } = useDeviceCapabilities({
+    enabled: isOpen,
+  });
 
   const visibleModels = useMemo(() => {
     const query = searchTerm.trim().toLocaleLowerCase();
@@ -80,7 +74,7 @@ export default function ModelManager({
           <div className={styles.modelManagerIntro}>
             <p>Choose the local browser model that matches this device and the kind of edit.</p>
           </div>
-          {capabilityReport && (
+          {capabilityReport ? (
             <section className={styles.capabilityCard} aria-label="Device AI capability">
               <div className={styles.capabilityHeader}>
                 <strong>
@@ -90,8 +84,12 @@ export default function ModelManager({
                       ? 'Compact local AI recommended'
                       : 'Full local AI available'}
                 </strong>
-                <button type="button" onClick={() => void refreshCapabilities()}>
-                  Recheck
+                <button
+                  type="button"
+                  onClick={() => void refreshCapabilities()}
+                  disabled={isChecking}
+                >
+                  {isChecking ? 'Checking…' : 'Recheck'}
                 </button>
               </div>
               <p className={styles.capabilitySummary}>
@@ -122,6 +120,13 @@ export default function ModelManager({
                   ))}
                 </ul>
               </details>
+            </section>
+          ) : (
+            <section className={styles.capabilityCard} aria-label="Device AI capability">
+              <strong>Checking local AI readiness…</strong>
+              <p className={styles.capabilitySummary}>
+                Zakamurai is checking this browser for WebGPU, workers, and available storage.
+              </p>
             </section>
           )}
           <ModelSearch searchTerm={searchTerm} onSearchTermChange={setSearchTerm} />

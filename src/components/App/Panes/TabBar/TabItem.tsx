@@ -14,6 +14,7 @@ const getTabViewType = (tab: Tab): string => {
   if (tab.type === 'preview') return 'Preview';
   if (tab.type === 'project-info') return 'Project Info';
   if (tab.type === 'instructions') return 'Instructions';
+  if (tab.type === 'readiness') return 'Readiness';
   if (tab.type === 'ai-section') return 'AI Pane';
   return tab.type || 'View';
 };
@@ -64,6 +65,8 @@ export default function TabItem({
           <Icons.Globe />
         ) : tab.type === 'project-info' ? (
           <Icons.Info />
+        ) : tab.type === 'readiness' ? (
+          <Icons.AlertCircle />
         ) : tab.type === 'token-breakdown' ? (
           <Icons.Tokens size={14} />
         ) : tab.type === 'ai-section' ? (

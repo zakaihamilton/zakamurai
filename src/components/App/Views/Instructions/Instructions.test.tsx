@@ -20,9 +20,13 @@ vi.mock('@/components/ui/Icons', () => ({
 describe('Instructions', () => {
   it('renders instruction sections', () => {
     render(<Instructions />);
-    expect(screen.getByText('Welcome to Zakamurai')).toBeDefined();
-    expect(screen.getByRole('heading', { name: /1\. Project Structure/ })).toBeDefined();
-    expect(screen.getByRole('heading', { name: /2\. AI Collaboration/ })).toBeDefined();
-    expect(screen.getByRole('heading', { name: /3\. Build & Preview/ })).toBeDefined();
+    expect(screen.getByText('Build your next idea here')).toBeDefined();
+    expect(screen.getByRole('heading', { name: /1\. Shape the workspace/ })).toBeDefined();
+    expect(screen.getByRole('heading', { name: /2\. Collaborate with local AI/ })).toBeDefined();
+    expect(screen.getByRole('heading', { name: /3\. Review every AI change/ })).toBeDefined();
+    expect(screen.getByRole('heading', { name: /4\. Build, preview, and debug/ })).toBeDefined();
+    expect(screen.getByText(/IndexedDB, with localStorage as a fallback/)).toBeDefined();
+    expect(screen.getByText(/WebGPU and Web Workers are required/)).toBeDefined();
+    expect(screen.getByText(/More Actions → Keyboard Shortcuts/)).toBeDefined();
   });
 });

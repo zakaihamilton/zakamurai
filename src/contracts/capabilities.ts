@@ -26,6 +26,9 @@ export type ModelProfile = {
   recommendedFor: DeviceCapabilityTier[];
 };
 
+type CapabilityModel = Pick<WebLLMModel, 'id' | 'ramMB'> &
+  Partial<Pick<WebLLMModel, 'recommended'>>;
+
 type NavigatorWithCapabilities = Navigator & {
   deviceMemory?: number;
   gpu?: { requestAdapter?: () => Promise<unknown | null> } | unknown;
@@ -76,7 +79,7 @@ export function getCapabilityTier({
 
 export function getRecommendedModelId(
   tier: DeviceCapabilityTier,
-  models: Array<Pick<WebLLMModel, 'id' | 'ramMB'>>,
+  models: CapabilityModel[],
   deviceMemoryGB: number | null = null,
 ): string | null {
   if (tier === 'no-ai' || models.length === 0) return null;
@@ -85,22 +88,24 @@ export function getRecommendedModelId(
   const fittingModels = memoryLimitMB
     ? models.filter((model) => model.ramMB <= memoryLimitMB)
     : models;
-  const candidates = (fittingModels.length ? fittingModels : models).filter((model) => {
+  const availableModels = fittingModels.length ? fittingModels : models;
+  const preferredModel = fittingModels.find((model) => model.recommended);
+  if (preferredModel) return preferredModel.id;
+
+  const candidates = availableModels.filter((model) => {
     if (tier === 'full-ai') return getModelTier(model) === 'full';
     return getModelTier(model) === 'compact' || getModelTier(model) === 'recovery';
   });
   return (
     (
       candidates.sort((left, right) => right.ramMB - left.ramMB)[0] ||
-      (fittingModels.length ? fittingModels : models).sort(
-        (left, right) => right.ramMB - left.ramMB,
-      )[0]
+      availableModels.sort((left, right) => right.ramMB - left.ramMB)[0]
     )?.id || null
   );
 }
 
 export async function detectDeviceCapabilities(
-  models: Array<Pick<WebLLMModel, 'id' | 'ramMB'>> = [],
+  models: CapabilityModel[] = [],
 ): Promise<DeviceCapabilityReport> {
   const currentNavigator =
     typeof navigator === 'undefined' ? null : (navigator as NavigatorWithCapabilities);

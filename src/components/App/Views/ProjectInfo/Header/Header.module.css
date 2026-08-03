@@ -1,32 +1,38 @@
 .header {
-  margin-bottom: 48px;
-  text-align: center;
+  margin-bottom: 36px;
+  text-align: left;
+}
+
+.eyebrow {
+  display: inline-block;
+  margin-bottom: 12px;
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
 }
 
 .title {
-  font-size: 2.5rem;
+  max-width: 680px;
+  font-size: clamp(2.2rem, 5vw, 3.4rem);
   font-weight: 800;
-  margin-bottom: 16px;
+  margin: 0 0 14px;
   background: linear-gradient(135deg, var(--text) 0%, var(--accent) 100%);
   background-clip: text;
   -webkit-text-fill-color: transparent;
 }
 
 .pitch {
-  font-size: 1.25rem;
+  max-width: 680px;
+  font-size: 1.15rem;
   font-weight: 500;
   color: var(--text-muted);
-  max-width: 700px;
-  margin: 0 auto;
-  font-style: italic;
+  margin: 0;
 }
 
 @media (width <= 768px) {
-  .title {
-    font-size: 1.75rem;
-  }
-
   .pitch {
-    font-size: 1.1rem;
+    font-size: 1.05rem;
   }
 }

@@ -48,18 +48,33 @@
   .header {
     --topbar-control-height: 40px;
 
-    height: 104px;
+    height: 52px;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-rows: 1fr;
     align-content: center;
-    flex-wrap: wrap;
-    gap: 4px 8px;
+    gap: 4px;
     padding: 6px 8px;
     min-width: 0;
   }
 
+  .menuToggle {
+    grid-column: 1;
+    grid-row: 1;
+    justify-self: start;
+  }
+
   .actions {
-    flex: 1 0 100%;
-    justify-content: space-between;
+    grid-column: 3;
+    grid-row: 1;
+    justify-content: flex-start;
     gap: 8px;
+    min-width: 0;
+  }
+
+  .actions > :first-child {
+    flex: 1 1 auto;
+    justify-content: space-between;
     min-width: 0;
   }
 
@@ -69,6 +84,14 @@
   }
 
   .workingIndicator > div span {
+    display: none;
+  }
+
+  .workingIndicator {
+    display: none;
+  }
+
+  .brandTitle {
     display: none;
   }
 }
@@ -141,9 +164,9 @@
   .header {
     --topbar-control-height: 36px;
 
-    height: 92px;
+    height: 44px;
     padding: 0 6px;
-    gap: 2px 4px;
+    gap: 4px;
   }
 
   .menuToggle {
@@ -153,5 +176,9 @@
 
   .actions {
     gap: 4px;
+  }
+
+  .actions > :first-child {
+    flex-basis: 0;
   }
 }
