@@ -50,6 +50,7 @@ vi.mock('../Views/LogArea', () => ({ default: () => <div data-testid="log-area" 
 vi.mock('../Views/PreviewArea', () => ({ default: () => <div data-testid="preview-area" /> }));
 vi.mock('../Views/ProjectInfo', () => ({ default: () => <div data-testid="project-info" /> }));
 vi.mock('../Views/Instructions', () => ({ default: () => <div data-testid="instructions" /> }));
+vi.mock('../Views/Readiness', () => ({ default: () => <div data-testid="readiness" /> }));
 vi.mock('../Views/TokenBreakdown', () => ({
   default: () => <div data-testid="token-breakdown" />,
 }));
@@ -130,6 +131,21 @@ describe('WorkspaceArea', () => {
 
     render(<WorkspaceArea />);
     expect(screen.getByTestId('instructions')).toBeDefined();
+  });
+
+  it('renders readiness for readiness tab', () => {
+    vi.mocked(AppState.useState).mockReturnValue(makeAppState({ isMobile: false }));
+    vi.mocked(TabState.useState).mockReturnValue(
+      makeTabState({
+        openTabs: [{ id: 'readiness', type: 'readiness', label: 'Readiness' }],
+        activeTabId: 'readiness',
+      }),
+    );
+    vi.mocked(SidebarState.useState).mockReturnValue(makeSidebarState({ showAIInput: false }));
+    vi.mocked(PromptState.useState).mockReturnValue(makePromptState());
+
+    render(<WorkspaceArea />);
+    expect(screen.getByTestId('readiness')).toBeDefined();
   });
 
   it('renders token breakdown tab type', () => {

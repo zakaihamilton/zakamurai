@@ -29,6 +29,9 @@ export default function TabContextMenu({
     if (tab.type === 'project-info') {
       return 'Project Info';
     }
+    if (tab.type === 'readiness') {
+      return 'Readiness';
+    }
     return 'System Tab';
   };
 
@@ -42,6 +45,8 @@ export default function TabContextMenu({
             <Icons.Globe />
           ) : tab.type === 'project-info' ? (
             <Icons.Info />
+          ) : tab.type === 'readiness' ? (
+            <Icons.AlertCircle />
           ) : isMediaFile(tab.file?.name) ? (
             <Icons.Image />
           ) : (

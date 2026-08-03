@@ -27,12 +27,18 @@
 }
 
 .container {
-  padding: 40px;
-  max-width: 900px;
+  padding: 42px 40px 64px;
+  max-width: 1040px;
   margin: 0 auto;
   color: var(--text);
   line-height: 1.6;
   animation: fade-in 0.4s ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .container {
+    animation: none;
+  }
 }
 
 @keyframes fade-in {

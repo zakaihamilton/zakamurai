@@ -33,6 +33,7 @@ export type TabType =
   | 'token-breakdown'
   | 'project-info'
   | 'instructions'
+  | 'readiness'
   | 'ai-section';
 
 export interface Tab {

@@ -1,5 +1,4 @@
 import ProjectAbout from './About';
-import ProjectCompatibility from './Compatibility';
 import ProjectHeader from './Header';
 import styles from './ProjectInfo.module.css';
 import ProjectTechnologies from './Technologies';
@@ -12,7 +11,6 @@ export default function ProjectInfo() {
         <ProjectHeader />
         <ProjectAbout />
         <ProjectTechnologies />
-        <ProjectCompatibility />
         <ProjectVision />
       </div>
     </div>

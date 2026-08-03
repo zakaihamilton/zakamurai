@@ -13,8 +13,9 @@ describe('ProjectTechnologies', () => {
     render(<ProjectTechnologies />);
 
     expect(screen.getByText('Technologies')).toBeDefined();
-    expect(screen.getByText('Next.js & React')).toBeDefined();
+    expect(screen.getByText('Next.js 16 & React 19')).toBeDefined();
     expect(screen.getByText('CSS Modules')).toBeDefined();
+    expect(screen.getByText('Local WebLLM')).toBeDefined();
     expect(screen.getByText('almostnode')).toBeDefined();
   });
 });

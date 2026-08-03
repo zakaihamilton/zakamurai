@@ -6,6 +6,6 @@ describe('ProjectHeader', () => {
   it('renders the project title and pitch', () => {
     render(<ProjectHeader />);
     expect(screen.getByText('Zakamurai')).toBeDefined();
-    expect(screen.getByText(/ultimate browser-based coding companion/)).toBeDefined();
+    expect(screen.getByText(/Build, review, and preview web projects/)).toBeDefined();
   });
 });

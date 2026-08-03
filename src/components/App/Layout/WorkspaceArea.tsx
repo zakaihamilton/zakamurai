@@ -11,6 +11,7 @@ import Instructions from '../Views/Instructions';
 import LogArea from '../Views/LogArea';
 import PreviewArea from '../Views/PreviewArea';
 import ProjectInfo from '../Views/ProjectInfo';
+import Readiness from '../Views/Readiness';
 import TokenBreakdown from '../Views/TokenBreakdown';
 import Welcome from '../Views/Welcome';
 import { requireStore } from '../types';
@@ -78,6 +79,7 @@ export default function WorkspaceArea() {
           {activeTab?.type === 'preview' && <PreviewArea />}
           {activeTab?.type === 'project-info' && <ProjectInfo />}
           {activeTab?.type === 'instructions' && <Instructions />}
+          {activeTab?.type === 'readiness' && <Readiness />}
           {activeTab?.type === 'token-breakdown' && <TokenBreakdown tab={activeTab} />}
           {activeTab?.type === 'ai-section' && <AISectionView tab={activeTab} />}
           {!activeTab && <Welcome />}
