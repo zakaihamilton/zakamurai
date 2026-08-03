@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { RUNTIME_ASSET_MANIFEST } from '../../scripts/runtime-assets';
+import { RUNTIME_ASSET_MANIFEST, patchResolverCode } from '../../scripts/runtime-assets';
 
 describe('runtime asset manifest', () => {
   it('keeps the RAG WASM surface limited to the supported CPU paths', () => {
@@ -19,5 +19,15 @@ describe('runtime asset manifest', () => {
     ];
     expect(files.some((file) => /\.(?:map|d\.ts)$/.test(file))).toBe(false);
     expect(files.some((file) => /demo|example/i.test(file))).toBe(false);
+  });
+
+  it('preserves the almostnode semver resolver compatibility patch', () => {
+    const patched = patchResolverCode('range = range.trim();');
+    expect(patched).toContain('range = range.trim();');
+    expect(patched).toContain('.replace(/(^|\\s)(>=|<=|>|<|=)');
+
+    expect(() => patchResolverCode('range = range.trim();\nrange = range.trim();')).toThrow(
+      'Expected one npm resolver marker',
+    );
   });
 });

@@ -1,4 +1,13 @@
-import { cpSync, existsSync, mkdirSync, readdirSync, rmSync, statSync } from 'node:fs';
+import {
+  cpSync,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from 'node:fs';
 import { join, relative, resolve } from 'node:path';
 
 const ROOT = resolve(import.meta.dirname, '..');
@@ -10,6 +19,7 @@ const PUBLIC_ASSETS_DEST = join(ROOT, 'public', 'assets');
 const WASM_DEST = join(ROOT, 'public', 'wasm');
 const ESBUILD_DEST = join(ROOT, 'public', 'esbuild');
 const MAX_GENERATED_BYTES = 75 * 1024 * 1024;
+const RESOLVER_MARKERS = ['range = range.trim();', 'range2 = range2.trim();'] as const;
 
 export const RUNTIME_ASSET_MANIFEST = {
   onnx: [
@@ -26,6 +36,27 @@ function copyFile(source: string, destination: string): void {
   if (!existsSync(source)) throw new Error(`Required runtime asset is missing: ${source}`);
   mkdirSync(resolve(destination, '..'), { recursive: true });
   cpSync(source, destination);
+}
+
+export function patchResolverCode(sourceCode: string, filePath = '<inline>'): string {
+  const resolverMarker = RESOLVER_MARKERS.find((marker) => sourceCode.includes(marker));
+  const markerOccurrences = resolverMarker ? sourceCode.split(resolverMarker).length - 1 : 0;
+
+  if (!resolverMarker || markerOccurrences !== 1) {
+    throw new Error(`Expected one npm resolver marker in ${filePath}, found ${markerOccurrences}.`);
+  }
+
+  const rangeVariable = resolverMarker.startsWith('range2') ? 'range2' : 'range';
+  const resolverPatch = `${resolverMarker}
+  // almostnode 0.2.14 requires all three semver segments in ranges.
+  ${rangeVariable} = ${rangeVariable}
+    .replace(/(^|\\s)(>=|<=|>|<|=)\\s*(\\d+)(?:\\.(\\d+))?(?=\\s|$)/g, (_match, prefix, operator, major, minor) => prefix + operator + major + "." + (minor || "0") + ".0")
+    .replace(/([~^])\\s*(\\d+)(?:\\.(\\d+))?(?=\\s|$)/g, (_match, operator, major, minor) => operator + major + "." + (minor || "0") + ".0");`;
+  return sourceCode.replace(resolverMarker, resolverPatch);
+}
+
+function patchResolver(filePath: string): void {
+  writeFileSync(filePath, patchResolverCode(readFileSync(filePath, 'utf8'), filePath));
 }
 
 function clearDirectory(directory: string): void {
@@ -52,9 +83,13 @@ function setupAlmostnode(): void {
     copyFile(join(ALMOSTNODE_SOURCE, name), join(ALMOSTNODE_DEST, name));
   }
 
+  patchResolver(join(ALMOSTNODE_DEST, 'index.mjs'));
+
   for (const name of runtimeWorkerNames()) {
     copyFile(join(ALMOSTNODE_SOURCE, 'assets', name), join(ALMOSTNODE_DEST, 'assets', name));
     copyFile(join(ALMOSTNODE_SOURCE, 'assets', name), join(PUBLIC_ASSETS_DEST, name));
+    patchResolver(join(ALMOSTNODE_DEST, 'assets', name));
+    patchResolver(join(PUBLIC_ASSETS_DEST, name));
   }
 }
 
