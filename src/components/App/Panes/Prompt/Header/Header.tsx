@@ -1,15 +1,19 @@
 import { Icons } from '@/components/ui/Icons';
 import Tooltip from '@/components/ui/Tooltip';
 import { useState } from 'react';
+import ManagerTraceInspector from '../ManagerTraceInspector';
 import type { PromptHeaderProps } from '../prompt-types';
 import styles from './Header.module.css';
 
 export default function PromptHeader({
   isAIProcessing: _isAIProcessing,
   isSystemProcessing,
-  mode = 'single',
-  onModeChange,
   copyContent = '',
+  latestManagerTrace,
+  latestAIIncident,
+  onExportAIIncident,
+  traceFiles,
+  onReplayRequest,
 }: PromptHeaderProps) {
   const [copied, setCopied] = useState(false);
 
@@ -26,27 +30,26 @@ export default function PromptHeader({
 
   return (
     <div className={styles.header}>
-      <h2 className={styles.title}>Agent</h2>
-      <fieldset className={styles.modeToggle} aria-label="Agent mode">
-        <button
-          type="button"
-          className={`${styles.modeBtn} ${mode === 'single' ? styles.modeBtnActive : ''}`}
-          onClick={() => onModeChange?.('single')}
-          aria-pressed={mode === 'single'}
-        >
-          Single
-        </button>
-        <button
-          type="button"
-          className={`${styles.modeBtn} ${mode === 'team' ? styles.modeBtnActive : ''}`}
-          onClick={() => onModeChange?.('team')}
-          aria-pressed={mode === 'team'}
-        >
-          Team
-        </button>
-      </fieldset>
+      <h2 className={styles.title}>AI Manager</h2>
       <div className={styles.headerActions}>
         {isSystemProcessing && <span className={styles.status}>Compiling</span>}
+        <ManagerTraceInspector
+          trace={latestManagerTrace || null}
+          files={traceFiles}
+          onReplayRequest={onReplayRequest}
+        />
+        {latestAIIncident && (
+          <Tooltip content="Export AI incident">
+            <button
+              type="button"
+              className={styles.headerActionBtn}
+              onClick={onExportAIIncident}
+              aria-label="Export AI incident"
+            >
+              <Icons.Download />
+            </button>
+          </Tooltip>
+        )}
         <Tooltip content={copied ? 'Copied!' : 'Copy full session (transcript & reasoning)'}>
           <button
             type="button"

@@ -1,4 +1,5 @@
 import Node from '@/components/state/Node';
+import type { AgentSessionMessage } from '@/components/state/domain-types';
 import { Icons } from '@/components/ui/Icons';
 import Tooltip from '@/components/ui/Tooltip';
 import { useEffect, useRef, useState } from 'react';
@@ -17,6 +18,7 @@ const formatDuration = (milliseconds: number): string => {
 type ReasoningPanelProps = {
   modelDownloadStatus?: string;
   onOpenInTab?: () => void;
+  onClearLog?: () => void;
   showStepIO?: boolean;
   onToggleStepIO?: (show: boolean) => void;
 };
@@ -24,6 +26,7 @@ type ReasoningPanelProps = {
 export default function ReasoningPanel({
   modelDownloadStatus = '',
   onOpenInTab,
+  onClearLog,
   showStepIO: showStepIOProp = false,
   onToggleStepIO,
 }: ReasoningPanelProps) {
@@ -32,6 +35,7 @@ export default function ReasoningPanel({
       <ReasoningPanelInner
         modelDownloadStatus={modelDownloadStatus}
         onOpenInTab={onOpenInTab}
+        onClearLog={onClearLog}
         showStepIO={showStepIOProp}
         onToggleStepIO={onToggleStepIO}
       />
@@ -42,6 +46,7 @@ export default function ReasoningPanel({
 function ReasoningPanelInner({
   modelDownloadStatus,
   onOpenInTab = () => {},
+  onClearLog = () => {},
   showStepIO: showStepIOProp = false,
   onToggleStepIO,
 }: ReasoningPanelProps) {
@@ -53,7 +58,15 @@ function ReasoningPanelInner({
   const activeSession = getActiveAgentSession(agentSessionState);
   const reasoning = activeSession?.reasoning || '';
   const reasoningEvents = activeSession?.reasoningEvents || [];
+  const messages = activeSession?.messages || [];
   const displayedReasoning = formatReasoningEvents(reasoningEvents, showStepIO) || reasoning;
+  const latestError =
+    activeSession?.status === 'error'
+      ? [...messages]
+          .reverse()
+          .find((message) => message.role === 'ai' && /^AI Manager error:/i.test(message.text))
+          ?.text
+      : undefined;
   const runUsage = activeSession?.runUsage;
   const toolEntries = Object.entries(runUsage?.toolCalls || {}).filter(([, count]) => count > 0);
   const hasDiagnostics = Boolean(
@@ -69,6 +82,11 @@ function ReasoningPanelInner({
         `Tools: ${toolEntries.map(([name, count]) => `${name} ×${count}`).join(', ') || 'none'}`,
       ].join('\n')
     : '';
+  const transcriptText = messages.length
+    ? messages
+        .map((message) => `[${message.timestamp || 'now'}] ${message.role}: ${message.text}`)
+        .join('\n\n')
+    : '';
   const reasoningRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -76,23 +94,33 @@ function ReasoningPanelInner({
   }, [showStepIOProp]);
 
   useEffect(() => {
-    if ((displayedReasoning || modelDownloadStatus) && reasoningRef.current) {
+    if (
+      (displayedReasoning || latestError || modelDownloadStatus || messages.length) &&
+      reasoningRef.current
+    ) {
       reasoningRef.current.scrollTo?.({
         top: reasoningRef.current.scrollHeight,
         // Repeated smooth-scroll animations compete with local model inference.
         behavior: 'auto',
       });
     }
-  }, [displayedReasoning, modelDownloadStatus]);
+  }, [displayedReasoning, latestError, messages.length, modelDownloadStatus]);
 
-  const reasoningText = [modelDownloadStatus, displayedReasoning, diagnosticsText]
+  const reasoningText = [
+    transcriptText ? `--- Transcript ---\n${transcriptText}` : '',
+    modelDownloadStatus,
+    displayedReasoning,
+    diagnosticsText,
+  ]
     .filter(Boolean)
     .join('\n\n');
+  const hasLog = Boolean(displayedReasoning || messages.length || hasDiagnostics);
+  const isLogClearDisabled = !hasLog || activeSession?.status === 'running';
 
   return (
     <div
       className={`${styles.reasoningWrapper} ${
-        displayedReasoning || modelDownloadStatus ? styles.reasoningVisible : ''
+        displayedReasoning || modelDownloadStatus || messages.length ? styles.reasoningVisible : ''
       } ${!isExpanded ? styles.reasoningCollapsed : ''}`}
     >
       <div className={styles.reasoningContainer}>
@@ -101,7 +129,7 @@ function ReasoningPanelInner({
             <Icons.Brain size={14} />
             <Tooltip
               content={
-                'Progress & Reasoning\nLive updates while the agent works.\nIncludes planning, tool activity, downloads, and completion status.'
+                'Progress & Reasoning\nLive updates while the agent works.\nIncludes planning, tool activity, downloads, completion status, and the session transcript.'
               }
             >
               <button
@@ -115,6 +143,23 @@ function ReasoningPanelInner({
             </Tooltip>
           </div>
           <div className={styles.reasoningActions}>
+            <Tooltip
+              content={
+                activeSession?.status === 'running'
+                  ? 'Clear AI Model log after the current run'
+                  : 'Clear AI Model log'
+              }
+            >
+              <button
+                type="button"
+                className={styles.clearLogButton}
+                aria-label="Clear AI Model log"
+                onClick={onClearLog}
+                disabled={isLogClearDisabled}
+              >
+                <Icons.Trash size={14} />
+              </button>
+            </Tooltip>
             <Tooltip content={`${showStepIO ? 'Hide' : 'Show'} input/output for each agent step`}>
               <button
                 type="button"
@@ -135,6 +180,32 @@ function ReasoningPanelInner({
         </div>
         {isExpanded && (
           <div ref={reasoningRef} className={styles.reasoningContent}>
+            {messages.length ? (
+              <section className={styles.transcriptSection} aria-label="Session transcript">
+                {messages.map((message: AgentSessionMessage) => {
+                  const label =
+                    message.role === 'user'
+                      ? 'You'
+                      : message.role === 'ai'
+                        ? message.agentRole
+                          ? `AI · ${message.agentRole}`
+                          : 'AI'
+                        : 'System';
+                  return (
+                    <article className={styles.reasoningEntry} key={message.id}>
+                      <div className={styles.timestamp}>
+                        {message.timestamp ? <time>{message.timestamp}</time> : null}
+                        {message.timestamp ? ' · ' : ''}
+                        <span className={styles.transcriptType}>{label}</span>
+                      </div>
+                      <div className={`${styles.reasoningText} ${styles.transcriptText}`}>
+                        {message.text}
+                      </div>
+                    </article>
+                  );
+                })}
+              </section>
+            ) : null}
             {modelDownloadStatus && (
               <output className={styles.downloadStatus} aria-live="polite">
                 <span className={styles.downloadSpinner} aria-hidden="true" />
@@ -185,6 +256,12 @@ function ReasoningPanelInner({
             >
               {displayedReasoning}
             </ReactMarkdown>
+            {latestError && (
+              <aside className={styles.reasoningError} role="alert">
+                <strong className={styles.reasoningErrorLabel}>Latest error</strong>
+                <span>{latestError}</span>
+              </aside>
+            )}
           </div>
         )}
       </div>

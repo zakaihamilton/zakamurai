@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "name": "bounded-context-follow-up",
+  "request": "explain the component",
+  "files": {
+    "src/App.jsx": "export const answer = 42;"
+  },
+  "modelResponses": [
+    "{\"kind\":\"request-context\",\"requests\":[{\"tool\":\"read_file\",\"input\":{\"path\":\"src/App.jsx\"}},{\"tool\":\"unknown\"}]}",
+    "{\"kind\":\"answer\",\"summary\":\"The component exports the answer constant.\"}"
+  ],
+  "expected": {
+    "intent": "explanation",
+    "outcome": "success",
+    "modelCalls": 2,
+    "toolOrder": ["list_files", "search_workspace", "read_file"]
+  }
+}

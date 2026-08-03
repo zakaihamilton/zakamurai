@@ -9,14 +9,13 @@ describe('usePromptSessionControls', () => {
   it('branches an active session and opens a review dialog for deletion', () => {
     const defaults = createDefaultAgentSessions('test-model');
     const agentSessionState = makeAgentSessionState(defaults);
-    const promptUiState = makePromptUiState({ isRoleGraphOpen: false });
+    const promptUiState = makePromptUiState();
     const { result } = renderHook(() =>
       usePromptSessionControls({
         agentSessionState,
         promptUiState,
         selectedModel: 'test-model',
         isAIProcessing: false,
-        isRoleGraphOpen: false,
       }),
     );
     const activeSessionId = requireSessionId(defaults.activeSessionId);

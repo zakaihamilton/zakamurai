@@ -17,8 +17,6 @@ export default function usePromptSessionControls({
   agentSessionState,
   promptUiState,
   selectedModel,
-  isAIProcessing,
-  isRoleGraphOpen,
 }: UsePromptSessionControlsParams) {
   useEffect(() => {
     if (!agentSessionState) return;
@@ -65,22 +63,6 @@ export default function usePromptSessionControls({
     },
     [agentSessionState],
   );
-
-  const openRoleGraph = useCallback(() => {
-    promptUiState((draft) => {
-      draft.isRoleGraphOpen = true;
-    });
-  }, [promptUiState]);
-
-  const closeRoleGraph = useCallback(() => {
-    promptUiState((draft) => {
-      draft.isRoleGraphOpen = false;
-    });
-  }, [promptUiState]);
-
-  useEffect(() => {
-    if (activeSession?.mode !== 'team' && isRoleGraphOpen) closeRoleGraph();
-  }, [activeSession?.mode, closeRoleGraph, isRoleGraphOpen]);
 
   const handleCreateSession = useCallback(() => {
     try {
@@ -170,25 +152,14 @@ export default function usePromptSessionControls({
     [agentSessionState],
   );
 
-  const handleModeChange = useCallback(
-    (mode: string) => {
-      if (!activeSession || isAIProcessing) return;
-      patchSession(activeSession.id, { mode: mode === 'team' ? 'team' : 'single' });
-    },
-    [activeSession, isAIProcessing, patchSession],
-  );
-
   return {
     activeSession,
     patchSession,
     pushSessionMessage,
-    openRoleGraph,
-    closeRoleGraph,
     handleCreateSession,
     handleRenameSession,
     handleDeleteSession,
     handleBranchSession,
     handleSelectSession,
-    handleModeChange,
   };
 }

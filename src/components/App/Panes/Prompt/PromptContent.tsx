@@ -1,15 +1,12 @@
-import type { RoleGraph } from '@/components/AI/types';
 import type { CssCustomProperties } from '@/components/App/types';
 import { formatReasoningEvents } from './AgentSessions';
 import ChangeSetPanel from './ChangeSet';
 import PromptComposer from './Composer';
-import PromptContextPanel from './Context';
 import PromptHeader from './Header';
 import ModelDownloader from './ModelManager';
 import styles from './PromptContent.module.css';
 import ReasoningPanel from './Reasoning';
-import { RoleGraphDialog, RoleGraphSummary } from './RoleGraph';
-import { SessionDialog, SessionManager, SessionTranscript, SessionTreeDialog } from './Session';
+import { SessionDialog, SessionManager, SessionTreeDialog } from './Session';
 import type { PromptContentProps } from './prompt-types';
 
 export default function PromptContent({
@@ -20,7 +17,6 @@ export default function PromptContent({
   isSystemProcessing,
   activeSession,
   sessionReasoning,
-  onModeChange,
   onOpenTree,
   isAgentTreeOpen,
   sessionDialog,
@@ -33,19 +29,8 @@ export default function PromptContent({
   onDeleteSession,
   runningSessionId,
   promptUiState,
-  isRoleGraphOpen,
-  onOpenRoleGraph,
-  onCloseRoleGraph,
   modelOptions,
-  selectedModel,
-  promptScope,
-  onScopeChange,
   onOpenSectionInTab,
-  activeFileName,
-  activeFilePath,
-  selectedLines,
-  selectedLineText,
-  runState,
   isModelManagerOpen,
   selectedModelInfo,
   cachedModelIds,
@@ -66,13 +51,16 @@ export default function PromptContent({
   onLoadCachedModelIds,
   onOpenModelManager,
   patchSession,
+  onClearAIModelLog,
+  latestManagerTrace,
+  latestAIIncident,
+  onExportAIIncident,
+  traceFiles,
+  onReplayRequest,
 }: PromptContentProps) {
   const transcriptText = activeSession?.messages?.length
     ? activeSession.messages
-        .map(
-          (m) =>
-            `[${m.timestamp || 'now'}] ${m.role}${m.agentRole ? ` (${m.agentRole})` : ''}: ${m.text}`,
-        )
+        .map((m) => `[${m.timestamp || 'now'}] ${m.role}: ${m.text}`)
         .join('\n\n')
     : '';
 
@@ -98,7 +86,7 @@ export default function PromptContent({
       reasoningText ? `--- Reasoning ---\n${reasoningText}` : null,
     ]
       .filter(Boolean)
-      .join('\n\n') || 'Start a conversation with this agent session.';
+      .join('\n\n') || 'Start a conversation with the AI Manager.';
 
   return (
     <aside
@@ -110,9 +98,12 @@ export default function PromptContent({
         <PromptHeader
           isAIProcessing={isAIProcessing}
           isSystemProcessing={isSystemProcessing}
-          mode={activeSession?.mode || 'single'}
-          onModeChange={onModeChange}
           copyContent={agentPaneContent}
+          latestManagerTrace={latestManagerTrace}
+          latestAIIncident={latestAIIncident}
+          onExportAIIncident={onExportAIIncident}
+          traceFiles={traceFiles}
+          onReplayRequest={onReplayRequest}
         />
         <SessionManager activeSession={activeSession} onOpenTree={onOpenTree} isOpen={isOpen} />
         <SessionTreeDialog
@@ -133,28 +124,7 @@ export default function PromptContent({
           agentSessionState={agentSessionState}
           promptUiState={promptUiState}
         />
-        {activeSession?.mode === 'team' && (
-          <RoleGraphSummary
-            roleGraph={activeSession.roleGraph as RoleGraph | null | undefined}
-            disabled={!isOpen || isAIProcessing}
-            onEdit={onOpenRoleGraph}
-          />
-        )}
-        <PromptContextPanel
-          scope={promptScope}
-          onScopeChange={onScopeChange}
-          activeFileName={activeFileName}
-          activeFilePath={activeFilePath}
-          selectedLines={selectedLines}
-          selectedLineText={selectedLineText}
-          runState={runState}
-          onOpenInTab={() => onOpenSectionInTab('context')}
-        />
         <ChangeSetPanel onOpenInTab={() => onOpenSectionInTab('changes')} />
-        <SessionTranscript
-          messages={activeSession?.messages || []}
-          onOpenInTab={() => onOpenSectionInTab('transcript')}
-        />
         <ModelDownloader
           isOpen={isModelManagerOpen}
           selectedModelId={selectedModelInfo.id}
@@ -165,17 +135,6 @@ export default function PromptContent({
           modelCacheProgress={modelCacheProgress}
           modelCacheError={modelCacheError}
         />
-        <RoleGraphDialog
-          isOpen={isRoleGraphOpen}
-          onCancel={onCloseRoleGraph}
-          roleGraph={(activeSession?.roleGraph as RoleGraph | null | undefined) ?? null}
-          modelOptions={modelOptions}
-          defaultModelId={selectedModel}
-          disabled={isAIProcessing}
-          onChange={(nextGraph) =>
-            activeSession && patchSession(activeSession.id, { roleGraph: nextGraph })
-          }
-        />
         <ReasoningPanel
           modelDownloadStatus={
             isModelDownloading
@@ -185,6 +144,7 @@ export default function PromptContent({
               : ''
           }
           onOpenInTab={() => onOpenSectionInTab('reasoning')}
+          onClearLog={onClearAIModelLog}
           showStepIO={activeSession?.showStepIO === true}
           onToggleStepIO={(show) =>
             activeSession && patchSession(activeSession.id, { showStepIO: show })

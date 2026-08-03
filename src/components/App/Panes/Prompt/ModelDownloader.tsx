@@ -89,12 +89,28 @@ export default function useModelDownloader(promptUiState: StateStore<PromptUiSta
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         setModelCacheError(message);
+        const { createAIIncident } = await import(
+          /* webpackChunkName: "ai-incident" */ '@/components/AI/Agent/AIIncident'
+        );
+        promptUiState((draft) => {
+          draft.latestAIIncident = createAIIncident({
+            error,
+            source: 'webllm',
+            selectedModelId: model.id,
+          });
+        });
       } finally {
         setModelCacheWork(null);
         setModelCacheProgress('');
       }
     },
-    [refreshCachedModelIds, setModelCacheError, setModelCacheProgress, setModelCacheWork],
+    [
+      promptUiState,
+      refreshCachedModelIds,
+      setModelCacheError,
+      setModelCacheProgress,
+      setModelCacheWork,
+    ],
   );
 
   return {

@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "name": "partial-change-after-validation-error",
+  "request": "change the title",
+  "activeFile": "src/App.jsx",
+  "files": {
+    "src/App.jsx": "export default function App() { return <h1>Old</h1>; }"
+  },
+  "modelResponses": [
+    "{\"kind\":\"changes\",\"summary\":\"Attempted title update\",\"changes\":[{\"path\":\"src/App.jsx\",\"content\":\"export default function App() { return <h1>New</h1>; }\"}]}"
+  ],
+  "validationResponses": [{ "status": "failed", "diagnostics": "syntax error" }],
+  "expected": {
+    "intent": "edit",
+    "outcome": "error",
+    "modelCalls": 2,
+    "toolOrder": ["read_file", "validate"]
+  }
+}

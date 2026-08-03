@@ -42,14 +42,27 @@ test.describe('Zakamurai Basic Tests', () => {
     await expect(page.getByText('Logs', { exact: true })).toBeVisible({ timeout: 10000 });
   });
 
-  test('should interact with the Agent', async ({ page }) => {
-    const textarea = page.getByPlaceholder('Tell the Agent what to do...');
+  test('should interact with the AI Manager', async ({ page }) => {
+    const textarea = page.getByPlaceholder('Tell the AI Manager what to do...');
 
     await expect(textarea).not.toBeVisible();
     await page.getByTestId('ai-prompt-toggle').filter({ visible: true }).click();
     await expect(textarea).toBeVisible({ timeout: 10000 });
     await textarea.fill('Hello AI, help me code!');
     await expect(textarea).toHaveValue('Hello AI, help me code!');
+  });
+
+  test('should execute a tool-only manager request and expose its trace', async ({ page }) => {
+    const textarea = page.getByPlaceholder('Tell the AI Manager what to do...');
+    await page.getByTestId('ai-prompt-toggle').filter({ visible: true }).click();
+    await expect(textarea).toBeVisible({ timeout: 10000 });
+    await textarea.fill('list the files in src');
+    await page.getByRole('button', { name: 'Execute prompt' }).click();
+
+    await expect(page.getByText(/^\[AI Manager\]: Found \d+ workspace file/)).toBeVisible({
+      timeout: 30000,
+    });
+    await expect(page.getByTestId('manager-trace-inspector')).toBeVisible({ timeout: 10000 });
   });
 
   test('should select an AI model from the Welcome composer', async ({ page }) => {

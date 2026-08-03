@@ -1,4 +1,3 @@
-import type { RoleGraph } from '@/components/AI/types';
 import type { ExtendedEditorState } from '@/components/App/Views/EditorArea/types';
 import type {
   AgentSession,
@@ -132,7 +131,8 @@ export type CreateAgentSessionOptions = {
   name?: string;
   mode?: 'single' | 'team' | string;
   modelId?: string | null;
-  roleGraph?: RoleGraph | null;
+  /** Legacy persisted field; ignored by the AI Manager. */
+  roleGraph?: unknown;
   parentId?: string | null;
   messages?: AgentSessionMessage[];
 };

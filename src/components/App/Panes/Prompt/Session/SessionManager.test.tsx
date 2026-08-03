@@ -15,7 +15,7 @@ vi.mock('@/components/ui/Icons', () => ({
 }));
 
 describe('SessionManager', () => {
-  it('shows the active agent and opens the tree browser', () => {
+  it('shows the active conversation and opens the history browser', () => {
     const onOpenTree = vi.fn();
     render(
       <SessionManager
@@ -24,9 +24,9 @@ describe('SessionManager', () => {
       />,
     );
 
-    expect(screen.getByLabelText('Active agent')).toHaveTextContent('Agent B');
+    expect(screen.getByLabelText('Active conversation')).toHaveTextContent('Agent B');
     expect(screen.getByLabelText('Running')).toBeDefined();
-    fireEvent.click(screen.getByLabelText('Open agent tree'));
+    fireEvent.click(screen.getByLabelText('Open conversation history'));
     expect(onOpenTree).toHaveBeenCalledOnce();
   });
 });

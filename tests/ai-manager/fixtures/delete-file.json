@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "name": "model-delete-with-review",
+  "request": "delete src/old.js",
+  "files": {
+    "src/old.js": "export const old = true;"
+  },
+  "modelResponses": [
+    "{\"kind\":\"changes\",\"summary\":\"Removed old file\",\"changes\":[{\"path\":\"src/old.js\",\"delete\":true}]}"
+  ],
+  "expected": {
+    "intent": "edit",
+    "outcome": "success",
+    "modelCalls": 1,
+    "toolOrder": ["read_file"]
+  }
+}

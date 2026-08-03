@@ -43,6 +43,8 @@ export type TopBarMenuProps = {
   onNewProject: (template?: string) => void | Promise<void>;
   onClearFS: () => void;
   onExportSupportReport: () => void;
+  onExportAIIncident?: () => void;
+  hasAIIncident?: boolean;
   onToggleShortcuts: () => void;
 };
 

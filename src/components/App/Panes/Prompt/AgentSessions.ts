@@ -1,5 +1,3 @@
-import { createDefaultRoleGraph, normalizeRoleGraph } from '@/components/AI/Agent/Roles';
-import type { RoleGraph } from '@/components/AI/types';
 import type { AgentSessionTreeRow, CreateAgentSessionOptions } from '@/components/App/types';
 import { createState } from '@/components/state/State';
 import type {
@@ -137,22 +135,23 @@ const normalizeAgentRunUsage = (value: unknown): AgentRunUsage => {
 
 export function createAgentSession({
   name,
-  mode = 'single',
+  mode: _mode = 'single',
   modelId = null,
-  roleGraph = null,
+  roleGraph: _roleGraph = null,
   parentId = null,
   messages = [],
 }: CreateAgentSessionOptions = {}): AgentSession {
   const now = Date.now();
   return {
     id: `session-${now}-${Math.random().toString(36).slice(2, 8)}`,
-    name: name || 'Agent 1',
+    name: name || 'Session 1',
     parentId: typeof parentId === 'string' ? parentId : null,
     createdAt: now,
     updatedAt: now,
-    mode: mode === 'team' ? 'team' : 'single',
+    // Kept as a compatibility field for persisted clients; the manager never branches on it.
+    mode: 'single',
     modelId: modelId || null,
-    roleGraph: normalizeRoleGraph(roleGraph || createDefaultRoleGraph()),
+    roleGraph: null,
     messages: capSessionMessages(messages),
     reasoning: '',
     reasoningEvents: [],
@@ -163,7 +162,7 @@ export function createAgentSession({
 }
 
 export function createDefaultAgentSessions(modelId: string | null = null): AgentSessionStateShape {
-  const session = createAgentSession({ name: 'Agent 1', modelId });
+  const session = createAgentSession({ name: 'Session 1', modelId });
   return {
     sessions: { [session.id]: session },
     activeSessionId: session.id,
@@ -287,7 +286,6 @@ export function normalizeAgentSessions(
   for (const [id, session] of Object.entries(sessionsIn)) {
     if (!session || typeof session !== 'object') continue;
     const sessionId = typeof session.id === 'string' ? session.id : id;
-    const mode = session.mode === 'team' ? 'team' : 'single';
     const messages = normalizeSessionMessages(session.messages);
     normalized[sessionId] = {
       id: sessionId,
@@ -295,9 +293,9 @@ export function normalizeAgentSessions(
       parentId: typeof session.parentId === 'string' ? session.parentId : null,
       createdAt: Number.isFinite(session.createdAt) ? session.createdAt : Date.now(),
       updatedAt: Number.isFinite(session.updatedAt) ? session.updatedAt : Date.now(),
-      mode,
+      mode: 'single',
       modelId: typeof session.modelId === 'string' ? session.modelId : null,
-      roleGraph: normalizeRoleGraph(session.roleGraph),
+      roleGraph: null,
       messages,
       reasoning: typeof session.reasoning === 'string' ? session.reasoning : '',
       reasoningEvents: normalizeReasoningEvents(session.reasoningEvents),
@@ -339,9 +337,7 @@ export function serializeAgentSessions(state: AgentSessionStateShape | null | un
           parentId: session.parentId || null,
           createdAt: session.createdAt,
           updatedAt: session.updatedAt,
-          mode: session.mode,
           modelId: session.modelId,
-          roleGraph: normalizeRoleGraph(session.roleGraph),
           messages: capSessionMessages(session.messages),
           reasoning: session.reasoning || '',
           reasoningEvents: normalizeReasoningEvents(session.reasoningEvents),
@@ -357,14 +353,14 @@ export function addAgentSession(
   state: AgentSessionStateShape | null | undefined,
   {
     name,
-    mode = 'single',
+    mode: _mode = 'single',
     modelId = null,
-    roleGraph,
+    roleGraph: _roleGraph,
   }: {
     name?: string;
     mode?: 'single' | 'team' | string;
     modelId?: string | null;
-    roleGraph?: RoleGraph | null;
+    roleGraph?: unknown;
   } = {},
 ): AgentSessionStateShape {
   const sessions = { ...(state?.sessions || {}) };
@@ -374,10 +370,8 @@ export function addAgentSession(
   }
   const nextIndex = existing.length + 1;
   const session = createAgentSession({
-    name: name || `Agent ${nextIndex}`,
-    mode,
+    name: name || `Session ${nextIndex}`,
     modelId,
-    roleGraph,
   });
   sessions[session.id] = session;
   return { sessions, activeSessionId: session.id } satisfies AgentSessionStateShape;
@@ -397,9 +391,7 @@ export function createAgentBranch(
   const branch = createAgentSession({
     name: `${source.name} branch`,
     parentId: source.id,
-    mode: source.mode,
     modelId: source.modelId,
-    roleGraph: source.roleGraph as RoleGraph | null,
     messages: (source.messages || []).map((message) => ({ ...message })),
   });
   sessions[branch.id] = branch;
@@ -483,10 +475,12 @@ export function updateAgentSession(
   const next = {
     ...session,
     ...patch,
+    mode: 'single' as const,
     updatedAt: Date.now(),
   };
   if (patch.messages) next.messages = capSessionMessages(patch.messages);
-  if (patch.roleGraph) next.roleGraph = normalizeRoleGraph(patch.roleGraph);
+  // Legacy role graph patches are intentionally ignored by the manager runtime.
+  if ('roleGraph' in patch) next.roleGraph = null;
   sessions[sessionId] = next;
   return { activeSessionId: state?.activeSessionId ?? null, ...state, sessions };
 }
@@ -509,8 +503,7 @@ export function appendSessionMessage(
 
 function formatContextMessage(message: AgentSessionMessage): string {
   const role = message.role === 'user' ? 'User' : message.role === 'ai' ? 'Agent' : 'System';
-  const roleLabel = message.agentRole ? `${role} (${message.agentRole})` : role;
-  return `${roleLabel}: ${message.text}`;
+  return `${role}: ${message.text}`;
 }
 
 export function formatSessionContext(

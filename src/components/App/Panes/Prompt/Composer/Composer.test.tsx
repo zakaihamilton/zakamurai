@@ -51,7 +51,7 @@ describe('PromptComposer', () => {
         isOpen={true}
       />,
     );
-    expect(screen.getByPlaceholderText('Tell the Agent what to do...')).toBeDefined();
+    expect(screen.getByPlaceholderText('Tell the AI Manager what to do...')).toBeDefined();
   });
 
   it('shows stop button when AI processing', () => {
@@ -67,7 +67,7 @@ describe('PromptComposer', () => {
         isOpen={true}
       />,
     );
-    expect(screen.getByPlaceholderText(/Agent is working/)).toBeDefined();
+    expect(screen.getByPlaceholderText(/AI Manager is working/)).toBeDefined();
   });
 
   it('submits form', () => {

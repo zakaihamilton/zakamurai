@@ -29,7 +29,9 @@ export default function PromptComposer({
           onKeyDown={onKeyDown}
           disabled={isAIProcessing || !isOpen}
           placeholder={
-            isAIProcessing ? 'Agent is working... Please wait.' : 'Tell the Agent what to do...'
+            isAIProcessing
+              ? 'AI Manager is working... Please wait.'
+              : 'Tell the AI Manager what to do...'
           }
           className={styles.input}
           tabIndex={isOpen ? undefined : -1}

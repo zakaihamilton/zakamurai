@@ -1,15 +1,24 @@
 import { spawn } from 'node:child_process';
 import http from 'node:http';
+import net from 'node:net';
 
 const command = process.platform === 'win32' ? 'npm.cmd' : 'npm';
-const ide = spawn(command, ['run', 'dev', '--', '--port', '3000'], {
-  stdio: 'inherit',
-  env: {
-    ...process.env,
-    NEXT_PUBLIC_IDE_ORIGIN: 'http://localhost:3000',
-    NEXT_PUBLIC_PREVIEW_ORIGIN: 'http://localhost:3001',
-  },
-});
+
+function isPortInUse(port: number): Promise<boolean> {
+  return new Promise((resolve) => {
+    const socket = net.createConnection({ host: '127.0.0.1', port });
+    socket.once('connect', () => {
+      socket.destroy();
+      resolve(true);
+    });
+    socket.once('error', () => {
+      socket.destroy();
+      resolve(false);
+    });
+  });
+}
+
+let ide: ReturnType<typeof spawn> | null = null;
 
 const previewProxy = http.createServer((request, response) => {
   const upstream = http.request(
@@ -65,11 +74,26 @@ previewProxy.listen(3001, '127.0.0.1', () => {
 
 const stop = () => {
   previewProxy.close();
-  ide.kill('SIGTERM');
+  ide?.kill('SIGTERM');
 };
 process.on('SIGINT', stop);
 process.on('SIGTERM', stop);
-ide.on('exit', (code) => {
-  previewProxy.close();
-  if (code && code !== 0) process.exitCode = code;
+void isPortInUse(3000).then((inUse) => {
+  if (inUse) {
+    console.log('Using the existing IDE server at http://localhost:3000');
+    return;
+  }
+
+  ide = spawn(command, ['run', 'dev', '--', '--port', '3000'], {
+    stdio: 'inherit',
+    env: {
+      ...process.env,
+      NEXT_PUBLIC_IDE_ORIGIN: 'http://localhost:3000',
+      NEXT_PUBLIC_PREVIEW_ORIGIN: 'http://localhost:3001',
+    },
+  });
+  ide.on('exit', (code) => {
+    previewProxy.close();
+    if (code && code !== 0) process.exitCode = code;
+  });
 });

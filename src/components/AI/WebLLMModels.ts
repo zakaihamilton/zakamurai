@@ -37,14 +37,14 @@ export const WEB_LLM_MODELS: WebLLMModel[] = [
     name: 'Qwen3.5 4B',
     ramMB: 3867.82,
     storageMB: 2390,
-    requirement: 'Best default balance of quality, reasoning, and browser practicality.',
+    requirement: 'Higher-capacity general reasoning option for capable WebGPU devices.',
     details: [
       ['System', 'Modern WebGPU-capable laptop or desktop with ~3.9 GB VRAM'],
       ['Storage', 'Medium browser cache footprint'],
       ['Speed', 'Balanced startup and generation'],
       ['Best for', 'Everyday coding help, app changes, visual UI implementation, explanations'],
     ],
-    recommended: true,
+    recommended: false,
   },
   {
     id: 'Qwen2.5-Coder-3B-Instruct-q4f16_1-MLC',
@@ -72,7 +72,7 @@ export const WEB_LLM_MODELS: WebLLMModel[] = [
       ['Speed', 'Fast startup and responsive generation'],
       ['Best for', 'Small code edits, autocomplete, and short coding questions'],
     ],
-    recommended: false,
+    recommended: true,
   },
   {
     id: 'Qwen3.5-2B-q4f16_1-MLC',
@@ -133,8 +133,7 @@ export const getDeviceAppropriateDefaultModelId = (): string => {
   if (typeof navigator === 'undefined') return RECOMMENDED_WEB_LLM_MODEL.id;
   const deviceMemory = (navigator as Navigator & { deviceMemory?: number }).deviceMemory;
   if (!Number.isFinite(deviceMemory)) return RECOMMENDED_WEB_LLM_MODEL.id;
-  if ((deviceMemory || 0) <= 4) return 'Qwen3.5-0.8B-q4f16_1-MLC';
-  if ((deviceMemory || 0) <= 8) return 'Qwen3.5-2B-q4f16_1-MLC';
+  if ((deviceMemory || 0) <= 2) return 'Qwen3.5-0.8B-q4f16_1-MLC';
   return RECOMMENDED_WEB_LLM_MODEL.id;
 };
 

@@ -9,6 +9,20 @@ import { normalizeAgentPath } from './Protocol';
 const MAX_FILE_CHARS = 20000;
 const MAX_RESULT_CHARS = 12000;
 
+const escapeRegExp = (value: string): string => value.replace(/[.+^${}()|[\]\\]/g, '\\$&');
+
+const matchesPathQuery = (path: string, query: string): boolean => {
+  if (!query) return true;
+  if (!/[?*]/.test(query)) return path.toLowerCase().includes(query.toLowerCase());
+
+  const pattern = query
+    .split('*')
+    .map((part) => escapeRegExp(part))
+    .join('.*')
+    .replaceAll('\\?', '.');
+  return new RegExp(`^${pattern}$`, 'i').test(path);
+};
+
 export class AgentWorkspace {
   original: FileMap;
   files: FileMap;
@@ -21,9 +35,9 @@ export class AgentWorkspace {
   }
 
   list(query = ''): string[] {
-    const needle = String(query).toLowerCase();
+    const normalizedQuery = String(query);
     return Object.keys(this.files)
-      .filter((path) => !needle || path.toLowerCase().includes(needle))
+      .filter((path) => matchesPathQuery(path, normalizedQuery))
       .sort()
       .slice(0, 200);
   }
@@ -44,7 +58,7 @@ export class AgentWorkspace {
         .queryText(query, 100)
         .then((indexed) => {
           const lines = indexed
-            .filter((item) => !glob || item.path.endsWith(glob))
+            .filter((item) => !glob || matchesPathQuery(item.path, glob))
             .map((item) => `${item.path}:${item.preview.replace(/\n/g, ' ').slice(0, 240)}`);
           return lines.length
             ? lines.join('\n').slice(0, MAX_RESULT_CHARS)
@@ -65,7 +79,7 @@ export class AgentWorkspace {
     }
     const hits: string[] = [];
     for (const path of this.list()) {
-      if (glob && !path.endsWith(glob)) continue;
+      if (glob && !matchesPathQuery(path, glob)) continue;
       const content = String(this.files[path]);
       for (const [index, line] of content.split('\n').entries()) {
         if (matcher.test(line)) hits.push(`${path}:${index + 1}: ${line.slice(0, 240)}`);

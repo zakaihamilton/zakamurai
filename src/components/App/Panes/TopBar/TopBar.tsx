@@ -99,11 +99,12 @@ export function resetNewProjectState({
     draft.isAgentTreeOpen = false;
     draft.sessionDialog = null;
     draft.isModelManagerOpen = false;
-    draft.isRoleGraphOpen = false;
     draft.modelCacheWork = null;
     draft.modelCacheProgress = '';
     draft.modelCacheError = '';
     draft.abortController = null;
+    draft.latestManagerTrace = null;
+    draft.latestAIIncident = null;
   });
   changeSetState?.((draft) => {
     draft.activeId = null;
@@ -125,7 +126,7 @@ export default function TopBar() {
   const editorState = requireStore(EditorState.useState());
   const changeSetState = ChangeSetState.usePassiveState();
   const previewState = requireStore(PreviewState.useState());
-  const promptUiState = PromptUiState.usePassiveState();
+  const promptUiState = PromptUiState.useState(['latestAIIncident']);
   const promptState = PromptState.usePassiveState();
   const agentSessionState = AgentSessionState.usePassiveState();
   const diagnosticsState = DiagnosticsState.usePassiveState();
@@ -145,6 +146,14 @@ export default function TopBar() {
         storageHealth: (storageHealthState || {}) as Record<string, unknown>,
       }),
     );
+  };
+
+  const handleExportAIIncident = async () => {
+    if (!promptUiState?.latestAIIncident) return;
+    const { downloadAIIncident } = await import(
+      /* webpackChunkName: "ai-incident" */ '@/components/AI/Agent/AIIncident'
+    );
+    downloadAIIncident(promptUiState.latestAIIncident);
   };
 
   useEffect(() => {
@@ -266,6 +275,8 @@ export default function TopBar() {
           onNewProject={handleStartOver}
           onClearFS={handleClearFS}
           onExportSupportReport={handleExportSupportReport}
+          onExportAIIncident={handleExportAIIncident}
+          hasAIIncident={Boolean(promptUiState?.latestAIIncident)}
           onToggleShortcuts={() => {
             appState((draft) => {
               draft.showShortcuts = !draft.showShortcuts;

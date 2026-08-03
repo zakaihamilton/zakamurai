@@ -8,6 +8,8 @@ import {
   validateCssContentSafety,
   validateCssModuleUsage,
   validateFileContentType,
+  validateForbiddenStateLibraryUsage,
+  validateGeneratedPlaceholder,
   validateProjectPath,
 } from './ChangeValidator';
 
@@ -140,6 +142,46 @@ describe('AI change validation', () => {
       validateCssModuleUsage(
         'src/App.jsx',
         "import styles from './App.module.css'; export default () => <main className={styles.app} />;",
+      ),
+    ).toBeNull();
+  });
+
+  it('rejects unrequested state-management libraries', () => {
+    expect(
+      validateForbiddenStateLibraryUsage(
+        'src/App.jsx',
+        "import { createStore } from 'redux'; export default function App() { return null; }",
+      ),
+    ).toContain('Do not introduce Redux');
+    expect(
+      validateAIChanges([
+        {
+          path: 'package.json',
+          after: '{"dependencies":{"@reduxjs/toolkit":"^2.0.0"}}',
+        },
+      ]).rejected[0],
+    ).toContain('Do not introduce Redux');
+    expect(
+      validateForbiddenStateLibraryUsage(
+        'src/App.jsx',
+        'export default function App() { return null; }',
+      ),
+    ).toBeNull();
+  });
+
+  it('rejects comment-only implementation placeholders', () => {
+    const placeholder = '// Your implementation of the App.jsx file goes here.';
+    expect(validateGeneratedPlaceholder('src/App.jsx', placeholder)).toContain(
+      'only a placeholder',
+    );
+    expect(
+      validateAIChanges([{ path: 'src/App.jsx', content: placeholder }]).rejected[0],
+    ).toContain('only a placeholder');
+    expect(validateGeneratedPlaceholder('src/App.jsx', '// Existing documentation.')).toBeNull();
+    expect(
+      validateGeneratedPlaceholder(
+        'src/App.jsx',
+        'export default function App() { return <main />; }',
       ),
     ).toBeNull();
   });

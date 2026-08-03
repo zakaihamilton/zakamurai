@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   extractWebLLMMetrics,
+  summarizeAIIncident,
   summarizeWebLLMMetrics,
 } from '../../scripts/analyze-ai-support-report';
 
@@ -37,6 +38,18 @@ describe('analyze-ai-support-report', () => {
             jsHeapDeltaMB: 6,
           }),
         },
+        {
+          source: 'webllm',
+          message: 'Local AI request failed',
+          details: JSON.stringify({
+            requestKind: 'agent',
+            modelId: 'model-a',
+            errorName: 'WebLLMStallError',
+            errorMessageLength: 18,
+            errorMessageFingerprint: 'fnv1a-deadbeef',
+            recoveryCount: 1,
+          }),
+        },
         { source: 'storage', message: 'ignored', details: '{}' },
         { source: 'webllm', message: 'Local AI invalid', details: '{' },
       ],
@@ -58,6 +71,36 @@ describe('analyze-ai-support-report', () => {
         completion: { count: 1 },
         agent: { count: 1 },
       },
+    });
+  });
+
+  it('summarizes an incident signature without requiring prompt or workspace content', () => {
+    expect(
+      summarizeAIIncident({
+        id: 'ai-incident-test',
+        classification: 'model-protocol',
+        failure: { phase: 'error', code: 'model-protocol' },
+        runtime: { userAgent: 'browser-test' },
+        models: {
+          selectedModelId: 'model-a',
+          requestedModelIds: ['model-a'],
+          actualModelIds: ['model-a'],
+        },
+        webllm: { recoveries: [{ reason: 'worker-failure' }] },
+        replay: { protocolStatuses: ['request-sent', 'invalid'], modelResponseCount: 1 },
+      }),
+    ).toEqual({
+      id: 'ai-incident-test',
+      classification: 'model-protocol',
+      phase: 'error',
+      failureCode: 'model-protocol',
+      browser: 'browser-test',
+      selectedModelId: 'model-a',
+      requestedModels: ['model-a'],
+      actualModels: ['model-a'],
+      recoveryReasons: ['worker-failure'],
+      protocolStatuses: ['request-sent', 'invalid'],
+      modelResponseCount: 1,
     });
   });
 });

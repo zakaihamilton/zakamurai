@@ -7,15 +7,16 @@ import { TabState } from '@/components/App/Panes/TabBar';
 import { EditorState } from '@/components/App/Views/EditorArea';
 import { LogState } from '@/components/App/Views/LogArea';
 import { useFileSystem } from '@/components/Storage';
-import { useCallback, useEffect } from 'react';
-import type { ChangeEvent, KeyboardEvent, MouseEvent } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { requireStore } from '../../types';
-import { AgentSessionState, createSessionMessage } from './AgentSessions';
+import { AgentSessionState, createAgentRunUsage, createSessionMessage } from './AgentSessions';
+import FileScopeDialog from './FileScopeDialog';
 import useModelDownloader from './ModelDownloader';
 import PromptContent from './PromptContent';
 import usePromptHistory from './PromptHistory';
 import { PromptState, PromptUiState, getInitialPromptUiState } from './PromptState';
 import useAgentRunner from './useAgentRunner';
+import usePromptComposer from './usePromptComposer';
 import usePromptLayout from './usePromptLayout';
 import usePromptSessionControls from './usePromptSessionControls';
 
@@ -38,17 +39,17 @@ export default function Prompt() {
     draftVal = '',
     selectedModel = RECOMMENDED_WEB_LLM_MODEL.id,
     isModelManagerOpen = false,
-    isRoleGraphOpen = false,
     modelCacheWork = null,
     modelCacheProgress = '',
     modelCacheError = '',
     animatedWidth = promptState?.promptWidth ?? 0,
     abortController = null,
-    promptScope = 'project',
     welcomeRequest = null,
     runningSessionId = null,
     sessionDialog = null,
     isAgentTreeOpen = false,
+    latestManagerTrace = null,
+    latestAIIncident = null,
   } = promptUiState || {};
   const { cachedModelIds = [], engines = {} } = requireStore(
     WebLLMState.useState(['cachedModelIds', 'engines']),
@@ -57,32 +58,32 @@ export default function Prompt() {
   const { isSystemProcessing, isAIProcessing } = requireStore(
     LogState.useState(['isSystemProcessing', 'isAIProcessing']),
   );
-  const sidebarState = requireStore(SidebarState.useState(['showAIInput', 'isAIInputPopupOpen']));
+  const sidebarState = requireStore(
+    SidebarState.useState(['showAIInput', 'isAIInputPopupOpen', 'folderTree']),
+  );
   const tabState = requireStore(TabState.useState(['activeTabId', 'openTabs']));
-  const editorState = requireStore(EditorState.useState(['selectedLines']));
+  const editorState = requireStore(EditorState.useState(['selectedLines', 'fileContents']));
   const agentSessionState = requireStore(
     AgentSessionState.useState(['sessions', 'activeSessionId']),
   );
   const isOpen = isMobile ? sidebarState.isAIInputPopupOpen : sidebarState.showAIInput;
+  const [filePromptRemainder, setFilePromptRemainder] = useState('');
+  const [isFileScopeArmed, setIsFileScopeArmed] = useState(false);
 
   const {
     activeSession,
     patchSession,
     pushSessionMessage,
-    openRoleGraph,
-    closeRoleGraph,
     handleCreateSession,
     handleRenameSession,
     handleDeleteSession,
     handleBranchSession,
     handleSelectSession,
-    handleModeChange,
   } = usePromptSessionControls({
     agentSessionState,
     promptUiState,
     selectedModel,
     isAIProcessing,
-    isRoleGraphOpen,
   });
   const { desktopWidth } = usePromptLayout({
     isMobile,
@@ -105,7 +106,7 @@ export default function Prompt() {
     activeSession,
     agentSessionState,
     promptUiState,
-    promptScope,
+    promptScope: isFileScopeArmed ? 'file' : 'project',
     selectedModel,
     abortController,
     runningSessionId,
@@ -118,6 +119,53 @@ export default function Prompt() {
     editorState,
     sidebarState,
     logState,
+    cachedModelIds,
+    webLLMEngines: engines,
+  });
+
+  const handleExportAIIncident = useCallback(async () => {
+    if (!latestAIIncident) return;
+    const { downloadAIIncident } = await import(
+      /* webpackChunkName: "ai-incident" */ '@/components/AI/Agent/AIIncident'
+    );
+    downloadAIIncident(latestAIIncident);
+  }, [latestAIIncident]);
+
+  const handleClearAIModelLog = useCallback(() => {
+    if (!activeSession) return;
+    patchSession(activeSession.id, {
+      messages: [],
+      reasoning: '',
+      reasoningEvents: [],
+      runUsage: createAgentRunUsage(),
+      ...(activeSession.status === 'error' ? { status: 'idle' } : {}),
+    });
+  }, [activeSession, patchSession]);
+
+  const {
+    isFilePickerOpen,
+    filePickerQuery,
+    files,
+    handleKeyDown,
+    handleChange: handleComposerChange,
+    handleSubmit,
+    handleFileSelect,
+    handleFilePickerCancel,
+    setFilePickerQuery,
+  } = usePromptComposer({
+    promptUiState,
+    editorState,
+    tabState,
+    sidebarState,
+    historyIndex,
+    fileScopeArmed: isFileScopeArmed,
+    setFileScopeArmed: setIsFileScopeArmed,
+    filePromptRemainder,
+    setFilePromptRemainder,
+    send,
+    handleStop,
+    handleArrowUp,
+    handleArrowDown,
   });
 
   useEffect(() => {
@@ -137,66 +185,23 @@ export default function Prompt() {
       }
       draft.activeTabId = id;
     });
-    send(null, request.text, request.scope);
+    send(null, request.text, request.scope, true);
   }, [activeSession, isAIProcessing, promptUiState, send, tabState, welcomeRequest]);
 
-  const handleKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
-    const mac = navigator.platform.toUpperCase().includes('MAC');
-    if ((mac ? event.metaKey : event.ctrlKey) && event.key === '.') {
-      handleStop(event as unknown as MouseEvent<HTMLButtonElement>);
-      return;
-    }
-    if (event.key === 'Enter') {
-      if (event.metaKey || event.ctrlKey) {
-        event.preventDefault();
-        event.stopPropagation();
-        const target = event.target as HTMLTextAreaElement;
-        const { selectionStart, selectionEnd, value } = target;
-        const nextValue = `${value.substring(0, selectionStart)}\n${value.substring(selectionEnd)}`;
-        promptUiState((draft) => {
-          draft.val = nextValue;
-        });
-        requestAnimationFrame(() => {
-          target.selectionStart = target.selectionEnd = selectionStart + 1;
-        });
-        return;
-      }
-      if (!event.shiftKey) send(event);
-    } else if (event.key === 'ArrowUp') {
-      handleArrowUp();
-    } else if (event.key === 'ArrowDown') {
-      handleArrowDown();
-    }
-  };
-
-  const handleComposerChange = useCallback(
-    (event: ChangeEvent<HTMLTextAreaElement>) => {
+  const replayManagerRequest = useCallback(
+    (request: string) => {
       promptUiState((draft) => {
-        draft.val = event.target.value;
-        if (historyIndex === -1) draft.draftVal = event.target.value;
-      });
-    },
-    [historyIndex, promptUiState],
-  );
-  const setPromptScope = useCallback(
-    (scope: string) => {
-      promptUiState((draft) => {
-        draft.promptScope = scope;
+        draft.val = request;
+        draft.draftVal = request;
+        draft.historyIndex = -1;
       });
     },
     [promptUiState],
   );
   const openSectionInTab = useCallback(
-    (section: 'context' | 'changes' | 'transcript' | 'reasoning') => {
+    (section: 'changes' | 'reasoning') => {
       const id = `ai-section:${section}`;
-      const label =
-        section === 'context'
-          ? 'AI Context'
-          : section === 'changes'
-            ? 'Change Set'
-            : section === 'transcript'
-              ? 'Transcript'
-              : 'Progress & Reasoning';
+      const label = section === 'changes' ? 'Change Set' : 'Progress & Reasoning';
       tabState((draft) => {
         const existingTab = draft.openTabs.find((tab) => tab.id === id);
         if (!existingTab) {
@@ -226,19 +231,6 @@ export default function Prompt() {
     [promptUiState],
   );
 
-  const currentActiveTabId = tabState.activeTabId;
-  const currentActiveTab = tabState.openTabs.find((tab) => tab.id === currentActiveTabId);
-  const selectedLines =
-    (currentActiveTabId && editorState.selectedLines?.[currentActiveTabId]) || [];
-  const selectedLineText =
-    selectedLines.length > 0 ? [...selectedLines].sort((a, b) => a - b).join(', ') : 'None';
-  const activeFileName =
-    currentActiveTab?.type === 'file' && currentActiveTabId
-      ? currentActiveTabId.split('/').pop()
-      : 'No file selected';
-  const activeFilePath =
-    currentActiveTab?.type === 'file' && currentActiveTabId ? currentActiveTabId : 'Open a file';
-  const runState = isAIProcessing ? 'AI working' : isSystemProcessing ? 'Compiling' : 'Ready';
   const selectedModelInfo =
     WEB_LLM_MODELS.find((model) => model.id === selectedModel) || RECOMMENDED_WEB_LLM_MODEL;
   const selectedModelEngine = engines[selectedModel];
@@ -255,60 +247,64 @@ export default function Prompt() {
   }));
 
   return (
-    <PromptContent
-      isMobile={isMobile}
-      isOpen={isOpen}
-      desktopWidth={desktopWidth}
-      isAIProcessing={isAIProcessing}
-      isSystemProcessing={isSystemProcessing}
-      activeSession={activeSession}
-      sessionReasoning={activeSession?.reasoning || ''}
-      onModeChange={handleModeChange}
-      onOpenTree={openSessionTree}
-      isAgentTreeOpen={isAgentTreeOpen}
-      sessionDialog={sessionDialog}
-      agentSessionState={agentSessionState}
-      onCloseTree={closeSessionTree}
-      onSelectSession={handleSelectSession}
-      onCreateSession={handleCreateSession}
-      onBranchSession={handleBranchSession}
-      onRenameSession={handleRenameSession}
-      onDeleteSession={handleDeleteSession}
-      runningSessionId={runningSessionId}
-      promptUiState={promptUiState}
-      isRoleGraphOpen={isRoleGraphOpen}
-      onOpenRoleGraph={openRoleGraph}
-      onCloseRoleGraph={closeRoleGraph}
-      modelOptions={modelOptions}
-      selectedModel={selectedModel}
-      promptScope={promptScope}
-      onScopeChange={setPromptScope}
-      onOpenSectionInTab={openSectionInTab}
-      activeFileName={activeFileName}
-      activeFilePath={activeFilePath}
-      selectedLines={selectedLines}
-      selectedLineText={selectedLineText}
-      runState={runState}
-      isModelManagerOpen={isModelManagerOpen}
-      selectedModelInfo={selectedModelInfo}
-      cachedModelIds={cachedModelIds}
-      onCloseModelManager={closeModelManager}
-      onModelCacheAction={handleModelCacheAction}
-      modelCacheWork={modelCacheWork as string | null}
-      modelCacheProgress={modelCacheProgress}
-      modelCacheError={modelCacheError}
-      value={val}
-      onChange={handleComposerChange}
-      onKeyDown={handleKeyDown}
-      onSubmit={send}
-      onStop={handleStop}
-      isButtonActive={Boolean(val.trim()) && !isAIProcessing}
-      isModelDownloading={isModelDownloading}
-      modelDownloadProgress={modelDownloadProgress}
-      onChangeModel={setSelectedModel}
-      onLoadCachedModelIds={loadCachedModelIds}
-      onOpenModelManager={openModelManager}
-      patchSession={patchSession}
-    />
+    <>
+      <PromptContent
+        isMobile={isMobile}
+        isOpen={isOpen}
+        desktopWidth={desktopWidth}
+        isAIProcessing={isAIProcessing}
+        isSystemProcessing={isSystemProcessing}
+        activeSession={activeSession}
+        sessionReasoning={activeSession?.reasoning || ''}
+        onOpenTree={openSessionTree}
+        isAgentTreeOpen={isAgentTreeOpen}
+        sessionDialog={sessionDialog}
+        agentSessionState={agentSessionState}
+        onCloseTree={closeSessionTree}
+        onSelectSession={handleSelectSession}
+        onCreateSession={handleCreateSession}
+        onBranchSession={handleBranchSession}
+        onRenameSession={handleRenameSession}
+        onDeleteSession={handleDeleteSession}
+        runningSessionId={runningSessionId}
+        promptUiState={promptUiState}
+        modelOptions={modelOptions}
+        onOpenSectionInTab={openSectionInTab}
+        isModelManagerOpen={isModelManagerOpen}
+        selectedModelInfo={selectedModelInfo}
+        cachedModelIds={cachedModelIds}
+        onCloseModelManager={closeModelManager}
+        onModelCacheAction={handleModelCacheAction}
+        modelCacheWork={modelCacheWork as string | null}
+        modelCacheProgress={modelCacheProgress}
+        modelCacheError={modelCacheError}
+        value={val}
+        onChange={handleComposerChange}
+        onKeyDown={handleKeyDown}
+        onSubmit={handleSubmit}
+        onStop={handleStop}
+        isButtonActive={Boolean(val.trim()) && !isAIProcessing}
+        isModelDownloading={isModelDownloading}
+        modelDownloadProgress={modelDownloadProgress}
+        onChangeModel={setSelectedModel}
+        onLoadCachedModelIds={loadCachedModelIds}
+        onOpenModelManager={openModelManager}
+        patchSession={patchSession}
+        onClearAIModelLog={handleClearAIModelLog}
+        latestManagerTrace={latestManagerTrace}
+        latestAIIncident={latestAIIncident}
+        onExportAIIncident={handleExportAIIncident}
+        traceFiles={editorState.fileContents}
+        onReplayRequest={replayManagerRequest}
+      />
+      <FileScopeDialog
+        isOpen={isFilePickerOpen}
+        files={files}
+        query={filePickerQuery}
+        onQueryChange={setFilePickerQuery}
+        onSelect={handleFileSelect}
+        onCancel={handleFilePickerCancel}
+      />
+    </>
   );
 }

@@ -20,6 +20,13 @@ describe('agent protocol', () => {
     expect(AGENT_SYSTEM_PROMPT).toContain('immediately write the named stylesheet');
   });
 
+  it('stops the agent from re-inspecting supplied workspace context', () => {
+    expect(AGENT_SYSTEM_PROMPT).toContain(
+      'When the request says that workspace context was already supplied',
+    );
+    expect(AGENT_SYSTEM_PROMPT).toContain('implement the request immediately');
+  });
+
   it('parses a JSON action from a fenced response', () => {
     expect(parseAgentAction('```json\n{"action":"read_file","path":"src/App.js"}\n```')).toEqual({
       action: 'read_file',

@@ -6,29 +6,23 @@ import {
   getActiveAgentSession,
 } from '@/components/App/Panes/Prompt/AgentSessions';
 import { PromptUiState } from '@/components/App/Panes/Prompt/PromptState';
-import { TabState } from '@/components/App/Panes/TabBar';
-import { EditorState } from '@/components/App/Views/EditorArea';
-import { LogState } from '@/components/App/Views/LogArea';
 import { requireStore } from '@/components/App/types';
 import { ChangeSetState } from '@/components/Workspace';
 import type { AgentReasoningEntry, AgentRunUsage, Tab } from '@/components/state/domain-types';
-import { Icons } from '@/components/ui/Icons';
-import Tooltip from '@/components/ui/Tooltip';
 import { useEffect, useRef, useState } from 'react';
-import ReactMarkdown from 'react-markdown';
 import styles from './AISection.module.css';
+import AISectionChanges from './AISectionChanges';
+import AISectionHeader from './AISectionHeader';
+import AISectionReasoning, { type ReasoningGroup } from './AISectionReasoning';
 
 const titleBySection = {
-  context: 'AI Context',
   changes: 'Change Set',
-  transcript: 'Transcript',
   reasoning: 'Progress & Reasoning',
 } as const;
 
 type AISection = keyof typeof titleBySection;
 
 type ReasoningEntry = AgentReasoningEntry;
-type ReasoningGroup = { step: number | null; entries: ReasoningEntry[] };
 
 const STEP_PREFIX = /^\*\*Step (\d+)(?: result)?:\*\*\s*/;
 
@@ -109,30 +103,25 @@ export const groupReasoningEntries = (entries: ReasoningEntry[]): ReasoningGroup
   return groups;
 };
 
+export { keyReasoningEntries } from './AISectionReasoning';
+
 function getSection(tab: Tab): AISection {
   const section = tab.id.replace('ai-section:', '');
-  return section in titleBySection ? (section as AISection) : 'context';
+  return section in titleBySection ? (section as AISection) : 'reasoning';
 }
 
 export default function AISectionView({ tab }: { tab: Tab }) {
   const section = getSection(tab);
-  const promptUiState = requireStore(PromptUiState.useState(['promptScope', 'selectedModel']));
-  const tabState = requireStore(TabState.useState(['activeTabId', 'openTabs']));
-  const editorState = requireStore(EditorState.useState(['selectedLines']));
-  const logState = requireStore(LogState.useState(['isAIProcessing', 'isSystemProcessing']));
   const agentSessionState = requireStore(
     AgentSessionState.useState(['sessions', 'activeSessionId']),
   );
   const changeSetState = requireStore(ChangeSetState.useState(['activeId', 'items']));
   const webLLMState = requireStore(WebLLMState.useState(['engines']));
+  const promptUiState = requireStore(PromptUiState.useState(['selectedModel']));
   const [copied, setCopied] = useState(false);
   const contentRef = useRef<HTMLDivElement | null>(null);
   const activeSession = getActiveAgentSession(agentSessionState);
   const [showStepIO, setShowStepIO] = useState(activeSession?.showStepIO === true);
-  const scope = promptUiState.promptScope || 'project';
-  const activeTab = tabState.openTabs.find((openTab) => openTab.id === tabState.activeTabId);
-  const selectedLines =
-    (tabState.activeTabId && editorState.selectedLines?.[tabState.activeTabId]) || [];
   const changeSet = (changeSetState.items || []).find(
     (item) => item.id === changeSetState.activeId,
   );
@@ -156,6 +145,11 @@ export default function AISectionView({ tab }: { tab: Tab }) {
     ...(modelProgress ? [{ text: modelProgress, timestamp: '' }] : []),
     ...displayedReasoningEntries,
   ];
+  const transcriptText = activeSession?.messages?.length
+    ? activeSession.messages
+        .map((message) => `[${message.timestamp || 'now'}] ${message.role}: ${message.text}`)
+        .join('\n\n')
+    : '';
   const reasoningGroups = groupReasoningEntries(reasoningContent);
   const runUsageSummary = getCompletedRunUsageSummary(
     activeSession?.status,
@@ -176,55 +170,27 @@ export default function AISectionView({ tab }: { tab: Tab }) {
   };
 
   const content =
-    section === 'context'
-      ? [
-          `Scope: ${scope === 'project' ? 'Project' : 'File'}`,
-          `Target: ${scope === 'project' ? 'Whole project' : activeTab?.label || 'No file selected'}`,
-          scope === 'file'
-            ? `Selection: ${selectedLines.length ? `Lines ${selectedLines.join(', ')}` : 'None'}`
-            : '',
-          `State: ${logState.isAIProcessing ? 'AI working' : logState.isSystemProcessing ? 'Compiling' : 'Ready'}`,
-        ]
-          .filter(Boolean)
-          .join('\n')
-      : section === 'changes'
-        ? changeSet
-          ? [
-              `Status: ${changeSet.status}`,
-              `Request: ${changeSet.request}`,
-              '',
-              'Files:',
-              ...changeSet.files.map(
-                (file) => `- ${file.path} (${file.status || 'pending review'})`,
-              ),
-            ].join('\n')
-          : 'No active change set.'
-        : section === 'transcript'
-          ? activeSession?.messages.length
-            ? activeSession.messages
-                .map(
-                  (message) => `[${message.timestamp || 'now'}] ${message.role}: ${message.text}`,
-                )
-                .join('\n\n')
-            : 'Start a conversation with this agent session.'
-          : reasoningContent.length
-            ? [
-                ...reasoningContent.map(
-                  ({ text, timestamp }) => `${timestamp ? `[${timestamp}] ` : ''}${text}`,
-                ),
-                runUsageSummary,
-              ]
-                .filter(Boolean)
-                .join('\n\n')
-            : runUsageSummary || 'No progress or reasoning to show yet.';
-
-  useEffect(() => {
-    if (section !== 'reasoning' || !content || !contentRef.current) return;
-    contentRef.current.scrollTo({
-      top: contentRef.current.scrollHeight,
-      behavior: 'smooth',
-    });
-  }, [content, section]);
+    section === 'changes'
+      ? changeSet
+        ? [
+            `Status: ${changeSet.status}`,
+            `Request: ${changeSet.request}`,
+            '',
+            'Files:',
+            ...changeSet.files.map((file) => `- ${file.path} (${file.status || 'pending review'})`),
+          ].join('\n')
+        : 'No active change set.'
+      : reasoningContent.length || transcriptText
+        ? [
+            transcriptText ? `--- Transcript ---\n${transcriptText}` : '',
+            ...reasoningContent.map(
+              ({ text, timestamp }) => `${timestamp ? `[${timestamp}] ` : ''}${text}`,
+            ),
+            runUsageSummary,
+          ]
+            .filter(Boolean)
+            .join('\n\n')
+        : runUsageSummary || 'No progress or reasoning to show yet.';
 
   const copy = async () => {
     await navigator.clipboard.writeText(content);
@@ -234,96 +200,25 @@ export default function AISectionView({ tab }: { tab: Tab }) {
 
   return (
     <section className={styles.page} aria-label={titleBySection[section]}>
-      <header className={styles.header}>
-        <div>
-          <span className={styles.eyebrow}>AI pane</span>
-          <h1>{titleBySection[section]}</h1>
-        </div>
-        <div className={styles.actions}>
-          {section === 'reasoning' ? (
-            <Tooltip content={`${showStepIO ? 'Hide' : 'Show'} input/output for each agent step`}>
-              <button
-                type="button"
-                className={`${styles.stepIOToggle} ${showStepIO ? styles.stepIOToggleActive : ''}`}
-                onClick={toggleStepIO}
-                aria-label={`${showStepIO ? 'Hide' : 'Show'} input/output for each agent step`}
-                aria-pressed={showStepIO}
-              >
-                <Icons.Terminal size={16} />
-              </button>
-            </Tooltip>
-          ) : null}
-          <Tooltip content={copied ? 'Copied!' : 'Copy to clipboard'}>
-            <button
-              type="button"
-              className={styles.copyButton}
-              onClick={copy}
-              aria-label={copied ? 'Copied to clipboard' : 'Copy to clipboard'}
-            >
-              {copied ? <Icons.Check size={16} /> : <Icons.Copy size={16} />}
-            </button>
-          </Tooltip>
-        </div>
-      </header>
+      <AISectionHeader
+        title={titleBySection[section]}
+        showStepIOToggle={section === 'reasoning'}
+        showStepIO={section === 'reasoning' && showStepIO}
+        copied={copied}
+        onToggleStepIO={toggleStepIO}
+        onCopy={copy}
+      />
       {section === 'reasoning' ? (
-        <div ref={contentRef} className={`${styles.content} ${styles.markdownContent}`}>
-          {(reasoningGroups.length
-            ? reasoningGroups
-            : [{ step: null, entries: [{ text: content, timestamp: '' }] }]
-          ).map((group, groupIndex) => (
-            <section className={styles.reasoningGroup} key={`${group.step}-${groupIndex}`}>
-              {group.step !== null ? (
-                <h2 className={styles.stepHeading}>Step {group.step}</h2>
-              ) : null}
-              {group.entries.map(({ text, timestamp }) => (
-                <article className={styles.reasoningEntry} key={`${timestamp}-${text}`}>
-                  {timestamp ? <time className={styles.timestamp}>{timestamp}</time> : null}
-                  <div className={styles.reasoningText}>
-                    <ReactMarkdown
-                      components={{
-                        a: ({ node, ...props }) => <a className={styles.link} {...props} />,
-                        blockquote: ({ node, ...props }) => (
-                          <blockquote className={styles.blockquote} {...props} />
-                        ),
-                        code: ({ node, ...props }) => <code className={styles.code} {...props} />,
-                        h1: ({ node, ...props }) => <h1 className={styles.heading} {...props} />,
-                        h2: ({ node, ...props }) => <h2 className={styles.heading} {...props} />,
-                        h3: ({ node, ...props }) => <h3 className={styles.heading} {...props} />,
-                        h4: ({ node, ...props }) => <h4 className={styles.heading} {...props} />,
-                        h5: ({ node, ...props }) => <h5 className={styles.heading} {...props} />,
-                        h6: ({ node, ...props }) => <h6 className={styles.heading} {...props} />,
-                        li: ({ node, ...props }) => <li className={styles.listItem} {...props} />,
-                        ol: ({ node, ...props }) => <ol className={styles.list} {...props} />,
-                        p: ({ node, ...props }) => <p className={styles.paragraph} {...props} />,
-                        pre: ({ node, ...props }) => <pre className={styles.pre} {...props} />,
-                        ul: ({ node, ...props }) => <ul className={styles.list} {...props} />,
-                      }}
-                    >
-                      {text}
-                    </ReactMarkdown>
-                  </div>
-                </article>
-              ))}
-            </section>
-          ))}
-          {runUsageSummary ? (
-            <section className={styles.runSummary}>
-              <ReactMarkdown
-                components={{
-                  code: ({ node, ...props }) => <code className={styles.code} {...props} />,
-                  h2: ({ node, ...props }) => <h2 className={styles.stepHeading} {...props} />,
-                  li: ({ node, ...props }) => <li className={styles.listItem} {...props} />,
-                  p: ({ node, ...props }) => <p className={styles.paragraph} {...props} />,
-                  ul: ({ node, ...props }) => <ul className={styles.list} {...props} />,
-                }}
-              >
-                {runUsageSummary}
-              </ReactMarkdown>
-            </section>
-          ) : null}
-        </div>
+        <AISectionReasoning
+          activeSession={activeSession}
+          reasoningGroups={reasoningGroups}
+          runUsageSummary={runUsageSummary}
+          fallbackContent={content}
+          content={content}
+          contentRef={contentRef}
+        />
       ) : (
-        <pre className={styles.content}>{content}</pre>
+        <AISectionChanges content={content} />
       )}
     </section>
   );

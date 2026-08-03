@@ -1,3 +1,4 @@
+import type { AIIncident, ManagerTrace } from '@/components/AI/Agent';
 import { fireEvent, render, screen } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
@@ -7,7 +8,13 @@ vi.mock('@/components/ui/Tooltip', () => ({
   default: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
 }));
 vi.mock('@/components/ui/Icons', () => ({
-  Icons: { Brain: () => <span />, Copy: () => <span />, Check: () => <span /> },
+  Icons: {
+    Brain: () => <span />,
+    Copy: () => <span />,
+    Check: () => <span />,
+    Terminal: () => <span />,
+    Download: () => <span />,
+  },
 }));
 
 Object.defineProperty(navigator, 'clipboard', {
@@ -20,7 +27,7 @@ Object.defineProperty(navigator, 'clipboard', {
 describe('PromptHeader', () => {
   it('renders title and status indicators', () => {
     render(<PromptHeader isAIProcessing={true} isSystemProcessing={true} />);
-    expect(screen.getByText('Agent')).toBeDefined();
+    expect(screen.getByText('AI Manager')).toBeDefined();
     expect(screen.getByText('Compiling')).toBeDefined();
   });
 
@@ -42,17 +49,50 @@ describe('PromptHeader', () => {
     expect(navigator.clipboard.writeText).toHaveBeenCalledWith('--- Transcript ---\nHello world');
   });
 
-  it('switches agent mode', () => {
-    const onModeChange = vi.fn();
+  it('does not expose agent mode controls', () => {
+    render(<PromptHeader isAIProcessing={false} isSystemProcessing={false} />);
+    expect(screen.queryByRole('button', { name: 'Team' })).toBeNull();
+  });
+
+  it('places the manager trace trigger in the header action row', () => {
+    const trace: ManagerTrace = {
+      version: 1,
+      runId: 'header-trace',
+      request: 'create a todo app',
+      startedAt: 100,
+      endedAt: 125,
+      durationMs: 25,
+      outcome: 'success' as const,
+      events: [],
+    };
+
+    const { container } = render(
+      <PromptHeader isAIProcessing={false} isSystemProcessing={false} latestManagerTrace={trace} />,
+    );
+
+    const traceButton = screen.getByRole('button', {
+      name: 'Open manager debug trace (success)',
+    });
+    const headerActions = container.querySelector('[class*="headerActions"]');
+    expect(headerActions?.contains(traceButton)).toBe(true);
+  });
+
+  it('exposes export action for the latest incident', () => {
+    const incident = { id: 'incident-header', classification: 'model-protocol' } as AIIncident;
+    const onExportAIIncident = vi.fn();
+
     render(
       <PromptHeader
         isAIProcessing={false}
         isSystemProcessing={false}
-        mode="single"
-        onModeChange={onModeChange}
+        latestAIIncident={incident}
+        onExportAIIncident={onExportAIIncident}
       />,
     );
-    fireEvent.click(screen.getByRole('button', { name: 'Team' }));
-    expect(onModeChange).toHaveBeenCalledWith('team');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Export AI incident' }));
+
+    expect(onExportAIIncident).toHaveBeenCalledOnce();
+    expect(screen.queryByRole('button', { name: 'Copy AI diagnosis' })).toBeNull();
   });
 });

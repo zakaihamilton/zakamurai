@@ -26,17 +26,30 @@ describe('WebLLMModels', () => {
     }
   });
 
-  it('recommends Qwen3.5 4B by default', () => {
-    expect(RECOMMENDED_WEB_LLM_MODEL.id).toBe('Qwen3.5-4B-q4f16_1-MLC');
+  it('recommends Qwen2.5 Coder 1.5B by default', () => {
+    expect(RECOMMENDED_WEB_LLM_MODEL.id).toBe('Qwen2.5-Coder-1.5B-Instruct-q4f16_1-MLC');
   });
 
-  it('uses smaller first-run defaults on reported low-memory devices', () => {
+  it('uses the compact coding model as the default on ordinary devices', () => {
     const originalNavigator = globalThis.navigator;
     Object.defineProperty(globalThis, 'navigator', {
       configurable: true,
       value: { deviceMemory: 8 },
     });
-    expect(getDeviceAppropriateDefaultModelId()).toBe('Qwen3.5-2B-q4f16_1-MLC');
+    expect(getDeviceAppropriateDefaultModelId()).toBe('Qwen2.5-Coder-1.5B-Instruct-q4f16_1-MLC');
+    Object.defineProperty(globalThis, 'navigator', {
+      configurable: true,
+      value: originalNavigator,
+    });
+  });
+
+  it('uses the smallest recovery tier only on very low-memory devices', () => {
+    const originalNavigator = globalThis.navigator;
+    Object.defineProperty(globalThis, 'navigator', {
+      configurable: true,
+      value: { deviceMemory: 2 },
+    });
+    expect(getDeviceAppropriateDefaultModelId()).toBe('Qwen3.5-0.8B-q4f16_1-MLC');
     Object.defineProperty(globalThis, 'navigator', {
       configurable: true,
       value: originalNavigator,

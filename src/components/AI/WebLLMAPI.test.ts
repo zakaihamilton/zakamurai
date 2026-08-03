@@ -21,6 +21,10 @@ const { mockRagForceUnloadModel, mockRagUnloadModel } = vi.hoisted(() => ({
   mockRagUnloadModel: vi.fn().mockResolvedValue(undefined),
 }));
 
+const { mockReportDiagnostic } = vi.hoisted(() => ({
+  mockReportDiagnostic: vi.fn(),
+}));
+
 vi.mock('@mlc-ai/web-llm', () => {
   return {
     CreateMLCEngine: vi.fn(),
@@ -35,6 +39,10 @@ vi.mock('@/utils/rag/search-utility', () => ({
     forceUnloadModel: mockRagForceUnloadModel,
     unloadModel: mockRagUnloadModel,
   },
+}));
+
+vi.mock('@/components/Diagnostics/Diagnostics', () => ({
+  reportDiagnostic: mockReportDiagnostic,
 }));
 
 type MockEngine = {
@@ -121,7 +129,7 @@ describe('WebLLMAPI', () => {
     await expect(askWebLLM('hello')).resolves.toBe('default response');
     expect(mockedCreateWebWorkerMLCEngine).toHaveBeenCalledWith(
       expect.anything(),
-      'Qwen3.5-4B-q4f16_1-MLC',
+      'Qwen2.5-Coder-1.5B-Instruct-q4f16_1-MLC',
       expect.any(Object),
       expect.any(Object),
     );
@@ -347,6 +355,19 @@ describe('WebLLMAPI', () => {
     await expect(askWebLLM('hello', '', null, { model: 'test-model' })).rejects.toThrow(
       /Local AI failed/,
     );
+    const failureDiagnostic = mockReportDiagnostic.mock.calls.find(
+      ([event]) => event?.message === 'Local AI request failed',
+    )?.[0];
+    expect(failureDiagnostic).toEqual(
+      expect.objectContaining({
+        source: 'webllm',
+        severity: 'error',
+        message: 'Local AI request failed',
+        details: expect.stringContaining('errorMessageLength'),
+      }),
+    );
+    expect(failureDiagnostic?.details).toContain('errorMessageFingerprint');
+    expect(failureDiagnostic?.details).not.toContain('boom');
   });
 
   it('reports cache lookup failures and init progress callbacks', async () => {

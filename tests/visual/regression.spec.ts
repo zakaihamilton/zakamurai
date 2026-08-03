@@ -91,11 +91,11 @@ test.describe('Zakamurai Visual Regression', () => {
 
     // Wait for breadcrumb to update
     await expect(page.locator('header')).toContainText('package.json');
-    const agentInput = page.getByPlaceholder('Tell the Agent what to do...');
-    if (!(await agentInput.isVisible())) {
+    const managerInput = page.getByPlaceholder('Tell the AI Manager what to do...');
+    if (await managerInput.isVisible()) {
       await page.getByTestId('ai-prompt-toggle').filter({ visible: true }).click();
     }
-    await expect(agentInput).toBeVisible();
+    await expect(managerInput).not.toBeVisible();
 
     // Wait for editor to settle (content loading, highlighting)
     await page.waitForTimeout(2000);

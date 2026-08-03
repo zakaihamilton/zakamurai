@@ -1,4 +1,3 @@
-import type { RoleGraph } from '@/components/AI/types';
 import type { CreateAgentSessionOptions } from '@/components/App/types';
 import type {
   AgentSession,
@@ -9,7 +8,6 @@ import {
   expectAgentSession,
   requireActiveSession,
   requireSessionId,
-  sessionRoleGraph,
 } from '@/test-utils/agentSessionMocks';
 import { describe, expect, it } from 'vitest';
 import {
@@ -102,7 +100,7 @@ describe('AgentSessions', () => {
     expect(sessions[0]?.mode).toBe('single');
     expect(sessions[0]?.parentId).toBeNull();
     expect(active(state).modelId).toBe('model-a');
-    expect(sessionRoleGraph(active(state)).roles).toHaveLength(3);
+    expect(active(state).roleGraph).toBeNull();
   });
 
   it('keeps nested model fences inside code-formatted step I/O blocks', () => {
@@ -136,10 +134,8 @@ describe('AgentSessions', () => {
     state = addAgentSession(state, { name: 'Research', mode: 'team' });
     expect(listAgentSessions(state.sessions)).toHaveLength(2);
     expect(state.activeSessionId).not.toBe(firstId);
-    expect(getActiveAgentSession(state)?.mode).toBe('team');
-    expect(sessionRoleGraph(requireActiveSession(getActiveAgentSession(state))).roles).toHaveLength(
-      3,
-    );
+    expect(getActiveAgentSession(state)?.mode).toBe('single');
+    expect(getActiveAgentSession(state)?.roleGraph).toBeNull();
 
     state = renameAgentSession(state, requireSessionId(state.activeSessionId), '  Research Ops  ');
     expect(getActiveAgentSession(state)?.name).toBe('Research Ops');
@@ -182,8 +178,9 @@ describe('AgentSessions', () => {
     state = createAgentBranch(state, parentId);
     const child = requireActiveSession(getActiveAgentSession(state));
     expect(child.parentId).toBe(parentId);
-    expect(child.name).toBe('Agent 1 branch');
-    expect(child.mode).toBe('team');
+    expect(child.name).toBe('Session 1 branch');
+    expect(child.mode).toBe('single');
+    expect(child.roleGraph).toBeNull();
     expect(child.messages).toEqual(state.sessions[parentId]?.messages);
 
     state = appendSessionMessage(
@@ -243,7 +240,7 @@ describe('AgentSessions', () => {
     expect(context).toContain('Earlier conversation omitted');
   });
 
-  it('updates session patches including role graphs and messages', () => {
+  it('updates session patches while ignoring legacy role graph fields', () => {
     let state: AgentSessionStateShape = createDefaultAgentSessions();
     const id = requireSessionId(state.activeSessionId);
     state = updateAgentSession(state, id, {
@@ -255,9 +252,9 @@ describe('AgentSessions', () => {
       },
     });
     const session = requireActiveSession(getActiveAgentSession(state));
-    expect(session.mode).toBe('team');
+    expect(session.mode).toBe('single');
     expect(session.messages).toHaveLength(1);
-    expect(sessionRoleGraph(session).roles[0]?.modelId).toBe('m');
+    expect(session.roleGraph).toBeNull();
   });
 
   it('throws for missing sessions on mutate helpers', () => {
@@ -297,7 +294,7 @@ describe('AgentSessions', () => {
     expect(createAgentSession({ mode: 'other' } as unknown as CreateAgentSessionOptions).mode).toBe(
       'single',
     );
-    expect(createAgentSession({ name: '' }).name).toBe('Agent 1');
+    expect(createAgentSession({ name: '' }).name).toBe('Session 1');
     expect(capSessionMessages(null as unknown as AgentSessionMessage[])).toEqual([]);
     expect(listAgentSessions()).toEqual([]);
     expect(getAgentSessionSubtreeIds({}, 'missing').size).toBe(0);
@@ -309,7 +306,7 @@ describe('AgentSessions', () => {
         [{ role: 'system', text: 'sys', agentRole: 'planner' }] as unknown as AgentSessionMessage[],
         200,
       ),
-    ).toContain('System (planner)');
+    ).toContain('System: sys');
     expect(
       formatSessionContext([createSessionMessage({ role: 'user', text: 'huge'.repeat(40) })], 120),
     ).toContain('[Message truncated]');
@@ -362,20 +359,18 @@ describe('AgentSessions', () => {
     expect(normalized.activeSessionId).toBe('a');
     expect(normalized.sessions.a?.status).toBe('idle');
     expect(normalized.sessions.a?.messages).toHaveLength(2);
-    expect(sessionRoleGraph(requireActiveSession(normalized.sessions.a)).roles[0]?.modelId).toBe(
-      'm1',
-    );
+    expect(normalized.sessions.a?.roleGraph).toBeNull();
     const serialized = serializeAgentSessions(normalized);
     expect(serialized.sessions.a?.messages).toHaveLength(2);
     expect(serialized.sessions.a).not.toHaveProperty('status');
-    expect((serialized.sessions.a?.roleGraph as RoleGraph).roles[0]?.id).toBe('p');
+    expect(serialized.sessions.a).not.toHaveProperty('roleGraph');
   });
 
   it('creates sessions with defaults and optional parent links', () => {
     const session = createAgentSession({ parentId: 42 } as unknown as CreateAgentSessionOptions);
-    expect(session.name).toBe('Agent 1');
+    expect(session.name).toBe('Session 1');
     expect(session.parentId).toBeNull();
-    expect(createAgentSession({ name: 'Custom', mode: 'team' }).mode).toBe('team');
+    expect(createAgentSession({ name: 'Custom', mode: 'team' }).mode).toBe('single');
     expect(createSessionMessage({ role: 'ai', text: 'hi', agentRole: 'coder' }).agentRole).toBe(
       'coder',
     );
@@ -410,11 +405,11 @@ describe('AgentSessions', () => {
     expect(state.activeSessionId).toBe(rootId);
   });
 
-  it('formats context with agent roles and truncates oversized first messages', () => {
+  it('formats context and truncates oversized first messages', () => {
     const withRole = formatSessionContext([
       createSessionMessage({ role: 'ai', text: 'done', agentRole: 'coder' }),
     ]);
-    expect(withRole).toContain('Agent (coder)');
+    expect(withRole).toContain('Agent: done');
 
     const truncated = formatSessionContext(
       [createSessionMessage({ role: 'user', text: 'x'.repeat(200) })],

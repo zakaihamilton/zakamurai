@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "name": "tool-only-project-check",
+  "request": "run the tests",
+  "files": {
+    "package.json": "{\"scripts\":{\"test\":\"vitest run\"}}"
+  },
+  "projectCheckResponses": {
+    "test": "12 tests passed"
+  },
+  "expected": {
+    "intent": "project-check",
+    "outcome": "success",
+    "modelCalls": 0,
+    "toolOrder": ["list_project_checks", "run_project_check"]
+  }
+}

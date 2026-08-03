@@ -1,11 +1,6 @@
-import type {
-  AgentEvent,
-  RoleEdge,
-  RoleGraph,
-  RoleKind,
-  RoleNode,
-  WebLLMModel,
-} from '@/components/AI/types';
+import type { AIIncident } from '@/components/AI/Agent/AIIncident';
+import type { ManagerTrace } from '@/components/AI/Agent/ManagerTrace';
+import type { AgentEvent, FileMap, WebLLMModel } from '@/components/AI/types';
 import type { ExtendedEditorState } from '@/components/App/Views/EditorArea/types';
 import type { FileSystemApi } from '@/components/App/types';
 import type {
@@ -94,10 +89,6 @@ export type SessionDialogProps = {
   promptUiState: StateStore<PromptUiStateShape>;
 };
 
-export type SessionTranscriptProps = {
-  messages?: AgentSessionMessage[];
-};
-
 export type SessionTreeDialogProps = {
   isOpen: boolean;
   sessions?: Record<string, AgentSession>;
@@ -133,68 +124,6 @@ export type ModelOption = {
 /** Select dropdown option derived from WEB_LLM_MODELS (value/label shape). */
 export type ModelSelectOption = SelectOption;
 
-export type RoleCardProps = {
-  role: RoleNode;
-  index: number;
-  roleCount: number;
-  kindOptions: SelectOption[];
-  modelOptions?: SelectOption[];
-  defaultModelId?: string;
-  rejectEdge?: RoleEdge | null;
-  otherRoles?: RoleNode[];
-  disabled?: boolean;
-  onUpdateLabel?: (label: string) => void;
-  onMoveUp?: () => void;
-  onMoveDown?: () => void;
-  onRemove?: () => void;
-  onChangeKind?: (kind: RoleKind | string, label: string) => void;
-  onChangeModel?: (modelId: string | null) => void;
-  onChangeSystemPrompt?: (systemPrompt: string | null) => void;
-  onChangeRejectTarget?: (toId: string | null, maxTimes: number) => void;
-  onChangeRejectMaxTimes?: (maxTimes: number) => void;
-  onChangeJoin?: (join: 'all' | 'any' | string) => void;
-  onChangeMaxRetries?: (maxRetries: number) => void;
-};
-
-export type RoleGraphAddRowProps = {
-  kindOptions?: SelectOption[];
-  disabled?: boolean;
-  onAdd?: (kind: RoleKind | string) => void;
-};
-
-export type RoleGraphEditorProps = {
-  roleGraph?: RoleGraph | null;
-  modelOptions?: SelectOption[];
-  defaultModelId?: string;
-  disabled?: boolean;
-  onChange?: (graph: RoleGraph) => void;
-  showTitle?: boolean;
-};
-
-export type RoleGraphDialogProps = {
-  isOpen: boolean;
-  onCancel: () => void;
-  onConfirm?: () => void;
-  roleGraph?: RoleGraph | null;
-  modelOptions?: SelectOption[];
-  defaultModelId?: string;
-  disabled?: boolean;
-  onChange?: (graph: RoleGraph) => void;
-};
-
-export type RoleGraphHeaderProps = {
-  showTitle?: boolean;
-  disabled?: boolean;
-  onReset?: () => void;
-  onAddCustom?: () => void;
-};
-
-export type RoleGraphSummaryProps = {
-  roleGraph?: RoleGraph | null;
-  disabled?: boolean;
-  onEdit?: () => void;
-};
-
 export type PromptComposerProps = {
   value: string;
   onChange: (event: ChangeEvent<HTMLTextAreaElement>) => void;
@@ -211,23 +140,17 @@ export type PromptComposerProps = {
   onOpenModelManager?: () => void;
 };
 
-export type PromptContextPanelProps = {
-  scope?: string;
-  onScopeChange?: (scope: string) => void;
-  activeFileName?: string;
-  activeFilePath?: string;
-  selectedLines: number[];
-  selectedLineText: string;
-  runState: string;
-  onOpenInTab?: () => void;
-};
-
 export type PromptHeaderProps = {
   isAIProcessing: boolean;
   isSystemProcessing: boolean;
   mode?: string;
   onModeChange?: (mode: string) => void;
   copyContent?: string;
+  latestManagerTrace?: ManagerTrace | null;
+  latestAIIncident?: AIIncident | null;
+  onExportAIIncident?: () => void;
+  traceFiles?: FileMap;
+  onReplayRequest?: (request: string) => void;
 };
 
 export type SessionDialogState =
@@ -256,7 +179,6 @@ export type PromptContentProps = {
   isSystemProcessing: boolean;
   activeSession: AgentSession | null;
   sessionReasoning: string;
-  onModeChange: (mode: string) => void;
   onOpenTree: () => void;
   isAgentTreeOpen: boolean;
   sessionDialog: SessionDialogState;
@@ -269,19 +191,8 @@ export type PromptContentProps = {
   onDeleteSession: (sessionId: string) => void;
   runningSessionId: string | null;
   promptUiState: StateStore<PromptUiStateShape>;
-  isRoleGraphOpen: boolean;
-  onOpenRoleGraph: () => void;
-  onCloseRoleGraph: () => void;
   modelOptions: ModelSelectOption[];
-  selectedModel: string;
-  promptScope: string;
-  onScopeChange: (scope: string) => void;
-  onOpenSectionInTab: (section: 'context' | 'changes' | 'transcript' | 'reasoning') => void;
-  activeFileName?: string;
-  activeFilePath?: string;
-  selectedLines: number[];
-  selectedLineText: string;
-  runState: string;
+  onOpenSectionInTab: (section: 'changes' | 'reasoning') => void;
   isModelManagerOpen: boolean;
   selectedModelInfo: { id: string; name?: string };
   cachedModelIds: string[];
@@ -305,6 +216,12 @@ export type PromptContentProps = {
   onLoadCachedModelIds: () => void;
   onOpenModelManager: () => void;
   patchSession: (sessionId: string, patch: Partial<AgentSession>) => void;
+  onClearAIModelLog: () => void;
+  latestManagerTrace?: ManagerTrace | null;
+  latestAIIncident?: AIIncident | null;
+  onExportAIIncident?: () => void;
+  traceFiles?: FileMap;
+  onReplayRequest?: (request: string) => void;
 };
 
 export type UseAgentRunnerParams = {
@@ -330,17 +247,15 @@ export type UseAgentRunnerParams = {
   editorState: StateStore<ExtendedEditorState>;
   sidebarState: StateStore<SidebarStateShape>;
   logState: StateStore<LogStateShape>;
+  cachedModelIds?: string[];
+  webLLMEngines?: Record<string, import('@/components/state/domain-types').WebLLMEngineState>;
 };
 
-export type AgentEventFormatter = (
-  event: AgentEvent,
-  roleLabelById?: Record<string, string>,
-) => string;
+export type AgentEventFormatter = (event: AgentEvent) => string;
 
 export type UsePromptSessionControlsParams = {
   agentSessionState: StateStore<AgentSessionStateShape>;
   promptUiState: StateStore<PromptUiStateShape>;
   selectedModel: string;
   isAIProcessing: boolean;
-  isRoleGraphOpen: boolean;
 };
