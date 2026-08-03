@@ -10,7 +10,6 @@ import {
   getPreviewOrigins,
   getPreviewServiceWorkerScope,
   isValidPreviewHandshake,
-  originMatches,
 } from './previewOrigins';
 import { PREVIEW_CONNECT, PREVIEW_CONNECT_ACK, PREVIEW_PROTOCOL_VERSION } from './previewProtocol';
 
@@ -21,11 +20,6 @@ const WORKER_BRIDGE_KEY = Symbol('preview-worker-bridge');
 const SURFACE_IFRAME = 'iframe' as const;
 const SURFACE_EXTERNAL = 'external' as const;
 
-type ConnectAckContext = {
-  previewOrigin: string;
-  sessionId: string;
-};
-
 type HandshakeContext = {
   portsRef: React.MutableRefObject<Map<unknown, MessagePort>>;
   surfacePortsRef: React.MutableRefObject<Map<PreviewSurfaceKind, Set<MessagePort>>>;
@@ -35,18 +29,6 @@ type HandshakeContext = {
   previewOrigin: string;
   onError?: (message: string) => void;
 };
-
-function isPreviewConnectAck(
-  event: MessageEvent<PreviewConnectMessage>,
-  { previewOrigin, sessionId }: ConnectAckContext,
-): boolean {
-  return Boolean(
-    originMatches(event.origin, previewOrigin) &&
-      event.data?.type === PREVIEW_CONNECT_ACK &&
-      event.data?.version === PREVIEW_PROTOCOL_VERSION &&
-      event.data?.sessionId === sessionId,
-  );
-}
 
 function attachBridgePort({
   portsRef,
@@ -134,12 +116,8 @@ function resolveHandshakeSurface(
     externalWindow,
   }: { iframeWindow: Window | null | undefined; externalWindow: Window | null | undefined },
 ): PreviewSurfaceKind | null {
-  const reported = event.data?.surface;
-  if (reported === SURFACE_IFRAME || reported === SURFACE_EXTERNAL) return reported;
   if (iframeWindow && event.source === iframeWindow) return SURFACE_IFRAME;
   if (externalWindow && event.source === externalWindow) return SURFACE_EXTERNAL;
-  if (externalWindow) return SURFACE_EXTERNAL;
-  if (iframeWindow) return SURFACE_IFRAME;
   return null;
 }
 
@@ -196,52 +174,54 @@ export default function PreviewBridge({
     const onMessage = (event: MessageEvent<PreviewConnectMessage>) => {
       const iframeWindow = iframeRef.current?.contentWindow;
       const externalPreviewWindow = externalPreviewRef?.current;
+      const surface = resolveHandshakeSurface(event, {
+        iframeWindow,
+        externalWindow: externalPreviewWindow,
+      });
+      const expectedSource =
+        surface === SURFACE_IFRAME
+          ? iframeWindow
+          : surface === SURFACE_EXTERNAL
+            ? externalPreviewWindow
+            : null;
 
-      if (isPreviewConnectAck(event, { previewOrigin, sessionId })) {
-        const surface = resolveHandshakeSurface(event, {
-          iframeWindow,
-          externalWindow: externalPreviewWindow,
-        });
-        if (surface) confirmedSurfacesRef.current.add(surface);
+      if (
+        surface &&
+        isValidPreviewHandshake(event as PreviewHandshakeEvent, {
+          expectedOrigin: previewOrigin,
+          expectedSource: (expectedSource ?? null) as MessageEventSource | null,
+          sessionId,
+          type: PREVIEW_CONNECT_ACK,
+          version: PREVIEW_PROTOCOL_VERSION,
+        })
+      ) {
+        confirmedSurfacesRef.current.add(surface);
         return;
       }
 
-      const isIframeSource = Boolean(iframeWindow && event.source === iframeWindow);
-      const isExternalSource = Boolean(
-        externalPreviewWindow && event.source === externalPreviewWindow,
-      );
-      const expectedSource = isExternalSource
-        ? externalPreviewWindow
-        : isIframeSource
-          ? iframeWindow
-          : null;
-
-      const handshakeOk =
-        isValidPreviewHandshake(event as PreviewHandshakeEvent, {
+      if (
+        !surface ||
+        !isValidPreviewHandshake(event as PreviewHandshakeEvent, {
           expectedOrigin: previewOrigin,
           expectedSource: (expectedSource ?? null) as MessageEventSource | null,
           sessionId,
           type: PREVIEW_CONNECT,
           version: PREVIEW_PROTOCOL_VERSION,
-        }) ||
-        (originMatches(event.origin, previewOrigin) &&
-          event.data?.type === PREVIEW_CONNECT &&
-          event.data?.version === PREVIEW_PROTOCOL_VERSION &&
-          event.data?.sessionId === sessionId);
-
-      if (!handshakeOk) return;
+        })
+      ) {
+        return;
+      }
       const channel = new MessageChannel();
-      const portSource = event.source || expectedSource;
       attachBridgePort({
         portsRef,
-        source: portSource,
+        source: event.source,
         port: channel.port1,
         sessionId,
         onError,
       });
       try {
-        const target = (event.source || expectedSource) as Window;
-        target?.postMessage(
+        const target = event.source as Window;
+        target.postMessage(
           { type: PREVIEW_CONNECT, version: PREVIEW_PROTOCOL_VERSION, sessionId },
           previewOrigin,
           [channel.port2],
@@ -249,11 +229,7 @@ export default function PreviewBridge({
       } catch {
         return;
       }
-      const surface = resolveHandshakeSurface(event, {
-        iframeWindow,
-        externalWindow: externalPreviewWindow,
-      });
-      if (surface) confirmedSurfacesRef.current.add(surface);
+      confirmedSurfacesRef.current.add(surface);
     };
 
     window.addEventListener('message', onMessage);

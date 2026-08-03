@@ -15,11 +15,11 @@ describe('PreviewBridge', () => {
     vi.restoreAllMocks();
   });
 
-  it('accepts handshake from an external preview window when event.source identity differs cross-origin', () => {
+  it('accepts handshake from the active external preview window', () => {
     const externalWindow = createMockPreviewWindow();
     const iframeWindow = createMockPreviewWindow();
     const iframeRef = mockIframeRef(iframeWindow);
-    const externalPreviewRef = mockExternalPreviewRef({ ...externalWindow });
+    const externalPreviewRef = mockExternalPreviewRef(externalWindow);
 
     render(
       <PreviewBridge
@@ -54,6 +54,38 @@ describe('PreviewBridge', () => {
       'http://localhost:3001',
       expect.any(Array),
     );
+  });
+
+  it('rejects a matching handshake from an unknown same-origin window', () => {
+    const activeWindow = createMockPreviewWindow();
+    const unknownWindow = createMockPreviewWindow();
+
+    render(
+      <PreviewBridge
+        iframeRef={mockIframeRef(null)}
+        externalPreviewRef={mockExternalPreviewRef(activeWindow)}
+        sessionId="test-session-123"
+        previewOrigin="http://localhost:3001"
+        onError={vi.fn()}
+      />,
+    );
+
+    const connectEvent = new MessageEvent('message', {
+      data: {
+        type: PREVIEW_CONNECT,
+        version: PREVIEW_PROTOCOL_VERSION,
+        sessionId: 'test-session-123',
+      },
+      origin: 'http://localhost:3001',
+    });
+    Object.defineProperty(connectEvent, 'source', { value: unknownWindow });
+
+    act(() => {
+      window.dispatchEvent(connectEvent);
+    });
+
+    expect(activeWindow.postMessage).not.toHaveBeenCalled();
+    expect(unknownWindow.postMessage).not.toHaveBeenCalled();
   });
 
   it('rejects handshake with invalid origin or mismatched session ID', () => {
@@ -290,6 +322,43 @@ describe('PreviewBridge', () => {
     });
     expect(externalWindow.postMessage).toHaveBeenCalledTimes(callsAfterAck);
 
+    vi.useRealTimers();
+  });
+
+  it('continues retrying after an acknowledgement from an unknown same-origin window', () => {
+    vi.useFakeTimers();
+    const activeWindow = createMockPreviewWindow();
+    const unknownWindow = createMockPreviewWindow();
+
+    render(
+      <PreviewBridge
+        iframeRef={mockIframeRef(null)}
+        externalPreviewRef={mockExternalPreviewRef(activeWindow)}
+        externalPreviewNonce={1}
+        sessionId="test-session-123"
+        previewOrigin="http://localhost:3001"
+        onError={vi.fn()}
+      />,
+    );
+
+    const initialCalls = activeWindow.postMessage.mock.calls.length;
+    const ackEvent = new MessageEvent('message', {
+      data: {
+        type: PREVIEW_CONNECT_ACK,
+        version: PREVIEW_PROTOCOL_VERSION,
+        sessionId: 'test-session-123',
+        surface: 'external',
+      },
+      origin: 'http://localhost:3001',
+    });
+    Object.defineProperty(ackEvent, 'source', { value: unknownWindow });
+
+    act(() => {
+      window.dispatchEvent(ackEvent);
+      vi.advanceTimersByTime(400);
+    });
+
+    expect(activeWindow.postMessage.mock.calls.length).toBeGreaterThan(initialCalls);
     vi.useRealTimers();
   });
 
