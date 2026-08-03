@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest';
 import { runManager } from '@/components/AI/Agent';
+import { describe, expect, it } from 'vitest';
 import { createFakeModel, createFakeTools } from './harness';
 
 const editResponse = (path: string, content: string) =>

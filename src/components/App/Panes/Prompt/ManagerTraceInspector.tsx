@@ -1,5 +1,5 @@
-import type { ManagerTrace } from '@/components/AI/Agent/ManagerTrace';
 import { createManagerReplayFixtureFromTrace } from '@/components/AI/Agent/ManagerReplay';
+import type { ManagerTrace } from '@/components/AI/Agent/ManagerTrace';
 import type { FileMap } from '@/components/AI/types';
 import Dialog from '@/components/ui/Dialog';
 import { Icons } from '@/components/ui/Icons';

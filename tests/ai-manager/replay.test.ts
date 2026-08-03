@@ -1,13 +1,13 @@
+import { type ManagerReplayFixture, replayManagerFixture } from '@/components/AI/Agent';
+import contextFixture from './fixtures/context-follow-up.json';
+import deleteFixture from './fixtures/delete-file.json';
 import editFixture from './fixtures/edit-title.json';
 import listFixture from './fixtures/list-files.json';
-import partialFixture from './fixtures/partial-validation-error.json';
-import deleteFixture from './fixtures/delete-file.json';
-import contextFixture from './fixtures/context-follow-up.json';
 import mixedFixture from './fixtures/mixed-edit-validation.json';
+import partialFixture from './fixtures/partial-validation-error.json';
 import previewFixture from './fixtures/preview-inspection.json';
 import projectCheckFixture from './fixtures/project-check.json';
 import searchFixture from './fixtures/search-workspace.json';
-import { replayManagerFixture, type ManagerReplayFixture } from '@/components/AI/Agent';
 
 const fixtures = [
   listFixture,
