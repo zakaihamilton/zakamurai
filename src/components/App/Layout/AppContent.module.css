@@ -64,7 +64,7 @@
   .mobileOverlay {
     display: block;
     position: fixed;
-    inset: 104px 0 0;
+    inset: 52px 0 0;
     background: rgb(0 0 0 / 40%);
     z-index: 800;
     backdrop-filter: blur(4px);
@@ -80,6 +80,12 @@
     to {
       opacity: 1;
       backdrop-filter: blur(4px);
+    }
+  }
+
+  @media (width <= 380px) {
+    .mobileOverlay {
+      inset: 44px 0 0;
     }
   }
 }

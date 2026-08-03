@@ -32,6 +32,7 @@ vi.mock('@/components/ui/Icons', () => ({
     Code: () => <span />,
     Terminal: () => <span />,
     Globe: () => <span />,
+    ChevronDown: () => <span />,
     AIPrompt: () => <span />,
   },
 }));
@@ -224,5 +225,41 @@ describe('ActionButtons', () => {
 
     fireEvent.click(screen.getByTestId('code-tab'));
     expect(tabState).toHaveBeenCalled();
+  });
+
+  it('switches views from the mobile popup button', () => {
+    const onOpenLog = vi.fn();
+    const tabState = makeTabState({
+      activeTabId: 'preview',
+      openTabs: [
+        { id: 'preview', type: 'preview', label: 'Preview' },
+        createMockTab({
+          id: 'src/foo.js',
+          type: 'file',
+          label: 'foo.js',
+          file: { name: 'foo.js', path: ['src', 'foo.js'] },
+        }),
+      ],
+      lastCodeTabId: 'src/foo.js',
+    });
+    vi.mocked(AppState.useState).mockReturnValue(makeAppState({ isMobile: true }));
+    vi.mocked(TabState.useState).mockReturnValue(tabState);
+
+    render(
+      <ActionButtons
+        onCompile={vi.fn()}
+        onRebuild={vi.fn()}
+        onOpenLog={onOpenLog}
+        onOpenPreview={vi.fn()}
+        onToggleAIInput={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByTestId('mobile-view-switcher'));
+    expect(screen.getByRole('menu')).toBeDefined();
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Logs' }));
+
+    expect(onOpenLog).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole('menu')).toBeNull();
   });
 });

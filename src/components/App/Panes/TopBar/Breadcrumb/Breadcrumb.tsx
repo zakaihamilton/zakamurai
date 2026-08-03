@@ -4,7 +4,7 @@ import styles from './Breadcrumb.module.css';
 
 export default function Breadcrumb({ breadcrumb, onBreadcrumbClick }: BreadcrumbProps) {
   return (
-    <div className={styles.breadcrumb}>
+    <nav className={styles.breadcrumb} aria-label="Breadcrumb">
       {breadcrumb.map((seg, i) => (
         <span key={breadcrumb.slice(0, i + 1).join('/')}>
           <button
@@ -24,6 +24,6 @@ export default function Breadcrumb({ breadcrumb, onBreadcrumbClick }: Breadcrumb
           {i < breadcrumb.length - 1 && <Icons.ChevronRight />}
         </span>
       ))}
-    </div>
+    </nav>
   );
 }

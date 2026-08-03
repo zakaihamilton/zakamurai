@@ -61,6 +61,38 @@
 
 @media (width <= 768px) {
   .breadcrumb {
-    display: none;
+    grid-column: 2;
+    grid-row: 1;
+    display: flex;
+    flex: 0 1 auto;
+    width: auto;
+    min-width: 0;
+    margin-right: 0;
+    padding: 0;
+    overflow: hidden;
+    font-size: 11px;
+    scrollbar-width: none;
+  }
+
+  .breadcrumb > span {
+    display: inline-flex;
+    min-width: 0;
+    align-items: center;
+  }
+
+  .breadcrumb > span:not(:first-child) {
+    min-width: 0;
+  }
+
+  .breadcrumbSegment {
+    max-width: 96px;
+    padding: 4px 3px;
+    text-overflow: ellipsis;
+  }
+
+  .breadcrumb svg {
+    width: 12px;
+    height: 12px;
+    flex: 0 0 auto;
   }
 }

@@ -135,7 +135,92 @@ button.item {
 }
 
 @media (width <= 768px) {
+  .statusBar {
+    justify-content: flex-start;
+    gap: 4px;
+    overflow: hidden;
+    padding: 0 4px;
+  }
+
+  .left,
+  .right {
+    min-width: 0;
+  }
+
+  .left {
+    flex: 1 1 auto;
+  }
+
+  .right {
+    flex: 0 0 auto;
+  }
+
+  .left > .tooltipWrapper {
+    display: flex;
+    flex: 1 1 0;
+    min-width: 0;
+  }
+
+  .left > .tooltipWrapper:first-child {
+    flex-grow: 1.15;
+  }
+
+  .item {
+    box-sizing: border-box;
+    min-width: 0;
+    padding: 0 6px;
+  }
+
+  .left .item {
+    flex: 1 1 auto;
+    width: auto;
+  }
+
+  .left .item:first-child {
+    min-width: 0;
+  }
+
+  .item span {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .right .aiItem {
+    min-width: 0;
+    padding: 0 6px;
+  }
+
+  .right .item:first-child {
+    min-width: 0 !important;
+    padding: 0 6px;
+  }
+
   .hideOnMobile {
     display: none;
+  }
+}
+
+@media (width <= 380px) {
+  .statusBar {
+    gap: 2px;
+    padding: 0 2px;
+  }
+
+  .item,
+  .left .item,
+  .right .item:first-child,
+  .right .aiItem {
+    padding: 0 4px;
+  }
+
+  .right > .item:last-child,
+  .right .aiItem span {
+    display: none;
+  }
+
+  .right .aiItem {
+    width: 28px;
   }
 }
