@@ -289,6 +289,41 @@ describe('useAgentRunner', () => {
     expect(props.promptUiState).toHaveBeenCalled();
   });
 
+  it('auto-approves and builds a successful welcome request over starter files', async () => {
+    const appState = makeAppState({ compileRequest: 0 });
+    vi.mocked(AppState.usePassiveState).mockReturnValue(appState);
+    applyAgentChanges.mockReturnValue({ applied: 1, deletions: [], changeSet: null });
+    const props = createRunnerProps({
+      editorState: createMockEditorState({
+        fileContents: { 'src/App.jsx': 'starter app' },
+        selectedLines: {},
+      }),
+      sidebarState: makeSidebarState({
+        folderTree: [{ name: 'src', type: 'folder', path: ['src'], children: [] }],
+      }),
+    });
+    const { result } = renderHook(() => useAgentRunner(props));
+
+    act(() => {
+      result.current.send(null, 'welcome build', 'project', true);
+    });
+
+    await waitFor(() => expect(appState.compileRequest).toBe(1));
+    expect(
+      (
+        applyAgentChanges as unknown as {
+          mock: { calls: Array<[unknown, Record<string, unknown>]> };
+        }
+      ).mock.calls[0][1],
+    ).toMatchObject({ autoApprove: true });
+    expect(props.patchSession).toHaveBeenCalledWith(
+      'session-1',
+      expect.objectContaining({
+        reasoning: expect.stringContaining('Welcome project ready'),
+      }),
+    );
+  });
+
   it('records workspace filenames in the reasoning log', async () => {
     collectWorkspaceFiles.mockResolvedValueOnce({
       'package.json': '{}',

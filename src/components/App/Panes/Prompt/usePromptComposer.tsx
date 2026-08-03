@@ -12,7 +12,12 @@ import { parseFileCommand } from './filePrompt';
 
 type PromptEvent = FormEvent<HTMLFormElement> | KeyboardEvent<HTMLTextAreaElement>;
 
-type PromptSend = (event: FormEvent<HTMLFormElement> | null, text?: string, scope?: string) => void;
+type PromptSend = (
+  event: FormEvent<HTMLFormElement> | null,
+  text?: string,
+  scope?: string,
+  isWelcomePrompt?: boolean,
+) => void;
 
 type PromptComposerParams = {
   promptUiState: StateStore<PromptUiStateShape>;

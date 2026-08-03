@@ -442,6 +442,27 @@ describe('runActionLoop', () => {
     expect(validate).toHaveBeenCalledWith(result.files);
   });
 
+  it('uses bounded recovery when a local model cannot create a tic-tac-toe game', async () => {
+    askWebLLM.mockResolvedValue('{"action":"list_files"}');
+    const validate = vi.fn().mockResolvedValue('Checks passed.');
+
+    const result = await runActionLoop({
+      request: 'create tic tac toe game',
+      files: {
+        'src/App.jsx':
+          'export default function App() { return <div><h1>New Project</h1><p>Start coding here...</p></div>; }',
+      },
+      model: 'Qwen2.5-Coder-1.5B-Instruct-q4f16_1-MLC',
+      validate,
+    });
+
+    expect(result.files['src/App.jsx']).toContain('Tic Tac Toe');
+    expect(result.files['src/App.jsx']).toContain('function playSquare');
+    expect(result.files['src/App.module.css']).toContain('.board');
+    expect(result.summary).toContain('tic-tac-toe game');
+    expect(validate).toHaveBeenCalledWith(result.files);
+  });
+
   it('does not report todo recovery as successful when validation fails', async () => {
     askWebLLM.mockResolvedValueOnce('{"action":"finish","summary":"done"}');
     const validate = vi.fn().mockResolvedValue({

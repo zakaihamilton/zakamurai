@@ -162,7 +162,12 @@ export default function useAgentRunner({
   );
 
   const send = useCallback(
-    (e: FormEvent | null = null, request: string | null = null, scope: string | null = null) => {
+    (
+      e: FormEvent | null = null,
+      request: string | null = null,
+      scope: string | null = null,
+      isWelcomePrompt = false,
+    ) => {
       e?.preventDefault?.();
       const userMsg = typeof request === 'string' ? request : val;
       const effectiveScope = scope || promptScope;
@@ -176,6 +181,7 @@ export default function useAgentRunner({
         activeSession.messages.length === 0 &&
         Object.keys(editorState.fileContents || {}).length === 0 &&
         (sidebarState.folderTree || []).length === 0;
+      const shouldAutoApprove = isWelcomePrompt || autoApproveInitialProject;
 
       pushSessionMessage(sessionId, createSessionMessage({ role: 'user', text: userMsg }));
       patchSession(sessionId, {
@@ -460,10 +466,14 @@ export default function useAgentRunner({
             logState: logState as never,
             changeSetState: changeSetState as never,
             request: userMsg,
-            autoApprove: autoApproveInitialProject,
+            autoApprove: shouldAutoApprove,
           });
-          if (autoApproveInitialProject && applied > 0) {
-            appendReasoning('**Initial project ready:** starting the first build now…');
+          if (isWelcomePrompt || (autoApproveInitialProject && applied > 0)) {
+            appendReasoning(
+              isWelcomePrompt
+                ? '**Welcome project ready:** starting the first build now…'
+                : '**Initial project ready:** starting the first build now…',
+            );
             appState((draft) => {
               draft.compileRequest = (draft.compileRequest || 0) + 1;
             });

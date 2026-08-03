@@ -185,7 +185,7 @@ export default function Prompt() {
       }
       draft.activeTabId = id;
     });
-    send(null, request.text, request.scope);
+    send(null, request.text, request.scope, true);
   }, [activeSession, isAIProcessing, promptUiState, send, tabState, welcomeRequest]);
 
   const replayManagerRequest = useCallback(

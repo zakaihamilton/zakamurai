@@ -55,8 +55,10 @@ const CHANGE_REQUEST_PATTERN =
   /\b(?:add|build|change|create|delete|design|fix|implement|improve|make|modify|refactor|remove|rename|replace|style|update)\b/i;
 
 const isTodoAppRequest = (request: string): boolean => /\b(?:todo|reminder)\s+app\b/i.test(request);
+const isTicTacToeRequest = (request: string): boolean =>
+  /\b(?:tic|tick)[\s-]+(?:tac|tack)[\s-]+toe\b/i.test(request);
 
-const TODO_APP_STYLESHEET = 'App.module.css';
+const RECOVERY_STYLESHEET = 'App.module.css';
 const TODO_APP_RECOVERY_FILES = {
   'src/App.module.css': `:root {
   --ink: #24332d;
@@ -112,7 +114,7 @@ const TODO_APP_RECOVERY_FILES = {
 }
 `,
   'src/App.jsx': `import { useState } from "react";
-import styles from "./${TODO_APP_STYLESHEET}";
+import styles from "./${RECOVERY_STYLESHEET}";
 
 export default function App() {
   const [tasks, setTasks] = useState([]);
@@ -155,6 +157,167 @@ export default function App() {
             ))}
           </ul>
         )}
+      </section>
+    </main>
+  );
+}
+`,
+} as const;
+
+const TIC_TAC_TOE_RECOVERY_FILES = {
+  'src/App.module.css': `:root {
+  --ink: #17212b;
+  --muted: #607080;
+  --paper: #eef4f1;
+  --surface: #ffffff;
+  --accent: #d45d3f;
+  --accent-dark: #a8422c;
+  --line: rgb(23 33 43 / 15%);
+}
+
+* { box-sizing: border-box; }
+
+.app {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 2rem 1rem;
+  color: var(--ink);
+  font-family: "Segoe UI", sans-serif;
+  background: radial-gradient(circle at top, #ffffff 0, var(--paper) 58%, #dce8e3 100%);
+}
+
+.card {
+  width: min(100%, 34rem);
+  padding: clamp(1.5rem, 5vw, 3rem);
+  text-align: center;
+  background: rgb(255 255 255 / 88%);
+  border: 1px solid var(--line);
+  border-radius: 1.5rem;
+  box-shadow: 0 1.5rem 4rem rgb(23 33 43 / 16%);
+}
+
+.eyebrow {
+  margin: 0 0 0.5rem;
+  color: var(--accent);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.title { margin: 0; font-size: clamp(2rem, 8vw, 3.5rem); letter-spacing: -0.06em; }
+.subtitle { margin: 0.75rem 0 1.5rem; color: var(--muted); line-height: 1.5; }
+.status { min-height: 1.5em; margin: 0 0 1rem; font-weight: 700; }
+
+.board {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.6rem;
+  width: min(100%, 20rem);
+  margin: 0 auto 1.5rem;
+}
+
+.square {
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  color: var(--ink);
+  font: inherit;
+  font-size: clamp(2rem, 10vw, 4rem);
+  font-weight: 800;
+  background: var(--surface);
+  border: 2px solid var(--line);
+  border-radius: 0.85rem;
+  cursor: pointer;
+}
+
+.square:hover:not(:disabled) { border-color: var(--accent); transform: translateY(-2px); }
+.square:focus-visible { outline: 3px solid rgb(212 93 63 / 45%); outline-offset: 3px; }
+.square:disabled { cursor: default; }
+.x { color: var(--accent); }
+.o { color: #327b72; }
+
+.reset {
+  padding: 0.8rem 1.2rem;
+  color: #ffffff;
+  font: inherit;
+  font-weight: 700;
+  background: var(--accent);
+  border: 0;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.reset:hover { background: var(--accent-dark); }
+.reset:focus-visible { outline: 3px solid rgb(212 93 63 / 45%); outline-offset: 3px; }
+`,
+  'src/App.jsx': `import { useState } from "react";
+import styles from "./${RECOVERY_STYLESHEET}";
+
+const WINNING_LINES = [
+  [0, 1, 2], [3, 4, 5], [6, 7, 8],
+  [0, 3, 6], [1, 4, 7], [2, 5, 8],
+  [0, 4, 8], [2, 4, 6],
+];
+
+function getWinner(board) {
+  for (const [first, second, third] of WINNING_LINES) {
+    if (board[first] && board[first] === board[second] && board[first] === board[third]) {
+      return board[first];
+    }
+  }
+  return null;
+}
+
+function squareClass(value) {
+  if (!value) return styles.square;
+  return [styles.square, value === "X" ? styles.x : styles.o].join(" ");
+}
+
+export default function App() {
+  const [board, setBoard] = useState(Array(9).fill(null));
+  const [nextPlayer, setNextPlayer] = useState("X");
+  const winner = getWinner(board);
+  const isDraw = !winner && board.every(Boolean);
+  const status = winner ? winner + " wins!" : isDraw ? "It's a draw." : nextPlayer + "'s turn";
+
+  function playSquare(index) {
+    if (board[index] || winner || isDraw) return;
+    const nextBoard = board.map((value, square) => square === index ? nextPlayer : value);
+    setBoard(nextBoard);
+    setNextPlayer((player) => player === "X" ? "O" : "X");
+  }
+
+  function resetGame() {
+    setBoard(Array(9).fill(null));
+    setNextPlayer("X");
+  }
+
+  return (
+    <main className={styles.app}>
+      <section className={styles.card} aria-labelledby="game-title">
+        <p className={styles.eyebrow}>Two-player classic</p>
+        <h1 className={styles.title} id="game-title">Tic Tac Toe</h1>
+        <p className={styles.subtitle}>Take turns. Three in a row wins.</p>
+        <p className={styles.status} aria-live="polite">{status}</p>
+        <div className={styles.board} role="grid" aria-label="Tic tac toe board">
+          {board.map((value, index) => (
+            <button
+              className={squareClass(value)}
+              type="button"
+              key={index}
+              onClick={() => playSquare(index)}
+              disabled={Boolean(value) || Boolean(winner) || isDraw}
+              aria-label={value ? "Square " + (index + 1) + ": " + value : "Square " + (index + 1) + ", empty"}
+              role="gridcell"
+            >
+              {value}
+            </button>
+          ))}
+        </div>
+        <button className={styles.reset} type="button" onClick={resetGame}>New game</button>
       </section>
     </main>
   );
@@ -473,9 +636,22 @@ export async function runActionLoop({
     return result;
   };
 
-  const recoverTodoApp = async (turn: number): Promise<RunAgentResult | null> => {
-    if (!isTodoAppRequest(request) || workspace.changes().length > 0) return null;
-    for (const [path, content] of Object.entries(TODO_APP_RECOVERY_FILES)) {
+  const recoverKnownApp = async (turn: number): Promise<RunAgentResult | null> => {
+    const recovery = isTodoAppRequest(request)
+      ? {
+          files: TODO_APP_RECOVERY_FILES,
+          label: 'todo app',
+          errorLabel: 'Todo-app',
+        }
+      : isTicTacToeRequest(request)
+        ? {
+            files: TIC_TAC_TOE_RECOVERY_FILES,
+            label: 'tic-tac-toe game',
+            errorLabel: 'Tic-tac-toe',
+          }
+        : null;
+    if (!recovery || workspace.changes().length > 0) return null;
+    for (const [path, content] of Object.entries(recovery.files)) {
       workspace.write(path, content);
       onEvent({
         type: 'tool',
@@ -489,12 +665,12 @@ export async function runActionLoop({
     const verification = await runValidation(turn);
     if (isFailedValidationResult(verification)) {
       throw new AgentRecoveryValidationError(
-        `Todo-app recovery validation failed: ${verification}`,
+        `${recovery.errorLabel} recovery validation failed: ${verification}`,
         workspace.changes(),
       );
     }
     const changes = workspace.changes();
-    const summary = 'Created and validated the todo app with bounded recovery.';
+    const summary = `Created and validated the ${recovery.label} with bounded recovery.`;
     onEvent({ type: 'finished', turn, changes, message: summary, agentRole });
     context.record('validation', verification);
     return { changes, files: workspace.files, summary, events: turn, workspace };
@@ -744,7 +920,7 @@ export async function runActionLoop({
             context.record('direct_recovery', recoveryMessage);
             continue;
           }
-          const recovered = await recoverTodoApp(turn);
+          const recovered = await recoverKnownApp(turn);
           if (recovered) return recovered;
           throw new AgentExecutionError(
             'The local model could not provide a write_file action after forced recovery. Staged changes were preserved for review; retry with a stronger model or a narrower request.',
@@ -835,7 +1011,7 @@ export async function runActionLoop({
           context.record('direct_recovery', recoveryMessage);
           continue;
         }
-        const recovered = await recoverTodoApp(turn);
+        const recovered = await recoverKnownApp(turn);
         if (recovered) return recovered;
         throw new AgentExecutionError(
           'The local model repeatedly read unchanged files without editing, including after a forced write recovery. It was stopped early to avoid exhausting the step limit; retry with a stronger model or a narrower request.',
@@ -1218,7 +1394,7 @@ export async function runActionLoop({
       if (action.action === 'finish') {
         onEvent({ type: 'tool', turn, action, agentRole });
         if (CHANGE_REQUEST_PATTERN.test(request) && workspace.changes().length === 0) {
-          const recovered = await recoverTodoApp(turn);
+          const recovered = await recoverKnownApp(turn);
           if (recovered) return recovered;
           const target = forcedRecoveryTargetPath || recoveryWritePath(workspace.files, activeFile);
           forcedWriteRecoveryPending = true;
