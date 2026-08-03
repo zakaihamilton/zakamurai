@@ -242,6 +242,75 @@ describe('runActionLoop', () => {
     ).toBe(true);
   });
 
+  it('uses a compact prompt when forced write recovery is activated', async () => {
+    const modelClient = vi
+      .fn()
+      .mockResolvedValueOnce('{"action":"list_files","query":"*.jsx"}')
+      .mockResolvedValueOnce('{"action":"list_files","query":"*.tsx"}')
+      .mockResolvedValueOnce('{"action":"list_files","query":"*.css"}')
+      .mockResolvedValueOnce('{"action":"list_files","query":"*.html"}')
+      .mockResolvedValueOnce('{"action":"read_file","path":"src/App.jsx"}')
+      .mockResolvedValueOnce(
+        '{"action":"write_file","path":"src/App.jsx","content":"export default function App() { return <main>Tic tac toe</main>; }"}',
+      )
+      .mockResolvedValueOnce('{"action":"validate"}')
+      .mockResolvedValueOnce('{"action":"finish","summary":"Created tic tac toe"}');
+    const validate = vi.fn().mockResolvedValue('Checks passed.');
+
+    const result = await runActionLoop({
+      request: 'create tic tac toe game',
+      files: { 'src/App.jsx': 'export default function App() { return null; }' },
+      validate,
+      model: 'test',
+      modelClient,
+    });
+
+    expect(result.files['src/App.jsx']).toContain('Tic tac toe');
+    const recoveryMessages = modelClient.mock.calls[4][0].messages;
+    expect(recoveryMessages).toHaveLength(2);
+    expect(recoveryMessages[0].content).toContain('emergency write mode');
+    expect(recoveryMessages[1].content).toContain('Original request: create tic tac toe game');
+    expect(recoveryMessages[1].content).toContain('Current contents of src/App.jsx');
+  });
+
+  it('uses generic direct recovery when the local model never writes', async () => {
+    const modelClient = vi
+      .fn()
+      .mockResolvedValueOnce('{"action":"list_files","query":"*.jsx"}')
+      .mockResolvedValueOnce('{"action":"list_files","query":"*.tsx"}')
+      .mockResolvedValueOnce('{"action":"list_files","query":"*.css"}')
+      .mockResolvedValueOnce('{"action":"list_files","query":"*.html"}')
+      .mockResolvedValueOnce('{"action":"read_file","path":"src/App.jsx"}')
+      .mockResolvedValueOnce(
+        JSON.stringify({
+          kind: 'changes',
+          summary: 'Created the dashboard.',
+          changes: [
+            {
+              path: 'src/App.jsx',
+              content: 'export default function App() { return <main>Dashboard</main>; }',
+            },
+          ],
+        }),
+      );
+    const validate = vi.fn().mockResolvedValue({ status: 'passed', check: 'build' });
+
+    const result = await runActionLoop({
+      request: 'create a dashboard',
+      files: { 'src/App.jsx': 'export default function App() { return null; }' },
+      validate,
+      model: 'test',
+      modelClient,
+    });
+
+    expect(result.files['src/App.jsx']).toContain('Dashboard');
+    expect(modelClient.mock.calls[5][0].messages[0].content).toContain('direct recovery mode');
+    expect(modelClient.mock.calls[5][0].messages[1].content).toContain(
+      'Original request: create a dashboard',
+    );
+    expect(validate).toHaveBeenCalledWith(result.files);
+  });
+
   it('forces an entry-file write when validation repeats before any edit', async () => {
     askWebLLM
       .mockResolvedValueOnce('{"action":"inspect_preview"}')

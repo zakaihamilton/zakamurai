@@ -469,6 +469,77 @@ const buildUserRequest = ({
   return `${requestBlock}\n\nPrior conversation context:\n${priorContext}`;
 };
 
+const buildForcedWriteRecoveryMessages = ({
+  request,
+  targetPath,
+  files,
+}: {
+  request: string;
+  targetPath: string | null;
+  files: Record<string, string>;
+}): WebLLMMessage[] => {
+  const targetContent = targetPath ? files[targetPath] : undefined;
+  const context = targetPath
+    ? `Current contents of ${targetPath}:\n${targetContent ?? '(file does not exist yet)'}`
+    : 'No existing application entry file was identified. Choose a project-relative entry path.';
+  const recoveryInstruction = targetPath
+    ? `Recovery mode is active. Your next response must be a write_file action for ${targetPath} with complete source content. Return exactly one write_file action for ${targetPath}.`
+    : 'Recovery mode is active. Your next response must be a write_file action with complete source content. Return exactly one write_file action.';
+
+  return [
+    {
+      role: 'system',
+      content:
+        'You are in emergency write mode. Ignore normal inspection guidance: the workspace has already been inspected. Return exactly one write_file action now. Do not list, search, read, validate, inspect the preview, finish, or explain.',
+    },
+    {
+      role: 'user',
+      content: [
+        `Original request: ${request}`,
+        recoveryInstruction,
+        targetPath
+          ? `Required destination: ${targetPath}`
+          : 'Required destination: choose the appropriate application source file.',
+        context,
+        'Implement the original request with complete source content. Return exactly one write_file action and nothing else.',
+      ].join('\n\n'),
+    },
+  ];
+};
+
+const buildDirectChangesRecoveryMessages = ({
+  request,
+  targetPath,
+  files,
+}: {
+  request: string;
+  targetPath: string | null;
+  files: Record<string, string>;
+}): WebLLMMessage[] => {
+  const context = targetPath
+    ? `Current contents of ${targetPath}:\n${files[targetPath] ?? '(file does not exist yet)'}`
+    : 'No existing application entry file was identified. Choose an appropriate project-relative path.';
+  return [
+    {
+      role: 'system',
+      content:
+        'You are in direct recovery mode. Return exactly one JSON object with kind "changes" and complete file contents. Do not return an action, list files, read files, or explain.',
+    },
+    {
+      role: 'user',
+      content: [
+        `Original request: ${request}`,
+        targetPath
+          ? `Primary file: ${targetPath}`
+          : 'Primary file: choose the application entry file.',
+        context,
+        'Return this exact shape: {"kind":"changes","summary":"...","changes":[{"path":"...","content":"complete file content"}]}',
+        'Implement the original request now. Include every file required for the implementation and no placeholder content.',
+      ].join('\n\n'),
+    },
+  ];
+};
+
 export async function runActionLoop({
   request,
   scope = 'file',
@@ -522,6 +593,7 @@ export async function runActionLoop({
   let forcedWriteRecoveryPending = false;
   let forcedRecoveryTargetPath: string | null = null;
   let forcedWriteRecoveryViolations = 0;
+  let directChangesRecoveryPending = false;
   let deferredSourceWrite: { path: string; content: string; stylesheets: string[] } | null = null;
   const lastReadContents = new Map<string, string>();
   let unchangedReadSkips = 0;
@@ -627,10 +699,24 @@ export async function runActionLoop({
     }, 3_000);
     let reply: string;
     try {
+      const modelMessages = directChangesRecoveryPending
+        ? buildDirectChangesRecoveryMessages({
+            request,
+            targetPath: forcedRecoveryTargetPath || recoveryWritePath(workspace.files, activeFile),
+            files: workspace.files,
+          })
+        : forcedWriteRecoveryPending
+          ? buildForcedWriteRecoveryMessages({
+              request,
+              targetPath:
+                forcedRecoveryTargetPath || recoveryWritePath(workspace.files, activeFile),
+              files: workspace.files,
+            })
+          : messages;
       if (modelClient) {
         reply = await modelClient({
           model,
-          messages,
+          messages: modelMessages,
           signal,
           task: 'generate-changes',
           onMetrics,
@@ -657,7 +743,7 @@ export async function runActionLoop({
           },
           {
             model,
-            messages,
+            messages: modelMessages,
             signal,
             requestKind: 'agent',
             onMetrics,
@@ -689,7 +775,23 @@ export async function runActionLoop({
       type: 'model_io',
       turn,
       agentRole,
-      input: messages.map((message) => `[${message.role}]\n${message.content}`).join('\n\n'),
+      input: (directChangesRecoveryPending
+        ? buildDirectChangesRecoveryMessages({
+            request,
+            targetPath: forcedRecoveryTargetPath || recoveryWritePath(workspace.files, activeFile),
+            files: workspace.files,
+          })
+        : forcedWriteRecoveryPending
+          ? buildForcedWriteRecoveryMessages({
+              request,
+              targetPath:
+                forcedRecoveryTargetPath || recoveryWritePath(workspace.files, activeFile),
+              files: workspace.files,
+            })
+          : messages
+      )
+        .map((message) => `[${message.role}]\n${message.content}`)
+        .join('\n\n'),
       output: reply,
     });
     messages.push({ role: 'assistant', content: reply });
@@ -729,7 +831,10 @@ export async function runActionLoop({
           }
           let verification = '';
           if (validate) {
-            verification = await runValidation(turn, 'model');
+            verification = await runValidation(
+              turn,
+              directChangesRecoveryPending ? 'recovery' : 'model',
+            );
           }
           if (verification.includes('"status":"failed"')) {
             if (++directRepairAttempts > 2)
@@ -756,7 +861,14 @@ export async function runActionLoop({
           const changesResult = workspace.changes();
           const summary =
             directResult.summary || `Prepared ${changesResult.length} file(s) for review.`;
-          onEvent({ type: 'finished', turn, changes: changesResult, message: summary, agentRole });
+          onEvent({
+            type: 'finished',
+            turn,
+            changes: changesResult,
+            message: summary,
+            agentRole,
+            provenance: directChangesRecoveryPending ? 'recovery' : 'model',
+          });
           return {
             changes: changesResult,
             files: workspace.files,
@@ -782,6 +894,20 @@ export async function runActionLoop({
       protocolFailures++;
       if (forcedWriteRecoveryPending) {
         if (++forcedWriteRecoveryViolations >= 2) {
+          if (!directChangesRecoveryPending) {
+            directChangesRecoveryPending = true;
+            const target =
+              forcedRecoveryTargetPath || recoveryWritePath(workspace.files, activeFile);
+            const recoveryMessage = target
+              ? `Direct recovery is active. Return one kind=changes response containing complete content for ${target}. Do not return another action.`
+              : 'Direct recovery is active. Return one kind=changes response containing complete file contents. Do not return another action.';
+            messages.push({
+              role: 'user',
+              content: observation('direct_recovery', false, recoveryMessage),
+            });
+            context.record('direct_recovery', recoveryMessage);
+            continue;
+          }
           const recovered = await recoverTodoApp(turn);
           if (recovered) return recovered;
           throw new AgentExecutionError(
@@ -817,7 +943,21 @@ export async function runActionLoop({
 
     const fingerprint = JSON.stringify(action);
     if (forcedWriteRecoveryPending && action.action !== 'write_file') {
-      if (++forcedWriteRecoveryViolations >= 2) {
+      forcedWriteRecoveryViolations += 1;
+      if (forcedWriteRecoveryViolations === 1 && workspace.changes().length === 0) {
+        directChangesRecoveryPending = true;
+        const target = forcedRecoveryTargetPath || recoveryWritePath(workspace.files, activeFile);
+        const recoveryMessage = target
+          ? `Direct recovery is active. Return one kind=changes response containing complete content for ${target}. Do not return another action.`
+          : 'Direct recovery is active. Return one kind=changes response containing complete file contents. Do not return another action.';
+        messages.push({
+          role: 'user',
+          content: observation('direct_recovery', false, recoveryMessage),
+        });
+        context.record('direct_recovery', recoveryMessage);
+        continue;
+      }
+      if (forcedWriteRecoveryViolations >= 2) {
         if (workspace.changes().length > 0) {
           const wiredEntry = wireNewComponentIntoScratchEntry(workspace);
           const result = await runValidation(turn);
@@ -845,6 +985,19 @@ export async function runActionLoop({
             events: turn,
             workspace,
           };
+        }
+        if (!directChangesRecoveryPending) {
+          directChangesRecoveryPending = true;
+          const target = forcedRecoveryTargetPath || recoveryWritePath(workspace.files, activeFile);
+          const recoveryMessage = target
+            ? `Direct recovery is active. Return one kind=changes response containing complete content for ${target}. Do not return another action.`
+            : 'Direct recovery is active. Return one kind=changes response containing complete file contents. Do not return another action.';
+          messages.push({
+            role: 'user',
+            content: observation('direct_recovery', false, recoveryMessage),
+          });
+          context.record('direct_recovery', recoveryMessage);
+          continue;
         }
         const recovered = await recoverTodoApp(turn);
         if (recovered) return recovered;

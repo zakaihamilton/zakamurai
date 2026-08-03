@@ -13,7 +13,7 @@ export default defineConfig({
   ],
   webServer: {
     command: 'npm run dev:isolated',
-    url: 'http://localhost:3000',
+    url: 'http://localhost:3001/isolated-preview-test.html',
     reuseExistingServer: !process.env.CI,
     timeout: 120000,
   },

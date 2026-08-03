@@ -671,6 +671,43 @@ describe('runManager', () => {
     expect(result.trace.events.some((event) => event.provenance === 'recovery')).toBe(true);
   });
 
+  it('uses generic direct recovery when the action model repeats unchanged reads', async () => {
+    const modelClient = vi
+      .fn()
+      .mockResolvedValueOnce(JSON.stringify({ action: 'read_file', path: 'src/App.jsx' }))
+      .mockResolvedValueOnce(JSON.stringify({ action: 'read_file', path: 'src/App.jsx' }))
+      .mockResolvedValueOnce(JSON.stringify({ action: 'read_file', path: 'src/App.jsx' }))
+      .mockResolvedValueOnce(
+        JSON.stringify({
+          kind: 'changes',
+          summary: 'Created the dashboard.',
+          changes: [
+            {
+              path: 'src/App.jsx',
+              content: 'export default function App() { return <main>Dashboard</main>; }',
+            },
+          ],
+        }),
+      );
+
+    const result = await runManager({
+      request: 'create a dashboard',
+      files: {
+        'package.json': '{"dependencies":{"react":"latest"}}',
+        'src/App.jsx':
+          'export default function App() { return <div><h1>New Project</h1><p>Start coding here...</p></div>; }',
+        'src/main.jsx': "import App from './App.jsx';",
+      },
+      model: 'test-model',
+      modelClient,
+      validate: vi.fn().mockResolvedValue({ status: 'passed', check: 'build' }),
+    });
+
+    expect(result.files['src/App.jsx']).toContain('Dashboard');
+    expect(result.summary).toContain('Created the dashboard.');
+    expect(result.trace.events.some((event) => event.provenance === 'recovery')).toBe(true);
+  });
+
   it('supports action-protocol deletion with validation before finishing', async () => {
     const modelClient = vi
       .fn()

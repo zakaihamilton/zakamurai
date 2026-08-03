@@ -259,7 +259,6 @@
   font-weight: 700;
 }
 
-
 @keyframes model-download-spin {
   to {
     transform: rotate(360deg);
