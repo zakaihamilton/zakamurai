@@ -1,4 +1,5 @@
 import type { ManagerTrace } from '@/components/AI/Agent/ManagerTrace';
+import type { AIIncident } from '@/components/AI/Agent/AIIncident';
 import type { AgentEvent, FileMap, WebLLMModel } from '@/components/AI/types';
 import type { ExtendedEditorState } from '@/components/App/Views/EditorArea/types';
 import type { FileSystemApi } from '@/components/App/types';
@@ -146,6 +147,9 @@ export type PromptHeaderProps = {
   onModeChange?: (mode: string) => void;
   copyContent?: string;
   latestManagerTrace?: ManagerTrace | null;
+  latestAIIncident?: AIIncident | null;
+  onExportAIIncident?: () => void;
+  onCopyAIIncident?: () => void | Promise<void>;
   traceFiles?: FileMap;
   onReplayRequest?: (request: string) => void;
 };
@@ -214,6 +218,9 @@ export type PromptContentProps = {
   onOpenModelManager: () => void;
   patchSession: (sessionId: string, patch: Partial<AgentSession>) => void;
   latestManagerTrace?: ManagerTrace | null;
+  latestAIIncident?: AIIncident | null;
+  onExportAIIncident?: () => void;
+  onCopyAIIncident?: () => void | Promise<void>;
   traceFiles?: FileMap;
   onReplayRequest?: (request: string) => void;
 };
@@ -241,6 +248,8 @@ export type UseAgentRunnerParams = {
   editorState: StateStore<ExtendedEditorState>;
   sidebarState: StateStore<SidebarStateShape>;
   logState: StateStore<LogStateShape>;
+  cachedModelIds?: string[];
+  webLLMEngines?: Record<string, import('@/components/state/domain-types').WebLLMEngineState>;
 };
 
 export type AgentEventFormatter = (event: AgentEvent) => string;

@@ -25,6 +25,7 @@ const {
   collectWorkspaceFiles,
   ensureFileInTree,
   removeFileFromTree,
+  createAIIncident,
 } = vi.hoisted(() => {
   const runAgent = vi.fn();
   return {
@@ -35,6 +36,7 @@ const {
     collectWorkspaceFiles: vi.fn(async (_fs: unknown, files: unknown) => files),
     ensureFileInTree: vi.fn(),
     removeFileFromTree: vi.fn(),
+    createAIIncident: vi.fn(() => ({ id: 'incident-test' })),
   };
 });
 
@@ -55,6 +57,7 @@ vi.mock('@/components/AI/Agent', () => ({
   applyAgentChanges,
   ensureFileInTree,
   removeFileFromTree,
+  createAIIncident,
 }));
 
 vi.mock('@/utils/compiler', () => ({

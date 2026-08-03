@@ -52,6 +52,9 @@ export default function PromptContent({
   onOpenModelManager,
   patchSession,
   latestManagerTrace,
+  latestAIIncident,
+  onExportAIIncident,
+  onCopyAIIncident,
   traceFiles,
   onReplayRequest,
 }: PromptContentProps) {
@@ -97,6 +100,9 @@ export default function PromptContent({
           isSystemProcessing={isSystemProcessing}
           copyContent={agentPaneContent}
           latestManagerTrace={latestManagerTrace}
+          latestAIIncident={latestAIIncident}
+          onExportAIIncident={onExportAIIncident}
+          onCopyAIIncident={onCopyAIIncident}
           traceFiles={traceFiles}
           onReplayRequest={onReplayRequest}
         />

@@ -18,6 +18,8 @@ export default function TopBarMenu({
   onNewProject,
   onClearFS,
   onExportSupportReport,
+  onExportAIIncident = () => {},
+  hasAIIncident = false,
   onToggleShortcuts,
 }: TopBarMenuProps) {
   const { isSystemProcessing, isAIProcessing } = requireStore(
@@ -115,6 +117,18 @@ export default function TopBarMenu({
         >
           <Icons.Download />
           <span>Export compiled files</span>
+        </button>
+        <button
+          type="button"
+          className={styles.menuItem}
+          disabled={!hasAIIncident}
+          onClick={() => {
+            onExportAIIncident();
+            handleMenuClose();
+          }}
+        >
+          <Icons.Download />
+          <span>Export AI incident</span>
         </button>
         <button
           type="button"

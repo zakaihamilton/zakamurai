@@ -170,6 +170,7 @@ export type ManagerEvent = {
   error?: boolean;
   provenance?: 'model' | 'recovery';
   plan?: ManagerPlan;
+  protocolStatus?: 'request-sent' | 'response-received' | 'valid' | 'invalid';
 };
 
 export type ManagerEventHandler = (event: ManagerEvent) => void;
@@ -183,6 +184,7 @@ export type ManagerModelCall = {
   top_p: number;
   max_tokens: number;
   onMetrics?: (metrics: WebLLMGenerationMetrics) => void;
+  onRecovery?: (event: WebLLMRecoveryEvent) => void;
 };
 
 export type ManagerModelClient = (call: ManagerModelCall) => Promise<string>;
@@ -239,6 +241,7 @@ export type RunManagerOptions = ManagerToolOptions & {
   signal?: AbortSignal;
   onEvent?: ManagerEventHandler;
   onMetrics?: (metrics: WebLLMGenerationMetrics) => void;
+  onRecovery?: (event: WebLLMRecoveryEvent) => void;
   priorContext?: string;
   workspaceIndex?: WorkspaceIndex | null;
   modelClient?: ManagerModelClient;
@@ -309,6 +312,10 @@ export type WebLLMGenerationMetrics = {
   jsHeapUsedMBAtStart?: number;
   jsHeapUsedMBAtEnd?: number;
   jsHeapDeltaMB?: number;
+  failurePhase?: 'initialization' | 'generation';
+  errorName?: string;
+  errorMessageLength?: number;
+  errorMessageFingerprint?: string;
 };
 
 export type WebLLMOptions = {

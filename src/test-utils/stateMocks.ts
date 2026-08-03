@@ -189,6 +189,7 @@ export function makePromptUiState(
     runningSessionId: null,
     isAgentTreeOpen: false,
     latestManagerTrace: null,
+    latestAIIncident: null,
     ...overrides,
   });
 }

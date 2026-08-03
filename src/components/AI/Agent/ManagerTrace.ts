@@ -36,6 +36,7 @@ export type ManagerTraceEvent = {
   input?: string;
   output?: string;
   errorCode?: ManagerErrorCode;
+  protocolStatus?: 'request-sent' | 'response-received' | 'valid' | 'invalid';
 };
 
 export type ManagerTrace = {
@@ -164,6 +165,7 @@ export class ManagerTraceRecorder {
       message: event.message,
       input: event.input,
       output: event.output,
+      protocolStatus: event.protocolStatus,
       ...(event.plan ? { plan: event.plan } : {}),
     } as Omit<ManagerTraceEvent, 'sequence' | 'elapsedMs'> & { plan?: ManagerPlan });
   }

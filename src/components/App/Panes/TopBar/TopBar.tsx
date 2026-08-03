@@ -14,6 +14,7 @@ import {
   createSupportReport,
   downloadSupportReport,
 } from '@/components/Diagnostics';
+import { downloadAIIncident } from '@/components/AI/Agent';
 import { useFileSystem } from '@/components/Storage';
 import {
   DEFAULT_CONTENTS,
@@ -103,6 +104,8 @@ export function resetNewProjectState({
     draft.modelCacheProgress = '';
     draft.modelCacheError = '';
     draft.abortController = null;
+    draft.latestManagerTrace = null;
+    draft.latestAIIncident = null;
   });
   changeSetState?.((draft) => {
     draft.activeId = null;
@@ -124,7 +127,7 @@ export default function TopBar() {
   const editorState = requireStore(EditorState.useState());
   const changeSetState = ChangeSetState.usePassiveState();
   const previewState = requireStore(PreviewState.useState());
-  const promptUiState = PromptUiState.usePassiveState();
+  const promptUiState = PromptUiState.useState(['latestAIIncident']);
   const promptState = PromptState.usePassiveState();
   const agentSessionState = AgentSessionState.usePassiveState();
   const diagnosticsState = DiagnosticsState.usePassiveState();
@@ -144,6 +147,10 @@ export default function TopBar() {
         storageHealth: (storageHealthState || {}) as Record<string, unknown>,
       }),
     );
+  };
+
+  const handleExportAIIncident = () => {
+    if (promptUiState?.latestAIIncident) downloadAIIncident(promptUiState.latestAIIncident);
   };
 
   useEffect(() => {
@@ -265,6 +272,8 @@ export default function TopBar() {
           onNewProject={handleStartOver}
           onClearFS={handleClearFS}
           onExportSupportReport={handleExportSupportReport}
+          onExportAIIncident={handleExportAIIncident}
+          hasAIIncident={Boolean(promptUiState?.latestAIIncident)}
           onToggleShortcuts={() => {
             appState((draft) => {
               draft.showShortcuts = !draft.showShortcuts;

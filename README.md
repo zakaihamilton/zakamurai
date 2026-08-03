@@ -146,6 +146,12 @@ contains clipped and redacted inputs/outputs, routing/tool/model/validation even
 structured error codes. Run `npm run test:ai-manager:smoke` only when validating the browser’s real
 WebLLM integration; set `ZAKAMURAI_AI_MODEL` to override the model.
 
+When an AI run fails, the prompt header and More actions menu expose **Export AI incident** and
+**Copy AI diagnosis**. The incident bundle is local and metadata-only: it includes WebLLM timing,
+recovery, browser/model state, Manager protocol status, and staged-change information, but excludes
+workspace files, full prompts, and model output. Analyze an exported incident with
+`npm run analyze:ai -- incident.json`.
+
 Knip exclusions are intentional: browser-only build/runtime dependencies (`almostnode`
 and `esbuild-wasm`) and optional developer tooling (`fast-check` and `promptfoo`) are loaded
 outside Knip's static application entrypoints.

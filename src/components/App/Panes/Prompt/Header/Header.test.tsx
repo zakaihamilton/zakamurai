@@ -1,4 +1,4 @@
-import type { ManagerTrace } from '@/components/AI/Agent';
+import type { AIIncident, ManagerTrace } from '@/components/AI/Agent';
 import { fireEvent, render, screen } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
@@ -13,6 +13,7 @@ vi.mock('@/components/ui/Icons', () => ({
     Copy: () => <span />,
     Check: () => <span />,
     Terminal: () => <span />,
+    Download: () => <span />,
   },
 }));
 
@@ -74,5 +75,27 @@ describe('PromptHeader', () => {
     });
     const headerActions = container.querySelector('[class*="headerActions"]');
     expect(headerActions?.contains(traceButton)).toBe(true);
+  });
+
+  it('exposes export and diagnosis actions for the latest incident', () => {
+    const incident = { id: 'incident-header', classification: 'model-protocol' } as AIIncident;
+    const onExportAIIncident = vi.fn();
+    const onCopyAIIncident = vi.fn();
+
+    render(
+      <PromptHeader
+        isAIProcessing={false}
+        isSystemProcessing={false}
+        latestAIIncident={incident}
+        onExportAIIncident={onExportAIIncident}
+        onCopyAIIncident={onCopyAIIncident}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Export AI incident' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Copy AI diagnosis' }));
+
+    expect(onExportAIIncident).toHaveBeenCalledOnce();
+    expect(onCopyAIIncident).toHaveBeenCalledOnce();
   });
 });

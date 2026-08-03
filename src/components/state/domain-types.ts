@@ -1,4 +1,5 @@
 import type { ManagerTrace } from '@/components/AI/Agent/ManagerTrace';
+import type { AIIncident } from '@/components/AI/Agent/AIIncident';
 import type { DiagnosticEvent } from '@/contracts/runtime';
 import type { SourceLocation } from '@/utils/navigation/types';
 
@@ -321,6 +322,7 @@ export interface PromptUiStateShape {
   runningSessionId: string | null;
   isAgentTreeOpen: boolean;
   latestManagerTrace: ManagerTrace | null;
+  latestAIIncident: AIIncident | null;
   sessionDialog?: import('@/components/App/Panes/Prompt/prompt-types').SessionDialogState;
 }
 

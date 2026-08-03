@@ -35,5 +35,6 @@ export function getInitialPromptUiState() {
     runningSessionId: null,
     isAgentTreeOpen: false,
     latestManagerTrace: null,
+    latestAIIncident: null,
   };
 }

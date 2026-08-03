@@ -140,6 +140,15 @@ const throwIfAborted = (signal?: AbortSignal) => {
 const errorMessage = (error: unknown): string =>
   error instanceof Error ? error.message : String(error);
 
+const errorFingerprint = (value: string): string => {
+  let result = 2166136261;
+  for (let index = 0; index < value.length; index += 1) {
+    result ^= value.charCodeAt(index);
+    result = Math.imul(result, 16777619);
+  }
+  return `fnv1a-${(result >>> 0).toString(16).padStart(8, '0')}`;
+};
+
 const readUsedJSHeapMB = (): number | undefined => {
   if (typeof performance === 'undefined') return undefined;
   const memory = (
@@ -822,6 +831,27 @@ const emitMetrics = (options: WebLLMOptions, metrics: WebLLMGenerationMetrics) =
   });
 };
 
+const emitFailureDiagnostic = (error: unknown, metrics: WebLLMGenerationMetrics) => {
+  const unwrapped = unwrapAttemptError(error);
+  const failure = unwrapped as { name?: unknown; message?: unknown };
+  const message = typeof failure?.message === 'string' ? failure.message : String(unwrapped);
+  reportDiagnostic({
+    source: 'webllm',
+    severity: 'error',
+    message: 'Local AI request failed',
+    details: JSON.stringify({
+      phase: metrics.failurePhase || 'unknown',
+      requestKind: metrics.requestKind,
+      requestedModelId: metrics.requestedModelId,
+      modelId: metrics.modelId,
+      errorName: typeof failure?.name === 'string' ? failure.name : undefined,
+      errorMessageLength: message.length,
+      errorMessageFingerprint: errorFingerprint(message),
+      recoveryCount: metrics.recoveryCount,
+    }),
+  });
+};
+
 export const getCachedWebLLMModelIds = async (): Promise<string[]> => {
   const { hasModelInCache } = await loadWebLLM();
   const cacheEntries = await Promise.all(
@@ -954,6 +984,9 @@ export const askWebLLM = async (
     return result.text;
   } catch (error) {
     const aborted = isAbortError(error, requestOptions.signal);
+    const unwrapped = unwrapAttemptError(error);
+    const failurePhase = error instanceof WebLLMAttemptError ? error.phase : undefined;
+    const failureDetails = unwrapped as { name?: unknown; message?: unknown };
     emitMetrics(requestOptions, {
       requestKind: requestOptions.requestKind || 'general',
       requestedModelId,
@@ -962,9 +995,36 @@ export const askWebLLM = async (
       startedAt,
       totalMs: Date.now() - startedAt,
       recoveryCount,
+      ...(failurePhase ? { failurePhase } : {}),
+      ...(typeof failureDetails?.name === 'string' ? { errorName: failureDetails.name } : {}),
+      ...(!aborted
+        ? {
+            errorMessageLength: (typeof failureDetails?.message === 'string'
+              ? failureDetails.message
+              : String(unwrapped)
+            ).length,
+            errorMessageFingerprint: errorFingerprint(
+              typeof failureDetails?.message === 'string'
+                ? failureDetails.message
+                : String(unwrapped),
+            ),
+          }
+        : {}),
       ...heapMetrics(),
     });
     if (aborted) throw abortError();
+    emitFailureDiagnostic(error, {
+      requestKind: requestOptions.requestKind || 'general',
+      requestedModelId,
+      modelId: actualModelId,
+      outcome: 'error',
+      startedAt,
+      totalMs: Date.now() - startedAt,
+      recoveryCount,
+      ...(failurePhase ? { failurePhase } : {}),
+      ...(typeof failureDetails?.name === 'string' ? { errorName: failureDetails.name } : {}),
+      ...heapMetrics(),
+    });
     console.error('Error in askWebLLM:', error);
     throw new Error(`Local AI failed: ${errorMessage(unwrapAttemptError(error))}`);
   } finally {

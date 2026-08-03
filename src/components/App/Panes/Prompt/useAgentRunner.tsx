@@ -1,9 +1,10 @@
-import { applyAgentChanges, runManager } from '@/components/AI/Agent';
+import { applyAgentChanges, createAIIncident, runManager } from '@/components/AI/Agent';
 import type {
   ManagerEvent,
   RunManagerOptions,
   RunManagerResult,
   WebLLMGenerationMetrics,
+  WebLLMRecoveryEvent,
 } from '@/components/AI/types';
 import type { AgentChange, AgentEvent } from '@/components/AI/types';
 import { AppState } from '@/components/App/AppState';
@@ -111,6 +112,8 @@ export default function useAgentRunner({
   editorState,
   sidebarState,
   logState,
+  cachedModelIds = [],
+  webLLMEngines = {},
 }: UseAgentRunnerParams) {
   const changeSetState = requireStore(ChangeSetState.usePassiveState());
   const appState = requireStore(AppState.usePassiveState());
@@ -186,6 +189,7 @@ export default function useAgentRunner({
         draft.historyIndex = -1;
         draft.runningSessionId = sessionId;
         draft.latestManagerTrace = null;
+        draft.latestAIIncident = null;
       });
       logState((draft) => {
         draft.isAIProcessing = true;
@@ -202,6 +206,8 @@ export default function useAgentRunner({
       });
 
       const runAI = async () => {
+        const runMetrics: WebLLMGenerationMetrics[] = [];
+        const runRecoveries: WebLLMRecoveryEvent[] = [];
         try {
           const selectedLines =
             (currentActiveTabId && editorState.selectedLines?.[currentActiveTabId]) || [];
@@ -214,6 +220,7 @@ export default function useAgentRunner({
           let runUsage = createAgentRunUsage();
           const publishRunUsage = () => patchSession(sessionId, { runUsage });
           const recordMetrics = (metrics: WebLLMGenerationMetrics) => {
+            runMetrics.push(metrics);
             const modelIds = new Set(runUsage.modelIds);
             if (metrics.modelId) modelIds.add(metrics.modelId);
             runUsage = {
@@ -241,6 +248,9 @@ export default function useAgentRunner({
                 (metrics.decodeTokensPerSecond === undefined ? 0 : 1),
             };
             publishRunUsage();
+          };
+          const recordRecovery = (event: WebLLMRecoveryEvent) => {
+            runRecoveries.push(event);
           };
           const recordTool = (tool: string) => {
             runUsage = {
@@ -311,6 +321,7 @@ export default function useAgentRunner({
             signal: controller.signal,
             workspaceIndex: getWorkspaceIndex() as never,
             onMetrics: recordMetrics,
+            onRecovery: recordRecovery,
             onTrace: (trace) => {
               promptUiState((draft) => {
                 draft.latestManagerTrace = trace;
@@ -501,6 +512,23 @@ export default function useAgentRunner({
             Array.isArray((error as { changes?: unknown }).changes)
               ? (error as { changes: AgentChange[] })
               : null;
+          const incident = createAIIncident({
+            error,
+            trace:
+              error && typeof error === 'object' && 'trace' in error
+                ? (error as { trace?: import('@/components/AI/Agent/ManagerTrace').ManagerTrace })
+                    .trace || null
+                : null,
+            selectedModelId: selectedModel,
+            metrics: runMetrics,
+            recoveries: runRecoveries,
+            cachedModelIds,
+            engines: webLLMEngines,
+            stagedChangeCount: managerError?.changes.length || 0,
+          });
+          promptUiState((draft) => {
+            draft.latestAIIncident = incident;
+          });
           if (managerError?.changes.length) {
             const { deletions, changeSet } = applyAgentChanges(managerError.changes, {
               editorState: editorState as never,
@@ -566,6 +594,8 @@ export default function useAgentRunner({
       fs,
       isAIProcessing,
       logState,
+      cachedModelIds,
+      webLLMEngines,
       patchSession,
       promptScope,
       promptUiState,

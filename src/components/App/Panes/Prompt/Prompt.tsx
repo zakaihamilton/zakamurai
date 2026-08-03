@@ -1,4 +1,5 @@
 import { RECOMMENDED_WEB_LLM_MODEL, WEB_LLM_MODELS } from '@/components/AI/WebLLMModels';
+import { copyAIIncidentSummary, downloadAIIncident } from '@/components/AI/Agent';
 import { WebLLMState } from '@/components/AI/WebLLMState';
 import { AppState } from '@/components/App/AppState';
 import type { WelcomeRequest } from '@/components/App/Panes/Prompt/prompt-types';
@@ -49,6 +50,7 @@ export default function Prompt() {
     sessionDialog = null,
     isAgentTreeOpen = false,
     latestManagerTrace = null,
+    latestAIIncident = null,
   } = promptUiState || {};
   const { cachedModelIds = [], engines = {} } = requireStore(
     WebLLMState.useState(['cachedModelIds', 'engines']),
@@ -118,7 +120,16 @@ export default function Prompt() {
     editorState,
     sidebarState,
     logState,
+    cachedModelIds,
+    webLLMEngines: engines,
   });
+
+  const handleExportAIIncident = useCallback(() => {
+    if (latestAIIncident) downloadAIIncident(latestAIIncident);
+  }, [latestAIIncident]);
+  const handleCopyAIIncident = useCallback(async () => {
+    if (latestAIIncident) await copyAIIncidentSummary(latestAIIncident);
+  }, [latestAIIncident]);
 
   const {
     isFilePickerOpen,
@@ -269,6 +280,9 @@ export default function Prompt() {
         onOpenModelManager={openModelManager}
         patchSession={patchSession}
         latestManagerTrace={latestManagerTrace}
+        latestAIIncident={latestAIIncident}
+        onExportAIIncident={handleExportAIIncident}
+        onCopyAIIncident={handleCopyAIIncident}
         traceFiles={editorState.fileContents}
         onReplayRequest={replayManagerRequest}
       />

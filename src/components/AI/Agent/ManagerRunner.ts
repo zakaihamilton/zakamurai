@@ -46,6 +46,7 @@ async function loadModel(): Promise<ManagerModelClient> {
     messages,
     signal,
     onMetrics,
+    onRecovery,
     temperature,
     top_p,
     max_tokens,
@@ -56,6 +57,7 @@ async function loadModel(): Promise<ManagerModelClient> {
       signal,
       requestKind: 'agent',
       onMetrics,
+      onRecovery,
       temperature,
       top_p,
       max_tokens,
@@ -84,6 +86,7 @@ async function executeManager({
   signal,
   onEvent = () => {},
   onMetrics,
+  onRecovery,
   priorContext = '',
   modelClient,
   recorder,
@@ -360,7 +363,16 @@ async function executeManager({
     onEvent({ type: 'model', turn: round + 1, task, output: reply });
     try {
       result = parseModelResult(reply);
+      onEvent({ type: 'model', turn: round + 1, task, protocolStatus: 'valid' });
     } catch (error) {
+      onEvent({
+        type: 'model',
+        turn: round + 1,
+        task,
+        error: true,
+        protocolStatus: 'invalid',
+        message: error instanceof Error ? error.message : String(error),
+      });
       if (round === MAX_CONTEXT_ROUNDS - 1) throw error;
       diagnostics = `The previous model response was not valid manager JSON: ${
         error instanceof Error ? error.message : String(error)
@@ -446,6 +458,7 @@ async function executeManager({
             signal,
             task,
             onMetrics,
+            onRecovery,
             temperature: 0.1,
             top_p: 0.8,
             max_tokens: 2600,
@@ -454,7 +467,16 @@ async function executeManager({
           onEvent({ type: 'model', turn: repair + 2, task, output: reply });
           try {
             result = parseModelResult(reply);
+            onEvent({ type: 'model', turn: repair + 2, task, protocolStatus: 'valid' });
           } catch (error) {
+            onEvent({
+              type: 'model',
+              turn: repair + 2,
+              task,
+              error: true,
+              protocolStatus: 'invalid',
+              message: error instanceof Error ? error.message : String(error),
+            });
             diagnostics = `${verificationMessage}\nThe repair response was invalid: ${
               error instanceof Error ? error.message : String(error)
             }. Return a kind=changes response with complete file contents.`;
@@ -509,6 +531,7 @@ async function executeManager({
       signal,
       task,
       onMetrics,
+      onRecovery,
       temperature: 0.1,
       top_p: 0.8,
       max_tokens: 2600,
@@ -516,7 +539,16 @@ async function executeManager({
     messages.push({ role: 'assistant', content: reply });
     try {
       result = parseModelResult(reply);
+      onEvent({ type: 'model', turn: messages.length, task, protocolStatus: 'valid' });
     } catch (error) {
+      onEvent({
+        type: 'model',
+        turn: messages.length,
+        task,
+        error: true,
+        protocolStatus: 'invalid',
+        message: error instanceof Error ? error.message : String(error),
+      });
       diagnostics = `The repair response was invalid: ${
         error instanceof Error ? error.message : String(error)
       }. Return a kind=changes response with complete file contents.`;

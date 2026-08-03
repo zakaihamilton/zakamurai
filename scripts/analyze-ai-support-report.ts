@@ -15,11 +15,24 @@ type MetricSample = {
 };
 
 type SupportReport = {
+  version?: number;
+  classification?: string;
   diagnostics?: Array<{
     source?: string;
     message?: string;
     details?: string;
   }>;
+  incident?: AIIncidentSummaryInput;
+};
+
+type AIIncidentSummaryInput = {
+  id?: string;
+  classification?: string;
+  failure?: { phase?: string; code?: string };
+  runtime?: { userAgent?: string };
+  models?: { selectedModelId?: string; requestedModelIds?: string[]; actualModelIds?: string[] };
+  webllm?: { recoveries?: Array<{ reason?: string }> };
+  replay?: { protocolStatuses?: string[]; modelResponseCount?: number };
 };
 
 type MetricGroup = {
@@ -49,7 +62,13 @@ export const extractWebLLMMetrics = (report: SupportReport): MetricSample[] =>
     }
     try {
       const parsed = JSON.parse(event.details) as MetricSample;
-      return parsed && typeof parsed === 'object' ? [parsed] : [];
+      return parsed &&
+        typeof parsed === 'object' &&
+        typeof parsed.requestKind === 'string' &&
+        typeof parsed.outcome === 'string' &&
+        Number.isFinite(parsed.totalMs)
+        ? [parsed]
+        : [];
     } catch {
       return [];
     }
@@ -100,6 +119,26 @@ export const summarizeWebLLMMetrics = (samples: MetricSample[]) => {
   };
 };
 
+export const summarizeAIIncident = (incident?: AIIncidentSummaryInput | null) => {
+  if (!incident) return null;
+  const protocolStatuses = incident.replay?.protocolStatuses || [];
+  const recoveryReasons =
+    incident.webllm?.recoveries?.map((recovery) => recovery.reason || 'unknown') || [];
+  return {
+    id: incident.id || null,
+    classification: incident.classification || 'unknown',
+    phase: incident.failure?.phase || 'unknown',
+    failureCode: incident.failure?.code || 'unknown',
+    browser: incident.runtime?.userAgent || 'unknown',
+    selectedModelId: incident.models?.selectedModelId || 'unknown',
+    requestedModels: incident.models?.requestedModelIds || [],
+    actualModels: incident.models?.actualModelIds || [],
+    recoveryReasons,
+    protocolStatuses,
+    modelResponseCount: incident.replay?.modelResponseCount || 0,
+  };
+};
+
 async function main(): Promise<void> {
   const reportPath = process.argv[2];
   if (!reportPath) {
@@ -107,10 +146,24 @@ async function main(): Promise<void> {
   }
   const report = JSON.parse(await readFile(resolve(reportPath), 'utf8')) as SupportReport;
   const samples = extractWebLLMMetrics(report);
-  if (samples.length === 0) {
+  const incident =
+    report.incident ||
+    (report.version === 1 && report.classification
+      ? (report as unknown as AIIncidentSummaryInput)
+      : null);
+  if (samples.length === 0 && !incident) {
     throw new Error('No WebLLM generation metrics were found in this support report.');
   }
-  console.log(JSON.stringify(summarizeWebLLMMetrics(samples), null, 2));
+  console.log(
+    JSON.stringify(
+      {
+        metrics: samples.length ? summarizeWebLLMMetrics(samples) : null,
+        incident: summarizeAIIncident(incident),
+      },
+      null,
+      2,
+    ),
+  );
 }
 
 const entryPath = process.argv[1] ? pathToFileURL(resolve(process.argv[1])).href : '';

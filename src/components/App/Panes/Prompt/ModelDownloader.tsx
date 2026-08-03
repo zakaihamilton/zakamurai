@@ -1,4 +1,5 @@
 import type { ModelOption } from '@/components/App/Panes/Prompt/prompt-types';
+import { createAIIncident } from '@/components/AI/Agent';
 import type { PromptUiStateShape } from '@/components/state/domain-types';
 import type { StateStore } from '@/components/state/types';
 import { useCallback, useRef } from 'react';
@@ -89,12 +90,25 @@ export default function useModelDownloader(promptUiState: StateStore<PromptUiSta
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         setModelCacheError(message);
+        promptUiState((draft) => {
+          draft.latestAIIncident = createAIIncident({
+            error,
+            source: 'webllm',
+            selectedModelId: model.id,
+          });
+        });
       } finally {
         setModelCacheWork(null);
         setModelCacheProgress('');
       }
     },
-    [refreshCachedModelIds, setModelCacheError, setModelCacheProgress, setModelCacheWork],
+    [
+      promptUiState,
+      refreshCachedModelIds,
+      setModelCacheError,
+      setModelCacheProgress,
+      setModelCacheWork,
+    ],
   );
 
   return {

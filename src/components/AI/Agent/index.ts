@@ -5,6 +5,7 @@ export * from './ManagerRouter';
 export * from './ManagerRunner';
 export * from './ManagerReplay';
 export * from './ManagerTrace';
+export * from './AIIncident';
 export * from './ManagerTools';
 export * from './ProjectChecks';
 export * from './Snapshot';
