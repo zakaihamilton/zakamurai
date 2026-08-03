@@ -37,6 +37,7 @@ describe('useContentSaver', () => {
           diffs: [],
         },
       },
+      pendingDeletions: { 'old.js': { originalContent: 'gone', changeSetId: 'cs-1' } },
     };
     vi.mocked(EditorState.usePassiveState).mockReturnValue(mockState as never);
 
@@ -69,6 +70,7 @@ describe('useContentSaver', () => {
           diffs: 'nope',
         },
       },
+      pendingDeletions: { 'old.js': { originalContent: 'gone', changeSetId: 'cs-1' } },
     };
     vi.mocked(EditorState.usePassiveState).mockReturnValue(mockState as never);
 
@@ -79,18 +81,22 @@ describe('useContentSaver', () => {
       window.dispatchEvent(event);
     });
 
-    expect(Settings.flushEditorBuffersSync).toHaveBeenCalledWith(mockState.fileContents, {
-      'test.js': {
-        originalContent: 'old',
-        diffs: [],
-        modifiedContent: 'console.log("unload");',
+    expect(Settings.flushEditorBuffersSync).toHaveBeenCalledWith(
+      mockState.fileContents,
+      {
+        'test.js': {
+          originalContent: 'old',
+          diffs: [],
+          modifiedContent: 'console.log("unload");',
+        },
+        'missing.js': {
+          originalContent: 'gone',
+          diffs: [],
+          modifiedContent: '',
+        },
       },
-      'missing.js': {
-        originalContent: 'gone',
-        diffs: [],
-        modifiedContent: '',
-      },
-    });
+      mockState.pendingDeletions,
+    );
   });
 
   it('skips one unload flush during an intentional project reset', () => {

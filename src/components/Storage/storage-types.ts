@@ -4,6 +4,7 @@ import type { RecoveryCheckpoint } from '@/contracts/runtime';
 export type LargeCacheKey =
   | 'fileContents'
   | 'pendingDiffs'
+  | 'pendingDeletions'
   | 'previewHtml'
   | 'agentSessions'
   | 'aiLogs'
@@ -12,6 +13,10 @@ export type LargeCacheKey =
 export interface LargeCache {
   fileContents: Record<string, string> | null;
   pendingDiffs: Record<string, PendingDiff>;
+  pendingDeletions: Record<
+    string,
+    boolean | { originalContent?: string; changeSetId?: string }
+  > | null;
   previewHtml: string | null;
   agentSessions: Record<string, unknown> | null;
   aiLogs: LogEntry[];

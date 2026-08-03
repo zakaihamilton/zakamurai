@@ -21,6 +21,10 @@ export default function TopBarMenu({
   onExportAIIncident = () => {},
   hasAIIncident = false,
   onToggleShortcuts,
+  onSaveCheckpoint,
+  onRestoreCheckpoint,
+  hasCheckpoint,
+  checkpointHistory,
 }: TopBarMenuProps) {
   const { isSystemProcessing, isAIProcessing } = requireStore(
     LogState.useState(['isSystemProcessing', 'isAIProcessing']),
@@ -29,6 +33,9 @@ export default function TopBarMenu({
     TopBarMenuState.useState(null, {
       menuPosition: null,
       newProjectTemplate: null,
+      checkpointAction: null,
+      checkpointHistoryOpen: false,
+      checkpointId: null,
     }),
   );
   const { menuPosition = null, newProjectTemplate = null } = topBarMenuState || {};
@@ -147,6 +154,49 @@ export default function TopBarMenu({
         <button
           type="button"
           className={styles.menuItem}
+          onClick={() => {
+            void onSaveCheckpoint();
+            handleMenuClose();
+          }}
+        >
+          <Icons.Download />
+          <span>Save checkpoint</span>
+        </button>
+        <button
+          type="button"
+          className={styles.menuItem}
+          disabled={!hasCheckpoint || isProcessing}
+          onClick={() => {
+            topBarMenuState((draft) => {
+              draft.checkpointAction = 'restore';
+              draft.checkpointId = null;
+            });
+            handleMenuClose();
+          }}
+        >
+          <Icons.Refresh />
+          <span>Restore checkpoint</span>
+        </button>
+        <button
+          type="button"
+          className={styles.menuItem}
+          disabled={checkpointHistory.length < 2 || isProcessing}
+          onClick={() => {
+            topBarMenuState((draft) => {
+              draft.checkpointHistoryOpen = true;
+            });
+            handleMenuClose();
+          }}
+        >
+          <Icons.History />
+          <span>Checkpoint history</span>
+        </button>
+
+        <div className={styles.menuSeparator} />
+
+        <button
+          type="button"
+          className={styles.menuItem}
           disabled={isProcessing}
           onClick={() => {
             onClearFS();
@@ -196,6 +246,66 @@ export default function TopBarMenu({
         cancelText="Cancel"
         type="danger"
       />
+      <Dialog
+        isOpen={topBarMenuState.checkpointAction === 'restore'}
+        title="Restore checkpoint?"
+        message="The latest checkpoint will replace the current editor buffers, pending diffs, open tabs, and project name."
+        onConfirm={() => {
+          const checkpointId = topBarMenuState.checkpointId;
+          topBarMenuState((draft) => {
+            draft.checkpointAction = null;
+            draft.checkpointId = null;
+          });
+          void onRestoreCheckpoint(checkpointId);
+        }}
+        onCancel={() =>
+          topBarMenuState((draft) => {
+            draft.checkpointAction = null;
+            draft.checkpointId = null;
+          })
+        }
+        confirmText="Restore checkpoint"
+        cancelText="Cancel"
+        type="danger"
+      />
+      <Dialog
+        isOpen={topBarMenuState.checkpointHistoryOpen === true}
+        title="Checkpoint history"
+        message="Choose a saved local checkpoint to restore."
+        onConfirm={() =>
+          topBarMenuState((draft) => {
+            draft.checkpointHistoryOpen = false;
+          })
+        }
+        onCancel={() =>
+          topBarMenuState((draft) => {
+            draft.checkpointHistoryOpen = false;
+          })
+        }
+        confirmText="Close"
+        cancelText="Cancel"
+      >
+        <ul>
+          {[...checkpointHistory].reverse().map((checkpoint) => (
+            <li key={checkpoint.id || checkpoint.savedAt}>
+              <button
+                type="button"
+                onClick={() =>
+                  topBarMenuState((draft) => {
+                    draft.checkpointHistoryOpen = false;
+                    draft.checkpointAction = 'restore';
+                    draft.checkpointId = checkpoint.id || String(checkpoint.savedAt);
+                  })
+                }
+              >
+                {checkpoint.projectName || 'Untitled project'} ·{' '}
+                {new Date(checkpoint.savedAt).toLocaleString()} ·{' '}
+                {checkpoint.reason || 'checkpoint'}
+              </button>
+            </li>
+          ))}
+        </ul>
+      </Dialog>
     </>
   );
 }

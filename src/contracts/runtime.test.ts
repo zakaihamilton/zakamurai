@@ -33,6 +33,16 @@ describe('runtime contracts', () => {
     expect(normalizeRecoveryCheckpoint({ ...checkpoint, pendingDiffs: [] })).toBeNull();
     expect(normalizeRecoveryCheckpoint({ ...checkpoint, openTabs: {} })).toBeNull();
     expect(normalizeRecoveryCheckpoint({ ...checkpoint, activeTabId: 1 })).toBeNull();
+    expect(
+      normalizeRecoveryCheckpoint({
+        ...checkpoint,
+        reason: 'ai-change',
+        pendingDeletions: { 'old.js': { originalContent: 'old' } },
+      }),
+    ).toMatchObject({
+      reason: 'ai-change',
+      pendingDeletions: { 'old.js': { originalContent: 'old' } },
+    });
   });
 
   it('redacts sensitive values and local paths without retaining oversized payloads', () => {

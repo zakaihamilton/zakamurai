@@ -27,6 +27,53 @@
   line-height: 1.45;
 }
 
+.capabilityCard {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-surface);
+  padding: 10px 12px;
+}
+
+.capabilityHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--text-main);
+}
+
+.capabilityHeader button {
+  border: 0;
+  background: transparent;
+  color: var(--accent);
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+}
+
+.capabilitySummary {
+  margin: 6px 0 0;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.capabilityDetails {
+  margin-top: 8px;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.capabilityDetails summary {
+  cursor: pointer;
+  color: var(--text-main);
+}
+
+.capabilityDetails ul {
+  margin: 6px 0 0;
+  padding-left: 18px;
+}
+
 .modelManagerStatus {
   border: 1px solid var(--border-light);
   border-radius: 6px;

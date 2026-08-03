@@ -1,5 +1,6 @@
 import type { AIIncident } from '@/components/AI/Agent/AIIncident';
 import type { ManagerTrace } from '@/components/AI/Agent/ManagerTrace';
+import type { DeviceCapabilityReport } from '@/contracts/capabilities';
 import type { DiagnosticEvent } from '@/contracts/runtime';
 import type { SourceLocation } from '@/utils/navigation/types';
 
@@ -399,6 +400,7 @@ export interface WebLLMStateShape {
   cachedModelIds: string[];
   engines: Record<string, WebLLMEngineState>;
   activeModelId: string | null;
+  capabilityReport: DeviceCapabilityReport | null;
 }
 
 export interface WorkspaceProfileStateShape {
@@ -449,6 +451,9 @@ export interface ResizerStateShape {
 export interface TopBarMenuStateShape {
   menuPosition: { x: number; y: number } | null;
   newProjectTemplate: string | null;
+  checkpointAction?: 'restore' | null;
+  checkpointHistoryOpen?: boolean;
+  checkpointId?: string | null;
 }
 
 export interface GutterStateShape {

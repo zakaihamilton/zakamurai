@@ -1,0 +1,97 @@
+.panel {
+  margin-top: 28px;
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg-surface);
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.eyebrow {
+  color: var(--text-muted);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.header h2 {
+  margin: 4px 0 0;
+  color: var(--text-main);
+  font-size: 18px;
+}
+
+.badge {
+  border-radius: 999px;
+  padding: 4px 8px;
+  font-size: 11px;
+  text-transform: capitalize;
+}
+
+.ready {
+  background: var(--success-light, rgb(34 197 94 / 12%));
+  color: var(--success, #22c55e);
+}
+
+.warnings {
+  background: var(--warning-light, rgb(234 179 8 / 12%));
+  color: var(--warning, #eab308);
+}
+
+.blocked,
+.error {
+  background: var(--danger-light);
+  color: var(--danger);
+}
+
+.summary,
+.clear,
+.note {
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.items {
+  display: grid;
+  gap: 8px;
+  margin: 14px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.items li {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.items li strong {
+  min-width: 48px;
+  text-transform: uppercase;
+  font-size: 10px;
+}
+
+.items .warning strong {
+  color: var(--warning, #eab308);
+}
+
+.items .error strong {
+  color: var(--danger);
+}
+
+.items .info strong {
+  color: var(--accent);
+}
+
+.note {
+  margin-bottom: 0;
+  overflow-wrap: anywhere;
+}

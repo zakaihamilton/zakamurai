@@ -61,3 +61,22 @@ export const normalizePendingDiffs = (parsed: unknown): Record<string, PendingDi
     }),
   ) as Record<string, PendingDiff>;
 };
+
+type PendingDeletionValue = boolean | { originalContent?: string; changeSetId?: string };
+
+export const normalizePendingDeletions = (
+  parsed: unknown,
+): Record<string, PendingDeletionValue> => {
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {};
+  return Object.fromEntries(
+    Object.entries(parsed as Record<string, unknown>).filter(([, deletion]) => {
+      if (typeof deletion === 'boolean') return true;
+      if (!deletion || typeof deletion !== 'object' || Array.isArray(deletion)) return false;
+      const value = deletion as Record<string, unknown>;
+      return (
+        (value.originalContent === undefined || typeof value.originalContent === 'string') &&
+        (value.changeSetId === undefined || typeof value.changeSetId === 'string')
+      );
+    }),
+  ) as Record<string, PendingDeletionValue>;
+};

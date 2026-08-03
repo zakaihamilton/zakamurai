@@ -4,6 +4,7 @@
  */
 
 import { isBrowserBundleCommand, parseBuildCommand } from './browser-bundler';
+import { reportDiagnostic } from '@/components/Diagnostics';
 import { getSharedContainer, initContainer, resetContainer } from './container';
 import { setupSmartDevServer } from './dev-server';
 import { scaffoldMissingFiles } from './scaffold';
@@ -219,6 +220,12 @@ import('${scriptPath}').catch(err => console.error('[Runner Error]', err));
       const message = err instanceof Error ? err.message : String(err);
       this.onPhase(/timed out/i.test(message) ? 'timeout' : 'error');
       this.onLog(`Compilation error: ${message}`);
+      reportDiagnostic({
+        source: 'compiler',
+        severity: 'error',
+        message: 'Browser build failed',
+        details: message,
+      });
       if (err instanceof Error && err.stack) {
         this.onLog(`Stack: ${err.stack}`);
       }

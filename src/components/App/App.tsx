@@ -10,6 +10,7 @@ import {
   SCRATCH_FILES,
 } from '@/components/Storage/InitialData';
 import Settings from '@/components/Storage/Settings';
+import { normalizePendingDeletions } from '@/components/Storage/SettingsSerialization';
 import type { PendingDiff } from '@/components/state/domain-types';
 import { useEffect, useState } from 'react';
 import styles from './App.module.css';
@@ -42,6 +43,7 @@ function buildInitialValues(): InitialAppValues {
       ];
     }),
   ) as Record<string, PendingDiff>;
+  const pendingDeletions = Settings.getPendingDeletions();
   const restoredContents = {
     ...(storedContents && Object.keys(storedContents).length > 0
       ? storedContents
@@ -84,6 +86,8 @@ function buildInitialValues(): InitialAppValues {
     pendingDiffs: (Object.keys(pendingDiffs).length
       ? pendingDiffs
       : recoveryCheckpoint?.pendingDiffs || {}) as Record<string, PendingDiff>,
+    pendingDeletions:
+      pendingDeletions ?? normalizePendingDeletions(recoveryCheckpoint?.pendingDeletions),
     agentSessions: (() => {
       const stored = Settings.getAgentSessions();
       const activeId = Settings.getActiveAgentSessionId();

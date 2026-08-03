@@ -1,3 +1,4 @@
+import { computeDiff } from '@/components/AI/Processor/utils/DiffEngine';
 import { AppState } from '@/components/App/AppState';
 import {
   AgentSessionState,
@@ -5,6 +6,7 @@ import {
 } from '@/components/App/Panes/Prompt/AgentSessions';
 import { PromptState, PromptUiState } from '@/components/App/Panes/Prompt/PromptState';
 import { SidebarState } from '@/components/App/Panes/Sidebar';
+import { buildTreeFromPaths } from '@/components/App/Panes/Sidebar/TreeUtils';
 import { TabState } from '@/components/App/Panes/TabBar';
 import { PreviewState } from '@/components/App/PreviewState';
 import { EditorState } from '@/components/App/Views/EditorArea';
@@ -22,15 +24,18 @@ import {
   SCRATCH_FILES,
 } from '@/components/Storage/InitialData';
 import Settings from '@/components/Storage/Settings';
+import { normalizePendingDeletions } from '@/components/Storage/SettingsSerialization';
 import { STORAGE_RECOVERY_EVENT } from '@/components/Storage/StorageHealth';
 import { StorageHealthState } from '@/components/Storage/StorageHealth';
 import { ChangeSetState } from '@/components/Workspace';
 import { setInDraft } from '@/components/state/StateUtils';
+import type { PendingDiff, Tab } from '@/components/state/domain-types';
 import Dialog from '@/components/ui/Dialog';
 import { Icons } from '@/components/ui/Icons';
 import Tooltip from '@/components/ui/Tooltip';
+import { createWorkspaceSnapshot } from '@/contracts/workspace';
 import { formatShortcut } from '@/utils/os';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { requireStore } from '../../types';
 import ActionButtons from './ActionButtons';
 import Breadcrumb from './Breadcrumb';
@@ -132,6 +137,9 @@ export default function TopBar() {
   const diagnosticsState = DiagnosticsState.usePassiveState();
   const storageHealthState = StorageHealthState.usePassiveState();
   const logState = LogState.usePassiveState();
+  const [checkpointSavedAt, setCheckpointSavedAt] = useState<number | null>(
+    Settings.getRecoveryCheckpoint?.()?.savedAt || null,
+  );
 
   const { handleCompile, handleRebuild, handleOpenLog, handleOpenPreview, handleClearFS } =
     useProjectCompiler();
@@ -156,12 +164,111 @@ export default function TopBar() {
     downloadAIIncident(promptUiState.latestAIIncident);
   };
 
+  const handleSaveCheckpoint = async () => {
+    const checkpoint = createWorkspaceSnapshot({
+      reason: 'manual',
+      projectName,
+      fileContents: { ...(editorState.fileContents || {}) },
+      pendingDiffs: { ...(editorState.pendingDiffs || {}) },
+      pendingDeletions: { ...(editorState.pendingDeletions || {}) },
+      openTabs: [...(tabState.openTabs || [])],
+      activeTabId: tabState.activeTabId || null,
+    });
+    const saved = await Settings.saveRecoveryCheckpoint(checkpoint);
+    const availableForSession = Boolean(Settings.getRecoveryCheckpoint?.());
+    if (saved || availableForSession) setCheckpointSavedAt(Date.now());
+    logState?.((draft) => {
+      draft.logs = [
+        ...draft.logs,
+        {
+          id: Date.now(),
+          role: 'system',
+          text: saved
+            ? 'Workspace checkpoint saved.'
+            : availableForSession
+              ? 'Workspace checkpoint saved for this session; durable storage is unavailable.'
+              : 'Workspace checkpoint could not be saved.',
+          timestamp: new Date().toTimeString().split(' ')[0],
+        },
+      ];
+    });
+  };
+
+  const handleRestoreCheckpoint = async (checkpointId?: string | null) => {
+    const checkpoint =
+      (checkpointId
+        ? Settings.getRecoveryCheckpoints?.().find(
+            (item) => item.id === checkpointId || String(item.savedAt) === checkpointId,
+          )
+        : null) || Settings.getRecoveryCheckpoint?.();
+    if (!checkpoint) return;
+    const pendingDiffs = Object.fromEntries(
+      Object.entries(checkpoint.pendingDiffs || {}).flatMap(([path, value]) => {
+        const candidate = value as Partial<PendingDiff>;
+        if (typeof candidate.originalContent !== 'string') return [];
+        const modifiedContent =
+          typeof candidate.modifiedContent === 'string'
+            ? candidate.modifiedContent
+            : checkpoint.fileContents[path] || '';
+        return [
+          [
+            path,
+            {
+              ...candidate,
+              originalContent: candidate.originalContent,
+              modifiedContent,
+              diffs: computeDiff(candidate.originalContent, modifiedContent).diffs,
+            },
+          ],
+        ];
+      }),
+    ) as Record<string, PendingDiff>;
+    const tabs = (Array.isArray(checkpoint.openTabs) ? checkpoint.openTabs : []) as Tab[];
+    const contents = { ...(checkpoint.fileContents || {}) };
+    appState((draft) => {
+      draft.projectName = checkpoint.projectName || draft.projectName;
+      draft.compileRequest += 1;
+    });
+    editorState((draft) => {
+      draft.fileContents = contents;
+      draft.pendingDiffs = pendingDiffs;
+      draft.pendingDeletions = (checkpoint.pendingDeletions || {}) as typeof draft.pendingDeletions;
+    });
+    sidebarState((draft) => {
+      draft.folderTree = buildTreeFromPaths(Object.keys(contents));
+    });
+    tabState((draft) => {
+      draft.openTabs = tabs;
+      draft.activeTabId = checkpoint.activeTabId;
+    });
+    previewState((draft) => {
+      draft.htmlContent = null;
+      draft.restoreError = null;
+    });
+    await Settings.setFileContents(contents);
+    await Settings.setPendingDiffs(pendingDiffs);
+    await Settings.setPendingDeletions(normalizePendingDeletions(checkpoint.pendingDeletions));
+    setCheckpointSavedAt(checkpoint.savedAt);
+    logState?.((draft) => {
+      draft.logs = [
+        ...draft.logs,
+        {
+          id: Date.now(),
+          role: 'system',
+          text: 'Workspace checkpoint restored. Rebuilding project…',
+          timestamp: new Date().toTimeString().split(' ')[0],
+        },
+      ];
+    });
+  };
+
   useEffect(() => {
     window.addEventListener(STORAGE_RECOVERY_EVENT, handleExportZip);
     return () => window.removeEventListener(STORAGE_RECOVERY_EVENT, handleExportZip);
   }, [handleExportZip]);
 
   const activeTab = openTabs.find((t) => t.id === activeTabId);
+  const checkpointHistory = Settings.getRecoveryCheckpoints?.() || [];
 
   const handleStartOver = async (template = 'default') => {
     const initialContents = template === 'scratch' ? SCRATCH_CONTENTS : DEFAULT_CONTENTS;
@@ -277,6 +384,14 @@ export default function TopBar() {
           onExportSupportReport={handleExportSupportReport}
           onExportAIIncident={handleExportAIIncident}
           hasAIIncident={Boolean(promptUiState?.latestAIIncident)}
+          onSaveCheckpoint={handleSaveCheckpoint}
+          onRestoreCheckpoint={handleRestoreCheckpoint}
+          hasCheckpoint={
+            checkpointHistory.length > 0 ||
+            Boolean(Settings.getRecoveryCheckpoint?.()) ||
+            checkpointSavedAt !== null
+          }
+          checkpointHistory={checkpointHistory}
           onToggleShortcuts={() => {
             appState((draft) => {
               draft.showShortcuts = !draft.showShortcuts;

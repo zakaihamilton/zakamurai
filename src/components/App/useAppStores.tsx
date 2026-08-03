@@ -23,6 +23,7 @@ import { AgentSessionState } from './Panes/Prompt/AgentSessions';
 import { getInitialPromptUiState } from './Panes/Prompt/PromptState';
 import { PreviewState } from './PreviewState';
 import { EditorState } from './Views/EditorArea';
+import type { ExtendedEditorState } from './Views/EditorArea/types';
 import { LogState } from './Views/LogArea';
 import { useWindowResize } from './WindowResize';
 import type { InitialAppValues } from './types';
@@ -75,7 +76,7 @@ export default function useAppStores(initialValues: InitialAppValues, fs: FileSy
       isReadOnly: initialValues.isReadOnly,
       navigationHistory: { stack: [], currentIndex: -1 },
       pendingDiffs: initialValues.pendingDiffs,
-      pendingDeletions: {},
+      pendingDeletions: initialValues.pendingDeletions as ExtendedEditorState['pendingDeletions'],
     }),
   );
   const promptState = requireStore(
@@ -121,6 +122,7 @@ export default function useAppStores(initialValues: InitialAppValues, fs: FileSy
     cachedModelIds: [],
     engines: {},
     activeModelId: null,
+    capabilityReport: null,
   });
   useEffect(() => {
     bindWebLLMStore(

@@ -1,6 +1,7 @@
 import { WEB_LLM_MODELS } from '@/components/AI/WebLLMModels';
 import Dialog from '@/components/ui/Dialog';
-import { useMemo, useState } from 'react';
+import { type DeviceCapabilityReport, detectDeviceCapabilities } from '@/contracts/capabilities';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { ModelManagerProps, ModelOption, ModelSortKey, ModelSortState } from '../prompt-types';
 import styles from './ModelManager.module.css';
 import ModelSearch from './ModelSearch';
@@ -21,6 +22,15 @@ export default function ModelManager({
   const [searchTerm, setSearchTerm] = useState('');
   const [sort, setSort] = useState<ModelSortState>(null);
   const [modelPendingRemoval, setModelPendingRemoval] = useState<ModelOption | null>(null);
+  const [capabilityReport, setCapabilityReport] = useState<DeviceCapabilityReport | null>(null);
+
+  const refreshCapabilities = useCallback(async () => {
+    setCapabilityReport(await detectDeviceCapabilities(WEB_LLM_MODELS));
+  }, []);
+
+  useEffect(() => {
+    if (isOpen) void refreshCapabilities();
+  }, [isOpen, refreshCapabilities]);
 
   const visibleModels = useMemo(() => {
     const query = searchTerm.trim().toLocaleLowerCase();
@@ -70,6 +80,50 @@ export default function ModelManager({
           <div className={styles.modelManagerIntro}>
             <p>Choose the local browser model that matches this device and the kind of edit.</p>
           </div>
+          {capabilityReport && (
+            <section className={styles.capabilityCard} aria-label="Device AI capability">
+              <div className={styles.capabilityHeader}>
+                <strong>
+                  {capabilityReport.tier === 'no-ai'
+                    ? 'Local AI unavailable'
+                    : capabilityReport.tier === 'compact-ai'
+                      ? 'Compact local AI recommended'
+                      : 'Full local AI available'}
+                </strong>
+                <button type="button" onClick={() => void refreshCapabilities()}>
+                  Recheck
+                </button>
+              </div>
+              <p className={styles.capabilitySummary}>
+                {capabilityReport.browser} · {capabilityReport.isMobile ? 'Mobile' : 'Desktop'} ·{' '}
+                {capabilityReport.hasWebGPU ? 'WebGPU ready' : 'WebGPU unavailable'}
+                {capabilityReport.recommendedModelId
+                  ? ` · Recommended: ${WEB_LLM_MODELS.find((model) => model.id === capabilityReport.recommendedModelId)?.name || capabilityReport.recommendedModelId}`
+                  : ''}
+              </p>
+              <details className={styles.capabilityDetails}>
+                <summary>View device details</summary>
+                <ul>
+                  <li>Workers: {capabilityReport.hasWorker ? 'available' : 'unavailable'}</li>
+                  <li>
+                    Device memory:{' '}
+                    {capabilityReport.deviceMemoryGB === null
+                      ? 'not reported'
+                      : `${capabilityReport.deviceMemoryGB} GB`}
+                  </li>
+                  <li>
+                    Browser storage:{' '}
+                    {capabilityReport.storageQuotaMB === null
+                      ? 'quota unavailable'
+                      : `${Math.round(capabilityReport.storageQuotaMB).toLocaleString()} MB quota`}
+                  </li>
+                  {capabilityReport.reasons.map((reason) => (
+                    <li key={reason}>{reason}</li>
+                  ))}
+                </ul>
+              </details>
+            </section>
+          )}
           <ModelSearch searchTerm={searchTerm} onSearchTermChange={setSearchTerm} />
           <ModelTable
             visibleModels={visibleModels}

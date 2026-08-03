@@ -112,6 +112,7 @@ export type InitialAppValues = {
   promptHistory: string[];
   previewHtml: string | null;
   pendingDiffs: Record<string, PendingDiff>;
+  pendingDeletions: import('@/components/state/domain-types').EditorStateShape['pendingDeletions'];
   agentSessions: AgentSessionStateShape;
   workspaceProfile: Partial<import('@/components/state/domain-types').WorkspaceProfileStateShape>;
   changeSets: ChangeSetStateShape;

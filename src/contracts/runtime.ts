@@ -10,10 +10,13 @@ export type DiagnosticEvent = {
 
 export type RecoveryCheckpoint = {
   version: 1;
+  id?: string;
   savedAt: number;
+  reason?: 'manual' | 'ai-change' | 'storage-recovery';
   projectName?: string;
   fileContents: Record<string, string>;
   pendingDiffs: Record<string, unknown>;
+  pendingDeletions?: Record<string, unknown>;
   openTabs: unknown[];
   activeTabId: string | null;
 };
@@ -34,14 +37,22 @@ export function normalizeRecoveryCheckpoint(value: unknown): RecoveryCheckpoint 
     return null;
   }
   if (!isStringRecord(value.fileContents) || !isRecord(value.pendingDiffs)) return null;
+  if (value.pendingDeletions !== undefined && !isRecord(value.pendingDeletions)) return null;
   if (!Array.isArray(value.openTabs)) return null;
   if (value.activeTabId !== null && typeof value.activeTabId !== 'string') return null;
   return {
     version: 1,
+    ...(typeof value.id === 'string' ? { id: value.id } : {}),
     savedAt: value.savedAt,
+    ...(value.reason === 'manual' ||
+    value.reason === 'ai-change' ||
+    value.reason === 'storage-recovery'
+      ? { reason: value.reason }
+      : {}),
     ...(typeof value.projectName === 'string' ? { projectName: value.projectName } : {}),
     fileContents: value.fileContents,
     pendingDiffs: value.pendingDiffs,
+    ...(value.pendingDeletions ? { pendingDeletions: value.pendingDeletions } : {}),
     openTabs: value.openTabs,
     activeTabId: value.activeTabId,
   };

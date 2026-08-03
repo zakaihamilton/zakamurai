@@ -187,6 +187,8 @@ vi.mock('@/components/Storage/Settings', () => ({
     setAIPromptModel: vi.fn(),
     getAIModelExpanded: vi.fn().mockReturnValue({}),
     setAIModelExpanded: vi.fn(),
+    saveRecoveryCheckpoint: vi.fn().mockResolvedValue(true),
+    getRecoveryCheckpoint: vi.fn().mockReturnValue(null),
   },
 }));
 

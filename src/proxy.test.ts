@@ -128,6 +128,22 @@ describe('proxy', () => {
     );
   });
 
+  it('falls back safely when the configured branch origin is invalid', async () => {
+    vi.stubEnv('NEXT_PUBLIC_VERCEL_BRANCH_URL', 'not a valid host');
+    vi.resetModules();
+    const { proxy: isolatedProxy } = await import('./proxy');
+    const req = createMockProxyRequest('https://www.zakamurai.com/__preview/host', {
+      host: 'www.zakamurai.com',
+      'x-zakamurai-surface': 'preview',
+    });
+    const res = isolatedProxy(req as unknown as NextRequest) as unknown as MockNextResponse;
+    expect(res.type).toBe('rewrite');
+    expect(res.headers.get('Content-Security-Policy')).toContain('frame-ancestors');
+    vi.unstubAllEnvs();
+    vi.resetModules();
+    await import('./proxy');
+  });
+
   it('returns 503 for uncached /__preview virtual paths on Vercel branch hosts', () => {
     const req = createMockProxyRequest(
       'https://zakamurai-git-feature-team.vercel.app/__preview/session-123/dist/index.html',

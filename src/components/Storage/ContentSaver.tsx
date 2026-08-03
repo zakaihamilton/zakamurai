@@ -29,6 +29,7 @@ export function useContentSaver() {
       // in the event of a synchronous beforeunload firing.
       const currentContents = state.fileContents;
       const currentDiffs = state.pendingDiffs;
+      const currentDeletions = state.pendingDeletions;
 
       const diffsToSave: Record<string, PendingDiff> = {};
       for (const [path, diff] of Object.entries(currentDiffs || {})) {
@@ -38,7 +39,9 @@ export function useContentSaver() {
           modifiedContent: currentContents?.[path] ?? diff.modifiedContent ?? '',
         };
       }
-      Settings.flushEditorBuffersSync({ ...currentContents }, diffsToSave);
+      Settings.flushEditorBuffersSync({ ...currentContents }, diffsToSave, {
+        ...(currentDeletions || {}),
+      });
     };
 
     window.addEventListener('beforeunload', saveContents);

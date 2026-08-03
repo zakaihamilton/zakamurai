@@ -1,6 +1,7 @@
 import type { ChangeSetStateShape } from '@/components/state/domain-types';
 import type { StateStore } from '@/components/state/types';
 import type { AiChange } from '@/contracts/ai';
+import type { DeviceCapabilityReport } from '@/contracts/capabilities';
 
 /** Updater callback for proxy-based state stores. */
 export type DraftUpdater<T extends Record<string, unknown> = Record<string, unknown>> = (
@@ -393,6 +394,7 @@ export type WebLLMStateDraft = {
   engines?: Record<string, WebLLMEngineState>;
   activeModelId?: string;
   cachedModelIds?: string[];
+  capabilityReport?: DeviceCapabilityReport | null;
 };
 
 export type LogEntry = {

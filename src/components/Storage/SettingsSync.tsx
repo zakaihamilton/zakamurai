@@ -28,7 +28,8 @@ export function useSettingsSync(
   editorState: Pick<
     EditorStateShape,
     'aiCompletionEnabled' | 'isReadOnly' | 'fileContents' | 'pendingDiffs'
-  >,
+  > &
+    Partial<Pick<EditorStateShape, 'pendingDeletions'>>,
   agentSessionState:
     | Pick<AgentSessionStateShape, 'sessions' | 'activeSessionId'>
     | null
@@ -49,7 +50,8 @@ export function useSettingsSync(
   const { theme, projectName } = appState;
   const { sidebarWidth, isSidebarOpen, showAIInput, expandedFolders } = sidebarState;
   const { promptWidth, promptHistory } = promptState;
-  const { aiCompletionEnabled, isReadOnly, fileContents, pendingDiffs } = editorState;
+  const { aiCompletionEnabled, isReadOnly, fileContents, pendingDiffs, pendingDeletions } =
+    editorState;
   const sessions = agentSessionState?.sessions;
   const activeSessionId = agentSessionState?.activeSessionId;
   const { openTabs, activeTabId, lastCodeTabId } = tabState || {};
@@ -191,18 +193,30 @@ export function useSettingsSync(
   }, [fileContents, pendingDiffs, persist]);
 
   useEffect(() => {
+    if (!pendingDeletions || typeof pendingDeletions !== 'object') return undefined;
+    const timer = setTimeout(() => {
+      void Promise.resolve(Settings.setPendingDeletions({ ...pendingDeletions })).then((ok) =>
+        persist(ok),
+      );
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, [pendingDeletions, persist]);
+
+  useEffect(() => {
     if (!fileContents || typeof fileContents !== 'object') return undefined;
     const timer = setTimeout(() => {
       void Settings.saveRecoveryCheckpoint({
+        reason: 'storage-recovery',
         projectName,
         fileContents: { ...fileContents },
         pendingDiffs: pendingDiffs || {},
+        pendingDeletions: pendingDeletions || {},
         openTabs: Array.isArray(openTabs) ? openTabs : [],
         activeTabId: activeTabId || null,
       });
     }, 1500);
     return () => clearTimeout(timer);
-  }, [activeTabId, fileContents, openTabs, pendingDiffs, projectName]);
+  }, [activeTabId, fileContents, openTabs, pendingDeletions, pendingDiffs, projectName]);
 
   useEffect(() => {
     if (!sessions || !activeSessionId) return undefined;

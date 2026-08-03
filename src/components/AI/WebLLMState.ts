@@ -1,6 +1,7 @@
 import type { StateHandle, WebLLMEngineState, WebLLMStateDraft } from '@/components/AI/types';
 import { createState } from '@/components/state/State';
 import type { WebLLMStateShape } from '@/components/state/domain-types';
+import type { DeviceCapabilityReport } from '@/contracts/capabilities';
 
 export const WebLLMState = createState<WebLLMStateShape>('WebLLMState');
 
@@ -30,5 +31,12 @@ export function setWebLLMCachedModelIds(ids: string[] | null): void {
   if (!webLLMStore) return;
   webLLMStore((draft) => {
     draft.cachedModelIds = Array.isArray(ids) ? ids : [];
+  });
+}
+
+export function setWebLLMCapabilityReport(report: DeviceCapabilityReport | null): void {
+  if (!webLLMStore) return;
+  webLLMStore((draft) => {
+    draft.capabilityReport = report;
   });
 }

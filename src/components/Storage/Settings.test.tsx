@@ -108,6 +108,22 @@ describe('Settings', () => {
     expect(Settings.getPendingDiffs()).toEqual({});
   });
 
+  it('gets and sets pending deletions and preserves them through hydration', async () => {
+    const pendingDeletions = {
+      'old.js': { originalContent: 'gone', changeSetId: 'cs-1' },
+      'flagged.js': true,
+    };
+    await expect(Settings.setPendingDeletions(pendingDeletions)).resolves.toBe(true);
+    expect(Settings.getPendingDeletions()).toEqual(pendingDeletions);
+
+    Settings._resetHydrationForTests();
+    await Settings.hydrate();
+    expect(Settings.getPendingDeletions()).toEqual(pendingDeletions);
+
+    await Settings.setPendingDeletions({ invalid: { originalContent: 1 } } as never);
+    expect(Settings.getPendingDeletions()).toEqual({});
+  });
+
   it('migrates legacy localStorage pending diffs on hydrate', async () => {
     Settings._resetHydrationForTests();
     await idbClear();
@@ -181,6 +197,36 @@ describe('Settings', () => {
 
     expect(Settings.getFileContents()).toEqual({ 'src/App.js': 'export default 1;' });
     expect(Settings.getRecoveryCheckpoint()?.projectName).toBe('Recovered project');
+  });
+
+  it('protects explicit AI checkpoints from automatic persistence overwrites', async () => {
+    await Settings.saveRecoveryCheckpoint({
+      reason: 'ai-change',
+      projectName: 'Before AI',
+      fileContents: { 'src/App.js': 'before' },
+      pendingDiffs: {},
+      pendingDeletions: {},
+      openTabs: [],
+      activeTabId: null,
+    });
+    Settings._resetHydrationForTests();
+    await Settings.hydrate();
+
+    await Settings.saveRecoveryCheckpoint({
+      reason: 'storage-recovery',
+      projectName: 'After AI',
+      fileContents: { 'src/App.js': 'after' },
+      pendingDiffs: {},
+      pendingDeletions: {},
+      openTabs: [],
+      activeTabId: null,
+    });
+
+    expect(Settings.getRecoveryCheckpoint()).toMatchObject({
+      reason: 'ai-change',
+      projectName: 'Before AI',
+      fileContents: { 'src/App.js': 'before' },
+    });
   });
 
   it('flushes editor buffers synchronously for unload', () => {
@@ -540,6 +586,7 @@ describe('Settings', () => {
     });
 
     expect(saved).toBe(false);
+    expect(Settings.getRecoveryCheckpoint()?.projectName).toBe('Broken checkpoint');
     expect(diagnosticSpy).toHaveBeenCalled();
     globalThis.indexedDB = originalIndexedDb;
     resetIdbConnection();

@@ -153,6 +153,7 @@ vi.mock('@/components/Storage/Settings', () => ({
     getTemplate: vi.fn(() => 'default'),
     getFileContents: vi.fn(() => null),
     getPendingDiffs: vi.fn(() => ({})),
+    getPendingDeletions: vi.fn(() => null),
     getProjectName: vi.fn(() => 'Test'),
     getTheme: vi.fn(() => 'dark'),
     getOpenTabs: vi.fn(() => []),

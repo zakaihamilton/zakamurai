@@ -79,7 +79,19 @@ export default function useModelDownloader(promptUiState: StateStore<PromptUiSta
       try {
         if (action === 'cache') {
           const { cacheWebLLMModel } = await import('@/components/AI/WebLLMAPI');
-          await cacheWebLLMModel(model.id, setModelCacheProgress);
+          let attempt = 0;
+          while (true) {
+            try {
+              await cacheWebLLMModel(model.id, setModelCacheProgress);
+              break;
+            } catch (error) {
+              const message = error instanceof Error ? error.message : String(error);
+              const retryable = /network|fetch|timeout|connection|download|worker/i.test(message);
+              if (attempt >= 1 || !retryable) throw error;
+              attempt += 1;
+              setModelCacheProgress('Download interrupted. Resuming…');
+            }
+          }
         } else {
           const { deleteCachedWebLLMModel } = await import('@/components/AI/WebLLMAPI');
           await deleteCachedWebLLMModel(model.id);

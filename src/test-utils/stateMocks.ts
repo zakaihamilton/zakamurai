@@ -263,6 +263,7 @@ export function makeWebLLMState(
     cachedModelIds: [],
     engines: {},
     activeModelId: null,
+    capabilityReport: null,
     ...overrides,
   });
 }

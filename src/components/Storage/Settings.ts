@@ -2,6 +2,7 @@ import { reportDiagnostic } from '@/components/Diagnostics';
 import type { ChangeSet, LogEntry, PendingDiff, Tab } from '@/components/state/domain-types';
 import { isStringRecord, normalizeRecoveryCheckpoint } from '@/contracts/runtime';
 import {
+  normalizePendingDeletions,
   normalizePendingDiffs,
   normalizePromptHistory,
   parseStoredJson,
@@ -27,6 +28,7 @@ const KEYS = {
   WELCOME_PROMPT_DRAFT: 'zakamurai_welcome_prompt_draft',
   FILE_CONTENTS: 'zakamurai_file_contents',
   PENDING_DIFFS: 'zakamurai_pending_diffs',
+  PENDING_DELETIONS: 'zakamurai_pending_deletions',
   AI_LOGS: 'zakamurai_ai_logs',
   PREVIEW_HTML: 'zakamurai_preview_html',
   SIDEBAR_WIDTH: 'zakamurai_sidebar_width',
@@ -65,17 +67,21 @@ const getStorage = () => {
 const LARGE_IDB_KEYS = {
   fileContents: KEYS.FILE_CONTENTS,
   pendingDiffs: KEYS.PENDING_DIFFS,
+  pendingDeletions: KEYS.PENDING_DELETIONS,
   previewHtml: KEYS.PREVIEW_HTML,
   agentSessions: KEYS.AGENT_SESSIONS,
   aiLogs: KEYS.AI_LOGS,
   changeSets: KEYS.CHANGE_SETS,
 };
 const RECOVERY_CHECKPOINT_KEY = 'zakamurai_recovery_checkpoint_v1';
+const RECOVERY_CHECKPOINT_HISTORY_KEY = 'zakamurai_recovery_checkpoint_history_v1';
+const MAX_RECOVERY_CHECKPOINTS = 20;
 const MAX_PERSISTED_AI_LOGS = 1000;
 
 const largeCache: LargeCache = {
   fileContents: null,
   pendingDiffs: {},
+  pendingDeletions: null,
   previewHtml: null,
   agentSessions: null,
   aiLogs: [],
@@ -94,6 +100,7 @@ let lastStorageHealth: SettingsStorageHealth = {
   lastSuccessfulPersistAt: null,
 };
 let recoveryCheckpoint: RecoveryCheckpoint | null = null;
+let recoveryCheckpointHistory: RecoveryCheckpoint[] = [];
 
 const refreshStorageEstimate = async () => {
   if (typeof navigator === 'undefined' || typeof navigator.storage?.estimate !== 'function') {
@@ -141,6 +148,7 @@ const recordStorageFailure = (message: string) => {
 const largeWriteGen = {
   fileContents: 0,
   pendingDiffs: 0,
+  pendingDeletions: 0,
   previewHtml: 0,
   agentSessions: 0,
   aiLogs: 0,
@@ -383,19 +391,40 @@ const Settings = {
     return writeLarge('pendingDiffs', next);
   },
 
+  getPendingDeletions() {
+    return largeCache.pendingDeletions === null
+      ? null
+      : normalizePendingDeletions(largeCache.pendingDeletions);
+  },
+
+  async setPendingDeletions(
+    deletions: Record<string, boolean | { originalContent?: string; changeSetId?: string }> | null,
+  ) {
+    const next = normalizePendingDeletions(deletions);
+    return writeLarge('pendingDeletions', next);
+  },
+
   /**
    * Synchronous unload flush for editor buffers. Prefer this in beforeunload handlers.
    */
   flushEditorBuffersSync(
     fileContents: Record<string, string> | null,
     pendingDiffs: Record<string, PendingDiff> | null,
+    pendingDeletions: Record<
+      string,
+      boolean | { originalContent?: string; changeSetId?: string }
+    > | null = {},
   ) {
     const contentsOk = persistLargeSync(
       'fileContents',
       fileContents && typeof fileContents === 'object' ? fileContents : {},
     );
     const diffsOk = persistLargeSync('pendingDiffs', normalizePendingDiffs(pendingDiffs));
-    return contentsOk && diffsOk;
+    const deletionsOk = persistLargeSync(
+      'pendingDeletions',
+      normalizePendingDeletions(pendingDeletions),
+    );
+    return contentsOk && diffsOk && deletionsOk;
   },
 
   getPreviewHtml() {
@@ -550,16 +579,41 @@ const Settings = {
     return recoveryCheckpoint ? { ...recoveryCheckpoint } : null;
   },
 
+  getRecoveryCheckpoints() {
+    return recoveryCheckpointHistory.map((checkpoint) => ({ ...checkpoint }));
+  },
+
   async saveRecoveryCheckpoint(snapshot: Partial<RecoveryCheckpoint>) {
+    if (
+      snapshot.reason === 'storage-recovery' &&
+      recoveryCheckpoint?.reason &&
+      recoveryCheckpoint.reason !== 'storage-recovery'
+    ) {
+      return true;
+    }
     const checkpoint = normalizeRecoveryCheckpoint({
       version: 1,
+      id:
+        typeof snapshot.id === 'string'
+          ? snapshot.id
+          : `checkpoint-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       savedAt: Date.now(),
       ...snapshot,
     });
     if (!checkpoint) return false;
     const saved = await idbSet(RECOVERY_CHECKPOINT_KEY, checkpoint);
-    if (saved) recoveryCheckpoint = checkpoint;
-    else {
+    // Keep the in-memory checkpoint even when durable browser storage is unavailable.
+    // This preserves same-session restore while the false return value still lets callers
+    // communicate that the checkpoint will not survive a reload.
+    recoveryCheckpoint = checkpoint;
+    if (checkpoint.reason !== 'storage-recovery') {
+      recoveryCheckpointHistory = [
+        ...recoveryCheckpointHistory.filter((item) => item.id !== checkpoint.id),
+        checkpoint,
+      ].slice(-MAX_RECOVERY_CHECKPOINTS);
+      await idbSet(RECOVERY_CHECKPOINT_HISTORY_KEY, recoveryCheckpointHistory);
+    }
+    if (!saved) {
       reportDiagnostic({
         source: 'storage',
         severity: 'warning',
@@ -582,6 +636,16 @@ const Settings = {
 
     hydratePromise = (async () => {
       recoveryCheckpoint = normalizeRecoveryCheckpoint(await idbGet(RECOVERY_CHECKPOINT_KEY));
+      const storedHistory = await idbGet(RECOVERY_CHECKPOINT_HISTORY_KEY);
+      recoveryCheckpointHistory = Array.isArray(storedHistory)
+        ? storedHistory
+            .map((item) => normalizeRecoveryCheckpoint(item))
+            .filter((item): item is RecoveryCheckpoint => item !== null)
+            .slice(-MAX_RECOVERY_CHECKPOINTS)
+        : [];
+      if (!recoveryCheckpointHistory.length && recoveryCheckpoint) {
+        recoveryCheckpointHistory = [recoveryCheckpoint];
+      }
       async function loadOne<T>(
         cacheKey: LargeCacheKey,
         fallback: T,
@@ -609,6 +673,7 @@ const Settings = {
       await Promise.all([
         loadOne('fileContents', null),
         loadOne('pendingDiffs', {}),
+        loadOne('pendingDeletions', null),
         loadOne('previewHtml', null, { raw: true }),
         loadOne('agentSessions', null),
         loadOne('aiLogs', []),
@@ -616,9 +681,17 @@ const Settings = {
       ]);
 
       largeCache.pendingDiffs = normalizePendingDiffs(largeCache.pendingDiffs);
+      if (largeCache.pendingDeletions !== null) {
+        largeCache.pendingDeletions = normalizePendingDeletions(largeCache.pendingDeletions);
+      }
       if (!isStringRecord(largeCache.fileContents) && recoveryCheckpoint) {
         largeCache.fileContents = recoveryCheckpoint.fileContents;
         largeCache.pendingDiffs = normalizePendingDiffs(recoveryCheckpoint.pendingDiffs);
+        if (largeCache.pendingDeletions === null) {
+          largeCache.pendingDeletions = normalizePendingDeletions(
+            recoveryCheckpoint.pendingDeletions,
+          );
+        }
         reportDiagnostic({
           source: 'storage',
           severity: 'warning',
@@ -649,13 +722,16 @@ const Settings = {
     isHydrated = false;
     largeCache.fileContents = null;
     largeCache.pendingDiffs = {};
+    largeCache.pendingDeletions = null;
     largeCache.previewHtml = null;
     largeCache.agentSessions = null;
     largeCache.aiLogs = [];
     largeCache.changeSets = { activeId: null, items: [] };
     recoveryCheckpoint = null;
+    recoveryCheckpointHistory = [];
     largeWriteGen.fileContents = 0;
     largeWriteGen.pendingDiffs = 0;
+    largeWriteGen.pendingDeletions = 0;
     largeWriteGen.previewHtml = 0;
     largeWriteGen.agentSessions = 0;
     largeWriteGen.aiLogs = 0;
@@ -683,11 +759,13 @@ const Settings = {
     await idbClear();
     largeCache.fileContents = null;
     largeCache.pendingDiffs = {};
+    largeCache.pendingDeletions = null;
     largeCache.previewHtml = null;
     largeCache.agentSessions = null;
     largeCache.aiLogs = [];
     largeCache.changeSets = { activeId: null, items: [] };
     recoveryCheckpoint = null;
+    recoveryCheckpointHistory = [];
     if (template) {
       this.setTemplate(template);
     }

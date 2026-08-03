@@ -28,6 +28,7 @@ vi.mock('@/components/Storage/Settings', () => {
       setPreviewHtml: vi.fn(async () => true),
       setFileContents: vi.fn(async () => true),
       setPendingDiffs: vi.fn(async () => true),
+      setPendingDeletions: vi.fn(async () => true),
       setAgentSessions: vi.fn(async () => true),
       setActiveAgentSessionId: vi.fn(),
       saveRecoveryCheckpoint: vi.fn(async () => true),
@@ -364,6 +365,9 @@ describe('useSettingsSync', () => {
           pendingDiffs: {
             'a.js': { originalContent: 'old', diffs: [], modifiedContent: 'saved' },
           },
+          pendingDeletions: {
+            'old.js': { originalContent: 'gone', changeSetId: 'cs-1' },
+          },
         },
         {
           sessions: {
@@ -414,6 +418,9 @@ describe('useSettingsSync', () => {
     expect(Settings.saveRecoveryCheckpoint).toHaveBeenCalled();
     expect(Settings.setPendingDiffs).toHaveBeenCalledWith({
       'a.js': expect.objectContaining({ modifiedContent: 'code' }),
+    });
+    expect(Settings.setPendingDeletions).toHaveBeenCalledWith({
+      'old.js': { originalContent: 'gone', changeSetId: 'cs-1' },
     });
   });
 
