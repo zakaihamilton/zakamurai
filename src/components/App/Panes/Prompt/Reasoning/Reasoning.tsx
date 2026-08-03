@@ -93,10 +93,10 @@ function ReasoningPanelInner({
   }, [displayedReasoning, messages.length, modelDownloadStatus]);
 
   const reasoningText = [
+    transcriptText ? `--- Transcript ---\n${transcriptText}` : '',
     modelDownloadStatus,
     displayedReasoning,
     diagnosticsText,
-    transcriptText ? `--- Transcript ---\n${transcriptText}` : '',
   ]
     .filter(Boolean)
     .join('\n\n');
@@ -147,6 +147,32 @@ function ReasoningPanelInner({
         </div>
         {isExpanded && (
           <div ref={reasoningRef} className={styles.reasoningContent}>
+            {messages.length ? (
+              <section className={styles.transcriptSection} aria-label="Session transcript">
+                {messages.map((message: AgentSessionMessage) => {
+                  const label =
+                    message.role === 'user'
+                      ? 'You'
+                      : message.role === 'ai'
+                        ? message.agentRole
+                          ? `AI · ${message.agentRole}`
+                          : 'AI'
+                        : 'System';
+                  return (
+                    <article className={styles.reasoningEntry} key={message.id}>
+                      <div className={styles.timestamp}>
+                        {message.timestamp ? <time>{message.timestamp}</time> : null}
+                        {message.timestamp ? ' · ' : ''}
+                        <span className={styles.transcriptType}>{label}</span>
+                      </div>
+                      <div className={`${styles.reasoningText} ${styles.transcriptText}`}>
+                        {message.text}
+                      </div>
+                    </article>
+                  );
+                })}
+              </section>
+            ) : null}
             {modelDownloadStatus && (
               <output className={styles.downloadStatus} aria-live="polite">
                 <span className={styles.downloadSpinner} aria-hidden="true" />
@@ -197,30 +223,6 @@ function ReasoningPanelInner({
             >
               {displayedReasoning}
             </ReactMarkdown>
-            {messages.length ? (
-              <section className={styles.transcriptSection} aria-label="Session transcript">
-                <h3 className={styles.transcriptHeading}>Transcript</h3>
-                {messages.map((message: AgentSessionMessage) => {
-                  const label =
-                    message.role === 'user'
-                      ? 'You'
-                      : message.role === 'ai'
-                        ? message.agentRole
-                          ? `AI · ${message.agentRole}`
-                          : 'AI'
-                        : 'System';
-                  return (
-                    <article className={styles.transcriptEntry} key={message.id}>
-                      <div className={styles.transcriptMeta}>
-                        <span>{label}</span>
-                        {message.timestamp ? <time>{message.timestamp}</time> : null}
-                      </div>
-                      <div className={styles.transcriptText}>{message.text}</div>
-                    </article>
-                  );
-                })}
-              </section>
-            ) : null}
           </div>
         )}
       </div>

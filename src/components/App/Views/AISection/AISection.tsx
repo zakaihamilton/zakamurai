@@ -192,11 +192,11 @@ export default function AISectionView({ tab }: { tab: Tab }) {
         : 'No active change set.'
       : reasoningContent.length || transcriptText
         ? [
+            transcriptText ? `--- Transcript ---\n${transcriptText}` : '',
             ...reasoningContent.map(
               ({ text, timestamp }) => `${timestamp ? `[${timestamp}] ` : ''}${text}`,
             ),
             runUsageSummary,
-            transcriptText ? `--- Transcript ---\n${transcriptText}` : '',
           ]
             .filter(Boolean)
             .join('\n\n')
@@ -251,6 +251,32 @@ export default function AISectionView({ tab }: { tab: Tab }) {
       </header>
       {section === 'reasoning' ? (
         <div ref={contentRef} className={`${styles.content} ${styles.markdownContent}`}>
+          {activeSession?.messages?.length ? (
+            <section className={styles.transcriptSection} aria-label="Session transcript">
+              {activeSession.messages.map((message) => {
+                const label =
+                  message.role === 'user'
+                    ? 'You'
+                    : message.role === 'ai'
+                      ? message.agentRole
+                        ? `AI · ${message.agentRole}`
+                        : 'AI'
+                      : 'System';
+                return (
+                  <article className={styles.reasoningEntry} key={message.id}>
+                    <div className={styles.timestamp}>
+                      {message.timestamp ? <time>{message.timestamp}</time> : null}
+                      {message.timestamp ? ' · ' : ''}
+                      <span className={styles.transcriptType}>{label}</span>
+                    </div>
+                    <div className={`${styles.reasoningText} ${styles.transcriptText}`}>
+                      {message.text}
+                    </div>
+                  </article>
+                );
+              })}
+            </section>
+          ) : null}
           {reasoningGroups.map((group, groupIndex) => (
             <section className={styles.reasoningGroup} key={`${group.step}-${groupIndex}`}>
               {group.step !== null ? (
@@ -307,30 +333,6 @@ export default function AISectionView({ tab }: { tab: Tab }) {
               <article className={styles.reasoningEntry}>
                 <div className={styles.reasoningText}>{content}</div>
               </article>
-            </section>
-          ) : null}
-          {activeSession?.messages?.length ? (
-            <section className={styles.transcriptSection} aria-label="Session transcript">
-              <h2 className={styles.stepHeading}>Transcript</h2>
-              {activeSession.messages.map((message) => {
-                const label =
-                  message.role === 'user'
-                    ? 'You'
-                    : message.role === 'ai'
-                      ? message.agentRole
-                        ? `AI · ${message.agentRole}`
-                        : 'AI'
-                      : 'System';
-                return (
-                  <article className={styles.transcriptEntry} key={message.id}>
-                    <div className={styles.transcriptMeta}>
-                      <span>{label}</span>
-                      {message.timestamp ? <time>{message.timestamp}</time> : null}
-                    </div>
-                    <div className={styles.transcriptText}>{message.text}</div>
-                  </article>
-                );
-              })}
             </section>
           ) : null}
         </div>

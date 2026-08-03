@@ -219,53 +219,46 @@
   overflow-wrap: anywhere;
 }
 
-.transcriptSection {
-  margin-top: 16px;
-  padding-top: 12px;
-  border-top: 1px solid var(--border);
+.reasoningEntry {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  column-gap: 12px;
 }
 
-.transcriptHeading {
-  margin: 0 0 8px;
-  color: var(--text-main);
-  font-size: 12px;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
+.reasoningEntry + .reasoningEntry {
+  margin-top: 10px;
 }
 
-.transcriptEntry {
-  padding: 6px 8px;
-  border-radius: 6px;
-  background: var(--bg-input);
+.reasoningText {
+  min-width: 0;
 }
 
-.transcriptEntry + .transcriptEntry {
-  margin-top: 6px;
-}
-
-.transcriptMeta {
-  display: flex;
-  justify-content: space-between;
-  gap: 8px;
-  color: var(--accent);
-  font-size: 10px;
-  font-weight: 700;
-  text-transform: uppercase;
-}
-
-.transcriptMeta time {
+.timestamp {
+  padding-top: 0;
   color: var(--text-muted);
-  font-weight: 400;
+  font-family: var(--font-mono, monospace);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  line-height: inherit;
+}
+
+.transcriptSection {
+  margin: 0 0 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
 }
 
 .transcriptText {
-  margin-top: 3px;
-  color: var(--text-main);
-  font-size: 12px;
-  line-height: 1.45;
   white-space: pre-wrap;
-  overflow-wrap: anywhere;
 }
+
+.transcriptType {
+  font-family: Inter, system-ui, -apple-system, sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+}
+
 
 @keyframes model-download-spin {
   to {

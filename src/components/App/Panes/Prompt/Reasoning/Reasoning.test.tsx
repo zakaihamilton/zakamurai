@@ -66,6 +66,7 @@ describe('ReasoningPanel', () => {
     const active = expectAgentSession(mockAgentSessionStore);
     mockAgentSessionStore.sessions[active.id] = {
       ...active,
+      reasoning: 'Reasoning after transcript',
       messages: [
         { id: 1, role: 'user', text: 'Build the app', timestamp: '10:00:00' },
         { id: 2, role: 'ai', text: 'I am on it', timestamp: '10:00:01' },
@@ -74,9 +75,17 @@ describe('ReasoningPanel', () => {
 
     render(<ReasoningPanel />);
 
-    expect(screen.getByRole('heading', { name: 'Transcript' })).toBeDefined();
+    expect(screen.queryByRole('heading', { name: 'Transcript' })).toBeNull();
     expect(screen.getByText('Build the app')).toBeDefined();
     expect(screen.getByText('I am on it')).toBeDefined();
+    expect(screen.getByText('Build the app').closest('article')?.textContent).toContain(
+      '10:00:00 · You',
+    );
+    const transcript = screen.getByText('Build the app');
+    const reasoning = screen.getByText('Reasoning after transcript');
+    expect(transcript.compareDocumentPosition(reasoning) & Node.DOCUMENT_POSITION_FOLLOWING).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    );
   });
 
   it('copies reasoning to clipboard when copy button is clicked', async () => {
