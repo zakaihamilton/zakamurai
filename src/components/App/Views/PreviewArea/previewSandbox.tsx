@@ -130,10 +130,15 @@ export function sanitizePreviewPath(path: string): string | null {
   if (trimmed.includes('\\')) return null;
   if (/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(trimmed)) return null;
 
-  try {
-    trimmed = decodeURIComponent(trimmed);
-  } catch {
-    return null;
+  for (let attempt = 0; attempt < 4; attempt += 1) {
+    try {
+      const decoded = decodeURIComponent(trimmed);
+      if (decoded === trimmed) break;
+      trimmed = decoded;
+      if (attempt === 3) return null;
+    } catch {
+      return null;
+    }
   }
 
   if (trimmed.includes('\\') || trimmed.includes('..')) return null;

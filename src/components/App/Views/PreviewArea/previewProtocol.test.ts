@@ -8,6 +8,7 @@ describe('previewProtocol', () => {
     expect(isSafePreviewPath('index.html')).toBe(false);
     expect(isSafePreviewPath('/../etc/passwd')).toBe(false);
     expect(isSafePreviewPath('/%2e%2e/passwd')).toBe(false);
+    expect(isSafePreviewPath('/%252e%252e/passwd')).toBe(false);
     expect(isSafePreviewPath('//malicious.com')).toBe(false);
     expect(isSafePreviewPath('/path\\with\\backslash')).toBe(false);
     expect(isSafePreviewPath(123)).toBe(false);

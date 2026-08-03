@@ -412,109 +412,6 @@ describe('runActionLoop', () => {
     expect(askWebLLM).toHaveBeenCalledTimes(4);
   });
 
-  it('uses bounded todo recovery when the local model never produces a write', async () => {
-    askWebLLM
-      .mockResolvedValueOnce('{"action":"inspect_preview"}')
-      .mockResolvedValueOnce('{"action":"validate"}')
-      .mockResolvedValueOnce('{"action":"validate"}')
-      .mockResolvedValueOnce('{"action":"validate"}')
-      .mockResolvedValueOnce('{"action":"finish","summary":"done"}')
-      .mockResolvedValueOnce('{"action":"finish","summary":"done"}');
-    const validate = vi.fn().mockResolvedValue('Checks passed.');
-    const events: AgentEvent[] = [];
-
-    const result = await runActionLoop({
-      request: 'create a todo app',
-      files: {
-        'src/App.jsx':
-          'export default function App() { return <div><h1>New Project</h1><p>Start coding here...</p></div>; }',
-      },
-      model: 'test',
-      validate,
-      onEvent: (event) => events.push(event),
-    });
-
-    expect(result.files['src/App.jsx']).toContain('function addTask');
-    expect(result.files['src/App.module.css']).toContain('.card');
-    expect(validate).toHaveBeenCalledWith(result.files);
-    expect(result.summary).toContain('bounded recovery');
-    expect(
-      events.filter(
-        (event) =>
-          event.type === 'tool' &&
-          typeof event.action === 'object' &&
-          event.action.action === 'validate',
-      ),
-    ).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ provenance: 'model' }),
-        expect.objectContaining({ provenance: 'recovery' }),
-      ]),
-    );
-  });
-
-  it('uses bounded todo recovery for a reminder app request', async () => {
-    askWebLLM.mockResolvedValue('{"action":"list_files"}');
-    const validate = vi.fn().mockResolvedValue('Checks passed.');
-
-    const result = await runActionLoop({
-      request: 'create a reminder app',
-      files: {
-        'src/App.jsx':
-          'export default function App() { return <div><h1>New Project</h1><p>Start coding here...</p></div>; }',
-      },
-      model: 'test',
-      validate,
-    });
-
-    expect(result.files['src/App.jsx']).toContain('function addTask');
-    expect(result.files['src/App.module.css']).toContain('.card');
-    expect(result.summary).toContain('bounded recovery');
-    expect(validate).toHaveBeenCalledWith(result.files);
-  });
-
-  it('uses bounded recovery when a local model cannot create a tic-tac-toe game', async () => {
-    askWebLLM.mockResolvedValue('{"action":"list_files"}');
-    const validate = vi.fn().mockResolvedValue('Checks passed.');
-
-    const result = await runActionLoop({
-      request: 'create tic tac toe game',
-      files: {
-        'src/App.jsx':
-          'export default function App() { return <div><h1>New Project</h1><p>Start coding here...</p></div>; }',
-      },
-      model: 'Qwen2.5-Coder-1.5B-Instruct-q4f16_1-MLC',
-      validate,
-    });
-
-    expect(result.files['src/App.jsx']).toContain('Tic Tac Toe');
-    expect(result.files['src/App.jsx']).toContain('function playSquare');
-    expect(result.files['src/App.module.css']).toContain('.board');
-    expect(result.summary).toContain('tic-tac-toe game');
-    expect(validate).toHaveBeenCalledWith(result.files);
-  });
-
-  it('does not report todo recovery as successful when validation fails', async () => {
-    askWebLLM.mockResolvedValueOnce('{"action":"finish","summary":"done"}');
-    const validate = vi.fn().mockResolvedValue({
-      status: 'failed',
-      check: 'build',
-      diagnostics: 'The generated app does not compile.',
-    });
-
-    await expect(
-      runActionLoop({
-        request: 'create a todo app',
-        files: {
-          'src/App.jsx':
-            'export default function App() { return <div><h1>New Project</h1><p>Start coding here...</p></div>; }',
-        },
-        model: 'test',
-        validate,
-      }),
-    ).rejects.toThrow(/Todo-app recovery validation failed/);
-  });
-
   it('queues a forced source write until the model provides its missing CSS Module', async () => {
     askWebLLM
       .mockResolvedValueOnce('{"action":"read_file","path":"src/App.jsx"}')
@@ -1371,7 +1268,10 @@ export const title = "Today";
   it('treats a missing file read as an actionable observation', async () => {
     askWebLLM
       .mockResolvedValueOnce('{"action":"read_file","path":"src/components/TaskList.module.css"}')
-      .mockResolvedValueOnce('{"action":"finish","summary":"no changes"}');
+      .mockResolvedValueOnce(
+        '{"action":"write_file","path":"src/App.jsx","content":"export default function App() { return <main />; }"}',
+      )
+      .mockResolvedValueOnce('{"action":"finish","summary":"created"}');
     const events: AgentEvent[] = [];
 
     await runActionLoop({

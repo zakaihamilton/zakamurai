@@ -1,6 +1,15 @@
 import { reportDiagnostic } from '@/components/Diagnostics';
 import type { ChangeSet, LogEntry, PendingDiff, Tab } from '@/components/state/domain-types';
 import { isStringRecord, normalizeRecoveryCheckpoint } from '@/contracts/runtime';
+import { createLargePersistence } from './SettingsLargePersistence';
+import {
+  MAX_RECOVERY_CHECKPOINTS,
+  RECOVERY_CHECKPOINT_HISTORY_KEY,
+  RECOVERY_CHECKPOINT_KEY,
+  appendRecoveryCheckpoint,
+  createRecoveryCheckpoint,
+  shouldPreserveRecoveryCheckpoint,
+} from './SettingsRecovery';
 import {
   normalizePendingDeletions,
   normalizePendingDiffs,
@@ -73,9 +82,6 @@ const LARGE_IDB_KEYS = {
   aiLogs: KEYS.AI_LOGS,
   changeSets: KEYS.CHANGE_SETS,
 };
-const RECOVERY_CHECKPOINT_KEY = 'zakamurai_recovery_checkpoint_v1';
-const RECOVERY_CHECKPOINT_HISTORY_KEY = 'zakamurai_recovery_checkpoint_history_v1';
-const MAX_RECOVERY_CHECKPOINTS = 20;
 const MAX_PERSISTED_AI_LOGS = 1000;
 
 const largeCache: LargeCache = {
@@ -144,7 +150,7 @@ const recordStorageFailure = (message: string) => {
   reportDiagnostic({ source: 'storage', severity: 'error', message });
 };
 
-/** Per-key write generation — bumped on every writeLarge / unload flush to fence clears. */
+/** Per-key write generation — bumped on every large write / unload flush to fence clears. */
 const largeWriteGen = {
   fileContents: 0,
   pendingDiffs: 0,
@@ -185,63 +191,16 @@ const writeLocalFallback = (key: string, value: string | null) => {
   }
 };
 
-function setLargeCacheValue<K extends LargeCacheKey>(key: K, value: LargeCache[K]): void {
-  largeCache[key] = value;
-}
-
-async function writeLarge<K extends LargeCacheKey>(
-  cacheKey: K,
-  value: LargeCache[K],
-): Promise<boolean> {
-  setLargeCacheValue(cacheKey, value);
-  const idbKey = LARGE_IDB_KEYS[cacheKey];
-  const myGen = ++largeWriteGen[cacheKey];
-  const durable = await idbSet(idbKey, value);
-
-  // A newer writeLarge or unload flush happened — do not clear a fresher localStorage snapshot.
-  if (myGen !== largeWriteGen[cacheKey]) {
-    return durable;
-  }
-
-  if (durable) {
-    await recordStorageSuccess('indexeddb');
-    clearLegacyLocal(idbKey);
-    return true;
-  }
-
-  console.warn(`IndexedDB unavailable for ${cacheKey}; trying localStorage fallback`);
-  const serialized =
-    value === null || value === undefined
-      ? null
-      : typeof value === 'string'
-        ? value
-        : JSON.stringify(value);
-  const fallbackSaved = writeLocalFallback(idbKey, serialized);
-  if (fallbackSaved) await recordStorageSuccess('localStorage');
-  else recordStorageFailure(`Could not persist ${cacheKey} in IndexedDB or localStorage.`);
-  return fallbackSaved;
-}
-
-/**
- * Synchronous last-chance write for beforeunload. Updates the in-memory cache and
- * localStorage so the debounce window is not lost when the tab closes.
- */
-function persistLargeSync<K extends LargeCacheKey>(cacheKey: K, value: LargeCache[K]): boolean {
-  setLargeCacheValue(cacheKey, value);
-  // Invalidate in-flight writeLarge so it cannot clear this fresher unload snapshot.
-  largeWriteGen[cacheKey] += 1;
-  const idbKey = LARGE_IDB_KEYS[cacheKey];
-  const serialized =
-    value === null || value === undefined
-      ? null
-      : typeof value === 'string'
-        ? value
-        : JSON.stringify(value);
-  const ok = writeLocalFallback(idbKey, serialized);
-  // Fire-and-forget durable IDB write; unload may cancel it.
-  void idbSet(idbKey, value);
-  return ok;
-}
+const largePersistence = createLargePersistence({
+  cache: largeCache,
+  idbKeys: LARGE_IDB_KEYS,
+  writeGenerations: largeWriteGen,
+  idbSet,
+  clearLegacyLocal,
+  writeLocalFallback,
+  recordStorageSuccess,
+  recordStorageFailure,
+});
 
 const Settings = {
   getStorageHealth() {
@@ -371,7 +330,7 @@ const Settings = {
 
   async setAILogs(logs: LogEntry[]) {
     const logsToSave = (logs || []).slice(-MAX_PERSISTED_AI_LOGS);
-    return writeLarge('aiLogs', logsToSave);
+    return largePersistence.write('aiLogs', logsToSave);
   },
 
   getFileContents() {
@@ -379,7 +338,10 @@ const Settings = {
   },
 
   async setFileContents(contents: Record<string, string> | null) {
-    return writeLarge('fileContents', contents && typeof contents === 'object' ? contents : {});
+    return largePersistence.write(
+      'fileContents',
+      contents && typeof contents === 'object' ? contents : {},
+    );
   },
 
   getPendingDiffs() {
@@ -388,7 +350,7 @@ const Settings = {
 
   async setPendingDiffs(diffs: Record<string, PendingDiff> | null) {
     const next = normalizePendingDiffs(diffs);
-    return writeLarge('pendingDiffs', next);
+    return largePersistence.write('pendingDiffs', next);
   },
 
   getPendingDeletions() {
@@ -401,7 +363,7 @@ const Settings = {
     deletions: Record<string, boolean | { originalContent?: string; changeSetId?: string }> | null,
   ) {
     const next = normalizePendingDeletions(deletions);
-    return writeLarge('pendingDeletions', next);
+    return largePersistence.write('pendingDeletions', next);
   },
 
   /**
@@ -415,12 +377,15 @@ const Settings = {
       boolean | { originalContent?: string; changeSetId?: string }
     > | null = {},
   ) {
-    const contentsOk = persistLargeSync(
+    const contentsOk = largePersistence.persistSync(
       'fileContents',
       fileContents && typeof fileContents === 'object' ? fileContents : {},
     );
-    const diffsOk = persistLargeSync('pendingDiffs', normalizePendingDiffs(pendingDiffs));
-    const deletionsOk = persistLargeSync(
+    const diffsOk = largePersistence.persistSync(
+      'pendingDiffs',
+      normalizePendingDiffs(pendingDiffs),
+    );
+    const deletionsOk = largePersistence.persistSync(
       'pendingDeletions',
       normalizePendingDeletions(pendingDeletions),
     );
@@ -432,7 +397,7 @@ const Settings = {
   },
 
   async setPreviewHtml(html: string | null) {
-    return writeLarge('previewHtml', html || null);
+    return largePersistence.write('previewHtml', html || null);
   },
 
   getSidebarWidth(defaultValue = 280) {
@@ -543,9 +508,9 @@ const Settings = {
 
   async setAgentSessions(payload: Record<string, unknown> | null) {
     if (!payload || typeof payload !== 'object') {
-      return writeLarge('agentSessions', null);
+      return largePersistence.write('agentSessions', null);
     }
-    return writeLarge('agentSessions', payload);
+    return largePersistence.write('agentSessions', payload);
   },
 
   getActiveAgentSessionId(defaultValue = null) {
@@ -572,7 +537,7 @@ const Settings = {
 
   async setChangeSets(changeSets: { activeId?: string | null; items?: ChangeSet[] } | null) {
     const items = Array.isArray(changeSets?.items) ? changeSets.items.slice(-20) : [];
-    return writeLarge('changeSets', { activeId: changeSets?.activeId || null, items });
+    return largePersistence.write('changeSets', { activeId: changeSets?.activeId || null, items });
   },
 
   getRecoveryCheckpoint() {
@@ -584,22 +549,10 @@ const Settings = {
   },
 
   async saveRecoveryCheckpoint(snapshot: Partial<RecoveryCheckpoint>) {
-    if (
-      snapshot.reason === 'storage-recovery' &&
-      recoveryCheckpoint?.reason &&
-      recoveryCheckpoint.reason !== 'storage-recovery'
-    ) {
+    if (shouldPreserveRecoveryCheckpoint(snapshot.reason, recoveryCheckpoint?.reason)) {
       return true;
     }
-    const checkpoint = normalizeRecoveryCheckpoint({
-      version: 1,
-      id:
-        typeof snapshot.id === 'string'
-          ? snapshot.id
-          : `checkpoint-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-      savedAt: Date.now(),
-      ...snapshot,
-    });
+    const checkpoint = normalizeRecoveryCheckpoint(createRecoveryCheckpoint(snapshot));
     if (!checkpoint) return false;
     const saved = await idbSet(RECOVERY_CHECKPOINT_KEY, checkpoint);
     // Keep the in-memory checkpoint even when durable browser storage is unavailable.
@@ -607,10 +560,7 @@ const Settings = {
     // communicate that the checkpoint will not survive a reload.
     recoveryCheckpoint = checkpoint;
     if (checkpoint.reason !== 'storage-recovery') {
-      recoveryCheckpointHistory = [
-        ...recoveryCheckpointHistory.filter((item) => item.id !== checkpoint.id),
-        checkpoint,
-      ].slice(-MAX_RECOVERY_CHECKPOINTS);
+      recoveryCheckpointHistory = appendRecoveryCheckpoint(recoveryCheckpointHistory, checkpoint);
       await idbSet(RECOVERY_CHECKPOINT_HISTORY_KEY, recoveryCheckpointHistory);
     }
     if (!saved) {
@@ -664,7 +614,7 @@ const Settings = {
           value = fallback;
         }
 
-        setLargeCacheValue(
+        largePersistence.setValue(
           cacheKey,
           (value == null ? fallback : value) as LargeCache[typeof cacheKey],
         );

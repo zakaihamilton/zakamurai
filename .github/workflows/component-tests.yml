@@ -50,7 +50,7 @@ jobs:
         run: npm run test:coverage
 
       - name: Build production app and check performance budgets
-        run: npm run build && npm run perf && npm run test:performance
+        run: npm run build && npm run perf && npm run check:runtime-assets && npm run test:performance
 
       - name: Run Chromium and WebKit end-to-end tests
         run: npm run test:e2e && npm run test:e2e:webkit
@@ -77,3 +77,27 @@ jobs:
             playwright-report/
             test-results/
           if-no-files-found: ignore
+
+  node-25-compatibility:
+    name: Node 25 compatibility smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 25
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Prepare browser build assets
+        run: npm run setup:almostnode && npm run setup:wasm
+
+      - name: Run Node 25 compatibility smoke checks
+        run: npm run lint && npm run typecheck && npm run test:unit && npm run build && npm run perf && npm run check:runtime-assets

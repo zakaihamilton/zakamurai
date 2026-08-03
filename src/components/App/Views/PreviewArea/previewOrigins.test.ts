@@ -112,11 +112,12 @@ describe('isolated preview configuration', () => {
     });
   });
 
-  it('recognizes configured and preview-prefixed hosts', () => {
+  it('recognizes only the configured preview host', () => {
     const origins = previewOrigins({ previewOrigin: 'https://preview.zakamurai.com' });
     expect(isPreviewHost('preview.zakamurai.com', origins)).toBe(true);
+    expect(isPreviewHost('preview.zakamurai.com:bad-port', origins)).toBe(false);
     expect(isPreviewHost('www.zakamurai.com', origins)).toBe(false);
-    expect(isPreviewHost('preview.branch.example.com', origins)).toBe(true);
+    expect(isPreviewHost('preview.branch.example.com', origins)).toBe(false);
   });
 
   it('includes configured and branch IDE origins in preview frame ancestors', () => {
@@ -162,6 +163,7 @@ describe('preview host derivation helpers', () => {
     ]);
     expect(expandOriginAliases('')).toEqual([]);
     expect(expandOriginAliases('not a url')).toEqual([]);
+    expect(expandOriginAliases('javascript:alert(1)')).toEqual([]);
     expect(expandOriginAliases('https://zakamurai.com:443')).toEqual([
       'https://zakamurai.com',
       'https://www.zakamurai.com',
@@ -249,6 +251,26 @@ describe('isValidPreviewHandshake', () => {
         options,
       ),
     ).toBe(false);
+    expect(
+      isValidPreviewHandshake(
+        {
+          origin: 'not-an-origin',
+          source,
+          data: { type: 'connect', version: 1, sessionId: 'session' },
+        } as MessageEvent,
+        options,
+      ),
+    ).toBe(false);
+    expect(
+      isValidPreviewHandshake(
+        {
+          origin: 'https://preview.example',
+          source,
+          data: { type: 'connect', version: 1, sessionId: '' },
+        } as MessageEvent,
+        { ...options, sessionId: '' },
+      ),
+    ).toBe(false);
   });
 });
 
@@ -271,6 +293,7 @@ describe('isolated preview protocol', () => {
 
   it('rejects traversal, external paths, invalid methods, and mismatched sessions', () => {
     expect(isSafePreviewPath('/../settings')).toBe(false);
+    expect(isSafePreviewPath('/%252e%252e/settings')).toBe(false);
     expect(isSafePreviewPath('//example.com')).toBe(false);
     expect(
       isPreviewRequest(

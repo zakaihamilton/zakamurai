@@ -6,7 +6,7 @@ Thank you for contributing. This project is optimized for both human and AI-assi
 
 1. Read [ARCHITECTURE.md](./ARCHITECTURE.md) — especially proxy state and preview security.
 2. Read [AGENTS.md](./AGENTS.md) if you use Cursor or other coding agents.
-3. Use Node.js 24 (see [.nvmrc](./.nvmrc)).
+3. Use Node.js 24 as the baseline (see [.nvmrc](./.nvmrc)); the supported engine range is `>=24 <26`, and Node.js 25 is compatibility-tested in CI.
 
 ## Development workflow
 
@@ -23,7 +23,7 @@ Run locally before opening a PR:
 npm run verify
 ```
 
-This runs formatting, linting, architecture checks, static promptfoo eval, unit coverage, production build, performance budget, e2e smoke, isolated preview security tests, visual regression (Chromium), and dependency audit.
+This runs formatting, linting, architecture checks, static promptfoo eval, unit coverage, production build, application and generated-runtime performance budgets, e2e smoke, isolated preview security tests, preview header checks, visual regression (Chromium), and dependency audit.
 
 Optional extended AI checks:
 
@@ -41,6 +41,7 @@ Requires promptfoo (installed via `npm ci`). lucidshark/lucid architectural scan
 | `npm run test:coverage` | Coverage with thresholds |
 | `npm run test:promptfoo` | Static AI compliance (no API keys) |
 | `npm run check:architecture` | Architecture rule scan |
+| `npm run check:runtime-assets` | Generated browser runtime manifest and size check |
 | `npm run test:e2e` | Playwright smoke |
 | `npm run test:e2e:isolated` | Cross-origin preview security |
 

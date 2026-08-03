@@ -50,6 +50,16 @@ describe('proxy', () => {
     expect(res.headers.get('Content-Security-Policy')).toBeUndefined();
   });
 
+  it('keeps configured IDE navigation on the IDE surface without a preview signal', () => {
+    vi.stubEnv('NEXT_PUBLIC_IDE_ORIGIN', 'https://www.zakamurai.com');
+    const req = createMockProxyRequest('https://www.zakamurai.com/editor', {
+      host: 'www.zakamurai.com',
+    });
+    const res = proxy(req as unknown as NextRequest) as unknown as MockNextResponse;
+    expect(res.type).toBe('next');
+    vi.unstubAllEnvs();
+  });
+
   it('does not treat the local IDE port as the preview surface', async () => {
     vi.stubEnv('NEXT_PUBLIC_PREVIEW_ORIGIN', 'http://localhost:3001');
     vi.resetModules();
@@ -106,6 +116,21 @@ describe('proxy', () => {
     expect(res.headers.get('Cross-Origin-Opener-Policy')).toBe('unsafe-none');
   });
 
+  it('does not treat a malformed or unexpected preview host port as trusted', () => {
+    const malformed = createMockProxyRequest('https://preview.zakamurai.com/editor', {
+      host: 'preview.zakamurai.com:bad',
+    });
+    const unexpectedPort = createMockProxyRequest('https://preview.zakamurai.com:8443/editor', {
+      host: 'preview.zakamurai.com:8443',
+    });
+    expect((proxy(malformed as unknown as NextRequest) as unknown as MockNextResponse).type).toBe(
+      'next',
+    );
+    expect(
+      (proxy(unexpectedPort as unknown as NextRequest) as unknown as MockNextResponse).type,
+    ).toBe('next');
+  });
+
   it('sets same-origin-allow-popups COOP on IDE surfaces', () => {
     const req = createMockProxyRequest('https://www.zakamurai.com/editor', {
       host: 'www.zakamurai.com',
@@ -130,6 +155,7 @@ describe('proxy', () => {
 
   it('falls back safely when the configured branch origin is invalid', async () => {
     vi.stubEnv('NEXT_PUBLIC_VERCEL_BRANCH_URL', 'not a valid host');
+    vi.stubEnv('NEXT_PUBLIC_IDE_ORIGIN', 'https://www.zakamurai.com');
     vi.resetModules();
     const { proxy: isolatedProxy } = await import('./proxy');
     const req = createMockProxyRequest('https://www.zakamurai.com/__preview/host', {
@@ -155,6 +181,7 @@ describe('proxy', () => {
   });
 
   it('handles x-zakamurai-surface preview header', () => {
+    vi.stubEnv('NEXT_PUBLIC_IDE_ORIGIN', 'https://www.zakamurai.com');
     const req = createMockProxyRequest('https://www.zakamurai.com/subpath', {
       host: 'www.zakamurai.com',
       'x-zakamurai-surface': 'preview',
@@ -162,6 +189,16 @@ describe('proxy', () => {
     const res = proxy(req as unknown as NextRequest) as unknown as MockNextResponse;
     expect(res.type).toBe('rewrite');
     expect(res.url?.pathname).toBe('/preview-host/subpath');
+    vi.unstubAllEnvs();
+  });
+
+  it('does not let an unknown host self-authorize as a preview surface', () => {
+    const req = createMockProxyRequest('https://attacker.example/__preview/host', {
+      host: 'attacker.example',
+      'x-zakamurai-surface': 'preview',
+    });
+    const res = proxy(req as unknown as NextRequest) as unknown as MockNextResponse;
+    expect(res.type).toBe('next');
   });
 
   it('bypasses rewrite for internal preview assets like /__preview_sw__.js', () => {

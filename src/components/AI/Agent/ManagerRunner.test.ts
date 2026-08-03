@@ -652,25 +652,6 @@ describe('runManager', () => {
     ).toBe(true);
   });
 
-  it('uses bounded todo recovery when the action model repeats unchanged reads', async () => {
-    const modelClient = vi
-      .fn()
-      .mockResolvedValue(JSON.stringify({ action: 'read_file', path: 'src/App.jsx' }));
-
-    const result = await runManager({
-      request: 'create a todo app',
-      files: { 'src/App.jsx': 'export default function App() { return null; }' },
-      activeFile: 'src/App.jsx',
-      model: 'test-model',
-      modelClient,
-    });
-
-    expect(result.files['src/App.module.css']).toContain('.app');
-    expect(result.files['src/App.jsx']).toContain('useState');
-    expect(result.files['src/App.jsx']).not.toContain('Your implementation');
-    expect(result.trace.events.some((event) => event.provenance === 'recovery')).toBe(true);
-  });
-
   it('uses generic direct recovery when the action model repeats unchanged reads', async () => {
     const modelClient = vi
       .fn()

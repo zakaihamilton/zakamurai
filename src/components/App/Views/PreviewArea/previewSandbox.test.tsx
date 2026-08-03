@@ -65,6 +65,7 @@ describe('previewSandbox', () => {
     expect(sanitizePreviewPath('/dist/index.html')).toBeNull();
     expect(sanitizePreviewPath('/preview/../etc/passwd')).toBeNull();
     expect(sanitizePreviewPath('/preview/%2e%2e/etc/passwd')).toBeNull();
+    expect(sanitizePreviewPath('/preview/%252e%252e/etc/passwd')).toBeNull();
     expect(sanitizePreviewPath('\\preview\\x')).toBeNull();
   });
 

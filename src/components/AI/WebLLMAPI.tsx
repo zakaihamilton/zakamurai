@@ -17,6 +17,14 @@ import {
   findCachedFallbackModelId,
   getDeviceAppropriateDefaultModelId,
 } from './WebLLMModels';
+import {
+  WebLLMAttemptError,
+  WebLLMStallError,
+  errorMessage,
+  isAbortError,
+  recoveryReason,
+  unwrapAttemptError,
+} from './WebLLMRecovery';
 import { setWebLLMCachedModelIds, updateWebLLMEngine } from './WebLLMState';
 export { RECOMMENDED_WEB_LLM_MODEL, WEB_LLM_MODELS } from './WebLLMModels';
 export { pruneWebLLMMessages } from './WebLLMMessageUtils';
@@ -96,27 +104,6 @@ type AttemptResult = {
   finishReason?: string | null;
 };
 
-class WebLLMStallError extends Error {
-  constructor(readonly phase: 'initialization' | 'generation') {
-    super(
-      phase === 'initialization'
-        ? 'Local AI model initialization stopped making progress.'
-        : 'Local AI generation stopped making progress.',
-    );
-    this.name = 'WebLLMStallError';
-  }
-}
-
-class WebLLMAttemptError extends Error {
-  constructor(
-    readonly phase: 'initialization' | 'generation',
-    readonly cause: unknown,
-  ) {
-    super(cause instanceof Error ? cause.message : String(cause));
-    this.name = 'WebLLMAttemptError';
-  }
-}
-
 let engineRecord: EngineRecord | null = null;
 let generationQueue: Promise<void> = Promise.resolve();
 let activeGeneration: ActiveGeneration | null = null;
@@ -137,9 +124,6 @@ const throwIfAborted = (signal?: AbortSignal) => {
   if (signal?.aborted) throw abortError();
 };
 
-const errorMessage = (error: unknown): string =>
-  error instanceof Error ? error.message : String(error);
-
 const errorFingerprint = (value: string): string => {
   let result = 2166136261;
   for (let index = 0; index < value.length; index += 1) {
@@ -158,40 +142,6 @@ const readUsedJSHeapMB = (): number | undefined => {
   ).memory;
   if (!Number.isFinite(memory?.usedJSHeapSize)) return undefined;
   return Math.round(((memory?.usedJSHeapSize || 0) / (1024 * 1024)) * 100) / 100;
-};
-
-const unwrapAttemptError = (error: unknown): unknown =>
-  error instanceof WebLLMAttemptError ? error.cause : error;
-
-const isAbortError = (error: unknown, signal?: AbortSignal): boolean => {
-  const unwrapped = unwrapAttemptError(error) as { name?: string; message?: string };
-  return (
-    Boolean(signal?.aborted) ||
-    unwrapped?.name === 'AbortError' ||
-    (unwrapped?.message || '').includes('Message error should not be 0')
-  );
-};
-
-const recoveryReason = (error: unknown): WebLLMRecoveryReason | null => {
-  const unwrapped = unwrapAttemptError(error);
-  if (unwrapped instanceof WebLLMStallError) return 'stalled';
-  const message = errorMessage(unwrapped);
-  if (/device\s*(?:was\s*)?lost|gpudevice.*lost/i.test(message)) return 'device-lost';
-  if (
-    /out of memory|memory allocation|failed to allocate|allocation failed|exceeds.*(?:buffer|memory)/i.test(
-      message,
-    )
-  ) {
-    return 'out-of-memory';
-  }
-  if (
-    /worker|message error should not be 0|message channel|postmessage|terminated|backend.*unavailable/i.test(
-      message,
-    )
-  ) {
-    return 'worker-failure';
-  }
-  return null;
 };
 
 const safeCallback = <T,>(callback: ((value: T) => void) | null | undefined, value: T) => {

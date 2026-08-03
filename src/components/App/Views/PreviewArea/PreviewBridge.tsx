@@ -185,6 +185,10 @@ export default function PreviewBridge({
             ? externalPreviewWindow
             : null;
 
+      // A surface is one-time per session. Replayed connect messages must not
+      // replace the already-bound MessagePort with an attacker-controlled port.
+      if (surface && confirmedSurfacesRef.current.has(surface)) return;
+
       if (
         surface &&
         isValidPreviewHandshake(event as PreviewHandshakeEvent, {

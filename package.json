@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "engines": {
-    "node": ">=24 <25",
+    "node": ">=24 <26",
     "npm": ">=10"
   },
   "scripts": {
@@ -34,13 +34,14 @@
     "test:visual": "npx playwright test --project=chromium tests/visual/regression.spec.ts && npx playwright test tests/visual/accessibility.spec.ts",
     "test:visual:chromium": "npx playwright test --project=chromium tests/visual/regression.spec.ts",
     "test:visual:regression": "npm run test:visual:chromium",
-    "setup:almostnode": "node scripts/setup-almostnode.mjs",
-    "setup:wasm": "mkdir -p public/wasm public/esbuild && cp node_modules/onnxruntime-web/dist/* public/wasm/ && cp node_modules/esbuild-wasm/esbuild.wasm public/esbuild/esbuild.wasm",
+    "setup:almostnode": "tsx scripts/runtime-assets.ts --almostnode",
+    "setup:wasm": "tsx scripts/runtime-assets.ts --wasm",
     "setup:playwright": "if [ -z \"$VERCEL\" ]; then playwright install chromium webkit; fi",
     "postinstall": "\"$npm_execpath\" run setup:almostnode && \"$npm_execpath\" run setup:wasm && \"$npm_execpath\" run setup:playwright",
     "predev": "\"$npm_execpath\" run setup:almostnode && \"$npm_execpath\" run setup:wasm",
     "prebuild": "\"$npm_execpath\" run setup:almostnode && \"$npm_execpath\" run setup:wasm",
     "perf": "tsx scripts/check-performance-budget.ts",
+    "check:runtime-assets": "tsx scripts/runtime-assets.ts --check",
     "test:performance": "vitest run src/components/App/Views/EditorArea/EditorPerformance.test.ts",
     "check:architecture": "tsx scripts/check-architecture.ts",
     "check:preview": "tsx scripts/check-preview-surfaces.ts",
@@ -48,7 +49,7 @@
     "test:ai-soak": "vitest run src/components/AI/WebLLMAPI.test.ts -t \"sustains a mixed completion and agent lifecycle\"",
     "analyze:ai": "tsx scripts/analyze-ai-support-report.ts",
     "audit": "npm audit --omit=dev --audit-level=critical",
-    "verify": "npm run format:check && npm run lint && npm run stylelint && npm run deadcode && npm run check:architecture && npm run typecheck && npm run test:promptfoo && npm run test:coverage && npm run build && npm run perf && npm run test:performance && npm run test:e2e && npm run test:e2e:webkit && npm run test:e2e:isolated && npm run test:e2e:isolated:webkit && npm run test:visual && npm run audit",
+    "verify": "npm run format:check && npm run lint && npm run stylelint && npm run deadcode && npm run check:architecture && npm run typecheck && npm run test:promptfoo && npm run test:coverage && npm run build && npm run perf && npm run check:runtime-assets && npm run test:performance && npm run test:e2e && npm run test:e2e:webkit && npm run test:e2e:isolated && npm run test:e2e:isolated:webkit && npm run check:preview && npm run test:visual && npm run audit",
     "verify:ai": "bash scripts/verify-ai.sh",
     "prepare": "husky"
   },
