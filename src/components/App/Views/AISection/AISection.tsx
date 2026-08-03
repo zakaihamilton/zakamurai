@@ -6,9 +6,6 @@ import {
   getActiveAgentSession,
 } from '@/components/App/Panes/Prompt/AgentSessions';
 import { PromptUiState } from '@/components/App/Panes/Prompt/PromptState';
-import { TabState } from '@/components/App/Panes/TabBar';
-import { EditorState } from '@/components/App/Views/EditorArea';
-import { LogState } from '@/components/App/Views/LogArea';
 import { requireStore } from '@/components/App/types';
 import { ChangeSetState } from '@/components/Workspace';
 import type { AgentReasoningEntry, AgentRunUsage, Tab } from '@/components/state/domain-types';
@@ -19,9 +16,7 @@ import ReactMarkdown from 'react-markdown';
 import styles from './AISection.module.css';
 
 const titleBySection = {
-  context: 'AI Context',
   changes: 'Change Set',
-  transcript: 'Transcript',
   reasoning: 'Progress & Reasoning',
 } as const;
 
@@ -29,6 +24,7 @@ type AISection = keyof typeof titleBySection;
 
 type ReasoningEntry = AgentReasoningEntry;
 type ReasoningGroup = { step: number | null; entries: ReasoningEntry[] };
+type KeyedReasoningEntry = ReasoningEntry & { renderKey: string };
 
 const STEP_PREFIX = /^\*\*Step (\d+)(?: result)?:\*\*\s*/;
 
@@ -109,30 +105,33 @@ export const groupReasoningEntries = (entries: ReasoningEntry[]): ReasoningGroup
   return groups;
 };
 
+export const keyReasoningEntries = (entries: ReasoningEntry[]): KeyedReasoningEntry[] => {
+  const occurrences = new Map<string, number>();
+  return entries.map((entry) => {
+    const baseKey = `${entry.timestamp}-${entry.text}`;
+    const occurrence = occurrences.get(baseKey) || 0;
+    occurrences.set(baseKey, occurrence + 1);
+    return { ...entry, renderKey: `${baseKey}-${occurrence}` };
+  });
+};
+
 function getSection(tab: Tab): AISection {
   const section = tab.id.replace('ai-section:', '');
-  return section in titleBySection ? (section as AISection) : 'context';
+  return section in titleBySection ? (section as AISection) : 'reasoning';
 }
 
 export default function AISectionView({ tab }: { tab: Tab }) {
   const section = getSection(tab);
-  const promptUiState = requireStore(PromptUiState.useState(['promptScope', 'selectedModel']));
-  const tabState = requireStore(TabState.useState(['activeTabId', 'openTabs']));
-  const editorState = requireStore(EditorState.useState(['selectedLines']));
-  const logState = requireStore(LogState.useState(['isAIProcessing', 'isSystemProcessing']));
   const agentSessionState = requireStore(
     AgentSessionState.useState(['sessions', 'activeSessionId']),
   );
   const changeSetState = requireStore(ChangeSetState.useState(['activeId', 'items']));
   const webLLMState = requireStore(WebLLMState.useState(['engines']));
+  const promptUiState = requireStore(PromptUiState.useState(['selectedModel']));
   const [copied, setCopied] = useState(false);
   const contentRef = useRef<HTMLDivElement | null>(null);
   const activeSession = getActiveAgentSession(agentSessionState);
   const [showStepIO, setShowStepIO] = useState(activeSession?.showStepIO === true);
-  const scope = promptUiState.promptScope || 'project';
-  const activeTab = tabState.openTabs.find((openTab) => openTab.id === tabState.activeTabId);
-  const selectedLines =
-    (tabState.activeTabId && editorState.selectedLines?.[tabState.activeTabId]) || [];
   const changeSet = (changeSetState.items || []).find(
     (item) => item.id === changeSetState.activeId,
   );
@@ -156,6 +155,11 @@ export default function AISectionView({ tab }: { tab: Tab }) {
     ...(modelProgress ? [{ text: modelProgress, timestamp: '' }] : []),
     ...displayedReasoningEntries,
   ];
+  const transcriptText = activeSession?.messages?.length
+    ? activeSession.messages
+        .map((message) => `[${message.timestamp || 'now'}] ${message.role}: ${message.text}`)
+        .join('\n\n')
+    : '';
   const reasoningGroups = groupReasoningEntries(reasoningContent);
   const runUsageSummary = getCompletedRunUsageSummary(
     activeSession?.status,
@@ -176,47 +180,27 @@ export default function AISectionView({ tab }: { tab: Tab }) {
   };
 
   const content =
-    section === 'context'
-      ? [
-          `Scope: ${scope === 'project' ? 'Project' : 'File'}`,
-          `Target: ${scope === 'project' ? 'Whole project' : activeTab?.label || 'No file selected'}`,
-          scope === 'file'
-            ? `Selection: ${selectedLines.length ? `Lines ${selectedLines.join(', ')}` : 'None'}`
-            : '',
-          `State: ${logState.isAIProcessing ? 'AI working' : logState.isSystemProcessing ? 'Compiling' : 'Ready'}`,
-        ]
-          .filter(Boolean)
-          .join('\n')
-      : section === 'changes'
-        ? changeSet
-          ? [
-              `Status: ${changeSet.status}`,
-              `Request: ${changeSet.request}`,
-              '',
-              'Files:',
-              ...changeSet.files.map(
-                (file) => `- ${file.path} (${file.status || 'pending review'})`,
-              ),
-            ].join('\n')
-          : 'No active change set.'
-        : section === 'transcript'
-          ? activeSession?.messages.length
-            ? activeSession.messages
-                .map(
-                  (message) => `[${message.timestamp || 'now'}] ${message.role}: ${message.text}`,
-                )
-                .join('\n\n')
-            : 'Start a conversation with this agent session.'
-          : reasoningContent.length
-            ? [
-                ...reasoningContent.map(
-                  ({ text, timestamp }) => `${timestamp ? `[${timestamp}] ` : ''}${text}`,
-                ),
-                runUsageSummary,
-              ]
-                .filter(Boolean)
-                .join('\n\n')
-            : runUsageSummary || 'No progress or reasoning to show yet.';
+    section === 'changes'
+      ? changeSet
+        ? [
+            `Status: ${changeSet.status}`,
+            `Request: ${changeSet.request}`,
+            '',
+            'Files:',
+            ...changeSet.files.map((file) => `- ${file.path} (${file.status || 'pending review'})`),
+          ].join('\n')
+        : 'No active change set.'
+      : reasoningContent.length || transcriptText
+        ? [
+            ...reasoningContent.map(
+              ({ text, timestamp }) => `${timestamp ? `[${timestamp}] ` : ''}${text}`,
+            ),
+            runUsageSummary,
+            transcriptText ? `--- Transcript ---\n${transcriptText}` : '',
+          ]
+            .filter(Boolean)
+            .join('\n\n')
+        : runUsageSummary || 'No progress or reasoning to show yet.';
 
   useEffect(() => {
     if (section !== 'reasoning' || !content || !contentRef.current) return;
@@ -267,16 +251,13 @@ export default function AISectionView({ tab }: { tab: Tab }) {
       </header>
       {section === 'reasoning' ? (
         <div ref={contentRef} className={`${styles.content} ${styles.markdownContent}`}>
-          {(reasoningGroups.length
-            ? reasoningGroups
-            : [{ step: null, entries: [{ text: content, timestamp: '' }] }]
-          ).map((group, groupIndex) => (
+          {reasoningGroups.map((group, groupIndex) => (
             <section className={styles.reasoningGroup} key={`${group.step}-${groupIndex}`}>
               {group.step !== null ? (
                 <h2 className={styles.stepHeading}>Step {group.step}</h2>
               ) : null}
-              {group.entries.map(({ text, timestamp }) => (
-                <article className={styles.reasoningEntry} key={`${timestamp}-${text}`}>
+              {keyReasoningEntries(group.entries).map(({ text, timestamp, renderKey }) => (
+                <article className={styles.reasoningEntry} key={renderKey}>
                   {timestamp ? <time className={styles.timestamp}>{timestamp}</time> : null}
                   <div className={styles.reasoningText}>
                     <ReactMarkdown
@@ -319,6 +300,37 @@ export default function AISectionView({ tab }: { tab: Tab }) {
               >
                 {runUsageSummary}
               </ReactMarkdown>
+            </section>
+          ) : null}
+          {!reasoningGroups.length && !runUsageSummary && !transcriptText ? (
+            <section className={styles.reasoningGroup}>
+              <article className={styles.reasoningEntry}>
+                <div className={styles.reasoningText}>{content}</div>
+              </article>
+            </section>
+          ) : null}
+          {activeSession?.messages?.length ? (
+            <section className={styles.transcriptSection} aria-label="Session transcript">
+              <h2 className={styles.stepHeading}>Transcript</h2>
+              {activeSession.messages.map((message) => {
+                const label =
+                  message.role === 'user'
+                    ? 'You'
+                    : message.role === 'ai'
+                      ? message.agentRole
+                        ? `AI · ${message.agentRole}`
+                        : 'AI'
+                      : 'System';
+                return (
+                  <article className={styles.transcriptEntry} key={message.id}>
+                    <div className={styles.transcriptMeta}>
+                      <span>{label}</span>
+                      {message.timestamp ? <time>{message.timestamp}</time> : null}
+                    </div>
+                    <div className={styles.transcriptText}>{message.text}</div>
+                  </article>
+                );
+              })}
             </section>
           ) : null}
         </div>

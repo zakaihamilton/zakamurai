@@ -88,10 +88,6 @@ export type SessionDialogProps = {
   promptUiState: StateStore<PromptUiStateShape>;
 };
 
-export type SessionTranscriptProps = {
-  messages?: AgentSessionMessage[];
-};
-
 export type SessionTreeDialogProps = {
   isOpen: boolean;
   sessions?: Record<string, AgentSession>;
@@ -143,23 +139,15 @@ export type PromptComposerProps = {
   onOpenModelManager?: () => void;
 };
 
-export type PromptContextPanelProps = {
-  scope?: string;
-  onScopeChange?: (scope: string) => void;
-  activeFileName?: string;
-  activeFilePath?: string;
-  selectedLines: number[];
-  selectedLineText: string;
-  runState: string;
-  onOpenInTab?: () => void;
-};
-
 export type PromptHeaderProps = {
   isAIProcessing: boolean;
   isSystemProcessing: boolean;
   mode?: string;
   onModeChange?: (mode: string) => void;
   copyContent?: string;
+  latestManagerTrace?: ManagerTrace | null;
+  traceFiles?: FileMap;
+  onReplayRequest?: (request: string) => void;
 };
 
 export type SessionDialogState =
@@ -201,14 +189,7 @@ export type PromptContentProps = {
   runningSessionId: string | null;
   promptUiState: StateStore<PromptUiStateShape>;
   modelOptions: ModelSelectOption[];
-  promptScope: string;
-  onScopeChange: (scope: string) => void;
-  onOpenSectionInTab: (section: 'context' | 'changes' | 'transcript' | 'reasoning') => void;
-  activeFileName?: string;
-  activeFilePath?: string;
-  selectedLines: number[];
-  selectedLineText: string;
-  runState: string;
+  onOpenSectionInTab: (section: 'changes' | 'reasoning') => void;
   isModelManagerOpen: boolean;
   selectedModelInfo: { id: string; name?: string };
   cachedModelIds: string[];

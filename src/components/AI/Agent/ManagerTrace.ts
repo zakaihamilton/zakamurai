@@ -1,4 +1,6 @@
 import type {
+  AgentAction,
+  AgentActionName,
   AgentChange,
   ManagerEvent,
   ManagerPlan,
@@ -25,7 +27,9 @@ export type ManagerTraceEvent = {
   phase: ManagerTracePhase;
   turn: number;
   tool?: ManagerToolName;
+  action?: AgentActionName | AgentAction;
   task?: 'answer' | 'generate-changes' | 'repair-changes';
+  provenance?: 'model' | 'recovery';
   plan?: ManagerPlan;
   status?: 'started' | 'completed' | 'failed';
   message?: string;
@@ -96,6 +100,18 @@ const redact = (value: string): string =>
 
 export const sanitizeManagerTraceValue = (value: unknown): string => redact(clip(value));
 
+const sanitizeManagerTraceAction = (
+  action: AgentActionName | AgentAction | undefined,
+): AgentActionName | AgentAction | undefined => {
+  if (!action || typeof action === 'string') return action;
+  return Object.fromEntries(
+    Object.entries(action).map(([key, value]) => [
+      key,
+      typeof value === 'string' ? sanitizeManagerTraceValue(value) : value,
+    ]),
+  ) as AgentAction;
+};
+
 export class ManagerTraceRecorder {
   private value: ManagerTrace;
   private readonly clock: () => number;
@@ -115,6 +131,7 @@ export class ManagerTraceRecorder {
 
   record(event: Omit<ManagerTraceEvent, 'sequence' | 'elapsedMs'>) {
     const now = this.clock();
+    const action = sanitizeManagerTraceAction(event.action);
     this.value = {
       ...this.value,
       plan: this.value.plan || undefined,
@@ -122,6 +139,7 @@ export class ManagerTraceRecorder {
         ...this.value.events,
         {
           ...event,
+          ...(action ? { action } : {}),
           sequence: this.value.events.length + 1,
           elapsedMs: Math.max(0, now - this.value.startedAt),
           ...(event.message ? { message: sanitizeManagerTraceValue(event.message) } : {}),
@@ -139,7 +157,9 @@ export class ManagerTraceRecorder {
       phase,
       turn: event.turn,
       tool: event.tool,
+      action: event.action,
       task: event.task,
+      provenance: event.provenance,
       status: event.error ? 'failed' : phase === 'finished' ? 'completed' : undefined,
       message: event.message,
       input: event.input,

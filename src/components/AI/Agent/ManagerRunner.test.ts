@@ -140,6 +140,82 @@ describe('runManager', () => {
     expect(askWebLLM).toHaveBeenCalledOnce();
   });
 
+  it('reads bounded starter-file context for project edits without an active file', async () => {
+    const modelClient = vi.fn().mockResolvedValue(
+      JSON.stringify({
+        kind: 'changes',
+        summary: 'Implemented the todo app.',
+        changes: [
+          {
+            path: 'src/App.jsx',
+            content: 'export default function App() { return <main>Todo app</main>; }',
+          },
+        ],
+      }),
+    );
+    const result = await runManager({
+      request: 'create a todo app',
+      files: {
+        'package.json': '{"dependencies":{"react":"latest"}}',
+        'src/App.jsx': 'export default function App() { return null; }',
+        'src/main.jsx': "import App from './App.jsx';",
+      },
+      model: 'test-model',
+      modelClient,
+    });
+
+    expect(result.files['src/App.jsx']).toContain('Todo app');
+    expect(modelClient.mock.calls[0][0].messages[1].content).toContain(
+      'export default function App() { return null; }',
+    );
+    expect(modelClient.mock.calls[0][0].messages[1].content).toContain(
+      "import App from './App.jsx';",
+    );
+    expect(modelClient.mock.calls[0][0].messages[1].content).toContain('"react":"latest"');
+  });
+
+  it('repairs a placeholder-only implementation before staging changes', async () => {
+    const modelClient = vi
+      .fn()
+      .mockResolvedValueOnce(
+        JSON.stringify({
+          kind: 'changes',
+          summary: 'Implemented the todo app.',
+          changes: [
+            {
+              path: 'src/App.jsx',
+              content: '// Your implementation of the App.jsx file goes here.',
+            },
+          ],
+        }),
+      )
+      .mockResolvedValueOnce(
+        JSON.stringify({
+          kind: 'changes',
+          summary: 'Implemented the todo app.',
+          changes: [
+            {
+              path: 'src/App.jsx',
+              content: 'export default function App() { return <main>Todo app</main>; }',
+            },
+          ],
+        }),
+      );
+
+    const result = await runManager({
+      request: 'create a todo app',
+      files: { 'src/App.jsx': 'export default function App() { return null; }' },
+      activeFile: 'src/App.jsx',
+      model: 'test-model',
+      modelClient,
+    });
+
+    expect(result.files['src/App.jsx']).toContain('Todo app');
+    expect(result.files['src/App.jsx']).not.toContain('Your implementation');
+    expect(modelClient).toHaveBeenCalledTimes(2);
+    expect(modelClient.mock.calls[1][0].messages.at(-2).content).toContain('only a placeholder');
+  });
+
   it('does not treat an answer-only edit response as a successful write', async () => {
     const modelClient = vi
       .fn()
@@ -389,6 +465,71 @@ describe('runManager', () => {
     expect(validate).toHaveBeenCalledTimes(2);
   });
 
+  it('retries an empty repair response after validation failure', async () => {
+    const modelClient = vi
+      .fn()
+      .mockResolvedValueOnce(
+        JSON.stringify({ kind: 'changes', changes: [{ path: 'src/App.jsx', content: 'bad' }] }),
+      )
+      .mockResolvedValueOnce(JSON.stringify({ kind: 'answer', summary: 'I fixed it.' }))
+      .mockResolvedValueOnce(
+        JSON.stringify({
+          kind: 'changes',
+          summary: 'Fixed after retry',
+          changes: [{ path: 'src/App.jsx', content: 'good' }],
+        }),
+      );
+    const validate = vi
+      .fn()
+      .mockResolvedValueOnce({ status: 'failed', diagnostics: 'syntax error' })
+      .mockResolvedValueOnce({ status: 'passed' });
+
+    const result = await runManager({
+      request: 'fix the app',
+      files: { 'src/App.jsx': 'old' },
+      model: 'test-model',
+      modelClient,
+      validate,
+    });
+
+    expect(result.files['src/App.jsx']).toBe('good');
+    expect(result.summary).toBe('Fixed after retry');
+    expect(modelClient).toHaveBeenCalledTimes(3);
+    expect(modelClient.mock.calls[2][0].messages.at(-2).content).toContain(
+      'did not return any changes',
+    );
+  });
+
+  it('retries an empty repair response after deterministic change rejection', async () => {
+    const modelClient = vi
+      .fn()
+      .mockResolvedValueOnce(
+        JSON.stringify({
+          kind: 'changes',
+          changes: [{ path: '../unsafe.js', content: 'bad' }],
+        }),
+      )
+      .mockResolvedValueOnce(JSON.stringify({ kind: 'changes', changes: [] }))
+      .mockResolvedValueOnce(
+        JSON.stringify({
+          kind: 'changes',
+          summary: 'Repaired unsafe path',
+          changes: [{ path: 'src/App.jsx', content: 'good' }],
+        }),
+      );
+
+    const result = await runManager({
+      request: 'fix the app',
+      files: { 'src/App.jsx': 'old' },
+      model: 'test-model',
+      modelClient,
+    });
+
+    expect(result.files['src/App.jsx']).toBe('good');
+    expect(result.summary).toBe('Repaired unsafe path');
+    expect(modelClient).toHaveBeenCalledTimes(3);
+  });
+
   it('reports missing checks without invoking the model', async () => {
     const { askWebLLM } = (await import('../WebLLMAPI')) as unknown as {
       askWebLLM: ReturnType<typeof vi.fn>;
@@ -459,5 +600,98 @@ describe('runManager', () => {
       }),
     ).rejects.toThrow('still broken');
     expect(validate).toHaveBeenCalledTimes(3);
+  });
+
+  it('runs the main-branch action protocol through write, validate, and finish', async () => {
+    const modelClient = vi
+      .fn()
+      .mockResolvedValueOnce(
+        JSON.stringify({
+          action: 'write_file',
+          path: 'src/App.jsx',
+          content: 'export default function App() { return <h1>New</h1>; }',
+        }),
+      )
+      .mockResolvedValueOnce(JSON.stringify({ action: 'validate' }))
+      .mockResolvedValueOnce(JSON.stringify({ action: 'finish', summary: 'Updated the title.' }));
+    const validate = vi.fn().mockResolvedValue({ status: 'passed', check: 'build' });
+    const events: Array<{ action?: unknown; provenance?: string }> = [];
+
+    const result = await runManager({
+      request: 'change the title',
+      files: { 'src/App.jsx': 'export default function App() { return <h1>Old</h1>; }' },
+      activeFile: 'src/App.jsx',
+      model: 'test-model',
+      modelClient,
+      validate,
+      onEvent: (event) => events.push(event),
+    });
+
+    expect(result.files['src/App.jsx']).toContain('New');
+    expect(validate).toHaveBeenCalledOnce();
+    expect(modelClient).toHaveBeenCalledTimes(3);
+    expect(
+      events.some(
+        (event) =>
+          event.action === 'write_file' ||
+          (event.action &&
+            typeof event.action === 'object' &&
+            'action' in event.action &&
+            event.action.action === 'write_file'),
+      ),
+    ).toBe(true);
+    expect(
+      result.trace.events.some(
+        (event) =>
+          event.action === 'validate' ||
+          (event.action &&
+            typeof event.action === 'object' &&
+            'action' in event.action &&
+            event.action.action === 'validate'),
+      ),
+    ).toBe(true);
+  });
+
+  it('uses bounded todo recovery when the action model repeats unchanged reads', async () => {
+    const modelClient = vi
+      .fn()
+      .mockResolvedValue(JSON.stringify({ action: 'read_file', path: 'src/App.jsx' }));
+
+    const result = await runManager({
+      request: 'create a todo app',
+      files: { 'src/App.jsx': 'export default function App() { return null; }' },
+      activeFile: 'src/App.jsx',
+      model: 'test-model',
+      modelClient,
+    });
+
+    expect(result.files['src/App.module.css']).toContain('.app');
+    expect(result.files['src/App.jsx']).toContain('useState');
+    expect(result.files['src/App.jsx']).not.toContain('Your implementation');
+    expect(result.trace.events.some((event) => event.provenance === 'recovery')).toBe(true);
+  });
+
+  it('supports action-protocol deletion with validation before finishing', async () => {
+    const modelClient = vi
+      .fn()
+      .mockResolvedValueOnce(JSON.stringify({ action: 'delete_file', path: 'src/old.js' }))
+      .mockResolvedValueOnce(JSON.stringify({ action: 'validate' }))
+      .mockResolvedValueOnce(
+        JSON.stringify({ action: 'finish', summary: 'Removed the old file.' }),
+      );
+    const validate = vi.fn().mockResolvedValue({ status: 'passed' });
+
+    const result = await runManager({
+      request: 'delete src/old.js',
+      files: { 'src/old.js': 'export const old = true;' },
+      model: 'test-model',
+      modelClient,
+      validate,
+    });
+
+    expect(result.files['src/old.js']).toBeUndefined();
+    expect(result.changes).toEqual([
+      { path: 'src/old.js', before: 'export const old = true;', after: undefined },
+    ]);
   });
 });

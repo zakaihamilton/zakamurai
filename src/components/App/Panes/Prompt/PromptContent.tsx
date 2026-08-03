@@ -2,13 +2,11 @@ import type { CssCustomProperties } from '@/components/App/types';
 import { formatReasoningEvents } from './AgentSessions';
 import ChangeSetPanel from './ChangeSet';
 import PromptComposer from './Composer';
-import PromptContextPanel from './Context';
 import PromptHeader from './Header';
-import ManagerTraceInspector from './ManagerTraceInspector';
 import ModelDownloader from './ModelManager';
 import styles from './PromptContent.module.css';
 import ReasoningPanel from './Reasoning';
-import { SessionDialog, SessionManager, SessionTranscript, SessionTreeDialog } from './Session';
+import { SessionDialog, SessionManager, SessionTreeDialog } from './Session';
 import type { PromptContentProps } from './prompt-types';
 
 export default function PromptContent({
@@ -32,14 +30,7 @@ export default function PromptContent({
   runningSessionId,
   promptUiState,
   modelOptions,
-  promptScope,
-  onScopeChange,
   onOpenSectionInTab,
-  activeFileName,
-  activeFilePath,
-  selectedLines,
-  selectedLineText,
-  runState,
   isModelManagerOpen,
   selectedModelInfo,
   cachedModelIds,
@@ -105,6 +96,9 @@ export default function PromptContent({
           isAIProcessing={isAIProcessing}
           isSystemProcessing={isSystemProcessing}
           copyContent={agentPaneContent}
+          latestManagerTrace={latestManagerTrace}
+          traceFiles={traceFiles}
+          onReplayRequest={onReplayRequest}
         />
         <SessionManager activeSession={activeSession} onOpenTree={onOpenTree} isOpen={isOpen} />
         <SessionTreeDialog
@@ -125,21 +119,7 @@ export default function PromptContent({
           agentSessionState={agentSessionState}
           promptUiState={promptUiState}
         />
-        <PromptContextPanel
-          scope={promptScope}
-          onScopeChange={onScopeChange}
-          activeFileName={activeFileName}
-          activeFilePath={activeFilePath}
-          selectedLines={selectedLines}
-          selectedLineText={selectedLineText}
-          runState={runState}
-          onOpenInTab={() => onOpenSectionInTab('context')}
-        />
         <ChangeSetPanel onOpenInTab={() => onOpenSectionInTab('changes')} />
-        <SessionTranscript
-          messages={activeSession?.messages || []}
-          onOpenInTab={() => onOpenSectionInTab('transcript')}
-        />
         <ModelDownloader
           isOpen={isModelManagerOpen}
           selectedModelId={selectedModelInfo.id}
@@ -163,11 +143,6 @@ export default function PromptContent({
           onToggleStepIO={(show) =>
             activeSession && patchSession(activeSession.id, { showStepIO: show })
           }
-        />
-        <ManagerTraceInspector
-          trace={latestManagerTrace || null}
-          files={traceFiles}
-          onReplayRequest={onReplayRequest}
         />
         <PromptComposer
           value={value}

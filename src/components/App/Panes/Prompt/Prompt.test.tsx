@@ -4,10 +4,11 @@ import { SidebarState } from '@/components/App/Panes/Sidebar';
 import { TabState } from '@/components/App/Panes/TabBar';
 import { EditorState } from '@/components/App/Views/EditorArea';
 import { LogState } from '@/components/App/Views/LogArea';
-import type { AgentSessionStateShape } from '@/components/state/domain-types';
+import type { AgentSessionStateShape, TreeNode } from '@/components/state/domain-types';
 import { expectAgentSession } from '@/test-utils/agentSessionMocks';
 import {
   makeAppState,
+  makeEditorState,
   makeLogState,
   makePromptState,
   makePromptUiState,
@@ -438,7 +439,7 @@ describe('Prompt', () => {
     expect(screen.getByPlaceholderText('Tell the AI Manager what to do...')).toBeDefined();
   });
 
-  it('shows compiling state and active file metadata', () => {
+  it('shows compiling state without a context pane', () => {
     vi.mocked(LogState.useState).mockReturnValue(
       makeLogState({ isAIProcessing: false, isSystemProcessing: true }),
     );
@@ -455,8 +456,57 @@ describe('Prompt', () => {
     );
     render(<Prompt />);
     expect(screen.getAllByText('Compiling').length).toBeGreaterThan(0);
-    expect(screen.getByText('App.js')).toBeDefined();
-    expect(screen.getByText('Lines 2, 4')).toBeDefined();
+    expect(screen.queryByText('Context')).toBeNull();
+    expect(screen.queryByText('App.js')).toBeNull();
+    expect(screen.queryByText('Lines 2, 4')).toBeNull();
+  });
+
+  it('opens /file selection and arms the chosen file for one prompt', async () => {
+    const promptUi = makePromptUiState({ val: '' });
+    const editorStore = makeEditorState({
+      fileContents: {
+        'src/App.tsx': 'export default function App() {}',
+        'src/main.tsx': 'import App from "./App";',
+      },
+    });
+    const tabs = makeTabState();
+    vi.mocked(SidebarState.useState).mockReturnValue(
+      makeSidebarState({
+        folderTree: [
+          {
+            name: 'src',
+            type: 'folder',
+            children: [{ name: 'raw.ts', type: 'file' }],
+          },
+        ] as unknown as TreeNode[],
+      }),
+    );
+    vi.mocked(PromptUiState.useState).mockReturnValue(promptUi);
+    vi.mocked(EditorState.useState).mockReturnValue(editorStore);
+    vi.mocked(TabState.useState).mockReturnValue(tabs);
+
+    render(<Prompt />);
+    const input = screen.getByPlaceholderText('Tell the AI Manager what to do...');
+
+    await act(async () => {
+      fireEvent.change(input, { target: { value: '/file Update the component' } });
+    });
+
+    expect(screen.getByRole('heading', { name: 'Select a file for this prompt' })).toBeDefined();
+    expect(screen.getByRole('button', { name: 'src/raw.ts' })).toBeDefined();
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'src/App.tsx' }));
+    });
+
+    expect(tabs.activeTabId).toBe('src/App.tsx');
+    expect(tabs.openTabs).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: 'src/App.tsx', type: 'file', label: 'App.tsx' }),
+      ]),
+    );
+    expect(promptUi.val).toBe('Update the component');
+    expect(promptUi.promptScope).toBe('file');
+    expect(screen.queryByRole('heading', { name: 'Select a file for this prompt' })).toBeNull();
   });
 
   it('sends welcome requests once an active session is available', async () => {

@@ -203,10 +203,15 @@ function TooltipInner({
     if (!isVisible) return;
 
     updatePosition();
+    // The first layout pass can measure a portal tooltip before its content has
+    // settled. Recalculate once on the next frame so edge tooltips are clamped
+    // using their final dimensions.
+    const frame = window.requestAnimationFrame(updatePosition);
     window.addEventListener('resize', updatePosition);
     window.addEventListener('scroll', updatePosition, true);
 
     return () => {
+      window.cancelAnimationFrame(frame);
       window.removeEventListener('resize', updatePosition);
       window.removeEventListener('scroll', updatePosition, true);
     };

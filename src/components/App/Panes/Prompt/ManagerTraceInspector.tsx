@@ -1,5 +1,9 @@
 import { type ManagerTrace, createManagerReplayFixtureFromTrace } from '@/components/AI/Agent';
 import type { FileMap } from '@/components/AI/types';
+import Dialog from '@/components/ui/Dialog';
+import { Icons } from '@/components/ui/Icons';
+import Tooltip from '@/components/ui/Tooltip';
+import { useState } from 'react';
 import styles from './ManagerTraceInspector.module.css';
 
 type ManagerTraceInspectorProps = {
@@ -11,7 +15,10 @@ type ManagerTraceInspectorProps = {
 const formatEventDetail = (trace: ManagerTrace, sequence: number): string => {
   const event = trace.events.find((item) => item.sequence === sequence);
   if (!event) return '';
-  return [event.tool, event.task, event.message, event.errorCode].filter(Boolean).join(' · ');
+  const provenance = event.provenance ? `source: ${event.provenance}` : undefined;
+  return [event.tool, event.task, provenance, event.message, event.errorCode]
+    .filter(Boolean)
+    .join(' · ');
 };
 
 export default function ManagerTraceInspector({
@@ -19,6 +26,8 @@ export default function ManagerTraceInspector({
   files = {},
   onReplayRequest,
 }: ManagerTraceInspectorProps) {
+  const [isOpen, setIsOpen] = useState(false);
+
   if (process.env.NODE_ENV === 'production' || !trace) return null;
 
   const exportTrace = () => {
@@ -49,46 +58,79 @@ export default function ManagerTraceInspector({
     copy(JSON.stringify(createManagerReplayFixtureFromTrace(trace, files), null, 2));
 
   return (
-    <details className={styles.panel} data-testid="manager-trace-inspector">
-      <summary className={styles.summary}>Manager debug trace</summary>
-      <div className={styles.toolbar}>
-        <p className={styles.meta}>
-          {trace.outcome} · {trace.events.length} events · {trace.durationMs ?? 0} ms
-        </p>
-        <button type="button" className={styles.button} onClick={exportTrace}>
-          Export JSON
+    <div className={styles.container} data-testid="manager-trace-inspector">
+      <Tooltip content="Manager debug trace">
+        <button
+          type="button"
+          className={styles.trigger}
+          onClick={() => setIsOpen(true)}
+          aria-haspopup="dialog"
+          aria-label={`Open manager debug trace (${trace.outcome})`}
+        >
+          <Icons.Terminal size={15} />
+          <span
+            className={`${styles.status} ${styles[`status${trace.outcome}`]}`}
+            aria-hidden="true"
+          />
         </button>
-        <button type="button" className={styles.button} onClick={copyTrace}>
-          Copy trace
-        </button>
-        <button type="button" className={styles.button} onClick={copyReplayFixture}>
-          Copy replay fixture
-        </button>
-        {onReplayRequest && (
-          <button
-            type="button"
-            className={styles.button}
-            onClick={() => onReplayRequest(trace.request)}
-          >
-            Replay request
-          </button>
-        )}
-      </div>
-      <ul className={styles.events}>
-        {trace.events.map((event) => (
-          <li
-            key={event.sequence}
-            className={`${styles.event} ${event.status === 'failed' ? styles.eventError : ''}`}
-          >
-            <span className={styles.eventLabel}>
-              #{event.sequence} {event.phase} · {event.elapsedMs} ms
-            </span>
-            <span className={styles.eventDetail}>{formatEventDetail(trace, event.sequence)}</span>
-            {event.input && <span className={styles.eventDetail}>input: {event.input}</span>}
-            {event.output && <span className={styles.eventDetail}>output: {event.output}</span>}
-          </li>
-        ))}
-      </ul>
-    </details>
+      </Tooltip>
+      <Dialog
+        isOpen={isOpen}
+        title="Manager debug trace"
+        onConfirm={() => setIsOpen(false)}
+        onCancel={() => setIsOpen(false)}
+        footer={null}
+        className={styles.dialog}
+      >
+        <div className={styles.content}>
+          <div className={styles.toolbar}>
+            <p className={styles.meta}>
+              {trace.outcome} · {trace.events.length} events · {trace.durationMs ?? 0} ms
+            </p>
+            <div className={styles.actions}>
+              <button type="button" className={styles.button} onClick={exportTrace}>
+                Export JSON
+              </button>
+              <button type="button" className={styles.button} onClick={copyTrace}>
+                Copy trace
+              </button>
+              <button type="button" className={styles.button} onClick={copyReplayFixture}>
+                Copy replay fixture
+              </button>
+              {onReplayRequest && (
+                <button
+                  type="button"
+                  className={styles.button}
+                  onClick={() => {
+                    setIsOpen(false);
+                    onReplayRequest(trace.request);
+                  }}
+                >
+                  Replay request
+                </button>
+              )}
+            </div>
+          </div>
+          <ul className={styles.events}>
+            {trace.events.map((event) => (
+              <li
+                key={event.sequence}
+                className={`${styles.event} ${event.status === 'failed' ? styles.eventError : ''}`}
+              >
+                <span className={styles.eventLabel}>
+                  #{event.sequence} {event.phase} · {event.elapsedMs} ms
+                </span>
+                {event.status && <span className={styles.eventStatus}>{event.status}</span>}
+                <span className={styles.eventDetail}>
+                  {formatEventDetail(trace, event.sequence)}
+                </span>
+                {event.input && <span className={styles.eventDetail}>input: {event.input}</span>}
+                {event.output && <span className={styles.eventDetail}>output: {event.output}</span>}
+              </li>
+            ))}
+          </ul>
+        </div>
+      </Dialog>
+    </div>
   );
 }

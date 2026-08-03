@@ -78,16 +78,22 @@ function buildInitialValues(): InitialAppValues {
     restoredContents && Object.keys(restoredContents).length > 0
       ? buildTreeFromPaths(Object.keys(restoredContents))
       : (defaultFiles as InitialAppValues['files']);
+  const savedTabs = (Settings.getOpenTabs() ||
+    recoveryCheckpoint?.openTabs ||
+    []) as InitialAppValues['tabs'];
+  const removedSectionTabIds = new Set(['ai-section:context', 'ai-section:transcript']);
+  const restoredTabs = savedTabs.filter((tab) => !removedSectionTabIds.has(tab.id));
+  const restoredActiveTabId = Settings.getActiveTabId() || recoveryCheckpoint?.activeTabId || null;
 
   return {
     projectName: Settings.getProjectName(recoveryCheckpoint?.projectName || 'My App') || 'My App',
     files: initialFiles as InitialAppValues['files'],
     contents: restoredContents,
     theme: Settings.getTheme() || 'dark',
-    tabs: (Settings.getOpenTabs() ||
-      recoveryCheckpoint?.openTabs ||
-      []) as InitialAppValues['tabs'],
-    activeTabId: Settings.getActiveTabId() || recoveryCheckpoint?.activeTabId || null,
+    tabs: restoredTabs,
+    activeTabId: removedSectionTabIds.has(restoredActiveTabId || '')
+      ? restoredTabs.at(-1)?.id || null
+      : restoredActiveTabId,
     lastCodeTabId: Settings.getLastCodeTabId() || null,
     aiLogs: Settings.getAILogs() || [],
     sidebarWidth: Settings.getSidebarWidth(),

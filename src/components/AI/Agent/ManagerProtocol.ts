@@ -25,6 +25,11 @@ For deletions, use an explicit delete proposal:
 {"kind":"changes","summary":"what changed","changes":[{"path":"src/old-file.js","delete":true}]}
 
 Use only project-relative paths. Never use absolute paths or .. traversal. Return complete file contents for every changed file.
+Never return placeholder comments, TODO stubs, or instructions such as "Your implementation goes here". Return a complete working implementation for the user request.
+Architecture and dependency rules:
+- Do not add Redux, Zustand, Recoil, or another state-management dependency unless it already exists in the workspace and the user explicitly requests it.
+- For a simple app, use React local state or plain browser state. Only import packages already present in package.json or packages supported by the empty-project scaffold.
+- Summaries must describe only libraries and files actually present in the returned changes; never invent a dependency.
 Do not return tool actions, write_file actions, role names, plans, or prose outside the JSON object.
 `.trim();
 

@@ -7,19 +7,29 @@ import { TabState } from '@/components/App/Panes/TabBar';
 import { EditorState } from '@/components/App/Views/EditorArea';
 import { LogState } from '@/components/App/Views/LogArea';
 import { useFileSystem } from '@/components/Storage';
-import { useCallback, useEffect } from 'react';
-import type { ChangeEvent, KeyboardEvent, MouseEvent } from 'react';
+import type { TreeNode } from '@/components/state/domain-types';
+import { useCallback, useEffect, useState } from 'react';
+import type { ChangeEvent, FormEvent, KeyboardEvent, MouseEvent } from 'react';
 import { requireStore } from '../../types';
 import { AgentSessionState, createSessionMessage } from './AgentSessions';
+import FileScopeDialog from './FileScopeDialog';
 import useModelDownloader from './ModelDownloader';
 import PromptContent from './PromptContent';
 import usePromptHistory from './PromptHistory';
 import { PromptState, PromptUiState, getInitialPromptUiState } from './PromptState';
+import { parseFileCommand } from './filePrompt';
 import useAgentRunner from './useAgentRunner';
 import usePromptLayout from './usePromptLayout';
 import usePromptSessionControls from './usePromptSessionControls';
 
 export { PromptState, PromptUiState } from './PromptState';
+
+function collectProjectFiles(nodes: TreeNode[], parentPath: string[] = []): string[] {
+  return nodes.flatMap((node) => {
+    const path = node.path || [...parentPath, node.name];
+    return node.type === 'file' ? [path.join('/')] : collectProjectFiles(node.children || [], path);
+  });
+}
 
 export default function Prompt() {
   const { isMobile } = requireStore(AppState.useState(['isMobile']));
@@ -43,7 +53,6 @@ export default function Prompt() {
     modelCacheError = '',
     animatedWidth = promptState?.promptWidth ?? 0,
     abortController = null,
-    promptScope = 'project',
     welcomeRequest = null,
     runningSessionId = null,
     sessionDialog = null,
@@ -57,13 +66,19 @@ export default function Prompt() {
   const { isSystemProcessing, isAIProcessing } = requireStore(
     LogState.useState(['isSystemProcessing', 'isAIProcessing']),
   );
-  const sidebarState = requireStore(SidebarState.useState(['showAIInput', 'isAIInputPopupOpen']));
+  const sidebarState = requireStore(
+    SidebarState.useState(['showAIInput', 'isAIInputPopupOpen', 'folderTree']),
+  );
   const tabState = requireStore(TabState.useState(['activeTabId', 'openTabs']));
   const editorState = requireStore(EditorState.useState(['selectedLines', 'fileContents']));
   const agentSessionState = requireStore(
     AgentSessionState.useState(['sessions', 'activeSessionId']),
   );
   const isOpen = isMobile ? sidebarState.isAIInputPopupOpen : sidebarState.showAIInput;
+  const [isFilePickerOpen, setIsFilePickerOpen] = useState(false);
+  const [filePickerQuery, setFilePickerQuery] = useState('');
+  const [filePromptRemainder, setFilePromptRemainder] = useState('');
+  const [isFileScopeArmed, setIsFileScopeArmed] = useState(false);
 
   const {
     activeSession,
@@ -101,7 +116,7 @@ export default function Prompt() {
     activeSession,
     agentSessionState,
     promptUiState,
-    promptScope,
+    promptScope: isFileScopeArmed ? 'file' : 'project',
     selectedModel,
     abortController,
     runningSessionId,
@@ -157,7 +172,7 @@ export default function Prompt() {
         });
         return;
       }
-      if (!event.shiftKey) send(event);
+      if (!event.shiftKey) handleSubmit(event);
     } else if (event.key === 'ArrowUp') {
       handleArrowUp();
     } else if (event.key === 'ArrowDown') {
@@ -167,21 +182,74 @@ export default function Prompt() {
 
   const handleComposerChange = useCallback(
     (event: ChangeEvent<HTMLTextAreaElement>) => {
+      const nextValue = event.target.value;
+      const fileCommand = parseFileCommand(nextValue);
+      if (fileCommand) {
+        setFilePromptRemainder(fileCommand.prompt);
+        setFilePickerQuery('');
+        setIsFilePickerOpen(true);
+        promptUiState((draft) => {
+          draft.val = fileCommand.prompt;
+          if (historyIndex === -1) draft.draftVal = fileCommand.prompt;
+        });
+        return;
+      }
       promptUiState((draft) => {
-        draft.val = event.target.value;
-        if (historyIndex === -1) draft.draftVal = event.target.value;
+        draft.val = nextValue;
+        if (historyIndex === -1) draft.draftVal = nextValue;
       });
     },
     [historyIndex, promptUiState],
   );
-  const setPromptScope = useCallback(
-    (scope: string) => {
+  const handleSubmit = useCallback(
+    (event: FormEvent<HTMLFormElement> | KeyboardEvent<HTMLTextAreaElement>) => {
+      send(event as FormEvent<HTMLFormElement>);
+      setIsFileScopeArmed(false);
       promptUiState((draft) => {
-        draft.promptScope = scope;
+        draft.promptScope = 'project';
       });
     },
-    [promptUiState],
+    [promptUiState, send],
   );
+  const handleFileSelect = useCallback(
+    (filePath: string) => {
+      const fileName = filePath.split('/').pop() || filePath;
+      const fileContent = editorState.fileContents?.[filePath] || '';
+      tabState((draft) => {
+        if (!draft.openTabs.some((tab) => tab.id === filePath)) {
+          draft.openTabs = [
+            ...draft.openTabs,
+            {
+              id: filePath,
+              type: 'file',
+              label: fileName,
+              file: { name: fileName, path: filePath.split('/'), content: fileContent },
+            },
+          ];
+        }
+        draft.activeTabId = filePath;
+      });
+      promptUiState((draft) => {
+        draft.promptScope = 'file';
+        draft.val = filePromptRemainder;
+        draft.draftVal = filePromptRemainder;
+      });
+      setIsFileScopeArmed(true);
+      setIsFilePickerOpen(false);
+      setFilePromptRemainder('');
+      setFilePickerQuery('');
+    },
+    [editorState.fileContents, filePromptRemainder, promptUiState, tabState],
+  );
+  const handleFilePickerCancel = useCallback(() => {
+    setIsFilePickerOpen(false);
+    setFilePromptRemainder('');
+    setFilePickerQuery('');
+    setIsFileScopeArmed(false);
+    promptUiState((draft) => {
+      draft.promptScope = 'project';
+    });
+  }, [promptUiState]);
   const replayManagerRequest = useCallback(
     (request: string) => {
       promptUiState((draft) => {
@@ -193,16 +261,9 @@ export default function Prompt() {
     [promptUiState],
   );
   const openSectionInTab = useCallback(
-    (section: 'context' | 'changes' | 'transcript' | 'reasoning') => {
+    (section: 'changes' | 'reasoning') => {
       const id = `ai-section:${section}`;
-      const label =
-        section === 'context'
-          ? 'AI Context'
-          : section === 'changes'
-            ? 'Change Set'
-            : section === 'transcript'
-              ? 'Transcript'
-              : 'Progress & Reasoning';
+      const label = section === 'changes' ? 'Change Set' : 'Progress & Reasoning';
       tabState((draft) => {
         const existingTab = draft.openTabs.find((tab) => tab.id === id);
         if (!existingTab) {
@@ -232,19 +293,6 @@ export default function Prompt() {
     [promptUiState],
   );
 
-  const currentActiveTabId = tabState.activeTabId;
-  const currentActiveTab = tabState.openTabs.find((tab) => tab.id === currentActiveTabId);
-  const selectedLines =
-    (currentActiveTabId && editorState.selectedLines?.[currentActiveTabId]) || [];
-  const selectedLineText =
-    selectedLines.length > 0 ? [...selectedLines].sort((a, b) => a - b).join(', ') : 'None';
-  const activeFileName =
-    currentActiveTab?.type === 'file' && currentActiveTabId
-      ? currentActiveTabId.split('/').pop()
-      : 'No file selected';
-  const activeFilePath =
-    currentActiveTab?.type === 'file' && currentActiveTabId ? currentActiveTabId : 'Open a file';
-  const runState = isAIProcessing ? 'AI working' : isSystemProcessing ? 'Compiling' : 'Ready';
   const selectedModelInfo =
     WEB_LLM_MODELS.find((model) => model.id === selectedModel) || RECOMMENDED_WEB_LLM_MODEL;
   const selectedModelEngine = engines[selectedModel];
@@ -261,58 +309,64 @@ export default function Prompt() {
   }));
 
   return (
-    <PromptContent
-      isMobile={isMobile}
-      isOpen={isOpen}
-      desktopWidth={desktopWidth}
-      isAIProcessing={isAIProcessing}
-      isSystemProcessing={isSystemProcessing}
-      activeSession={activeSession}
-      sessionReasoning={activeSession?.reasoning || ''}
-      onOpenTree={openSessionTree}
-      isAgentTreeOpen={isAgentTreeOpen}
-      sessionDialog={sessionDialog}
-      agentSessionState={agentSessionState}
-      onCloseTree={closeSessionTree}
-      onSelectSession={handleSelectSession}
-      onCreateSession={handleCreateSession}
-      onBranchSession={handleBranchSession}
-      onRenameSession={handleRenameSession}
-      onDeleteSession={handleDeleteSession}
-      runningSessionId={runningSessionId}
-      promptUiState={promptUiState}
-      modelOptions={modelOptions}
-      promptScope={promptScope}
-      onScopeChange={setPromptScope}
-      onOpenSectionInTab={openSectionInTab}
-      activeFileName={activeFileName}
-      activeFilePath={activeFilePath}
-      selectedLines={selectedLines}
-      selectedLineText={selectedLineText}
-      runState={runState}
-      isModelManagerOpen={isModelManagerOpen}
-      selectedModelInfo={selectedModelInfo}
-      cachedModelIds={cachedModelIds}
-      onCloseModelManager={closeModelManager}
-      onModelCacheAction={handleModelCacheAction}
-      modelCacheWork={modelCacheWork as string | null}
-      modelCacheProgress={modelCacheProgress}
-      modelCacheError={modelCacheError}
-      value={val}
-      onChange={handleComposerChange}
-      onKeyDown={handleKeyDown}
-      onSubmit={send}
-      onStop={handleStop}
-      isButtonActive={Boolean(val.trim()) && !isAIProcessing}
-      isModelDownloading={isModelDownloading}
-      modelDownloadProgress={modelDownloadProgress}
-      onChangeModel={setSelectedModel}
-      onLoadCachedModelIds={loadCachedModelIds}
-      onOpenModelManager={openModelManager}
-      patchSession={patchSession}
-      latestManagerTrace={latestManagerTrace}
-      traceFiles={editorState.fileContents}
-      onReplayRequest={replayManagerRequest}
-    />
+    <>
+      <PromptContent
+        isMobile={isMobile}
+        isOpen={isOpen}
+        desktopWidth={desktopWidth}
+        isAIProcessing={isAIProcessing}
+        isSystemProcessing={isSystemProcessing}
+        activeSession={activeSession}
+        sessionReasoning={activeSession?.reasoning || ''}
+        onOpenTree={openSessionTree}
+        isAgentTreeOpen={isAgentTreeOpen}
+        sessionDialog={sessionDialog}
+        agentSessionState={agentSessionState}
+        onCloseTree={closeSessionTree}
+        onSelectSession={handleSelectSession}
+        onCreateSession={handleCreateSession}
+        onBranchSession={handleBranchSession}
+        onRenameSession={handleRenameSession}
+        onDeleteSession={handleDeleteSession}
+        runningSessionId={runningSessionId}
+        promptUiState={promptUiState}
+        modelOptions={modelOptions}
+        onOpenSectionInTab={openSectionInTab}
+        isModelManagerOpen={isModelManagerOpen}
+        selectedModelInfo={selectedModelInfo}
+        cachedModelIds={cachedModelIds}
+        onCloseModelManager={closeModelManager}
+        onModelCacheAction={handleModelCacheAction}
+        modelCacheWork={modelCacheWork as string | null}
+        modelCacheProgress={modelCacheProgress}
+        modelCacheError={modelCacheError}
+        value={val}
+        onChange={handleComposerChange}
+        onKeyDown={handleKeyDown}
+        onSubmit={handleSubmit}
+        onStop={handleStop}
+        isButtonActive={Boolean(val.trim()) && !isAIProcessing}
+        isModelDownloading={isModelDownloading}
+        modelDownloadProgress={modelDownloadProgress}
+        onChangeModel={setSelectedModel}
+        onLoadCachedModelIds={loadCachedModelIds}
+        onOpenModelManager={openModelManager}
+        patchSession={patchSession}
+        latestManagerTrace={latestManagerTrace}
+        traceFiles={editorState.fileContents}
+        onReplayRequest={replayManagerRequest}
+      />
+      <FileScopeDialog
+        isOpen={isFilePickerOpen}
+        files={[
+          ...Object.keys(editorState.fileContents || {}),
+          ...collectProjectFiles(sidebarState.folderTree || []),
+        ]}
+        query={filePickerQuery}
+        onQueryChange={setFilePickerQuery}
+        onSelect={handleFileSelect}
+        onCancel={handleFilePickerCancel}
+      />
+    </>
   );
 }

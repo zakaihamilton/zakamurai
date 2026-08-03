@@ -121,7 +121,7 @@ describe('WebLLMAPI', () => {
     await expect(askWebLLM('hello')).resolves.toBe('default response');
     expect(mockedCreateWebWorkerMLCEngine).toHaveBeenCalledWith(
       expect.anything(),
-      'Qwen3.5-4B-q4f16_1-MLC',
+      'Qwen2.5-Coder-1.5B-Instruct-q4f16_1-MLC',
       expect.any(Object),
       expect.any(Object),
     );

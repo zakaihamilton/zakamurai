@@ -1,4 +1,5 @@
 import Node from '@/components/state/Node';
+import type { AgentSessionMessage } from '@/components/state/domain-types';
 import { Icons } from '@/components/ui/Icons';
 import Tooltip from '@/components/ui/Tooltip';
 import { useEffect, useRef, useState } from 'react';
@@ -53,6 +54,7 @@ function ReasoningPanelInner({
   const activeSession = getActiveAgentSession(agentSessionState);
   const reasoning = activeSession?.reasoning || '';
   const reasoningEvents = activeSession?.reasoningEvents || [];
+  const messages = activeSession?.messages || [];
   const displayedReasoning = formatReasoningEvents(reasoningEvents, showStepIO) || reasoning;
   const runUsage = activeSession?.runUsage;
   const toolEntries = Object.entries(runUsage?.toolCalls || {}).filter(([, count]) => count > 0);
@@ -69,6 +71,11 @@ function ReasoningPanelInner({
         `Tools: ${toolEntries.map(([name, count]) => `${name} ×${count}`).join(', ') || 'none'}`,
       ].join('\n')
     : '';
+  const transcriptText = messages.length
+    ? messages
+        .map((message) => `[${message.timestamp || 'now'}] ${message.role}: ${message.text}`)
+        .join('\n\n')
+    : '';
   const reasoningRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -76,23 +83,28 @@ function ReasoningPanelInner({
   }, [showStepIOProp]);
 
   useEffect(() => {
-    if ((displayedReasoning || modelDownloadStatus) && reasoningRef.current) {
+    if ((displayedReasoning || modelDownloadStatus || messages.length) && reasoningRef.current) {
       reasoningRef.current.scrollTo?.({
         top: reasoningRef.current.scrollHeight,
         // Repeated smooth-scroll animations compete with local model inference.
         behavior: 'auto',
       });
     }
-  }, [displayedReasoning, modelDownloadStatus]);
+  }, [displayedReasoning, messages.length, modelDownloadStatus]);
 
-  const reasoningText = [modelDownloadStatus, displayedReasoning, diagnosticsText]
+  const reasoningText = [
+    modelDownloadStatus,
+    displayedReasoning,
+    diagnosticsText,
+    transcriptText ? `--- Transcript ---\n${transcriptText}` : '',
+  ]
     .filter(Boolean)
     .join('\n\n');
 
   return (
     <div
       className={`${styles.reasoningWrapper} ${
-        displayedReasoning || modelDownloadStatus ? styles.reasoningVisible : ''
+        displayedReasoning || modelDownloadStatus || messages.length ? styles.reasoningVisible : ''
       } ${!isExpanded ? styles.reasoningCollapsed : ''}`}
     >
       <div className={styles.reasoningContainer}>
@@ -101,7 +113,7 @@ function ReasoningPanelInner({
             <Icons.Brain size={14} />
             <Tooltip
               content={
-                'Progress & Reasoning\nLive updates while the agent works.\nIncludes planning, tool activity, downloads, and completion status.'
+                'Progress & Reasoning\nLive updates while the agent works.\nIncludes planning, tool activity, downloads, completion status, and the session transcript.'
               }
             >
               <button
@@ -185,6 +197,30 @@ function ReasoningPanelInner({
             >
               {displayedReasoning}
             </ReactMarkdown>
+            {messages.length ? (
+              <section className={styles.transcriptSection} aria-label="Session transcript">
+                <h3 className={styles.transcriptHeading}>Transcript</h3>
+                {messages.map((message: AgentSessionMessage) => {
+                  const label =
+                    message.role === 'user'
+                      ? 'You'
+                      : message.role === 'ai'
+                        ? message.agentRole
+                          ? `AI · ${message.agentRole}`
+                          : 'AI'
+                        : 'System';
+                  return (
+                    <article className={styles.transcriptEntry} key={message.id}>
+                      <div className={styles.transcriptMeta}>
+                        <span>{label}</span>
+                        {message.timestamp ? <time>{message.timestamp}</time> : null}
+                      </div>
+                      <div className={styles.transcriptText}>{message.text}</div>
+                    </article>
+                  );
+                })}
+              </section>
+            ) : null}
           </div>
         )}
       </div>

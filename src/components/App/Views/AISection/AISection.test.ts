@@ -3,6 +3,7 @@ import {
   formatRunUsageSummary,
   getCompletedRunUsageSummary,
   groupReasoningEntries,
+  keyReasoningEntries,
 } from './AISection';
 
 describe('groupReasoningEntries', () => {
@@ -34,6 +35,20 @@ describe('groupReasoningEntries', () => {
         step: 2,
         entries: [{ timestamp: '20:39:32', text: 'Reviewing the latest tool result…' }],
       },
+    ]);
+  });
+});
+
+describe('keyReasoningEntries', () => {
+  it('disambiguates repeated same-second entries with identical text', () => {
+    const keyed = keyReasoningEntries([
+      { timestamp: '07:36:34', text: '`write_file`' },
+      { timestamp: '07:36:34', text: '`write_file`' },
+    ]);
+
+    expect(keyed.map((entry) => entry.renderKey)).toEqual([
+      '07:36:34-`write_file`-0',
+      '07:36:34-`write_file`-1',
     ]);
   });
 });

@@ -219,6 +219,54 @@
   overflow-wrap: anywhere;
 }
 
+.transcriptSection {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.transcriptHeading {
+  margin: 0 0 8px;
+  color: var(--text-main);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.transcriptEntry {
+  padding: 6px 8px;
+  border-radius: 6px;
+  background: var(--bg-input);
+}
+
+.transcriptEntry + .transcriptEntry {
+  margin-top: 6px;
+}
+
+.transcriptMeta {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--accent);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.transcriptMeta time {
+  color: var(--text-muted);
+  font-weight: 400;
+}
+
+.transcriptText {
+  margin-top: 3px;
+  color: var(--text-main);
+  font-size: 12px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
 @keyframes model-download-spin {
   to {
     transform: rotate(360deg);

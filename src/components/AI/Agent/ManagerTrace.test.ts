@@ -58,6 +58,28 @@ describe('manager traces', () => {
     expect(error.trace.outcome).toBe('error');
   });
 
+  it('sanitizes and clips action payloads before storing them', () => {
+    const recorder = new ManagerTraceRecorder('request', { runId: 'action-run' });
+    recorder.record({
+      phase: 'tool',
+      turn: 1,
+      action: {
+        action: 'write_file',
+        path: 'src/App.jsx',
+        content: `password=secret ${'x'.repeat(5000)}`,
+      },
+    });
+
+    const action = recorder.snapshot().events[0]?.action;
+    expect(action).toMatchObject({
+      action: 'write_file',
+      path: 'src/App.jsx',
+    });
+    expect((action as { content: string }).content).toContain('password=[REDACTED]');
+    expect((action as { content: string }).content).toContain('[clipped]');
+    expect((action as { content: string }).content.length).toBeLessThan(5000);
+  });
+
   it('creates a replay fixture from a trace using the current workspace snapshot', () => {
     const recorder = new ManagerTraceRecorder('change the app', { runId: 'replay-run' });
     recorder.setPlan({

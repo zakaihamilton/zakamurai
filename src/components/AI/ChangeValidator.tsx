@@ -199,6 +199,35 @@ export function validateComponentStyling(path: string, content: string): string 
   return null;
 }
 
+/** Rejects comment-only scaffolding that claims an implementation belongs here. */
+export function validateGeneratedPlaceholder(path: string, content: string): string | null {
+  if (typeof content !== 'string' || stripComments(content).trim()) return null;
+  if (
+    !/(?:your\s+)?implementation\b|goes\s+here|insert\s+(?:code|implementation)|\bTODO\b/i.test(
+      content,
+    )
+  ) {
+    return null;
+  }
+  return `Generated content for ${path} is only a placeholder. Return a complete working implementation instead.`;
+}
+
+/** Keeps small generated apps on local state instead of adding unrequested state libraries. */
+export function validateForbiddenStateLibraryUsage(path: string, content: string): string | null {
+  if (typeof content !== 'string') return null;
+  const forbiddenPackage = /^(?:@reduxjs\/toolkit|redux|recoil|zustand)(?:\/|$)/i;
+  const isPackageManifest = /(?:^|\/)package\.json$/i.test(path);
+  const usesForbiddenPackage = isPackageManifest
+    ? /["'](?:@reduxjs\/toolkit|redux|recoil|zustand)["']\s*:/i.test(content)
+    : /(?:from\s*|require\(\s*|import\s*\(\s*)["'][^"']+["']/i.test(content) &&
+      [...content.matchAll(/(?:from\s*|require\(\s*|import\s*\(\s*)["']([^"']+)["']/gi)].some(
+        (match) => forbiddenPackage.test(match[1]),
+      );
+  return usesForbiddenPackage
+    ? `Do not introduce Redux, Zustand, Recoil, or another unrequested state library in ${path}. Use React local state or plain browser state instead.`
+    : null;
+}
+
 /** Ensures generated components use the scoped names exported by CSS Modules. */
 export function validateCssModuleUsage(path: string, content: string): string | null {
   if (!/\.(jsx|tsx)$/i.test(path) || typeof content !== 'string') return null;
@@ -302,6 +331,28 @@ export async function validateAIChangesAsync(
     }
 
     if (typeof content === 'string') {
+      const placeholderError = validateGeneratedPlaceholder(path as string, content);
+      if (placeholderError) {
+        rejected.push(placeholderError);
+        details.push({
+          path: String(path),
+          error: placeholderError,
+          type: 'content',
+          failedContent: content,
+        });
+        continue;
+      }
+      const stateLibraryError = validateForbiddenStateLibraryUsage(path as string, content);
+      if (stateLibraryError) {
+        rejected.push(stateLibraryError);
+        details.push({
+          path: String(path),
+          error: stateLibraryError,
+          type: 'architecture',
+          failedContent: content,
+        });
+        continue;
+      }
       const stylingError = validateComponentStyling(path as string, content);
       if (stylingError) {
         rejected.push(stylingError);
@@ -398,6 +449,16 @@ export function validateAIChanges(changes: AgentChange[]): ValidatedAIChanges {
     }
 
     if (typeof content === 'string') {
+      const placeholderError = validateGeneratedPlaceholder(path as string, content);
+      if (placeholderError) {
+        rejected.push(placeholderError);
+        continue;
+      }
+      const stateLibraryError = validateForbiddenStateLibraryUsage(path as string, content);
+      if (stateLibraryError) {
+        rejected.push(stateLibraryError);
+        continue;
+      }
       const stylingError = validateComponentStyling(path as string, content);
       if (stylingError) {
         rejected.push(stylingError);

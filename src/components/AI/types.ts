@@ -112,6 +112,8 @@ export type AgentEvent = {
   replaceProgress?: boolean;
 };
 
+export type AgentEventHandler = (event: AgentEvent) => void;
+
 export type ManagerIntent =
   | 'workspace-query'
   | 'project-check'
@@ -161,10 +163,12 @@ export type ManagerEvent = {
   turn: number;
   message?: string;
   tool?: ManagerToolName;
+  action?: AgentActionName | AgentAction;
   task?: 'answer' | 'generate-changes' | 'repair-changes';
   input?: string;
   output?: string;
   error?: boolean;
+  provenance?: 'model' | 'recovery';
   plan?: ManagerPlan;
 };
 
@@ -182,6 +186,41 @@ export type ManagerModelCall = {
 };
 
 export type ManagerModelClient = (call: ManagerModelCall) => Promise<string>;
+
+/** Compatibility options for the proven iterative action runner used by ManagerRunner. */
+export type RunAgentOptions = {
+  request: string;
+  scope?: 'file' | 'project';
+  activeFile?: string | null;
+  selectedLines?: number[];
+  files: FileMap;
+  model: string;
+  validate?: (files: FileMap) => Promise<VerificationResult | string> | VerificationResult | string;
+  runProjectCheck?: (check: string, files: FileMap) => Promise<string>;
+  inspectPreview?: (files: FileMap) => Promise<unknown>;
+  retrieveContext?: (query: string, k: number) => Promise<SemanticSearchResult[]>;
+  signal?: AbortSignal;
+  onEvent?: AgentEventHandler;
+  onMetrics?: (metrics: WebLLMGenerationMetrics) => void;
+  maxTurns?: number;
+  systemPrompt?: string;
+  allowedActions?: string[];
+  priorContext?: string;
+  workspace?: import('./Agent/Workspace').AgentWorkspace | null;
+  agentRole?: string | null;
+  workspaceIndex?: WorkspaceIndex | null;
+  visualMode?: boolean;
+  requirePreviewInspection?: boolean;
+  modelClient?: ManagerModelClient;
+};
+
+export type RunAgentResult = {
+  changes: AgentChange[];
+  files: FileMap;
+  summary: string;
+  events: number;
+  workspace: import('./Agent/Workspace').AgentWorkspace;
+};
 
 export type ManagerToolOptions = {
   validate?: (files: FileMap) => Promise<VerificationResult | string> | VerificationResult | string;
@@ -290,6 +329,13 @@ export type WebLLMOptions = {
   onRecovery?: ((event: WebLLMRecoveryEvent) => void) | null;
   onMetrics?: ((metrics: WebLLMGenerationMetrics) => void) | null;
 };
+
+export type AskWebLLM = (
+  prompt: string,
+  systemPrompt?: string,
+  onUpdate?: ((text: string) => void) | null,
+  options?: WebLLMOptions,
+) => Promise<string>;
 
 export type WebLLMModel = {
   id: string;

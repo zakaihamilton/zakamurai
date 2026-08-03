@@ -27,6 +27,7 @@ const trace: ManagerTrace = {
       tool: 'list_files',
       status: 'started',
       input: '{}',
+      provenance: 'model',
     },
   ],
 };
@@ -36,8 +37,12 @@ describe('ManagerTraceInspector', () => {
     render(<ManagerTraceInspector trace={trace} />);
 
     expect(screen.getByTestId('manager-trace-inspector')).toBeDefined();
+    expect(screen.queryByRole('dialog', { name: 'Manager debug trace' })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: /Open manager debug trace/ }));
+    expect(screen.getByRole('dialog', { name: 'Manager debug trace' })).toBeDefined();
     expect(screen.getByText(/success · 2 events · 25 ms/)).toBeDefined();
     expect(screen.getByText(/#2 tool · 5 ms/)).toBeDefined();
+    expect(screen.getByText(/source: model/)).toBeDefined();
     expect(screen.getByText('input: {}')).toBeDefined();
   });
 
@@ -45,6 +50,7 @@ describe('ManagerTraceInspector', () => {
     const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
 
     render(<ManagerTraceInspector trace={trace} />);
+    fireEvent.click(screen.getByRole('button', { name: /Open manager debug trace/ }));
     fireEvent.click(screen.getByRole('button', { name: 'Export JSON' }));
 
     expect(click).toHaveBeenCalledOnce();
@@ -66,6 +72,7 @@ describe('ManagerTraceInspector', () => {
         onReplayRequest={onReplayRequest}
       />,
     );
+    fireEvent.click(screen.getByRole('button', { name: /Open manager debug trace/ }));
     fireEvent.click(screen.getByRole('button', { name: 'Copy trace' }));
     fireEvent.click(screen.getByRole('button', { name: 'Copy replay fixture' }));
     fireEvent.click(screen.getByRole('button', { name: 'Replay request' }));

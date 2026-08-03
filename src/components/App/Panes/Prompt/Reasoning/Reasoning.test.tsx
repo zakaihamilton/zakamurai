@@ -61,6 +61,24 @@ describe('ReasoningPanel', () => {
     expect(screen.getByText('Markdown')).toBeDefined();
   });
 
+  it('renders the session transcript inside Progress & Reasoning', () => {
+    mockAgentSessionStore = createDefaultAgentSessions();
+    const active = expectAgentSession(mockAgentSessionStore);
+    mockAgentSessionStore.sessions[active.id] = {
+      ...active,
+      messages: [
+        { id: 1, role: 'user', text: 'Build the app', timestamp: '10:00:00' },
+        { id: 2, role: 'ai', text: 'I am on it', timestamp: '10:00:01' },
+      ],
+    };
+
+    render(<ReasoningPanel />);
+
+    expect(screen.getByRole('heading', { name: 'Transcript' })).toBeDefined();
+    expect(screen.getByText('Build the app')).toBeDefined();
+    expect(screen.getByText('I am on it')).toBeDefined();
+  });
+
   it('copies reasoning to clipboard when copy button is clicked', async () => {
     vi.spyOn(navigator.clipboard, 'writeText').mockResolvedValue();
     setSessionReasoning('Copied content text');

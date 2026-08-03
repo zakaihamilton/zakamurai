@@ -32,6 +32,23 @@ import {
 
 const MAX_CONTEXT_ROUNDS = 3;
 const MAX_REPAIR_ATTEMPTS = 2;
+const MAX_INITIAL_CONTEXT_FILES = 6;
+const STARTER_FILE_NAMES = new Set([
+  'package.json',
+  'src/App.js',
+  'src/App.jsx',
+  'src/App.ts',
+  'src/App.tsx',
+  'src/main.js',
+  'src/main.jsx',
+  'src/main.ts',
+  'src/main.tsx',
+  'src/index.js',
+  'src/index.jsx',
+  'src/index.ts',
+  'src/index.tsx',
+]);
+const SOURCE_FILE_PATTERN = /\.(?:css|html|js|jsx|json|md|ts|tsx)$/i;
 
 const summarizeToolResult = (tool: ManagerToolName, value: unknown): string => {
   if (tool === 'list_files' && Array.isArray(value))
@@ -72,6 +89,16 @@ const extractPath = (request: string, activeFile?: string | null): string | null
 
 const contextText = (results: ManagerToolResult[]): string =>
   formatContextResults(results).slice(0, 28000);
+
+const selectInitialContextFiles = (paths: string[], activeFile?: string | null): string[] => {
+  const uniquePaths = [...new Set(paths)];
+  const prioritized = [
+    activeFile || '',
+    ...uniquePaths.filter((path) => STARTER_FILE_NAMES.has(path)),
+    ...uniquePaths.filter((path) => SOURCE_FILE_PATTERN.test(path)),
+  ];
+  return [...new Set(prioritized.filter(Boolean))].slice(0, MAX_INITIAL_CONTEXT_FILES);
+};
 
 const normalizeModelChanges = (
   result: ModelResult,
@@ -263,12 +290,120 @@ async function executeManager({
   const path = extractPath(request, scope === 'file' ? activeFile : null);
   if (path && Object.hasOwn(workspace.files, path)) await notifyTool('read_file', { path });
   else {
-    await notifyTool('list_files', { query: '' });
+    const listed = await notifyTool('list_files', { query: '' });
+    const listedPaths = Array.isArray(listed.value)
+      ? listed.value.filter((item) => typeof item === 'string')
+      : [];
+    if (plan.intent === 'edit' || plan.intent === 'mixed') {
+      for (const contextPath of selectInitialContextFiles(listedPaths, activeFile)) {
+        if (contextPath !== path) await notifyTool('read_file', { path: contextPath });
+      }
+    }
     const query = extractQuery(request);
     if (query) await notifyTool('search_workspace', { query });
   }
   if (scope === 'file' && activeFile && selectedLines.length) {
     await notifyTool('read_file', { path: activeFile });
+  }
+
+  if (plan.intent === 'edit' || plan.intent === 'mixed') {
+    const { runActionLoop } = await import('./ActionLoop');
+    const managerTools = new Set<ManagerToolName>([
+      'list_files',
+      'search_workspace',
+      'search_semantic',
+      'read_file',
+      'validate',
+      'list_project_checks',
+      'run_project_check',
+      'inspect_preview',
+    ]);
+    const actionContext = [priorContext, contextText(toolResults)].filter(Boolean).join('\n\n');
+    const actionResult = await runActionLoop({
+      request,
+      scope,
+      activeFile,
+      selectedLines,
+      files,
+      model,
+      validate,
+      runProjectCheck,
+      inspectPreview,
+      retrieveContext,
+      signal,
+      onMetrics,
+      priorContext: actionContext,
+      workspace,
+      workspaceIndex,
+      modelClient,
+      requirePreviewInspection: planIncludesTool(plan, 'inspect_preview'),
+      onEvent: (event) => {
+        const action = event.action;
+        const actionName = typeof action === 'string' ? action : action?.action;
+        const tool =
+          actionName && managerTools.has(actionName as ManagerToolName)
+            ? (actionName as ManagerToolName)
+            : undefined;
+        if (event.type === 'model_io') {
+          onEvent({
+            type: 'model',
+            turn: event.turn,
+            task: 'generate-changes',
+            input: event.input,
+            output: event.output,
+            message: 'Local model action exchange completed.',
+            action,
+            provenance: event.provenance,
+          });
+        } else if (event.type === 'tool') {
+          onEvent({
+            type: 'tool',
+            turn: event.turn,
+            tool,
+            action,
+            message: actionName ? `Running ${actionName}…` : event.message,
+            provenance: event.provenance,
+            error: event.error,
+          });
+        } else if (event.type === 'observation') {
+          onEvent({
+            type: 'context',
+            turn: event.turn,
+            tool,
+            action,
+            message: event.message,
+            output: event.output,
+            provenance: event.provenance,
+            error: event.error,
+          });
+        } else if (event.type === 'finished') {
+          onEvent({
+            type: 'finished',
+            turn: event.turn,
+            action,
+            message: event.message,
+            provenance: event.provenance,
+          });
+        } else if (event.message) {
+          onEvent({
+            type: 'model',
+            turn: event.turn,
+            task: 'generate-changes',
+            action,
+            message: event.message,
+            provenance: event.provenance,
+          });
+        }
+      },
+    });
+    return {
+      changes: actionResult.changes,
+      files: actionResult.files,
+      summary: actionResult.summary,
+      plan,
+      events: actionResult.events,
+      workspace: actionResult.workspace,
+    };
   }
 
   const askModel = modelClient || (await loadModel());
@@ -398,14 +533,23 @@ async function executeManager({
           try {
             result = parseModelResult(reply);
           } catch (error) {
-            throw new Error(
-              `The repair response was invalid: ${error instanceof Error ? error.message : String(error)}`,
-              { cause: error },
-            );
+            diagnostics = `${verificationMessage}\nThe repair response was invalid: ${
+              error instanceof Error ? error.message : String(error)
+            }. Return a kind=changes response with complete file contents.`;
+            changes = [];
+            continue;
           }
-          if (result.kind !== 'changes' || !result.changes.length)
-            throw new Error('The repair response did not return any changes.');
+          if (result.kind !== 'changes' || !result.changes.length) {
+            diagnostics = `${verificationMessage}\nThe repair response did not return any changes. Return a kind=changes response with complete file contents.`;
+            changes = [];
+            continue;
+          }
           changes = normalizeModelChanges(result, workspace.files);
+          if (!changes.length) {
+            diagnostics = `${verificationMessage}\nThe repair response did not contain usable changes. Return a kind=changes response with complete file contents.`;
+            changes = [];
+            continue;
+          }
           continue;
         }
         if (status === 'failed') throw new Error(verificationMessage);
@@ -428,7 +572,9 @@ async function executeManager({
         workspace,
       };
     }
-    diagnostics = validation.rejected.join('\n');
+    diagnostics = validation.rejected.length
+      ? validation.rejected.join('\n')
+      : diagnostics || 'The previous repair response did not provide usable changes.';
     if (repair >= MAX_REPAIR_ATTEMPTS) {
       throw new Error(diagnostics || 'The generated changes failed deterministic validation.');
     }
@@ -446,9 +592,27 @@ async function executeManager({
       max_tokens: 2600,
     });
     messages.push({ role: 'assistant', content: reply });
-    result = parseModelResult(reply);
-    if (result.kind !== 'changes') throw new Error('The repair response did not return changes.');
+    try {
+      result = parseModelResult(reply);
+    } catch (error) {
+      diagnostics = `The repair response was invalid: ${
+        error instanceof Error ? error.message : String(error)
+      }. Return a kind=changes response with complete file contents.`;
+      changes = [];
+      continue;
+    }
+    if (result.kind !== 'changes' || !result.changes.length) {
+      diagnostics =
+        'The repair response did not return any changes. Return a kind=changes response with complete file contents.';
+      changes = [];
+      continue;
+    }
     changes = normalizeModelChanges(result, workspace.files);
+    if (!changes.length) {
+      diagnostics =
+        'The repair response did not contain usable changes. Return a kind=changes response with complete file contents.';
+      changes = [];
+    }
   }
   throw new Error('The manager exhausted its repair attempts.');
 }

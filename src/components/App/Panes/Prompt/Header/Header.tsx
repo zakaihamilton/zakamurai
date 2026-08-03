@@ -1,6 +1,7 @@
 import { Icons } from '@/components/ui/Icons';
 import Tooltip from '@/components/ui/Tooltip';
 import { useState } from 'react';
+import ManagerTraceInspector from '../ManagerTraceInspector';
 import type { PromptHeaderProps } from '../prompt-types';
 import styles from './Header.module.css';
 
@@ -8,6 +9,9 @@ export default function PromptHeader({
   isAIProcessing: _isAIProcessing,
   isSystemProcessing,
   copyContent = '',
+  latestManagerTrace,
+  traceFiles,
+  onReplayRequest,
 }: PromptHeaderProps) {
   const [copied, setCopied] = useState(false);
 
@@ -27,6 +31,11 @@ export default function PromptHeader({
       <h2 className={styles.title}>AI Manager</h2>
       <div className={styles.headerActions}>
         {isSystemProcessing && <span className={styles.status}>Compiling</span>}
+        <ManagerTraceInspector
+          trace={latestManagerTrace || null}
+          files={traceFiles}
+          onReplayRequest={onReplayRequest}
+        />
         <Tooltip content={copied ? 'Copied!' : 'Copy full session (transcript & reasoning)'}>
           <button
             type="button"

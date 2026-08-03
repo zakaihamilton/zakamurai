@@ -1,17 +1,17 @@
-import { askWebLLM } from '@/components/AI/WebLLMAPI';
 import { runManager } from '@/components/AI/Agent';
+import { askWebLLM } from '@/components/AI/WebLLMAPI';
 
 const enabled = process.env.ZAKAMURAI_AI_SMOKE === '1';
 
 describe.skipIf(!enabled)('AI Manager WebLLM smoke test', () => {
-  it('runs one bounded model edit through validation and review staging', async () => {
+  it('runs a todo-app request through the action loop and validation', async () => {
     const result = await runManager({
-      request: 'change the title to Smoke Test',
+      request: 'create a todo app',
       files: {
-        'src/App.jsx': 'export default function App() { return <h1>Old</h1>; }',
+        'package.json': '{"dependencies":{"react":"latest"}}',
+        'src/App.jsx': 'export default function App() { return null; }',
       },
-      activeFile: 'src/App.jsx',
-      model: process.env.ZAKAMURAI_AI_MODEL || 'Qwen3.5-4B-q4f16_1-MLC',
+      model: process.env.ZAKAMURAI_AI_MODEL || 'Qwen2.5-Coder-1.5B-Instruct-q4f16_1-MLC',
       modelClient: async ({ model, messages, signal, onMetrics, temperature, top_p, max_tokens }) =>
         askWebLLM('', '', null, {
           model,
@@ -29,5 +29,7 @@ describe.skipIf(!enabled)('AI Manager WebLLM smoke test', () => {
     expect(result.trace.outcome).toBe('success');
     expect(result.trace.events.some((event) => event.phase === 'model')).toBe(true);
     expect(result.changes.length).toBeGreaterThan(0);
+    expect(result.files['src/App.jsx']).not.toContain('Your implementation');
+    expect(result.files['src/App.jsx']).toMatch(/useState|tasks|todo/i);
   }, 180_000);
 });
