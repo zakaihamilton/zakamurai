@@ -4,6 +4,7 @@ import { useState } from 'react';
 import ManagerTraceInspector from '../ManagerTraceInspector';
 import type { PromptHeaderProps } from '../prompt-types';
 import styles from './Header.module.css';
+import SupportedToolsDialog from './SupportedToolsDialog';
 
 export default function PromptHeader({
   isAIProcessing: _isAIProcessing,
@@ -16,6 +17,7 @@ export default function PromptHeader({
   onReplayRequest,
 }: PromptHeaderProps) {
   const [copied, setCopied] = useState(false);
+  const [isToolsDialogOpen, setIsToolsDialogOpen] = useState(false);
 
   const handleCopy = async () => {
     if (!copyContent) return;
@@ -33,6 +35,17 @@ export default function PromptHeader({
       <h2 className={styles.title}>AI Manager</h2>
       <div className={styles.headerActions}>
         {isSystemProcessing && <span className={styles.status}>Compiling</span>}
+        <Tooltip content="View supported AI tools">
+          <button
+            type="button"
+            className={styles.headerActionBtn}
+            onClick={() => setIsToolsDialogOpen(true)}
+            aria-haspopup="dialog"
+            aria-label="View supported AI tools"
+          >
+            <Icons.Grid size={15} />
+          </button>
+        </Tooltip>
         <ManagerTraceInspector
           trace={latestManagerTrace || null}
           files={traceFiles}
@@ -65,6 +78,10 @@ export default function PromptHeader({
           </button>
         </Tooltip>
       </div>
+      <SupportedToolsDialog
+        isOpen={isToolsDialogOpen}
+        onCancel={() => setIsToolsDialogOpen(false)}
+      />
     </div>
   );
 }

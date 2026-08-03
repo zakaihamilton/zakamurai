@@ -1,0 +1,93 @@
+.dialog {
+  width: min(680px, calc(100% - 32px));
+  max-width: 680px;
+}
+
+.content {
+  display: grid;
+  min-height: 0;
+  gap: 22px;
+  color: var(--text-main);
+  font-size: 13px;
+}
+
+.intro {
+  margin: 0;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.section {
+  display: grid;
+  min-width: 0;
+  gap: 10px;
+}
+
+.sectionHeader {
+  display: grid;
+  gap: 4px;
+}
+
+.sectionHeader h4 {
+  margin: 0;
+  color: var(--text-main);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.sectionHeader p {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.toolList {
+  display: grid;
+  max-height: min(32vh, 240px);
+  margin: 0;
+  padding: 0 4px 0 0;
+  overflow-y: auto;
+  gap: 6px;
+  list-style: none;
+  scrollbar-color: var(--border-light) transparent;
+  scrollbar-width: thin;
+}
+
+.tool {
+  display: grid;
+  grid-template-columns: minmax(150px, 0.8fr) minmax(0, 1.5fr);
+  align-items: start;
+  gap: 12px;
+  padding: 9px 10px;
+  border: 1px solid var(--border-light);
+  border-radius: 6px;
+  background: var(--bg-input);
+  line-height: 1.4;
+}
+
+.tool code {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: var(--accent);
+  font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.tool span {
+  min-width: 0;
+  color: var(--text-muted);
+}
+
+@media (width <= 560px) {
+  .tool {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+
+  .toolList {
+    max-height: none;
+  }
+}
+
