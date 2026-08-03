@@ -1,21 +1,23 @@
 import Resizer from '@/components/ui/Resizer';
 import { isMediaFile } from '@/utils/file';
 import { FILE_VIEW_TYPES, getDefaultFileViewType } from '@/utils/fileViews';
+import { Suspense, lazy } from 'react';
 import Node from '../../state/Node';
 import { AppState } from '../AppState';
 import { Prompt, PromptState, SidebarState, TabBar, TabState } from '../Panes';
-import AISectionView from '../Views/AISection';
-import EditorArea from '../Views/EditorArea';
-import ImageViewer from '../Views/ImageViewer';
-import Instructions from '../Views/Instructions';
-import LogArea from '../Views/LogArea';
-import PreviewArea from '../Views/PreviewArea';
-import ProjectInfo from '../Views/ProjectInfo';
-import Readiness from '../Views/Readiness';
-import TokenBreakdown from '../Views/TokenBreakdown';
 import Welcome from '../Views/Welcome';
 import { requireStore } from '../types';
 import styles from './WorkspaceArea.module.css';
+
+const AISectionView = lazy(() => import('../Views/AISection'));
+const EditorArea = lazy(() => import('../Views/EditorArea'));
+const ImageViewer = lazy(() => import('../Views/ImageViewer'));
+const Instructions = lazy(() => import('../Views/Instructions'));
+const LogArea = lazy(() => import('../Views/LogArea'));
+const PreviewArea = lazy(() => import('../Views/PreviewArea'));
+const ProjectInfo = lazy(() => import('../Views/ProjectInfo'));
+const Readiness = lazy(() => import('../Views/Readiness'));
+const TokenBreakdown = lazy(() => import('../Views/TokenBreakdown'));
 
 export default function WorkspaceArea() {
   const appState = requireStore(AppState.useState(['isMobile']));
@@ -66,23 +68,29 @@ export default function WorkspaceArea() {
       <div className={styles.workspaceMain}>
         <TabBar />
         <div className={styles.editorContainer}>
-          {activeTab?.type === 'file' &&
-            (activeFileViewType === FILE_VIEW_TYPES.TOKEN_BREAKDOWN ? (
-              <TokenBreakdown tab={activeTab} />
-            ) : activeFileViewType === FILE_VIEW_TYPES.IMAGE_VIEWER ||
-              isMediaFile(activeTab.file?.name) ? (
-              <ImageViewer tab={activeTab} />
-            ) : (
-              <EditorArea key={activeTab.id} file={activeTab.file} fsHandle={activeTab.fsHandle} />
-            ))}
-          {activeTab?.type === 'logs' && <LogArea />}
-          {activeTab?.type === 'preview' && <PreviewArea />}
-          {activeTab?.type === 'project-info' && <ProjectInfo />}
-          {activeTab?.type === 'instructions' && <Instructions />}
-          {activeTab?.type === 'readiness' && <Readiness />}
-          {activeTab?.type === 'token-breakdown' && <TokenBreakdown tab={activeTab} />}
-          {activeTab?.type === 'ai-section' && <AISectionView tab={activeTab} />}
-          {!activeTab && <Welcome />}
+          <Suspense fallback={null}>
+            {activeTab?.type === 'file' &&
+              (activeFileViewType === FILE_VIEW_TYPES.TOKEN_BREAKDOWN ? (
+                <TokenBreakdown tab={activeTab} />
+              ) : activeFileViewType === FILE_VIEW_TYPES.IMAGE_VIEWER ||
+                isMediaFile(activeTab.file?.name) ? (
+                <ImageViewer tab={activeTab} />
+              ) : (
+                <EditorArea
+                  key={activeTab.id}
+                  file={activeTab.file}
+                  fsHandle={activeTab.fsHandle}
+                />
+              ))}
+            {activeTab?.type === 'logs' && <LogArea />}
+            {activeTab?.type === 'preview' && <PreviewArea />}
+            {activeTab?.type === 'project-info' && <ProjectInfo />}
+            {activeTab?.type === 'instructions' && <Instructions />}
+            {activeTab?.type === 'readiness' && <Readiness />}
+            {activeTab?.type === 'token-breakdown' && <TokenBreakdown tab={activeTab} />}
+            {activeTab?.type === 'ai-section' && <AISectionView tab={activeTab} />}
+            {!activeTab && <Welcome />}
+          </Suspense>
         </div>
       </div>
       {!isMobile && (

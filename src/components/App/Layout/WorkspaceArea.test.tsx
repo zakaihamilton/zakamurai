@@ -6,7 +6,7 @@ import {
   makeSidebarState,
   makeTabState,
 } from '@/test-utils/stateMocks';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import WorkspaceArea from './WorkspaceArea';
@@ -73,7 +73,7 @@ describe('WorkspaceArea', () => {
     expect(screen.getByTestId('prompt')).toBeDefined();
   });
 
-  it('renders log area for logs tab', () => {
+  it('renders log area for logs tab', async () => {
     vi.mocked(AppState.useState).mockReturnValue(makeAppState({ isMobile: false }));
     vi.mocked(TabState.useState).mockReturnValue(
       makeTabState({
@@ -85,10 +85,10 @@ describe('WorkspaceArea', () => {
     vi.mocked(PromptState.useState).mockReturnValue(makePromptState());
 
     render(<WorkspaceArea />);
-    expect(screen.getByTestId('log-area')).toBeDefined();
+    await waitFor(() => expect(screen.getByTestId('log-area')).toBeDefined());
   });
 
-  it('renders preview area for preview tab', () => {
+  it('renders preview area for preview tab', async () => {
     vi.mocked(AppState.useState).mockReturnValue(makeAppState({ isMobile: false }));
     vi.mocked(TabState.useState).mockReturnValue(
       makeTabState({
@@ -100,10 +100,10 @@ describe('WorkspaceArea', () => {
     vi.mocked(PromptState.useState).mockReturnValue(makePromptState());
 
     render(<WorkspaceArea />);
-    expect(screen.getByTestId('preview-area')).toBeDefined();
+    await waitFor(() => expect(screen.getByTestId('preview-area')).toBeDefined());
   });
 
-  it('renders project info for project-info tab', () => {
+  it('renders project info for project-info tab', async () => {
     vi.mocked(AppState.useState).mockReturnValue(makeAppState({ isMobile: false }));
     vi.mocked(TabState.useState).mockReturnValue(
       makeTabState({
@@ -115,10 +115,10 @@ describe('WorkspaceArea', () => {
     vi.mocked(PromptState.useState).mockReturnValue(makePromptState());
 
     render(<WorkspaceArea />);
-    expect(screen.getByTestId('project-info')).toBeDefined();
+    await waitFor(() => expect(screen.getByTestId('project-info')).toBeDefined());
   });
 
-  it('renders instructions for instructions tab', () => {
+  it('renders instructions for instructions tab', async () => {
     vi.mocked(AppState.useState).mockReturnValue(makeAppState({ isMobile: false }));
     vi.mocked(TabState.useState).mockReturnValue(
       makeTabState({
@@ -130,10 +130,10 @@ describe('WorkspaceArea', () => {
     vi.mocked(PromptState.useState).mockReturnValue(makePromptState());
 
     render(<WorkspaceArea />);
-    expect(screen.getByTestId('instructions')).toBeDefined();
+    await waitFor(() => expect(screen.getByTestId('instructions')).toBeDefined());
   });
 
-  it('renders readiness for readiness tab', () => {
+  it('renders readiness for readiness tab', async () => {
     vi.mocked(AppState.useState).mockReturnValue(makeAppState({ isMobile: false }));
     vi.mocked(TabState.useState).mockReturnValue(
       makeTabState({
@@ -145,10 +145,10 @@ describe('WorkspaceArea', () => {
     vi.mocked(PromptState.useState).mockReturnValue(makePromptState());
 
     render(<WorkspaceArea />);
-    expect(screen.getByTestId('readiness')).toBeDefined();
+    await waitFor(() => expect(screen.getByTestId('readiness')).toBeDefined());
   });
 
-  it('renders token breakdown tab type', () => {
+  it('renders token breakdown tab type', async () => {
     vi.mocked(AppState.useState).mockReturnValue(makeAppState({ isMobile: false }));
     vi.mocked(TabState.useState).mockReturnValue(
       makeTabState({
@@ -160,10 +160,10 @@ describe('WorkspaceArea', () => {
     vi.mocked(PromptState.useState).mockReturnValue(makePromptState());
 
     render(<WorkspaceArea />);
-    expect(screen.getByTestId('token-breakdown')).toBeDefined();
+    await waitFor(() => expect(screen.getByTestId('token-breakdown')).toBeDefined());
   });
 
-  it('renders an expanded AI pane section in a tab', () => {
+  it('renders an expanded AI pane section in a tab', async () => {
     vi.mocked(AppState.useState).mockReturnValue(makeAppState({ isMobile: false }));
     vi.mocked(TabState.useState).mockReturnValue(
       makeTabState({
@@ -177,7 +177,7 @@ describe('WorkspaceArea', () => {
     vi.mocked(PromptState.useState).mockReturnValue(makePromptState());
 
     render(<WorkspaceArea />);
-    expect(screen.getByTestId('ai-section')).toBeDefined();
+    await waitFor(() => expect(screen.getByTestId('ai-section')).toBeDefined());
   });
 
   it('hides resizer on mobile', () => {
