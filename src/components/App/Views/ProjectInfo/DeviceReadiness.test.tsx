@@ -78,4 +78,31 @@ describe('ProjectDeviceReadiness', () => {
 
     expect(screen.getByRole('button', { name: 'Checking…' })).toBeDisabled();
   });
+
+  it('shows unavailable capability details without a model recommendation', () => {
+    vi.mocked(useDeviceCapabilities).mockReturnValue({
+      capabilityReport: {
+        ...report,
+        tier: 'no-ai',
+        isMobile: false,
+        hasWorker: false,
+        hasWebGPU: false,
+        deviceMemoryGB: null,
+        storageQuotaMB: null,
+        recommendedModelId: null,
+        reasons: [],
+      },
+      isChecking: false,
+      refreshCapabilities,
+    });
+
+    render(<ProjectDeviceReadiness />);
+
+    expect(screen.getByText('Local AI needs attention')).toBeDefined();
+    expect(screen.getByText(/Desktop · WebGPU unavailable/)).toBeDefined();
+    expect(screen.getByText('Unavailable')).toBeDefined();
+    expect(screen.getByText('Not reported')).toBeDefined();
+    expect(screen.getByText('Quota unavailable')).toBeDefined();
+    expect(screen.getByText('No model selected')).toBeDefined();
+  });
 });
