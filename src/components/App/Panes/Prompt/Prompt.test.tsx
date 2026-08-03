@@ -134,6 +134,13 @@ vi.mock('@/components/AI/Agent', () => ({
   removeFileFromTree,
 }));
 
+vi.mock('@/components/AI/Agent/Applier', () => ({ applyAgentChanges }));
+vi.mock('@/components/AI/Agent/ManagerRunner', () => ({ runManager }));
+vi.mock('@/components/AI/Agent/Snapshot', () => ({ collectWorkspaceFiles }));
+vi.mock('@/components/AI/Agent/AIIncident', () => ({
+  createAIIncident: vi.fn(() => ({ id: 'incident-test' })),
+}));
+
 vi.mock('@/components/Workspace', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/components/Workspace')>();
   const changeSetStore = Object.assign(vi.fn(), { activeId: null, items: [] });

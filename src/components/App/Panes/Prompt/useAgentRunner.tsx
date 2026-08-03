@@ -1,4 +1,5 @@
-import { applyAgentChanges, createAIIncident, runManager } from '@/components/AI/Agent';
+import { applyAgentChanges } from '@/components/AI/Agent/Applier';
+import { runManager } from '@/components/AI/Agent/ManagerRunner';
 import type {
   ManagerEvent,
   RunManagerOptions,
@@ -292,7 +293,7 @@ export default function useAgentRunner({
           );
           const priorContext = formatSessionContext(activeSession.messages || []);
           const [{ collectWorkspaceFiles }, { Compiler }] = await Promise.all([
-            import('@/components/AI/Agent'),
+            import('@/components/AI/Agent/Snapshot'),
             import('@/utils/compiler'),
           ]);
           const workspaceFiles = await collectWorkspaceFiles(
@@ -512,6 +513,9 @@ export default function useAgentRunner({
             Array.isArray((error as { changes?: unknown }).changes)
               ? (error as { changes: AgentChange[] })
               : null;
+          const { createAIIncident } = await import(
+            /* webpackChunkName: "ai-incident" */ '@/components/AI/Agent/AIIncident'
+          );
           const incident = createAIIncident({
             error,
             trace:

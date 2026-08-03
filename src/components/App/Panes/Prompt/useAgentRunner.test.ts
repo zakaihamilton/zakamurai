@@ -60,6 +60,11 @@ vi.mock('@/components/AI/Agent', () => ({
   createAIIncident,
 }));
 
+vi.mock('@/components/AI/Agent/Applier', () => ({ applyAgentChanges }));
+vi.mock('@/components/AI/Agent/ManagerRunner', () => ({ runManager }));
+vi.mock('@/components/AI/Agent/Snapshot', () => ({ collectWorkspaceFiles }));
+vi.mock('@/components/AI/Agent/AIIncident', () => ({ createAIIncident }));
+
 vi.mock('@/utils/compiler', () => ({
   Compiler: vi.fn().mockImplementation(() => ({
     compile: vi.fn().mockResolvedValue(undefined),

@@ -1,5 +1,10 @@
-import { describe, expect, it } from 'vitest';
-import { createAIIncident, formatAIIncidentSummary } from './AIIncident';
+import { describe, expect, it, vi } from 'vitest';
+import {
+  copyAIIncidentSummary,
+  createAIIncident,
+  downloadAIIncident,
+  formatAIIncidentSummary,
+} from './AIIncident';
 import type { ManagerTrace } from './ManagerTrace';
 
 const trace: ManagerTrace = {
@@ -88,5 +93,153 @@ describe('AI incident bundles', () => {
 
     expect(formatAIIncidentSummary(incident)).toContain('Classification: model-protocol');
     expect(formatAIIncidentSummary(incident)).not.toContain('private tic tac toe game');
+  });
+
+  it('captures WebLLM metrics, engine state, recovery details, and optional trace fields', () => {
+    Object.defineProperties(navigator, {
+      hardwareConcurrency: { configurable: true, value: 8 },
+      deviceMemory: { configurable: true, value: 4 },
+    });
+    vi.stubGlobal('crossOriginIsolated', true);
+
+    const incident = createAIIncident({
+      error: { name: 'WebLLMError', cause: { name: 'WorkerError' } },
+      trace: {
+        version: 1,
+        runId: 'manager-runtime-test',
+        request: 'diagnose runtime',
+        startedAt: 100,
+        outcome: 'running',
+        events: [
+          {
+            sequence: 1,
+            elapsedMs: 1,
+            phase: 'model',
+            turn: 1,
+            tool: 'read_file',
+            task: 'answer',
+            provenance: 'model',
+            status: 'started',
+            action: { action: 'read_file', path: 'src/App.tsx' },
+            input: 'request',
+            protocolStatus: 'request-sent',
+          },
+          {
+            sequence: 2,
+            elapsedMs: 2,
+            phase: 'model',
+            turn: 1,
+            output: 'response',
+          },
+          {
+            sequence: 3,
+            elapsedMs: 3,
+            phase: 'validation',
+            turn: 1,
+            protocolStatus: 'valid',
+          },
+        ],
+      },
+      selectedModelId: '',
+      metrics: [
+        {
+          requestKind: 'agent',
+          requestedModelId: 'model-a',
+          modelId: 'model-b',
+          outcome: 'success',
+          startedAt: 100,
+          totalMs: 50,
+          initializationMs: 10,
+          timeToFirstTokenMs: 20,
+          promptTokens: 30,
+          completionTokens: 40,
+          decodeTokensPerSecond: 5,
+          finishReason: 'stop',
+          recoveryCount: 1,
+          jsHeapUsedMBAtStart: 100,
+          jsHeapUsedMBAtEnd: 110,
+          jsHeapDeltaMB: 10,
+          errorName: 'TransientError',
+          errorMessageLength: 12,
+          errorMessageFingerprint: 'fnv1a-error',
+        },
+      ],
+      recoveries: [
+        {
+          requestedModelId: 'model-a',
+          modelId: 'model-b',
+          phase: 'generation',
+          action: 'fallback',
+          reason: 'worker-failure',
+          attempt: 2,
+        },
+      ],
+      cachedModelIds: ['model-a', 'model-a'],
+      engines: {
+        'model-a': { status: 'ready', generating: false, error: 'stale' },
+      },
+    });
+
+    expect(incident.classification).toBe('webllm-runtime');
+    expect(incident.failure).toMatchObject({ name: 'WebLLMError', causeName: 'WorkerError' });
+    expect(incident.models).toMatchObject({
+      requestedModelIds: ['model-a'],
+      actualModelIds: ['model-b'],
+      cachedModelIds: ['model-a'],
+      engines: { 'model-a': { status: 'ready', generating: false, error: 'stale' } },
+    });
+    expect(incident.webllm.metrics[0]).toMatchObject({
+      initializationMs: 10,
+      timeToFirstTokenMs: 20,
+      promptTokens: 30,
+      completionTokens: 40,
+      decodeTokensPerSecond: 5,
+      finishReason: 'stop',
+      jsHeapUsedMBAtStart: 100,
+      jsHeapUsedMBAtEnd: 110,
+      jsHeapDeltaMB: 10,
+    });
+    expect(incident.replay).toMatchObject({
+      modelResponseCount: 1,
+      protocolStatuses: ['request-sent', 'response-received', 'valid'],
+    });
+    expect(formatAIIncidentSummary(incident)).toContain('Recoveries: 1.');
+    vi.unstubAllGlobals();
+  });
+
+  it('handles missing runtime context, unknown failures, download, and clipboard fallback', async () => {
+    vi.stubGlobal('navigator', undefined);
+    const incident = createAIIncident({ error: 0, selectedModelId: '', stagedChangeCount: 0 });
+    expect(incident).toMatchObject({
+      classification: 'unknown',
+      runtime: {
+        userAgent: 'unknown',
+        hardwareConcurrency: null,
+        deviceMemoryGB: null,
+        crossOriginIsolated: null,
+        online: null,
+      },
+      manager: { runId: null, outcome: null, durationMs: null, eventCount: 0 },
+      stagedChanges: { count: 0, preserved: false },
+    });
+    expect(formatAIIncidentSummary(incident)).toContain('Model: unknown model.');
+
+    const createObjectURL = vi.fn(() => 'blob:incident');
+    const revokeObjectURL = vi.fn();
+    vi.stubGlobal('URL', { createObjectURL, revokeObjectURL });
+    const click = vi
+      .spyOn(HTMLAnchorElement.prototype, 'click')
+      .mockImplementation(() => undefined);
+    downloadAIIncident(incident);
+    expect(createObjectURL).toHaveBeenCalledOnce();
+    expect(revokeObjectURL).toHaveBeenCalledWith('blob:incident');
+    expect(click).toHaveBeenCalledOnce();
+
+    vi.stubGlobal('navigator', {
+      clipboard: { writeText: vi.fn().mockRejectedValue(new Error()) },
+    });
+    await expect(copyAIIncidentSummary(incident)).resolves.toBeUndefined();
+    vi.unstubAllGlobals();
+    click.mockRestore();
   });
 });

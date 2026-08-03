@@ -1,5 +1,4 @@
 import { RECOMMENDED_WEB_LLM_MODEL, WEB_LLM_MODELS } from '@/components/AI/WebLLMModels';
-import { copyAIIncidentSummary, downloadAIIncident } from '@/components/AI/Agent';
 import { WebLLMState } from '@/components/AI/WebLLMState';
 import { AppState } from '@/components/App/AppState';
 import type { WelcomeRequest } from '@/components/App/Panes/Prompt/prompt-types';
@@ -124,11 +123,19 @@ export default function Prompt() {
     webLLMEngines: engines,
   });
 
-  const handleExportAIIncident = useCallback(() => {
-    if (latestAIIncident) downloadAIIncident(latestAIIncident);
+  const handleExportAIIncident = useCallback(async () => {
+    if (!latestAIIncident) return;
+    const { downloadAIIncident } = await import(
+      /* webpackChunkName: "ai-incident" */ '@/components/AI/Agent/AIIncident'
+    );
+    downloadAIIncident(latestAIIncident);
   }, [latestAIIncident]);
   const handleCopyAIIncident = useCallback(async () => {
-    if (latestAIIncident) await copyAIIncidentSummary(latestAIIncident);
+    if (!latestAIIncident) return;
+    const { copyAIIncidentSummary } = await import(
+      /* webpackChunkName: "ai-incident" */ '@/components/AI/Agent/AIIncident'
+    );
+    await copyAIIncidentSummary(latestAIIncident);
   }, [latestAIIncident]);
 
   const {

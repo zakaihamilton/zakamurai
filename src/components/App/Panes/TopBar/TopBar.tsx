@@ -14,7 +14,6 @@ import {
   createSupportReport,
   downloadSupportReport,
 } from '@/components/Diagnostics';
-import { downloadAIIncident } from '@/components/AI/Agent';
 import { useFileSystem } from '@/components/Storage';
 import {
   DEFAULT_CONTENTS,
@@ -149,8 +148,12 @@ export default function TopBar() {
     );
   };
 
-  const handleExportAIIncident = () => {
-    if (promptUiState?.latestAIIncident) downloadAIIncident(promptUiState.latestAIIncident);
+  const handleExportAIIncident = async () => {
+    if (!promptUiState?.latestAIIncident) return;
+    const { downloadAIIncident } = await import(
+      /* webpackChunkName: "ai-incident" */ '@/components/AI/Agent/AIIncident'
+    );
+    downloadAIIncident(promptUiState.latestAIIncident);
   };
 
   useEffect(() => {
