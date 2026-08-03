@@ -173,19 +173,14 @@ export default function PreviewHost() {
     }, CONNECT_TIMEOUT_MS);
 
     const connect = async (event: MessageEvent<PreviewConnectMessage>) => {
-      const handshakeOk =
-        isValidPreviewHandshake(event as PreviewHandshakeEvent, {
-          expectedOrigin: ideOrigin,
-          expectedSource: peerWindow,
-          sessionId,
-          type: PREVIEW_CONNECT,
-          version: PREVIEW_PROTOCOL_VERSION,
-        }) ||
-        (originMatches(event.origin, ideOrigin) &&
-          event.data?.type === PREVIEW_CONNECT &&
-          event.data?.version === PREVIEW_PROTOCOL_VERSION &&
-          event.data?.sessionId === sessionId &&
-          !!event.ports?.[0]);
+      if (!peerWindow) return;
+      const handshakeOk = isValidPreviewHandshake(event as PreviewHandshakeEvent, {
+        expectedOrigin: ideOrigin,
+        expectedSource: peerWindow,
+        sessionId,
+        type: PREVIEW_CONNECT,
+        version: PREVIEW_PROTOCOL_VERSION,
+      });
       if (!handshakeOk || !event.ports[0]) {
         return;
       }

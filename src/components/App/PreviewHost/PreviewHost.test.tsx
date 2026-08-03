@@ -111,6 +111,36 @@ describe('PreviewHost', () => {
     );
   });
 
+  it('rejects a matching handshake from an unknown same-origin window', () => {
+    setLocation('http://localhost:3001/?session=s123');
+    const ideWindow = { postMessage: vi.fn() };
+    const unknownWindow = { postMessage: vi.fn() };
+    window.opener = ideWindow;
+
+    render(<PreviewHost />);
+
+    act(() => {
+      const event = new MessageEvent('message', {
+        data: {
+          type: 'zakamurai-preview-connect',
+          version: 1,
+          sessionId: 's123',
+        },
+        origin: 'http://localhost:3000',
+      });
+      Object.defineProperty(event, 'source', { value: unknownWindow });
+      Object.defineProperty(event, 'ports', { value: [{}] });
+      window.dispatchEvent(event);
+    });
+
+    expect(
+      ideWindow.postMessage.mock.calls.some(
+        ([message]) => (message as { type?: string })?.type === 'zakamurai-preview-connect-ack',
+      ),
+    ).toBe(false);
+    expect(unknownWindow.postMessage).not.toHaveBeenCalled();
+  });
+
   it('reads session id from window.name when query param is absent', () => {
     window.name = 'zakamurai-preview-from-name';
     const postMessageSpy = vi.fn();
