@@ -34,6 +34,26 @@ describe('runActionLoop', () => {
     expect(askWebLLM.mock.calls[0]?.[3]?.requestKind).toBe('agent');
   });
 
+  it('forces an edit after the model tries to finish without changes', async () => {
+    askWebLLM
+      .mockResolvedValueOnce('{"action":"finish","summary":"done"}')
+      .mockResolvedValueOnce('{"action":"write_file","path":"src/a.js","content":"const a = 2;"}')
+      .mockResolvedValueOnce('{"action":"validate"}')
+      .mockResolvedValueOnce('{"action":"finish","summary":"Updated a"}');
+    const validate = vi.fn().mockResolvedValue('Checks passed.');
+
+    const result = await runActionLoop({
+      request: 'update a',
+      activeFile: 'src/a.js',
+      files: { 'src/a.js': 'const a = 1;' },
+      validate,
+      model: 'test',
+    });
+
+    expect(result.files['src/a.js']).toBe('const a = 2;');
+    expect(result.changes).toHaveLength(1);
+  });
+
   it('forwards WebLLM metrics for each model turn', async () => {
     const onMetrics = vi.fn();
     askWebLLM.mockImplementationOnce(async (_prompt, _system, _update, options) => {
@@ -333,6 +353,27 @@ describe('runActionLoop', () => {
     );
   });
 
+  it('does not report todo recovery as successful when validation fails', async () => {
+    askWebLLM.mockResolvedValueOnce('{"action":"finish","summary":"done"}');
+    const validate = vi.fn().mockResolvedValue({
+      status: 'failed',
+      check: 'build',
+      diagnostics: 'The generated app does not compile.',
+    });
+
+    await expect(
+      runActionLoop({
+        request: 'create a todo app',
+        files: {
+          'src/App.jsx':
+            'export default function App() { return <div><h1>New Project</h1><p>Start coding here...</p></div>; }',
+        },
+        model: 'test',
+        validate,
+      }),
+    ).rejects.toThrow(/Todo-app recovery validation failed/);
+  });
+
   it('queues a forced source write until the model provides its missing CSS Module', async () => {
     askWebLLM
       .mockResolvedValueOnce('{"action":"read_file","path":"src/App.jsx"}')
@@ -515,14 +556,15 @@ describe('runActionLoop', () => {
       .mockResolvedValueOnce('{"action":"finish","summary":"no changes"}');
     const events: AgentEvent[] = [];
 
-    const result = await runActionLoop({
-      request: 'style app',
-      files: { 'src/App.jsx': 'export default () => <main />;' },
-      model: 'test',
-      onEvent: (event) => events.push(event),
-    });
+    await expect(
+      runActionLoop({
+        request: 'style app',
+        files: { 'src/App.jsx': 'export default () => <main />;' },
+        model: 'test',
+        onEvent: (event) => events.push(event),
+      }),
+    ).rejects.toThrow(/could not provide a write_file action/);
 
-    expect(result.changes).toEqual([]);
     expect(
       events.some(
         (event) =>
@@ -542,14 +584,18 @@ describe('runActionLoop', () => {
       .mockResolvedValueOnce('{"action":"finish","summary":"no changes"}');
     const events: AgentEvent[] = [];
 
-    const result = await runActionLoop({
-      request: 'style app',
-      files: { 'src/App.jsx': 'export default () => <main />;', 'src/App.module.css': '.app {}' },
-      model: 'test',
-      onEvent: (event) => events.push(event),
-    });
+    await expect(
+      runActionLoop({
+        request: 'style app',
+        files: {
+          'src/App.jsx': 'export default () => <main />;',
+          'src/App.module.css': '.app {}',
+        },
+        model: 'test',
+        onEvent: (event) => events.push(event),
+      }),
+    ).rejects.toThrow(/could not provide a write_file action/);
 
-    expect(result.changes).toEqual([]);
     expect(events.some((event) => event.error && event.message?.includes('default-imported'))).toBe(
       true,
     );
@@ -563,14 +609,15 @@ describe('runActionLoop', () => {
       .mockResolvedValueOnce('{"action":"finish","summary":"no changes"}');
     const events: AgentEvent[] = [];
 
-    const result = await runActionLoop({
-      request: 'style task',
-      files: { 'src/components/Task.jsx': 'export default function Task() { return null; }' },
-      model: 'test',
-      onEvent: (event) => events.push(event),
-    });
+    await expect(
+      runActionLoop({
+        request: 'style task',
+        files: { 'src/components/Task.jsx': 'export default function Task() { return null; }' },
+        model: 'test',
+        onEvent: (event) => events.push(event),
+      }),
+    ).rejects.toThrow(/could not provide a write_file action/);
 
-    expect(result.changes).toEqual([]);
     expect(events.some((event) => event.error && event.message?.includes('CSS content'))).toBe(
       true,
     );
@@ -584,14 +631,15 @@ describe('runActionLoop', () => {
       .mockResolvedValueOnce('{"action":"finish","summary":"no changes"}');
     const events: AgentEvent[] = [];
 
-    const result = await runActionLoop({
-      request: 'style todo',
-      files: {},
-      model: 'test',
-      onEvent: (event) => events.push(event),
-    });
+    await expect(
+      runActionLoop({
+        request: 'style todo',
+        files: {},
+        model: 'test',
+        onEvent: (event) => events.push(event),
+      }),
+    ).rejects.toThrow(/could not provide a write_file action/);
 
-    expect(result.changes).toEqual([]);
     expect(
       events.some((event) => event.error && event.message?.includes('cannot reference itself')),
     ).toBe(true);
@@ -604,11 +652,13 @@ describe('runActionLoop', () => {
       )
       .mockResolvedValueOnce('{"action":"finish","summary":"no changes"}');
 
-    await runActionLoop({
-      request: 'style todo',
-      files: {},
-      model: 'test',
-    });
+    await expect(
+      runActionLoop({
+        request: 'style todo',
+        files: {},
+        model: 'test',
+      }),
+    ).rejects.toThrow(/could not provide a write_file action/);
 
     const repairMessage = askWebLLM.mock.calls[1]?.[3]?.messages
       ?.map((message: { content: string }) => message.content)
@@ -625,11 +675,13 @@ describe('runActionLoop', () => {
       )
       .mockResolvedValueOnce('{"action":"finish","summary":"no changes"}');
 
-    await runActionLoop({
-      request: 'build app',
-      files: { 'src/App.jsx': 'export default function App() { return null; }' },
-      model: 'test',
-    });
+    await expect(
+      runActionLoop({
+        request: 'build app',
+        files: { 'src/App.jsx': 'export default function App() { return null; }' },
+        model: 'test',
+      }),
+    ).rejects.toThrow(/could not provide a write_file action/);
 
     const repairMessage = askWebLLM.mock.calls[1]?.[3]?.messages
       ?.map((message: { content: string }) => message.content)
@@ -648,14 +700,16 @@ describe('runActionLoop', () => {
       )
       .mockResolvedValueOnce('{"action":"finish","summary":"no changes"}');
 
-    await runActionLoop({
-      request: 'style app',
-      files: {
-        'src/App.jsx': 'export default () => <main />;',
-        'src/App.module.css': '.app { color: red; }',
-      },
-      model: 'test',
-    });
+    await expect(
+      runActionLoop({
+        request: 'style app',
+        files: {
+          'src/App.jsx': 'export default () => <main />;',
+          'src/App.module.css': '.app { color: red; }',
+        },
+        model: 'test',
+      }),
+    ).rejects.toThrow(/could not provide a write_file action/);
 
     const repairMessage = askWebLLM.mock.calls[1]?.[3]?.messages
       ?.map((message: { content: string }) => message.content)
@@ -739,19 +793,19 @@ describe('runActionLoop', () => {
       .mockResolvedValueOnce('{"action":"finish","summary":"kept stylesheet"}');
     const events: AgentEvent[] = [];
 
-    const result = await runActionLoop({
-      request: 'replace styles',
-      files: {
-        'src/App.jsx':
-          'import styles from "./App.module.css"; export default function App() { return <main className={styles.app} />; }',
-        'src/App.module.css': '.app { display: block; }',
-      },
-      model: 'test',
-      onEvent: (event) => events.push(event),
-    });
+    await expect(
+      runActionLoop({
+        request: 'replace styles',
+        files: {
+          'src/App.jsx':
+            'import styles from "./App.module.css"; export default function App() { return <main className={styles.app} />; }',
+          'src/App.module.css': '.app { display: block; }',
+        },
+        model: 'test',
+        onEvent: (event) => events.push(event),
+      }),
+    ).rejects.toThrow(/could not provide a write_file action/);
 
-    expect(result.summary).toBe('kept stylesheet');
-    expect(result.files['src/App.module.css']).toBe('.app { display: block; }');
     expect(events).toContainEqual(
       expect.objectContaining({
         error: true,

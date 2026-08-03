@@ -15,6 +15,8 @@ export class AgentExecutionError extends Error {
     this.changes = changes;
   }
 }
+
+class AgentRecoveryValidationError extends AgentExecutionError {}
 import {
   validateAIChanges,
   validateComponentStyling,
@@ -59,6 +61,14 @@ const formatReasoningResult = (action: AgentAction, result: unknown): string => 
     );
   }
   return truncateReasoningResult(text);
+};
+
+const isFailedValidationResult = (result: string): boolean => {
+  try {
+    return (JSON.parse(result) as { status?: string }).status === 'failed';
+  } catch {
+    return /\bfailed\b/i.test(result);
+  }
 };
 
 const READ_ONLY_ACTIONS = new Set([
@@ -569,6 +579,12 @@ export async function runActionLoop({
     }
     wroteSinceVerification = true;
     const verification = await runValidation(turn);
+    if (isFailedValidationResult(verification)) {
+      throw new AgentRecoveryValidationError(
+        `Todo-app recovery validation failed: ${verification}`,
+        workspace.changes(),
+      );
+    }
     const changes = workspace.changes();
     const summary = 'Created and validated the todo app with bounded recovery.';
     onEvent({ type: 'finished', turn, changes, message: summary, agentRole });
@@ -805,6 +821,12 @@ export async function runActionLoop({
         if (workspace.changes().length > 0) {
           const wiredEntry = wireNewComponentIntoScratchEntry(workspace);
           const result = await runValidation(turn);
+          if (isFailedValidationResult(result)) {
+            throw new AgentRecoveryValidationError(
+              `Validation failed after forced write recovery: ${result}`,
+              workspace.changes(),
+            );
+          }
           const summary = wiredEntry
             ? `Validated staged changes after forced write recovery limit reached and wired ${wiredEntry}.`
             : 'Validated staged changes after forced write recovery limit reached.';
@@ -933,6 +955,12 @@ export async function runActionLoop({
         if (unchangedReadSkips >= 2 && workspace.changes().length > 0) {
           const wiredEntry = wireNewComponentIntoScratchEntry(workspace);
           const result = await runValidation(turn);
+          if (isFailedValidationResult(result)) {
+            throw new AgentRecoveryValidationError(
+              `Validation failed after repeated unchanged reads: ${result}`,
+              workspace.changes(),
+            );
+          }
           const summary = wiredEntry
             ? `Validated the staged changes after the local model repeatedly read unchanged files and wired ${wiredEntry} to the new component.`
             : 'Validated the staged changes after the local model repeatedly read unchanged files.';
@@ -1200,6 +1228,19 @@ export async function runActionLoop({
       }
       if (action.action === 'finish') {
         onEvent({ type: 'tool', turn, action, agentRole });
+        if (CHANGE_REQUEST_PATTERN.test(request) && workspace.changes().length === 0) {
+          const recovered = await recoverTodoApp(turn);
+          if (recovered) return recovered;
+          const target = forcedRecoveryTargetPath || recoveryWritePath(workspace.files, activeFile);
+          forcedWriteRecoveryPending = true;
+          forcedWriteRecoveryViolations = 0;
+          const message = target
+            ? `No file changes are staged for this edit request. Return exactly one write_file action for ${target} with the complete implementation before finishing.`
+            : 'No file changes are staged for this edit request. Return exactly one write_file action with the complete implementation before finishing.';
+          messages.push({ role: 'user', content: observation('finish', false, message) });
+          context.record('finish_recovery', message);
+          continue;
+        }
         if (requirePreviewInspection && !inspectedPreview) {
           messages.push({
             role: 'user',
@@ -1263,6 +1304,7 @@ export async function runActionLoop({
         agentRole,
       });
     } catch (error) {
+      if (error instanceof AgentRecoveryValidationError) throw error;
       const err = error as Error;
       const stylesheetPath = action.path || '';
       const missingCssModules =
@@ -1338,6 +1380,12 @@ export async function runActionLoop({
     try {
       const wiredEntry = wireNewComponentIntoScratchEntry(workspace);
       const result = await runValidation(maxTurns);
+      if (isFailedValidationResult(result)) {
+        throw new AgentExecutionError(
+          `Final validation failed at the ${maxTurns}-step safety limit: ${result}`,
+          workspace.changes(),
+        );
+      }
       const needsEntryWiring = newlyCreatedComponentsNeedEntryWiring(workspace);
       const summary = needsEntryWiring
         ? `Validated a partial draft after the agent reached its ${maxTurns}-step safety limit. It created new components without wiring them into the application entry point; review the draft before applying it.`
