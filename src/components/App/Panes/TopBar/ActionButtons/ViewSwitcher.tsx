@@ -16,6 +16,12 @@ const viewOptions = [
   { label: 'Preview', icon: Icons.Globe },
 ] as const;
 
+const viewIcons = {
+  Code: Icons.Code,
+  Logs: Icons.Terminal,
+  Preview: Icons.Globe,
+} as const;
+
 export default function ViewSwitcher({
   activeView,
   canOpenCode,
@@ -25,7 +31,7 @@ export default function ViewSwitcher({
 }: ViewSwitcherProps) {
   const [isOpen, setIsOpen] = useState(false);
   const switcherRef = useRef<HTMLDivElement>(null);
-  const ActiveIcon = viewOptions.find((option) => option.label === activeView)?.icon || Icons.Code;
+  const ActiveIcon = viewIcons[activeView];
 
   useEffect(() => {
     if (!isOpen) return;
@@ -47,7 +53,6 @@ export default function ViewSwitcher({
 
   const handleSelect = (view: (typeof viewOptions)[number]['label']) => {
     if (view === 'Code') {
-      if (!canOpenCode) return;
       onOpenCode();
     } else if (view === 'Logs') {
       onOpenLog();
