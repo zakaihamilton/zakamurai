@@ -1,5 +1,5 @@
 import type { AIIncident, ManagerTrace } from '@/components/AI/Agent';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import PromptHeader from './Header';
@@ -10,10 +10,12 @@ vi.mock('@/components/ui/Tooltip', () => ({
 vi.mock('@/components/ui/Icons', () => ({
   Icons: {
     Brain: () => <span />,
+    Close: () => <span />,
     Copy: () => <span />,
     Check: () => <span />,
     Terminal: () => <span />,
     Download: () => <span />,
+    Grid: () => <span />,
   },
 }));
 
@@ -75,6 +77,56 @@ describe('PromptHeader', () => {
     });
     const headerActions = container.querySelector('[class*="headerActions"]');
     expect(headerActions?.contains(traceButton)).toBe(true);
+  });
+
+  it('opens the supported AI tools dialog from the header action row', () => {
+    const { container } = render(
+      <PromptHeader isAIProcessing={false} isSystemProcessing={false} />,
+    );
+
+    const toolsButton = screen.getByRole('button', { name: 'View supported AI tools' });
+    const headerActions = container.querySelector('[class*="headerActions"]');
+    expect(headerActions?.contains(toolsButton)).toBe(true);
+
+    fireEvent.click(toolsButton);
+
+    expect(screen.getByRole('dialog', { name: 'Supported AI tools' })).toBeDefined();
+    expect(screen.getByText('Manager tools')).toBeDefined();
+    expect(screen.getByText('Internal edit-loop actions')).toBeDefined();
+    for (const name of [
+      'list_files',
+      'search_workspace',
+      'search_semantic',
+      'read_file',
+      'validate',
+      'list_project_checks',
+      'run_project_check',
+      'inspect_preview',
+      'write_file',
+      'delete_file',
+      'finish',
+    ]) {
+      expect(screen.getByText(name)).toBeDefined();
+    }
+  });
+
+  it('closes the supported AI tools dialog with Escape', () => {
+    render(<PromptHeader isAIProcessing={false} isSystemProcessing={false} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'View supported AI tools' }));
+    fireEvent.keyDown(document, { key: 'Escape' });
+
+    expect(screen.queryByRole('dialog', { name: 'Supported AI tools' })).toBeNull();
+  });
+
+  it('closes the supported AI tools dialog with its close button', () => {
+    render(<PromptHeader isAIProcessing={false} isSystemProcessing={false} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'View supported AI tools' }));
+    const dialog = screen.getByRole('dialog', { name: 'Supported AI tools' });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Close dialog' }));
+
+    expect(screen.queryByRole('dialog', { name: 'Supported AI tools' })).toBeNull();
   });
 
   it('exposes export action for the latest incident', () => {
