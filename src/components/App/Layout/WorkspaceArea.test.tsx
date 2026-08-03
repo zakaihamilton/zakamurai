@@ -73,6 +73,28 @@ describe('WorkspaceArea', () => {
     expect(screen.getByTestId('prompt')).toBeDefined();
   });
 
+  it('renders the editor for a file tab', async () => {
+    vi.mocked(AppState.useState).mockReturnValue(makeAppState({ isMobile: false }));
+    vi.mocked(TabState.useState).mockReturnValue(
+      makeTabState({
+        openTabs: [
+          {
+            id: 'src/App.jsx',
+            type: 'file',
+            label: 'App.jsx',
+            file: { name: 'App.jsx', path: ['src', 'App.jsx'] },
+          },
+        ],
+        activeTabId: 'src/App.jsx',
+      }),
+    );
+    vi.mocked(SidebarState.useState).mockReturnValue(makeSidebarState({ showAIInput: false }));
+    vi.mocked(PromptState.useState).mockReturnValue(makePromptState());
+
+    render(<WorkspaceArea />);
+    await waitFor(() => expect(screen.getByTestId('editor-area')).toBeDefined());
+  });
+
   it('renders log area for logs tab', async () => {
     vi.mocked(AppState.useState).mockReturnValue(makeAppState({ isMobile: false }));
     vi.mocked(TabState.useState).mockReturnValue(
