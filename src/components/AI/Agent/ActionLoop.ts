@@ -27,6 +27,7 @@ import {
 import {
   NON_PRODUCTIVE_ACTIONS,
   READ_ONLY_ACTIONS,
+  applySearchReplaceBlock,
   cssModuleImporters,
   cssModuleRecovery,
   formatReasoningResult,
@@ -36,10 +37,13 @@ import {
   normalizeSideEffectCssSource,
   observation,
 } from './ActionLoopUtils';
+import { type ConsoleLogEntry, filterConsoleLogs, formatConsoleLogs } from './ConsoleLogInspector';
 import { AgentContextManager, formatVerificationResult } from './ContextManager';
 import { parseModelResult } from './ManagerProtocol';
+import { type PackageAction, handlePackageOperation } from './PackageManager';
 import { listProjectChecks, runProjectCheck } from './ProjectChecks';
 import { AGENT_SYSTEM_PROMPT, ALL_AGENT_ACTIONS, parseAgentAction } from './Protocol';
+import { extractFileSymbols, formatSymbolOutline } from './SymbolInspector';
 import { AgentWorkspace } from './Workspace';
 
 const APP_ENTRY_PATHS = new Set([
@@ -1365,6 +1369,39 @@ export async function runActionLoop({
         }
         onEvent({ type: 'tool', turn, action, agentRole });
       }
+      if (action.action === 'replace_file_content') {
+        const path = action.path || '';
+        const existingContent = workspace.read(path);
+        if (!existingContent && existingContent !== '') {
+          throw new Error(`File not found: ${path}. Cannot perform replace_file_content.`);
+        }
+        let search = action.search || '';
+        let replace = action.replace || '';
+
+        if (!search && action.content) {
+          const match = action.content.match(
+            /<<<<<<< SEARCH\n([\s\S]*?)\n=======\n([\s\S]*?)\n>>>>>>> REPLACE/,
+          );
+          if (match) {
+            search = match[1];
+            replace = match[2];
+          }
+        }
+
+        if (!search) {
+          throw new Error(
+            'replace_file_content action requires search block or SEARCH/REPLACE pattern.',
+          );
+        }
+
+        const newContent = applySearchReplaceBlock(existingContent, search, replace);
+        workspace.write(path, newContent);
+        wroteSinceVerification = true;
+        nonProductiveActionsWithoutWrite = 0;
+        unchangedReadSkips = 0;
+        onEvent({ type: 'tool', turn, action, agentRole });
+        result = `Replaced target content in ${path}.`;
+      }
       if (action.action === 'delete_file') {
         const path = action.path || '';
         const importers = cssModuleImporters(path, workspace.files);
@@ -1405,6 +1442,55 @@ export async function runActionLoop({
         result = JSON.stringify(preview);
         inspectedPreview = true;
         context.record('preview', preview);
+      }
+      if (action.action === 'inspect_console_logs') {
+        onEvent({ type: 'tool', turn, action, agentRole });
+        const query = action.query;
+        const level = action.level;
+        const rawLogs = (workspace.files['.console.log'] || '').split('\n').filter(Boolean);
+        const parsedLogs: ConsoleLogEntry[] = rawLogs.map((line) => {
+          const isErr = line.includes('[ERROR]');
+          const isWarn = line.includes('[WARN]');
+          return {
+            level: isErr ? 'error' : isWarn ? 'warn' : 'log',
+            message: line,
+          };
+        });
+        const filtered = filterConsoleLogs(parsedLogs, { query, level });
+        result = formatConsoleLogs(filtered);
+      }
+      if (action.action === 'get_file_symbols') {
+        onEvent({ type: 'tool', turn, action, agentRole });
+        const path = action.path || '';
+        const fileContent = workspace.read(path);
+        if (!fileContent) {
+          result = `File not found: ${path}`;
+        } else {
+          const outline = extractFileSymbols(fileContent, path);
+          result = formatSymbolOutline(outline);
+        }
+      }
+      if (action.action === 'manage_packages') {
+        onEvent({ type: 'tool', turn, action, agentRole });
+        const rawAction = action.query || 'list';
+        const pkgAction: PackageAction =
+          rawAction === 'add' || rawAction === 'remove' ? rawAction : 'list';
+        const packageName = action.packageName;
+        const version = action.version;
+        const isDev = Boolean(action.isDev);
+
+        const opResult = handlePackageOperation(workspace.files, {
+          action: pkgAction,
+          packageName,
+          version,
+          isDev,
+        });
+
+        if (opResult.updatedPackageJson) {
+          workspace.write('package.json', opResult.updatedPackageJson);
+        }
+
+        result = JSON.stringify(opResult);
       }
       if (action.action === 'finish') {
         onEvent({ type: 'tool', turn, action, agentRole });

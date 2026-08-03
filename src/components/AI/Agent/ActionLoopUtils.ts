@@ -47,6 +47,9 @@ export const READ_ONLY_ACTIONS = new Set([
   'read_file',
   'list_project_checks',
   'inspect_preview',
+  'inspect_console_logs',
+  'get_file_symbols',
+  'manage_packages',
 ]);
 
 export const NON_PRODUCTIVE_ACTIONS = new Set([
@@ -54,6 +57,35 @@ export const NON_PRODUCTIVE_ACTIONS = new Set([
   'validate',
   'run_project_check',
 ]);
+
+export function applySearchReplaceBlock(existing: string, search: string, replace: string): string {
+  if (existing.includes(search)) {
+    return existing.replace(search, replace);
+  }
+
+  const existingLines = existing.split('\n');
+  const searchLines = search.trim().split('\n');
+
+  if (searchLines.length > 0) {
+    for (let i = 0; i <= existingLines.length - searchLines.length; i++) {
+      let match = true;
+      for (let j = 0; j < searchLines.length; j++) {
+        if (existingLines[i + j].trim() !== searchLines[j].trim()) {
+          match = false;
+          break;
+        }
+      }
+      if (match) {
+        const before = existingLines.slice(0, i);
+        const after = existingLines.slice(i + searchLines.length);
+        const replacementLines = replace.split('\n');
+        return [...before, ...replacementLines, ...after].join('\n');
+      }
+    }
+  }
+
+  throw new Error('Target search block not found in file content.');
+}
 
 export const resolveRelativePath = (fromPath: string, specifier: string): string => {
   const parts = fromPath.split('/').slice(0, -1);

@@ -6,7 +6,10 @@ import type {
   VerificationResult,
   WorkspaceIndex,
 } from '@/components/AI/types';
+import { type ConsoleLogEntry, filterConsoleLogs, formatConsoleLogs } from './ConsoleLogInspector';
+import { type PackageAction, handlePackageOperation } from './PackageManager';
 import { listProjectChecks, runProjectCheck } from './ProjectChecks';
+import { extractFileSymbols, formatSymbolOutline } from './SymbolInspector';
 import { AgentWorkspace } from './Workspace';
 
 export type ManagerToolContext = ManagerToolOptions & {
@@ -104,6 +107,65 @@ export async function executeManagerTool(
         ? await context.inspectPreview(context.workspace.files)
         : { status: 'unavailable', diagnostics: 'Preview inspection is unavailable.' };
       break;
+    case 'inspect_console_logs': {
+      const levelStr = asString(input, 'level');
+      const level =
+        levelStr === 'error' || levelStr === 'warn' || levelStr === 'log' ? levelStr : undefined;
+      const query = asString(input, 'query');
+      if (context.inspectConsoleLogs) {
+        value = await context.inspectConsoleLogs(query, level);
+      } else {
+        const rawLogs = (context.workspace.files['.console.log'] || '').split('\n').filter(Boolean);
+        const parsedLogs: ConsoleLogEntry[] = rawLogs.map((line) => {
+          const isErr = line.includes('[ERROR]');
+          const isWarn = line.includes('[WARN]');
+          return {
+            level: isErr ? 'error' : isWarn ? 'warn' : 'log',
+            message: line,
+          };
+        });
+        const filtered = filterConsoleLogs(parsedLogs, { query, level });
+        value = formatConsoleLogs(filtered);
+      }
+      break;
+    }
+    case 'get_file_symbols': {
+      const path = asString(input, 'path');
+      const fileContent = context.workspace.read(path);
+      if (!fileContent) {
+        value = `File not found: ${path}`;
+      } else {
+        const outline = extractFileSymbols(fileContent, path);
+        value = formatSymbolOutline(outline);
+      }
+      break;
+    }
+    case 'manage_packages': {
+      const rawAction = asString(input, 'action');
+      const action: PackageAction =
+        rawAction === 'add' || rawAction === 'remove' ? rawAction : 'list';
+      const packageName = asString(input, 'packageName');
+      const version = asString(input, 'version');
+      const isDev = Boolean(input?.isDev);
+
+      const opResult = handlePackageOperation(context.workspace.files, {
+        action,
+        packageName,
+        version,
+        isDev,
+      });
+
+      if (opResult.updatedPackageJson) {
+        context.workspace.write('package.json', opResult.updatedPackageJson);
+      }
+
+      if (context.onPackageChange) {
+        await context.onPackageChange(action, packageName, version);
+      }
+
+      value = opResult;
+      break;
+    }
     default:
       throw new Error(`Unsupported manager tool: ${String(call.tool)}`);
   }

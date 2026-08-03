@@ -5,7 +5,10 @@ export type ToolDescriptor<Name extends string = string> = {
   purpose: string;
 };
 
-type EditLoopActionName = Extract<AgentActionName, 'write_file' | 'delete_file' | 'finish'>;
+type EditLoopActionName = Extract<
+  AgentActionName,
+  'write_file' | 'replace_file_content' | 'delete_file' | 'finish'
+>;
 
 export const MANAGER_TOOL_CATALOG = [
   {
@@ -40,12 +43,31 @@ export const MANAGER_TOOL_CATALOG = [
     name: 'inspect_preview',
     purpose: 'Inspect the compiled preview for runtime and visual evidence.',
   },
+  {
+    name: 'inspect_console_logs',
+    purpose:
+      'Query runtime console logs and uncaught exception traces filtered by level or search keyword.',
+  },
+  {
+    name: 'get_file_symbols',
+    purpose:
+      'Extract symbol definitions (functions, components, types) and import dependencies for a file.',
+  },
+  {
+    name: 'manage_packages',
+    purpose:
+      'List, add, or remove package dependencies in package.json for the browser environment.',
+  },
 ] satisfies readonly ToolDescriptor<ManagerToolName>[];
 
 export const EDIT_LOOP_ACTION_CATALOG = [
   {
     name: 'write_file',
     purpose: 'Stage complete replacement content for a workspace file.',
+  },
+  {
+    name: 'replace_file_content',
+    purpose: 'Stage targeted search-and-replace edits to specific lines within a workspace file.',
   },
   {
     name: 'delete_file',

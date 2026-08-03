@@ -1581,4 +1581,52 @@ export const title = "Today";
 
     expect(result.files['src/App.jsx']).toContain('Fixed');
   });
+
+  it('supports replace_file_content action with SEARCH/REPLACE blocks', async () => {
+    askWebLLM
+      .mockResolvedValueOnce(
+        JSON.stringify({
+          action: 'replace_file_content',
+          path: 'src/App.jsx',
+          search: 'return <div>Old</div>;',
+          replace: 'return <div>New</div>;',
+        }),
+      )
+      .mockResolvedValueOnce('{"action":"finish","summary":"Updated App component"}');
+
+    const result = await runActionLoop({
+      request: 'update text in App',
+      files: { 'src/App.jsx': 'export default function App() { return <div>Old</div>; }' },
+      model: 'test',
+    });
+
+    expect(result.files['src/App.jsx']).toBe(
+      'export default function App() { return <div>New</div>; }',
+    );
+  });
+
+  it('supports get_file_symbols and manage_packages manager tools in action loop', async () => {
+    askWebLLM
+      .mockResolvedValueOnce(JSON.stringify({ action: 'get_file_symbols', path: 'src/App.jsx' }))
+      .mockResolvedValueOnce(
+        JSON.stringify({
+          action: 'manage_packages',
+          query: 'add',
+          packageName: 'axios',
+          version: '^1.0.0',
+        }),
+      )
+      .mockResolvedValueOnce('{"action":"finish","summary":"Inspected symbols and added package"}');
+
+    const result = await runActionLoop({
+      request: 'add axios package',
+      files: {
+        'src/App.jsx': 'export function App() { return null; }',
+        'package.json': '{\n  "dependencies": {}\n}\n',
+      },
+      model: 'test',
+    });
+
+    expect(result.files['package.json']).toContain('"axios": "^1.0.0"');
+  });
 });

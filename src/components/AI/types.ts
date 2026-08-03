@@ -75,11 +75,15 @@ export type AgentActionName =
   | 'search_semantic'
   | 'read_file'
   | 'write_file'
+  | 'replace_file_content'
   | 'delete_file'
   | 'validate'
   | 'list_project_checks'
   | 'run_project_check'
   | 'inspect_preview'
+  | 'inspect_console_logs'
+  | 'get_file_symbols'
+  | 'manage_packages'
   | 'finish';
 
 export type AgentAction = {
@@ -89,9 +93,15 @@ export type AgentAction = {
   k?: number;
   path?: string;
   content?: string;
+  search?: string;
+  replace?: string;
   reason?: string;
   check?: string;
   summary?: string;
+  level?: 'log' | 'warn' | 'error';
+  packageName?: string;
+  version?: string;
+  isDev?: boolean;
 };
 
 export type AgentEventType = 'thinking' | 'tool' | 'observation' | 'model_io' | 'finished';
@@ -130,12 +140,21 @@ export type ManagerToolName =
   | 'validate'
   | 'list_project_checks'
   | 'run_project_check'
-  | 'inspect_preview';
+  | 'inspect_preview'
+  | 'inspect_console_logs'
+  | 'get_file_symbols'
+  | 'manage_packages';
 
 export type ContextRequest = {
   tool: Extract<
     ManagerToolName,
-    'list_files' | 'search_workspace' | 'search_semantic' | 'read_file'
+    | 'list_files'
+    | 'search_workspace'
+    | 'search_semantic'
+    | 'read_file'
+    | 'inspect_console_logs'
+    | 'get_file_symbols'
+    | 'manage_packages'
   >;
   input?: Record<string, unknown>;
 };
@@ -229,6 +248,15 @@ export type ManagerToolOptions = {
   runProjectCheck?: (check: string, files: FileMap) => Promise<string>;
   inspectPreview?: (files: FileMap) => Promise<unknown>;
   retrieveContext?: (query: string, k: number) => Promise<SemanticSearchResult[]>;
+  inspectConsoleLogs?: (
+    query?: string,
+    level?: 'log' | 'warn' | 'error',
+  ) => Promise<unknown> | unknown;
+  onPackageChange?: (
+    action: 'list' | 'add' | 'remove',
+    packageName?: string,
+    version?: string,
+  ) => Promise<unknown> | unknown;
 };
 
 export type RunManagerOptions = ManagerToolOptions & {

@@ -6,11 +6,15 @@ const ACTIONS = new Set<AgentActionName>([
   'search_semantic',
   'read_file',
   'write_file',
+  'replace_file_content',
   'delete_file',
   'validate',
   'list_project_checks',
   'run_project_check',
   'inspect_preview',
+  'inspect_console_logs',
+  'get_file_symbols',
+  'manage_packages',
   'finish',
 ]);
 
@@ -154,7 +158,12 @@ export function parseAgentAction(
   if (!allowed.has(value.action)) {
     throw new Error(`Action not allowed for this role: ${value.action}`);
   }
-  if (['read_file', 'write_file', 'delete_file'].includes(value.action)) {
+  if (
+    ['read_file', 'write_file', 'replace_file_content', 'delete_file', 'get_file_symbols'].includes(
+      value.action,
+    ) &&
+    value.path
+  ) {
     value.path = normalizeAgentPath(value.path);
   }
   if (value.action === 'write_file' && typeof value.content !== 'string') {
