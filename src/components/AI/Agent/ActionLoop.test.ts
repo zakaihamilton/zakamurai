@@ -809,6 +809,29 @@ describe('runActionLoop', () => {
     expect(events[0].agentRole).toBe('planner');
   });
 
+  it('uses manager-provided context instead of asking the model to inspect again', async () => {
+    askWebLLM
+      .mockResolvedValueOnce(
+        '{"action":"write_file","path":"src/App.jsx","content":"export default function App() { return <main>Reminders</main>; }"}',
+      )
+      .mockResolvedValueOnce('{"action":"validate"}')
+      .mockResolvedValueOnce('{"action":"finish","summary":"done"}');
+
+    const result = await runActionLoop({
+      request: 'create a reminder app',
+      files: { 'src/App.jsx': 'export default function App() { return null; }' },
+      model: 'test',
+      priorContext: '[list_files]\nsrc/App.jsx\n[read_file]\nexisting app source',
+    });
+
+    expect(result.files['src/App.jsx']).toContain('Reminders');
+    const prompt = askWebLLM.mock.calls[0]?.[3]?.messages?.[1]?.content;
+    expect(prompt).toContain(
+      'Use the supplied workspace context; do not repeat the initial inventory.',
+    );
+    expect(prompt).not.toContain('Start by inspecting the workspace.');
+  });
+
   it('requires preview inspection before a visual review can finish', async () => {
     askWebLLM
       .mockResolvedValueOnce('{"action":"finish","summary":"premature"}')

@@ -54,6 +54,17 @@ describe('AgentWorkspace', () => {
     expect(workspace.list('.css')).toEqual(['src/b.css']);
   });
 
+  it('supports glob-style file queries from local models', () => {
+    const workspace = new AgentWorkspace({
+      'src/App.jsx': 'app',
+      'src/main.jsx': 'main',
+      'src/App.module.css': 'styles',
+    });
+
+    expect(workspace.list('*.jsx')).toEqual(['src/App.jsx', 'src/main.jsx']);
+    expect(workspace.list('src/*.module.css')).toEqual(['src/App.module.css']);
+  });
+
   it('truncates read output beyond 20k characters', () => {
     const content = 'x'.repeat(25000);
     const workspace = new AgentWorkspace({ 'big.txt': content });
@@ -118,7 +129,7 @@ describe('AgentWorkspace', () => {
         ]),
       },
     );
-    const result = await workspace.search('needle', '.css');
+    const result = await workspace.search('needle', '*.css');
     expect(result).toContain('src/b.css');
     expect(result).not.toContain('src/a.js');
   });

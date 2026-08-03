@@ -351,21 +351,6 @@ export function createAIIncident({
   };
 }
 
-export function formatAIIncidentSummary(incident: AIIncident): string {
-  const model = incident.models.selectedModelId || 'unknown model';
-  const recoveryText = incident.webllm.recoveries.length
-    ? ` Recoveries: ${incident.webllm.recoveries.length}.`
-    : '';
-  return [
-    `Zakamurai AI incident ${incident.id}`,
-    `Classification: ${incident.classification}`,
-    `Phase: ${incident.failure.phase}`,
-    `Model: ${model}.${recoveryText}`,
-    `Failure: ${incident.failure.message}`,
-    `Manager run: ${incident.manager.runId || 'none'}; staged changes preserved: ${incident.stagedChanges.preserved ? 'yes' : 'no'}.`,
-  ].join('\n');
-}
-
 export function downloadAIIncident(incident: AIIncident): void {
   const blob = new Blob([JSON.stringify(incident, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
@@ -374,12 +359,4 @@ export function downloadAIIncident(incident: AIIncident): void {
   link.download = `${incident.id}.json`;
   link.click();
   URL.revokeObjectURL(url);
-}
-
-export async function copyAIIncidentSummary(incident: AIIncident): Promise<void> {
-  try {
-    await navigator.clipboard?.writeText(formatAIIncidentSummary(incident));
-  } catch {
-    // Clipboard permissions vary across browser contexts; export remains available.
-  }
 }

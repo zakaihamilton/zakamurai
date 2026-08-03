@@ -9,7 +9,7 @@ import { LogState } from '@/components/App/Views/LogArea';
 import { useFileSystem } from '@/components/Storage';
 import { useCallback, useEffect, useState } from 'react';
 import { requireStore } from '../../types';
-import { AgentSessionState, createSessionMessage } from './AgentSessions';
+import { AgentSessionState, createAgentRunUsage, createSessionMessage } from './AgentSessions';
 import FileScopeDialog from './FileScopeDialog';
 import useModelDownloader from './ModelDownloader';
 import PromptContent from './PromptContent';
@@ -130,13 +130,17 @@ export default function Prompt() {
     );
     downloadAIIncident(latestAIIncident);
   }, [latestAIIncident]);
-  const handleCopyAIIncident = useCallback(async () => {
-    if (!latestAIIncident) return;
-    const { copyAIIncidentSummary } = await import(
-      /* webpackChunkName: "ai-incident" */ '@/components/AI/Agent/AIIncident'
-    );
-    await copyAIIncidentSummary(latestAIIncident);
-  }, [latestAIIncident]);
+
+  const handleClearAIModelLog = useCallback(() => {
+    if (!activeSession) return;
+    patchSession(activeSession.id, {
+      messages: [],
+      reasoning: '',
+      reasoningEvents: [],
+      runUsage: createAgentRunUsage(),
+      ...(activeSession.status === 'error' ? { status: 'idle' } : {}),
+    });
+  }, [activeSession, patchSession]);
 
   const {
     isFilePickerOpen,
@@ -286,10 +290,10 @@ export default function Prompt() {
         onLoadCachedModelIds={loadCachedModelIds}
         onOpenModelManager={openModelManager}
         patchSession={patchSession}
+        onClearAIModelLog={handleClearAIModelLog}
         latestManagerTrace={latestManagerTrace}
         latestAIIncident={latestAIIncident}
         onExportAIIncident={handleExportAIIncident}
-        onCopyAIIncident={handleCopyAIIncident}
         traceFiles={editorState.fileContents}
         onReplayRequest={replayManagerRequest}
       />

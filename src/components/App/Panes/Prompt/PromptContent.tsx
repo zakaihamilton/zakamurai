@@ -51,10 +51,10 @@ export default function PromptContent({
   onLoadCachedModelIds,
   onOpenModelManager,
   patchSession,
+  onClearAIModelLog,
   latestManagerTrace,
   latestAIIncident,
   onExportAIIncident,
-  onCopyAIIncident,
   traceFiles,
   onReplayRequest,
 }: PromptContentProps) {
@@ -102,7 +102,6 @@ export default function PromptContent({
           latestManagerTrace={latestManagerTrace}
           latestAIIncident={latestAIIncident}
           onExportAIIncident={onExportAIIncident}
-          onCopyAIIncident={onCopyAIIncident}
           traceFiles={traceFiles}
           onReplayRequest={onReplayRequest}
         />
@@ -145,6 +144,7 @@ export default function PromptContent({
               : ''
           }
           onOpenInTab={() => onOpenSectionInTab('reasoning')}
+          onClearLog={onClearAIModelLog}
           showStepIO={activeSession?.showStepIO === true}
           onToggleStepIO={(show) =>
             activeSession && patchSession(activeSession.id, { showStepIO: show })

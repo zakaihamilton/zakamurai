@@ -1,10 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import {
-  copyAIIncidentSummary,
-  createAIIncident,
-  downloadAIIncident,
-  formatAIIncidentSummary,
-} from './AIIncident';
+import { createAIIncident, downloadAIIncident } from './AIIncident';
 import type { ManagerTrace } from './ManagerTrace';
 
 const trace: ManagerTrace = {
@@ -82,17 +77,6 @@ describe('AI incident bundles', () => {
     expect(incident.failure.message).toBe(
       'The local model did not produce a valid Manager protocol response.',
     );
-  });
-
-  it('formats a short shareable diagnosis', () => {
-    const incident = createAIIncident({
-      error: new Error('model response was not JSON'),
-      trace,
-      selectedModelId: 'model-a',
-    });
-
-    expect(formatAIIncidentSummary(incident)).toContain('Classification: model-protocol');
-    expect(formatAIIncidentSummary(incident)).not.toContain('private tic tac toe game');
   });
 
   it('captures WebLLM metrics, engine state, recovery details, and optional trace fields', () => {
@@ -203,11 +187,10 @@ describe('AI incident bundles', () => {
       modelResponseCount: 1,
       protocolStatuses: ['request-sent', 'response-received', 'valid'],
     });
-    expect(formatAIIncidentSummary(incident)).toContain('Recoveries: 1.');
     vi.unstubAllGlobals();
   });
 
-  it('handles missing runtime context, unknown failures, download, and clipboard fallback', async () => {
+  it('handles missing runtime context, unknown failures, and download', () => {
     vi.stubGlobal('navigator', undefined);
     const incident = createAIIncident({ error: 0, selectedModelId: '', stagedChangeCount: 0 });
     expect(incident).toMatchObject({
@@ -222,8 +205,6 @@ describe('AI incident bundles', () => {
       manager: { runId: null, outcome: null, durationMs: null, eventCount: 0 },
       stagedChanges: { count: 0, preserved: false },
     });
-    expect(formatAIIncidentSummary(incident)).toContain('Model: unknown model.');
-
     const createObjectURL = vi.fn(() => 'blob:incident');
     const revokeObjectURL = vi.fn();
     vi.stubGlobal('URL', { createObjectURL, revokeObjectURL });
@@ -235,10 +216,6 @@ describe('AI incident bundles', () => {
     expect(revokeObjectURL).toHaveBeenCalledWith('blob:incident');
     expect(click).toHaveBeenCalledOnce();
 
-    vi.stubGlobal('navigator', {
-      clipboard: { writeText: vi.fn().mockRejectedValue(new Error()) },
-    });
-    await expect(copyAIIncidentSummary(incident)).resolves.toBeUndefined();
     vi.unstubAllGlobals();
     click.mockRestore();
   });

@@ -18,6 +18,7 @@ const formatDuration = (milliseconds: number): string => {
 type ReasoningPanelProps = {
   modelDownloadStatus?: string;
   onOpenInTab?: () => void;
+  onClearLog?: () => void;
   showStepIO?: boolean;
   onToggleStepIO?: (show: boolean) => void;
 };
@@ -25,6 +26,7 @@ type ReasoningPanelProps = {
 export default function ReasoningPanel({
   modelDownloadStatus = '',
   onOpenInTab,
+  onClearLog,
   showStepIO: showStepIOProp = false,
   onToggleStepIO,
 }: ReasoningPanelProps) {
@@ -33,6 +35,7 @@ export default function ReasoningPanel({
       <ReasoningPanelInner
         modelDownloadStatus={modelDownloadStatus}
         onOpenInTab={onOpenInTab}
+        onClearLog={onClearLog}
         showStepIO={showStepIOProp}
         onToggleStepIO={onToggleStepIO}
       />
@@ -43,6 +46,7 @@ export default function ReasoningPanel({
 function ReasoningPanelInner({
   modelDownloadStatus,
   onOpenInTab = () => {},
+  onClearLog = () => {},
   showStepIO: showStepIOProp = false,
   onToggleStepIO,
 }: ReasoningPanelProps) {
@@ -56,6 +60,13 @@ function ReasoningPanelInner({
   const reasoningEvents = activeSession?.reasoningEvents || [];
   const messages = activeSession?.messages || [];
   const displayedReasoning = formatReasoningEvents(reasoningEvents, showStepIO) || reasoning;
+  const latestError =
+    activeSession?.status === 'error'
+      ? [...messages]
+          .reverse()
+          .find((message) => message.role === 'ai' && /^AI Manager error:/i.test(message.text))
+          ?.text
+      : undefined;
   const runUsage = activeSession?.runUsage;
   const toolEntries = Object.entries(runUsage?.toolCalls || {}).filter(([, count]) => count > 0);
   const hasDiagnostics = Boolean(
@@ -83,14 +94,17 @@ function ReasoningPanelInner({
   }, [showStepIOProp]);
 
   useEffect(() => {
-    if ((displayedReasoning || modelDownloadStatus || messages.length) && reasoningRef.current) {
+    if (
+      (displayedReasoning || latestError || modelDownloadStatus || messages.length) &&
+      reasoningRef.current
+    ) {
       reasoningRef.current.scrollTo?.({
         top: reasoningRef.current.scrollHeight,
         // Repeated smooth-scroll animations compete with local model inference.
         behavior: 'auto',
       });
     }
-  }, [displayedReasoning, messages.length, modelDownloadStatus]);
+  }, [displayedReasoning, latestError, messages.length, modelDownloadStatus]);
 
   const reasoningText = [
     transcriptText ? `--- Transcript ---\n${transcriptText}` : '',
@@ -100,6 +114,8 @@ function ReasoningPanelInner({
   ]
     .filter(Boolean)
     .join('\n\n');
+  const hasLog = Boolean(displayedReasoning || messages.length || hasDiagnostics);
+  const isLogClearDisabled = !hasLog || activeSession?.status === 'running';
 
   return (
     <div
@@ -127,6 +143,23 @@ function ReasoningPanelInner({
             </Tooltip>
           </div>
           <div className={styles.reasoningActions}>
+            <Tooltip
+              content={
+                activeSession?.status === 'running'
+                  ? 'Clear AI Model log after the current run'
+                  : 'Clear AI Model log'
+              }
+            >
+              <button
+                type="button"
+                className={styles.clearLogButton}
+                aria-label="Clear AI Model log"
+                onClick={onClearLog}
+                disabled={isLogClearDisabled}
+              >
+                <Icons.Trash size={14} />
+              </button>
+            </Tooltip>
             <Tooltip content={`${showStepIO ? 'Hide' : 'Show'} input/output for each agent step`}>
               <button
                 type="button"
@@ -223,6 +256,12 @@ function ReasoningPanelInner({
             >
               {displayedReasoning}
             </ReactMarkdown>
+            {latestError && (
+              <aside className={styles.reasoningError} role="alert">
+                <strong className={styles.reasoningErrorLabel}>Latest error</strong>
+                <span>{latestError}</span>
+              </aside>
+            )}
           </div>
         )}
       </div>

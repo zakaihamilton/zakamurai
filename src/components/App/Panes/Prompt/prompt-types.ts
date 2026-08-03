@@ -1,5 +1,5 @@
-import type { ManagerTrace } from '@/components/AI/Agent/ManagerTrace';
 import type { AIIncident } from '@/components/AI/Agent/AIIncident';
+import type { ManagerTrace } from '@/components/AI/Agent/ManagerTrace';
 import type { AgentEvent, FileMap, WebLLMModel } from '@/components/AI/types';
 import type { ExtendedEditorState } from '@/components/App/Views/EditorArea/types';
 import type { FileSystemApi } from '@/components/App/types';
@@ -149,7 +149,6 @@ export type PromptHeaderProps = {
   latestManagerTrace?: ManagerTrace | null;
   latestAIIncident?: AIIncident | null;
   onExportAIIncident?: () => void;
-  onCopyAIIncident?: () => void | Promise<void>;
   traceFiles?: FileMap;
   onReplayRequest?: (request: string) => void;
 };
@@ -217,10 +216,10 @@ export type PromptContentProps = {
   onLoadCachedModelIds: () => void;
   onOpenModelManager: () => void;
   patchSession: (sessionId: string, patch: Partial<AgentSession>) => void;
+  onClearAIModelLog: () => void;
   latestManagerTrace?: ManagerTrace | null;
   latestAIIncident?: AIIncident | null;
   onExportAIIncident?: () => void;
-  onCopyAIIncident?: () => void | Promise<void>;
   traceFiles?: FileMap;
   onReplayRequest?: (request: string) => void;
 };

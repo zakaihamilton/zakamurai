@@ -12,7 +12,6 @@ export default function PromptHeader({
   latestManagerTrace,
   latestAIIncident,
   onExportAIIncident,
-  onCopyAIIncident,
   traceFiles,
   onReplayRequest,
 }: PromptHeaderProps) {
@@ -40,28 +39,16 @@ export default function PromptHeader({
           onReplayRequest={onReplayRequest}
         />
         {latestAIIncident && (
-          <>
-            <Tooltip content="Export AI incident">
-              <button
-                type="button"
-                className={styles.headerActionBtn}
-                onClick={onExportAIIncident}
-                aria-label="Export AI incident"
-              >
-                <Icons.Download />
-              </button>
-            </Tooltip>
-            <Tooltip content="Copy AI diagnosis">
-              <button
-                type="button"
-                className={styles.headerActionBtn}
-                onClick={onCopyAIIncident}
-                aria-label="Copy AI diagnosis"
-              >
-                <Icons.Copy />
-              </button>
-            </Tooltip>
-          </>
+          <Tooltip content="Export AI incident">
+            <button
+              type="button"
+              className={styles.headerActionBtn}
+              onClick={onExportAIIncident}
+              aria-label="Export AI incident"
+            >
+              <Icons.Download />
+            </button>
+          </Tooltip>
         )}
         <Tooltip content={copied ? 'Copied!' : 'Copy full session (transcript & reasoning)'}>
           <button

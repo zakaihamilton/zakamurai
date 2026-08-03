@@ -77,10 +77,9 @@ describe('PromptHeader', () => {
     expect(headerActions?.contains(traceButton)).toBe(true);
   });
 
-  it('exposes export and diagnosis actions for the latest incident', () => {
+  it('exposes export action for the latest incident', () => {
     const incident = { id: 'incident-header', classification: 'model-protocol' } as AIIncident;
     const onExportAIIncident = vi.fn();
-    const onCopyAIIncident = vi.fn();
 
     render(
       <PromptHeader
@@ -88,14 +87,12 @@ describe('PromptHeader', () => {
         isSystemProcessing={false}
         latestAIIncident={incident}
         onExportAIIncident={onExportAIIncident}
-        onCopyAIIncident={onCopyAIIncident}
       />,
     );
 
     fireEvent.click(screen.getByRole('button', { name: 'Export AI incident' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Copy AI diagnosis' }));
 
     expect(onExportAIIncident).toHaveBeenCalledOnce();
-    expect(onCopyAIIncident).toHaveBeenCalledOnce();
+    expect(screen.queryByRole('button', { name: 'Copy AI diagnosis' })).toBeNull();
   });
 });
