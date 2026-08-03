@@ -54,7 +54,7 @@ const APP_ENTRY_PATHS = new Set([
 const CHANGE_REQUEST_PATTERN =
   /\b(?:add|build|change|create|delete|design|fix|implement|improve|make|modify|refactor|remove|rename|replace|style|update)\b/i;
 
-const isTodoAppRequest = (request: string): boolean => /\btodo\s+app\b/i.test(request);
+const isTodoAppRequest = (request: string): boolean => /\b(?:todo|reminder)\s+app\b/i.test(request);
 
 const TODO_APP_STYLESHEET = 'App.module.css';
 const TODO_APP_RECOVERY_FILES = {
@@ -296,7 +296,9 @@ const buildUserRequest = ({
       ? `Request: ${request}\nScope: whole project\n${priorContext ? 'Use the supplied workspace context; do not repeat the initial inventory.' : 'Start by inspecting the entire workspace. Do not assume any file is the primary target.'}`
       : `Request: ${request}\nScope: current file\nActive file: ${activeFile || 'none'}\nSelected lines: ${selectedLines.join(', ') || 'none'}\n${priorContext ? 'Use the supplied workspace context; do not repeat the initial inventory.' : 'Start by inspecting the workspace.'}`;
   const implementationGuidance = CHANGE_REQUEST_PATTERN.test(request)
-    ? '\nImplementation requirement: this is a change request. Make at least one write_file or delete_file edit before using validate, inspect_preview, run_project_check, or finish. After one brief inspection, implement the request instead of continuing to inspect.'
+    ? priorContext
+      ? '\nImplementation requirement: workspace context has already been collected. Make a write_file or delete_file edit now before using validate, inspect_preview, run_project_check, or finish. Do not repeat the workspace inspection.'
+      : '\nImplementation requirement: this is a change request. Make at least one write_file or delete_file edit before using validate, inspect_preview, run_project_check, or finish. After one brief inspection, implement the request instead of continuing to inspect.'
     : '';
   const requestBlock = `${scopeBlock}${implementationGuidance}`;
   if (!priorContext) return requestBlock;

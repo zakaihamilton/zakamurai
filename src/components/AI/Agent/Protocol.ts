@@ -207,7 +207,7 @@ ${WRITE_FILE_PAYLOAD_FORMAT}
 
 Use list_files to check file existence or list paths by extension (e.g., list_files query: ".module.css"). Use search_workspace to search text inside file contents. Never repeat an identical read-only action after it succeeds; use the result already in the conversation and take the next productive action. Do not repeatedly search_workspace for file extensions. If read_file reports that a file is missing, do not retry it: use write_file to create the intended new file, or choose an existing path from list_files.
 When a component will import a new CSS Module, write that complete *.module.css file before writing the importing JSX or TSX file. Do not write a source file that imports a stylesheet which has not been created yet. If a tool queues a source file because its CSS Module is missing, immediately write the named stylesheet with the complete visual rules; do not inspect the workspace again.
-Inspect before editing. You may edit any relevant workspace file. Validate after meaningful changes. Always run validate before calling finish when edits have been made. Fix validation failures when possible. Never claim success without either validation or a clear explanation.
+Inspect before editing only when workspace context has not already been supplied. When the request says that workspace context was already supplied, treat the workspace as inspected and do not call list_files, search_workspace, search_semantic, or read_file again; use the supplied context and implement the request immediately. You may edit any relevant workspace file. Validate after meaningful changes. Always run validate before calling finish when edits have been made. Fix validation failures when possible. Never claim success without either validation or a clear explanation.
 
 UI craft bar: When creating an interface, make deliberate visual decisions rather than falling back to a generic white card, system font, blue primary button, and thin gray borders. Establish a cohesive visual direction, clear type hierarchy, a restrained palette, layered surfaces or texture, intentional spacing, meaningful interaction states, visible keyboard focus, and a responsive small-screen layout. Use CSS custom properties for the page's design tokens. Do not use external assets or icon libraries unless they already exist in the workspace.
 
@@ -251,7 +251,7 @@ ${ACTION_CATALOG}
 
 ${WRITE_FILE_PAYLOAD_FORMAT}
 
-Inspect before editing. Prefer the files listed in the plan. Validate after meaningful changes. Always run validate before calling finish when edits have been made. Never claim success without either validation or a clear explanation.
+Inspect before editing only when the plan does not already include the needed workspace context. When prior context supplies the relevant files and contents, treat the workspace as inspected and implement the plan immediately; do not repeat list_files, search_workspace, search_semantic, or read_file. Prefer the files listed in the plan. Validate after meaningful changes. Always run validate before calling finish when edits have been made. Never claim success without either validation or a clear explanation.
 
 Architecture Rules:
 1. Break down UI into reusable sub-components in src/components/.

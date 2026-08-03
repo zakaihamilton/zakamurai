@@ -422,6 +422,26 @@ describe('runActionLoop', () => {
     );
   });
 
+  it('uses bounded todo recovery for a reminder app request', async () => {
+    askWebLLM.mockResolvedValue('{"action":"list_files"}');
+    const validate = vi.fn().mockResolvedValue('Checks passed.');
+
+    const result = await runActionLoop({
+      request: 'create a reminder app',
+      files: {
+        'src/App.jsx':
+          'export default function App() { return <div><h1>New Project</h1><p>Start coding here...</p></div>; }',
+      },
+      model: 'test',
+      validate,
+    });
+
+    expect(result.files['src/App.jsx']).toContain('function addTask');
+    expect(result.files['src/App.module.css']).toContain('.card');
+    expect(result.summary).toContain('bounded recovery');
+    expect(validate).toHaveBeenCalledWith(result.files);
+  });
+
   it('does not report todo recovery as successful when validation fails', async () => {
     askWebLLM.mockResolvedValueOnce('{"action":"finish","summary":"done"}');
     const validate = vi.fn().mockResolvedValue({
@@ -829,6 +849,7 @@ describe('runActionLoop', () => {
     expect(prompt).toContain(
       'Use the supplied workspace context; do not repeat the initial inventory.',
     );
+    expect(prompt).toContain('workspace context has already been collected');
     expect(prompt).not.toContain('Start by inspecting the workspace.');
   });
 
