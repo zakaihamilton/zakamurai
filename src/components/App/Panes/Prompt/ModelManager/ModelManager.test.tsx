@@ -202,12 +202,14 @@ describe('ModelManager', () => {
   it('shows the full local AI recommendation on capable desktop hardware', async () => {
     const originalGpu = (navigator as Navigator & { gpu?: unknown }).gpu;
     const originalMemory = (navigator as Navigator & { deviceMemory?: number }).deviceMemory;
+    const originalConcurrency = navigator.hardwareConcurrency;
     const originalWidth = window.innerWidth;
     Object.defineProperty(navigator, 'gpu', {
       configurable: true,
       value: { requestAdapter: vi.fn().mockResolvedValue({}) },
     });
     Object.defineProperty(navigator, 'deviceMemory', { configurable: true, value: 16 });
+    Object.defineProperty(navigator, 'hardwareConcurrency', { configurable: true, value: 8 });
     Object.defineProperty(window, 'innerWidth', { configurable: true, value: 1440 });
     Object.defineProperty(navigator, 'storage', {
       configurable: true,
@@ -233,6 +235,10 @@ describe('ModelManager', () => {
     Object.defineProperty(navigator, 'deviceMemory', {
       configurable: true,
       value: originalMemory,
+    });
+    Object.defineProperty(navigator, 'hardwareConcurrency', {
+      configurable: true,
+      value: originalConcurrency,
     });
     Object.defineProperty(window, 'innerWidth', { configurable: true, value: originalWidth });
   });
