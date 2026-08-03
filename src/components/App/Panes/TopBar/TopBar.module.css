@@ -58,8 +58,14 @@
 
   .actions {
     flex: 1 0 100%;
-    justify-content: space-between;
+    justify-content: flex-start;
     gap: 8px;
+    min-width: 0;
+  }
+
+  .actions > :first-child {
+    flex: 1 1 auto;
+    justify-content: space-between;
     min-width: 0;
   }
 
@@ -153,5 +159,9 @@
 
   .actions {
     gap: 4px;
+  }
+
+  .actions > :first-child {
+    flex-basis: 0;
   }
 }
