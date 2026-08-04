@@ -49,6 +49,13 @@ export const recoveryReason = (error: unknown): WebLLMRecoveryReason | null => {
     return 'out-of-memory';
   }
   if (
+    /cache\.add|networkerror|network error|failed to fetch|load failed|network response was not ok/i.test(
+      message,
+    )
+  ) {
+    return 'network-failure';
+  }
+  if (
     /worker|message error should not be 0|message channel|postmessage|terminated|backend.*unavailable/i.test(
       message,
     )

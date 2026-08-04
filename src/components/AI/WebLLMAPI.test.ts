@@ -400,6 +400,23 @@ describe('WebLLMAPI', () => {
     expect(mockedCreateWebWorkerMLCEngine).toHaveBeenCalledTimes(2);
   });
 
+  it('retries transient Cache.add network failures during an AI request', async () => {
+    mockedCreateWebWorkerMLCEngine.mockRejectedValueOnce(
+      new Error(
+        "NetworkError: Failed to execute 'add' on 'Cache': Cache.add() encountered a network error",
+      ),
+    );
+    mockEngine.chat.completions.create.mockResolvedValue({
+      choices: [{ message: { content: 'recovered response' } }],
+    });
+
+    await expect(askWebLLM('hello', '', null, { model: 'retry-network-model' })).resolves.toBe(
+      'recovered response',
+    );
+
+    expect(mockedCreateWebWorkerMLCEngine).toHaveBeenCalledTimes(2);
+  });
+
   it('warns when unloading a cached model fails', async () => {
     mockEngine.unload = vi.fn().mockRejectedValue(new Error('unload failed'));
     await cacheWebLLMModel('unload-model');

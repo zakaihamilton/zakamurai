@@ -23,6 +23,13 @@ describe('WebLLM recovery helpers', () => {
     expect(recoveryReason(new Error('GPUDevice was lost'))).toBe('device-lost');
     expect(recoveryReason(new Error('failed to allocate buffer'))).toBe('out-of-memory');
     expect(recoveryReason(new Error('worker terminated'))).toBe('worker-failure');
+    expect(
+      recoveryReason(
+        new Error(
+          "NetworkError: Failed to execute 'add' on 'Cache': Cache.add() encountered a network error",
+        ),
+      ),
+    ).toBe('network-failure');
     expect(recoveryReason(new Error('invalid prompt'))).toBeNull();
   });
 

@@ -316,7 +316,12 @@ export type WebLLMMessage = {
 
 export type WebLLMRequestKind = 'agent' | 'completion' | 'model-cache' | 'general';
 
-export type WebLLMRecoveryReason = 'device-lost' | 'out-of-memory' | 'worker-failure' | 'stalled';
+export type WebLLMRecoveryReason =
+  | 'device-lost'
+  | 'out-of-memory'
+  | 'worker-failure'
+  | 'stalled'
+  | 'network-failure';
 
 export type WebLLMRecoveryEvent = {
   requestedModelId: string;
