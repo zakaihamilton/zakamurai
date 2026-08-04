@@ -39,6 +39,8 @@ import {
 
 const MAX_CONTEXT_ROUNDS = 3;
 const MAX_REPAIR_ATTEMPTS = 2;
+const AGENT_CONTEXT_WINDOW_SIZE = 3072;
+const AGENT_GENERATION_TOKENS = 2200;
 async function loadModel(): Promise<ManagerModelClient> {
   const { askWebLLM } = await import('../WebLLMAPI');
   return async ({
@@ -50,6 +52,7 @@ async function loadModel(): Promise<ManagerModelClient> {
     temperature,
     top_p,
     max_tokens,
+    contextWindowSize,
   }: ManagerModelCall) =>
     askWebLLM('', '', null, {
       model,
@@ -61,6 +64,7 @@ async function loadModel(): Promise<ManagerModelClient> {
       temperature,
       top_p,
       max_tokens,
+      contextWindowSize,
     });
 }
 
@@ -316,6 +320,7 @@ async function executeManager({
             task: 'generate-changes',
             action,
             message: event.message,
+            replaceProgress: event.replaceProgress,
             provenance: event.provenance,
           });
         }
@@ -357,7 +362,8 @@ async function executeManager({
       onMetrics,
       temperature: 0.15,
       top_p: 0.8,
-      max_tokens: task === 'answer' ? 1200 : 2600,
+      max_tokens: task === 'answer' ? 1200 : AGENT_GENERATION_TOKENS,
+      contextWindowSize: AGENT_CONTEXT_WINDOW_SIZE,
     });
     messages.push({ role: 'assistant', content: reply });
     onEvent({ type: 'model', turn: round + 1, task, output: reply });
@@ -461,7 +467,8 @@ async function executeManager({
             onRecovery,
             temperature: 0.1,
             top_p: 0.8,
-            max_tokens: 2600,
+            max_tokens: AGENT_GENERATION_TOKENS,
+            contextWindowSize: AGENT_CONTEXT_WINDOW_SIZE,
           });
           messages.push({ role: 'assistant', content: reply });
           onEvent({ type: 'model', turn: repair + 2, task, output: reply });
@@ -534,7 +541,8 @@ async function executeManager({
       onRecovery,
       temperature: 0.1,
       top_p: 0.8,
-      max_tokens: 2600,
+      max_tokens: AGENT_GENERATION_TOKENS,
+      contextWindowSize: AGENT_CONTEXT_WINDOW_SIZE,
     });
     messages.push({ role: 'assistant', content: reply });
     try {

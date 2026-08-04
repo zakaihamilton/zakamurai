@@ -449,7 +449,7 @@ export default function useAgentRunner({
                 if (tool) recordTool(tool);
               }
               const line = formatAgentEvent(managerEvent as unknown as AgentEvent);
-              if (line) appendReasoning(line);
+              if (line) appendReasoning(line, managerEvent.replaceProgress === true);
               if (managerEvent.input || managerEvent.output) {
                 appendReasoning('', false, {
                   turn: managerEvent.turn,

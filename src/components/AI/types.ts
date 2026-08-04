@@ -182,6 +182,8 @@ export type ManagerEvent = {
   type: ManagerEventType;
   turn: number;
   message?: string;
+  /** Replace the current transient progress line instead of adding a new transcript entry. */
+  replaceProgress?: boolean;
   tool?: ManagerToolName;
   action?: AgentActionName | AgentAction;
   task?: 'answer' | 'generate-changes' | 'repair-changes';
@@ -203,6 +205,7 @@ export type ManagerModelCall = {
   temperature: number;
   top_p: number;
   max_tokens: number;
+  contextWindowSize?: number;
   onMetrics?: (metrics: WebLLMGenerationMetrics) => void;
   onRecovery?: (event: WebLLMRecoveryEvent) => void;
 };

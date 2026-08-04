@@ -24,6 +24,7 @@ import {
   validateCssModuleUsage,
   validateFileContentType,
 } from '../ChangeValidator';
+import { getWebLLMStore } from '../WebLLMState';
 import {
   NON_PRODUCTIVE_ACTIONS,
   READ_ONLY_ACTIONS,
@@ -58,6 +59,19 @@ const APP_ENTRY_PATHS = new Set([
 const CHANGE_REQUEST_PATTERN =
   /\b(?:add|build|change|create|delete|design|fix|implement|improve|make|modify|refactor|remove|rename|replace|style|update)\b/i;
 
+const AGENT_CONTEXT_WINDOW_SIZE = 3072;
+const AGENT_GENERATION_TOKENS = 1600;
+const AGENT_RECOVERY_TOKENS = 2000;
+
+const CONTEXT_READY_AGENT_INSTRUCTIONS = `
+IMPORTANT: The manager has already inspected the workspace and supplied the relevant file
+contents below. For an edit request, your next response must be exactly one write_file or
+delete_file action. Do not call list_files, search_workspace, search_semantic, or read_file
+again. For source code, use the fenced write format: put the one-line JSON metadata first and
+the complete file in one correctly labelled code fence. After a successful write, validate and
+then finish. Never return a plan or prose.
+`.trim();
+
 const recoveryWritePath = (
   files: Record<string, string>,
   activeFile?: string | null,
@@ -85,6 +99,21 @@ const isScratchEntry = (content: string | undefined): boolean =>
   Boolean(
     content && /<h1>New Project<\/h1>/.test(content) && /Start coding here\.\.\./.test(content),
   );
+
+const getModelDownloadProgress = (modelId: string): string | null => {
+  const store = getWebLLMStore();
+  const engines = store?.engines || {};
+  const modelIds = [modelId, store?.activeModelId].filter(
+    (id, index, ids): id is string => typeof id === 'string' && ids.indexOf(id) === index,
+  );
+  const downloadingEngine = modelIds
+    .map((id) => engines[id])
+    .find((engine) => engine?.status === 'downloading');
+  if (!downloadingEngine) return null;
+  return downloadingEngine.progressText
+    ? `the model is downloading — ${downloadingEngine.progressText}`
+    : 'the model is downloading; waiting for model files';
+};
 
 /**
  * A small local model can successfully create a new component, then lose track of
@@ -315,8 +344,12 @@ export async function runActionLoop({
   const askWebLLM = modelClient ? null : await loadAskWebLLM();
   const workspace = existingWorkspace || new AgentWorkspace(files, workspaceIndex);
   const context = new AgentContextManager({ request, priorContext });
+  const agentSystemPrompt =
+    priorContext && !agentRole
+      ? `${CONTEXT_READY_AGENT_INSTRUCTIONS}\n\n${systemPrompt}`
+      : systemPrompt;
   const messages: WebLLMMessage[] = [
-    { role: 'system', content: systemPrompt },
+    { role: 'system', content: agentSystemPrompt },
     {
       role: 'user',
       content: buildUserRequest({
@@ -406,9 +439,12 @@ export async function runActionLoop({
     const responseStartedAt = Date.now();
     const heartbeat = setInterval(() => {
       const elapsedSeconds = Math.max(1, Math.floor((Date.now() - responseStartedAt) / 1000));
-      const progress = receivedModelOutput
-        ? `${streamedCharacterCount.toLocaleString()} character(s) received; waiting for a complete JSON action before validation`
-        : 'the model has not started streaming yet; keeping the workspace context ready';
+      const downloadProgress = getModelDownloadProgress(model);
+      const progress = downloadProgress
+        ? downloadProgress
+        : receivedModelOutput
+          ? `${streamedCharacterCount.toLocaleString()} character(s) received; waiting for a complete JSON action before validation`
+          : 'the model has not started streaming yet; keeping the workspace context ready';
       onEvent({
         type: 'thinking',
         turn,
@@ -442,7 +478,11 @@ export async function runActionLoop({
           onMetrics,
           temperature: visualMode ? 0.12 : 0.15,
           top_p: 0.8,
-          max_tokens: visualMode || failedWritePath || forcedWriteRecoveryPending ? 2400 : 1800,
+          max_tokens:
+            visualMode || failedWritePath || forcedWriteRecoveryPending
+              ? AGENT_RECOVERY_TOKENS
+              : AGENT_GENERATION_TOKENS,
+          contextWindowSize: AGENT_CONTEXT_WINDOW_SIZE,
         });
       } else {
         if (!askWebLLM) throw new Error('WebLLM is unavailable.');
@@ -484,7 +524,11 @@ export async function runActionLoop({
             top_p: 0.8,
             // Give a repair turn enough room to return one complete source file instead of
             // repeating a truncated payload from the preceding attempt.
-            max_tokens: visualMode || failedWritePath || forcedWriteRecoveryPending ? 2400 : 1800,
+            max_tokens:
+              visualMode || failedWritePath || forcedWriteRecoveryPending
+                ? AGENT_RECOVERY_TOKENS
+                : AGENT_GENERATION_TOKENS,
+            contextWindowSize: AGENT_CONTEXT_WINDOW_SIZE,
           },
         );
       }

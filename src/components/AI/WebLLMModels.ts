@@ -124,6 +124,19 @@ export const RECOMMENDED_VISUAL_REVIEW_MODEL = WEB_LLM_MODELS.find(
   (model) => model.id === 'Qwen3.5-9B-q4f16_1-MLC',
 )!;
 
+const isMacDevice = (): boolean => {
+  if (typeof navigator === 'undefined') return false;
+  const currentNavigator = navigator as Navigator & {
+    userAgentData?: { platform?: string };
+  };
+  const platform =
+    currentNavigator.userAgentData?.platform ||
+    currentNavigator.platform ||
+    currentNavigator.userAgent ||
+    '';
+  return /mac/i.test(platform);
+};
+
 /**
  * Choose a conservative first-run default on memory-constrained machines.
  * `deviceMemory` is deliberately coarse, so an explicit user selection is
@@ -132,8 +145,11 @@ export const RECOMMENDED_VISUAL_REVIEW_MODEL = WEB_LLM_MODELS.find(
 export const getDeviceAppropriateDefaultModelId = (): string => {
   if (typeof navigator === 'undefined') return RECOMMENDED_WEB_LLM_MODEL.id;
   const deviceMemory = (navigator as Navigator & { deviceMemory?: number }).deviceMemory;
+  if (Number.isFinite(deviceMemory) && (deviceMemory || 0) <= 2) {
+    return 'Qwen3.5-0.8B-q4f16_1-MLC';
+  }
+  if (isMacDevice()) return 'Qwen3.5-2B-q4f16_1-MLC';
   if (!Number.isFinite(deviceMemory)) return RECOMMENDED_WEB_LLM_MODEL.id;
-  if ((deviceMemory || 0) <= 2) return 'Qwen3.5-0.8B-q4f16_1-MLC';
   return RECOMMENDED_WEB_LLM_MODEL.id;
 };
 

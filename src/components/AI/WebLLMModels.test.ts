@@ -44,6 +44,19 @@ describe('WebLLMModels', () => {
     });
   });
 
+  it('uses the lighter Qwen3.5 2B model on Mac devices', () => {
+    const originalNavigator = globalThis.navigator;
+    Object.defineProperty(globalThis, 'navigator', {
+      configurable: true,
+      value: { platform: 'MacIntel', userAgent: 'Macintosh' },
+    });
+    expect(getDeviceAppropriateDefaultModelId()).toBe('Qwen3.5-2B-q4f16_1-MLC');
+    Object.defineProperty(globalThis, 'navigator', {
+      configurable: true,
+      value: originalNavigator,
+    });
+  });
+
   it('uses the smallest recovery tier only on very low-memory devices', () => {
     const originalNavigator = globalThis.navigator;
     Object.defineProperty(globalThis, 'navigator', {

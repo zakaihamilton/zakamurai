@@ -1,4 +1,5 @@
-import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
+import { type Mock, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { bindWebLLMStore } from '../WebLLMState';
 import type { AgentEvent, AskWebLLM } from '../types';
 import { runActionLoop } from './ActionLoop';
 
@@ -10,7 +11,13 @@ describe('runActionLoop', () => {
   beforeEach(async () => {
     vi.clearAllMocks();
     vi.resetAllMocks();
+    bindWebLLMStore(null);
     ({ askWebLLM } = (await import('../WebLLMAPI')) as unknown as { askWebLLM: Mock<AskWebLLM> });
+  });
+
+  afterEach(() => {
+    bindWebLLMStore(null);
+    vi.useRealTimers();
   });
 
   it('iterates through tools and returns isolated changes', async () => {
@@ -529,6 +536,41 @@ describe('runActionLoop', () => {
     );
   });
 
+  it('reports model download progress while initialization is still underway', async () => {
+    vi.useFakeTimers();
+    const store = Object.assign(vi.fn(), {
+      activeModelId: 'test',
+      engines: { test: { status: 'downloading', progressText: 'Fetching model weights…' } },
+    });
+    bindWebLLMStore(store as never);
+    askWebLLM.mockImplementationOnce(
+      async (_prompt, _systemPrompt, _onUpdate, _options) =>
+        new Promise((resolve) => {
+          setTimeout(() => resolve('{"action":"finish","summary":"done"}'), 5_000);
+        }),
+    );
+    const events: AgentEvent[] = [];
+    const run = runActionLoop({
+      request: 'inspect',
+      files: { 'src/a.js': 'a' },
+      model: 'test',
+      onEvent: (event) => events.push(event),
+    });
+
+    await vi.advanceTimersByTimeAsync(3_000);
+
+    expect(events).toContainEqual(
+      expect.objectContaining({
+        type: 'thinking',
+        replaceProgress: true,
+        message: expect.stringContaining('model is downloading — Fetching model weights'),
+      }),
+    );
+
+    await vi.advanceTimersByTimeAsync(2_000);
+    await expect(run).resolves.toMatchObject({ summary: 'done' });
+  });
+
   it('forwards cancellation ownership and reports model recovery progress', async () => {
     askWebLLM.mockImplementationOnce(async (_prompt, _systemPrompt, _onUpdate, options) => {
       options?.onRecovery?.({
@@ -703,7 +745,10 @@ describe('runActionLoop', () => {
       .find((content: string) => content.includes('must write only'));
     expect(repairMessage).toContain('must write only src/components/Todo.module.css');
     expect(repairMessage).toContain('.app { display: block; }');
-    expect(askWebLLM.mock.calls[1]?.[3]).toMatchObject({ max_tokens: 2400 });
+    expect(askWebLLM.mock.calls[1]?.[3]).toMatchObject({
+      max_tokens: 2000,
+      contextWindowSize: 3072,
+    });
   });
 
   it('gives malformed JSX source-specific recovery without mislabeling it as CSS', async () => {
@@ -728,7 +773,10 @@ describe('runActionLoop', () => {
     expect(repairMessage).toContain('using one jsx fence');
     expect(repairMessage).not.toContain('rejected stylesheet');
     expect(repairMessage).not.toContain('using one css fence');
-    expect(askWebLLM.mock.calls[1]?.[3]).toMatchObject({ max_tokens: 2400 });
+    expect(askWebLLM.mock.calls[1]?.[3]).toMatchObject({
+      max_tokens: 2000,
+      contextWindowSize: 3072,
+    });
   });
 
   it('points an inline-style retry at an available co-located CSS Module', async () => {
@@ -800,6 +848,9 @@ describe('runActionLoop', () => {
     );
     expect(prompt).toContain('workspace context has already been collected');
     expect(prompt).not.toContain('Start by inspecting the workspace.');
+    expect(askWebLLM.mock.calls[0]?.[3]?.messages?.[0]?.content).toContain(
+      'your next response must be exactly one write_file or',
+    );
   });
 
   it('requires preview inspection before a visual review can finish', async () => {
@@ -823,7 +874,8 @@ describe('runActionLoop', () => {
     expect(askWebLLM.mock.calls[0]?.[3]).toMatchObject({
       temperature: 0.12,
       top_p: 0.8,
-      max_tokens: 2400,
+      max_tokens: 2000,
+      contextWindowSize: 3072,
     });
   });
 

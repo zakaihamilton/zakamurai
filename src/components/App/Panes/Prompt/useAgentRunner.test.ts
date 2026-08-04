@@ -662,4 +662,38 @@ describe('useAgentRunner', () => {
       );
     });
   });
+
+  it('replaces transient model progress instead of accumulating heartbeat entries', async () => {
+    runAgent.mockImplementationOnce(async (options) => {
+      options.onEvent({
+        type: 'model',
+        turn: 1,
+        message: 'Local model is still working (24s elapsed)…',
+        replaceProgress: true,
+      });
+      options.onEvent({
+        type: 'model',
+        turn: 1,
+        message: 'Local model is still working (27s elapsed)…',
+        replaceProgress: true,
+      });
+      return { changes: [], summary: 'done' };
+    });
+    const props = createRunnerProps();
+    const { result } = renderHook(() => useAgentRunner(props));
+
+    act(() => {
+      result.current.send(mockFormEvent());
+    });
+
+    await waitFor(() => {
+      const reasoningUpdates = vi
+        .mocked(props.patchSession)
+        .mock.calls.map(([, update]) => update.reasoning)
+        .filter((reasoning): reasoning is string => typeof reasoning === 'string');
+      const latestReasoning = reasoningUpdates.at(-1) || '';
+      expect(latestReasoning).toContain('27s elapsed');
+      expect(latestReasoning).not.toContain('24s elapsed');
+    });
+  });
 });
