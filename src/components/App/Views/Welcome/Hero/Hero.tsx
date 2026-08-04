@@ -8,18 +8,26 @@ export default function WelcomeHero() {
         <Icons.ZLogo size={56} className={styles.logo} />
       </div>
       <p className={styles.eyebrow}>Welcome to Zakamurai</p>
-      <h1 className={styles.title}>Your AI coding workspace in the browser.</h1>
+      <h1 className={styles.title}>Your AI coding workspace in the browser</h1>
       <p className={styles.subtitle}>
-        A focused browser workspace for editing, AI-assisted changes, builds, logs, and live
-        preview.
+        Edit, prompt, build, and preview — all in one focused place.
       </p>
 
-      <div className={styles.intro}>
+      <p className={styles.intro}>
         <span>Code</span>
+        <span className={styles.introSep} aria-hidden="true">
+          ·
+        </span>
         <span>Prompt</span>
+        <span className={styles.introSep} aria-hidden="true">
+          ·
+        </span>
         <span>Build</span>
+        <span className={styles.introSep} aria-hidden="true">
+          ·
+        </span>
         <span>Preview</span>
-      </div>
+      </p>
     </>
   );
 }
