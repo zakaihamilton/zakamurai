@@ -30,10 +30,12 @@ export default function Dialog({
     const focusable = dialog?.querySelectorAll<HTMLElement>(
       'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
     );
+    const confirmButton = dialog?.querySelector<HTMLElement>('button[data-dialog-confirm]');
     (
       dialog?.querySelector<HTMLElement>(
         'input:not([disabled]), select:not([disabled]), textarea:not([disabled])',
       ) ||
+      confirmButton ||
       focusable?.[0] ||
       dialog
     )?.focus();
@@ -109,6 +111,7 @@ export default function Dialog({
             </button>
             <button
               type="button"
+              data-dialog-confirm
               className={`${styles.confirmBtn} ${type === 'danger' ? styles.danger : ''}`}
               onClick={onConfirm}
             >

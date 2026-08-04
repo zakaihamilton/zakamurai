@@ -64,22 +64,13 @@ describe('Dialog', () => {
     expect(container.firstChild).toBeNull();
   });
 
-  it('provides modal semantics and closes on Escape', () => {
+  it('focuses the primary action and closes on Escape', () => {
     const onCancel = vi.fn();
-    render(
-      <Dialog
-        footer={null}
-        isOpen={true}
-        title="T"
-        message="M"
-        onConfirm={vi.fn()}
-        onCancel={onCancel}
-      />,
-    );
+    render(<Dialog isOpen={true} title="T" message="M" onConfirm={vi.fn()} onCancel={onCancel} />);
 
     const dialog = screen.getByRole('dialog', { name: 'T' });
     expect(dialog).toHaveAttribute('aria-modal', 'true');
-    expect(document.activeElement).toBe(dialog.querySelector('button[aria-label="Close dialog"]'));
+    expect(document.activeElement).toBe(dialog.querySelector('button[data-dialog-confirm]'));
     fireEvent.keyDown(document, { key: 'Escape' });
     expect(onCancel).toHaveBeenCalledOnce();
   });
