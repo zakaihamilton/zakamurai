@@ -30,10 +30,14 @@ function isPreviewHostRequest(request: NextRequest): boolean {
     previewOrigin: previewOriginUrl.origin,
     isIsolated: true,
   };
-  if (isPreviewHost(host, previewOrigins)) return true;
+  return isPreviewHost(host, previewOrigins);
+}
 
+function isVercelSurfaceHost(request: NextRequest): boolean {
+  const host = request.headers.get('host');
+  if (!host) return false;
   try {
-    return isVercelAppHost(new URL(`https://${host || ''}`).hostname);
+    return isVercelAppHost(new URL(`https://${host}`).hostname);
   } catch {
     return false;
   }
@@ -62,12 +66,13 @@ function isPreviewSurfaceRequest(request: NextRequest): boolean {
 
   const branchOrigin = toHostOrigin(process.env.NEXT_PUBLIC_VERCEL_BRANCH_URL);
   return Boolean(
-    branchOrigin &&
+    (branchOrigin &&
       isPreviewHost(request.headers.get('host'), {
         ideOrigin: branchOrigin,
         previewOrigin: branchOrigin,
         isIsolated: false,
-      }),
+      })) ||
+      isVercelSurfaceHost(request),
   );
 }
 

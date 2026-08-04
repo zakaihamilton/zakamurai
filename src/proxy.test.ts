@@ -140,6 +140,16 @@ describe('proxy', () => {
     expect(res.headers.get('Cross-Origin-Opener-Policy')).toBe('same-origin-allow-popups');
   });
 
+  it('keeps a bare Vercel deployment URL on the IDE surface', () => {
+    const req = createMockProxyRequest(
+      'https://zakamurai-5fxe3mg37-zakai-hamiltons-projects.vercel.app/',
+      { host: 'zakamurai-5fxe3mg37-zakai-hamiltons-projects.vercel.app' },
+    );
+    const res = proxy(req as unknown as NextRequest) as unknown as MockNextResponse;
+    expect(res.type).toBe('next');
+    expect(res.headers.get('Content-Security-Policy')).toBeUndefined();
+  });
+
   it('handles zakamurai-surface preview query on Vercel branch hosts', () => {
     const req = createMockProxyRequest(
       'https://zakamurai-git-feature-team.vercel.app/__preview/host?session=test&zakamurai-surface=preview',
