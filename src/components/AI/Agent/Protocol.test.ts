@@ -74,6 +74,73 @@ export default function App() {
     });
   });
 
+  it('accepts react-labelled fences and prefers them over empty JSON content', () => {
+    expect(
+      parseAgentAction(`{"action":"write_file","path":"src/App.jsx","content":"","reason":"build"}
+\`\`\`react
+import { useState } from "react";
+export default function App() {
+  const [board, setBoard] = useState(Array(9).fill(null));
+  return <main>{board.map((cell, i) => <button key={i} onClick={() => setBoard(board)}>{cell}</button>)}</main>;
+}
+\`\`\``),
+    ).toMatchObject({
+      action: 'write_file',
+      path: 'src/App.jsx',
+      content: expect.stringContaining('useState'),
+    });
+  });
+
+  it('prefers a complete source fence over a truncated JSON content field', () => {
+    expect(
+      parseAgentAction(`{"action":"write_file","path":"src/App.jsx","content":"export default function App() { return null; }","reason":"build"}
+\`\`\`jsx
+import { useState } from "react";
+export default function App() {
+  const [value, setValue] = useState(0);
+  return <button onClick={() => setValue(value + 1)}>{value}</button>;
+}
+\`\`\``),
+    ).toMatchObject({
+      action: 'write_file',
+      path: 'src/App.jsx',
+      content: expect.stringContaining('useState'),
+    });
+  });
+
+  it('recovers fence-only source when a default write path is supplied', () => {
+    expect(
+      parseAgentAction(
+        `\`\`\`jsx
+import { useState } from "react";
+export default function App() {
+  return <main>Ready</main>;
+}
+\`\`\``,
+        { defaultWritePath: 'src/App.jsx' },
+      ),
+    ).toMatchObject({
+      action: 'write_file',
+      path: 'src/App.jsx',
+      content: expect.stringContaining('export default function App'),
+    });
+  });
+
+  it('recovers raw source-only replies during targeted recovery', () => {
+    expect(
+      parseAgentAction(
+        `export default function App() {
+  return <main>Ready</main>;
+}`,
+        { defaultWritePath: 'src/App.jsx' },
+      ),
+    ).toMatchObject({
+      action: 'write_file',
+      path: 'src/App.jsx',
+      content: expect.stringContaining('Ready'),
+    });
+  });
+
   it('recovers the first complete action when source follows its JSON metadata', () => {
     expect(
       parseAgentAction(`{"action":"write_file","path":"src/App.jsx"}

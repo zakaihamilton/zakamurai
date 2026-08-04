@@ -53,6 +53,26 @@
   padding-top: 16px;
 }
 
+.reasoningError {
+  display: grid;
+  gap: 4px;
+  margin-top: 20px;
+  padding: 12px 14px;
+  border: 1px solid var(--error, var(--error-color, #f87171));
+  border-left-width: 3px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--error, #f87171) 10%, var(--bg-input));
+  color: var(--text-main);
+  overflow-wrap: anywhere;
+}
+
+.reasoningErrorLabel {
+  color: var(--error, var(--error-color, #f87171));
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
 .stepHeading {
   margin: 0 0 10px;
   color: var(--text-main);

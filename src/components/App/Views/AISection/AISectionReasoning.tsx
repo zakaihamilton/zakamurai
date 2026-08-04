@@ -3,6 +3,7 @@ import type {
   AgentSession,
   AgentSessionMessage,
 } from '@/components/state/domain-types';
+import { withoutManagerErrorMessages } from '@/components/App/Panes/Prompt/AgentSessions';
 import { useEffect } from 'react';
 import type { RefObject } from 'react';
 import ReactMarkdown, { type Components } from 'react-markdown';
@@ -14,6 +15,7 @@ type AISectionReasoningProps = {
   activeSession: AgentSession | null;
   reasoningGroups: ReasoningGroup[];
   runUsageSummary: string;
+  latestError?: string;
   fallbackContent: string;
   content: string;
   contentRef: RefObject<HTMLDivElement | null>;
@@ -107,11 +109,13 @@ export default function AISectionReasoning({
   activeSession,
   reasoningGroups,
   runUsageSummary,
+  latestError = '',
   fallbackContent,
   content,
   contentRef,
 }: AISectionReasoningProps) {
-  const hasTranscript = Boolean(activeSession?.messages?.length);
+  const transcriptMessages = withoutManagerErrorMessages(activeSession?.messages || []);
+  const hasTranscript = transcriptMessages.length > 0;
 
   useEffect(() => {
     if (!content || !contentRef.current) return;
@@ -123,14 +127,20 @@ export default function AISectionReasoning({
 
   return (
     <div ref={contentRef} className={`${styles.content} ${styles.markdownContent}`}>
-      {hasTranscript ? <Transcript messages={activeSession?.messages || []} /> : null}
+      {hasTranscript ? <Transcript messages={transcriptMessages} /> : null}
       <ReasoningGroups groups={reasoningGroups} />
       {runUsageSummary ? (
         <section className={styles.runSummary}>
           <ReactMarkdown components={summaryMarkdownComponents}>{runUsageSummary}</ReactMarkdown>
         </section>
       ) : null}
-      {!reasoningGroups.length && !runUsageSummary && !hasTranscript ? (
+      {latestError ? (
+        <aside className={styles.reasoningError} role="alert">
+          <strong className={styles.reasoningErrorLabel}>Latest error</strong>
+          <span>{latestError}</span>
+        </aside>
+      ) : null}
+      {!reasoningGroups.length && !runUsageSummary && !hasTranscript && !latestError ? (
         <section className={styles.reasoningGroup}>
           <article className={styles.reasoningEntry}>
             <div className={styles.reasoningText}>{fallbackContent}</div>

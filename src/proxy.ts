@@ -43,6 +43,11 @@ function isVercelSurfaceHost(request: NextRequest): boolean {
   }
 }
 
+function isLocalDevHost(request: NextRequest): boolean {
+  const host = (request.headers.get('host') || '').split(':')[0].toLowerCase();
+  return host === 'localhost' || host === '127.0.0.1' || host === '[::1]';
+}
+
 function isPreviewSurfaceRequest(request: NextRequest): boolean {
   if (isPreviewHostRequest(request)) return true;
   const hasSurfaceSignal =
@@ -51,6 +56,11 @@ function isPreviewSurfaceRequest(request: NextRequest): boolean {
     isPreviewBootstrapPath(request.nextUrl.pathname) ||
     isPreviewVirtualPath(request.nextUrl.pathname);
   if (!hasSurfaceSignal) return false;
+
+  // Single-port local development serves preview on the IDE origin with a surface
+  // query (see getPreviewOrigins). Without this, /__preview/host 404s as a normal
+  // Next route and the iframe shows "This page could not be found."
+  if (isLocalDevHost(request)) return true;
 
   const configuredIdeOrigin = process.env.NEXT_PUBLIC_IDE_ORIGIN;
   if (

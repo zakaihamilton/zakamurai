@@ -5,7 +5,13 @@ import Tooltip from '@/components/ui/Tooltip';
 import { useEffect, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { requireStore } from '../../../types';
-import { AgentSessionState, formatReasoningEvents, getActiveAgentSession } from '../AgentSessions';
+import {
+  AgentSessionState,
+  formatReasoningEvents,
+  getActiveAgentSession,
+  getLatestManagerError,
+  withoutManagerErrorMessages,
+} from '../AgentSessions';
 import SectionActions from '../SectionExpandButton';
 import styles from './Reasoning.module.css';
 
@@ -59,14 +65,9 @@ function ReasoningPanelInner({
   const reasoning = activeSession?.reasoning || '';
   const reasoningEvents = activeSession?.reasoningEvents || [];
   const messages = activeSession?.messages || [];
+  const transcriptMessages = withoutManagerErrorMessages(messages);
   const displayedReasoning = formatReasoningEvents(reasoningEvents, showStepIO) || reasoning;
-  const latestError =
-    activeSession?.status === 'error'
-      ? [...messages]
-          .reverse()
-          .find((message) => message.role === 'ai' && /^AI Manager error:/i.test(message.text))
-          ?.text
-      : undefined;
+  const latestError = getLatestManagerError(activeSession);
   const runUsage = activeSession?.runUsage;
   const toolEntries = Object.entries(runUsage?.toolCalls || {}).filter(([, count]) => count > 0);
   const hasDiagnostics = Boolean(
@@ -82,8 +83,8 @@ function ReasoningPanelInner({
         `Tools: ${toolEntries.map(([name, count]) => `${name} ×${count}`).join(', ') || 'none'}`,
       ].join('\n')
     : '';
-  const transcriptText = messages.length
-    ? messages
+  const transcriptText = transcriptMessages.length
+    ? transcriptMessages
         .map((message) => `[${message.timestamp || 'now'}] ${message.role}: ${message.text}`)
         .join('\n\n')
     : '';
@@ -92,6 +93,10 @@ function ReasoningPanelInner({
   useEffect(() => {
     setShowStepIO(showStepIOProp);
   }, [showStepIOProp]);
+
+  useEffect(() => {
+    if (latestError) setIsExpanded(true);
+  }, [latestError]);
 
   useEffect(() => {
     if (
@@ -111,16 +116,20 @@ function ReasoningPanelInner({
     modelDownloadStatus,
     displayedReasoning,
     diagnosticsText,
+    latestError ? `--- Latest error ---\n${latestError}` : '',
   ]
     .filter(Boolean)
     .join('\n\n');
-  const hasLog = Boolean(displayedReasoning || messages.length || hasDiagnostics);
+  const hasLog = Boolean(displayedReasoning || messages.length || hasDiagnostics || latestError);
   const isLogClearDisabled = !hasLog || activeSession?.status === 'running';
+  const isPanelVisible = Boolean(
+    displayedReasoning || modelDownloadStatus || messages.length || latestError,
+  );
 
   return (
     <div
       className={`${styles.reasoningWrapper} ${
-        displayedReasoning || modelDownloadStatus || messages.length ? styles.reasoningVisible : ''
+        isPanelVisible ? styles.reasoningVisible : ''
       } ${!isExpanded ? styles.reasoningCollapsed : ''}`}
     >
       <div className={styles.reasoningContainer}>
@@ -179,90 +188,99 @@ function ReasoningPanelInner({
           </div>
         </div>
         {isExpanded && (
-          <div ref={reasoningRef} className={styles.reasoningContent}>
-            {messages.length ? (
-              <section className={styles.transcriptSection} aria-label="Session transcript">
-                {messages.map((message: AgentSessionMessage) => {
-                  const label =
-                    message.role === 'user'
-                      ? 'You'
-                      : message.role === 'ai'
-                        ? message.agentRole
-                          ? `AI · ${message.agentRole}`
-                          : 'AI'
-                        : 'System';
-                  return (
-                    <article className={styles.reasoningEntry} key={message.id}>
-                      <div className={styles.timestamp}>
-                        {message.timestamp ? <time>{message.timestamp}</time> : null}
-                        {message.timestamp ? ' · ' : ''}
-                        <span className={styles.transcriptType}>{label}</span>
-                      </div>
-                      <div className={`${styles.reasoningText} ${styles.transcriptText}`}>
-                        {message.text}
-                      </div>
-                    </article>
-                  );
-                })}
-              </section>
-            ) : null}
-            {modelDownloadStatus && (
-              <output className={styles.downloadStatus} aria-live="polite">
-                <span className={styles.downloadSpinner} aria-hidden="true" />
-                <span>{modelDownloadStatus}</span>
-              </output>
-            )}
-            {hasDiagnostics && runUsage && (
-              <details className={styles.diagnostics} open>
-                <summary>Run diagnostics</summary>
-                <dl className={styles.diagnosticsGrid}>
-                  <dt>Model</dt>
-                  <dd>{runUsage.modelIds.join(', ') || 'unknown'}</dd>
-                  <dt>Calls</dt>
-                  <dd>{runUsage.modelCalls}</dd>
-                  <dt>Outcome</dt>
-                  <dd>
-                    {runUsage.outcomes.success} passed · {runUsage.outcomes.error} errors ·{' '}
-                    {runUsage.outcomes.aborted} aborted
-                  </dd>
-                  <dt>Duration</dt>
-                  <dd>{formatDuration(runUsage.totalMs)}</dd>
-                  <dt>Tools</dt>
-                  <dd>
-                    {toolEntries.map(([name, count]) => `${name} ×${count}`).join(' · ') || 'none'}
-                  </dd>
-                </dl>
-              </details>
-            )}
-            <ReactMarkdown
-              components={{
-                a: ({ node, ...props }) => <a className={styles.reasoningLink} {...props} />,
-                blockquote: ({ node, ...props }) => (
-                  <blockquote className={styles.reasoningBlockquote} {...props} />
-                ),
-                code: ({ node, ...props }) => <code className={styles.reasoningCode} {...props} />,
-                h1: ({ node, ...props }) => <h1 className={styles.reasoningHeading} {...props} />,
-                h2: ({ node, ...props }) => <h2 className={styles.reasoningHeading} {...props} />,
-                h3: ({ node, ...props }) => <h3 className={styles.reasoningHeading} {...props} />,
-                h4: ({ node, ...props }) => <h4 className={styles.reasoningHeading} {...props} />,
-                h5: ({ node, ...props }) => <h5 className={styles.reasoningHeading} {...props} />,
-                h6: ({ node, ...props }) => <h6 className={styles.reasoningHeading} {...props} />,
-                li: ({ node, ...props }) => <li className={styles.reasoningListItem} {...props} />,
-                ol: ({ node, ...props }) => <ol className={styles.reasoningList} {...props} />,
-                p: ({ node, ...props }) => <p className={styles.reasoningParagraph} {...props} />,
-                pre: ({ node, ...props }) => <pre className={styles.reasoningPre} {...props} />,
-                ul: ({ node, ...props }) => <ul className={styles.reasoningList} {...props} />,
-              }}
-            >
-              {displayedReasoning}
-            </ReactMarkdown>
-            {latestError && (
-              <aside className={styles.reasoningError} role="alert">
-                <strong className={styles.reasoningErrorLabel}>Latest error</strong>
-                <span>{latestError}</span>
-              </aside>
-            )}
-          </div>
+          <>
+            <div ref={reasoningRef} className={styles.reasoningContent}>
+              {transcriptMessages.length ? (
+                <section className={styles.transcriptSection} aria-label="Session transcript">
+                  {transcriptMessages.map((message: AgentSessionMessage) => {
+                    const label =
+                      message.role === 'user'
+                        ? 'You'
+                        : message.role === 'ai'
+                          ? message.agentRole
+                            ? `AI · ${message.agentRole}`
+                            : 'AI'
+                          : 'System';
+                    return (
+                      <article className={styles.reasoningEntry} key={message.id}>
+                        <div className={styles.timestamp}>
+                          {message.timestamp ? <time>{message.timestamp}</time> : null}
+                          {message.timestamp ? ' · ' : ''}
+                          <span className={styles.transcriptType}>{label}</span>
+                        </div>
+                        <div className={`${styles.reasoningText} ${styles.transcriptText}`}>
+                          {message.text}
+                        </div>
+                      </article>
+                    );
+                  })}
+                </section>
+              ) : null}
+              {modelDownloadStatus && (
+                <output className={styles.downloadStatus} aria-live="polite">
+                  <span className={styles.downloadSpinner} aria-hidden="true" />
+                  <span>{modelDownloadStatus}</span>
+                </output>
+              )}
+              {hasDiagnostics && runUsage && (
+                <details className={styles.diagnostics} open>
+                  <summary>Run diagnostics</summary>
+                  <dl className={styles.diagnosticsGrid}>
+                    <dt>Model</dt>
+                    <dd>{runUsage.modelIds.join(', ') || 'unknown'}</dd>
+                    <dt>Calls</dt>
+                    <dd>{runUsage.modelCalls}</dd>
+                    <dt>Outcome</dt>
+                    <dd>
+                      {runUsage.outcomes.success} passed · {runUsage.outcomes.error} errors ·{' '}
+                      {runUsage.outcomes.aborted} aborted
+                    </dd>
+                    <dt>Duration</dt>
+                    <dd>{formatDuration(runUsage.totalMs)}</dd>
+                    <dt>Tools</dt>
+                    <dd>
+                      {toolEntries.map(([name, count]) => `${name} ×${count}`).join(' · ') ||
+                        'none'}
+                    </dd>
+                  </dl>
+                </details>
+              )}
+              <ReactMarkdown
+                components={{
+                  a: ({ node, ...props }) => <a className={styles.reasoningLink} {...props} />,
+                  blockquote: ({ node, ...props }) => (
+                    <blockquote className={styles.reasoningBlockquote} {...props} />
+                  ),
+                  code: ({ node, ...props }) => (
+                    <code className={styles.reasoningCode} {...props} />
+                  ),
+                  h1: ({ node, ...props }) => <h1 className={styles.reasoningHeading} {...props} />,
+                  h2: ({ node, ...props }) => <h2 className={styles.reasoningHeading} {...props} />,
+                  h3: ({ node, ...props }) => <h3 className={styles.reasoningHeading} {...props} />,
+                  h4: ({ node, ...props }) => <h4 className={styles.reasoningHeading} {...props} />,
+                  h5: ({ node, ...props }) => <h5 className={styles.reasoningHeading} {...props} />,
+                  h6: ({ node, ...props }) => <h6 className={styles.reasoningHeading} {...props} />,
+                  li: ({ node, ...props }) => (
+                    <li className={styles.reasoningListItem} {...props} />
+                  ),
+                  ol: ({ node, ...props }) => <ol className={styles.reasoningList} {...props} />,
+                  p: ({ node, ...props }) => (
+                    <p className={styles.reasoningParagraph} {...props} />
+                  ),
+                  pre: ({ node, ...props }) => <pre className={styles.reasoningPre} {...props} />,
+                  ul: ({ node, ...props }) => <ul className={styles.reasoningList} {...props} />,
+                }}
+              >
+                {displayedReasoning}
+              </ReactMarkdown>
+              {latestError ? (
+                <aside className={styles.reasoningError} role="alert">
+                  <strong className={styles.reasoningErrorLabel}>Latest error</strong>
+                  <span>{latestError}</span>
+                </aside>
+              ) : null}
+            </div>
+          </>
         )}
       </div>
     </div>

@@ -186,6 +186,21 @@ describe('AI change validation', () => {
     ).toBeNull();
   });
 
+  it('rejects prose paraphrases written to JSX paths', () => {
+    expect(validateGeneratedPlaceholder('src/App.jsx', 'Create the tic tac toe game')).toContain(
+      'not valid source code',
+    );
+    expect(
+      validateAIChanges([{ path: 'src/App.jsx', content: 'Create a tic tac toe game' }]).rejected[0],
+    ).toContain('not valid source code');
+    expect(
+      validateGeneratedPlaceholder(
+        'src/App.jsx',
+        'import { useState } from "react";\nexport default function App() { return <main />; }',
+      ),
+    ).toBeNull();
+  });
+
   it('rejects a stylesheet assigned to a JSX path', () => {
     const css = '.task { display: flex; }\n@media (width < 600px) { .task { display: block; } }';
     expect(validateFileContentType('src/components/Task.jsx', css)).toContain(

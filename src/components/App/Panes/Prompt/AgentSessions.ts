@@ -220,6 +220,31 @@ export function getActiveAgentSession(
   return state.sessions[state.activeSessionId] || null;
 }
 
+const MANAGER_ERROR_PREFIX = /^AI Manager error:\s*/i;
+
+export function isManagerErrorMessage(text: string): boolean {
+  return MANAGER_ERROR_PREFIX.test(text);
+}
+
+/** Latest manager failure for Progress & Reasoning, when the session is not running. */
+export function getLatestManagerError(
+  session: Pick<AgentSession, 'status' | 'messages'> | null | undefined,
+): string | undefined {
+  if (!session || session.status === 'running' || session.status !== 'error') return undefined;
+  const message = [...(session.messages || [])]
+    .reverse()
+    .find((entry) => entry.role === 'ai' && isManagerErrorMessage(entry.text));
+  return message?.text.replace(MANAGER_ERROR_PREFIX, '') || undefined;
+}
+
+export function withoutManagerErrorMessages(
+  messages: AgentSessionMessage[] = [],
+): AgentSessionMessage[] {
+  return messages.filter(
+    (message) => !(message.role === 'ai' && isManagerErrorMessage(message.text)),
+  );
+}
+
 export function capSessionMessages(messages: AgentSessionMessage[] = []): AgentSessionMessage[] {
   if (!Array.isArray(messages)) return [];
   return messages.slice(-MAX_SESSION_MESSAGES);

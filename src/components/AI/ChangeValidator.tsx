@@ -199,17 +199,43 @@ export function validateComponentStyling(path: string, content: string): string 
   return null;
 }
 
-/** Rejects comment-only scaffolding that claims an implementation belongs here. */
+/** Rejects comment-only scaffolding and non-code prose that claims to be an implementation. */
 export function validateGeneratedPlaceholder(path: string, content: string): string | null {
-  if (typeof content !== 'string' || stripComments(content).trim()) return null;
+  if (typeof content !== 'string') return null;
+  const stripped = stripComments(content).trim();
+  if (!stripped) {
+    if (
+      !/(?:your\s+)?implementation\b|goes\s+here|insert\s+(?:code|implementation)|\bTODO\b/i.test(
+        content,
+      )
+    ) {
+      return null;
+    }
+    return `Generated content for ${path} is only a placeholder. Return a complete working implementation instead.`;
+  }
+
+  if (!/\.(?:jsx|tsx)$/i.test(path)) return null;
+
+  // Stylesheet-shaped payloads are handled by validateFileContentType.
   if (
-    !/(?:your\s+)?implementation\b|goes\s+here|insert\s+(?:code|implementation)|\bTODO\b/i.test(
-      content,
+    /^(?:@(?:container|font-face|import|keyframes|layer|media|supports)\b|:root\b|[.#*\[]|(?:[a-z][\w-]*)(?:\s*\{|\s*[>+~]\s*|\s+|\s*,\s*[.#:]?)[^{]*\{)/i.test(
+      stripped,
     )
   ) {
     return null;
   }
-  return `Generated content for ${path} is only a placeholder. Return a complete working implementation instead.`;
+
+  const looksLikeSource =
+    /^(?:async\s+)?(?:class|const|enum|export|function|import|interface|let|type|var)\b/m.test(
+      stripped,
+    ) ||
+    /\b(?:export\s+default|function\s+[A-Za-z_$]|=>\s*[{(]|return\s*[(<]|use(?:State|Effect|Memo|Callback|Ref)\s*\(|<[A-Za-z][\w.]*)/.test(
+      stripped,
+    );
+  if (!looksLikeSource) {
+    return `Generated content for ${path} is not valid source code. Return a complete working implementation instead of prose or a request paraphrase.`;
+  }
+  return null;
 }
 
 /** Keeps small generated apps on local state instead of adding unrequested state libraries. */

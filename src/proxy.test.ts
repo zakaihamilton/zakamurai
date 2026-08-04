@@ -75,6 +75,21 @@ describe('proxy', () => {
     await import('./proxy');
   });
 
+  it('rewrites localhost __preview/host with surface query for single-port preview', async () => {
+    vi.resetModules();
+    const { proxy: localProxy } = await import('./proxy');
+    const req = createMockProxyRequest(
+      'http://localhost:3000/__preview/host?session=test&zakamurai-surface=preview',
+      { host: 'localhost:3000' },
+    );
+    const res = localProxy(req as unknown as NextRequest) as unknown as MockNextResponse;
+    expect(res.type).toBe('rewrite');
+    expect(res.url?.pathname).toBe('/preview-host');
+    expect(res.headers.get('Cross-Origin-Opener-Policy')).toBe('unsafe-none');
+    vi.resetModules();
+    await import('./proxy');
+  });
+
   it('treats the local preview port as the preview surface', async () => {
     vi.stubEnv('NEXT_PUBLIC_PREVIEW_ORIGIN', 'http://localhost:3001');
     vi.resetModules();

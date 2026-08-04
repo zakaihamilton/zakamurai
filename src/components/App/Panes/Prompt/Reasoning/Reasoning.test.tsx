@@ -112,9 +112,36 @@ describe('ReasoningPanel', () => {
     const error = screen.getByRole('alert');
     expect(error).toHaveTextContent('Latest error');
     expect(error).toHaveTextContent('The local model stopped responding.');
+    expect(error).not.toHaveTextContent('AI Manager error:');
+    expect(screen.queryByText(/AI Manager error:/)).toBeNull();
     expect(reasoning.compareDocumentPosition(error) & Node.DOCUMENT_POSITION_FOLLOWING).toBe(
       Node.DOCUMENT_POSITION_FOLLOWING,
     );
+  });
+
+  it('shows the latest error at the end of the scrollable log', () => {
+    mockAgentSessionStore = createDefaultAgentSessions();
+    const active = expectAgentSession(mockAgentSessionStore);
+    mockAgentSessionStore.sessions[active.id] = {
+      ...active,
+      reasoning: `${'Step complete.\n'.repeat(40)}Final step.`,
+      status: 'error',
+      messages: [
+        {
+          id: 1,
+          role: 'ai',
+          text: 'AI Manager error: Validation failed after 3 repair attempts.',
+          timestamp: '10:00:05',
+        },
+      ],
+    };
+
+    const { container } = render(<ReasoningPanel />);
+    const error = screen.getByRole('alert');
+    const scrollRegion = container.querySelector('[class*="reasoningContent"]');
+    expect(scrollRegion).toBeTruthy();
+    expect(scrollRegion?.contains(error)).toBe(true);
+    expect(scrollRegion?.lastElementChild).toBe(error);
   });
 
   it('clears a previous error while a new model run is active', () => {

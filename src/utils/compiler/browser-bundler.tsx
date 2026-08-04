@@ -269,22 +269,24 @@ function findEntryPoint(vfs: VfsLike): string {
 }
 
 export function assertBrowserBuildSupported(vfs: VfsLike, buildCommand: string): void {
-  const configNames = [
-    'vite.config.js',
-    'vite.config.mjs',
-    'vite.config.cjs',
-    'vite.config.ts',
-    'vite.config.mts',
-  ];
-  const config = configNames.find((name) => vfs.existsSync(`/${name}`));
-  if (config) {
-    throw new Error(
-      `Browser builds do not execute ${config}. Remove it or use supported defaults.`,
-    );
-  }
+  // Presence of vite.config.* is common in Vite scaffolds. The browser bundler never executes
+  // those files; it always uses supported defaults, so treat them as ignorable rather than fatal.
+  void vfs;
   if (/(?:^|\s)--(?:config|plugin|outDir|base|ssr|watch)(?:\s|=|$)/.test(buildCommand)) {
     throw new Error('Browser builds do not support custom Vite/esbuild config files or plugins.');
   }
+}
+
+const BROWSER_IGNORED_VITE_CONFIGS = [
+  'vite.config.js',
+  'vite.config.mjs',
+  'vite.config.cjs',
+  'vite.config.ts',
+  'vite.config.mts',
+] as const;
+
+export function ignoredBrowserViteConfig(vfs: VfsLike): string | null {
+  return BROWSER_IGNORED_VITE_CONFIGS.find((name) => vfs.existsSync(`/${name}`)) || null;
 }
 
 function removeTree(vfs: VfsLike, path: string): void {
@@ -446,6 +448,12 @@ export async function bundleBrowserProject(
   onLog: OnLog = () => {},
 ): Promise<{ entryPoint: string; files: string[] }> {
   assertBrowserBuildSupported(vfs, buildCommand);
+  const ignoredConfig = ignoredBrowserViteConfig(vfs);
+  if (ignoredConfig) {
+    onLog(
+      `Ignoring ${ignoredConfig}; browser builds use supported defaults instead of executing Vite config.`,
+    );
+  }
   const entryPoint = findEntryPoint(vfs);
   onLog(`Bundling ${entryPoint} with esbuild-wasm...`);
 
