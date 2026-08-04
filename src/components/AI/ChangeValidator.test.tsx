@@ -11,6 +11,8 @@ import {
   validateForbiddenStateLibraryUsage,
   validateGeneratedPlaceholder,
   validateProjectPath,
+  validateRequestFulfillment,
+  workspaceFulfillsInteractiveRequest,
 } from './ChangeValidator';
 
 describe('AI change validation', () => {
@@ -191,7 +193,8 @@ describe('AI change validation', () => {
       'not valid source code',
     );
     expect(
-      validateAIChanges([{ path: 'src/App.jsx', content: 'Create a tic tac toe game' }]).rejected[0],
+      validateAIChanges([{ path: 'src/App.jsx', content: 'Create a tic tac toe game' }])
+        .rejected[0],
     ).toContain('not valid source code');
     expect(
       validateGeneratedPlaceholder(
@@ -199,6 +202,71 @@ describe('AI change validation', () => {
         'import { useState } from "react";\nexport default function App() { return <main />; }',
       ),
     ).toBeNull();
+  });
+
+  it('rejects trivial create shells that are not interactive', () => {
+    expect(
+      validateRequestFulfillment(
+        'src/App.jsx',
+        'export default function App() { return <main><h1>Notes</h1></main>; }',
+        'create a notes app',
+      ),
+    ).toContain('too short to fulfill');
+    expect(
+      validateRequestFulfillment(
+        'src/App.jsx',
+        'export default function App() {\n  return (\n    <div>\n      <h1>New Project</h1>\n      <p>Start coding here...</p>\n    </div>\n  );\n}\n',
+        'create a notes app',
+      ),
+    ).toContain('starter template');
+    expect(
+      workspaceFulfillsInteractiveRequest(
+        {
+          'src/main.jsx':
+            'import React from "react";\nimport App from "./App";\nReactDOM.createRoot(document.getElementById("root")).render(<App />);\n',
+          'src/App.jsx': 'export default function App() { return <h1>Notes</h1>; }',
+        },
+        'create a notes app',
+      ),
+    ).toContain('too short to fulfill');
+    const playable = `import { useState } from "react";
+import styles from "./App.module.css";
+export default function App() {
+  const [items, setItems] = useState(["One", "Two", "Three"]);
+  const [draft, setDraft] = useState("");
+  const addItem = () => {
+    if (!draft.trim()) return;
+    setItems([...items, draft.trim()]);
+    setDraft("");
+  };
+  return (
+    <main className={styles.app}>
+      <h1 className={styles.title}>Notes</h1>
+      <input className={styles.button} value={draft} onChange={(event) => setDraft(event.target.value)} />
+      <button type="button" className={styles.button} onClick={addItem}>
+        Add
+      </button>
+      <div className={styles.list}>
+        {items.map((item) => (
+          <button key={item} type="button" className={styles.button} onClick={() => setItems(items.filter((value) => value !== item))}>
+            {item}
+          </button>
+        ))}
+      </div>
+    </main>
+  );
+}
+`;
+    expect(validateRequestFulfillment('src/App.jsx', playable, 'create a notes app')).toBeNull();
+    expect(
+      workspaceFulfillsInteractiveRequest(
+        { 'src/App.jsx': playable, 'src/App.module.css': '.app { display: grid; }\n' },
+        'create a notes app',
+      ),
+    ).toBeNull();
+    expect(
+      workspaceFulfillsInteractiveRequest({ 'src/App.jsx': playable }, 'create a notes app'),
+    ).toContain('missing a co-located CSS Module');
   });
 
   it('rejects a stylesheet assigned to a JSX path', () => {

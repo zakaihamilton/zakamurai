@@ -238,6 +238,94 @@ export function validateGeneratedPlaceholder(path: string, content: string): str
   return null;
 }
 
+const isAppEntryPath = (path: string): boolean =>
+  /(?:^|\/)(?:App|main|index)\.(?:jsx|tsx)$/i.test(path);
+
+const clipRequest = (request: string): string => request.trim().replace(/\s+/g, ' ').slice(0, 80);
+
+const isThinComponentShell = (path: string, content: string): boolean =>
+  isAppEntryPath(path) &&
+  /import\s+[A-Za-z_$][\w$]*\s+from\s+["']\.\/(?:components\/)?[^"']+["']/.test(content) &&
+  content.trim().length < 500;
+
+/**
+ * Rejects starter-template leftovers and trivial shells for create/build requests.
+ * Small local models often rename the placeholder title and finish without a real app.
+ */
+export function validateRequestFulfillment(
+  path: string,
+  content: string,
+  request: string,
+): string | null {
+  if (typeof content !== 'string' || typeof request !== 'string') return null;
+  if (!/\.(?:jsx|tsx)$/i.test(path)) return null;
+  if (!/\b(?:add|build|create|implement|make)\b/i.test(request)) return null;
+
+  const clipped = clipRequest(request);
+  if (/<h1>\s*New Project\s*<\/h1>/i.test(content) || /Start coding here\.\.\./i.test(content)) {
+    return `Generated content for ${path} still looks like the starter template. Implement the full request ("${clipped}") instead of leaving placeholder copy.`;
+  }
+
+  if (!isAppEntryPath(path) && !/components\//i.test(path)) return null;
+
+  // Thin App shells that only mount a component are fine; the component must fulfill the request.
+  if (isThinComponentShell(path, content)) return null;
+
+  if (content.trim().length < 400) {
+    return `Generated content for ${path} is too short to fulfill "${clipped}". Return a complete implementation instead of a stub.`;
+  }
+
+  const looksInteractive =
+    /<(?:button|input|select|textarea)\b/i.test(content) ||
+    /\bon(?:Click|Change|Submit|KeyDown)\b/.test(content);
+  if (!looksInteractive) return null;
+
+  const hasState = /\buse(?:State|Reducer)\b/.test(content);
+  const hasInteraction = /\bon(?:Click|Change|Submit|KeyDown)\b/.test(content);
+  if (!hasState || !hasInteraction) {
+    return `Generated content for ${path} does not look like a working implementation of "${clipped}". Include React state (useState/useReducer) and event handlers so the UI is interactive.`;
+  }
+
+  return null;
+}
+
+/** True when staged JSX fulfills a create/build request (including required CSS Modules). */
+export function workspaceFulfillsInteractiveRequest(
+  files: Record<string, string>,
+  request: string,
+): string | null {
+  if (typeof request !== 'string') return null;
+  if (!/\b(?:add|build|create|implement|make)\b/i.test(request)) return null;
+
+  const jsxFiles = Object.entries(files).filter(([path]) => /\.(?:jsx|tsx)$/i.test(path));
+  for (const [path, content] of jsxFiles) {
+    if (/<h1>\s*New Project\s*<\/h1>/i.test(content) || /Start coding here\.\.\./i.test(content)) {
+      return `Generated content for ${path} still looks like the starter template. Implement the full request ("${clipRequest(request)}") instead of leaving placeholder copy.`;
+    }
+  }
+
+  const implementors = jsxFiles.filter(([path, content]) => !isThinComponentShell(path, content));
+  if (!implementors.length) {
+    return `Staged files do not fulfill "${clipRequest(request)}". Return a complete implementation before finishing.`;
+  }
+
+  for (const [path, content] of implementors) {
+    if (validateRequestFulfillment(path, content, request)) continue;
+    const needsStyles =
+      /<(?:button|input|select|textarea)\b/i.test(content) ||
+      /\bon(?:Click|Change|Submit|KeyDown)\b/.test(content);
+    if (needsStyles) {
+      const stylesheetPath = path.replace(/\.(jsx|tsx)$/i, '.module.css');
+      if (!/\.module\.css/.test(content) || !Object.hasOwn(files, stylesheetPath)) {
+        return `Generated content for ${path} is missing a co-located CSS Module (${stylesheetPath}). Import styles from that module and include layout rules for the UI.`;
+      }
+    }
+    return null;
+  }
+
+  return validateRequestFulfillment(implementors[0][0], implementors[0][1], request);
+}
+
 /** Keeps small generated apps on local state instead of adding unrequested state libraries. */
 export function validateForbiddenStateLibraryUsage(path: string, content: string): string | null {
   if (typeof content !== 'string') return null;

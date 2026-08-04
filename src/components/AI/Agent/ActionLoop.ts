@@ -24,8 +24,34 @@ import {
   validateCssModuleUsage,
   validateFileContentType,
   validateGeneratedPlaceholder,
+  validateRequestFulfillment,
+  workspaceFulfillsInteractiveRequest,
 } from '../ChangeValidator';
-import { getWebLLMStore } from '../WebLLMState';
+import {
+  AGENT_CONTEXT_WINDOW_SIZE,
+  AGENT_GENERATION_TOKENS,
+  AGENT_RECOVERY_TOKENS,
+  APP_ENTRY_PATHS,
+  CHANGE_REQUEST_PATTERN,
+  CONTEXT_READY_AGENT_INSTRUCTIONS,
+  LIGHTWEIGHT_AGENT_GENERATION_TOKENS,
+  LIGHTWEIGHT_AGENT_RECOVERY_TOKENS,
+  LIGHTWEIGHT_AGENT_SYSTEM_PROMPT,
+  LIGHTWEIGHT_CONTEXT_READY_INSTRUCTIONS,
+  buildContextReadyUserRequest,
+  buildDirectChangesRecoveryMessages,
+  buildForcedWriteRecoveryMessages,
+  buildUserRequest,
+  getModelDownloadProgress,
+  isIncompleteWriteError,
+  isLightweightAgentModel,
+  loadAskWebLLM,
+  newlyCreatedComponentsNeedEntryWiring,
+  normalizeFinishSummary,
+  recoveryWritePath,
+  wireNewComponentIntoScratchEntry,
+  writeRecovery,
+} from './ActionLoopRecovery';
 import {
   NON_PRODUCTIVE_ACTIONS,
   READ_ONLY_ACTIONS,
@@ -33,6 +59,7 @@ import {
   applySearchReplaceBlock,
   cssModuleImporters,
   cssModuleRecovery,
+  ensureCoLocatedCssModule,
   formatReasoningResult,
   incompleteCssModuleImports,
   isFailedValidationResult,
@@ -51,359 +78,6 @@ import { listProjectChecks, runProjectCheck } from './ProjectChecks';
 import { AGENT_SYSTEM_PROMPT, ALL_AGENT_ACTIONS, parseAgentAction } from './Protocol';
 import { extractFileSymbols, formatSymbolOutline } from './SymbolInspector';
 import { AgentWorkspace } from './Workspace';
-
-const APP_ENTRY_PATHS = new Set([
-  'src/App.jsx',
-  'src/App.tsx',
-  'src/main.jsx',
-  'src/main.tsx',
-  'src/index.jsx',
-  'src/index.tsx',
-]);
-
-const CHANGE_REQUEST_PATTERN =
-  /\b(?:add|build|change|create|delete|design|fix|implement|improve|make|modify|refactor|remove|rename|replace|style|update)\b/i;
-
-const AGENT_CONTEXT_WINDOW_SIZE = 4096;
-const AGENT_GENERATION_TOKENS = 1800;
-const AGENT_RECOVERY_TOKENS = 2200;
-// Match main-branch budgets: small coder models need room for a full source fence.
-const LIGHTWEIGHT_AGENT_GENERATION_TOKENS = 1800;
-const LIGHTWEIGHT_AGENT_RECOVERY_TOKENS = 2400;
-
-const isLightweightAgentModel = (model: string): boolean =>
-  /(?:0\.8|1\.5|1\.7|2)B(?:-|$)/i.test(model);
-
-const LIGHTWEIGHT_AGENT_SYSTEM_PROMPT = `
-You are a small local coding model. Reply with exactly one action and no explanation.
-For a create, build, fix, or update request, write the application source immediately when
-workspace context is supplied. Do not list, search, or read files again.
-
-Allowed actions:
-{"action":"write_file","path":"relative/path","reason":"brief reason"}
-\`\`\`jsx
-complete source content here
-\`\`\`
-{"action":"validate"}
-{"action":"finish","summary":"brief result"}
-
-For source code, put one-line JSON metadata first and the complete file in a labelled code fence.
-Do not put multi-line source inside a JSON content field. Never return write_file metadata without
-the file body. Use project-relative paths. Write one file per turn. After a successful write,
-validate and then finish.
-`.trim();
-
-const CONTEXT_READY_AGENT_INSTRUCTIONS = `
-IMPORTANT: The manager has already inspected the workspace and supplied the relevant file
-contents below. For an edit request, your next response must be exactly one write_file or
-delete_file action. Do not call list_files, search_workspace, search_semantic, or read_file
-again. For source code, use the fenced write format: put the one-line JSON metadata first and
-the complete file in one correctly labelled code fence. After a successful write, validate and
-then finish. Never return a plan or prose.
-`.trim();
-
-const recoveryWritePath = (
-  files: Record<string, string>,
-  activeFile?: string | null,
-): string | null => {
-  if (activeFile && Object.hasOwn(files, activeFile) && /\.(?:[jt]sx?)$/i.test(activeFile))
-    return activeFile;
-  return (
-    [...APP_ENTRY_PATHS].find((path) => Object.hasOwn(files, path)) ||
-    Object.keys(files).find((path) => /\.(?:[jt]sx?)$/i.test(path)) ||
-    null
-  );
-};
-
-const newlyCreatedComponentsNeedEntryWiring = (workspace: AgentWorkspace): boolean =>
-  workspace
-    .changes()
-    .some(
-      (change) =>
-        change.before === undefined &&
-        /^src\/components\/[^/]+\.(?:jsx|tsx)$/i.test(change.path) &&
-        ![...APP_ENTRY_PATHS].some((path) => workspace.original[path] !== workspace.files[path]),
-    );
-
-const isScratchEntry = (content: string | undefined): boolean =>
-  Boolean(
-    content && /<h1>New Project<\/h1>/.test(content) && /Start coding here\.\.\./.test(content),
-  );
-
-const getModelDownloadProgress = (modelId: string): string | null => {
-  const store = getWebLLMStore();
-  const engines = store?.engines || {};
-  const modelIds = [modelId, store?.activeModelId].filter(
-    (id, index, ids): id is string => typeof id === 'string' && ids.indexOf(id) === index,
-  );
-  const downloadingEngine = modelIds
-    .map((id) => engines[id])
-    .find((engine) => engine?.status === 'downloading');
-  if (!downloadingEngine) return null;
-  return downloadingEngine.progressText
-    ? `the model is downloading — ${downloadingEngine.progressText}`
-    : 'the model is downloading; waiting for model files';
-};
-
-/**
- * A small local model can successfully create a new component, then lose track of
- * the original App write. On a fresh project, make the completed component
- * reachable rather than returning a change set that cannot affect the preview.
- */
-const wireNewComponentIntoScratchEntry = (workspace: AgentWorkspace): string | null => {
-  const entryPath = [...APP_ENTRY_PATHS].find((path) => isScratchEntry(workspace.original[path]));
-  if (!entryPath || workspace.original[entryPath] !== workspace.files[entryPath]) return null;
-
-  const component = workspace
-    .changes()
-    .find(
-      (change) =>
-        change.before === undefined &&
-        /^src\/components\/[^/]+\.(?:jsx|tsx)$/i.test(change.path) &&
-        /\bexport\s+default\b/.test(change.after || ''),
-    );
-  if (!component?.after) return null;
-
-  const componentName = component.path
-    .split('/')
-    .pop()
-    ?.replace(/\.(?:jsx|tsx)$/i, '')
-    .replace(/[^A-Za-z0-9_$]/g, '');
-  if (!componentName || !/^[A-Za-z_$]/.test(componentName)) return null;
-
-  const componentSpecifier = `./${component.path
-    .split('/')
-    .slice(1)
-    .join('/')
-    .replace(/\.(?:jsx|tsx)$/i, '')}`;
-  workspace.write(
-    entryPath,
-    `import ${componentName} from "${componentSpecifier}";\n\nexport default function App() {\n  return <${componentName} />;\n}\n`,
-  );
-  return entryPath;
-};
-
-/**
- * Normalize a common local-model mistake before staging JSX: a side-effect CSS
- * import with literal class names. Generated projects use CSS Modules, so keep
- * the source and its stylesheet as one atomic recovery instead of allowing a
- * source-only overwrite that renders unstyled.
- */
-const sourceFenceLanguage = (path: string): string => {
-  const extension = path.split('.').pop()?.toLowerCase();
-  if (extension === 'js') return 'js';
-  if (extension === 'ts') return 'ts';
-  if (extension === 'tsx') return 'tsx';
-  if (extension === 'json') return 'json';
-  if (extension === 'html') return 'html';
-  return 'jsx';
-};
-
-const writeRecovery = (path: string, message: string, files: Record<string, string>): string => {
-  if (/CSS content cannot be written/.test(message)) {
-    const language = sourceFenceLanguage(path);
-    return ` The rejected content was not staged. You put CSS in a JSX/TSX action. Return exactly one write_file action for ${path} with one ${language} source fence. Create the matching *.module.css in a separate action on a later turn.`;
-  }
-
-  if (/Inline CSS is not allowed/.test(message)) {
-    const language = sourceFenceLanguage(path);
-    const stylesheetPath = path.replace(/\.(jsx|tsx)$/i, '.module.css');
-    const stylesheetContext = Object.hasOwn(files, stylesheetPath)
-      ? ` The stylesheet ${stylesheetPath} is already available; import it and apply its classes.`
-      : ` Create ${stylesheetPath} in a separate write_file action, then import it from the component.`;
-    return ` The rejected component was not staged.${stylesheetContext} Write only ${path} in this turn, using one ${language} source fence and no style prop or <style> tag.`;
-  }
-
-  if (!/(?:Unclosed|Unmatched|nesting exceeds|cannot reference itself)/.test(message)) {
-    return '';
-  }
-
-  if (/\.css$/i.test(path)) {
-    return ` The rejected stylesheet was not staged. Your next action must write only ${path}, using one css fence. Start with a small complete rule if necessary (for example, .app { display: block; }) and check that every { has one }. Do not include another file or source fence in this response.`;
-  }
-
-  const language = sourceFenceLanguage(path);
-  return ` The rejected source file was not staged. Your next action must write only ${path}, using one ${language} fence. Return the complete source file, check that every bracket has a matching partner, and do not include a stylesheet or another source fence in this response.`;
-};
-
-const loadAskWebLLM = async () => {
-  const { askWebLLM } = await import('../WebLLMAPI');
-  return askWebLLM;
-};
-
-type BuildUserRequestOptions = {
-  request: string;
-  scope?: string;
-  activeFile?: string | null;
-  selectedLines?: number[];
-  priorContext?: string;
-};
-
-const buildUserRequest = ({
-  request,
-  scope,
-  activeFile,
-  selectedLines = [],
-  priorContext,
-}: BuildUserRequestOptions): string => {
-  const scopeBlock =
-    scope === 'project'
-      ? `Request: ${request}\nScope: whole project\n${priorContext ? 'Use the supplied workspace context; do not repeat the initial inventory.' : 'Start by inspecting the entire workspace. Do not assume any file is the primary target.'}`
-      : `Request: ${request}\nScope: current file\nActive file: ${activeFile || 'none'}\nSelected lines: ${selectedLines.join(', ') || 'none'}\n${priorContext ? 'Use the supplied workspace context; do not repeat the initial inventory.' : 'Start by inspecting the workspace.'}`;
-  const implementationGuidance = CHANGE_REQUEST_PATTERN.test(request)
-    ? priorContext
-      ? '\nImplementation requirement: workspace context has already been collected. Make a write_file or delete_file edit now before using validate, inspect_preview, run_project_check, or finish. Do not repeat the workspace inspection.'
-      : '\nImplementation requirement: this is a change request. Make at least one write_file or delete_file edit before using validate, inspect_preview, run_project_check, or finish. After one brief inspection, implement the request instead of continuing to inspect.'
-    : '';
-  const requestBlock = `${scopeBlock}${implementationGuidance}`;
-  if (!priorContext) return requestBlock;
-  return `${requestBlock}\n\nPrior conversation context:\n${priorContext}`;
-};
-
-/**
- * Manager already inspected the workspace. Keep the model prompt small enough for the
- * local context window so the first reply can be a complete write_file instead of another
- * inventory pass that starves generation tokens.
- */
-const extractConversationalPrior = (priorContext: string): string | null => {
-  const conversational = priorContext
-    .split(/\n{2,}/)
-    .map((block) => block.trim())
-    .filter(Boolean)
-    .filter(
-      (block) =>
-        !/^\[(?:list_files|read_file|search_workspace|search_semantic|prior)\]/i.test(block) &&
-        !/^---\s+\S/.test(block),
-    );
-  if (!conversational.length) return null;
-  return conversational.join('\n\n').slice(0, 1200);
-};
-
-const buildContextReadyUserRequest = ({
-  request,
-  targetPath,
-  files,
-  priorContext = '',
-}: {
-  request: string;
-  targetPath: string;
-  files: Record<string, string>;
-  priorContext?: string;
-}): string => {
-  const stylesheetPath = targetPath.replace(/\.(jsx|tsx)$/i, '.module.css');
-  const contextPaths = [targetPath, stylesheetPath, 'package.json'].filter(
-    (path, index, paths) => Object.hasOwn(files, path) && paths.indexOf(path) === index,
-  );
-  const fileContext = contextPaths.length
-    ? contextPaths.map((path) => `--- ${path} ---\n${files[path]}`).join('\n\n')
-    : 'No relevant source file exists yet.';
-  const conversation = extractConversationalPrior(priorContext);
-  return [
-    `Request: ${request}`,
-    ...(conversation ? [`Prior conversation:\n${conversation}`] : []),
-    'The workspace has already been inspected. Do not list, search, or read files.',
-    `Your next response must be exactly one write_file action for ${targetPath}.`,
-    'Use the supplied files as context and return the complete implementation now.',
-    fileContext,
-  ].join('\n\n');
-};
-
-const buildForcedWriteRecoveryMessages = ({
-  request,
-  targetPath,
-  files,
-  incompleteWrite = false,
-}: {
-  request: string;
-  targetPath: string | null;
-  files: Record<string, string>;
-  lightweight?: boolean;
-  incompleteWrite?: boolean;
-}): WebLLMMessage[] => {
-  const targetContent = targetPath ? files[targetPath] : undefined;
-  const context = targetPath
-    ? `Current contents of ${targetPath}:\n${targetContent ?? '(file does not exist yet)'}`
-    : 'No existing application entry file was identified. Choose a project-relative entry path.';
-  const recoveryPath = targetPath || 'src/App.jsx';
-  const recoveryLanguage = sourceFenceLanguage(recoveryPath);
-  const writeFormat = [
-    `{"action":"write_file","path":"${recoveryPath}","reason":"implement the request"}`,
-    `\`\`\`${recoveryLanguage}`,
-    'complete source content here',
-    '```',
-  ].join('\n');
-  const recoveryInstruction = targetPath
-    ? `Recovery mode is active. Your next response must be a write_file action for ${targetPath} with complete source content. Return exactly one write_file action for ${targetPath}.`
-    : 'Recovery mode is active. Your next response must be a write_file action with complete source content. Return exactly one write_file action.';
-  const incompleteWriteHint = incompleteWrite
-    ? 'The previous reply had write_file metadata without source content. Include the complete file body in the same response as a labelled code fence immediately after the JSON line.'
-    : null;
-
-  return [
-    {
-      role: 'system',
-      content: `You are in emergency write mode. Ignore normal inspection guidance: the workspace has already been inspected. Return exactly one write_file action now using this exact format:\n${writeFormat}\nReplace only the source fence contents. Do not put source code in a JSON content field. Do not list, search, read, validate, inspect the preview, finish, or explain.`,
-    },
-    {
-      role: 'user',
-      content: [
-        `Original request: ${request}`,
-        ...(incompleteWriteHint ? [incompleteWriteHint] : []),
-        recoveryInstruction,
-        targetPath
-          ? `Required destination: ${targetPath}`
-          : 'Required destination: choose the appropriate application source file.',
-        context,
-        `Implement the original request with complete source content. Return exactly one write_file action and nothing else. Use this format:\n${writeFormat}`,
-      ].join('\n\n'),
-    },
-  ];
-};
-
-const buildDirectChangesRecoveryMessages = ({
-  request,
-  targetPath,
-  files,
-}: {
-  request: string;
-  targetPath: string | null;
-  files: Record<string, string>;
-  lightweight?: boolean;
-}): WebLLMMessage[] => {
-  const context = targetPath
-    ? `Current contents of ${targetPath}:\n${files[targetPath] ?? '(file does not exist yet)'}`
-    : 'No existing application entry file was identified. Choose an appropriate project-relative path.';
-  const recoveryPath = targetPath || 'src/App.jsx';
-  const recoveryLanguage = sourceFenceLanguage(recoveryPath);
-  const fencedWriteFormat = [
-    `{"action":"write_file","path":"${recoveryPath}","reason":"implement the request"}`,
-    `\`\`\`${recoveryLanguage}`,
-    'complete source content here',
-    '```',
-  ].join('\n');
-  return [
-    {
-      role: 'system',
-      content: `You are in direct recovery mode. Return exactly one complete change response. Prefer this parser-safe write format:\n${fencedWriteFormat}\nYou may use the kind "changes" JSON format below when every file content is correctly JSON-escaped. Do not list files, read files, or explain.`,
-    },
-    {
-      role: 'user',
-      content: [
-        `Original request: ${request}`,
-        targetPath
-          ? `Primary file: ${targetPath}`
-          : 'Primary file: choose the application entry file.',
-        context,
-        'Return this exact shape: {"kind":"changes","summary":"...","changes":[{"path":"...","content":"complete file content"}]}',
-        `For source code, the safer accepted alternative is:\n${fencedWriteFormat}`,
-        'Implement the original request now. Include every file required for the implementation and no placeholder content.',
-      ].join('\n\n'),
-    },
-  ];
-};
-
-const isIncompleteWriteError = (message: string): boolean =>
-  /write_file requires string content/i.test(message);
 
 export async function runActionLoop({
   request,
@@ -436,9 +110,12 @@ export async function runActionLoop({
   const lightweightModel = isLightweightAgentModel(model);
   const baseSystemPrompt =
     lightweightModel && !agentRole ? LIGHTWEIGHT_AGENT_SYSTEM_PROMPT : systemPrompt;
+  const contextReadyInstructions = lightweightModel
+    ? LIGHTWEIGHT_CONTEXT_READY_INSTRUCTIONS
+    : CONTEXT_READY_AGENT_INSTRUCTIONS;
   const agentSystemPrompt =
     priorContext && !agentRole
-      ? `${CONTEXT_READY_AGENT_INSTRUCTIONS}\n\n${baseSystemPrompt}`
+      ? `${contextReadyInstructions}\n\n${baseSystemPrompt}`
       : baseSystemPrompt;
   const lightweightTargetPath = recoveryWritePath(workspace.files, activeFile) || 'src/App.jsx';
   const contextReady = Boolean(priorContext) && !agentRole;
@@ -452,6 +129,7 @@ export async function runActionLoop({
             targetPath: lightweightTargetPath,
             files: workspace.files,
             priorContext,
+            lightweight: lightweightModel,
           })
         : buildUserRequest({
             request,
@@ -486,7 +164,8 @@ export async function runActionLoop({
   const failedStylesheetWrites = new Map<string, number>();
   // Manager already collected workspace context; one redundant inspection is enough to force a write.
   const nonProductiveActionLimit = contextReady ? 1 : lightweightModel ? 2 : 4;
-  const forcedRecoveryViolationLimit = 2;
+  // Lightweight models stay on fence-only recovery longer instead of escalating to kind=changes.
+  const forcedRecoveryViolationLimit = lightweightModel ? 4 : 2;
   const incompleteWriteRetryLimit = lightweightModel ? 3 : 2;
   // Incomplete metadata ↔ prose oscillation must not burn the full step budget.
   const failedWriteAttemptLimit = lightweightModel ? 5 : 6;
@@ -505,18 +184,20 @@ export async function runActionLoop({
     incompleteWriteRetries = 0;
   };
 
+  const stageRecoveredWrite = (turn: number, path: string, content: string): void => {
+    workspace.write(path, content);
+    onEvent({
+      type: 'tool',
+      turn,
+      action: { action: 'write_file', path, content },
+      agentRole,
+      provenance: 'recovery',
+    });
+  };
+
   const applyCssModuleRecovery = (turn: number): string[] => {
     const recovered = recoverWorkspaceCssModules(workspace.files);
-    for (const { path, content } of recovered) {
-      workspace.write(path, content);
-      onEvent({
-        type: 'tool',
-        turn,
-        action: { action: 'write_file', path, content },
-        agentRole,
-        provenance: 'recovery',
-      });
-    }
+    for (const { path, content } of recovered) stageRecoveredWrite(turn, path, content);
     return recovered.map((entry) => entry.path);
   };
 
@@ -851,9 +532,15 @@ export async function runActionLoop({
           'src/App.jsx';
         forcedWriteRecoveryPending = true;
         forcedRecoveryTargetPath = target;
-        recordFailedWriteAttempt(target);
         if (incompleteWriteRetries <= incompleteWriteRetryLimit) {
-          const recoveryMessage = `write_file metadata was returned without source content. Reply again with write_file for ${target} and include the complete file body in the same response (a labelled code fence immediately after the JSON line).`;
+          // Give the first metadata-only reply a free retry; later incompletes still
+          // count so oscillation cannot exhaust the step budget unnoticed.
+          if (incompleteWriteRetries > 1) {
+            recordFailedWriteAttempt(target);
+          }
+          const recoveryMessage = lightweightModel
+            ? `write_file metadata was returned without source content. Reply with ONLY a labelled code fence containing the complete source for ${target}. Do not return JSON.`
+            : `write_file metadata was returned without source content. Reply again with write_file for ${target} and include the complete file body in the same response (a labelled code fence immediately after the JSON line).`;
           messages.push({
             role: 'user',
             content: observation('protocol', false, recoveryMessage),
@@ -869,6 +556,7 @@ export async function runActionLoop({
           });
           continue;
         }
+        recordFailedWriteAttempt(target);
       }
       if (forcedWriteRecoveryPending) {
         if (++forcedWriteRecoveryViolations >= forcedRecoveryViolationLimit) {
@@ -876,9 +564,13 @@ export async function runActionLoop({
             directChangesRecoveryPending = true;
             const target =
               forcedRecoveryTargetPath || recoveryWritePath(workspace.files, activeFile);
-            const recoveryMessage = target
-              ? `Direct recovery is active. Return one kind=changes response containing complete content for ${target}. Do not return another action.`
-              : 'Direct recovery is active. Return one kind=changes response containing complete file contents. Do not return another action.';
+            const recoveryMessage = lightweightModel
+              ? target
+                ? `Fence-only recovery is active. Reply with ONLY a labelled code fence containing complete source for ${target}. Do not return JSON.`
+                : 'Fence-only recovery is active. Reply with ONLY a labelled code fence containing complete source. Do not return JSON.'
+              : target
+                ? `Direct recovery is active. Return one kind=changes response containing complete content for ${target}. Do not return another action.`
+                : 'Direct recovery is active. Return one kind=changes response containing complete file contents. Do not return another action.';
             messages.push({
               role: 'user',
               content: observation('direct_recovery', false, recoveryMessage),
@@ -900,9 +592,13 @@ export async function runActionLoop({
           );
         }
         const target = forcedRecoveryTargetPath || recoveryWritePath(workspace.files, activeFile);
-        const recoveryMessage = target
-          ? `Recovery mode is active. Return exactly one write_file action for ${target} with complete source content. Do not use list_files, validate, inspect_preview, or prose.`
-          : 'Recovery mode is active. Return exactly one write_file action with complete source content. Do not use list_files, validate, inspect_preview, or prose.';
+        const recoveryMessage = lightweightModel
+          ? target
+            ? `Recovery mode is active. Reply with ONLY a labelled code fence containing complete source for ${target}. Do not return JSON, list_files, validate, or prose.`
+            : 'Recovery mode is active. Reply with ONLY a labelled code fence containing complete source. Do not return JSON, list_files, validate, or prose.'
+          : target
+            ? `Recovery mode is active. Return exactly one write_file action for ${target} with complete source content. Do not use list_files, validate, inspect_preview, or prose.`
+            : 'Recovery mode is active. Return exactly one write_file action with complete source content. Do not use list_files, validate, inspect_preview, or prose.';
         messages.push({
           role: 'user',
           content: observation('protocol', false, `${err.message}. ${recoveryMessage}`),
@@ -938,9 +634,13 @@ export async function runActionLoop({
       if (forcedWriteRecoveryViolations === 1 && workspace.changes().length === 0) {
         directChangesRecoveryPending = true;
         const target = forcedRecoveryTargetPath || recoveryWritePath(workspace.files, activeFile);
-        const recoveryMessage = target
-          ? `Direct recovery is active. Return one kind=changes response containing complete content for ${target}. Do not return another action.`
-          : 'Direct recovery is active. Return one kind=changes response containing complete file contents. Do not return another action.';
+        const recoveryMessage = lightweightModel
+          ? target
+            ? `Fence-only recovery is active. Reply with ONLY a labelled code fence containing complete source for ${target}. Do not return another action.`
+            : 'Fence-only recovery is active. Reply with ONLY a labelled code fence containing complete source. Do not return another action.'
+          : target
+            ? `Direct recovery is active. Return one kind=changes response containing complete content for ${target}. Do not return another action.`
+            : 'Direct recovery is active. Return one kind=changes response containing complete file contents. Do not return another action.';
         messages.push({
           role: 'user',
           content: observation('direct_recovery', false, recoveryMessage),
@@ -980,9 +680,13 @@ export async function runActionLoop({
         if (!directChangesRecoveryPending) {
           directChangesRecoveryPending = true;
           const target = forcedRecoveryTargetPath || recoveryWritePath(workspace.files, activeFile);
-          const recoveryMessage = target
-            ? `Direct recovery is active. Return one kind=changes response containing complete content for ${target}. Do not return another action.`
-            : 'Direct recovery is active. Return one kind=changes response containing complete file contents. Do not return another action.';
+          const recoveryMessage = lightweightModel
+            ? target
+              ? `Fence-only recovery is active. Reply with ONLY a labelled code fence containing complete source for ${target}. Do not return another action.`
+              : 'Fence-only recovery is active. Reply with ONLY a labelled code fence containing complete source. Do not return another action.'
+            : target
+              ? `Direct recovery is active. Return one kind=changes response containing complete content for ${target}. Do not return another action.`
+              : 'Direct recovery is active. Return one kind=changes response containing complete file contents. Do not return another action.';
           messages.push({
             role: 'user',
             content: observation('direct_recovery', false, recoveryMessage),
@@ -996,9 +700,13 @@ export async function runActionLoop({
         );
       }
       const target = forcedRecoveryTargetPath || recoveryWritePath(workspace.files, activeFile);
-      const message = target
-        ? `Recovery mode is active. Do not inspect files again. Your next response must be a write_file action for ${target} with complete source content that fulfills the original request.`
-        : 'Recovery mode is active. Do not inspect files again. Your next response must be a write_file action that fulfills the original request.';
+      const message = lightweightModel
+        ? target
+          ? `Recovery mode is active. Do not inspect files again. Reply with ONLY a labelled code fence containing complete source for ${target}.`
+          : 'Recovery mode is active. Do not inspect files again. Reply with ONLY a labelled code fence containing complete source.'
+        : target
+          ? `Recovery mode is active. Do not inspect files again. Your next response must be a write_file action for ${target} with complete source content that fulfills the original request.`
+          : 'Recovery mode is active. Do not inspect files again. Your next response must be a write_file action that fulfills the original request.';
       messages.push({ role: 'user', content: observation(action.action, false, message) });
       context.record('stuck_read_recovery', message);
       onEvent({ type: 'observation', turn, action, error: true, message, agentRole });
@@ -1013,24 +721,9 @@ export async function runActionLoop({
     ) {
       const source = deferredSourceWrite;
       for (const stylesheet of source.stylesheets) {
-        const recoveredStylesheet = cssModuleRecovery(source.content);
-        workspace.write(stylesheet, recoveredStylesheet);
-        onEvent({
-          type: 'tool',
-          turn,
-          action: { action: 'write_file', path: stylesheet, content: recoveredStylesheet },
-          agentRole,
-          provenance: 'recovery',
-        });
+        stageRecoveredWrite(turn, stylesheet, cssModuleRecovery(source.content));
       }
-      workspace.write(source.path, source.content);
-      onEvent({
-        type: 'tool',
-        turn,
-        action: { action: 'write_file', path: source.path, content: source.content },
-        agentRole,
-        provenance: 'recovery',
-      });
+      stageRecoveredWrite(turn, source.path, source.content);
       wroteSinceVerification = true;
       deferredSourceWrite = null;
       forcedWriteRecoveryPending = false;
@@ -1274,6 +967,13 @@ export async function runActionLoop({
         if (rewrittenInlineStyles) {
           action = { ...action, content: rewrittenInlineStyles.content };
         }
+        const ensuredCssModule =
+          lightweightModel && !rewrittenInlineStyles && /\.(jsx|tsx)$/i.test(action.path || '')
+            ? ensureCoLocatedCssModule(action.path || '', action.content || '')
+            : null;
+        if (ensuredCssModule) {
+          action = { ...action, content: ensuredCssModule.content };
+        }
         const stylingError = validateComponentStyling(action.path || '', action.content || '');
         if (stylingError) throw new Error(stylingError);
         const contentTypeError = validateFileContentType(action.path || '', action.content || '');
@@ -1283,6 +983,14 @@ export async function runActionLoop({
           action.content || '',
         );
         if (placeholderError) throw new Error(placeholderError);
+        if (lightweightModel) {
+          const fulfillmentError = validateRequestFulfillment(
+            action.path || '',
+            action.content || '',
+            request,
+          );
+          if (fulfillmentError) throw new Error(fulfillmentError);
+        }
         const cssModuleError = validateCssModuleUsage(action.path || '', action.content || '');
         if (cssModuleError) throw new Error(cssModuleError);
         const missingStylesheets = missingCssModuleImports(
@@ -1290,7 +998,12 @@ export async function runActionLoop({
           action.content || '',
           workspace.files,
         );
-        if (missingStylesheets.length && !normalizedSideEffectCss && !rewrittenInlineStyles) {
+        if (
+          missingStylesheets.length &&
+          !normalizedSideEffectCss &&
+          !rewrittenInlineStyles &&
+          !ensuredCssModule
+        ) {
           throw new Error(
             `Missing CSS Module import${missingStylesheets.length > 1 ? 's' : ''}: ${missingStylesheets.join(', ')}.`,
           );
@@ -1322,70 +1035,39 @@ export async function runActionLoop({
         if (normalizedSideEffectCss) {
           for (const stylesheet of normalizedSideEffectCss.stylesheets) {
             if (Object.hasOwn(workspace.files, stylesheet)) continue;
-            const recoveredStylesheet = cssModuleRecovery(action.content || '');
-            workspace.write(stylesheet, recoveredStylesheet);
-            onEvent({
-              type: 'tool',
-              turn,
-              action: { action: 'write_file', path: stylesheet, content: recoveredStylesheet },
-              agentRole,
-              provenance: 'recovery',
-            });
+            stageRecoveredWrite(turn, stylesheet, cssModuleRecovery(action.content || ''));
           }
         }
         if (rewrittenInlineStyles) {
           const existing = workspace.files[rewrittenInlineStyles.stylesheetPath] || '';
-          const merged = existing
-            ? `${existing.trimEnd()}\n\n${rewrittenInlineStyles.stylesheet}`
-            : rewrittenInlineStyles.stylesheet;
-          workspace.write(rewrittenInlineStyles.stylesheetPath, merged);
-          onEvent({
-            type: 'tool',
+          stageRecoveredWrite(
             turn,
-            action: {
-              action: 'write_file',
-              path: rewrittenInlineStyles.stylesheetPath,
-              content: merged,
-            },
-            agentRole,
-            provenance: 'recovery',
-          });
+            rewrittenInlineStyles.stylesheetPath,
+            existing
+              ? `${existing.trimEnd()}\n\n${rewrittenInlineStyles.stylesheet}`
+              : rewrittenInlineStyles.stylesheet,
+          );
+        } else if (
+          ensuredCssModule &&
+          !Object.hasOwn(workspace.files, ensuredCssModule.stylesheetPath)
+        ) {
+          stageRecoveredWrite(turn, ensuredCssModule.stylesheetPath, ensuredCssModule.stylesheet);
         }
-        const incompleteStylesheets = incompleteCssModuleImports(
+        for (const stylesheet of incompleteCssModuleImports(
           action.path || '',
           action.content || '',
           workspace.files,
-        );
-        for (const stylesheet of incompleteStylesheets) {
+        )) {
           const merged = appendMissingCssModuleRules(
             workspace.files[stylesheet] || '',
             action.content || '',
           );
-          if (!merged) continue;
-          workspace.write(stylesheet, merged);
-          onEvent({
-            type: 'tool',
-            turn,
-            action: { action: 'write_file', path: stylesheet, content: merged },
-            agentRole,
-            provenance: 'recovery',
-          });
+          if (merged) stageRecoveredWrite(turn, stylesheet, merged);
         }
         if (
           deferredSourceWrite?.stylesheets.every((path) => Object.hasOwn(workspace.files, path))
         ) {
-          workspace.write(deferredSourceWrite.path, deferredSourceWrite.content);
-          onEvent({
-            type: 'tool',
-            turn,
-            action: {
-              action: 'write_file',
-              path: deferredSourceWrite.path,
-              content: deferredSourceWrite.content,
-            },
-            agentRole,
-            provenance: 'recovery',
-          });
+          stageRecoveredWrite(turn, deferredSourceWrite.path, deferredSourceWrite.content);
           result = `Staged ${action.path} and the queued source file ${deferredSourceWrite.path}.`;
           deferredSourceWrite = null;
           forcedWriteRecoveryPending = false;
@@ -1539,6 +1221,30 @@ export async function runActionLoop({
           context.record('finish_recovery', message);
           continue;
         }
+        if (lightweightModel && CHANGE_REQUEST_PATTERN.test(request)) {
+          const fulfillmentError = workspaceFulfillsInteractiveRequest(workspace.files, request);
+          if (fulfillmentError) {
+            const target =
+              recoveryWritePath(workspace.files, activeFile) ||
+              [...APP_ENTRY_PATHS].find((path) => Object.hasOwn(workspace.files, path)) ||
+              'src/App.jsx';
+            forcedWriteRecoveryPending = true;
+            forcedRecoveryTargetPath = target;
+            forcedWriteRecoveryViolations = 0;
+            const message = `${fulfillmentError} Do not finish yet. Rewrite ${target} with a complete interactive implementation.`;
+            messages.push({ role: 'user', content: observation('finish', false, message) });
+            context.record('finish_fulfillment', message);
+            onEvent({
+              type: 'observation',
+              turn,
+              action,
+              error: true,
+              message,
+              agentRole,
+            });
+            continue;
+          }
+        }
         if (lastValidationFailed) {
           const target =
             forcedRecoveryTargetPath ||
@@ -1599,14 +1305,17 @@ export async function runActionLoop({
         }
         const wiredEntry = wireNewComponentIntoScratchEntry(workspace);
         const changes = workspace.changes();
-        const summary = wiredEntry
-          ? `${action.summary || 'Created the requested component.'} Wired ${wiredEntry} to the new component so it renders in the app.`
-          : action.summary;
+        const summary = normalizeFinishSummary({
+          summary: action.summary,
+          request,
+          changeCount: changes.length,
+          wiredEntry,
+        });
         onEvent({ type: 'finished', turn, changes, message: summary, agentRole });
         return {
           changes,
           files: workspace.files,
-          summary: summary || '',
+          summary,
           events: turn,
           workspace,
         };
@@ -1668,14 +1377,19 @@ export async function runActionLoop({
       }
       if (
         action.action === 'write_file' &&
-        /not valid source code|only a placeholder/i.test(err.message)
+        /not valid source code|only a placeholder|too short to fulfill|starter template|does not look like a working implementation/i.test(
+          err.message,
+        )
       ) {
-        const target = action.path || recoveryWritePath(workspace.files, activeFile) || 'src/App.jsx';
+        const target =
+          action.path || recoveryWritePath(workspace.files, activeFile) || 'src/App.jsx';
         forcedWriteRecoveryPending = true;
         forcedRecoveryTargetPath = target;
         failedWritePath = target;
         recordFailedWriteAttempt(target);
-        const message = `${err.message} Return a complete working implementation for ${target} as source code, not a sentence describing the request.`;
+        const message = lightweightModel
+          ? `${err.message} Reply with ONLY a labelled code fence containing complete working source for ${target}, including state and event handlers when the request is interactive.`
+          : `${err.message} Return a complete working implementation for ${target} as source code, not a sentence describing the request.`;
         messages.push({ role: 'user', content: observation(action.action, false, message) });
         context.record('write_file', message);
         onEvent({ type: 'observation', turn, action, error: true, message, agentRole });

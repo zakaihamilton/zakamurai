@@ -166,8 +166,7 @@ const CSS_MODULE_RECOVERY_RULES: Record<string, string> = {
   o: 'color: #f472b6;',
   status:
     'justify-self: center; padding: 0.55rem 0.8rem; border-radius: 999px; background: rgb(255 255 255 / 12%); font-weight: 700;',
-  result:
-    'display: grid; min-height: 18rem; place-content: center; gap: 1rem; text-align: center;',
+  result: 'display: grid; min-height: 18rem; place-content: center; gap: 1rem; text-align: center;',
   resultText: 'margin: 0; color: #fef08a; font-size: clamp(1.5rem, 6vw, 2.5rem); font-weight: 800;',
   winnerText: 'margin: 0; color: #fef08a; font-size: clamp(2rem, 9vw, 4rem);',
   resetBtn:
@@ -175,6 +174,11 @@ const CSS_MODULE_RECOVERY_RULES: Record<string, string> = {
   newGameBtn:
     'padding: 0.7rem 1rem; color: #0f172a; font: inherit; font-weight: 800; background: #67e8f9; border: 0; border-radius: 0.75rem; cursor: pointer;',
   footer: 'margin-top: 1.5rem; color: #94a3b8; text-align: center;',
+  button:
+    'padding: 0.7rem 1rem; color: #f8fafc; font: inherit; font-weight: 700; background: #1e3a8a; border: 1px solid rgb(255 255 255 / 22%); border-radius: 0.75rem; cursor: pointer;',
+  control:
+    'width: 100%; padding: 0.65rem 0.75rem; color: #e2e8f0; font: inherit; background: #172554; border: 1px solid rgb(255 255 255 / 18%); border-radius: 0.75rem;',
+  list: 'display: grid; gap: 0.75rem;',
 };
 
 const cssModuleClassNames = (content: string): Set<string> =>
@@ -214,9 +218,11 @@ export const incompleteCssModuleImports = (
 
   return [
     ...new Set(
-      [...content.matchAll(/\bimport(?:[\s\S]*?\sfrom\s*)?["'](\.{1,2}\/[^"']+\.module\.css)["']/g)].map(
-        (match) => resolveRelativePath(path, match[1]),
-      ),
+      [
+        ...content.matchAll(
+          /\bimport(?:[\s\S]*?\sfrom\s*)?["'](\.{1,2}\/[^"']+\.module\.css)["']/g,
+        ),
+      ].map((match) => resolveRelativePath(path, match[1])),
     ),
   ].filter((stylesheetPath) => {
     if (!Object.hasOwn(files, stylesheetPath)) return false;
@@ -467,15 +473,18 @@ export const rewriteInlineStylesToCssModule = (
   let classIndex = 0;
 
   rewritten = rewritten.replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, (block) => {
-    const css = block.replace(/^<style\b[^>]*>/i, '').replace(/<\/style>$/i, '').trim();
+    const css = block
+      .replace(/^<style\b[^>]*>/i, '')
+      .replace(/<\/style>$/i, '')
+      .trim();
     if (css) globalBlocks.push(css);
     return '';
   });
 
   const styleAttr = /\bstyle\s*=\s*\{/g;
   const replacements: Array<{ start: number; end: number; className: string }> = [];
-  let match: RegExpExecArray | null;
-  while ((match = styleAttr.exec(rewritten))) {
+  let match = styleAttr.exec(rewritten);
+  while (match !== null) {
     const openIndex = match.index + match[0].length - 1;
     const expression = extractBalancedBraces(rewritten, openIndex);
     if (!expression) return null;
@@ -498,13 +507,11 @@ export const rewriteInlineStylesToCssModule = (
       end: openIndex + expression.length,
       className,
     });
+    match = styleAttr.exec(rewritten);
   }
 
   for (const replacement of [...replacements].reverse()) {
-    rewritten =
-      rewritten.slice(0, replacement.start) +
-      `className={styles.${replacement.className}}` +
-      rewritten.slice(replacement.end);
+    rewritten = `${rewritten.slice(0, replacement.start)}className={styles.${replacement.className}}${rewritten.slice(replacement.end)}`;
   }
 
   if (/\bstyle\s*=\s*\{/.test(rewritten) || /<style\b/i.test(rewritten)) return null;
@@ -524,5 +531,66 @@ export const rewriteInlineStylesToCssModule = (
     content: rewritten,
     stylesheetPath,
     stylesheet: stylesheet ? `${stylesheet}\n` : '.component {\n  display: block;\n}\n',
+  };
+};
+
+const insertCssModuleImport = (content: string, importSpecifier: string): string => {
+  const importLine = `import styles from ${JSON.stringify(importSpecifier)};\n`;
+  if (/\bimport\s+\w+\s+from\s+['"][^'"]+\.module\.css['"]/.test(content)) return content;
+  if (/^(\s*import\b[\s\S]*?;\s*\n)+/.test(content)) {
+    return content.replace(/^((?:\s*import\b[\s\S]*?;\s*\n)+)/, `$1${importLine}`);
+  }
+  return `${importLine}${content}`;
+};
+
+const annotateInteractiveClassNames = (content: string): string => {
+  let rewritten = content;
+  rewritten = rewritten.replace(
+    /(return\s*\(\s*)<(main|div)(?![^>]*\bclassName\s*=)/,
+    '$1<$2 className={styles.app}',
+  );
+  rewritten = rewritten.replace(
+    /<h1(?![^>]*\bclassName\s*=)(\s|>)/g,
+    '<h1 className={styles.title}$1',
+  );
+  rewritten = rewritten.replace(
+    /<button(?![^>]*\bclassName\s*=)(\s|>)/gi,
+    '<button className={styles.button}$1',
+  );
+  rewritten = rewritten.replace(
+    /<(input|select|textarea)(?![^>]*\bclassName\s*=)(\s|>)/gi,
+    '<$1 className={styles.control}$2',
+  );
+  if (
+    (/styles\.button/.test(rewritten) || /styles\.control/.test(rewritten)) &&
+    /\.map\s*\(/.test(rewritten)
+  ) {
+    rewritten = rewritten.replace(
+      /<div(?![^>]*\bclassName\s*=)((?:[^>=]|=\{[^}]*\}|=[^>\s]+|\s)*)>(\s*\{[\s\S]{0,240}?\.map\s*\()/m,
+      '<div className={styles.list}$1>$2',
+    );
+  }
+  return rewritten;
+};
+
+/**
+ * Small local models often ship interactive JSX with no stylesheet. Attach a co-located
+ * CSS Module and generic layout class names so the preview is usable without another turn.
+ */
+export const ensureCoLocatedCssModule = (
+  path: string,
+  content: string,
+): { content: string; stylesheetPath: string; stylesheet: string } | null => {
+  if (!/\.(jsx|tsx)$/i.test(path) || typeof content !== 'string') return null;
+  if (/\bfrom\s+['"][^'"]+\.module\.css['"]/.test(content)) return null;
+  if (!/\bon(?:Click|Change|Submit|KeyDown)\b/.test(content)) return null;
+
+  const stylesheetPath = path.replace(/\.(jsx|tsx)$/i, '.module.css');
+  const importSpecifier = `./${stylesheetPath.split('/').pop()}`;
+  const rewritten = annotateInteractiveClassNames(insertCssModuleImport(content, importSpecifier));
+  return {
+    content: rewritten,
+    stylesheetPath,
+    stylesheet: `${formatCssModuleRules(cssModuleClassNames(rewritten))}\n`,
   };
 };

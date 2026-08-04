@@ -11,8 +11,10 @@ const editResponse = (path: string, content: string) =>
 
 describe('AI Manager invariants', () => {
   it('never mutates caller files while a run is executing', async () => {
-    const files = { 'src/App.jsx': 'old' };
-    const model = createFakeModel([editResponse('src/App.jsx', 'new')]);
+    const files = { 'src/App.jsx': 'export default () => <div>old</div>;' };
+    const model = createFakeModel([
+      editResponse('src/App.jsx', 'export default () => <div>new</div>;'),
+    ]);
     const tools = createFakeTools();
 
     const result = await runManager({
@@ -24,9 +26,15 @@ describe('AI Manager invariants', () => {
       validate: tools.validate,
     });
 
-    expect(files).toEqual({ 'src/App.jsx': 'old' });
-    expect(result.files).toEqual({ 'src/App.jsx': 'new' });
-    expect(result.changes).toEqual([{ path: 'src/App.jsx', before: 'old', after: 'new' }]);
+    expect(files).toEqual({ 'src/App.jsx': 'export default () => <div>old</div>;' });
+    expect(result.files).toEqual({ 'src/App.jsx': 'export default () => <div>new</div>;' });
+    expect(result.changes).toEqual([
+      {
+        path: 'src/App.jsx',
+        before: 'export default () => <div>old</div>;',
+        after: 'export default () => <div>new</div>;',
+      },
+    ]);
   });
 
   it('bounds model context requests and rejects unsafe paths', async () => {
@@ -53,10 +61,10 @@ describe('AI Manager invariants', () => {
 
   it('keeps repair attempts bounded after repeated validation failures', async () => {
     const model = createFakeModel([
-      editResponse('src/App.jsx', 'bad-1'),
-      editResponse('src/App.jsx', 'bad-2'),
-      editResponse('src/App.jsx', 'bad-3'),
-      editResponse('src/App.jsx', 'bad-4'),
+      editResponse('src/App.jsx', 'export default () => <div>bad-1</div>;'),
+      editResponse('src/App.jsx', 'export default () => <div>bad-2</div>;'),
+      editResponse('src/App.jsx', 'export default () => <div>bad-3</div>;'),
+      editResponse('src/App.jsx', 'export default () => <div>bad-4</div>;'),
     ]);
     const tools = createFakeTools({
       validation: [
@@ -70,7 +78,7 @@ describe('AI Manager invariants', () => {
     await expect(
       runManager({
         request: 'fix the app',
-        files: { 'src/App.jsx': 'old' },
+        files: { 'src/App.jsx': 'export default () => <div>old</div>;' },
         activeFile: 'src/App.jsx',
         model: 'fake',
         modelClient: model.client,

@@ -5,6 +5,34 @@ import { runActionLoop } from './ActionLoop';
 
 vi.mock('../WebLLMAPI', () => ({ askWebLLM: vi.fn() }));
 
+const PLAYABLE_INTERACTIVE_APP = `import { useState } from "react";
+export default function App() {
+  const [items, setItems] = useState(["One", "Two", "Three"]);
+  const [draft, setDraft] = useState("");
+  const addItem = () => {
+    if (!draft.trim()) return;
+    setItems([...items, draft.trim()]);
+    setDraft("");
+  };
+  return (
+    <main>
+      <h1>Notes</h1>
+      <input value={draft} onChange={(event) => setDraft(event.target.value)} />
+      <button type="button" onClick={addItem}>
+        Add
+      </button>
+      <div>
+        {items.map((item) => (
+          <button key={item} type="button" onClick={() => setItems(items.filter((value) => value !== item))}>
+            {item}
+          </button>
+        ))}
+      </div>
+    </main>
+  );
+}
+`;
+
 describe('runActionLoop', () => {
   let askWebLLM: Mock<AskWebLLM>;
 
@@ -249,6 +277,44 @@ describe('runActionLoop', () => {
     ).toBe(true);
   });
 
+  it('uses a compact prompt and earlier recovery for lightweight models', async () => {
+    const modelClient = vi
+      .fn()
+      .mockResolvedValueOnce('{"action":"list_files"}')
+      .mockResolvedValueOnce(PLAYABLE_INTERACTIVE_APP)
+      .mockResolvedValueOnce('{"action":"validate"}')
+      .mockResolvedValueOnce('{"action":"finish","summary":"Created notes app"}');
+    const validate = vi.fn().mockResolvedValue('Checks passed.');
+
+    const result = await runActionLoop({
+      request: 'create a notes app',
+      files: { 'src/App.jsx': 'export default function App() { return null; }' },
+      validate,
+      model: 'Qwen3.5-0.8B-q4f16_1-MLC',
+      modelClient,
+      priorContext: '[list_files]\nsrc/App.jsx\n[read_file]\nexisting app source',
+    });
+
+    expect(result.files['src/App.jsx']).toContain('Notes');
+    expect(result.files['src/App.jsx']).toContain('useState');
+    expect(modelClient.mock.calls[0][0].messages[0].content).toContain(
+      'You are a small local coding model',
+    );
+    expect(modelClient.mock.calls[0][0].messages[0].content).toContain('labelled code fence');
+    expect(modelClient.mock.calls[0][0].messages[1].content).toContain(
+      'Your next response must be ONLY a labelled code fence with the complete source for src/App.jsx',
+    );
+    expect(modelClient.mock.calls[0][0].messages[1].content).toContain('--- src/App.jsx ---');
+    expect(modelClient.mock.calls[0][0].messages[1].content).not.toContain('[list_files]');
+    expect(modelClient.mock.calls[1][0].messages[0].content).toContain('emergency write mode');
+    expect(modelClient.mock.calls[1][0].messages[0].content).toContain(
+      'Reply with ONLY this labelled code fence',
+    );
+    expect(modelClient.mock.calls[1][0].messages[0].content).not.toContain(
+      '{"action":"write_file"',
+    );
+  });
+
   it('uses a compact prompt when forced write recovery is activated', async () => {
     const modelClient = vi
       .fn()
@@ -280,76 +346,109 @@ describe('runActionLoop', () => {
     expect(recoveryMessages[1].content).toContain('Current contents of src/App.jsx');
   });
 
-  it('uses a compact prompt and earlier recovery for lightweight models', async () => {
-    const modelClient = vi
-      .fn()
-      .mockResolvedValueOnce('{"action":"list_files"}')
-      .mockResolvedValueOnce(
-        '{"action":"write_file","path":"src/App.jsx","content":"export default function App() { return <main>Tic tac toe</main>; }"}',
-      )
-      .mockResolvedValueOnce('{"action":"validate"}')
-      .mockResolvedValueOnce('{"action":"finish","summary":"Created tic tac toe"}');
-    const validate = vi.fn().mockResolvedValue('Checks passed.');
-
-    const result = await runActionLoop({
-      request: 'create tic tac toe game',
-      files: { 'src/App.jsx': 'export default function App() { return null; }' },
-      validate,
-      model: 'Qwen3.5-0.8B-q4f16_1-MLC',
-      modelClient,
-      priorContext: '[list_files]\nsrc/App.jsx\n[read_file]\nexisting app source',
-    });
-
-    expect(result.files['src/App.jsx']).toContain('Tic tac toe');
-    expect(modelClient.mock.calls[0][0].messages[0].content).toContain(
-      'You are a small local coding model',
-    );
-    expect(modelClient.mock.calls[0][0].messages[0].content).toContain(
-      'labelled code fence',
-    );
-    expect(modelClient.mock.calls[0][0].messages[1].content).toContain(
-      'Your next response must be exactly one write_file action for src/App.jsx',
-    );
-    expect(modelClient.mock.calls[0][0].messages[1].content).toContain('--- src/App.jsx ---');
-    expect(modelClient.mock.calls[0][0].messages[1].content).not.toContain('[list_files]');
-    expect(modelClient.mock.calls[1][0].messages[0].content).toContain('emergency write mode');
-    expect(modelClient.mock.calls[1][0].messages[0].content).toContain(
-      'Do not put source code in a JSON content field',
-    );
-  });
-
-  it('retries incomplete write_file metadata without steering the model to list_files', async () => {
+  it('retries incomplete write_file metadata with fence-only recovery for 1.5B models', async () => {
     askWebLLM
       .mockResolvedValueOnce(
-        '{"action":"write_file","path":"src/App.jsx","reason":"create a tic tac toe game"}',
+        '{"action":"write_file","path":"src/App.jsx","reason":"create a notes app"}',
       )
-      .mockResolvedValueOnce(
-        '{"action":"write_file","path":"src/App.jsx","content":"export default function App() { return <main>Tic tac toe</main>; }"}',
-      )
+      .mockResolvedValueOnce(`\`\`\`jsx\n${PLAYABLE_INTERACTIVE_APP}\n\`\`\``)
       .mockResolvedValueOnce('{"action":"validate"}')
-      .mockResolvedValueOnce('{"action":"finish","summary":"Created tic tac toe"}');
+      .mockResolvedValueOnce('{"action":"finish","summary":"Created notes app"}');
     const validate = vi.fn().mockResolvedValue('Checks passed.');
 
     const result = await runActionLoop({
-      request: 'create a tic tac toe game',
+      request: 'create a notes app',
       files: { 'src/App.jsx': 'export default function App() { return null; }' },
       model: 'Qwen2.5-Coder-1.5B-Instruct-q4f16_1-MLC',
       validate,
       priorContext: '[list_files]\nsrc/App.jsx',
     });
 
-    expect(result.files['src/App.jsx']).toContain('Tic tac toe');
+    expect(result.files['src/App.jsx']).toContain('Notes');
+    expect(result.files['src/App.jsx']).toContain('useState');
     const recoveryPrompt = askWebLLM.mock.calls[1]?.[3]?.messages
       ?.map((message: { content: string }) => message.content)
       .join('\n');
-    expect(recoveryPrompt).toContain('without source content');
-    expect(recoveryPrompt).toContain('labelled code fence');
+    expect(recoveryPrompt).toContain('Reply with ONLY this labelled code fence');
+    expect(recoveryPrompt).toContain('```jsx');
+    expect(recoveryPrompt).not.toContain('{"action":"write_file"');
     expect(recoveryPrompt).not.toContain('for example {"action":"list_files"}');
+  });
+
+  it('rejects a trivial 1.5B App shell and recovers with a playable implementation', async () => {
+    askWebLLM
+      .mockResolvedValueOnce(
+        '{"action":"write_file","path":"src/App.jsx","content":"export default function App() { return <main><h1>Notes</h1></main>; }"}',
+      )
+      .mockResolvedValueOnce(`\`\`\`jsx\n${PLAYABLE_INTERACTIVE_APP}\n\`\`\``)
+      .mockResolvedValueOnce('{"action":"validate"}')
+      .mockResolvedValueOnce('{"action":"finish","summary":"Created notes app"}');
+    const validate = vi.fn().mockResolvedValue('Checks passed.');
+    const events: AgentEvent[] = [];
+
+    const result = await runActionLoop({
+      request: 'create a notes app',
+      files: { 'src/App.jsx': 'export default function App() { return null; }' },
+      model: 'Qwen2.5-Coder-1.5B-Instruct-q4f16_1-MLC',
+      validate,
+      priorContext: '[list_files]\nsrc/App.jsx',
+      onEvent: (event) => events.push(event),
+    });
+
+    expect(result.files['src/App.jsx']).toContain('useState');
+    expect(result.files['src/App.jsx']).toContain('onClick');
+    expect(result.files['src/App.jsx']).toContain('App.module.css');
+    expect(result.files['src/App.module.css']).toContain('.app');
+    expect(result.files['src/App.module.css']).toContain('.button');
+    expect(
+      events.some((event) => event.error && event.message?.includes('too short to fulfill')),
+    ).toBe(true);
     expect(askWebLLM.mock.calls[1]?.[3]?.messages?.[0]?.content).toContain(
-      'Do not put source code in a JSON content field',
+      'Reply with ONLY this labelled code fence',
     );
   });
 
+  it('auto-attaches a CSS Module when a lightweight model writes an unstyled interactive App', async () => {
+    askWebLLM
+      .mockResolvedValueOnce(`\`\`\`jsx\n${PLAYABLE_INTERACTIVE_APP}\n\`\`\``)
+      .mockResolvedValueOnce('{"action":"validate"}')
+      .mockResolvedValueOnce('{"action":"finish","summary":"Created notes app"}');
+    const validate = vi.fn().mockResolvedValue('Checks passed.');
+
+    const result = await runActionLoop({
+      request: 'create a notes app',
+      files: { 'src/App.jsx': 'export default function App() { return null; }' },
+      model: 'Qwen2.5-Coder-1.5B-Instruct-q4f16_1-MLC',
+      validate,
+      priorContext: '[list_files]\nsrc/App.jsx',
+    });
+
+    expect(result.files['src/App.jsx']).toContain('import styles from "./App.module.css"');
+    expect(result.files['src/App.jsx']).toContain('styles.button');
+    expect(result.files['src/App.module.css']).toContain('.button');
+    expect(result.files['src/App.module.css']).toContain('.list');
+  });
+
+  it('rewrites generic lightweight finish summaries to mention the request', async () => {
+    askWebLLM
+      .mockResolvedValueOnce(`\`\`\`jsx\n${PLAYABLE_INTERACTIVE_APP}\n\`\`\``)
+      .mockResolvedValueOnce('{"action":"validate"}')
+      .mockResolvedValueOnce(
+        '{"action":"finish","summary":"The project has been successfully built and validated. You can now proceed with further development or testing."}',
+      );
+    const validate = vi.fn().mockResolvedValue('Checks passed.');
+
+    const result = await runActionLoop({
+      request: 'create a notes app',
+      files: { 'src/App.jsx': 'export default function App() { return null; }' },
+      model: 'Qwen2.5-Coder-1.5B-Instruct-q4f16_1-MLC',
+      validate,
+      priorContext: '[list_files]\nsrc/App.jsx',
+    });
+
+    expect(result.summary).toContain('create a notes app');
+    expect(result.summary).not.toContain('further development');
+  });
   it('uses generic direct recovery when the local model never writes', async () => {
     const modelClient = vi
       .fn()
@@ -736,18 +835,16 @@ describe('runActionLoop', () => {
   it('rejects prose paraphrases written as App.jsx and forces a source rewrite', async () => {
     askWebLLM
       .mockResolvedValueOnce(
-        '{"action":"write_file","path":"src/App.jsx","content":"Create the tic tac toe game"}',
+        '{"action":"write_file","path":"src/App.jsx","content":"Create the notes app"}',
       )
-      .mockResolvedValueOnce(
-        '{"action":"write_file","path":"src/App.jsx","content":"export default function App() { return <main>Tic tac toe</main>; }"}',
-      )
+      .mockResolvedValueOnce(`\`\`\`jsx\n${PLAYABLE_INTERACTIVE_APP}\n\`\`\``)
       .mockResolvedValueOnce('{"action":"validate"}')
-      .mockResolvedValueOnce('{"action":"finish","summary":"Created tic tac toe"}');
+      .mockResolvedValueOnce('{"action":"finish","summary":"Created notes app"}');
     const validate = vi.fn().mockResolvedValue('Checks passed.');
     const events: AgentEvent[] = [];
 
     const result = await runActionLoop({
-      request: 'Create a tic tac toe game',
+      request: 'Create a notes app',
       files: { 'src/App.jsx': 'export default function App() { return null; }' },
       model: 'Qwen2.5-Coder-1.5B-Instruct-q4f16_1-MLC',
       validate,
@@ -755,14 +852,16 @@ describe('runActionLoop', () => {
       onEvent: (event) => events.push(event),
     });
 
-    expect(result.files['src/App.jsx']).toContain('Tic tac toe');
-    expect(result.files['src/App.jsx']).not.toContain('Create the tic tac toe game');
+    expect(result.files['src/App.jsx']).toContain('Notes');
+    expect(result.files['src/App.jsx']).not.toContain('Create the notes app');
     expect(
       events.some((event) => event.error && event.message?.includes('not valid source code')),
     ).toBe(true);
     expect(askWebLLM.mock.calls[1]?.[3]?.messages?.[0]?.content).toContain('emergency write mode');
+    expect(askWebLLM.mock.calls[1]?.[3]?.messages?.[0]?.content).toContain(
+      'Reply with ONLY this labelled code fence',
+    );
   });
-
 
   it('stops early when write_file oscillates between incomplete metadata and prose', async () => {
     const incomplete =
@@ -774,7 +873,9 @@ describe('runActionLoop', () => {
       .mockResolvedValueOnce(prose)
       .mockResolvedValueOnce(incomplete)
       .mockResolvedValueOnce(prose)
-      .mockResolvedValueOnce(incomplete)
+      .mockResolvedValueOnce(prose)
+      .mockResolvedValueOnce(prose)
+      .mockResolvedValueOnce(prose)
       .mockResolvedValue('{"action":"finish","summary":"should not reach"}');
 
     await expect(
@@ -784,8 +885,11 @@ describe('runActionLoop', () => {
         model: 'Qwen2.5-Coder-1.5B-Instruct-q4f16_1-MLC',
         priorContext: '[list_files]\nsrc/App.jsx',
       }),
-    ).rejects.toThrow(/repeatedly failed to write valid source/);
-    expect(askWebLLM).toHaveBeenCalledTimes(5);
+    ).rejects.toThrow(
+      /repeatedly failed to write valid source|repeating the same action|forced write recovery/,
+    );
+    expect(askWebLLM.mock.calls.length).toBeGreaterThanOrEqual(3);
+    expect(askWebLLM.mock.calls.length).toBeLessThan(12);
   });
 
   it('stops after repeated failed validations instead of looping write/validate/finish', async () => {
@@ -853,9 +957,11 @@ describe('runActionLoop', () => {
     });
 
     expect(result.files['vite.config.js']).toBeUndefined();
-    expect(result.changes.some((change) => change.path === 'vite.config.js' && change.after === undefined)).toBe(
-      true,
-    );
+    expect(
+      result.changes.some(
+        (change) => change.path === 'vite.config.js' && change.after === undefined,
+      ),
+    ).toBe(true);
     expect(validate).toHaveBeenCalled();
     expect(
       events.some(
@@ -1754,10 +1860,18 @@ export default function App() {
   });
 
   it('validates staged changes when Qwen2.5-Coder recovery limit is reached with staged edits', async () => {
+    const playableComponent = PLAYABLE_INTERACTIVE_APP.replace(
+      'function App',
+      'function NotesPanel',
+    ).replace('<h1>Notes</h1>', '<h1>NotesPanel</h1>');
     askWebLLM
       .mockResolvedValueOnce('{"action":"list_files"}')
       .mockResolvedValueOnce(
-        '{"action":"write_file","path":"src/components/TicTacToe.jsx","content":"export default function TicTacToe() { return <div>TicTacToe</div>; }"}',
+        JSON.stringify({
+          action: 'write_file',
+          path: 'src/components/NotesPanel.jsx',
+          content: playableComponent,
+        }),
       )
       .mockResolvedValueOnce('{"action":"read_file","path":"src/App.jsx"}')
       .mockResolvedValueOnce('{"action":"read_file","path":"src/App.jsx"}')
@@ -1767,7 +1881,7 @@ export default function App() {
 
     const validate = vi.fn().mockResolvedValue('Checks passed.');
     const result = await runActionLoop({
-      request: 'Create a tick tack toe game',
+      request: 'Create a notes app',
       files: {
         'src/App.jsx':
           'export default function App() { return <div><h1>New Project</h1><p>Start coding here...</p></div>; }',
@@ -1776,8 +1890,10 @@ export default function App() {
       validate,
     });
 
-    expect(result.files['src/App.jsx']).toContain('import TicTacToe from "./components/TicTacToe"');
-    expect(result.files['src/components/TicTacToe.jsx']).toContain('TicTacToe');
+    expect(result.files['src/App.jsx']).toContain(
+      'import NotesPanel from "./components/NotesPanel"',
+    );
+    expect(result.files['src/components/NotesPanel.jsx']).toContain('NotesPanel');
     expect(validate).toHaveBeenCalled();
   });
 

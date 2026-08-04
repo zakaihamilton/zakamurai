@@ -21,7 +21,7 @@ import {
   makeSidebarState,
   makeTabState,
 } from '@/test-utils/stateMocks';
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import type { ReactElement, ReactNode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -221,74 +221,17 @@ describe('TopBar', () => {
     expect(await screen.findByText('Export ZIP')).toBeDefined();
   });
 
-  it('saves a local workspace checkpoint from the actions menu', async () => {
+  it('does not render removed menu actions', async () => {
     setupCommonMocks({ tabState: makeTabState({ openTabs: [], activeTabId: null }) });
-    const saveCheckpoint = vi.spyOn(Settings, 'saveRecoveryCheckpoint').mockResolvedValue(true);
-    vi.spyOn(Settings, 'getRecoveryCheckpoint').mockReturnValue(null);
 
     render(<TopBar />);
     fireEvent.click(screen.getByTitle('More actions'));
-    fireEvent.click(await screen.findByText('Save checkpoint'));
-
-    expect(saveCheckpoint).toHaveBeenCalledWith(
-      expect.objectContaining({ version: 1, reason: 'manual', fileContents: expect.any(Object) }),
-    );
-  });
-
-  it('logs when a local checkpoint cannot be saved', async () => {
-    setupCommonMocks({ tabState: makeTabState({ openTabs: [], activeTabId: null }) });
-    vi.spyOn(Settings, 'saveRecoveryCheckpoint').mockResolvedValue(false);
-    vi.spyOn(Settings, 'getRecoveryCheckpoint').mockReturnValue(null);
-
-    render(<TopBar />);
-    fireEvent.click(screen.getByTitle('More actions'));
-    fireEvent.click(await screen.findByText('Save checkpoint'));
-
-    expect(screen.getByText('Welcome')).toBeDefined();
-  });
-
-  it('restores a local checkpoint and requests a rebuild after confirmation', async () => {
-    const appState = makeAppState({ projectName: 'Current', compileRequest: 2 });
-    const editorState = createMockEditorState({ fileContents: { 'src/App.js': 'current' } });
-    const tabState = makeTabState({ openTabs: [], activeTabId: null });
-    const checkpoint = {
-      version: 1 as const,
-      savedAt: 123,
-      projectName: 'Recovered',
-      fileContents: { 'src/App.js': 'recovered' },
-      pendingDiffs: {
-        'src/App.js': { originalContent: 'before' },
-        'invalid.js': { modifiedContent: 'ignored' },
-      },
-      pendingDeletions: {
-        'deleted.js': { originalContent: 'gone', changeSetId: 'checkpoint-change' },
-      },
-      openTabs: [],
-      activeTabId: null,
-    };
-    vi.mocked(AppState.useState).mockReturnValue(appState);
-    vi.mocked(TabState.useState).mockReturnValue(tabState);
-    vi.mocked(SidebarState.useState).mockReturnValue(makeSidebarState());
-    vi.mocked(EditorState.useState).mockReturnValue(editorState);
-    vi.spyOn(Settings, 'getRecoveryCheckpoint').mockReturnValue(checkpoint);
-    const setFileContents = vi.spyOn(Settings, 'setFileContents').mockResolvedValue(true);
-    vi.spyOn(Settings, 'setPendingDiffs').mockResolvedValue(true);
-
-    render(<TopBar />);
-    fireEvent.click(screen.getByTitle('More actions'));
-    fireEvent.click(await screen.findByText('Restore checkpoint'));
-    await screen.findByRole('heading', { name: 'Restore checkpoint?' });
-    await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: 'Restore checkpoint' }));
-    });
-
-    await waitFor(() => {
-      expect(setFileContents).toHaveBeenCalledWith(checkpoint.fileContents);
-      expect(editorState.fileContents).toEqual(checkpoint.fileContents);
-      expect(editorState.pendingDeletions).toEqual(checkpoint.pendingDeletions);
-      expect(appState.projectName).toBe('Recovered');
-      expect(appState.compileRequest).toBe(3);
-    });
+    expect(await screen.findByText('Export ZIP')).toBeDefined();
+    expect(screen.queryByText('Save checkpoint')).toBeNull();
+    expect(screen.queryByText('Restore checkpoint')).toBeNull();
+    expect(screen.queryByText('Checkpoint history')).toBeNull();
+    expect(screen.queryByText('Export AI incident')).toBeNull();
+    expect(screen.queryByText('Export support report')).toBeNull();
   });
 
   it('renders compile button', () => {
@@ -372,17 +315,7 @@ describe('TopBar', () => {
     render(<TopBar />);
     fireEvent.click(screen.getByTitle('More actions'));
     expect(await screen.findByText('New Project')).toBeDefined();
-  });
-
-  it('renders new project from scratch button and handles click', async () => {
-    setupCommonMocks({
-      projectName: 'Test Project',
-      tabState: makeTabState({ openTabs: [], activeTabId: null }),
-    });
-
-    render(<TopBar />);
-    fireEvent.click(screen.getByTitle('More actions'));
-    expect(await screen.findByText('New Project from Scratch')).toBeDefined();
+    expect(screen.queryByText('New Project from Scratch')).toBeNull();
   });
 
   it('resets live file state before reloading for a new project', () => {

@@ -10,7 +10,6 @@ import type {
   TabStateShape,
 } from '@/components/state/domain-types';
 import type { StateStore } from '@/components/state/types';
-import type { RecoveryCheckpoint } from '@/contracts/runtime';
 export type ResetNewProjectStateParams = {
   template?: string;
   appState: StateStore<AppStateShape>;
@@ -43,14 +42,7 @@ export type TopBarMenuProps = {
   onExportCompiledZip: () => void;
   onNewProject: (template?: string) => void | Promise<void>;
   onClearFS: () => void;
-  onExportSupportReport: () => void;
-  onExportAIIncident?: () => void;
-  hasAIIncident?: boolean;
   onToggleShortcuts: () => void;
-  onSaveCheckpoint: () => void | Promise<void>;
-  onRestoreCheckpoint: (checkpointId?: string | null) => void | Promise<void>;
-  hasCheckpoint: boolean;
-  checkpointHistory: RecoveryCheckpoint[];
 };
 
 export type HistoryDropdownProps = {
