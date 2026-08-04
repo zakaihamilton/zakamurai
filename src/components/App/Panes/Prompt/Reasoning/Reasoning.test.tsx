@@ -205,6 +205,37 @@ describe('ReasoningPanel', () => {
     expect(screen.getByText('read_file ×2 · write_file ×1')).toBeDefined();
   });
 
+  it('toggles auto-scroll on and off from the toolbar', () => {
+    setSessionReasoning('Scrolling log content');
+    const scrollTo = vi.fn();
+    const originalScrollTo = HTMLElement.prototype.scrollTo;
+    HTMLElement.prototype.scrollTo = scrollTo;
+
+    try {
+      render(<ReasoningPanel />);
+
+      const toggle = screen.getByRole('button', { name: 'Turn auto-scroll off' });
+      expect(toggle.getAttribute('aria-pressed')).toBe('true');
+      expect(scrollTo).toHaveBeenCalled();
+
+      scrollTo.mockClear();
+      fireEvent.click(toggle);
+
+      expect(
+        screen.getByRole('button', { name: 'Turn auto-scroll on' }).getAttribute('aria-pressed'),
+      ).toBe('false');
+      expect(scrollTo).not.toHaveBeenCalled();
+
+      fireEvent.click(screen.getByRole('button', { name: 'Turn auto-scroll on' }));
+      expect(
+        screen.getByRole('button', { name: 'Turn auto-scroll off' }).getAttribute('aria-pressed'),
+      ).toBe('true');
+      expect(scrollTo).toHaveBeenCalled();
+    } finally {
+      HTMLElement.prototype.scrollTo = originalScrollTo;
+    }
+  });
+
   it('toggles per-step model input/output and includes the visible setting in copies', async () => {
     mockAgentSessionStore = createDefaultAgentSessions();
     const active = expectAgentSession(mockAgentSessionStore);

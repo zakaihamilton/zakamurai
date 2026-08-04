@@ -6,8 +6,11 @@ type AISectionHeaderProps = {
   title: string;
   showStepIOToggle: boolean;
   showStepIO: boolean;
+  showAutoScrollToggle?: boolean;
+  autoScroll?: boolean;
   copied: boolean;
   onToggleStepIO: () => void;
+  onToggleAutoScroll?: () => void;
   onCopy: () => void;
 };
 
@@ -15,8 +18,11 @@ export default function AISectionHeader({
   title,
   showStepIOToggle,
   showStepIO,
+  showAutoScrollToggle = false,
+  autoScroll = true,
   copied,
   onToggleStepIO,
+  onToggleAutoScroll,
   onCopy,
 }: AISectionHeaderProps) {
   return (
@@ -26,6 +32,19 @@ export default function AISectionHeader({
         <h1>{title}</h1>
       </div>
       <div className={styles.actions}>
+        {showAutoScrollToggle ? (
+          <Tooltip content={autoScroll ? 'Turn auto-scroll off' : 'Turn auto-scroll on'}>
+            <button
+              type="button"
+              className={`${styles.stepIOToggle} ${autoScroll ? styles.stepIOToggleActive : ''}`}
+              onClick={onToggleAutoScroll}
+              aria-label={autoScroll ? 'Turn auto-scroll off' : 'Turn auto-scroll on'}
+              aria-pressed={autoScroll}
+            >
+              <Icons.ArrowDownToLine size={16} />
+            </button>
+          </Tooltip>
+        ) : null}
         {showStepIOToggle ? (
           <Tooltip content={`${showStepIO ? 'Hide' : 'Show'} input/output for each agent step`}>
             <button

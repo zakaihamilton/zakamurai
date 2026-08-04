@@ -1,9 +1,9 @@
+import { withoutManagerErrorMessages } from '@/components/App/Panes/Prompt/AgentSessions';
 import type {
   AgentReasoningEntry,
   AgentSession,
   AgentSessionMessage,
 } from '@/components/state/domain-types';
-import { withoutManagerErrorMessages } from '@/components/App/Panes/Prompt/AgentSessions';
 import { useEffect } from 'react';
 import type { RefObject } from 'react';
 import ReactMarkdown, { type Components } from 'react-markdown';
@@ -19,6 +19,7 @@ type AISectionReasoningProps = {
   fallbackContent: string;
   content: string;
   contentRef: RefObject<HTMLDivElement | null>;
+  autoScroll?: boolean;
 };
 
 const markdownComponents: Components = {
@@ -113,17 +114,18 @@ export default function AISectionReasoning({
   fallbackContent,
   content,
   contentRef,
+  autoScroll = true,
 }: AISectionReasoningProps) {
   const transcriptMessages = withoutManagerErrorMessages(activeSession?.messages || []);
   const hasTranscript = transcriptMessages.length > 0;
 
   useEffect(() => {
-    if (!content || !contentRef.current) return;
+    if (!autoScroll || !content || !contentRef.current) return;
     contentRef.current.scrollTo({
       top: contentRef.current.scrollHeight,
       behavior: 'smooth',
     });
-  }, [content, contentRef]);
+  }, [autoScroll, content, contentRef]);
 
   return (
     <div ref={contentRef} className={`${styles.content} ${styles.markdownContent}`}>

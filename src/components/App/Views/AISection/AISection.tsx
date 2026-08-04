@@ -121,6 +121,7 @@ export default function AISectionView({ tab }: { tab: Tab }) {
   const webLLMState = requireStore(WebLLMState.useState(['engines']));
   const promptUiState = requireStore(PromptUiState.useState(['selectedModel']));
   const [copied, setCopied] = useState(false);
+  const [autoScroll, setAutoScroll] = useState(true);
   const contentRef = useRef<HTMLDivElement | null>(null);
   const activeSession = getActiveAgentSession(agentSessionState);
   const [showStepIO, setShowStepIO] = useState(activeSession?.showStepIO === true);
@@ -209,8 +210,11 @@ export default function AISectionView({ tab }: { tab: Tab }) {
         title={titleBySection[section]}
         showStepIOToggle={section === 'reasoning'}
         showStepIO={section === 'reasoning' && showStepIO}
+        showAutoScrollToggle={section === 'reasoning'}
+        autoScroll={section === 'reasoning' && autoScroll}
         copied={copied}
         onToggleStepIO={toggleStepIO}
+        onToggleAutoScroll={() => setAutoScroll((enabled) => !enabled)}
         onCopy={copy}
       />
       {section === 'reasoning' ? (
@@ -222,6 +226,7 @@ export default function AISectionView({ tab }: { tab: Tab }) {
           fallbackContent={content}
           content={content}
           contentRef={contentRef}
+          autoScroll={autoScroll}
         />
       ) : (
         <AISectionChanges content={content} />
