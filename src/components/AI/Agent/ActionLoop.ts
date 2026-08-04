@@ -63,6 +63,27 @@ const AGENT_CONTEXT_WINDOW_SIZE = 3072;
 const AGENT_GENERATION_TOKENS = 1600;
 const AGENT_RECOVERY_TOKENS = 2000;
 
+const isLightweightAgentModel = (model: string): boolean =>
+  /(?:0\.8|1\.5|1\.7|2)B(?:-|$)/i.test(model);
+
+const LIGHTWEIGHT_AGENT_SYSTEM_PROMPT = `
+You are a small local coding model. Reply with exactly one action and no explanation.
+For a create, build, fix, or update request, write the application source immediately when
+workspace context is supplied. Do not list, search, or read files again.
+
+Allowed actions:
+{"action":"write_file","path":"relative/path","reason":"brief reason"}
+\`\`\`jsx
+complete source content here
+\`\`\`
+{"action":"validate"}
+{"action":"finish","summary":"brief result"}
+
+The JSON metadata for a source write must be one line followed by exactly one labelled source
+fence. Put the complete file in the fence, not in a JSON content field. Use project-relative
+paths. Write one file per turn. After a successful write, validate and then finish.
+`.trim();
+
 const CONTEXT_READY_AGENT_INSTRUCTIONS = `
 IMPORTANT: The manager has already inspected the workspace and supplied the relevant file
 contents below. For an edit request, your next response must be exactly one write_file or
@@ -344,10 +365,13 @@ export async function runActionLoop({
   const askWebLLM = modelClient ? null : await loadAskWebLLM();
   const workspace = existingWorkspace || new AgentWorkspace(files, workspaceIndex);
   const context = new AgentContextManager({ request, priorContext });
+  const lightweightModel = isLightweightAgentModel(model);
+  const baseSystemPrompt =
+    lightweightModel && !agentRole ? LIGHTWEIGHT_AGENT_SYSTEM_PROMPT : systemPrompt;
   const agentSystemPrompt =
     priorContext && !agentRole
-      ? `${CONTEXT_READY_AGENT_INSTRUCTIONS}\n\n${systemPrompt}`
-      : systemPrompt;
+      ? `${CONTEXT_READY_AGENT_INSTRUCTIONS}\n\n${baseSystemPrompt}`
+      : baseSystemPrompt;
   const messages: WebLLMMessage[] = [
     { role: 'system', content: agentSystemPrompt },
     {
@@ -380,6 +404,8 @@ export async function runActionLoop({
   let nonProductiveActionsWithoutWrite = 0;
   let directRepairAttempts = 0;
   const failedStylesheetWrites = new Map<string, number>();
+  const nonProductiveActionLimit = lightweightModel ? 2 : 4;
+  const forcedRecoveryViolationLimit = lightweightModel ? 1 : 2;
 
   const runValidation = async (
     turn: number,
@@ -657,7 +683,7 @@ export async function runActionLoop({
       }
       protocolFailures++;
       if (forcedWriteRecoveryPending) {
-        if (++forcedWriteRecoveryViolations >= 2) {
+        if (++forcedWriteRecoveryViolations >= forcedRecoveryViolationLimit) {
           if (!directChangesRecoveryPending) {
             directChangesRecoveryPending = true;
             const target =
@@ -818,7 +844,10 @@ export async function runActionLoop({
       workspace.changes().length === 0
     ) {
       nonProductiveActionsWithoutWrite++;
-      if (nonProductiveActionsWithoutWrite >= 4 && !forcedWriteRecoveryPending) {
+      if (
+        nonProductiveActionsWithoutWrite >= nonProductiveActionLimit &&
+        !forcedWriteRecoveryPending
+      ) {
         const target = forcedRecoveryTargetPath || recoveryWritePath(workspace.files, activeFile);
         forcedWriteRecoveryPending = true;
         const message = target

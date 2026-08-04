@@ -280,6 +280,33 @@ describe('runActionLoop', () => {
     expect(recoveryMessages[1].content).toContain('Current contents of src/App.jsx');
   });
 
+  it('uses a compact prompt and earlier recovery for lightweight models', async () => {
+    const modelClient = vi
+      .fn()
+      .mockResolvedValueOnce('{"action":"list_files"}')
+      .mockResolvedValueOnce('{"action":"list_files","query":"*.jsx"}')
+      .mockResolvedValueOnce(
+        '{"action":"write_file","path":"src/App.jsx","content":"export default function App() { return <main>Tic tac toe</main>; }"}',
+      )
+      .mockResolvedValueOnce('{"action":"validate"}')
+      .mockResolvedValueOnce('{"action":"finish","summary":"Created tic tac toe"}');
+    const validate = vi.fn().mockResolvedValue('Checks passed.');
+
+    const result = await runActionLoop({
+      request: 'create tic tac toe game',
+      files: { 'src/App.jsx': 'export default function App() { return null; }' },
+      validate,
+      model: 'Qwen3.5-0.8B-q4f16_1-MLC',
+      modelClient,
+    });
+
+    expect(result.files['src/App.jsx']).toContain('Tic tac toe');
+    expect(modelClient.mock.calls[0][0].messages[0].content).toContain(
+      'You are a small local coding model',
+    );
+    expect(modelClient.mock.calls[2][0].messages[0].content).toContain('emergency write mode');
+  });
+
   it('uses generic direct recovery when the local model never writes', async () => {
     const modelClient = vi
       .fn()
