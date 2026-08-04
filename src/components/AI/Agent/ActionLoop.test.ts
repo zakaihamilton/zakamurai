@@ -298,12 +298,18 @@ describe('runActionLoop', () => {
       validate,
       model: 'Qwen3.5-0.8B-q4f16_1-MLC',
       modelClient,
+      priorContext: '[list_files]\nsrc/App.jsx\n[read_file]\nexisting app source',
     });
 
     expect(result.files['src/App.jsx']).toContain('Tic tac toe');
     expect(modelClient.mock.calls[0][0].messages[0].content).toContain(
       'You are a small local coding model',
     );
+    expect(modelClient.mock.calls[0][0].messages[1].content).toContain(
+      'Your next response must be exactly one write_file action for src/App.jsx',
+    );
+    expect(modelClient.mock.calls[0][0].messages[1].content).toContain('--- src/App.jsx ---');
+    expect(modelClient.mock.calls[0][0].messages[1].content).not.toContain('[list_files]');
     expect(modelClient.mock.calls[2][0].messages[0].content).toContain('emergency write mode');
   });
 

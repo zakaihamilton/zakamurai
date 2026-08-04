@@ -18,6 +18,13 @@
   opacity: 0.5;
 }
 
+.breadcrumb > span {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  flex: 0 1 auto;
+}
+
 .breadcrumbSegment {
   background: none;
   border: none;
@@ -41,7 +48,7 @@
 
 .segmentTooltip {
   display: flex;
-  flex: 1 1 auto;
+  flex: 0 1 auto;
   min-width: 0;
   overflow: hidden;
   white-space: nowrap;

@@ -206,9 +206,11 @@ export default function PreviewHost() {
           scope: swScope,
         });
         await ensureActiveWorker(registration);
-        if (swScope !== '/') {
-          await waitForPreviewWorkerControl(registration);
-        }
+        // An activated worker is not necessarily the worker controlling this
+        // page yet. This matters for the root-scoped local preview: the first
+        // entry fetch can otherwise escape to the IDE app shell while the
+        // worker is still waiting for clients.claim() to take effect.
+        await waitForPreviewWorkerControl(registration);
         const controlling =
           navigator.serviceWorker.controller &&
           registration.active &&

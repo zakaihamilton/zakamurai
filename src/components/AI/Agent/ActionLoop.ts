@@ -62,6 +62,8 @@ const CHANGE_REQUEST_PATTERN =
 const AGENT_CONTEXT_WINDOW_SIZE = 3072;
 const AGENT_GENERATION_TOKENS = 1600;
 const AGENT_RECOVERY_TOKENS = 2000;
+const LIGHTWEIGHT_AGENT_GENERATION_TOKENS = 900;
+const LIGHTWEIGHT_AGENT_RECOVERY_TOKENS = 1200;
 
 const isLightweightAgentModel = (model: string): boolean =>
   /(?:0\.8|1\.5|1\.7|2)B(?:-|$)/i.test(model);
@@ -251,6 +253,31 @@ const buildUserRequest = ({
   return `${requestBlock}\n\nPrior conversation context:\n${priorContext}`;
 };
 
+const buildLightweightUserRequest = ({
+  request,
+  targetPath,
+  files,
+}: {
+  request: string;
+  targetPath: string;
+  files: Record<string, string>;
+}): string => {
+  const stylesheetPath = targetPath.replace(/\.(jsx|tsx)$/i, '.module.css');
+  const contextPaths = [targetPath, stylesheetPath, 'package.json'].filter(
+    (path, index, paths) => Object.hasOwn(files, path) && paths.indexOf(path) === index,
+  );
+  const fileContext = contextPaths.length
+    ? contextPaths.map((path) => `--- ${path} ---\n${files[path]}`).join('\n\n')
+    : 'No relevant source file exists yet.';
+  return [
+    `Request: ${request}`,
+    'The workspace has already been inspected. Do not list, search, or read files.',
+    `Your next response must be exactly one write_file action for ${targetPath}.`,
+    'Use the supplied files as context and return the complete implementation now.',
+    fileContext,
+  ].join('\n\n');
+};
+
 const buildForcedWriteRecoveryMessages = ({
   request,
   targetPath,
@@ -372,17 +399,25 @@ export async function runActionLoop({
     priorContext && !agentRole
       ? `${CONTEXT_READY_AGENT_INSTRUCTIONS}\n\n${baseSystemPrompt}`
       : baseSystemPrompt;
+  const lightweightTargetPath = recoveryWritePath(workspace.files, activeFile) || 'src/App.jsx';
   const messages: WebLLMMessage[] = [
     { role: 'system', content: agentSystemPrompt },
     {
       role: 'user',
-      content: buildUserRequest({
-        request,
-        scope,
-        activeFile,
-        selectedLines,
-        priorContext: context.toString(),
-      }),
+      content:
+        lightweightModel && priorContext
+          ? buildLightweightUserRequest({
+              request,
+              targetPath: lightweightTargetPath,
+              files: workspace.files,
+            })
+          : buildUserRequest({
+              request,
+              scope,
+              activeFile,
+              selectedLines,
+              priorContext: context.toString(),
+            }),
     },
   ];
   let protocolFailures = 0;
@@ -481,20 +516,22 @@ export async function runActionLoop({
     }, 3_000);
     let reply: string;
     try {
-      const modelMessages = directChangesRecoveryPending
-        ? buildDirectChangesRecoveryMessages({
-            request,
-            targetPath: forcedRecoveryTargetPath || recoveryWritePath(workspace.files, activeFile),
-            files: workspace.files,
-          })
-        : forcedWriteRecoveryPending
-          ? buildForcedWriteRecoveryMessages({
+      const modelMessages =
+        directChangesRecoveryPending && !lightweightModel
+          ? buildDirectChangesRecoveryMessages({
               request,
               targetPath:
                 forcedRecoveryTargetPath || recoveryWritePath(workspace.files, activeFile),
               files: workspace.files,
             })
-          : messages;
+          : forcedWriteRecoveryPending
+            ? buildForcedWriteRecoveryMessages({
+                request,
+                targetPath:
+                  forcedRecoveryTargetPath || recoveryWritePath(workspace.files, activeFile),
+                files: workspace.files,
+              })
+            : messages;
       if (modelClient) {
         reply = await modelClient({
           model,
@@ -502,10 +539,13 @@ export async function runActionLoop({
           signal,
           task: 'generate-changes',
           onMetrics,
-          temperature: visualMode ? 0.12 : 0.15,
-          top_p: 0.8,
-          max_tokens:
-            visualMode || failedWritePath || forcedWriteRecoveryPending
+          temperature: lightweightModel ? 0.1 : visualMode ? 0.12 : 0.15,
+          top_p: lightweightModel ? 0.7 : 0.8,
+          max_tokens: lightweightModel
+            ? visualMode || failedWritePath || forcedWriteRecoveryPending
+              ? LIGHTWEIGHT_AGENT_RECOVERY_TOKENS
+              : LIGHTWEIGHT_AGENT_GENERATION_TOKENS
+            : visualMode || failedWritePath || forcedWriteRecoveryPending
               ? AGENT_RECOVERY_TOKENS
               : AGENT_GENERATION_TOKENS,
           contextWindowSize: AGENT_CONTEXT_WINDOW_SIZE,
@@ -546,12 +586,15 @@ export async function runActionLoop({
                 message: `Local model recovery: ${action} after ${recovery.reason.replaceAll('-', ' ')}.`,
               });
             },
-            temperature: visualMode ? 0.12 : 0.15,
-            top_p: 0.8,
+            temperature: lightweightModel ? 0.1 : visualMode ? 0.12 : 0.15,
+            top_p: lightweightModel ? 0.7 : 0.8,
             // Give a repair turn enough room to return one complete source file instead of
             // repeating a truncated payload from the preceding attempt.
-            max_tokens:
-              visualMode || failedWritePath || forcedWriteRecoveryPending
+            max_tokens: lightweightModel
+              ? visualMode || failedWritePath || forcedWriteRecoveryPending
+                ? LIGHTWEIGHT_AGENT_RECOVERY_TOKENS
+                : LIGHTWEIGHT_AGENT_GENERATION_TOKENS
+              : visualMode || failedWritePath || forcedWriteRecoveryPending
                 ? AGENT_RECOVERY_TOKENS
                 : AGENT_GENERATION_TOKENS,
             contextWindowSize: AGENT_CONTEXT_WINDOW_SIZE,
@@ -565,7 +608,7 @@ export async function runActionLoop({
       type: 'model_io',
       turn,
       agentRole,
-      input: (directChangesRecoveryPending
+      input: (directChangesRecoveryPending && !lightweightModel
         ? buildDirectChangesRecoveryMessages({
             request,
             targetPath: forcedRecoveryTargetPath || recoveryWritePath(workspace.files, activeFile),
