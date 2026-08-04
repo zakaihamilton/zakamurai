@@ -18,6 +18,7 @@ vi.mock('@mlc-ai/web-llm', () => ({ hasModelInCache }));
 describe('WebLLMModels', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    hasModelInCache.mockReset();
   });
   it('provides numeric runtime RAM and storage requirements for every model', () => {
     for (const model of WEB_LLM_MODELS) {
@@ -26,17 +27,17 @@ describe('WebLLMModels', () => {
     }
   });
 
-  it('recommends Qwen2.5 Coder 1.5B by default', () => {
-    expect(RECOMMENDED_WEB_LLM_MODEL.id).toBe('Qwen2.5-Coder-1.5B-Instruct-q4f16_1-MLC');
+  it('recommends Qwen2.5 Coder 3B for reliable agent edits', () => {
+    expect(RECOMMENDED_WEB_LLM_MODEL.id).toBe('Qwen2.5-Coder-3B-Instruct-q4f16_1-MLC');
   });
 
-  it('uses the compact coding model as the default on ordinary devices', () => {
+  it('uses the reliable coding model as the default on ordinary devices', () => {
     const originalNavigator = globalThis.navigator;
     Object.defineProperty(globalThis, 'navigator', {
       configurable: true,
       value: { deviceMemory: 8 },
     });
-    expect(getDeviceAppropriateDefaultModelId()).toBe('Qwen2.5-Coder-1.5B-Instruct-q4f16_1-MLC');
+    expect(getDeviceAppropriateDefaultModelId()).toBe('Qwen2.5-Coder-3B-Instruct-q4f16_1-MLC');
     Object.defineProperty(globalThis, 'navigator', {
       configurable: true,
       value: originalNavigator,
@@ -69,7 +70,7 @@ describe('WebLLMModels', () => {
     );
   });
 
-  it('supports Qwen2.5 Coder 1.5B as a selectable compact coding model', () => {
+  it('keeps Qwen2.5 Coder 1.5B available as a selectable compact coding model', () => {
     expect(resolveWebLLMModelId('Qwen2.5-Coder-1.5B-Instruct-q4f16_1-MLC')).toBe(
       'Qwen2.5-Coder-1.5B-Instruct-q4f16_1-MLC',
     );

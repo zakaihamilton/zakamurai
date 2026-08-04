@@ -11,7 +11,7 @@ describe.skipIf(!enabled)('AI Manager WebLLM smoke test', () => {
         'package.json': '{"dependencies":{"react":"latest"}}',
         'src/App.jsx': 'export default function App() { return null; }',
       },
-      model: process.env.ZAKAMURAI_AI_MODEL || 'Qwen2.5-Coder-1.5B-Instruct-q4f16_1-MLC',
+      model: process.env.ZAKAMURAI_AI_MODEL || 'Qwen2.5-Coder-3B-Instruct-q4f16_1-MLC',
       modelClient: async ({ model, messages, signal, onMetrics, temperature, top_p, max_tokens }) =>
         askWebLLM('', '', null, {
           model,
