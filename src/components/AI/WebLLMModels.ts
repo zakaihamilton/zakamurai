@@ -148,7 +148,7 @@ export const getDeviceAppropriateDefaultModelId = (): string => {
   if (Number.isFinite(deviceMemory) && (deviceMemory || 0) <= 2) {
     return 'Qwen3.5-0.8B-q4f16_1-MLC';
   }
-  if (isMacDevice()) return 'Qwen3.5-2B-q4f16_1-MLC';
+  if (isMacDevice()) return RECOMMENDED_WEB_LLM_MODEL.id;
   if (!Number.isFinite(deviceMemory)) return RECOMMENDED_WEB_LLM_MODEL.id;
   return RECOMMENDED_WEB_LLM_MODEL.id;
 };

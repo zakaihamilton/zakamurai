@@ -44,13 +44,13 @@ describe('WebLLMModels', () => {
     });
   });
 
-  it('uses the lighter Qwen3.5 2B model on Mac devices', () => {
+  it('keeps the reliable coding model as the default on Mac devices', () => {
     const originalNavigator = globalThis.navigator;
     Object.defineProperty(globalThis, 'navigator', {
       configurable: true,
       value: { platform: 'MacIntel', userAgent: 'Macintosh' },
     });
-    expect(getDeviceAppropriateDefaultModelId()).toBe('Qwen3.5-2B-q4f16_1-MLC');
+    expect(getDeviceAppropriateDefaultModelId()).toBe('Qwen2.5-Coder-3B-Instruct-q4f16_1-MLC');
     Object.defineProperty(globalThis, 'navigator', {
       configurable: true,
       value: originalNavigator,
