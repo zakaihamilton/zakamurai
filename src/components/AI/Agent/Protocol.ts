@@ -126,9 +126,43 @@ const parseFencedWrite = (text: string, metadata?: AgentAction): AgentAction | n
     .at(-1);
   const hasLabeledSource = sourceBlocks.some((block) => block.language);
   const source = matchingSource || (hasLabeledSource ? undefined : sourceBlocks.at(-1));
-  if (source === undefined) return null;
+  if (source !== undefined) return { ...value, content: source.content };
 
-  return { ...value, content: source.content };
+  // Small models often emit write_file metadata and then raw source without a fence.
+  const jsonEnd = (() => {
+    const start = text.indexOf('{');
+    if (start < 0) return -1;
+    let depth = 0;
+    let inString = false;
+    let escaped = false;
+    for (let index = start; index < text.length; index++) {
+      const char = text[index];
+      if (inString) {
+        if (escaped) escaped = false;
+        else if (char === '\\') escaped = true;
+        else if (char === '"') inString = false;
+        continue;
+      }
+      if (char === '"') inString = true;
+      if (char === '{') depth++;
+      if (char === '}' && --depth === 0) return index;
+    }
+    return -1;
+  })();
+  if (jsonEnd < 0) return null;
+  const trailing = text
+    .slice(jsonEnd + 1)
+    .replace(/^\s*```[^\n]*\n?/, '')
+    .replace(/\n?```\s*$/, '')
+    .trim();
+  if (
+    !trailing ||
+    trailing.startsWith('{') ||
+    !/^(?:import|export|const|let|var|function|class|\/[/*]|<\w)/m.test(trailing)
+  ) {
+    return null;
+  }
+  return { ...value, content: trailing };
 };
 
 export function parseAgentAction(

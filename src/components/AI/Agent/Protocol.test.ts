@@ -38,6 +38,19 @@ describe('agent protocol', () => {
     expect(() => normalizeAgentPath('../secret')).toThrow(/workspace/);
   });
 
+  it('recovers unfenced source that follows write_file metadata', () => {
+    expect(
+      parseAgentAction(`{"action":"write_file","path":"src/App.jsx","reason":"build game"}
+export default function App() {
+  return <main>Tic Tac Toe</main>;
+}`),
+    ).toMatchObject({
+      action: 'write_file',
+      path: 'src/App.jsx',
+      content: 'export default function App() {\n  return <main>Tic Tac Toe</main>;\n}',
+    });
+  });
+
   it('requires complete content for writes', () => {
     expect(() => parseAgentAction('{"action":"write_file","path":"a.js"}')).toThrow(/content/);
     expect(() => parseAgentAction('```json\n{"action":"write_file","path":"a.js"}\n```')).toThrow(

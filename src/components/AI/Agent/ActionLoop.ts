@@ -59,11 +59,11 @@ const APP_ENTRY_PATHS = new Set([
 const CHANGE_REQUEST_PATTERN =
   /\b(?:add|build|change|create|delete|design|fix|implement|improve|make|modify|refactor|remove|rename|replace|style|update)\b/i;
 
-const AGENT_CONTEXT_WINDOW_SIZE = 3072;
-const AGENT_GENERATION_TOKENS = 1600;
-const AGENT_RECOVERY_TOKENS = 2000;
-const LIGHTWEIGHT_AGENT_GENERATION_TOKENS = 900;
-const LIGHTWEIGHT_AGENT_RECOVERY_TOKENS = 1200;
+const AGENT_CONTEXT_WINDOW_SIZE = 4096;
+const AGENT_GENERATION_TOKENS = 1800;
+const AGENT_RECOVERY_TOKENS = 2200;
+const LIGHTWEIGHT_AGENT_GENERATION_TOKENS = 1200;
+const LIGHTWEIGHT_AGENT_RECOVERY_TOKENS = 1600;
 
 const isLightweightAgentModel = (model: string): boolean =>
   /(?:0\.8|1\.5|1\.7|2)B(?:-|$)/i.test(model);
@@ -74,16 +74,13 @@ For a create, build, fix, or update request, write the application source immedi
 workspace context is supplied. Do not list, search, or read files again.
 
 Allowed actions:
-{"action":"write_file","path":"relative/path","reason":"brief reason"}
-\`\`\`jsx
-complete source content here
-\`\`\`
+{"action":"write_file","path":"relative/path","content":"complete source content here","reason":"brief reason"}
 {"action":"validate"}
 {"action":"finish","summary":"brief result"}
 
-The JSON metadata for a source write must be one line followed by exactly one labelled source
-fence. Put the complete file in the fence, not in a JSON content field. Use project-relative
-paths. Write one file per turn. After a successful write, validate and then finish.
+Always include the complete file text inside the JSON content field in the same response.
+Never return write_file metadata without content. Use project-relative paths. Write one file
+per turn. After a successful write, validate and then finish.
 `.trim();
 
 const CONTEXT_READY_AGENT_INSTRUCTIONS = `
@@ -253,14 +250,35 @@ const buildUserRequest = ({
   return `${requestBlock}\n\nPrior conversation context:\n${priorContext}`;
 };
 
-const buildLightweightUserRequest = ({
+/**
+ * Manager already inspected the workspace. Keep the model prompt small enough for the
+ * local context window so the first reply can be a complete write_file instead of another
+ * inventory pass that starves generation tokens.
+ */
+const extractConversationalPrior = (priorContext: string): string | null => {
+  const conversational = priorContext
+    .split(/\n{2,}/)
+    .map((block) => block.trim())
+    .filter(Boolean)
+    .filter(
+      (block) =>
+        !/^\[(?:list_files|read_file|search_workspace|search_semantic|prior)\]/i.test(block) &&
+        !/^---\s+\S/.test(block),
+    );
+  if (!conversational.length) return null;
+  return conversational.join('\n\n').slice(0, 1200);
+};
+
+const buildContextReadyUserRequest = ({
   request,
   targetPath,
   files,
+  priorContext = '',
 }: {
   request: string;
   targetPath: string;
   files: Record<string, string>;
+  priorContext?: string;
 }): string => {
   const stylesheetPath = targetPath.replace(/\.(jsx|tsx)$/i, '.module.css');
   const contextPaths = [targetPath, stylesheetPath, 'package.json'].filter(
@@ -269,8 +287,10 @@ const buildLightweightUserRequest = ({
   const fileContext = contextPaths.length
     ? contextPaths.map((path) => `--- ${path} ---\n${files[path]}`).join('\n\n')
     : 'No relevant source file exists yet.';
+  const conversation = extractConversationalPrior(priorContext);
   return [
     `Request: ${request}`,
+    ...(conversation ? [`Prior conversation:\n${conversation}`] : []),
     'The workspace has already been inspected. Do not list, search, or read files.',
     `Your next response must be exactly one write_file action for ${targetPath}.`,
     'Use the supplied files as context and return the complete implementation now.',
@@ -282,10 +302,14 @@ const buildForcedWriteRecoveryMessages = ({
   request,
   targetPath,
   files,
+  lightweight = false,
+  incompleteWrite = false,
 }: {
   request: string;
   targetPath: string | null;
   files: Record<string, string>;
+  lightweight?: boolean;
+  incompleteWrite?: boolean;
 }): WebLLMMessage[] => {
   const targetContent = targetPath ? files[targetPath] : undefined;
   const context = targetPath
@@ -293,31 +317,44 @@ const buildForcedWriteRecoveryMessages = ({
     : 'No existing application entry file was identified. Choose a project-relative entry path.';
   const recoveryPath = targetPath || 'src/App.jsx';
   const recoveryLanguage = sourceFenceLanguage(recoveryPath);
-  const writeFormat = [
+  const fencedWriteFormat = [
     `{"action":"write_file","path":"${recoveryPath}","reason":"implement the request"}`,
     `\`\`\`${recoveryLanguage}`,
     'complete source content here',
     '```',
   ].join('\n');
+  const jsonWriteFormat = `{"action":"write_file","path":"${recoveryPath}","content":"complete source content here","reason":"implement the request"}`;
+  const writeFormat = lightweight ? jsonWriteFormat : fencedWriteFormat;
   const recoveryInstruction = targetPath
     ? `Recovery mode is active. Your next response must be a write_file action for ${targetPath} with complete source content. Return exactly one write_file action for ${targetPath}.`
     : 'Recovery mode is active. Your next response must be a write_file action with complete source content. Return exactly one write_file action.';
+  const incompleteWriteHint = incompleteWrite
+    ? lightweight
+      ? 'The previous reply had write_file metadata without source content. Put the COMPLETE source in the JSON content field this time.'
+      : 'The previous reply had write_file metadata without source content. Include the complete file body in the same response.'
+    : null;
+  const systemContent = lightweight
+    ? `You are in emergency write mode. Return exactly one write_file JSON object now. Put the COMPLETE source in the content field. Example shape:\n${writeFormat}\nDo not return metadata alone. Do not list, search, read, validate, finish, or explain.`
+    : `You are in emergency write mode. Ignore normal inspection guidance: the workspace has already been inspected. Return exactly one write_file action now using this exact format:\n${writeFormat}\nReplace only the source fence contents. Do not put source code in a JSON content field. Do not list, search, read, validate, inspect the preview, finish, or explain.`;
 
   return [
     {
       role: 'system',
-      content: `You are in emergency write mode. Ignore normal inspection guidance: the workspace has already been inspected. Return exactly one write_file action now using this exact format:\n${writeFormat}\nReplace only the source fence contents. Do not put source code in a JSON content field. Do not list, search, read, validate, inspect the preview, finish, or explain.`,
+      content: systemContent,
     },
     {
       role: 'user',
       content: [
         `Original request: ${request}`,
+        ...(incompleteWriteHint ? [incompleteWriteHint] : []),
         recoveryInstruction,
         targetPath
           ? `Required destination: ${targetPath}`
           : 'Required destination: choose the appropriate application source file.',
         context,
-        `Implement the original request with complete source content. Return exactly one write_file action and nothing else. Use this format:\n${writeFormat}`,
+        lightweight
+          ? `Implement the original request now. Return one JSON write_file with complete content for ${recoveryPath} and nothing else.`
+          : `Implement the original request with complete source content. Return exactly one write_file action and nothing else. Use this format:\n${writeFormat}`,
       ].join('\n\n'),
     },
   ];
@@ -327,10 +364,12 @@ const buildDirectChangesRecoveryMessages = ({
   request,
   targetPath,
   files,
+  lightweight = false,
 }: {
   request: string;
   targetPath: string | null;
   files: Record<string, string>;
+  lightweight?: boolean;
 }): WebLLMMessage[] => {
   const context = targetPath
     ? `Current contents of ${targetPath}:\n${files[targetPath] ?? '(file does not exist yet)'}`
@@ -343,6 +382,23 @@ const buildDirectChangesRecoveryMessages = ({
     'complete source content here',
     '```',
   ].join('\n');
+  if (lightweight) {
+    return [
+      {
+        role: 'system',
+        content: `You are in direct recovery mode. Return exactly one JSON object with complete file content. Preferred shape:\n{"action":"write_file","path":"${recoveryPath}","content":"complete source content here","reason":"implement the request"}\nYou may also use {"kind":"changes","summary":"...","changes":[{"path":"${recoveryPath}","content":"complete file content"}]}. Do not list files, read files, or explain.`,
+      },
+      {
+        role: 'user',
+        content: [
+          `Original request: ${request}`,
+          `Primary file: ${recoveryPath}`,
+          context,
+          `Implement the original request now. Return complete source for ${recoveryPath} in one JSON response.`,
+        ].join('\n\n'),
+      },
+    ];
+  }
   return [
     {
       role: 'system',
@@ -363,6 +419,9 @@ const buildDirectChangesRecoveryMessages = ({
     },
   ];
 };
+
+const isIncompleteWriteError = (message: string): boolean =>
+  /write_file requires string content/i.test(message);
 
 export async function runActionLoop({
   request,
@@ -400,24 +459,25 @@ export async function runActionLoop({
       ? `${CONTEXT_READY_AGENT_INSTRUCTIONS}\n\n${baseSystemPrompt}`
       : baseSystemPrompt;
   const lightweightTargetPath = recoveryWritePath(workspace.files, activeFile) || 'src/App.jsx';
+  const contextReady = Boolean(priorContext) && !agentRole;
   const messages: WebLLMMessage[] = [
     { role: 'system', content: agentSystemPrompt },
     {
       role: 'user',
-      content:
-        lightweightModel && priorContext
-          ? buildLightweightUserRequest({
-              request,
-              targetPath: lightweightTargetPath,
-              files: workspace.files,
-            })
-          : buildUserRequest({
-              request,
-              scope,
-              activeFile,
-              selectedLines,
-              priorContext: context.toString(),
-            }),
+      content: contextReady
+        ? buildContextReadyUserRequest({
+            request,
+            targetPath: lightweightTargetPath,
+            files: workspace.files,
+            priorContext,
+          })
+        : buildUserRequest({
+            request,
+            scope,
+            activeFile,
+            selectedLines,
+            priorContext: context.toString(),
+          }),
     },
   ];
   let protocolFailures = 0;
@@ -438,9 +498,12 @@ export async function runActionLoop({
   let unchangedReadSkips = 0;
   let nonProductiveActionsWithoutWrite = 0;
   let directRepairAttempts = 0;
+  let incompleteWriteRetries = 0;
   const failedStylesheetWrites = new Map<string, number>();
-  const nonProductiveActionLimit = lightweightModel ? 2 : 4;
-  const forcedRecoveryViolationLimit = lightweightModel ? 1 : 2;
+  // Manager already collected workspace context; one redundant inspection is enough to force a write.
+  const nonProductiveActionLimit = contextReady ? 1 : lightweightModel ? 2 : 4;
+  const forcedRecoveryViolationLimit = 2;
+  const incompleteWriteRetryLimit = lightweightModel ? 3 : 2;
 
   const runValidation = async (
     turn: number,
@@ -515,23 +578,25 @@ export async function runActionLoop({
       });
     }, 3_000);
     let reply: string;
+    const recoveryTarget =
+      forcedRecoveryTargetPath || recoveryWritePath(workspace.files, activeFile);
+    const modelMessages = directChangesRecoveryPending
+      ? buildDirectChangesRecoveryMessages({
+          request,
+          targetPath: recoveryTarget,
+          files: workspace.files,
+          lightweight: lightweightModel,
+        })
+      : forcedWriteRecoveryPending
+        ? buildForcedWriteRecoveryMessages({
+            request,
+            targetPath: recoveryTarget,
+            files: workspace.files,
+            lightweight: lightweightModel,
+            incompleteWrite: incompleteWriteRetries > 0,
+          })
+        : messages;
     try {
-      const modelMessages =
-        directChangesRecoveryPending && !lightweightModel
-          ? buildDirectChangesRecoveryMessages({
-              request,
-              targetPath:
-                forcedRecoveryTargetPath || recoveryWritePath(workspace.files, activeFile),
-              files: workspace.files,
-            })
-          : forcedWriteRecoveryPending
-            ? buildForcedWriteRecoveryMessages({
-                request,
-                targetPath:
-                  forcedRecoveryTargetPath || recoveryWritePath(workspace.files, activeFile),
-                files: workspace.files,
-              })
-            : messages;
       if (modelClient) {
         reply = await modelClient({
           model,
@@ -539,8 +604,8 @@ export async function runActionLoop({
           signal,
           task: 'generate-changes',
           onMetrics,
-          temperature: lightweightModel ? 0.1 : visualMode ? 0.12 : 0.15,
-          top_p: lightweightModel ? 0.7 : 0.8,
+          temperature: lightweightModel ? 0.2 : visualMode ? 0.12 : 0.15,
+          top_p: lightweightModel ? 0.85 : 0.8,
           max_tokens: lightweightModel
             ? visualMode || failedWritePath || forcedWriteRecoveryPending
               ? LIGHTWEIGHT_AGENT_RECOVERY_TOKENS
@@ -557,7 +622,6 @@ export async function runActionLoop({
           '',
           (output) => {
             streamedCharacterCount = output.length;
-            if (receivedModelOutput) return;
             receivedModelOutput = true;
             onEvent({
               type: 'thinking',
@@ -586,8 +650,8 @@ export async function runActionLoop({
                 message: `Local model recovery: ${action} after ${recovery.reason.replaceAll('-', ' ')}.`,
               });
             },
-            temperature: lightweightModel ? 0.1 : visualMode ? 0.12 : 0.15,
-            top_p: lightweightModel ? 0.7 : 0.8,
+            temperature: lightweightModel ? 0.2 : visualMode ? 0.12 : 0.15,
+            top_p: lightweightModel ? 0.85 : 0.8,
             // Give a repair turn enough room to return one complete source file instead of
             // repeating a truncated payload from the preceding attempt.
             max_tokens: lightweightModel
@@ -608,23 +672,7 @@ export async function runActionLoop({
       type: 'model_io',
       turn,
       agentRole,
-      input: (directChangesRecoveryPending && !lightweightModel
-        ? buildDirectChangesRecoveryMessages({
-            request,
-            targetPath: forcedRecoveryTargetPath || recoveryWritePath(workspace.files, activeFile),
-            files: workspace.files,
-          })
-        : forcedWriteRecoveryPending
-          ? buildForcedWriteRecoveryMessages({
-              request,
-              targetPath:
-                forcedRecoveryTargetPath || recoveryWritePath(workspace.files, activeFile),
-              files: workspace.files,
-            })
-          : messages
-      )
-        .map((message) => `[${message.role}]\n${message.content}`)
-        .join('\n\n'),
+      input: modelMessages.map((message) => `[${message.role}]\n${message.content}`).join('\n\n'),
       output: reply,
     });
     messages.push({ role: 'assistant', content: reply });
@@ -633,6 +681,7 @@ export async function runActionLoop({
     try {
       action = parseAgentAction(reply, { allowedActions });
       protocolFailures = 0;
+      incompleteWriteRetries = 0;
     } catch (error) {
       const err = error as Error;
       try {
@@ -666,7 +715,7 @@ export async function runActionLoop({
           if (validate) {
             verification = await runValidation(
               turn,
-              directChangesRecoveryPending ? 'recovery' : 'model',
+              directChangesRecoveryPending || forcedWriteRecoveryPending ? 'recovery' : 'model',
             );
           }
           if (verification.includes('"status":"failed"')) {
@@ -700,7 +749,8 @@ export async function runActionLoop({
             changes: changesResult,
             message: summary,
             agentRole,
-            provenance: directChangesRecoveryPending ? 'recovery' : 'model',
+            provenance:
+              directChangesRecoveryPending || forcedWriteRecoveryPending ? 'recovery' : 'model',
           });
           return {
             changes: changesResult,
@@ -725,6 +775,35 @@ export async function runActionLoop({
         if (directError instanceof AgentExecutionError) throw directError;
       }
       protocolFailures++;
+      if (
+        isIncompleteWriteError(err.message) &&
+        incompleteWriteRetries < incompleteWriteRetryLimit
+      ) {
+        incompleteWriteRetries += 1;
+        const target =
+          forcedRecoveryTargetPath ||
+          recoveryWritePath(workspace.files, activeFile) ||
+          'src/App.jsx';
+        forcedWriteRecoveryPending = true;
+        forcedRecoveryTargetPath = target;
+        const recoveryMessage = lightweightModel
+          ? `write_file metadata was returned without source content. Reply again with exactly one JSON object for ${target} that includes the complete file text in the content field.`
+          : `write_file metadata was returned without source content. Reply again with write_file for ${target} and include the complete file body in the same response (JSON content field or a labelled code fence immediately after the JSON line).`;
+        messages.push({
+          role: 'user',
+          content: observation('protocol', false, recoveryMessage),
+        });
+        context.record('incomplete_write_recovery', recoveryMessage);
+        onEvent({
+          type: 'observation',
+          turn,
+          action: { action: 'write_file', path: target },
+          error: true,
+          message: recoveryMessage,
+          agentRole,
+        });
+        continue;
+      }
       if (forcedWriteRecoveryPending) {
         if (++forcedWriteRecoveryViolations >= forcedRecoveryViolationLimit) {
           if (!directChangesRecoveryPending) {
@@ -732,7 +811,9 @@ export async function runActionLoop({
             const target =
               forcedRecoveryTargetPath || recoveryWritePath(workspace.files, activeFile);
             const recoveryMessage = target
-              ? `Direct recovery is active. Return one kind=changes response containing complete content for ${target}. Do not return another action.`
+              ? lightweightModel
+                ? `Direct recovery is active. Return one write_file JSON object with complete content for ${target}, or one kind=changes response. Do not return another inspection action.`
+                : `Direct recovery is active. Return one kind=changes response containing complete content for ${target}. Do not return another action.`
               : 'Direct recovery is active. Return one kind=changes response containing complete file contents. Do not return another action.';
             messages.push({
               role: 'user',
@@ -761,13 +842,12 @@ export async function runActionLoop({
         throw new Error(
           `Local model could not follow the agent protocol after recovery: ${err.message}`,
         );
+      const incompleteWriteGuidance = isIncompleteWriteError(err.message)
+        ? `${err.message}. Return write_file again with the complete file content in the same response.`
+        : `${err.message}. Do not write prose. Reply with exactly one JSON action that advances the request (prefer write_file with complete content for an edit request).`;
       messages.push({
         role: 'user',
-        content: observation(
-          'protocol',
-          false,
-          `${err.message}. Do not write prose or source code yet. Reply with exactly one small JSON action from the catalog (for example {"action":"list_files"}) before attempting another write.`,
-        ),
+        content: observation('protocol', false, incompleteWriteGuidance),
       });
       continue;
     }

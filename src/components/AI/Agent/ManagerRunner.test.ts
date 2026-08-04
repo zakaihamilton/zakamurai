@@ -169,9 +169,12 @@ describe('runManager', () => {
       'export default function App() { return null; }',
     );
     expect(modelClient.mock.calls[0][0].messages[1].content).toContain(
-      "import App from './App.jsx';",
+      'Your next response must be exactly one write_file action for src/App.jsx',
     );
     expect(modelClient.mock.calls[0][0].messages[1].content).toContain('"react":"latest"');
+    expect(modelClient.mock.calls[0][0].messages[1].content).not.toContain(
+      "import App from './App.jsx';",
+    );
   });
 
   it('repairs a placeholder-only implementation before staging changes', async () => {
@@ -655,8 +658,6 @@ describe('runManager', () => {
   it('uses generic direct recovery when the action model repeats unchanged reads', async () => {
     const modelClient = vi
       .fn()
-      .mockResolvedValueOnce(JSON.stringify({ action: 'read_file', path: 'src/App.jsx' }))
-      .mockResolvedValueOnce(JSON.stringify({ action: 'read_file', path: 'src/App.jsx' }))
       .mockResolvedValueOnce(JSON.stringify({ action: 'read_file', path: 'src/App.jsx' }))
       .mockResolvedValueOnce(
         JSON.stringify({

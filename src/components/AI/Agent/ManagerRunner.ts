@@ -39,8 +39,8 @@ import {
 
 const MAX_CONTEXT_ROUNDS = 3;
 const MAX_REPAIR_ATTEMPTS = 2;
-const AGENT_CONTEXT_WINDOW_SIZE = 3072;
-const AGENT_GENERATION_TOKENS = 2200;
+const AGENT_CONTEXT_WINDOW_SIZE = 4096;
+const AGENT_GENERATION_TOKENS = 1800;
 async function loadModel(): Promise<ManagerModelClient> {
   const { askWebLLM } = await import('../WebLLMAPI');
   return async ({

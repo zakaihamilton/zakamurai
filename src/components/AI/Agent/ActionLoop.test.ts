@@ -284,7 +284,6 @@ describe('runActionLoop', () => {
     const modelClient = vi
       .fn()
       .mockResolvedValueOnce('{"action":"list_files"}')
-      .mockResolvedValueOnce('{"action":"list_files","query":"*.jsx"}')
       .mockResolvedValueOnce(
         '{"action":"write_file","path":"src/App.jsx","content":"export default function App() { return <main>Tic tac toe</main>; }"}',
       )
@@ -305,12 +304,50 @@ describe('runActionLoop', () => {
     expect(modelClient.mock.calls[0][0].messages[0].content).toContain(
       'You are a small local coding model',
     );
+    expect(modelClient.mock.calls[0][0].messages[0].content).toContain(
+      '"content":"complete source content here"',
+    );
     expect(modelClient.mock.calls[0][0].messages[1].content).toContain(
       'Your next response must be exactly one write_file action for src/App.jsx',
     );
     expect(modelClient.mock.calls[0][0].messages[1].content).toContain('--- src/App.jsx ---');
     expect(modelClient.mock.calls[0][0].messages[1].content).not.toContain('[list_files]');
-    expect(modelClient.mock.calls[2][0].messages[0].content).toContain('emergency write mode');
+    expect(modelClient.mock.calls[1][0].messages[0].content).toContain('emergency write mode');
+    expect(modelClient.mock.calls[1][0].messages[0].content).toContain(
+      'Put the COMPLETE source in the content field',
+    );
+  });
+
+  it('retries incomplete write_file metadata without steering the model to list_files', async () => {
+    askWebLLM
+      .mockResolvedValueOnce(
+        '{"action":"write_file","path":"src/App.jsx","reason":"create a tic tac toe game"}',
+      )
+      .mockResolvedValueOnce(
+        '{"action":"write_file","path":"src/App.jsx","content":"export default function App() { return <main>Tic tac toe</main>; }"}',
+      )
+      .mockResolvedValueOnce('{"action":"validate"}')
+      .mockResolvedValueOnce('{"action":"finish","summary":"Created tic tac toe"}');
+    const validate = vi.fn().mockResolvedValue('Checks passed.');
+
+    const result = await runActionLoop({
+      request: 'create a tic tac toe game',
+      files: { 'src/App.jsx': 'export default function App() { return null; }' },
+      model: 'Qwen2.5-Coder-1.5B-Instruct-q4f16_1-MLC',
+      validate,
+      priorContext: '[list_files]\nsrc/App.jsx',
+    });
+
+    expect(result.files['src/App.jsx']).toContain('Tic tac toe');
+    const recoveryPrompt = askWebLLM.mock.calls[1]?.[3]?.messages
+      ?.map((message: { content: string }) => message.content)
+      .join('\n');
+    expect(recoveryPrompt).toContain('without source content');
+    expect(recoveryPrompt).toContain('content field');
+    expect(recoveryPrompt).not.toContain('for example {"action":"list_files"}');
+    expect(askWebLLM.mock.calls[1]?.[3]?.messages?.[0]?.content).toContain(
+      'Put the COMPLETE source in the content field',
+    );
   });
 
   it('uses generic direct recovery when the local model never writes', async () => {
@@ -543,6 +580,7 @@ describe('runActionLoop', () => {
 
   it('reports detailed streaming progress while waiting for a local-model action', async () => {
     askWebLLM.mockImplementationOnce(async (_prompt, _systemPrompt, onUpdate) => {
+      onUpdate?.('{"a');
       onUpdate?.('{"action":"finish"');
       return '{"action":"finish","summary":"done"}';
     });
@@ -559,6 +597,12 @@ describe('runActionLoop', () => {
       expect.objectContaining({
         type: 'thinking',
         message: 'Requesting the next action from the local model...',
+      }),
+    );
+    expect(events).toContainEqual(
+      expect.objectContaining({
+        type: 'thinking',
+        message: expect.stringContaining('streaming its next action (3 character(s) received)'),
       }),
     );
     expect(events).toContainEqual(
@@ -779,8 +823,8 @@ describe('runActionLoop', () => {
     expect(repairMessage).toContain('must write only src/components/Todo.module.css');
     expect(repairMessage).toContain('.app { display: block; }');
     expect(askWebLLM.mock.calls[1]?.[3]).toMatchObject({
-      max_tokens: 2000,
-      contextWindowSize: 3072,
+      max_tokens: 2200,
+      contextWindowSize: 4096,
     });
   });
 
@@ -807,8 +851,8 @@ describe('runActionLoop', () => {
     expect(repairMessage).not.toContain('rejected stylesheet');
     expect(repairMessage).not.toContain('using one css fence');
     expect(askWebLLM.mock.calls[1]?.[3]).toMatchObject({
-      max_tokens: 2000,
-      contextWindowSize: 3072,
+      max_tokens: 2200,
+      contextWindowSize: 4096,
     });
   });
 
@@ -877,13 +921,46 @@ describe('runActionLoop', () => {
     expect(result.files['src/App.jsx']).toContain('Reminders');
     const prompt = askWebLLM.mock.calls[0]?.[3]?.messages?.[1]?.content;
     expect(prompt).toContain(
-      'Use the supplied workspace context; do not repeat the initial inventory.',
+      'Your next response must be exactly one write_file action for src/App.jsx',
     );
-    expect(prompt).toContain('workspace context has already been collected');
-    expect(prompt).not.toContain('Start by inspecting the workspace.');
+    expect(prompt).toContain('The workspace has already been inspected');
+    expect(prompt).toContain('--- src/App.jsx ---');
+    expect(prompt).not.toContain('[list_files]');
     expect(askWebLLM.mock.calls[0]?.[3]?.messages?.[0]?.content).toContain(
       'your next response must be exactly one write_file or',
     );
+  });
+
+  it('forces a write after one redundant inspection when manager context is already ready', async () => {
+    askWebLLM
+      .mockResolvedValueOnce('{"action":"list_files"}')
+      .mockResolvedValueOnce(
+        '{"action":"write_file","path":"src/App.jsx","content":"export default function App() { return <main>Tic tac toe</main>; }"}',
+      )
+      .mockResolvedValueOnce('{"action":"validate"}')
+      .mockResolvedValueOnce('{"action":"finish","summary":"Created tic tac toe"}');
+    const validate = vi.fn().mockResolvedValue('Checks passed.');
+
+    const result = await runActionLoop({
+      request: 'create a tic tac toe game',
+      files: {
+        'src/App.jsx': 'export default function App() { return null; }',
+        'package.json': '{"name":"app"}',
+      },
+      model: 'Qwen2.5-Coder-3B-Instruct-q4f16_1-MLC',
+      validate,
+      priorContext: '[list_files]\nsrc/App.jsx\n[read_file]\nexisting animated card source',
+    });
+
+    expect(result.files['src/App.jsx']).toContain('Tic tac toe');
+    expect(askWebLLM.mock.calls[0]?.[3]?.messages?.[1]?.content).toContain(
+      'Your next response must be exactly one write_file action for src/App.jsx',
+    );
+    expect(askWebLLM.mock.calls[1]?.[3]?.messages?.[0]?.content).toContain('emergency write mode');
+    expect(askWebLLM.mock.calls[0]?.[3]).toMatchObject({
+      max_tokens: 1800,
+      contextWindowSize: 4096,
+    });
   });
 
   it('requires preview inspection before a visual review can finish', async () => {
@@ -907,8 +984,8 @@ describe('runActionLoop', () => {
     expect(askWebLLM.mock.calls[0]?.[3]).toMatchObject({
       temperature: 0.12,
       top_p: 0.8,
-      max_tokens: 2000,
-      contextWindowSize: 3072,
+      max_tokens: 2200,
+      contextWindowSize: 4096,
     });
   });
 
