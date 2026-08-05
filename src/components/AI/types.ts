@@ -208,6 +208,8 @@ export type ManagerModelCall = {
   contextWindowSize?: number;
   onMetrics?: (metrics: WebLLMGenerationMetrics) => void;
   onRecovery?: (event: WebLLMRecoveryEvent) => void;
+  /** Stable prompt-conversation key used by the worker-resident context session. */
+  sessionId?: string;
 };
 
 export type ManagerModelClient = (call: ManagerModelCall) => Promise<string>;
@@ -220,6 +222,7 @@ export type RunAgentOptions = {
   selectedLines?: number[];
   files: FileMap;
   model: string;
+  sessionId?: string;
   validate?: (files: FileMap) => Promise<VerificationResult | string> | VerificationResult | string;
   runProjectCheck?: (check: string, files: FileMap) => Promise<string>;
   inspectPreview?: (files: FileMap) => Promise<unknown>;
@@ -237,6 +240,14 @@ export type RunAgentOptions = {
   visualMode?: boolean;
   requirePreviewInspection?: boolean;
   modelClient?: ManagerModelClient;
+  /** Optional worker-resident model session. Falls back to the legacy client when absent. */
+  modelSession?: AgentModelSession;
+};
+
+export type AgentModelSession = {
+  id: string;
+  generate: (call: ManagerModelCall) => Promise<string>;
+  dispose?: () => Promise<void>;
 };
 
 export type RunAgentResult = {
@@ -277,6 +288,8 @@ export type RunManagerOptions = ManagerToolOptions & {
   priorContext?: string;
   workspaceIndex?: WorkspaceIndex | null;
   modelClient?: ManagerModelClient;
+  sessionId?: string;
+  modelSession?: AgentModelSession;
   onTrace?: (trace: import('./Agent/ManagerTrace').ManagerTrace) => void;
 };
 
@@ -321,7 +334,8 @@ export type WebLLMRecoveryReason =
   | 'out-of-memory'
   | 'worker-failure'
   | 'stalled'
-  | 'network-failure';
+  | 'network-failure'
+  | 'invalid-context';
 
 export type WebLLMRecoveryEvent = {
   requestedModelId: string;
@@ -353,6 +367,10 @@ export type WebLLMGenerationMetrics = {
   errorName?: string;
   errorMessageLength?: number;
   errorMessageFingerprint?: string;
+  sessionState?: 'hit' | 'cold-start' | 'rehydrated' | 'compacted' | 'evicted';
+  submittedDeltaBytes?: number;
+  submittedDeltaTokens?: number;
+  reusedContextTokens?: number;
 };
 
 export type WebLLMOptions = {
@@ -372,6 +390,7 @@ export type WebLLMOptions = {
   chunkIdleTimeoutMs?: number;
   onRecovery?: ((event: WebLLMRecoveryEvent) => void) | null;
   onMetrics?: ((metrics: WebLLMGenerationMetrics) => void) | null;
+  sessionId?: string;
 };
 
 export type AskWebLLM = (

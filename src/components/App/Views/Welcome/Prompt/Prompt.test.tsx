@@ -179,6 +179,7 @@ describe('WelcomePrompt', () => {
       text: 'build a todo app',
       scope: 'project',
     });
+    expect(promptUiState.welcomePrompt).toBe('build a todo app');
     expect(screen.getByLabelText('Describe what you want to build')).toHaveValue('');
     expect(screen.queryByTestId('download-dialog')).toBeNull();
   });

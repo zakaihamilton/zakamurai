@@ -13,6 +13,16 @@ describe('agent protocol', () => {
     expect(AGENT_SYSTEM_PROMPT).toContain('generic white card, system font, blue primary button');
   });
 
+  it('isolates generated preview colors from the host theme', () => {
+    expect(AGENT_SYSTEM_PROMPT).toContain(':global(:root)');
+    expect(AGENT_SYSTEM_PROMPT).toContain(':global(body)');
+    expect(AGENT_SYSTEM_PROMPT).toContain(':global(#root)');
+    expect(AGENT_SYSTEM_PROMPT).toContain('WCAG AA contrast');
+    expect(AGENT_SYSTEM_PROMPT).toContain(
+      'never combine a dark background with default black text',
+    );
+  });
+
   it('requires new CSS Modules before the components that import them', () => {
     expect(AGENT_SYSTEM_PROMPT).toContain(
       'write that complete *.module.css file before writing the importing JSX or TSX file',

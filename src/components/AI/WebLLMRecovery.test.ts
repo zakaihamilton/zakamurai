@@ -30,6 +30,13 @@ describe('WebLLM recovery helpers', () => {
         ),
       ),
     ).toBe('network-failure');
+    expect(
+      recoveryReason(
+        new Error(
+          'SystemMessageOrderError: System prompt should always be the first message in messages',
+        ),
+      ),
+    ).toBe('invalid-context');
     expect(recoveryReason(new Error('invalid prompt'))).toBeNull();
   });
 

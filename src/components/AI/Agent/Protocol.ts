@@ -67,7 +67,11 @@ export function extractSourcePayload(text: string): string | null {
     .replace(/^\s*```[^\n]*\n?/, '')
     .replace(/\n?```\s*$/, '')
     .trim();
-  if (looksLikeScriptSource(raw) && raw.length > 20 && !/["']?action["']?\s*:/.test(raw.slice(0, 80))) {
+  if (
+    looksLikeScriptSource(raw) &&
+    raw.length > 20 &&
+    !/["']?action["']?\s*:/.test(raw.slice(0, 80))
+  ) {
     return raw;
   }
   return null;
@@ -177,7 +181,8 @@ const parseFencedWrite = (text: string, metadata?: AgentAction): AgentAction | n
     .filter((block) => {
       if (matchingSource) return false;
       if (isScriptPath) return !block.language || looksLikeScript(block.content);
-      if (isCssPath) return !block.language || looksLikeCss(block.content) || block.language === 'css';
+      if (isCssPath)
+        return !block.language || looksLikeCss(block.content) || block.language === 'css';
       return !block.language;
     })
     .at(-1);
@@ -251,9 +256,7 @@ export function parseAgentAction(
     const metadata = parseLooseActionMetadata(text);
     const fencedWrite = parseFencedWrite(text, metadata || undefined);
     const sourceOnly =
-      !fencedWrite && !metadata && defaultWritePath
-        ? extractSourcePayload(text)
-        : null;
+      !fencedWrite && !metadata && defaultWritePath ? extractSourcePayload(text) : null;
     if (fencedWrite) value = fencedWrite;
     else if (metadata) value = metadata;
     else if (sourceOnly && defaultWritePath) {
@@ -329,6 +332,8 @@ Inspect before editing only when workspace context has not already been supplied
 
 UI craft bar: When creating an interface, make deliberate visual decisions rather than falling back to a generic white card, system font, blue primary button, and thin gray borders. Establish a cohesive visual direction, clear type hierarchy, a restrained palette, layered surfaces or texture, intentional spacing, meaningful interaction states, visible keyboard focus, and a responsive small-screen layout. Use CSS custom properties for the page's design tokens. Do not use external assets or icon libraries unless they already exist in the workspace.
 
+Preview isolation and contrast contract: The preview is an isolated, theme-neutral document; never rely on colors inherited from the host shell or browser defaults. In the root stylesheet, explicitly reset :global(:root), :global(body), and :global(#root) (margin, padding, min-height, background, and color), then set the app surface and foreground colors locally. Define tokens such as --color-bg, --color-surface, --color-text, --color-muted, --color-primary, and --color-on-primary, and apply them to every heading, paragraph, input, button, placeholder, and status message. Keep normal text at WCAG AA contrast (at least 4.5:1; 3:1 for large text and controls). A dark surface must use light text; a light surface must use dark text—never combine a dark background with default black text. When the request does not specify a theme, prefer a polished light neutral surface with dark text and one accent. Set explicit input/button backgrounds, borders, and :focus-visible styles so the UI remains readable regardless of the preview host theme.
+
 For application requests, update the existing app entry (normally src/App.jsx or src/App.tsx) and avoid repeatedly rewriting already-staged files unless a tool or validation result identifies a specific defect. Do not create index.html for a standard Vite app: the compiler scaffolds it automatically.
 
 Architecture Rules:
@@ -381,6 +386,8 @@ Architecture Rules:
 Visual UI mode (only when supplied in prior context): Implement the approved visual brief rather than inventing an unrelated style. Use semantic landmarks, CSS custom properties for the declared design tokens, responsive layout rules, sufficient color contrast, and visible keyboard focus states. Keep each meaningful visual section in a reusable component with a co-located CSS Module.
 
 UI craft bar: Avoid generic default styling such as a white card, system font, blue button, and thin gray borders. Make the brief's visual direction tangible through hierarchy, typography, palette, surface treatment, spacing, and purposeful interaction states. Do not add external assets or icon libraries unless they already exist in the workspace.
+
+Preview isolation and contrast contract: Treat the preview as a theme-neutral document. In the root stylesheet, explicitly reset :global(:root), :global(body), and :global(#root), including margin, padding, min-height, background, and color; do not inherit the host shell's dark theme. Define color tokens and use them for all text, surfaces, form controls, placeholders, and focus states. Keep normal text at WCAG AA contrast (4.5:1; 3:1 for large text and controls). Pair dark surfaces with light text and light surfaces with dark text. If no theme is requested, use a polished light neutral surface with dark text and one accent.
 `.trim();
 
 export const REVIEWER_SYSTEM_PROMPT = `

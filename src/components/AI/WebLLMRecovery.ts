@@ -55,6 +55,9 @@ export const recoveryReason = (error: unknown): WebLLMRecoveryReason | null => {
   ) {
     return 'network-failure';
   }
+  if (/SystemMessageOrderError|system prompt should always be the first message/i.test(message)) {
+    return 'invalid-context';
+  }
   if (
     /worker|message error should not be 0|message channel|postmessage|terminated|backend.*unavailable/i.test(
       message,

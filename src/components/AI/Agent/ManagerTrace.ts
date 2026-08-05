@@ -37,6 +37,10 @@ export type ManagerTraceEvent = {
   output?: string;
   errorCode?: ManagerErrorCode;
   protocolStatus?: 'request-sent' | 'response-received' | 'valid' | 'invalid';
+  sessionState?: 'hit' | 'cold-start' | 'rehydrated' | 'compacted' | 'evicted';
+  submittedDeltaBytes?: number;
+  submittedDeltaTokens?: number;
+  reusedContextTokens?: number;
 };
 
 export type ManagerTrace = {

@@ -132,11 +132,12 @@ describe('AgentSessions', () => {
 
   it('extracts the latest manager error and filters it from transcript lists', () => {
     const messages = [
-      { id: 1, role: 'user' as const, text: 'Build it' },
+      { id: 1, role: 'user' as const, text: 'Build it', timestamp: '00:00:01' },
       {
         id: 2,
         role: 'ai' as const,
         text: 'AI Manager error: Agent reached its 30-step safety limit.',
+        timestamp: '00:00:02',
       },
     ];
     expect(getLatestManagerError({ status: 'error', messages })).toBe(

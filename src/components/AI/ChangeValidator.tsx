@@ -363,6 +363,13 @@ export function validateFileContentType(path: string, content: string): string |
   if (!/\.(jsx|tsx)$/i.test(path) || typeof content !== 'string') return null;
 
   const source = stripComments(content).trim();
+  const containsEmbeddedCss =
+    /(?:^|\n)\s*(?:[.#][A-Za-z_-][\w-]*|:root|@(?:media|supports|keyframes|layer)|(?!import\b|export\b|const\b|let\b|var\b|function\b|return\b|if\b|for\b|while\b|switch\b|class\b)[a-z][\w-]*)\s*\{/im.test(
+      source,
+    ) || /^\s*--[\w-]+\s*:/m.test(source);
+  if (containsEmbeddedCss) {
+    return `CSS content cannot be written to ${path}. Write it to a *.css or *.module.css file instead.`;
+  }
   if (
     /^(?:async\s+)?(?:class|const|enum|export|function|import|interface|let|type|var)\b/.test(
       source,

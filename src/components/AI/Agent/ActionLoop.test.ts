@@ -665,6 +665,77 @@ describe('runActionLoop', () => {
     expect(validate).toHaveBeenCalledWith(result.files);
   });
 
+  it('deduplicates a side-effect stylesheet when the module is already imported', async () => {
+    askWebLLM
+      .mockResolvedValueOnce(
+        '{"action":"write_file","path":"src/App.jsx","content":"import styles from \\"./App.module.css\\"; import \\"./App.css\\"; export default function App() { return <main className={styles.app}>Tic Tac Toe</main>; }"}',
+      )
+      .mockResolvedValueOnce('{"action":"validate"}')
+      .mockResolvedValueOnce('{"action":"finish","summary":"Created game"}');
+    const validate = vi.fn().mockResolvedValue('Checks passed.');
+
+    const result = await runActionLoop({
+      request: 'create a game',
+      files: {
+        'src/App.jsx': 'export default function App() { return null; }',
+        'src/App.module.css': '.app { display: block; }',
+      },
+      validate,
+      model: 'test',
+    });
+
+    expect(result.files['src/App.jsx']).toContain('import styles from "./App.module.css";');
+    expect(result.files['src/App.jsx']).not.toContain('import "./App.css"');
+    expect(result.files['src/App.jsx'].match(/import styles from/g)).toHaveLength(1);
+    expect(validate).toHaveBeenCalledWith(result.files);
+  });
+
+  it('converts a side-effect CSS Module import into the required class-map import', async () => {
+    askWebLLM
+      .mockResolvedValueOnce(
+        '{"action":"write_file","path":"src/App.jsx","content":"import \\"./App.module.css\\"; export default function App() { return <main className=\\"app\\">Tic Tac Toe</main>; }"}',
+      )
+      .mockResolvedValueOnce('{"action":"validate"}')
+      .mockResolvedValueOnce('{"action":"finish","summary":"Created game"}');
+    const validate = vi.fn().mockResolvedValue('Checks passed.');
+
+    const result = await runActionLoop({
+      request: 'create a game',
+      files: { 'src/App.jsx': 'export default function App() { return null; }' },
+      validate,
+      model: 'test',
+    });
+
+    expect(result.files['src/App.jsx']).toContain('import styles from "./App.module.css";');
+    expect(result.files['src/App.jsx']).not.toContain('import "./App.module.css"');
+    expect(result.files['src/App.jsx']).toContain('className={styles.app}');
+    expect(result.files['src/App.module.css']).toContain('.app');
+    expect(validate).toHaveBeenCalledWith(result.files);
+  });
+
+  it('deduplicates repeated default CSS Module bindings before validation', async () => {
+    askWebLLM
+      .mockResolvedValueOnce(
+        '{"action":"write_file","path":"src/App.jsx","content":"import styles from \\"./App.module.css\\"; import styles from \\"./theme.module.css\\"; export default function App() { return <main className={styles.app}>Tic Tac Toe</main>; }"}',
+      )
+      .mockResolvedValueOnce('{"action":"validate"}')
+      .mockResolvedValueOnce('{"action":"finish","summary":"Created game"}');
+    const validate = vi.fn().mockResolvedValue('Checks passed.');
+
+    const result = await runActionLoop({
+      request: 'create a game',
+      files: {
+        'src/App.jsx': 'export default function App() { return null; }',
+        'src/App.module.css': '.app { display: block; }',
+      },
+      validate,
+      model: 'test',
+    });
+
+    expect(result.files['src/App.jsx'].match(/import styles from/g)).toHaveLength(1);
+    expect(validate).toHaveBeenCalledWith(result.files);
+  });
+
   it('recovers a queued component with semantic CSS when the model ignores the stylesheet request', async () => {
     askWebLLM
       .mockResolvedValueOnce(
@@ -921,7 +992,7 @@ describe('runActionLoop', () => {
         model: 'test',
         validate,
       }),
-    ).rejects.toThrow(/Validation failed after 3 repair attempts/);
+    ).rejects.toThrow(/Validation failed after (?:3 repair attempts|forced write recovery)/);
     expect(validate).toHaveBeenCalledTimes(3);
     expect(askWebLLM.mock.calls.length).toBeLessThanOrEqual(8);
   });
@@ -1005,7 +1076,7 @@ describe('runActionLoop', () => {
     ).toBe(true);
   });
 
-  it('rejects a side-effect CSS Module import before it becomes a visible staged draft', async () => {
+  it('normalizes a side-effect CSS Module import before staging the source', async () => {
     askWebLLM
       .mockResolvedValueOnce(
         '{"action":"write_file","path":"src/App.jsx","content":"import \\"./App.module.css\\"; export default () => <main className=\\"app\\" />;"}',
@@ -1013,20 +1084,21 @@ describe('runActionLoop', () => {
       .mockResolvedValueOnce('{"action":"finish","summary":"no changes"}');
     const events: AgentEvent[] = [];
 
-    await expect(
-      runActionLoop({
-        request: 'style app',
-        files: {
-          'src/App.jsx': 'export default () => <main />;',
-          'src/App.module.css': '.app {}',
-        },
-        model: 'test',
-        onEvent: (event) => events.push(event),
-      }),
-    ).rejects.toThrow(/could not provide a write_file action/);
+    const result = await runActionLoop({
+      request: 'style app',
+      files: {
+        'src/App.jsx': 'export default () => <main />;',
+        'src/App.module.css': '.app {}',
+      },
+      model: 'test',
+      onEvent: (event) => events.push(event),
+    });
 
+    expect(result.files['src/App.jsx']).toContain('import styles from "./App.module.css";');
+    expect(result.files['src/App.jsx']).toContain('className={styles.app}');
+    expect(result.files['src/App.jsx']).not.toContain('import "./App.module.css"');
     expect(events.some((event) => event.error && event.message?.includes('default-imported'))).toBe(
-      true,
+      false,
     );
   });
 
@@ -1128,30 +1200,25 @@ describe('runActionLoop', () => {
     });
   });
 
-  it('points an inline-style retry at an available co-located CSS Module when rewrite is impossible', async () => {
+  it('rewrites dynamic inline styles with a safe co-located CSS Module fallback', async () => {
     askWebLLM
       .mockResolvedValueOnce(
         '{"action":"write_file","path":"src/App.jsx","content":"const color = \'red\'; export default () => <main style={{ color }} />;"}',
       )
       .mockResolvedValueOnce('{"action":"finish","summary":"no changes"}');
 
-    await expect(
-      runActionLoop({
-        request: 'style app',
-        files: {
-          'src/App.jsx': 'export default () => <main />;',
-          'src/App.module.css': '.app { color: red; }',
-        },
-        model: 'test',
-      }),
-    ).rejects.toThrow(/could not provide a write_file action/);
+    const result = await runActionLoop({
+      request: 'style app',
+      files: {
+        'src/App.jsx': 'export default () => <main />;',
+        'src/App.module.css': '.app { color: red; }',
+      },
+      model: 'test',
+    });
 
-    const repairMessage = askWebLLM.mock.calls[1]?.[3]?.messages
-      ?.map((message: { content: string }) => message.content)
-      .find((content: string) => content.includes('rejected component'));
-    expect(repairMessage).toContain('src/App.module.css is already available');
-    expect(repairMessage).toContain('using one jsx source fence');
-    expect(repairMessage).toContain('no style prop');
+    expect(result.files['src/App.jsx']).toContain('styles.inline0');
+    expect(result.files['src/App.jsx']).not.toContain('style=');
+    expect(result.files['src/App.module.css']).toContain('.inline0');
   });
 
   it('honors allowedActions, priorContext, and agentRole events', async () => {
@@ -1444,9 +1511,6 @@ export const title = "Today";
       .mockResolvedValueOnce(
         `{"action":"write_file","path":"src/components/TodoApp.module.css","content":${JSON.stringify(todoStyles)}}`,
       )
-      .mockResolvedValueOnce(
-        `{"action":"write_file","path":"src/components/TodoApp.module.css","content":${JSON.stringify(todoStyles)}}`,
-      )
       .mockResolvedValueOnce('{"action":"finish","summary":"Created the todo app"}');
     const validate = vi.fn().mockResolvedValue({ status: 'passed', check: 'build' });
     const events: AgentEvent[] = [];
@@ -1463,6 +1527,43 @@ export const title = "Today";
     expect(result.files['src/components/TodoApp.module.css']).toBe(todoStyles);
     expect(validate).toHaveBeenCalledOnce();
     expect(events.some((event) => event.message?.includes('Automatically validating'))).toBe(true);
+  });
+
+  it('does not auto-finish when repeated-write validation fails', async () => {
+    const brokenSource = 'export default function App() { return <main>Broken</main>; }';
+    askWebLLM
+      .mockResolvedValueOnce(
+        `{"action":"write_file","path":"src/App.jsx","content":${JSON.stringify(brokenSource)}}`,
+      )
+      .mockResolvedValueOnce(
+        `{"action":"write_file","path":"src/App.jsx","content":${JSON.stringify(brokenSource)}}`,
+      )
+      .mockResolvedValueOnce('{"action":"validate"}')
+      .mockResolvedValueOnce('{"action":"finish","summary":"done"}')
+      .mockResolvedValueOnce(
+        `{"action":"write_file","path":"src/App.jsx","content":${JSON.stringify(brokenSource)}}`,
+      )
+      .mockResolvedValueOnce(
+        `{"action":"write_file","path":"src/App.jsx","content":${JSON.stringify(brokenSource)}}`,
+      );
+    const validate = vi.fn().mockResolvedValue({
+      status: 'failed',
+      check: 'build',
+      diagnostics: 'The symbol "styles" has already been declared.',
+    });
+    const events: AgentEvent[] = [];
+
+    await expect(
+      runActionLoop({
+        request: 'create a tic tac toe game',
+        files: { 'src/App.jsx': 'export default function App() { return null; }' },
+        model: 'test',
+        validate,
+        onEvent: (event) => events.push(event),
+      }),
+    ).rejects.toThrow(/Validation failed after (?:3 repair attempts|forced write recovery)/);
+    expect(validate).toHaveBeenCalledTimes(2);
+    expect(events.some((event) => event.type === 'finished')).toBe(false);
   });
 
   it('creates a new component file without treating its absence as a read error', async () => {

@@ -227,6 +227,7 @@ export default function AISectionView({ tab }: { tab: Tab }) {
           content={content}
           contentRef={contentRef}
           autoScroll={autoScroll}
+          onUserScroll={() => setAutoScroll(false)}
         />
       ) : (
         <AISectionChanges content={content} />

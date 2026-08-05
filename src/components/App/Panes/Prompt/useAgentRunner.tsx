@@ -17,12 +17,7 @@ import { createWorkspaceSnapshot } from '@/contracts/workspace';
 import type { FormEvent } from 'react';
 import { useCallback } from 'react';
 import { requireStore, toCompilerFs } from '../../types';
-import {
-  MAX_REASONING_EVENTS,
-  clipReasoningStepIO,
-  createAgentRunUsage,
-  formatSessionContext,
-} from './AgentSessions';
+import { MAX_REASONING_EVENTS, clipReasoningStepIO, createAgentRunUsage } from './AgentSessions';
 import type { AgentEventFormatter, UseAgentRunnerParams } from './prompt-types';
 
 const quoteDetail = (value: string): string => `\`${value.replaceAll('`', '\\`')}\``;
@@ -300,7 +295,8 @@ export default function useAgentRunner({
           appendReasoning(
             '**Routing request:** deciding which work belongs to tools and which needs the model…',
           );
-          const priorContext = formatSessionContext(activeSession.messages || []);
+          // Conversation continuity is maintained by the bounded AgentContextLedger and the
+          // worker-resident model session. Do not serialize the full transcript into each run.
           const [{ collectWorkspaceFiles }, { Compiler }] = await Promise.all([
             import('@/components/AI/Agent/Snapshot'),
             import('@/utils/compiler'),
@@ -341,7 +337,8 @@ export default function useAgentRunner({
           const manager = runManager as (options: RunManagerOptions) => Promise<RunManagerResult>;
           const result = await manager({
             request: userMsg,
-            priorContext: `${priorContext}\n\nProject preflight:\n${preflightSummary}`,
+            sessionId,
+            priorContext: `Project preflight:\n${preflightSummary}`,
             scope: (effectiveScope === 'project' ? 'project' : 'file') as 'file' | 'project',
             activeFile:
               effectiveScope === 'file' && currentActiveTab?.type === 'file'

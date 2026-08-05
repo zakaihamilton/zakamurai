@@ -445,6 +445,18 @@ describe('WebLLMAPI', () => {
     expect(pruned.length).toBeLessThan(messages.length);
   });
 
+  it('keeps a delayed system prompt at the front of the pruned history', () => {
+    const pruned = pruneWebLLMMessages([
+      { role: 'user', content: 'request' },
+      { role: 'assistant', content: 'previous answer' },
+      { role: 'system', content: 'system prompt' },
+      { role: 'user', content: 'latest observation' },
+    ]);
+
+    expect(pruned[0]).toEqual({ role: 'system', content: 'system prompt' });
+    expect(pruned.filter((message) => message.role === 'system')).toHaveLength(1);
+  });
+
   it('bounds oversized base messages while preserving their beginning and end', () => {
     const longRequest = `Request: ${'x'.repeat(6000)}\nImportant tail`;
     const pruned = pruneWebLLMMessages(

@@ -280,6 +280,35 @@ export default function App() {
     expect(validateFileContentType('src/components/Task.module.css', css)).toBeNull();
   });
 
+  it('rejects CSS rules appended after otherwise valid JSX source', () => {
+    const sourceWithCss = `
+      import React from 'react';
+      export default function App() {
+        return <main />;
+      }
+
+      .app { color: red; }
+    `;
+    expect(validateFileContentType('src/App.jsx', sourceWithCss)).toContain(
+      'CSS content cannot be written',
+    );
+  });
+
+  it('rejects CSS custom-property declarations embedded in JSX source', () => {
+    const sourceWithCss = `
+      import React from 'react';
+      export default function App() {
+        return <main />;
+      }
+      const styles = {
+        --surface: '#fff';
+      };
+    `;
+    expect(validateFileContentType('src/App.jsx', sourceWithCss)).toContain(
+      'CSS content cannot be written',
+    );
+  });
+
   it('accepts code with comments containing unmatched brackets', () => {
     const codeWithComments = `
       // Single line comment with unclosed { bracket

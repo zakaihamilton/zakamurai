@@ -2,7 +2,7 @@ import Node from '@/components/state/Node';
 import type { AgentSessionMessage } from '@/components/state/domain-types';
 import { Icons } from '@/components/ui/Icons';
 import Tooltip from '@/components/ui/Tooltip';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { requireStore } from '../../../types';
 import {
@@ -59,6 +59,7 @@ function ReasoningPanelInner({
   const [isExpanded, setIsExpanded] = useState(true);
   const [autoScroll, setAutoScroll] = useState(true);
   const [showStepIO, setShowStepIO] = useState(showStepIOProp);
+  const lastScrollTop = useRef(0);
   const agentSessionState = requireStore(
     AgentSessionState.useState(['sessions', 'activeSessionId']),
   );
@@ -90,6 +91,20 @@ function ReasoningPanelInner({
         .join('\n\n')
     : '';
   const reasoningRef = useRef<HTMLDivElement | null>(null);
+
+  const disableAutoScroll = useCallback(() => {
+    setAutoScroll(false);
+  }, []);
+
+  const handleScroll = useCallback(() => {
+    const contentElement = reasoningRef.current;
+    if (!contentElement) return;
+
+    if (contentElement.scrollTop < lastScrollTop.current && autoScroll) {
+      disableAutoScroll();
+    }
+    lastScrollTop.current = contentElement.scrollTop;
+  }, [autoScroll, disableAutoScroll]);
 
   useEffect(() => {
     setShowStepIO(showStepIOProp);
@@ -201,7 +216,13 @@ function ReasoningPanelInner({
           </div>
         </div>
         {isExpanded && (
-          <div ref={reasoningRef} className={styles.reasoningContent}>
+          <div
+            ref={reasoningRef}
+            className={styles.reasoningContent}
+            onScroll={handleScroll}
+            onTouchMove={disableAutoScroll}
+            onWheel={disableAutoScroll}
+          >
             {transcriptMessages.length ? (
               <section className={styles.transcriptSection} aria-label="Session transcript">
                 {transcriptMessages.map((message: AgentSessionMessage) => {

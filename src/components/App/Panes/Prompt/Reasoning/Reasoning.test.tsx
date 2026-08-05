@@ -236,6 +236,21 @@ describe('ReasoningPanel', () => {
     }
   });
 
+  it('turns auto-scroll off when the user starts scrolling', () => {
+    setSessionReasoning('Review this reasoning');
+
+    render(<ReasoningPanel />);
+
+    const scrollRegion = document.querySelector('[class*="reasoningContent"]');
+    expect(scrollRegion).toBeTruthy();
+    fireEvent.wheel(scrollRegion as Element);
+
+    expect(screen.getByRole('button', { name: 'Turn auto-scroll on' })).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    );
+  });
+
   it('toggles per-step model input/output and includes the visible setting in copies', async () => {
     mockAgentSessionStore = createDefaultAgentSessions();
     const active = expectAgentSession(mockAgentSessionStore);

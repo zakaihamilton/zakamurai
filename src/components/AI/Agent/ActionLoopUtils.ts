@@ -114,18 +114,42 @@ export const normalizeSideEffectCssSource = (
   path: string,
   content: string,
 ): { content: string; stylesheets: string[] } | null => {
-  const imports = [
-    ...content.matchAll(/\bimport\s+(["'])(\.{1,2}\/[^"']+(?<!\.module)\.css)\1\s*;?/g),
-  ];
-  if (!imports.length) return null;
+  const imports = [...content.matchAll(/\bimport\s+(["'])(\.{1,2}\/[^"']+\.css)\1\s*;?/g)];
+  const stylesImportCount = [
+    ...content.matchAll(/\bimport\s+styles\s+from\s+(["'])(\.{1,2}\/[^"']+\.module\.css)\1\s*;?/g),
+  ].length;
+  if (!imports.length && stylesImportCount < 2) return null;
 
   const stylesheets = new Set<string>();
+  const existingModuleImports = new Set(
+    [
+      ...content.matchAll(
+        /\bimport\s+styles\s+from\s+(?:["'])(\.{1,2}\/[^"']+\.module\.css)(?:["'])/g,
+      ),
+    ].map((match) => match[1]),
+  );
   let normalized = content.replace(
-    /\bimport\s+(["'])(\.{1,2}\/[^"']+(?<!\.module)\.css)\1\s*;?/g,
+    /\bimport\s+(["'])(\.{1,2}\/[^"']+\.css)\1\s*;?/g,
     (_match, quote: string, specifier: string) => {
-      const moduleSpecifier = specifier.replace(/\.css$/i, '.module.css');
+      const moduleSpecifier = specifier.endsWith('.module.css')
+        ? specifier
+        : specifier.replace(/\.css$/i, '.module.css');
       stylesheets.add(resolveRelativePath(path, moduleSpecifier));
+      if (existingModuleImports.has(moduleSpecifier)) return '';
+      existingModuleImports.add(moduleSpecifier);
       return `import styles from ${quote}${moduleSpecifier}${quote};`;
+    },
+  );
+
+  const seenStylesImports = new Set<string>();
+  let keptStylesBinding = false;
+  normalized = normalized.replace(
+    /\bimport\s+styles\s+from\s+(["'])(\.{1,2}\/[^"']+\.module\.css)\1\s*;?/g,
+    (match, _quote: string, specifier: string) => {
+      if (seenStylesImports.has(specifier) || keptStylesBinding) return '';
+      seenStylesImports.add(specifier);
+      keptStylesBinding = true;
+      return match;
     },
   );
 
@@ -314,6 +338,20 @@ export const missingCssModuleRules = (
   return [...required].filter((className) => !defined.has(className));
 };
 
+/** Complete a stylesheet rewrite with any classes used by its current importers. */
+export const repairCssModuleStylesheet = (
+  stylesheetPath: string,
+  content: string,
+  files: Record<string, string>,
+): string => {
+  let repaired = content;
+  for (const importer of cssModuleImporters(stylesheetPath, files)) {
+    const merged = appendMissingCssModuleRules(repaired, files[importer] || '');
+    if (merged) repaired = merged;
+  }
+  return repaired;
+};
+
 const UNITLESS_STYLE_NUMBERS = new Set([
   'animationIterationCount',
   'aspectRatio',
@@ -495,12 +533,13 @@ export const rewriteInlineStylesToCssModule = (
     if (!(objectText.startsWith('{') && objectText.endsWith('}'))) return null;
     objectText = objectText.slice(1, -1).trim();
     const rules = parseSimpleStyleObject(objectText);
-    if (!rules) return null;
     const className = `inline${classIndex++}`;
     classRules.push(
-      `.${className} {\n${Object.entries(rules)
-        .map(([prop, value]) => `  ${prop}: ${value};`)
-        .join('\n')}\n}`,
+      rules
+        ? `.${className} {\n${Object.entries(rules)
+            .map(([prop, value]) => `  ${prop}: ${value};`)
+            .join('\n')}\n}`
+        : `.${className} {\n  display: block;\n  box-sizing: border-box;\n}`,
     );
     replacements.push({
       start: match.index,

@@ -113,6 +113,16 @@ interactive, include React state and event handlers, and prefer importing styles
 "./App.module.css" with className={styles.app} / styles.button. Never leave "New Project"
 or "Start coding here..." text. Never claim the app was only scaffolded.
 
+Visual contract: the preview has its own theme and may otherwise inherit a dark host
+background. In the root CSS Module, reset :global(:root), :global(body), and :global(#root)
+(margin, padding, min-height, background, and color), define explicit background/foreground
+tokens, and apply readable colors to every heading, paragraph, input, button, placeholder, and
+status. Use WCAG AA contrast (4.5:1 for normal text, 3:1 for large text and controls); never
+place black text on a dark surface or light text on a light surface. If the request does not
+specify a theme, use a light neutral surface with dark text and one accent. Give inputs and
+buttons explicit backgrounds, borders, and focus-visible styles instead of relying on browser
+defaults.
+
 After a successful write, use exactly one of:
 {"action":"validate"}
 {"action":"finish","summary":"brief result"}

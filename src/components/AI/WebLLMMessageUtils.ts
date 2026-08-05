@@ -1,6 +1,21 @@
 const estimateMessageTokens = (message: { content?: string }): number =>
   Math.ceil((message.content?.length || 0) / 3) + 4;
 
+/**
+ * WebLLM chat templates require one system message at index zero. Session
+ * compaction and recovery can otherwise leave a valid system message later in
+ * the array (or duplicate it), which native chat formatting rejects.
+ */
+export function ensureSystemMessageFirst<T extends { role: string }>(messages: T[]): T[] {
+  const systemIndex = messages.findIndex((message) => message?.role === 'system');
+  if (systemIndex < 0) return messages;
+  const system = messages[systemIndex];
+  return [
+    system,
+    ...messages.filter((message, index) => index !== systemIndex && message.role !== 'system'),
+  ];
+}
+
 const truncatePreservingEdges = (content: string, maxChars: number): string => {
   if (content.length <= maxChars) return content;
   const marker = '\n…[context truncated]…\n';
@@ -14,7 +29,7 @@ export function pruneWebLLMMessages<T extends { role: string; content?: string }
   maxTokens = 2800,
 ): T[] {
   if (!Array.isArray(messages) || messages.length === 0) return messages;
-  const result = messages.map((message) => ({ ...message })) as T[];
+  const result = ensureSystemMessageFirst(messages.map((message) => ({ ...message }))) as T[];
   const tokenCount = () => result.reduce((sum, message) => sum + estimateMessageTokens(message), 0);
 
   while (tokenCount() > maxTokens && result.length > 4) {

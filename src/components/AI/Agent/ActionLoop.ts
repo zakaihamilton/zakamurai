@@ -68,6 +68,7 @@ import {
   normalizeSideEffectCssSource,
   observation,
   recoverWorkspaceCssModules,
+  repairCssModuleStylesheet,
   rewriteInlineStylesToCssModule,
 } from './ActionLoopUtils';
 import { type ConsoleLogEntry, filterConsoleLogs, formatConsoleLogs } from './ConsoleLogInspector';
@@ -86,6 +87,7 @@ export async function runActionLoop({
   selectedLines = [],
   files,
   model,
+  sessionId,
   validate,
   runProjectCheck: executeProjectCheck,
   inspectPreview,
@@ -103,6 +105,7 @@ export async function runActionLoop({
   visualMode = false,
   requirePreviewInspection = false,
   modelClient,
+  modelSession,
 }: RunAgentOptions): Promise<RunAgentResult> {
   const askWebLLM = modelClient ? null : await loadAskWebLLM();
   const workspace = existingWorkspace || new AgentWorkspace(files, workspaceIndex);
@@ -338,8 +341,28 @@ export async function runActionLoop({
             incompleteWrite: incompleteWriteRetries > 0,
           })
         : messages;
+    const safeModelMessages = modelMessages.filter(Boolean);
     try {
-      if (modelClient) {
+      if (modelSession) {
+        reply = await modelSession.generate({
+          model,
+          messages: safeModelMessages,
+          signal,
+          task: 'generate-changes',
+          onMetrics,
+          temperature: lightweightModel ? 0.2 : visualMode ? 0.12 : 0.15,
+          top_p: lightweightModel ? 0.85 : 0.8,
+          max_tokens: lightweightModel
+            ? visualMode || failedWritePath || forcedWriteRecoveryPending
+              ? LIGHTWEIGHT_AGENT_RECOVERY_TOKENS
+              : LIGHTWEIGHT_AGENT_GENERATION_TOKENS
+            : visualMode || failedWritePath || forcedWriteRecoveryPending
+              ? AGENT_RECOVERY_TOKENS
+              : AGENT_GENERATION_TOKENS,
+          contextWindowSize: AGENT_CONTEXT_WINDOW_SIZE,
+          sessionId,
+        });
+      } else if (modelClient) {
         reply = await modelClient({
           model,
           messages: modelMessages,
@@ -356,6 +379,7 @@ export async function runActionLoop({
               ? AGENT_RECOVERY_TOKENS
               : AGENT_GENERATION_TOKENS,
           contextWindowSize: AGENT_CONTEXT_WINDOW_SIZE,
+          sessionId,
         });
       } else {
         if (!askWebLLM) throw new Error('WebLLM is unavailable.');
@@ -375,7 +399,7 @@ export async function runActionLoop({
           },
           {
             model,
-            messages: modelMessages,
+            messages: safeModelMessages,
             signal,
             requestKind: 'agent',
             onMetrics,
@@ -404,6 +428,7 @@ export async function runActionLoop({
                 ? AGENT_RECOVERY_TOKENS
                 : AGENT_GENERATION_TOKENS,
             contextWindowSize: AGENT_CONTEXT_WINDOW_SIZE,
+            sessionId,
           },
         );
       }
@@ -414,11 +439,12 @@ export async function runActionLoop({
       type: 'model_io',
       turn,
       agentRole,
-      input: modelMessages.map((message) => `[${message.role}]\n${message.content}`).join('\n\n'),
+      input: safeModelMessages
+        .map((message) => `[${message.role}]\n${message.content}`)
+        .join('\n\n'),
       output: reply,
     });
     messages.push({ role: 'assistant', content: reply });
-
     let action: ReturnType<typeof parseAgentAction> | undefined;
     try {
       action = parseAgentAction(reply, {
@@ -526,7 +552,7 @@ export async function runActionLoop({
       protocolFailures++;
       if (isIncompleteWriteError(err.message)) {
         incompleteWriteRetries += 1;
-        const target =
+        const target: string =
           forcedRecoveryTargetPath ||
           recoveryWritePath(workspace.files, activeFile) ||
           'src/App.jsx';
@@ -627,7 +653,6 @@ export async function runActionLoop({
       });
       continue;
     }
-
     const fingerprint = JSON.stringify(action);
     if (forcedWriteRecoveryPending && action.action !== 'write_file') {
       forcedWriteRecoveryViolations += 1;
@@ -860,26 +885,41 @@ export async function runActionLoop({
       context.record('validation', result);
       return { changes, files: workspace.files, summary, events: turn, workspace };
     }
-    if (repeatedActions === 2) {
+    if (repeatedActions === 2 || (repeatedActions === 1 && isRepeatedSavedWrite)) {
       if (isRepeatedSavedWrite) {
         const message = `The proposed write to ${action.path} is already staged with identical content. Automatically validating the workspace instead of rewriting it.`;
         try {
           applyCssModuleRecovery(turn);
           const result = await runValidation(turn);
-          const finishHint =
-            ' Validation passed for the staged changes. Your next action must be finish with a brief summary. Do not rewrite or validate again.';
+          const validationFailed = isFailedValidationResult(result);
+          const finishHint = validationFailed
+            ? ' Validation failed for the staged changes. Do not finish. Return a corrected write_file action with complete working source.'
+            : ' Validation passed for the staged changes. Your next action must be finish with a brief summary. Do not rewrite or validate again.';
           messages.push({
             role: 'user',
-            content: observation(action.action, true, `${message}\n${result}${finishHint}`),
+            content: observation(
+              action.action,
+              !validationFailed,
+              `${message}\n${result}${finishHint}`,
+            ),
           });
           context.record('write_file', message);
           onEvent({
             type: 'observation',
             turn,
             action,
+            error: validationFailed,
             message: formatReasoningResult(action, `${message} ${result}`),
             agentRole,
           });
+          if (validationFailed) {
+            recoveredNoOpWrite = '';
+            forcedWriteRecoveryPending = true;
+            forcedRecoveryTargetPath = action.path || forcedRecoveryTargetPath;
+            forcedWriteRecoveryViolations = 0;
+            failedWritePath = action.path || failedWritePath;
+            continue;
+          }
           recoveredNoOpWrite = fingerprint;
           lastFingerprint = '';
           repeatedActions = 0;
@@ -1012,14 +1052,24 @@ export async function runActionLoop({
         if (cssSafetyError) throw new Error(cssSafetyError);
         const syntaxError = validateContentSyntax(action.path || '', action.content || '');
         if (syntaxError) throw new Error(syntaxError);
-        const missingRules = missingCssModuleRules(
+        if (/\.module\.css$/i.test(action.path || '')) {
+          action = {
+            ...action,
+            content: repairCssModuleStylesheet(
+              action.path || '',
+              action.content || '',
+              workspace.files,
+            ),
+          };
+        }
+        const remainingMissingRules = missingCssModuleRules(
           action.path || '',
           action.content || '',
           workspace.files,
         );
-        if (missingRules.length) {
+        if (remainingMissingRules.length) {
           throw new Error(
-            `CSS Module ${action.path} is missing rules required by its importing component: ${missingRules.join(', ')}.`,
+            `CSS Module ${action.path} is missing rules required by its importing component: ${remainingMissingRules.join(', ')}.`,
           );
         }
         workspace.write(action.path || '', action.content || '');
@@ -1085,7 +1135,6 @@ export async function runActionLoop({
         }
         let search = action.search || '';
         let replace = action.replace || '';
-
         if (!search && action.content) {
           const match = action.content.match(
             /<<<<<<< SEARCH\n([\s\S]*?)\n=======\n([\s\S]*?)\n>>>>>>> REPLACE/,
@@ -1246,7 +1295,7 @@ export async function runActionLoop({
           }
         }
         if (lastValidationFailed) {
-          const target =
+          const target: string =
             forcedRecoveryTargetPath ||
             recoveryWritePath(workspace.files, activeFile) ||
             'src/App.jsx';
@@ -1461,6 +1510,5 @@ export async function runActionLoop({
       );
     }
   }
-
   throw new AgentExecutionError(`Agent reached its ${maxTurns}-step safety limit.`, []);
 }

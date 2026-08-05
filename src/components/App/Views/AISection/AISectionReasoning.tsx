@@ -4,7 +4,7 @@ import type {
   AgentSession,
   AgentSessionMessage,
 } from '@/components/state/domain-types';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import type { RefObject } from 'react';
 import ReactMarkdown, { type Components } from 'react-markdown';
 import styles from './AISectionReasoning.module.css';
@@ -20,6 +20,7 @@ type AISectionReasoningProps = {
   content: string;
   contentRef: RefObject<HTMLDivElement | null>;
   autoScroll?: boolean;
+  onUserScroll?: () => void;
 };
 
 const markdownComponents: Components = {
@@ -115,9 +116,25 @@ export default function AISectionReasoning({
   content,
   contentRef,
   autoScroll = true,
+  onUserScroll,
 }: AISectionReasoningProps) {
   const transcriptMessages = withoutManagerErrorMessages(activeSession?.messages || []);
   const hasTranscript = transcriptMessages.length > 0;
+  const lastScrollTop = useRef(0);
+
+  const handleScroll = () => {
+    const contentElement = contentRef.current;
+    if (!contentElement) return;
+
+    if (contentElement.scrollTop < lastScrollTop.current && autoScroll) {
+      onUserScroll?.();
+    }
+    lastScrollTop.current = contentElement.scrollTop;
+  };
+
+  const handleUserScrollStart = () => {
+    if (autoScroll) onUserScroll?.();
+  };
 
   useEffect(() => {
     if (!autoScroll || !content || !contentRef.current) return;
@@ -128,7 +145,13 @@ export default function AISectionReasoning({
   }, [autoScroll, content, contentRef]);
 
   return (
-    <div ref={contentRef} className={`${styles.content} ${styles.markdownContent}`}>
+    <div
+      ref={contentRef}
+      className={`${styles.content} ${styles.markdownContent}`}
+      onScroll={handleScroll}
+      onTouchMove={handleUserScrollStart}
+      onWheel={handleUserScrollStart}
+    >
       {hasTranscript ? <Transcript messages={transcriptMessages} /> : null}
       <ReasoningGroups groups={reasoningGroups} />
       {runUsageSummary ? (

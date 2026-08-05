@@ -11,7 +11,7 @@ import type {
 import { reportDiagnostic } from '@/components/Diagnostics/Diagnostics';
 import { releaseWebLLMGpuMemory, reserveWebLLMGpuMemory } from '@/utils/ai-memory-governor';
 import { DEFAULT_SYSTEM_PROMPT } from './Prompts';
-import { pruneWebLLMMessages } from './WebLLMMessageUtils';
+import { ensureSystemMessageFirst, pruneWebLLMMessages } from './WebLLMMessageUtils';
 import {
   WEB_LLM_MODELS,
   findCachedFallbackModelId,
@@ -25,6 +25,7 @@ import {
   recoveryReason,
   unwrapAttemptError,
 } from './WebLLMRecovery';
+import { clearSessionHistories, runSessionCompletion } from './WebLLMSession';
 import { setWebLLMCachedModelIds, updateWebLLMEngine } from './WebLLMState';
 export { RECOMMENDED_WEB_LLM_MODEL, WEB_LLM_MODELS } from './WebLLMModels';
 export { pruneWebLLMMessages } from './WebLLMMessageUtils';
@@ -64,6 +65,8 @@ type WebLLMEngine = {
   interruptGenerate: () => void | Promise<void>;
   unload?: () => Promise<void>;
   worker?: { terminate?: () => void };
+  asyncGenerate?: (selectedModelId: string) => AsyncGenerator<CompletionResponse, void, void>;
+  getPromise?: (message: unknown) => Promise<unknown>;
   chat: {
     completions: {
       create: (options: Record<string, unknown>) => Promise<CompletionResponse>;
@@ -102,6 +105,10 @@ type AttemptResult = {
   localTimeToFirstTokenMs?: number;
   usage?: CompletionUsage | null;
   finishReason?: string | null;
+  sessionState?: WebLLMGenerationMetrics['sessionState'];
+  submittedDeltaBytes?: number;
+  submittedDeltaTokens?: number;
+  reusedContextTokens?: number;
 };
 
 let engineRecord: EngineRecord | null = null;
@@ -266,6 +273,7 @@ const disposeCurrentEngine = async (expectedModelId?: string): Promise<void> => 
   const record = engineRecord;
   if (!record || (expectedModelId && record.modelId !== expectedModelId)) return;
   engineRecord = null;
+  clearSessionHistories();
   clearIdleUnloadTimer();
   try {
     const engine = await record.promise;
@@ -653,13 +661,50 @@ const runAttempt = async (
     throw new WebLLMAttemptError('initialization', error);
   }
   try {
-    const completion = await runCompletion(
-      engineResult.engine,
-      modelId,
-      messages,
-      onUpdate,
-      options,
-    );
+    const completion = options.sessionId
+      ? await runSessionCompletion(
+          engineResult.engine,
+          modelId,
+          options.sessionId,
+          messages,
+          onUpdate,
+          options,
+          {
+            createGenerationOptions,
+            clearEngineInterruptState: async (engine, selectedModelId) =>
+              clearEngineInterruptState(engine as WebLLMEngine, selectedModelId),
+            updateGenerating: (selectedModelId, generating) =>
+              updateWebLLMEngine(selectedModelId, {
+                generating,
+                ...(generating ? { error: null } : {}),
+              }),
+            beginGeneration: (engine, selectedModelId) => {
+              const requestId = ++requestSequence;
+              let resolveDone: () => void = () => {};
+              const done = new Promise<void>((resolve) => {
+                resolveDone = resolve;
+              });
+              activeGeneration = {
+                requestId,
+                modelId: selectedModelId,
+                engine: engine as WebLLMEngine,
+                done,
+                resolveDone,
+              };
+              return { requestId, resolveDone };
+            },
+            finishGeneration: (generation, _engine, selectedModelId) => {
+              if (activeGeneration?.requestId === generation.requestId) activeGeneration = null;
+              generation.resolveDone();
+              updateWebLLMEngine(selectedModelId, { generating: false });
+            },
+            isCurrentGeneration: (requestId) => activeGeneration?.requestId === requestId,
+            safeCallback,
+            abortError: () => abortError(),
+            isAbortError,
+          },
+        )
+      : await runCompletion(engineResult.engine, modelId, messages, onUpdate, options);
     return { ...completion, modelId, initializationMs: engineResult.initializationMs };
   } catch (error) {
     if (isAbortError(error, options.signal)) throw abortError();
@@ -904,7 +949,16 @@ export const askWebLLM = async (
         (requestOptions.max_tokens ?? 1200) -
         CONTEXT_SAFETY_TOKENS,
     );
-    const messages = pruneWebLLMMessages(rawMessages, inputBudget) as WebLLMMessage[];
+    const orderedMessages = ensureSystemMessageFirst(
+      pruneWebLLMMessages(rawMessages, inputBudget),
+    ) as WebLLMMessage[];
+    const messages =
+      orderedMessages[0]?.role === 'system'
+        ? orderedMessages
+        : [
+            { role: 'system' as const, content: systemPrompt || DEFAULT_SYSTEM_PROMPT },
+            ...orderedMessages,
+          ];
     const execution = await enqueueGeneration(requestOptions.signal, () =>
       executeWithRecovery(requestedModelId, messages, onUpdate, requestOptions),
     );
@@ -929,6 +983,10 @@ export const askWebLLM = async (
       decodeTokensPerSecond: result.usage?.extra?.decode_tokens_per_s,
       finishReason: result.finishReason,
       recoveryCount,
+      sessionState: result.sessionState,
+      submittedDeltaBytes: result.submittedDeltaBytes,
+      submittedDeltaTokens: result.submittedDeltaTokens,
+      reusedContextTokens: result.reusedContextTokens,
       ...heapMetrics(),
     });
     return result.text;

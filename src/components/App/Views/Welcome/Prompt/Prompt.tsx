@@ -56,9 +56,11 @@ export default function WelcomePrompt() {
 
     promptUiState((draft) => {
       draft.welcomeRequest = { text: request, scope: 'project' };
+      // Keep the last submitted prompt available when the Welcome page is opened again.
+      draft.welcomePrompt = request;
     });
-    handleValueChange('');
-  }, [handleValueChange, isAIProcessing, promptUiState, value]);
+    setValue('');
+  }, [isAIProcessing, promptUiState, value]);
 
   const handleSubmit = useCallback(
     async (event: React.FormEvent<HTMLFormElement>) => {
