@@ -57,6 +57,16 @@ export function createLargePersistence({
     return fallbackSaved;
   };
 
+  const invalidateWrites = (cacheKey?: LargeCacheKey): void => {
+    if (cacheKey) {
+      writeGenerations[cacheKey] += 1;
+      return;
+    }
+    for (const key of Object.keys(writeGenerations) as LargeCacheKey[]) {
+      writeGenerations[key] += 1;
+    }
+  };
+
   const persistSync = <K extends LargeCacheKey>(cacheKey: K, value: LargeCache[K]): boolean => {
     setValue(cacheKey, value);
     // Invalidate in-flight writes so they cannot clear this fresher unload snapshot.
@@ -68,5 +78,5 @@ export function createLargePersistence({
     return ok;
   };
 
-  return { persistSync, setValue, write };
+  return { invalidateWrites, persistSync, setValue, write };
 }

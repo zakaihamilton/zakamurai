@@ -700,6 +700,10 @@ const Settings = {
       preserveWelcomePrompt?: string;
     } = {},
   ) {
+    // Fence saves that were already in flight before clearing the project. The
+    // IndexedDB clear waits for those writes, while the generation fence keeps
+    // their localStorage fallback from repopulating the reset workspace.
+    largePersistence.invalidateWrites();
     const storage = getStorage();
     if (storage) {
       for (const key of Object.values(KEYS)) {

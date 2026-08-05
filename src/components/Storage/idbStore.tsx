@@ -12,6 +12,8 @@ const STORE_NAME = 'kv';
 let dbPromise: Promise<IDBDatabase> | null = null;
 const memoryStore = new Map<string, unknown>();
 const writeQueues = new Map<string, Promise<void>>();
+const pendingWrites = new Set<Promise<boolean>>();
+let clearBarrier: Promise<void> | null = null;
 
 function openDb(): Promise<IDBDatabase> {
   if (typeof indexedDB === 'undefined') {
@@ -66,6 +68,18 @@ export async function idbGet<T = unknown>(key: string): Promise<T | null> {
  * Writes to the same key are serialized so older puts cannot commit after newer ones.
  */
 export async function idbSet(key: string, value: unknown): Promise<boolean> {
+  if (clearBarrier) await clearBarrier;
+
+  const write = persistValue(key, value);
+  pendingWrites.add(write);
+  try {
+    return await write;
+  } finally {
+    pendingWrites.delete(write);
+  }
+}
+
+async function persistValue(key: string, value: unknown): Promise<boolean> {
   const previous = writeQueues.get(key) || Promise.resolve();
   let release: () => void = () => {};
   const gate = new Promise<void>((resolve) => {
@@ -109,18 +123,33 @@ export async function idbDelete(key: string): Promise<boolean> {
 }
 
 export async function idbClear(): Promise<boolean> {
-  try {
-    const db = await openDb();
-    await new Promise<void>((resolve, reject) => {
-      const tx = db.transaction(STORE_NAME, 'readwrite');
-      tx.objectStore(STORE_NAME).clear();
-      tx.oncomplete = () => resolve();
-      tx.onerror = () => reject(tx.error);
-    });
-  } catch {
-    // fall through to memory clear
+  if (clearBarrier) {
+    await clearBarrier;
+    return true;
   }
-  memoryStore.clear();
+
+  const clearOperation = (async () => {
+    // Finish every write that was already accepted before the clear. New writes
+    // wait on clearBarrier, so none can commit between this wait and the clear.
+    await Promise.all([...pendingWrites].map((write) => write.catch(() => false)));
+    try {
+      const db = await openDb();
+      await new Promise<void>((resolve, reject) => {
+        const tx = db.transaction(STORE_NAME, 'readwrite');
+        tx.objectStore(STORE_NAME).clear();
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+      });
+    } catch {
+      // fall through to memory clear
+    }
+    memoryStore.clear();
+  })();
+
+  clearBarrier = clearOperation.finally(() => {
+    clearBarrier = null;
+  });
+  await clearBarrier;
   return true;
 }
 

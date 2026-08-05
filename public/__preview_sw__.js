@@ -419,18 +419,21 @@ self.addEventListener('fetch', (event) => {
   }
 
   // Built apps request absolute /dist/assets/* URLs. history.replaceState does not
-  // update service worker client.url, so do not rely on client/referrer matching.
+  // update service worker client.url, so use the document referrer when it carries
+  // the session path and leave the request unhandled when it does not.
   if (url.pathname === '/dist' || url.pathname.startsWith('/dist/')) {
-    // Prefer the session from the document referrer / client URL when present.
+    // Assets must stay tied to the session that loaded the preview document.
+    // If the browser omits the referrer, there is no safe way to choose a
+    // session; never fall back to another tab's most recently initialized
+    // bridge.
     const referrer = event.request.referrer ? new URL(event.request.referrer) : null;
     const sessionId = sessionIdFromPreviewPath(referrer?.pathname || '');
-    const bridge = getBridge(sessionId) || [...bridges.values()].at(-1);
-    const resolvedSessionId =
-      sessionId || [...bridges.keys()].find((id) => bridges.get(id) === bridge);
-    if (!bridge || !resolvedSessionId || !pickPort(bridge)) return;
+    if (!sessionId) return;
+    const bridge = getBridge(sessionId);
+    if (!bridge || !pickPort(bridge)) return;
     const path = `${url.pathname}${url.search}`;
     event.respondWith(
-      handleVirtualRequest(resolvedSessionId, event.request, path).catch((error) =>
+      handleVirtualRequest(sessionId, event.request, path).catch((error) =>
         previewResponse(
           `Preview bridge error: ${error.message}`,
           {
