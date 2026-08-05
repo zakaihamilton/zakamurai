@@ -7,8 +7,10 @@ import type {
   ModelResult,
   RunManagerOptions,
   RunManagerResult,
+  WebLLMGenerationMetrics,
   WebLLMMessage,
 } from '../types';
+import { AgentContextLedger, fingerprintWorkspace } from './AgentContextLedger';
 import {
   contextText,
   extractPath,
@@ -39,6 +41,22 @@ import {
 
 const MAX_CONTEXT_ROUNDS = 3;
 const MAX_REPAIR_ATTEMPTS = 2;
+const AGENT_CONTEXT_WINDOW_SIZE = 4096;
+const AGENT_GENERATION_TOKENS = 1800;
+const contextLedgers = new Map<string, AgentContextLedger>();
+
+const getContextLedger = (
+  sessionId: string | undefined,
+  modelId: string,
+): AgentContextLedger | null => {
+  if (!sessionId) return null;
+  const key = `${sessionId}:${modelId}`;
+  const existing = contextLedgers.get(key);
+  if (existing) return existing;
+  const ledger = new AgentContextLedger(sessionId, modelId);
+  contextLedgers.set(key, ledger);
+  return ledger;
+};
 async function loadModel(): Promise<ManagerModelClient> {
   const { askWebLLM } = await import('../WebLLMAPI');
   return async ({
@@ -50,6 +68,8 @@ async function loadModel(): Promise<ManagerModelClient> {
     temperature,
     top_p,
     max_tokens,
+    contextWindowSize,
+    sessionId,
   }: ManagerModelCall) =>
     askWebLLM('', '', null, {
       model,
@@ -61,6 +81,8 @@ async function loadModel(): Promise<ManagerModelClient> {
       temperature,
       top_p,
       max_tokens,
+      contextWindowSize,
+      sessionId,
     });
 }
 
@@ -73,6 +95,7 @@ type ManagerExecutionOptions = RunManagerOptions & {
 
 async function executeManager({
   request,
+  sessionId,
   scope = 'file',
   activeFile,
   selectedLines = [],
@@ -102,6 +125,9 @@ async function executeManager({
   });
   const workspace = tools.workspace;
   onWorkspace(workspace);
+  const ledger = getContextLedger(sessionId, model);
+  ledger?.begin(request, workspace.files, fingerprintWorkspace(workspace.files));
+  const handoffContext = [ledger?.summary(), priorContext].filter(Boolean).join('\n\n');
   const toolResults: ManagerToolResult[] = [];
   const notifyTool = async (tool: ManagerToolName, input: Record<string, unknown> = {}) => {
     if (signal?.aborted) throw new DOMException('Manager stopped', 'AbortError');
@@ -210,8 +236,12 @@ async function executeManager({
     turn: 0,
     message: 'Preparing bounded workspace context for the model…',
   });
-  if (priorContext)
-    toolResults.push({ tool: 'read_file', value: priorContext, text: `[prior]\n${priorContext}` });
+  if (handoffContext)
+    toolResults.push({
+      tool: 'read_file',
+      value: handoffContext,
+      text: `[prior]\n${handoffContext}`,
+    });
   const path = extractPath(request, scope === 'file' ? activeFile : null);
   if (path && Object.hasOwn(workspace.files, path)) await notifyTool('read_file', { path });
   else {
@@ -243,7 +273,7 @@ async function executeManager({
       'run_project_check',
       'inspect_preview',
     ]);
-    const actionContext = [priorContext, contextText(toolResults)].filter(Boolean).join('\n\n');
+    const actionContext = [handoffContext, contextText(toolResults)].filter(Boolean).join('\n\n');
     const actionResult = await runActionLoop({
       request,
       scope,
@@ -251,6 +281,7 @@ async function executeManager({
       selectedLines,
       files,
       model,
+      sessionId,
       validate,
       runProjectCheck,
       inspectPreview,
@@ -316,6 +347,7 @@ async function executeManager({
             task: 'generate-changes',
             action,
             message: event.message,
+            replaceProgress: event.replaceProgress,
             provenance: event.provenance,
           });
         }
@@ -357,7 +389,8 @@ async function executeManager({
       onMetrics,
       temperature: 0.15,
       top_p: 0.8,
-      max_tokens: task === 'answer' ? 1200 : 2600,
+      max_tokens: task === 'answer' ? 1200 : AGENT_GENERATION_TOKENS,
+      contextWindowSize: AGENT_CONTEXT_WINDOW_SIZE,
     });
     messages.push({ role: 'assistant', content: reply });
     onEvent({ type: 'model', turn: round + 1, task, output: reply });
@@ -461,7 +494,8 @@ async function executeManager({
             onRecovery,
             temperature: 0.1,
             top_p: 0.8,
-            max_tokens: 2600,
+            max_tokens: AGENT_GENERATION_TOKENS,
+            contextWindowSize: AGENT_CONTEXT_WINDOW_SIZE,
           });
           messages.push({ role: 'assistant', content: reply });
           onEvent({ type: 'model', turn: repair + 2, task, output: reply });
@@ -534,7 +568,8 @@ async function executeManager({
       onRecovery,
       temperature: 0.1,
       top_p: 0.8,
-      max_tokens: 2600,
+      max_tokens: AGENT_GENERATION_TOKENS,
+      contextWindowSize: AGENT_CONTEXT_WINDOW_SIZE,
     });
     messages.push({ role: 'assistant', content: reply });
     try {
@@ -582,16 +617,46 @@ export async function runManager(options: RunManagerOptions): Promise<RunManager
     recorder.recordManagerEvent(managerEvent);
     emitTrace(recorder.snapshot());
   };
+  const onMetrics = (metrics: WebLLMGenerationMetrics) => {
+    options.onMetrics?.(metrics);
+    recorder.record({
+      phase: 'context',
+      turn: 0,
+      message: metrics.sessionState
+        ? `Model context ${metrics.sessionState}; submitted ${metrics.submittedDeltaTokens || 0} delta token(s).`
+        : undefined,
+      sessionState: metrics.sessionState,
+      submittedDeltaBytes: metrics.submittedDeltaBytes,
+      submittedDeltaTokens: metrics.submittedDeltaTokens,
+      reusedContextTokens: metrics.reusedContextTokens,
+    });
+    emitTrace(recorder.snapshot());
+  };
 
   try {
     const result = await executeManager({
       ...options,
       onEvent,
+      onMetrics,
       recorder,
       onWorkspace: (nextWorkspace) => {
         workspaceHolder.current = nextWorkspace;
       },
     });
+    const ledger = getContextLedger(options.sessionId, options.model);
+    if (ledger) {
+      ledger.record(`Completed: ${result.summary}`);
+      ledger.record(
+        result.changes.length
+          ? `Changed files: ${result.changes.map((change) => change.path).join(', ')}`
+          : 'No files changed.',
+      );
+      ledger.updateFiles(
+        result.files,
+        result.changes.map((change) => change.path),
+      );
+      ledger.setPendingReview(result.changes.length > 0);
+    }
     const trace = recorder.finish('success');
     emitTrace(trace);
     return { ...result, trace };

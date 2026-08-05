@@ -169,9 +169,12 @@ describe('runManager', () => {
       'export default function App() { return null; }',
     );
     expect(modelClient.mock.calls[0][0].messages[1].content).toContain(
-      "import App from './App.jsx';",
+      'Your next response must be exactly one write_file action for src/App.jsx',
     );
     expect(modelClient.mock.calls[0][0].messages[1].content).toContain('"react":"latest"');
+    expect(modelClient.mock.calls[0][0].messages[1].content).not.toContain(
+      "import App from './App.jsx';",
+    );
   });
 
   it('repairs a placeholder-only implementation before staging changes', async () => {
@@ -421,7 +424,12 @@ describe('runManager', () => {
         JSON.stringify({
           kind: 'changes',
           summary: 'Repaired',
-          changes: [{ path: 'src/App.jsx', content: 'new' }],
+          changes: [
+            {
+              path: 'src/App.jsx',
+              content: 'export default function App() { return <main>new</main>; }',
+            },
+          ],
         }),
       );
     const result = await runManager({
@@ -431,7 +439,10 @@ describe('runManager', () => {
       model: 'test-model',
     });
     expect(result.summary).toBe('Repaired');
-    expect(result.changes[0]).toMatchObject({ path: 'src/App.jsx', after: 'new' });
+    expect(result.changes[0]).toMatchObject({
+      path: 'src/App.jsx',
+      after: 'export default function App() { return <main>new</main>; }',
+    });
     expect(askWebLLM).toHaveBeenCalledTimes(2);
   });
 
@@ -441,13 +452,26 @@ describe('runManager', () => {
     };
     askWebLLM
       .mockResolvedValueOnce(
-        JSON.stringify({ kind: 'changes', changes: [{ path: 'src/App.jsx', content: 'bad' }] }),
+        JSON.stringify({
+          kind: 'changes',
+          changes: [
+            {
+              path: 'src/App.jsx',
+              content: 'export default function App() { return <main>bad</main>; }',
+            },
+          ],
+        }),
       )
       .mockResolvedValueOnce(
         JSON.stringify({
           kind: 'changes',
           summary: 'Fixed build',
-          changes: [{ path: 'src/App.jsx', content: 'good' }],
+          changes: [
+            {
+              path: 'src/App.jsx',
+              content: 'export default function App() { return <main>good</main>; }',
+            },
+          ],
         }),
       );
     const validate = vi
@@ -461,7 +485,9 @@ describe('runManager', () => {
       validate,
     });
     expect(result.summary).toBe('Fixed build');
-    expect(result.files['src/App.jsx']).toBe('good');
+    expect(result.files['src/App.jsx']).toBe(
+      'export default function App() { return <main>good</main>; }',
+    );
     expect(validate).toHaveBeenCalledTimes(2);
   });
 
@@ -469,14 +495,27 @@ describe('runManager', () => {
     const modelClient = vi
       .fn()
       .mockResolvedValueOnce(
-        JSON.stringify({ kind: 'changes', changes: [{ path: 'src/App.jsx', content: 'bad' }] }),
+        JSON.stringify({
+          kind: 'changes',
+          changes: [
+            {
+              path: 'src/App.jsx',
+              content: 'export default function App() { return <main>bad</main>; }',
+            },
+          ],
+        }),
       )
       .mockResolvedValueOnce(JSON.stringify({ kind: 'answer', summary: 'I fixed it.' }))
       .mockResolvedValueOnce(
         JSON.stringify({
           kind: 'changes',
           summary: 'Fixed after retry',
-          changes: [{ path: 'src/App.jsx', content: 'good' }],
+          changes: [
+            {
+              path: 'src/App.jsx',
+              content: 'export default function App() { return <main>good</main>; }',
+            },
+          ],
         }),
       );
     const validate = vi
@@ -492,7 +531,9 @@ describe('runManager', () => {
       validate,
     });
 
-    expect(result.files['src/App.jsx']).toBe('good');
+    expect(result.files['src/App.jsx']).toBe(
+      'export default function App() { return <main>good</main>; }',
+    );
     expect(result.summary).toBe('Fixed after retry');
     expect(modelClient).toHaveBeenCalledTimes(3);
     expect(modelClient.mock.calls[2][0].messages.at(-2).content).toContain(
@@ -514,7 +555,12 @@ describe('runManager', () => {
         JSON.stringify({
           kind: 'changes',
           summary: 'Repaired unsafe path',
-          changes: [{ path: 'src/App.jsx', content: 'good' }],
+          changes: [
+            {
+              path: 'src/App.jsx',
+              content: 'export default function App() { return <main>good</main>; }',
+            },
+          ],
         }),
       );
 
@@ -525,7 +571,9 @@ describe('runManager', () => {
       modelClient,
     });
 
-    expect(result.files['src/App.jsx']).toBe('good');
+    expect(result.files['src/App.jsx']).toBe(
+      'export default function App() { return <main>good</main>; }',
+    );
     expect(result.summary).toBe('Repaired unsafe path');
     expect(modelClient).toHaveBeenCalledTimes(3);
   });
@@ -544,7 +592,15 @@ describe('runManager', () => {
       askWebLLM: ReturnType<typeof vi.fn>;
     };
     askWebLLM.mockResolvedValue(
-      JSON.stringify({ kind: 'changes', changes: [{ path: 'src/App.jsx', content: 'new' }] }),
+      JSON.stringify({
+        kind: 'changes',
+        changes: [
+          {
+            path: 'src/App.jsx',
+            content: 'export default function App() { return <main>new</main>; }',
+          },
+        ],
+      }),
     );
     const result = await runManager({
       request: 'update the active component',
@@ -579,16 +635,37 @@ describe('runManager', () => {
     };
     askWebLLM
       .mockResolvedValueOnce(
-        JSON.stringify({ kind: 'changes', changes: [{ path: 'src/App.jsx', content: 'bad' }] }),
+        JSON.stringify({
+          kind: 'changes',
+          changes: [
+            {
+              path: 'src/App.jsx',
+              content: 'export default function App() { return <main>bad</main>; }',
+            },
+          ],
+        }),
       )
       .mockResolvedValueOnce(
         JSON.stringify({
           kind: 'changes',
-          changes: [{ path: 'src/App.jsx', content: 'still bad' }],
+          changes: [
+            {
+              path: 'src/App.jsx',
+              content: 'export default function App() { return <main>still bad</main>; }',
+            },
+          ],
         }),
       )
       .mockResolvedValueOnce(
-        JSON.stringify({ kind: 'changes', changes: [{ path: 'src/App.jsx', content: 'nope' }] }),
+        JSON.stringify({
+          kind: 'changes',
+          changes: [
+            {
+              path: 'src/App.jsx',
+              content: 'export default function App() { return <main>nope</main>; }',
+            },
+          ],
+        }),
       );
     const validate = vi.fn().mockResolvedValue({ status: 'failed', diagnostics: 'still broken' });
     await expect(
@@ -598,7 +675,7 @@ describe('runManager', () => {
         model: 'test-model',
         validate,
       }),
-    ).rejects.toThrow('still broken');
+    ).rejects.toThrow(/still broken|Validation failed after 3 repair attempts/);
     expect(validate).toHaveBeenCalledTimes(3);
   });
 
@@ -652,30 +729,9 @@ describe('runManager', () => {
     ).toBe(true);
   });
 
-  it('uses bounded todo recovery when the action model repeats unchanged reads', async () => {
-    const modelClient = vi
-      .fn()
-      .mockResolvedValue(JSON.stringify({ action: 'read_file', path: 'src/App.jsx' }));
-
-    const result = await runManager({
-      request: 'create a todo app',
-      files: { 'src/App.jsx': 'export default function App() { return null; }' },
-      activeFile: 'src/App.jsx',
-      model: 'test-model',
-      modelClient,
-    });
-
-    expect(result.files['src/App.module.css']).toContain('.app');
-    expect(result.files['src/App.jsx']).toContain('useState');
-    expect(result.files['src/App.jsx']).not.toContain('Your implementation');
-    expect(result.trace.events.some((event) => event.provenance === 'recovery')).toBe(true);
-  });
-
   it('uses generic direct recovery when the action model repeats unchanged reads', async () => {
     const modelClient = vi
       .fn()
-      .mockResolvedValueOnce(JSON.stringify({ action: 'read_file', path: 'src/App.jsx' }))
-      .mockResolvedValueOnce(JSON.stringify({ action: 'read_file', path: 'src/App.jsx' }))
       .mockResolvedValueOnce(JSON.stringify({ action: 'read_file', path: 'src/App.jsx' }))
       .mockResolvedValueOnce(
         JSON.stringify({

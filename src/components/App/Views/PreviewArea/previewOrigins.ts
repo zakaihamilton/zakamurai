@@ -21,7 +21,9 @@ export type PreviewHandshakeEvent = MessageEvent<{
 const trimOrigin = (value: unknown): string | null => {
   if (typeof value !== 'string' || !value.trim()) return null;
   try {
-    return new URL(value).origin;
+    const url = new URL(value);
+    if (url.protocol !== 'http:' && url.protocol !== 'https:') return null;
+    return url.origin;
   } catch {
     return null;
   }
@@ -279,6 +281,8 @@ export function isValidPreviewHandshake(
 ): boolean {
   return Boolean(
     event &&
+      expectedOrigin &&
+      sessionId &&
       event.origin === expectedOrigin &&
       event.source === expectedSource &&
       event.data &&
@@ -294,12 +298,15 @@ export function isPreviewHost(
 ): boolean {
   if (!host) return false;
   try {
-    const normalizedHost = host.split(':')[0].toLowerCase();
-
-    if (normalizedHost.startsWith(PREVIEW_HOST_PREFIX)) return true;
-
     if (!previewOrigin) return false;
-    return normalizedHost === new URL(previewOrigin).hostname.toLowerCase();
+    const rawHost = host.trim();
+    if (!rawHost || /[\/?#@]/.test(rawHost)) return false;
+    const configuredOrigin = new URL(previewOrigin);
+    const hostOrigin = new URL(`${configuredOrigin.protocol}//${rawHost}`);
+    return (
+      hostOrigin.hostname.toLowerCase() === configuredOrigin.hostname.toLowerCase() &&
+      hostOrigin.port === configuredOrigin.port
+    );
   } catch {
     return false;
   }

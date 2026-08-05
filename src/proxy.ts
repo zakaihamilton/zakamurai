@@ -6,27 +6,84 @@ import {
   PREVIEW_SURFACE_VALUE,
   getPreviewFrameAncestors,
   isPreviewHost,
+  isVercelAppHost,
 } from './components/App/Views/PreviewArea/previewOrigins';
 
-const previewOriginUrl = new URL(
-  process.env.NEXT_PUBLIC_PREVIEW_ORIGIN || 'https://preview.zakamurai.com',
-);
-const previewHost = previewOriginUrl.hostname;
+function getPreviewOriginUrl(): URL {
+  try {
+    const configured = new URL(
+      process.env.NEXT_PUBLIC_PREVIEW_ORIGIN || 'https://preview.zakamurai.com',
+    );
+    if (configured.protocol !== 'http:' && configured.protocol !== 'https:') throw new Error();
+    return configured;
+  } catch {
+    return new URL('https://preview.zakamurai.com');
+  }
+}
+
+const previewOriginUrl = getPreviewOriginUrl();
 
 function isPreviewHostRequest(request: NextRequest): boolean {
-  const hostHeader = request.headers.get('host')?.toLowerCase() || '';
-  const hostname = hostHeader.split(':')[0];
-  const requestPort = hostHeader.includes(':') ? hostHeader.split(':')[1] : '';
-  const previewPort = previewOriginUrl.port;
-  const hostnameMatch = hostname === previewHost.toLowerCase();
-  // When the preview origin includes an explicit port (local isolated preview),
-  // require it so localhost:3000 is not treated as localhost:3001.
-  const portMatch = previewPort ? requestPort === previewPort : true;
-  if (hostnameMatch && portMatch) return true;
-  // Local isolated preview shares hostname between IDE and preview ports.
-  // Do not fall back to hostname-only detection when the port already mismatched.
-  if (hostnameMatch && previewPort) return false;
-  return isPreviewHost(hostname);
+  const host = request.headers.get('host');
+  const previewOrigins = {
+    ideOrigin: null,
+    previewOrigin: previewOriginUrl.origin,
+    isIsolated: true,
+  };
+  return isPreviewHost(host, previewOrigins);
+}
+
+function isVercelSurfaceHost(request: NextRequest): boolean {
+  const host = request.headers.get('host');
+  if (!host) return false;
+  try {
+    return isVercelAppHost(new URL(`https://${host}`).hostname);
+  } catch {
+    return false;
+  }
+}
+
+function isLocalDevHost(request: NextRequest): boolean {
+  const host = (request.headers.get('host') || '').split(':')[0].toLowerCase();
+  return host === 'localhost' || host === '127.0.0.1' || host === '[::1]';
+}
+
+function isPreviewSurfaceRequest(request: NextRequest): boolean {
+  if (isPreviewHostRequest(request)) return true;
+  const hasSurfaceSignal =
+    request.headers.get('x-zakamurai-surface') === 'preview' ||
+    request.nextUrl.searchParams.get(PREVIEW_SURFACE_PARAM) === PREVIEW_SURFACE_VALUE ||
+    isPreviewBootstrapPath(request.nextUrl.pathname) ||
+    isPreviewVirtualPath(request.nextUrl.pathname);
+  if (!hasSurfaceSignal) return false;
+
+  // Single-port local development serves preview on the IDE origin with a surface
+  // query (see getPreviewOrigins). Without this, /__preview/host 404s as a normal
+  // Next route and the iframe shows "This page could not be found."
+  if (isLocalDevHost(request)) return true;
+
+  const configuredIdeOrigin = process.env.NEXT_PUBLIC_IDE_ORIGIN;
+  if (
+    configuredIdeOrigin &&
+    isPreviewHost(request.headers.get('host'), {
+      ideOrigin: configuredIdeOrigin,
+      previewOrigin: configuredIdeOrigin,
+      isIsolated: false,
+    })
+  ) {
+    return true;
+  }
+
+  const branchOrigin = toHostOrigin(process.env.NEXT_PUBLIC_VERCEL_BRANCH_URL);
+  return Boolean(
+    (branchOrigin &&
+      isPreviewHost(request.headers.get('host'), {
+        ideOrigin: branchOrigin,
+        previewOrigin: branchOrigin,
+        isIsolated: false,
+      })) ||
+      isVercelSurfaceHost(request),
+  );
 }
 
 function resolveIdeOriginForPreviewHeaders(request: NextRequest): string | null {
@@ -85,12 +142,7 @@ function isPreviewVirtualPath(pathname: string): boolean {
 
 export function proxy(request: NextRequest): NextResponse {
   const { pathname } = request.nextUrl;
-  const isPreviewSurface =
-    isPreviewHostRequest(request) ||
-    request.headers.get('x-zakamurai-surface') === 'preview' ||
-    request.nextUrl.searchParams.get(PREVIEW_SURFACE_PARAM) === PREVIEW_SURFACE_VALUE ||
-    isPreviewBootstrapPath(pathname) ||
-    isPreviewVirtualPath(pathname);
+  const isPreviewSurface = isPreviewSurfaceRequest(request);
   if (!isPreviewSurface) return withIdeHeaders(NextResponse.next());
   if (
     pathname === '/__preview_sw__.js' ||

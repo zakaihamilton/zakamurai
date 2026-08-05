@@ -451,10 +451,7 @@ export interface ResizerStateShape {
 
 export interface TopBarMenuStateShape {
   menuPosition: { x: number; y: number } | null;
-  newProjectTemplate: string | null;
-  checkpointAction?: 'restore' | null;
-  checkpointHistoryOpen?: boolean;
-  checkpointId?: string | null;
+  confirmNewProject: boolean;
 }
 
 export interface GutterStateShape {

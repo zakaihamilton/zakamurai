@@ -129,7 +129,7 @@ describe('WebLLMAPI', () => {
     await expect(askWebLLM('hello')).resolves.toBe('default response');
     expect(mockedCreateWebWorkerMLCEngine).toHaveBeenCalledWith(
       expect.anything(),
-      'Qwen2.5-Coder-1.5B-Instruct-q4f16_1-MLC',
+      'Qwen2.5-Coder-3B-Instruct-q4f16_1-MLC',
       expect.any(Object),
       expect.any(Object),
     );
@@ -400,6 +400,23 @@ describe('WebLLMAPI', () => {
     expect(mockedCreateWebWorkerMLCEngine).toHaveBeenCalledTimes(2);
   });
 
+  it('retries transient Cache.add network failures during an AI request', async () => {
+    mockedCreateWebWorkerMLCEngine.mockRejectedValueOnce(
+      new Error(
+        "NetworkError: Failed to execute 'add' on 'Cache': Cache.add() encountered a network error",
+      ),
+    );
+    mockEngine.chat.completions.create.mockResolvedValue({
+      choices: [{ message: { content: 'recovered response' } }],
+    });
+
+    await expect(askWebLLM('hello', '', null, { model: 'retry-network-model' })).resolves.toBe(
+      'recovered response',
+    );
+
+    expect(mockedCreateWebWorkerMLCEngine).toHaveBeenCalledTimes(2);
+  });
+
   it('warns when unloading a cached model fails', async () => {
     mockEngine.unload = vi.fn().mockRejectedValue(new Error('unload failed'));
     await cacheWebLLMModel('unload-model');
@@ -426,6 +443,18 @@ describe('WebLLMAPI', () => {
     expect(pruned[1]).toEqual({ role: 'user', content: 'initial request' });
     expect(pruned.at(-1)).toEqual({ role: 'user', content: 'latest observation' });
     expect(pruned.length).toBeLessThan(messages.length);
+  });
+
+  it('keeps a delayed system prompt at the front of the pruned history', () => {
+    const pruned = pruneWebLLMMessages([
+      { role: 'user', content: 'request' },
+      { role: 'assistant', content: 'previous answer' },
+      { role: 'system', content: 'system prompt' },
+      { role: 'user', content: 'latest observation' },
+    ]);
+
+    expect(pruned[0]).toEqual({ role: 'system', content: 'system prompt' });
+    expect(pruned.filter((message) => message.role === 'system')).toHaveLength(1);
   });
 
   it('bounds oversized base messages while preserving their beginning and end', () => {

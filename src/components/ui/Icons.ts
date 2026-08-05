@@ -1,5 +1,6 @@
 import AIPrompt from './icons/AIPrompt';
 import AlertCircle from './icons/AlertCircle';
+import ArrowDownToLine from './icons/ArrowDownToLine';
 import Bot from './icons/Bot';
 import BotSmall from './icons/BotSmall';
 import Brain from './icons/Brain';
@@ -52,6 +53,7 @@ import ZLogo from './icons/ZLogo';
 
 export const Icons = {
   Image,
+  ArrowDownToLine,
   ChevronDown,
   ChevronUp,
   ChevronRight,
@@ -106,6 +108,7 @@ export const Icons = {
 
 // Also re-export named icons for tree-shaking:
 export { default as Image } from './icons/Image';
+export { default as ArrowDownToLine } from './icons/ArrowDownToLine';
 export { default as ChevronDown } from './icons/ChevronDown';
 export { default as ChevronUp } from './icons/ChevronUp';
 export { default as ChevronRight } from './icons/ChevronRight';

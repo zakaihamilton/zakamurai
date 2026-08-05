@@ -49,10 +49,7 @@ vi.mock('@/components/ui/Icons', () => ({
   Icons: {
     MoreVertical: () => <span />,
     FilePlus: () => <span />,
-    Code: () => <span />,
     Download: () => <span />,
-    Refresh: () => <span />,
-    History: () => <span />,
     Trash: () => <span />,
     Info: () => <span />,
   },
@@ -61,14 +58,9 @@ vi.mock('@/components/ui/Icons', () => ({
 const defaultMenuProps = {
   onExportZip: vi.fn(),
   onExportCompiledZip: vi.fn(),
-  onExportSupportReport: vi.fn(),
   onNewProject: vi.fn(),
   onClearFS: vi.fn(),
   onToggleShortcuts: vi.fn(),
-  onSaveCheckpoint: vi.fn(),
-  onRestoreCheckpoint: vi.fn(),
-  hasCheckpoint: false,
-  checkpointHistory: [],
 };
 
 describe('TopBarMenu', () => {

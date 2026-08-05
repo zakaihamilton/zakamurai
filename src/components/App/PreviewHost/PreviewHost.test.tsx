@@ -111,6 +111,85 @@ describe('PreviewHost', () => {
     );
   });
 
+  it('waits for a root-scoped worker to control the page before fetching the entry', async () => {
+    setLocation('http://localhost:3001/?session=s123');
+    const ideWindow = { postMessage: vi.fn() };
+    window.opener = ideWindow;
+
+    let controller: ServiceWorker | null = null;
+    const worker = {
+      state: 'activated' as ServiceWorkerState,
+      scriptURL: 'http://localhost:3001/__preview_sw__.js?v=27',
+      postMessage: vi.fn((message: { type?: string }) => {
+        if (message.type !== 'claim') return;
+        controller = worker as unknown as ServiceWorker;
+        Object.defineProperty(navigator.serviceWorker, 'controller', {
+          configurable: true,
+          value: controller,
+        });
+        navigator.serviceWorker.dispatchEvent(new Event('controllerchange'));
+      }),
+    };
+    const registration = {
+      active: worker,
+      installing: null,
+      waiting: null,
+    } as unknown as ServiceWorkerRegistration;
+    const serviceWorker = Object.assign(new EventTarget(), {
+      controller,
+      register: vi.fn(async () => registration),
+      ready: Promise.resolve(registration),
+    });
+    Object.defineProperty(navigator, 'serviceWorker', {
+      configurable: true,
+      value: serviceWorker,
+    });
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(async () => {
+      if (!controller) {
+        return new Response('worker did not control page', { status: 503 });
+      }
+      return new Response('<!doctype html><html><body>Preview</body></html>');
+    });
+
+    render(<PreviewHost />);
+
+    const channel = new MessageChannel();
+    act(() => {
+      const event = new MessageEvent('message', {
+        data: {
+          type: 'zakamurai-preview-connect',
+          version: 1,
+          sessionId: 's123',
+        },
+        origin: 'http://localhost:3000',
+      });
+      Object.defineProperty(event, 'source', { value: ideWindow });
+      Object.defineProperty(event, 'ports', { value: [channel.port2] });
+      window.dispatchEvent(event);
+    });
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    const initCall = worker.postMessage.mock.calls.find(([message]) => message.type === 'init');
+    expect(initCall).toBeDefined();
+    act(() => {
+      serviceWorker.dispatchEvent(
+        new MessageEvent('message', { data: { type: 'init-ok', sessionId: 's123' } }),
+      );
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(fetchSpy).toHaveBeenCalledWith(
+      '/__preview/s123/dist/index.html',
+      expect.objectContaining({ credentials: 'same-origin' }),
+    );
+    expect(controller).toBe(worker);
+  });
+
   it('rejects a matching handshake from an unknown same-origin window', () => {
     setLocation('http://localhost:3001/?session=s123');
     const ideWindow = { postMessage: vi.fn() };

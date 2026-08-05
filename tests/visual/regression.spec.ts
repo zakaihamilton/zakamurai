@@ -198,7 +198,6 @@ test.describe('Zakamurai Visual Regression', () => {
   test('Dialogs - New Project', async ({ page }) => {
     await page.getByTestId('more-actions-btn').filter({ visible: true }).click();
 
-    // Click New Project in the menu (exact match to avoid "New Project from Scratch")
     await page.getByText('New Project', { exact: true }).click();
 
     // Wait for dialog

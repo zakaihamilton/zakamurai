@@ -56,6 +56,37 @@ describe('PreviewBridge', () => {
     );
   });
 
+  it('ignores replayed connect messages after a surface is confirmed', () => {
+    const externalWindow = createMockPreviewWindow();
+    render(
+      <PreviewBridge
+        iframeRef={mockIframeRef(null)}
+        externalPreviewRef={mockExternalPreviewRef(externalWindow)}
+        sessionId="test-session-123"
+        previewOrigin="http://localhost:3001"
+        onError={vi.fn()}
+      />,
+    );
+
+    const dispatchConnect = () => {
+      const event = new MessageEvent('message', {
+        data: {
+          type: PREVIEW_CONNECT,
+          version: PREVIEW_PROTOCOL_VERSION,
+          sessionId: 'test-session-123',
+        },
+        origin: 'http://localhost:3001',
+      });
+      Object.defineProperty(event, 'source', { value: externalWindow });
+      act(() => window.dispatchEvent(event));
+    };
+
+    dispatchConnect();
+    const firstCallCount = externalWindow.postMessage.mock.calls.length;
+    dispatchConnect();
+    expect(externalWindow.postMessage).toHaveBeenCalledTimes(firstCallCount);
+  });
+
   it('rejects a matching handshake from an unknown same-origin window', () => {
     const activeWindow = createMockPreviewWindow();
     const unknownWindow = createMockPreviewWindow();

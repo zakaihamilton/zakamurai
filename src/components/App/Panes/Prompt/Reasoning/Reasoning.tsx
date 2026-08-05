@@ -2,10 +2,16 @@ import Node from '@/components/state/Node';
 import type { AgentSessionMessage } from '@/components/state/domain-types';
 import { Icons } from '@/components/ui/Icons';
 import Tooltip from '@/components/ui/Tooltip';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { requireStore } from '../../../types';
-import { AgentSessionState, formatReasoningEvents, getActiveAgentSession } from '../AgentSessions';
+import {
+  AgentSessionState,
+  formatReasoningEvents,
+  getActiveAgentSession,
+  getLatestManagerError,
+  withoutManagerErrorMessages,
+} from '../AgentSessions';
 import SectionActions from '../SectionExpandButton';
 import styles from './Reasoning.module.css';
 
@@ -51,7 +57,9 @@ function ReasoningPanelInner({
   onToggleStepIO,
 }: ReasoningPanelProps) {
   const [isExpanded, setIsExpanded] = useState(true);
+  const [autoScroll, setAutoScroll] = useState(true);
   const [showStepIO, setShowStepIO] = useState(showStepIOProp);
+  const lastScrollTop = useRef(0);
   const agentSessionState = requireStore(
     AgentSessionState.useState(['sessions', 'activeSessionId']),
   );
@@ -59,14 +67,9 @@ function ReasoningPanelInner({
   const reasoning = activeSession?.reasoning || '';
   const reasoningEvents = activeSession?.reasoningEvents || [];
   const messages = activeSession?.messages || [];
+  const transcriptMessages = withoutManagerErrorMessages(messages);
   const displayedReasoning = formatReasoningEvents(reasoningEvents, showStepIO) || reasoning;
-  const latestError =
-    activeSession?.status === 'error'
-      ? [...messages]
-          .reverse()
-          .find((message) => message.role === 'ai' && /^AI Manager error:/i.test(message.text))
-          ?.text
-      : undefined;
+  const latestError = getLatestManagerError(activeSession);
   const runUsage = activeSession?.runUsage;
   const toolEntries = Object.entries(runUsage?.toolCalls || {}).filter(([, count]) => count > 0);
   const hasDiagnostics = Boolean(
@@ -82,19 +85,38 @@ function ReasoningPanelInner({
         `Tools: ${toolEntries.map(([name, count]) => `${name} ×${count}`).join(', ') || 'none'}`,
       ].join('\n')
     : '';
-  const transcriptText = messages.length
-    ? messages
+  const transcriptText = transcriptMessages.length
+    ? transcriptMessages
         .map((message) => `[${message.timestamp || 'now'}] ${message.role}: ${message.text}`)
         .join('\n\n')
     : '';
   const reasoningRef = useRef<HTMLDivElement | null>(null);
+
+  const disableAutoScroll = useCallback(() => {
+    setAutoScroll(false);
+  }, []);
+
+  const handleScroll = useCallback(() => {
+    const contentElement = reasoningRef.current;
+    if (!contentElement) return;
+
+    if (contentElement.scrollTop < lastScrollTop.current && autoScroll) {
+      disableAutoScroll();
+    }
+    lastScrollTop.current = contentElement.scrollTop;
+  }, [autoScroll, disableAutoScroll]);
 
   useEffect(() => {
     setShowStepIO(showStepIOProp);
   }, [showStepIOProp]);
 
   useEffect(() => {
+    if (latestError) setIsExpanded(true);
+  }, [latestError]);
+
+  useEffect(() => {
     if (
+      autoScroll &&
       (displayedReasoning || latestError || modelDownloadStatus || messages.length) &&
       reasoningRef.current
     ) {
@@ -104,23 +126,27 @@ function ReasoningPanelInner({
         behavior: 'auto',
       });
     }
-  }, [displayedReasoning, latestError, messages.length, modelDownloadStatus]);
+  }, [autoScroll, displayedReasoning, latestError, messages.length, modelDownloadStatus]);
 
   const reasoningText = [
     transcriptText ? `--- Transcript ---\n${transcriptText}` : '',
     modelDownloadStatus,
     displayedReasoning,
     diagnosticsText,
+    latestError ? `--- Latest error ---\n${latestError}` : '',
   ]
     .filter(Boolean)
     .join('\n\n');
-  const hasLog = Boolean(displayedReasoning || messages.length || hasDiagnostics);
+  const hasLog = Boolean(displayedReasoning || messages.length || hasDiagnostics || latestError);
   const isLogClearDisabled = !hasLog || activeSession?.status === 'running';
+  const isPanelVisible = Boolean(
+    displayedReasoning || modelDownloadStatus || messages.length || latestError,
+  );
 
   return (
     <div
       className={`${styles.reasoningWrapper} ${
-        displayedReasoning || modelDownloadStatus || messages.length ? styles.reasoningVisible : ''
+        isPanelVisible ? styles.reasoningVisible : ''
       } ${!isExpanded ? styles.reasoningCollapsed : ''}`}
     >
       <div className={styles.reasoningContainer}>
@@ -160,6 +186,17 @@ function ReasoningPanelInner({
                 <Icons.Trash size={14} />
               </button>
             </Tooltip>
+            <Tooltip content={autoScroll ? 'Turn auto-scroll off' : 'Turn auto-scroll on'}>
+              <button
+                type="button"
+                className={`${styles.stepIOToggle} ${autoScroll ? styles.stepIOToggleActive : ''}`}
+                aria-label={autoScroll ? 'Turn auto-scroll off' : 'Turn auto-scroll on'}
+                aria-pressed={autoScroll}
+                onClick={() => setAutoScroll((enabled) => !enabled)}
+              >
+                <Icons.ArrowDownToLine size={14} />
+              </button>
+            </Tooltip>
             <Tooltip content={`${showStepIO ? 'Hide' : 'Show'} input/output for each agent step`}>
               <button
                 type="button"
@@ -179,10 +216,16 @@ function ReasoningPanelInner({
           </div>
         </div>
         {isExpanded && (
-          <div ref={reasoningRef} className={styles.reasoningContent}>
-            {messages.length ? (
+          <div
+            ref={reasoningRef}
+            className={styles.reasoningContent}
+            onScroll={handleScroll}
+            onTouchMove={disableAutoScroll}
+            onWheel={disableAutoScroll}
+          >
+            {transcriptMessages.length ? (
               <section className={styles.transcriptSection} aria-label="Session transcript">
-                {messages.map((message: AgentSessionMessage) => {
+                {transcriptMessages.map((message: AgentSessionMessage) => {
                   const label =
                     message.role === 'user'
                       ? 'You'
@@ -256,12 +299,12 @@ function ReasoningPanelInner({
             >
               {displayedReasoning}
             </ReactMarkdown>
-            {latestError && (
+            {latestError ? (
               <aside className={styles.reasoningError} role="alert">
                 <strong className={styles.reasoningErrorLabel}>Latest error</strong>
                 <span>{latestError}</span>
               </aside>
-            )}
+            ) : null}
           </div>
         )}
       </div>

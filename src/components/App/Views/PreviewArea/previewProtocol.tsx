@@ -17,14 +17,24 @@ export const PREVIEW_STREAM_END = 'preview-stream-end';
 export const MAX_PREVIEW_BODY_BYTES = 2 * 1024 * 1024;
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS']);
 
+function decodePreviewPath(path: string): string | null {
+  let decoded = path;
+  for (let attempt = 0; attempt < 4; attempt += 1) {
+    try {
+      const next = decodeURIComponent(decoded);
+      if (next === decoded) return decoded;
+      decoded = next;
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
 export function isSafePreviewPath(path: unknown): path is string {
   if (typeof path !== 'string' || !path.startsWith('/') || path.includes('\\')) return false;
-  try {
-    const decoded = decodeURIComponent(path);
-    return !decoded.includes('..') && !decoded.startsWith('//');
-  } catch {
-    return false;
-  }
+  const decoded = decodePreviewPath(path);
+  return decoded !== null && !decoded.includes('..') && !decoded.startsWith('//');
 }
 
 export function isPreviewRequest(

@@ -11,12 +11,21 @@ import type {
 import { reportDiagnostic } from '@/components/Diagnostics/Diagnostics';
 import { releaseWebLLMGpuMemory, reserveWebLLMGpuMemory } from '@/utils/ai-memory-governor';
 import { DEFAULT_SYSTEM_PROMPT } from './Prompts';
-import { pruneWebLLMMessages } from './WebLLMMessageUtils';
+import { ensureSystemMessageFirst, pruneWebLLMMessages } from './WebLLMMessageUtils';
 import {
   WEB_LLM_MODELS,
   findCachedFallbackModelId,
   getDeviceAppropriateDefaultModelId,
 } from './WebLLMModels';
+import {
+  WebLLMAttemptError,
+  WebLLMStallError,
+  errorMessage,
+  isAbortError,
+  recoveryReason,
+  unwrapAttemptError,
+} from './WebLLMRecovery';
+import { clearSessionHistories, runSessionCompletion } from './WebLLMSession';
 import { setWebLLMCachedModelIds, updateWebLLMEngine } from './WebLLMState';
 export { RECOMMENDED_WEB_LLM_MODEL, WEB_LLM_MODELS } from './WebLLMModels';
 export { pruneWebLLMMessages } from './WebLLMMessageUtils';
@@ -24,7 +33,7 @@ export { pruneWebLLMMessages } from './WebLLMMessageUtils';
 const DEFAULT_INIT_STALL_TIMEOUT_MS = 120_000;
 const DEFAULT_FIRST_TOKEN_TIMEOUT_MS = 120_000;
 const DEFAULT_CHUNK_IDLE_TIMEOUT_MS = 60_000;
-const STREAM_UPDATE_INTERVAL_MS = 100;
+const STREAM_UPDATE_INTERVAL_MS = 200;
 const CONTEXT_SAFETY_TOKENS = 128;
 const DEFAULT_CONTEXT_WINDOW_SIZE = 4096;
 const WEB_LLM_IDLE_UNLOAD_MS = 60_000;
@@ -56,6 +65,8 @@ type WebLLMEngine = {
   interruptGenerate: () => void | Promise<void>;
   unload?: () => Promise<void>;
   worker?: { terminate?: () => void };
+  asyncGenerate?: (selectedModelId: string) => AsyncGenerator<CompletionResponse, void, void>;
+  getPromise?: (message: unknown) => Promise<unknown>;
   chat: {
     completions: {
       create: (options: Record<string, unknown>) => Promise<CompletionResponse>;
@@ -94,28 +105,11 @@ type AttemptResult = {
   localTimeToFirstTokenMs?: number;
   usage?: CompletionUsage | null;
   finishReason?: string | null;
+  sessionState?: WebLLMGenerationMetrics['sessionState'];
+  submittedDeltaBytes?: number;
+  submittedDeltaTokens?: number;
+  reusedContextTokens?: number;
 };
-
-class WebLLMStallError extends Error {
-  constructor(readonly phase: 'initialization' | 'generation') {
-    super(
-      phase === 'initialization'
-        ? 'Local AI model initialization stopped making progress.'
-        : 'Local AI generation stopped making progress.',
-    );
-    this.name = 'WebLLMStallError';
-  }
-}
-
-class WebLLMAttemptError extends Error {
-  constructor(
-    readonly phase: 'initialization' | 'generation',
-    readonly cause: unknown,
-  ) {
-    super(cause instanceof Error ? cause.message : String(cause));
-    this.name = 'WebLLMAttemptError';
-  }
-}
 
 let engineRecord: EngineRecord | null = null;
 let generationQueue: Promise<void> = Promise.resolve();
@@ -137,9 +131,6 @@ const throwIfAborted = (signal?: AbortSignal) => {
   if (signal?.aborted) throw abortError();
 };
 
-const errorMessage = (error: unknown): string =>
-  error instanceof Error ? error.message : String(error);
-
 const errorFingerprint = (value: string): string => {
   let result = 2166136261;
   for (let index = 0; index < value.length; index += 1) {
@@ -158,40 +149,6 @@ const readUsedJSHeapMB = (): number | undefined => {
   ).memory;
   if (!Number.isFinite(memory?.usedJSHeapSize)) return undefined;
   return Math.round(((memory?.usedJSHeapSize || 0) / (1024 * 1024)) * 100) / 100;
-};
-
-const unwrapAttemptError = (error: unknown): unknown =>
-  error instanceof WebLLMAttemptError ? error.cause : error;
-
-const isAbortError = (error: unknown, signal?: AbortSignal): boolean => {
-  const unwrapped = unwrapAttemptError(error) as { name?: string; message?: string };
-  return (
-    Boolean(signal?.aborted) ||
-    unwrapped?.name === 'AbortError' ||
-    (unwrapped?.message || '').includes('Message error should not be 0')
-  );
-};
-
-const recoveryReason = (error: unknown): WebLLMRecoveryReason | null => {
-  const unwrapped = unwrapAttemptError(error);
-  if (unwrapped instanceof WebLLMStallError) return 'stalled';
-  const message = errorMessage(unwrapped);
-  if (/device\s*(?:was\s*)?lost|gpudevice.*lost/i.test(message)) return 'device-lost';
-  if (
-    /out of memory|memory allocation|failed to allocate|allocation failed|exceeds.*(?:buffer|memory)/i.test(
-      message,
-    )
-  ) {
-    return 'out-of-memory';
-  }
-  if (
-    /worker|message error should not be 0|message channel|postmessage|terminated|backend.*unavailable/i.test(
-      message,
-    )
-  ) {
-    return 'worker-failure';
-  }
-  return null;
 };
 
 const safeCallback = <T,>(callback: ((value: T) => void) | null | undefined, value: T) => {
@@ -316,6 +273,7 @@ const disposeCurrentEngine = async (expectedModelId?: string): Promise<void> => 
   const record = engineRecord;
   if (!record || (expectedModelId && record.modelId !== expectedModelId)) return;
   engineRecord = null;
+  clearSessionHistories();
   clearIdleUnloadTimer();
   try {
     const engine = await record.promise;
@@ -703,13 +661,50 @@ const runAttempt = async (
     throw new WebLLMAttemptError('initialization', error);
   }
   try {
-    const completion = await runCompletion(
-      engineResult.engine,
-      modelId,
-      messages,
-      onUpdate,
-      options,
-    );
+    const completion = options.sessionId
+      ? await runSessionCompletion(
+          engineResult.engine,
+          modelId,
+          options.sessionId,
+          messages,
+          onUpdate,
+          options,
+          {
+            createGenerationOptions,
+            clearEngineInterruptState: async (engine, selectedModelId) =>
+              clearEngineInterruptState(engine as WebLLMEngine, selectedModelId),
+            updateGenerating: (selectedModelId, generating) =>
+              updateWebLLMEngine(selectedModelId, {
+                generating,
+                ...(generating ? { error: null } : {}),
+              }),
+            beginGeneration: (engine, selectedModelId) => {
+              const requestId = ++requestSequence;
+              let resolveDone: () => void = () => {};
+              const done = new Promise<void>((resolve) => {
+                resolveDone = resolve;
+              });
+              activeGeneration = {
+                requestId,
+                modelId: selectedModelId,
+                engine: engine as WebLLMEngine,
+                done,
+                resolveDone,
+              };
+              return { requestId, resolveDone };
+            },
+            finishGeneration: (generation, _engine, selectedModelId) => {
+              if (activeGeneration?.requestId === generation.requestId) activeGeneration = null;
+              generation.resolveDone();
+              updateWebLLMEngine(selectedModelId, { generating: false });
+            },
+            isCurrentGeneration: (requestId) => activeGeneration?.requestId === requestId,
+            safeCallback,
+            abortError: () => abortError(),
+            isAbortError,
+          },
+        )
+      : await runCompletion(engineResult.engine, modelId, messages, onUpdate, options);
     return { ...completion, modelId, initializationMs: engineResult.initializationMs };
   } catch (error) {
     if (isAbortError(error, options.signal)) throw abortError();
@@ -954,7 +949,16 @@ export const askWebLLM = async (
         (requestOptions.max_tokens ?? 1200) -
         CONTEXT_SAFETY_TOKENS,
     );
-    const messages = pruneWebLLMMessages(rawMessages, inputBudget) as WebLLMMessage[];
+    const orderedMessages = ensureSystemMessageFirst(
+      pruneWebLLMMessages(rawMessages, inputBudget),
+    ) as WebLLMMessage[];
+    const messages =
+      orderedMessages[0]?.role === 'system'
+        ? orderedMessages
+        : [
+            { role: 'system' as const, content: systemPrompt || DEFAULT_SYSTEM_PROMPT },
+            ...orderedMessages,
+          ];
     const execution = await enqueueGeneration(requestOptions.signal, () =>
       executeWithRecovery(requestedModelId, messages, onUpdate, requestOptions),
     );
@@ -979,6 +983,10 @@ export const askWebLLM = async (
       decodeTokensPerSecond: result.usage?.extra?.decode_tokens_per_s,
       finishReason: result.finishReason,
       recoveryCount,
+      sessionState: result.sessionState,
+      submittedDeltaBytes: result.submittedDeltaBytes,
+      submittedDeltaTokens: result.submittedDeltaTokens,
+      reusedContextTokens: result.reusedContextTokens,
       ...heapMetrics(),
     });
     return result.text;

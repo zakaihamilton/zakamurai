@@ -30,14 +30,61 @@ export function normalizeAgentPath(value: unknown): string {
 
 type ParseAgentActionOptions = {
   allowedActions?: string[];
+  /** When set, fence-only or raw source replies become write_file for this path. */
+  defaultWritePath?: string | null;
 };
+
+const looksLikeScriptSource = (content: string): boolean =>
+  /^(?:import|export|const|let|var|function|class|\/[/*]|<\w)/m.test(content.trim());
+
+/** Pull source from a labelled fence or a raw script-shaped reply. */
+export function extractSourcePayload(text: string): string | null {
+  if (typeof text !== 'string' || !text.trim()) return null;
+  const blocks = [...text.matchAll(/```([^\r\n]*)\r?\n([\s\S]*?)(?:\r?\n```|$)/g)].map((match) => ({
+    language: match[1].trim().toLowerCase(),
+    content: match[2],
+  }));
+  const scriptLanguages = new Set([
+    '',
+    'js',
+    'javascript',
+    'jsx',
+    'ts',
+    'typescript',
+    'tsx',
+    'react',
+  ]);
+  const fenced = [...blocks]
+    .reverse()
+    .find(
+      (block) =>
+        scriptLanguages.has(block.language) &&
+        looksLikeScriptSource(block.content) &&
+        block.content.trim().length > 20,
+    );
+  if (fenced) return fenced.content.trim();
+  const raw = text
+    .replace(/^\s*```[^\n]*\n?/, '')
+    .replace(/\n?```\s*$/, '')
+    .trim();
+  if (
+    looksLikeScriptSource(raw) &&
+    raw.length > 20 &&
+    !/["']?action["']?\s*:/.test(raw.slice(0, 80))
+  ) {
+    return raw;
+  }
+  return null;
+}
 
 const parseJsonAction = (text: string): AgentAction => {
   const candidate = text.trim();
   try {
     return JSON.parse(candidate) as AgentAction;
   } catch {
-    const start = candidate.indexOf('{');
+    // Prefer an action-shaped object over the first `{` in JSX/function bodies.
+    const actionStart = candidate.search(/\{[\s\n\r]*["']?action["']?\s*:/);
+    const start = actionStart >= 0 ? actionStart : candidate.indexOf('{');
     if (start < 0) throw new Error('Agent response is not valid JSON');
 
     let depth = 0;
@@ -110,30 +157,92 @@ const parseFencedWrite = (text: string, metadata?: AgentAction): AgentAction | n
       return true;
     }
   });
-  const extension = value.path.split('.').pop()?.toLowerCase();
+  const extension = value.path.split('.').pop()?.toLowerCase() || '';
   const languagesByExtension: Record<string, string[]> = {
     css: ['css'],
     html: ['html'],
-    js: ['js', 'javascript', 'jsx'],
-    jsx: ['jsx', 'javascript', 'js'],
-    ts: ['ts', 'typescript'],
-    tsx: ['tsx', 'typescript', 'jsx'],
+    js: ['js', 'javascript', 'jsx', 'react'],
+    jsx: ['jsx', 'javascript', 'js', 'react', 'tsx', 'typescript'],
+    ts: ['ts', 'typescript', 'tsx'],
+    tsx: ['tsx', 'typescript', 'jsx', 'react', 'ts'],
     json: ['json'],
   };
-  const acceptedLanguages = languagesByExtension[extension || ''] || [];
+  const acceptedLanguages = languagesByExtension[extension] || [];
+  const isScriptPath = /^(?:js|jsx|ts|tsx)$/.test(extension);
+  const isCssPath = extension === 'css';
+  const looksLikeScript = (content: string) =>
+    /^(?:import|export|const|let|var|function|class|\/[/*]|<\w)/m.test(content.trim());
+  const looksLikeCss = (content: string) =>
+    /^(?:@|\:root|[.#*\[]|[a-z][\w-]*\s*\{)/m.test(content.trim());
   const matchingSource = sourceBlocks
     .filter((block) => acceptedLanguages.includes(block.language))
     .at(-1);
-  const hasLabeledSource = sourceBlocks.some((block) => block.language);
-  const source = matchingSource || (hasLabeledSource ? undefined : sourceBlocks.at(-1));
-  if (source === undefined) return null;
+  const compatibleSource = sourceBlocks
+    .filter((block) => {
+      if (matchingSource) return false;
+      if (isScriptPath) return !block.language || looksLikeScript(block.content);
+      if (isCssPath)
+        return !block.language || looksLikeCss(block.content) || block.language === 'css';
+      return !block.language;
+    })
+    .at(-1);
+  const source = matchingSource || compatibleSource;
+  if (source !== undefined) return { ...value, content: source.content };
 
-  return { ...value, content: source.content };
+  // Small models often emit write_file metadata and then raw source without a fence.
+  const jsonEnd = (() => {
+    const start = text.indexOf('{');
+    if (start < 0) return -1;
+    let depth = 0;
+    let inString = false;
+    let escaped = false;
+    for (let index = start; index < text.length; index++) {
+      const char = text[index];
+      if (inString) {
+        if (escaped) escaped = false;
+        else if (char === '\\') escaped = true;
+        else if (char === '"') inString = false;
+        continue;
+      }
+      if (char === '"') inString = true;
+      if (char === '{') depth++;
+      if (char === '}' && --depth === 0) return index;
+    }
+    return -1;
+  })();
+  if (jsonEnd < 0) return null;
+  const trailing = text
+    .slice(jsonEnd + 1)
+    .replace(/^\s*```[^\n]*\n?/, '')
+    .replace(/\n?```\s*$/, '')
+    .trim();
+  if (
+    !trailing ||
+    trailing.startsWith('{') ||
+    !(isScriptPath ? looksLikeScript(trailing) : isCssPath ? looksLikeCss(trailing) : true)
+  ) {
+    return null;
+  }
+  return { ...value, content: trailing };
+};
+
+/** Prefer fenced/trailing source over missing, blank, or truncated JSON content fields. */
+const attachWriteFileContent = (text: string, value: AgentAction): AgentAction => {
+  if (value.action !== 'write_file') return value;
+  const recovered = parseFencedWrite(text, value);
+  if (!recovered || typeof recovered.content !== 'string' || !recovered.content.trim()) {
+    return value;
+  }
+  const existing = typeof value.content === 'string' ? value.content.trim() : '';
+  if (!existing || recovered.content.length >= Math.max(existing.length, 40)) {
+    return recovered;
+  }
+  return value;
 };
 
 export function parseAgentAction(
   text: string,
-  { allowedActions = ALL_AGENT_ACTIONS }: ParseAgentActionOptions = {},
+  { allowedActions = ALL_AGENT_ACTIONS, defaultWritePath = null }: ParseAgentActionOptions = {},
 ): AgentAction {
   if (typeof text !== 'string') throw new Error('Agent response must be text');
   const allowed = new Set(allowedActions?.length ? allowedActions : ALL_AGENT_ACTIONS);
@@ -144,14 +253,15 @@ export function parseAgentAction(
   } catch (error) {
     const metadata = parseLooseActionMetadata(text);
     const fencedWrite = parseFencedWrite(text, metadata || undefined);
+    const sourceOnly =
+      !fencedWrite && !metadata && defaultWritePath ? extractSourcePayload(text) : null;
     if (fencedWrite) value = fencedWrite;
     else if (metadata) value = metadata;
-    else throw error;
+    else if (sourceOnly && defaultWritePath) {
+      value = { action: 'write_file', path: defaultWritePath, content: sourceOnly };
+    } else throw error;
   }
-  if (value.action === 'write_file' && typeof value.content !== 'string') {
-    const fencedWrite = parseFencedWrite(text, value);
-    if (fencedWrite) value = fencedWrite;
-  }
+  value = attachWriteFileContent(text, value);
   if (!value || typeof value !== 'object' || !ACTIONS.has(value.action)) {
     throw new Error(`Unknown agent action: ${value?.action || 'missing'}`);
   }
@@ -220,6 +330,8 @@ Inspect before editing only when workspace context has not already been supplied
 
 UI craft bar: When creating an interface, make deliberate visual decisions rather than falling back to a generic white card, system font, blue primary button, and thin gray borders. Establish a cohesive visual direction, clear type hierarchy, a restrained palette, layered surfaces or texture, intentional spacing, meaningful interaction states, visible keyboard focus, and a responsive small-screen layout. Use CSS custom properties for the page's design tokens. Do not use external assets or icon libraries unless they already exist in the workspace.
 
+Preview isolation and contrast contract: The preview is an isolated, theme-neutral document; never rely on colors inherited from the host shell or browser defaults. In the root stylesheet, explicitly reset :global(:root), :global(body), and :global(#root) (margin, padding, min-height, background, and color), then set the app surface and foreground colors locally. Define tokens such as --color-bg, --color-surface, --color-text, --color-muted, --color-primary, and --color-on-primary, and apply them to every heading, paragraph, input, button, placeholder, and status message. Keep normal text at WCAG AA contrast (at least 4.5:1; 3:1 for large text and controls). A dark surface must use light text; a light surface must use dark text—never combine a dark background with default black text. When the request does not specify a theme, prefer a polished light neutral surface with dark text and one accent. Set explicit input/button backgrounds, borders, and :focus-visible styles so the UI remains readable regardless of the preview host theme.
+
 For application requests, update the existing app entry (normally src/App.jsx or src/App.tsx) and avoid repeatedly rewriting already-staged files unless a tool or validation result identifies a specific defect. Do not create index.html for a standard Vite app: the compiler scaffolds it automatically.
 
 Architecture Rules:
@@ -272,6 +384,8 @@ Architecture Rules:
 Visual UI mode (only when supplied in prior context): Implement the approved visual brief rather than inventing an unrelated style. Use semantic landmarks, CSS custom properties for the declared design tokens, responsive layout rules, sufficient color contrast, and visible keyboard focus states. Keep each meaningful visual section in a reusable component with a co-located CSS Module.
 
 UI craft bar: Avoid generic default styling such as a white card, system font, blue button, and thin gray borders. Make the brief's visual direction tangible through hierarchy, typography, palette, surface treatment, spacing, and purposeful interaction states. Do not add external assets or icon libraries unless they already exist in the workspace.
+
+Preview isolation and contrast contract: Treat the preview as a theme-neutral document. In the root stylesheet, explicitly reset :global(:root), :global(body), and :global(#root), including margin, padding, min-height, background, and color; do not inherit the host shell's dark theme. Define color tokens and use them for all text, surfaces, form controls, placeholders, and focus states. Keep normal text at WCAG AA contrast (4.5:1; 3:1 for large text and controls). Pair dark surfaces with light text and light surfaces with dark text. If no theme is requested, use a polished light neutral surface with dark text and one accent.
 `.trim();
 
 export const REVIEWER_SYSTEM_PROMPT = `

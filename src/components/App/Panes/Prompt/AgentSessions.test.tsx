@@ -27,6 +27,7 @@ import {
   getActiveAgentSession,
   getAgentSessionChildren,
   getAgentSessionSubtreeIds,
+  getLatestManagerError,
   listAgentSessionTree,
   listAgentSessions,
   normalizeAgentSessions,
@@ -34,6 +35,7 @@ import {
   serializeAgentSessions,
   setActiveAgentSession,
   updateAgentSession,
+  withoutManagerErrorMessages,
 } from './AgentSessions';
 
 function active(state: AgentSessionStateShape): AgentSession {
@@ -126,6 +128,23 @@ describe('AgentSessions', () => {
   it('returns null for missing active sessions', () => {
     expect(getActiveAgentSession(null)).toBeNull();
     expect(getActiveAgentSession({ sessions: {}, activeSessionId: 'x' })).toBeNull();
+  });
+
+  it('extracts the latest manager error and filters it from transcript lists', () => {
+    const messages = [
+      { id: 1, role: 'user' as const, text: 'Build it', timestamp: '00:00:01' },
+      {
+        id: 2,
+        role: 'ai' as const,
+        text: 'AI Manager error: Agent reached its 30-step safety limit.',
+        timestamp: '00:00:02',
+      },
+    ];
+    expect(getLatestManagerError({ status: 'error', messages })).toBe(
+      'Agent reached its 30-step safety limit.',
+    );
+    expect(getLatestManagerError({ status: 'running', messages })).toBeUndefined();
+    expect(withoutManagerErrorMessages(messages)).toEqual([messages[0]]);
   });
 
   it('adds, renames, switches, and deletes sessions', () => {

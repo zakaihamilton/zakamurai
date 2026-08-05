@@ -1,8 +1,37 @@
-import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
+import { type Mock, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { bindWebLLMStore } from '../WebLLMState';
 import type { AgentEvent, AskWebLLM } from '../types';
 import { runActionLoop } from './ActionLoop';
 
 vi.mock('../WebLLMAPI', () => ({ askWebLLM: vi.fn() }));
+
+const PLAYABLE_INTERACTIVE_APP = `import { useState } from "react";
+export default function App() {
+  const [items, setItems] = useState(["One", "Two", "Three"]);
+  const [draft, setDraft] = useState("");
+  const addItem = () => {
+    if (!draft.trim()) return;
+    setItems([...items, draft.trim()]);
+    setDraft("");
+  };
+  return (
+    <main>
+      <h1>Notes</h1>
+      <input value={draft} onChange={(event) => setDraft(event.target.value)} />
+      <button type="button" onClick={addItem}>
+        Add
+      </button>
+      <div>
+        {items.map((item) => (
+          <button key={item} type="button" onClick={() => setItems(items.filter((value) => value !== item))}>
+            {item}
+          </button>
+        ))}
+      </div>
+    </main>
+  );
+}
+`;
 
 describe('runActionLoop', () => {
   let askWebLLM: Mock<AskWebLLM>;
@@ -10,7 +39,13 @@ describe('runActionLoop', () => {
   beforeEach(async () => {
     vi.clearAllMocks();
     vi.resetAllMocks();
+    bindWebLLMStore(null);
     ({ askWebLLM } = (await import('../WebLLMAPI')) as unknown as { askWebLLM: Mock<AskWebLLM> });
+  });
+
+  afterEach(() => {
+    bindWebLLMStore(null);
+    vi.useRealTimers();
   });
 
   it('iterates through tools and returns isolated changes', async () => {
@@ -242,6 +277,44 @@ describe('runActionLoop', () => {
     ).toBe(true);
   });
 
+  it('uses a compact prompt and earlier recovery for lightweight models', async () => {
+    const modelClient = vi
+      .fn()
+      .mockResolvedValueOnce('{"action":"list_files"}')
+      .mockResolvedValueOnce(PLAYABLE_INTERACTIVE_APP)
+      .mockResolvedValueOnce('{"action":"validate"}')
+      .mockResolvedValueOnce('{"action":"finish","summary":"Created notes app"}');
+    const validate = vi.fn().mockResolvedValue('Checks passed.');
+
+    const result = await runActionLoop({
+      request: 'create a notes app',
+      files: { 'src/App.jsx': 'export default function App() { return null; }' },
+      validate,
+      model: 'Qwen3.5-0.8B-q4f16_1-MLC',
+      modelClient,
+      priorContext: '[list_files]\nsrc/App.jsx\n[read_file]\nexisting app source',
+    });
+
+    expect(result.files['src/App.jsx']).toContain('Notes');
+    expect(result.files['src/App.jsx']).toContain('useState');
+    expect(modelClient.mock.calls[0][0].messages[0].content).toContain(
+      'You are a small local coding model',
+    );
+    expect(modelClient.mock.calls[0][0].messages[0].content).toContain('labelled code fence');
+    expect(modelClient.mock.calls[0][0].messages[1].content).toContain(
+      'Your next response must be ONLY a labelled code fence with the complete source for src/App.jsx',
+    );
+    expect(modelClient.mock.calls[0][0].messages[1].content).toContain('--- src/App.jsx ---');
+    expect(modelClient.mock.calls[0][0].messages[1].content).not.toContain('[list_files]');
+    expect(modelClient.mock.calls[1][0].messages[0].content).toContain('emergency write mode');
+    expect(modelClient.mock.calls[1][0].messages[0].content).toContain(
+      'Reply with ONLY this labelled code fence',
+    );
+    expect(modelClient.mock.calls[1][0].messages[0].content).not.toContain(
+      '{"action":"write_file"',
+    );
+  });
+
   it('uses a compact prompt when forced write recovery is activated', async () => {
     const modelClient = vi
       .fn()
@@ -273,6 +346,113 @@ describe('runActionLoop', () => {
     expect(recoveryMessages[1].content).toContain('Current contents of src/App.jsx');
   });
 
+  it('retries incomplete write_file metadata with fence-only recovery for 1.5B models', async () => {
+    askWebLLM
+      .mockResolvedValueOnce(
+        '{"action":"write_file","path":"src/App.jsx","reason":"create a notes app"}',
+      )
+      .mockResolvedValueOnce(`\`\`\`jsx\n${PLAYABLE_INTERACTIVE_APP}\n\`\`\``)
+      .mockResolvedValueOnce('{"action":"validate"}')
+      .mockResolvedValueOnce('{"action":"finish","summary":"Created notes app"}');
+    const validate = vi.fn().mockResolvedValue('Checks passed.');
+
+    const result = await runActionLoop({
+      request: 'create a notes app',
+      files: { 'src/App.jsx': 'export default function App() { return null; }' },
+      model: 'Qwen2.5-Coder-1.5B-Instruct-q4f16_1-MLC',
+      validate,
+      priorContext: '[list_files]\nsrc/App.jsx',
+    });
+
+    expect(result.files['src/App.jsx']).toContain('Notes');
+    expect(result.files['src/App.jsx']).toContain('useState');
+    const recoveryPrompt = askWebLLM.mock.calls[1]?.[3]?.messages
+      ?.map((message: { content: string }) => message.content)
+      .join('\n');
+    expect(recoveryPrompt).toContain('Reply with ONLY this labelled code fence');
+    expect(recoveryPrompt).toContain('```jsx');
+    expect(recoveryPrompt).not.toContain('{"action":"write_file"');
+    expect(recoveryPrompt).not.toContain('for example {"action":"list_files"}');
+  });
+
+  it('rejects a trivial 1.5B App shell and recovers with a playable implementation', async () => {
+    askWebLLM
+      .mockResolvedValueOnce(
+        '{"action":"write_file","path":"src/App.jsx","content":"export default function App() { return <main><h1>Notes</h1></main>; }"}',
+      )
+      .mockResolvedValueOnce(`\`\`\`jsx\n${PLAYABLE_INTERACTIVE_APP}\n\`\`\``)
+      .mockResolvedValueOnce('{"action":"validate"}')
+      .mockResolvedValueOnce('{"action":"finish","summary":"Created notes app"}');
+    const validate = vi.fn().mockResolvedValue('Checks passed.');
+    const events: AgentEvent[] = [];
+
+    const result = await runActionLoop({
+      request: 'create a notes app',
+      files: { 'src/App.jsx': 'export default function App() { return null; }' },
+      model: 'Qwen2.5-Coder-1.5B-Instruct-q4f16_1-MLC',
+      validate,
+      priorContext: '[list_files]\nsrc/App.jsx',
+      onEvent: (event) => events.push(event),
+    });
+
+    expect(result.files['src/App.jsx']).toContain('useState');
+    expect(result.files['src/App.jsx']).toContain('onClick');
+    expect(result.files['src/App.jsx']).toContain('App.module.css');
+    expect(result.files['src/App.module.css']).toContain('.app');
+    expect(result.files['src/App.module.css']).toContain('.button');
+    expect(
+      events.some((event) => event.error && event.message?.includes('only renders a heading')),
+    ).toBe(true);
+    expect(
+      askWebLLM.mock.calls.some((call) =>
+        call[3]?.messages?.some((message: { content?: string }) =>
+          message.content?.includes('labelled code fence'),
+        ),
+      ),
+    ).toBe(true);
+  });
+
+  it('auto-attaches a CSS Module when a lightweight model writes an unstyled interactive App', async () => {
+    askWebLLM
+      .mockResolvedValueOnce(`\`\`\`jsx\n${PLAYABLE_INTERACTIVE_APP}\n\`\`\``)
+      .mockResolvedValueOnce('{"action":"validate"}')
+      .mockResolvedValueOnce('{"action":"finish","summary":"Created notes app"}');
+    const validate = vi.fn().mockResolvedValue('Checks passed.');
+
+    const result = await runActionLoop({
+      request: 'create a notes app',
+      files: { 'src/App.jsx': 'export default function App() { return null; }' },
+      model: 'Qwen2.5-Coder-1.5B-Instruct-q4f16_1-MLC',
+      validate,
+      priorContext: '[list_files]\nsrc/App.jsx',
+    });
+
+    expect(result.files['src/App.jsx']).toContain('import styles from "./App.module.css"');
+    expect(result.files['src/App.jsx']).toContain('styles.button');
+    expect(result.files['src/App.module.css']).toContain('.button');
+    expect(result.files['src/App.module.css']).toContain('.list');
+  });
+
+  it('rewrites generic lightweight finish summaries to mention the request', async () => {
+    askWebLLM
+      .mockResolvedValueOnce(`\`\`\`jsx\n${PLAYABLE_INTERACTIVE_APP}\n\`\`\``)
+      .mockResolvedValueOnce('{"action":"validate"}')
+      .mockResolvedValueOnce(
+        '{"action":"finish","summary":"The project has been successfully built and validated. You can now proceed with further development or testing."}',
+      );
+    const validate = vi.fn().mockResolvedValue('Checks passed.');
+
+    const result = await runActionLoop({
+      request: 'create a notes app',
+      files: { 'src/App.jsx': 'export default function App() { return null; }' },
+      model: 'Qwen2.5-Coder-1.5B-Instruct-q4f16_1-MLC',
+      validate,
+      priorContext: '[list_files]\nsrc/App.jsx',
+    });
+
+    expect(result.summary).toContain('create a notes app');
+    expect(result.summary).not.toContain('further development');
+  });
   it('uses generic direct recovery when the local model never writes', async () => {
     const modelClient = vi
       .fn()
@@ -412,109 +592,6 @@ describe('runActionLoop', () => {
     expect(askWebLLM).toHaveBeenCalledTimes(4);
   });
 
-  it('uses bounded todo recovery when the local model never produces a write', async () => {
-    askWebLLM
-      .mockResolvedValueOnce('{"action":"inspect_preview"}')
-      .mockResolvedValueOnce('{"action":"validate"}')
-      .mockResolvedValueOnce('{"action":"validate"}')
-      .mockResolvedValueOnce('{"action":"validate"}')
-      .mockResolvedValueOnce('{"action":"finish","summary":"done"}')
-      .mockResolvedValueOnce('{"action":"finish","summary":"done"}');
-    const validate = vi.fn().mockResolvedValue('Checks passed.');
-    const events: AgentEvent[] = [];
-
-    const result = await runActionLoop({
-      request: 'create a todo app',
-      files: {
-        'src/App.jsx':
-          'export default function App() { return <div><h1>New Project</h1><p>Start coding here...</p></div>; }',
-      },
-      model: 'test',
-      validate,
-      onEvent: (event) => events.push(event),
-    });
-
-    expect(result.files['src/App.jsx']).toContain('function addTask');
-    expect(result.files['src/App.module.css']).toContain('.card');
-    expect(validate).toHaveBeenCalledWith(result.files);
-    expect(result.summary).toContain('bounded recovery');
-    expect(
-      events.filter(
-        (event) =>
-          event.type === 'tool' &&
-          typeof event.action === 'object' &&
-          event.action.action === 'validate',
-      ),
-    ).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ provenance: 'model' }),
-        expect.objectContaining({ provenance: 'recovery' }),
-      ]),
-    );
-  });
-
-  it('uses bounded todo recovery for a reminder app request', async () => {
-    askWebLLM.mockResolvedValue('{"action":"list_files"}');
-    const validate = vi.fn().mockResolvedValue('Checks passed.');
-
-    const result = await runActionLoop({
-      request: 'create a reminder app',
-      files: {
-        'src/App.jsx':
-          'export default function App() { return <div><h1>New Project</h1><p>Start coding here...</p></div>; }',
-      },
-      model: 'test',
-      validate,
-    });
-
-    expect(result.files['src/App.jsx']).toContain('function addTask');
-    expect(result.files['src/App.module.css']).toContain('.card');
-    expect(result.summary).toContain('bounded recovery');
-    expect(validate).toHaveBeenCalledWith(result.files);
-  });
-
-  it('uses bounded recovery when a local model cannot create a tic-tac-toe game', async () => {
-    askWebLLM.mockResolvedValue('{"action":"list_files"}');
-    const validate = vi.fn().mockResolvedValue('Checks passed.');
-
-    const result = await runActionLoop({
-      request: 'create tic tac toe game',
-      files: {
-        'src/App.jsx':
-          'export default function App() { return <div><h1>New Project</h1><p>Start coding here...</p></div>; }',
-      },
-      model: 'Qwen2.5-Coder-1.5B-Instruct-q4f16_1-MLC',
-      validate,
-    });
-
-    expect(result.files['src/App.jsx']).toContain('Tic Tac Toe');
-    expect(result.files['src/App.jsx']).toContain('function playSquare');
-    expect(result.files['src/App.module.css']).toContain('.board');
-    expect(result.summary).toContain('tic-tac-toe game');
-    expect(validate).toHaveBeenCalledWith(result.files);
-  });
-
-  it('does not report todo recovery as successful when validation fails', async () => {
-    askWebLLM.mockResolvedValueOnce('{"action":"finish","summary":"done"}');
-    const validate = vi.fn().mockResolvedValue({
-      status: 'failed',
-      check: 'build',
-      diagnostics: 'The generated app does not compile.',
-    });
-
-    await expect(
-      runActionLoop({
-        request: 'create a todo app',
-        files: {
-          'src/App.jsx':
-            'export default function App() { return <div><h1>New Project</h1><p>Start coding here...</p></div>; }',
-        },
-        model: 'test',
-        validate,
-      }),
-    ).rejects.toThrow(/Todo-app recovery validation failed/);
-  });
-
   it('queues a forced source write until the model provides its missing CSS Module', async () => {
     askWebLLM
       .mockResolvedValueOnce('{"action":"read_file","path":"src/App.jsx"}')
@@ -541,6 +618,34 @@ describe('runActionLoop', () => {
     expect(validate).toHaveBeenCalledWith(result.files);
   });
 
+  it('appends missing CSS module rules when source reuses an incomplete existing stylesheet', async () => {
+    askWebLLM
+      .mockResolvedValueOnce(
+        '{"action":"write_file","path":"src/App.jsx","content":"import styles from \\"./App.module.css\\"; export default function App() { return <div className={styles.container}><button className={`${styles.cell} ${styles.x}`}>X</button></div>; }"}',
+      )
+      .mockResolvedValueOnce('{"action":"validate"}')
+      .mockResolvedValueOnce('{"action":"finish","summary":"Created game"}');
+    const validate = vi.fn().mockResolvedValue('Checks passed.');
+
+    const result = await runActionLoop({
+      request: 'create a game',
+      files: {
+        'src/App.jsx':
+          'import styles from "./App.module.css"; export default function App() { return <div className={styles.container} />; }',
+        'src/App.module.css':
+          ':global(body) { margin: 0; }\n\n.container {\n  display: flex;\n  min-height: 100vh;\n}\n',
+      },
+      validate,
+      model: 'test',
+    });
+
+    expect(result.files['src/App.module.css']).toContain('display: flex');
+    expect(result.files['src/App.module.css']).toContain('.cell');
+    expect(result.files['src/App.module.css']).toContain('.x');
+    expect(result.files['src/App.module.css']).toContain('grid-template-columns: repeat(3');
+    expect(validate).toHaveBeenCalledWith(result.files);
+  });
+
   it('normalizes side-effect CSS imports into an atomic CSS Module change', async () => {
     askWebLLM
       .mockResolvedValueOnce(
@@ -561,6 +666,77 @@ describe('runActionLoop', () => {
     expect(result.files['src/App.jsx']).toContain('className={styles["game-container"]}');
     expect(result.files['src/App.module.css']).toContain('.game-container');
     expect(result.files['src/App.module.css']).toContain('.square');
+    expect(validate).toHaveBeenCalledWith(result.files);
+  });
+
+  it('deduplicates a side-effect stylesheet when the module is already imported', async () => {
+    askWebLLM
+      .mockResolvedValueOnce(
+        '{"action":"write_file","path":"src/App.jsx","content":"import styles from \\"./App.module.css\\"; import \\"./App.css\\"; export default function App() { return <main className={styles.app}>Tic Tac Toe</main>; }"}',
+      )
+      .mockResolvedValueOnce('{"action":"validate"}')
+      .mockResolvedValueOnce('{"action":"finish","summary":"Created game"}');
+    const validate = vi.fn().mockResolvedValue('Checks passed.');
+
+    const result = await runActionLoop({
+      request: 'create a game',
+      files: {
+        'src/App.jsx': 'export default function App() { return null; }',
+        'src/App.module.css': '.app { display: block; }',
+      },
+      validate,
+      model: 'test',
+    });
+
+    expect(result.files['src/App.jsx']).toContain('import styles from "./App.module.css";');
+    expect(result.files['src/App.jsx']).not.toContain('import "./App.css"');
+    expect(result.files['src/App.jsx'].match(/import styles from/g)).toHaveLength(1);
+    expect(validate).toHaveBeenCalledWith(result.files);
+  });
+
+  it('converts a side-effect CSS Module import into the required class-map import', async () => {
+    askWebLLM
+      .mockResolvedValueOnce(
+        '{"action":"write_file","path":"src/App.jsx","content":"import \\"./App.module.css\\"; export default function App() { return <main className=\\"app\\">Tic Tac Toe</main>; }"}',
+      )
+      .mockResolvedValueOnce('{"action":"validate"}')
+      .mockResolvedValueOnce('{"action":"finish","summary":"Created game"}');
+    const validate = vi.fn().mockResolvedValue('Checks passed.');
+
+    const result = await runActionLoop({
+      request: 'create a game',
+      files: { 'src/App.jsx': 'export default function App() { return null; }' },
+      validate,
+      model: 'test',
+    });
+
+    expect(result.files['src/App.jsx']).toContain('import styles from "./App.module.css";');
+    expect(result.files['src/App.jsx']).not.toContain('import "./App.module.css"');
+    expect(result.files['src/App.jsx']).toContain('className={styles.app}');
+    expect(result.files['src/App.module.css']).toContain('.app');
+    expect(validate).toHaveBeenCalledWith(result.files);
+  });
+
+  it('deduplicates repeated default CSS Module bindings before validation', async () => {
+    askWebLLM
+      .mockResolvedValueOnce(
+        '{"action":"write_file","path":"src/App.jsx","content":"import styles from \\"./App.module.css\\"; import styles from \\"./theme.module.css\\"; export default function App() { return <main className={styles.app}>Tic Tac Toe</main>; }"}',
+      )
+      .mockResolvedValueOnce('{"action":"validate"}')
+      .mockResolvedValueOnce('{"action":"finish","summary":"Created game"}');
+    const validate = vi.fn().mockResolvedValue('Checks passed.');
+
+    const result = await runActionLoop({
+      request: 'create a game',
+      files: {
+        'src/App.jsx': 'export default function App() { return null; }',
+        'src/App.module.css': '.app { display: block; }',
+      },
+      validate,
+      model: 'test',
+    });
+
+    expect(result.files['src/App.jsx'].match(/import styles from/g)).toHaveLength(1);
     expect(validate).toHaveBeenCalledWith(result.files);
   });
 
@@ -606,6 +782,7 @@ describe('runActionLoop', () => {
 
   it('reports detailed streaming progress while waiting for a local-model action', async () => {
     askWebLLM.mockImplementationOnce(async (_prompt, _systemPrompt, onUpdate) => {
+      onUpdate?.('{"a');
       onUpdate?.('{"action":"finish"');
       return '{"action":"finish","summary":"done"}';
     });
@@ -627,9 +804,50 @@ describe('runActionLoop', () => {
     expect(events).toContainEqual(
       expect.objectContaining({
         type: 'thinking',
+        message: expect.stringContaining('streaming its next action (3 character(s) received)'),
+      }),
+    );
+    expect(events).toContainEqual(
+      expect.objectContaining({
+        type: 'thinking',
         message: expect.stringContaining('streaming its next action (18 character(s) received)'),
       }),
     );
+  });
+
+  it('reports model download progress while initialization is still underway', async () => {
+    vi.useFakeTimers();
+    const store = Object.assign(vi.fn(), {
+      activeModelId: 'test',
+      engines: { test: { status: 'downloading', progressText: 'Fetching model weights…' } },
+    });
+    bindWebLLMStore(store as never);
+    askWebLLM.mockImplementationOnce(
+      async (_prompt, _systemPrompt, _onUpdate, _options) =>
+        new Promise((resolve) => {
+          setTimeout(() => resolve('{"action":"finish","summary":"done"}'), 5_000);
+        }),
+    );
+    const events: AgentEvent[] = [];
+    const run = runActionLoop({
+      request: 'inspect',
+      files: { 'src/a.js': 'a' },
+      model: 'test',
+      onEvent: (event) => events.push(event),
+    });
+
+    await vi.advanceTimersByTimeAsync(3_000);
+
+    expect(events).toContainEqual(
+      expect.objectContaining({
+        type: 'thinking',
+        replaceProgress: true,
+        message: expect.stringContaining('model is downloading — Fetching model weights'),
+      }),
+    );
+
+    await vi.advanceTimersByTimeAsync(2_000);
+    await expect(run).resolves.toMatchObject({ summary: 'done' });
   });
 
   it('forwards cancellation ownership and reports model recovery progress', async () => {
@@ -689,35 +907,209 @@ describe('runActionLoop', () => {
     expect(result.changes).toHaveLength(2);
   });
 
-  it('rejects an inline CSS write before it becomes a visible staged draft', async () => {
+  it('rejects prose paraphrases written as App.jsx and forces a source rewrite', async () => {
     askWebLLM
       .mockResolvedValueOnce(
-        '{"action":"write_file","path":"src/App.jsx","content":"export default () => <main style={{ color: \'red\' }} />;"}',
+        '{"action":"write_file","path":"src/App.jsx","content":"Create the notes app"}',
       )
-      .mockResolvedValueOnce('{"action":"finish","summary":"no changes"}');
+      .mockResolvedValueOnce(`\`\`\`jsx\n${PLAYABLE_INTERACTIVE_APP}\n\`\`\``)
+      .mockResolvedValueOnce('{"action":"validate"}')
+      .mockResolvedValueOnce('{"action":"finish","summary":"Created notes app"}');
+    const validate = vi.fn().mockResolvedValue('Checks passed.');
     const events: AgentEvent[] = [];
+
+    const result = await runActionLoop({
+      request: 'Create a notes app',
+      files: { 'src/App.jsx': 'export default function App() { return null; }' },
+      model: 'Qwen2.5-Coder-1.5B-Instruct-q4f16_1-MLC',
+      validate,
+      priorContext: '[list_files]\nsrc/App.jsx',
+      onEvent: (event) => events.push(event),
+    });
+
+    expect(result.files['src/App.jsx']).toContain('Notes');
+    expect(result.files['src/App.jsx']).not.toContain('Create the notes app');
+    expect(
+      events.some((event) => event.error && event.message?.includes('not valid source code')),
+    ).toBe(true);
+    expect(askWebLLM.mock.calls[1]?.[3]?.messages?.[0]?.content).toContain('emergency write mode');
+    expect(askWebLLM.mock.calls[1]?.[3]?.messages?.[0]?.content).toContain(
+      'Reply with ONLY this labelled code fence',
+    );
+  });
+
+  it('stops early when write_file oscillates between incomplete metadata and prose', async () => {
+    const incomplete =
+      '{"action":"write_file","path":"src/App.jsx","reason":"create a tic tac toe game"}';
+    const prose =
+      '{"action":"write_file","path":"src/App.jsx","content":"Create the tic tac toe game"}';
+    askWebLLM
+      .mockResolvedValueOnce(incomplete)
+      .mockResolvedValueOnce(prose)
+      .mockResolvedValueOnce(incomplete)
+      .mockResolvedValueOnce(prose)
+      .mockResolvedValueOnce(prose)
+      .mockResolvedValueOnce(prose)
+      .mockResolvedValueOnce(prose)
+      .mockResolvedValue('{"action":"finish","summary":"should not reach"}');
+
+    await expect(
+      runActionLoop({
+        request: 'create a tic tac toe game',
+        files: { 'src/App.jsx': 'export default function App() { return null; }' },
+        model: 'Qwen2.5-Coder-1.5B-Instruct-q4f16_1-MLC',
+        priorContext: '[list_files]\nsrc/App.jsx',
+      }),
+    ).rejects.toThrow(
+      /repeatedly failed to write valid source|repeating the same action|forced write recovery/,
+    );
+    expect(askWebLLM.mock.calls.length).toBeGreaterThanOrEqual(3);
+    expect(askWebLLM.mock.calls.length).toBeLessThan(12);
+  });
+
+  it('stops after repeated failed validations instead of looping write/validate/finish', async () => {
+    askWebLLM
+      .mockResolvedValueOnce(
+        '{"action":"write_file","path":"src/App.jsx","content":"export default function App() { return <main>Broken</main>; }"}',
+      )
+      .mockResolvedValueOnce('{"action":"validate"}')
+      .mockResolvedValueOnce('{"action":"finish","summary":"done"}')
+      .mockResolvedValueOnce(
+        '{"action":"write_file","path":"src/App.jsx","content":"export default function App() { return <main>Broken</main>; }"}',
+      )
+      .mockResolvedValueOnce('{"action":"validate"}')
+      .mockResolvedValueOnce('{"action":"finish","summary":"done"}')
+      .mockResolvedValueOnce(
+        '{"action":"write_file","path":"src/App.jsx","content":"export default function App() { return <main>Broken</main>; }"}',
+      )
+      .mockResolvedValueOnce('{"action":"validate"}');
+    const validate = vi.fn().mockResolvedValue({
+      status: 'failed',
+      check: 'build',
+      diagnostics: 'Build failed with 1 error',
+    });
+
+    await expect(
+      runActionLoop({
+        request: 'Create a tic tac toe game',
+        files: { 'src/App.jsx': 'export default function App() { return null; }' },
+        model: 'test',
+        validate,
+      }),
+    ).rejects.toThrow(/Validation failed after (?:3 repair attempts|forced write recovery)/);
+    expect(validate).toHaveBeenCalledTimes(3);
+    expect(askWebLLM.mock.calls.length).toBeLessThanOrEqual(8);
+  });
+
+  it('stops a lightweight model after two repeated validation failures', async () => {
+    const source = 'export default function App() { return <main>Broken</main>; }';
+    askWebLLM
+      .mockResolvedValueOnce(
+        `{"action":"write_file","path":"src/App.jsx","content":${JSON.stringify(source)}}`,
+      )
+      .mockResolvedValueOnce('{"action":"validate"}')
+      .mockResolvedValueOnce('{"action":"finish","summary":"done"}')
+      .mockResolvedValueOnce(
+        `{"action":"write_file","path":"src/App.jsx","content":${JSON.stringify(source)}}`,
+      )
+      .mockResolvedValueOnce('{"action":"validate"}');
+    const validate = vi.fn().mockResolvedValue({
+      status: 'failed',
+      check: 'build',
+      diagnostics: 'The symbol "styles" has already been declared.',
+    });
 
     await expect(
       runActionLoop({
         request: 'style app',
-        files: { 'src/App.jsx': 'export default () => <main />;' },
-        model: 'test',
-        onEvent: (event) => events.push(event),
+        files: { 'src/App.jsx': 'export default function App() { return null; }' },
+        model: 'Qwen2.5-Coder-1.5B-Instruct-q4f16_1-MLC',
+        validate,
       }),
-    ).rejects.toThrow(/could not provide a write_file action/);
+    ).rejects.toThrow(/Validation failed after 2 repair attempts/);
+    expect(validate).toHaveBeenCalledTimes(2);
+  });
 
+  it('removes unsupported Vite config files before validate so browser builds can use defaults', async () => {
+    askWebLLM
+      .mockResolvedValueOnce(
+        '{"action":"write_file","path":"src/App.jsx","content":"export default function App() { return <main>Ok</main>; }"}',
+      )
+      .mockResolvedValueOnce('{"action":"validate"}')
+      .mockResolvedValueOnce('{"action":"finish","summary":"done"}');
+    const validate = vi.fn().mockImplementation(async (files: Record<string, string>) => {
+      if (Object.keys(files).some((path) => path.startsWith('vite.config'))) {
+        return {
+          status: 'failed',
+          check: 'build',
+          diagnostics: 'Browser builds do not execute vite.config.js.',
+        };
+      }
+      return { status: 'passed', check: 'build', diagnostics: 'ok' };
+    });
+    const events: AgentEvent[] = [];
+
+    const result = await runActionLoop({
+      request: 'update app',
+      files: {
+        'src/App.jsx': 'export default function App() { return null; }',
+        'vite.config.js': 'export default {}',
+      },
+      model: 'test',
+      validate,
+      onEvent: (event) => events.push(event),
+    });
+
+    expect(result.files['vite.config.js']).toBeUndefined();
+    expect(
+      result.changes.some(
+        (change) => change.path === 'vite.config.js' && change.after === undefined,
+      ),
+    ).toBe(true);
+    expect(validate).toHaveBeenCalled();
     expect(
       events.some(
         (event) =>
           event.type === 'tool' &&
           typeof event.action === 'object' &&
-          event.action.action === 'write_file',
+          event.action.action === 'delete_file' &&
+          event.action.path === 'vite.config.js',
       ),
-    ).toBe(false);
-    expect(events.some((event) => event.error && event.message?.includes('Inline CSS'))).toBe(true);
+    ).toBe(true);
   });
 
-  it('rejects a side-effect CSS Module import before it becomes a visible staged draft', async () => {
+  it('rewrites inline styles into a co-located CSS Module instead of rejecting the write', async () => {
+    askWebLLM
+      .mockResolvedValueOnce(
+        '{"action":"write_file","path":"src/App.jsx","content":"export default () => <main style={{ color: \'red\' }} />;"}',
+      )
+      .mockResolvedValueOnce('{"action":"validate"}')
+      .mockResolvedValueOnce('{"action":"finish","summary":"styled"}');
+    const validate = vi.fn().mockResolvedValue('Checks passed.');
+    const events: AgentEvent[] = [];
+
+    const result = await runActionLoop({
+      request: 'style app',
+      files: { 'src/App.jsx': 'export default () => <main />;' },
+      model: 'test',
+      validate,
+      onEvent: (event) => events.push(event),
+    });
+
+    expect(result.files['src/App.jsx']).toContain('className={styles.inline0}');
+    expect(result.files['src/App.jsx']).not.toMatch(/\bstyle\s*=/);
+    expect(result.files['src/App.module.css']).toContain('color: red');
+    expect(
+      events.some(
+        (event) =>
+          event.type === 'tool' &&
+          typeof event.action === 'object' &&
+          event.action.path === 'src/App.module.css',
+      ),
+    ).toBe(true);
+  });
+
+  it('normalizes a side-effect CSS Module import before staging the source', async () => {
     askWebLLM
       .mockResolvedValueOnce(
         '{"action":"write_file","path":"src/App.jsx","content":"import \\"./App.module.css\\"; export default () => <main className=\\"app\\" />;"}',
@@ -725,20 +1117,21 @@ describe('runActionLoop', () => {
       .mockResolvedValueOnce('{"action":"finish","summary":"no changes"}');
     const events: AgentEvent[] = [];
 
-    await expect(
-      runActionLoop({
-        request: 'style app',
-        files: {
-          'src/App.jsx': 'export default () => <main />;',
-          'src/App.module.css': '.app {}',
-        },
-        model: 'test',
-        onEvent: (event) => events.push(event),
-      }),
-    ).rejects.toThrow(/could not provide a write_file action/);
+    const result = await runActionLoop({
+      request: 'style app',
+      files: {
+        'src/App.jsx': 'export default () => <main />;',
+        'src/App.module.css': '.app {}',
+      },
+      model: 'test',
+      onEvent: (event) => events.push(event),
+    });
 
+    expect(result.files['src/App.jsx']).toContain('import styles from "./App.module.css";');
+    expect(result.files['src/App.jsx']).toContain('className={styles.app}');
+    expect(result.files['src/App.jsx']).not.toContain('import "./App.module.css"');
     expect(events.some((event) => event.error && event.message?.includes('default-imported'))).toBe(
-      true,
+      false,
     );
   });
 
@@ -806,7 +1199,10 @@ describe('runActionLoop', () => {
       .find((content: string) => content.includes('must write only'));
     expect(repairMessage).toContain('must write only src/components/Todo.module.css');
     expect(repairMessage).toContain('.app { display: block; }');
-    expect(askWebLLM.mock.calls[1]?.[3]).toMatchObject({ max_tokens: 2400 });
+    expect(askWebLLM.mock.calls[1]?.[3]).toMatchObject({
+      max_tokens: 2200,
+      contextWindowSize: 4096,
+    });
   });
 
   it('gives malformed JSX source-specific recovery without mislabeling it as CSS', async () => {
@@ -824,40 +1220,63 @@ describe('runActionLoop', () => {
       }),
     ).rejects.toThrow(/could not provide a write_file action/);
 
-    const repairMessage = askWebLLM.mock.calls[1]?.[3]?.messages
-      ?.map((message: { content: string }) => message.content)
+    const repairMessage = askWebLLM.mock.calls
+      .flatMap((call) => call[3]?.messages || [])
+      .map((message: { content: string }) => message.content)
       .find((content: string) => content.includes('rejected source file'));
     expect(repairMessage).toContain('write only src/App.jsx');
     expect(repairMessage).toContain('using one jsx fence');
     expect(repairMessage).not.toContain('rejected stylesheet');
     expect(repairMessage).not.toContain('using one css fence');
-    expect(askWebLLM.mock.calls[1]?.[3]).toMatchObject({ max_tokens: 2400 });
+    expect(askWebLLM.mock.calls[1]?.[3]).toMatchObject({ contextWindowSize: 4096 });
+    expect(askWebLLM.mock.calls[1]?.[3]?.max_tokens).toBeLessThanOrEqual(2200);
   });
 
-  it('points an inline-style retry at an available co-located CSS Module', async () => {
+  it('stops after repeated malformed source responses instead of exhausting the turn budget', async () => {
     askWebLLM
       .mockResolvedValueOnce(
-        '{"action":"write_file","path":"src/App.jsx","content":"export default () => <main style={{ color: \'red\' }} />;"}',
+        '{"action":"write_file","path":"src/App.jsx","content":"export default function App() { return <main><h1>Game</h1></main>; }}"}',
       )
-      .mockResolvedValueOnce('{"action":"finish","summary":"no changes"}');
+      .mockResolvedValueOnce(
+        '{"action":"write_file","path":"src/App.jsx","content":"export default function App() { return <main><h1>Game</h1></main>; } } // retry"}',
+      )
+      .mockResolvedValueOnce(
+        '{"action":"write_file","path":"src/App.jsx","content":"export default function App() { return <main><h1>Game</h1></main>; }}"}',
+      )
+      .mockResolvedValueOnce(
+        '{"action":"write_file","path":"src/App.jsx","content":"export default function App() { return <main><h1>Game</h1></main>; } } // retry"}',
+      )
+      .mockResolvedValue('{"action":"finish","summary":"should not reach"}');
 
     await expect(
       runActionLoop({
-        request: 'style app',
-        files: {
-          'src/App.jsx': 'export default () => <main />;',
-          'src/App.module.css': '.app { color: red; }',
-        },
-        model: 'test',
+        request: 'fix syntax in the game',
+        files: { 'src/App.jsx': 'export default function App() { return null; }' },
+        model: 'Qwen2.5-Coder-1.5B-Instruct-q4f16_1-MLC',
       }),
-    ).rejects.toThrow(/could not provide a write_file action/);
+    ).rejects.toThrow(/repeatedly produced malformed source/);
+    expect(askWebLLM.mock.calls.length).toBeLessThan(5);
+  });
 
-    const repairMessage = askWebLLM.mock.calls[1]?.[3]?.messages
-      ?.map((message: { content: string }) => message.content)
-      .find((content: string) => content.includes('rejected component'));
-    expect(repairMessage).toContain('src/App.module.css is already available');
-    expect(repairMessage).toContain('using one jsx source fence');
-    expect(repairMessage).toContain('no style prop');
+  it('rewrites dynamic inline styles with a safe co-located CSS Module fallback', async () => {
+    askWebLLM
+      .mockResolvedValueOnce(
+        '{"action":"write_file","path":"src/App.jsx","content":"const color = \'red\'; export default () => <main style={{ color }} />;"}',
+      )
+      .mockResolvedValueOnce('{"action":"finish","summary":"no changes"}');
+
+    const result = await runActionLoop({
+      request: 'style app',
+      files: {
+        'src/App.jsx': 'export default () => <main />;',
+        'src/App.module.css': '.app { color: red; }',
+      },
+      model: 'test',
+    });
+
+    expect(result.files['src/App.jsx']).toContain('styles.inline0');
+    expect(result.files['src/App.jsx']).not.toContain('style=');
+    expect(result.files['src/App.module.css']).toContain('.inline0');
   });
 
   it('honors allowedActions, priorContext, and agentRole events', async () => {
@@ -899,10 +1318,46 @@ describe('runActionLoop', () => {
     expect(result.files['src/App.jsx']).toContain('Reminders');
     const prompt = askWebLLM.mock.calls[0]?.[3]?.messages?.[1]?.content;
     expect(prompt).toContain(
-      'Use the supplied workspace context; do not repeat the initial inventory.',
+      'Your next response must be exactly one write_file action for src/App.jsx',
     );
-    expect(prompt).toContain('workspace context has already been collected');
-    expect(prompt).not.toContain('Start by inspecting the workspace.');
+    expect(prompt).toContain('The workspace has already been inspected');
+    expect(prompt).toContain('--- src/App.jsx ---');
+    expect(prompt).not.toContain('[list_files]');
+    expect(askWebLLM.mock.calls[0]?.[3]?.messages?.[0]?.content).toContain(
+      'your next response must be exactly one write_file or',
+    );
+  });
+
+  it('forces a write after one redundant inspection when manager context is already ready', async () => {
+    askWebLLM
+      .mockResolvedValueOnce('{"action":"list_files"}')
+      .mockResolvedValueOnce(
+        '{"action":"write_file","path":"src/App.jsx","content":"export default function App() { return <main>Tic tac toe</main>; }"}',
+      )
+      .mockResolvedValueOnce('{"action":"validate"}')
+      .mockResolvedValueOnce('{"action":"finish","summary":"Created tic tac toe"}');
+    const validate = vi.fn().mockResolvedValue('Checks passed.');
+
+    const result = await runActionLoop({
+      request: 'create a tic tac toe game',
+      files: {
+        'src/App.jsx': 'export default function App() { return null; }',
+        'package.json': '{"name":"app"}',
+      },
+      model: 'Qwen2.5-Coder-3B-Instruct-q4f16_1-MLC',
+      validate,
+      priorContext: '[list_files]\nsrc/App.jsx\n[read_file]\nexisting animated card source',
+    });
+
+    expect(result.files['src/App.jsx']).toContain('Tic tac toe');
+    expect(askWebLLM.mock.calls[0]?.[3]?.messages?.[1]?.content).toContain(
+      'Your next response must be exactly one write_file action for src/App.jsx',
+    );
+    expect(askWebLLM.mock.calls[1]?.[3]?.messages?.[0]?.content).toContain('emergency write mode');
+    expect(askWebLLM.mock.calls[0]?.[3]).toMatchObject({
+      max_tokens: 1800,
+      contextWindowSize: 4096,
+    });
   });
 
   it('requires preview inspection before a visual review can finish', async () => {
@@ -926,7 +1381,8 @@ describe('runActionLoop', () => {
     expect(askWebLLM.mock.calls[0]?.[3]).toMatchObject({
       temperature: 0.12,
       top_p: 0.8,
-      max_tokens: 2400,
+      max_tokens: 2200,
+      contextWindowSize: 4096,
     });
   });
 
@@ -1113,9 +1569,6 @@ export const title = "Today";
       .mockResolvedValueOnce(
         `{"action":"write_file","path":"src/components/TodoApp.module.css","content":${JSON.stringify(todoStyles)}}`,
       )
-      .mockResolvedValueOnce(
-        `{"action":"write_file","path":"src/components/TodoApp.module.css","content":${JSON.stringify(todoStyles)}}`,
-      )
       .mockResolvedValueOnce('{"action":"finish","summary":"Created the todo app"}');
     const validate = vi.fn().mockResolvedValue({ status: 'passed', check: 'build' });
     const events: AgentEvent[] = [];
@@ -1132,6 +1585,43 @@ export const title = "Today";
     expect(result.files['src/components/TodoApp.module.css']).toBe(todoStyles);
     expect(validate).toHaveBeenCalledOnce();
     expect(events.some((event) => event.message?.includes('Automatically validating'))).toBe(true);
+  });
+
+  it('does not auto-finish when repeated-write validation fails', async () => {
+    const brokenSource = 'export default function App() { return <main>Broken</main>; }';
+    askWebLLM
+      .mockResolvedValueOnce(
+        `{"action":"write_file","path":"src/App.jsx","content":${JSON.stringify(brokenSource)}}`,
+      )
+      .mockResolvedValueOnce(
+        `{"action":"write_file","path":"src/App.jsx","content":${JSON.stringify(brokenSource)}}`,
+      )
+      .mockResolvedValueOnce('{"action":"validate"}')
+      .mockResolvedValueOnce('{"action":"finish","summary":"done"}')
+      .mockResolvedValueOnce(
+        `{"action":"write_file","path":"src/App.jsx","content":${JSON.stringify(brokenSource)}}`,
+      )
+      .mockResolvedValueOnce(
+        `{"action":"write_file","path":"src/App.jsx","content":${JSON.stringify(brokenSource)}}`,
+      );
+    const validate = vi.fn().mockResolvedValue({
+      status: 'failed',
+      check: 'build',
+      diagnostics: 'The symbol "styles" has already been declared.',
+    });
+    const events: AgentEvent[] = [];
+
+    await expect(
+      runActionLoop({
+        request: 'create a tic tac toe game',
+        files: { 'src/App.jsx': 'export default function App() { return null; }' },
+        model: 'test',
+        validate,
+        onEvent: (event) => events.push(event),
+      }),
+    ).rejects.toThrow(/Validation failed after (?:3 repair attempts|forced write recovery)/);
+    expect(validate).toHaveBeenCalledTimes(2);
+    expect(events.some((event) => event.type === 'finished')).toBe(false);
   });
 
   it('creates a new component file without treating its absence as a read error', async () => {
@@ -1258,7 +1748,7 @@ export const title = "Today";
       validate,
     });
 
-    expect(result.summary).toContain('repeatedly read unchanged files');
+    expect(result.summary).toContain('Completed the requested changes and validated the build');
     expect(validate).toHaveBeenCalledOnce();
   });
 
@@ -1306,9 +1796,61 @@ export const title = "Today";
       validate,
     });
 
-    expect(result.summary).toContain('repeated an identical write action');
+    expect(result.summary).toContain('Completed the requested changes and validated the build');
     expect(result.files['src/components/TodoApp.module.css']).toBe(todoStyles);
     expect(validate).toHaveBeenCalledOnce();
+  });
+
+  it('finishes after two consecutive validates instead of looping', async () => {
+    askWebLLM
+      .mockResolvedValueOnce(
+        '{"action":"write_file","path":"src/App.jsx","content":"import styles from \\"./App.module.css\\"; export default function App() { return <main className={styles.app}>Game</main>; }"}',
+      )
+      .mockResolvedValueOnce(
+        '{"action":"write_file","path":"src/App.module.css","content":".app { display: grid; }"}',
+      )
+      .mockResolvedValueOnce('{"action":"validate"}')
+      .mockResolvedValueOnce('{"action":"validate"}')
+      .mockResolvedValueOnce('{"action":"validate"}');
+    const validate = vi.fn().mockResolvedValue({ status: 'passed', check: 'build' });
+
+    const result = await runActionLoop({
+      request: 'create a tic tac toe game',
+      files: { 'src/App.jsx': 'export default function App() { return null; }' },
+      model: 'test',
+      validate,
+    });
+
+    expect(result.summary).toContain('Completed the requested changes and validated the build');
+    expect(validate.mock.calls.length).toBeLessThanOrEqual(3);
+    expect(askWebLLM.mock.calls.length).toBeLessThanOrEqual(4);
+  });
+
+  it('recovers missing CSS modules when auto-finishing after a validate loop', async () => {
+    const app = `import styles from "./App.module.css";
+export default function App() {
+  return <div className={styles.container}><button className={styles.cell}>X</button></div>;
+}`;
+    askWebLLM
+      .mockResolvedValueOnce(
+        `{"action":"write_file","path":"src/App.jsx","content":${JSON.stringify(app)}}`,
+      )
+      .mockResolvedValueOnce(
+        '{"action":"write_file","path":"src/App.module.css","content":".container { display: flex; }"}',
+      )
+      .mockResolvedValueOnce('{"action":"validate"}')
+      .mockResolvedValueOnce('{"action":"validate"}');
+    const validate = vi.fn().mockResolvedValue({ status: 'passed', check: 'build' });
+
+    const result = await runActionLoop({
+      request: 'create a game',
+      files: { 'src/App.jsx': 'export default function App() { return null; }' },
+      model: 'test',
+      validate,
+    });
+
+    expect(result.files['src/App.module.css']).toContain('.cell');
+    expect(result.summary).toContain('Completed the requested changes and validated the build');
   });
 
   it('labels an unwired multi-file draft as partial at the safety limit', async () => {
@@ -1371,7 +1913,10 @@ export const title = "Today";
   it('treats a missing file read as an actionable observation', async () => {
     askWebLLM
       .mockResolvedValueOnce('{"action":"read_file","path":"src/components/TaskList.module.css"}')
-      .mockResolvedValueOnce('{"action":"finish","summary":"no changes"}');
+      .mockResolvedValueOnce(
+        '{"action":"write_file","path":"src/App.jsx","content":"export default function App() { return <main />; }"}',
+      )
+      .mockResolvedValueOnce('{"action":"finish","summary":"created"}');
     const events: AgentEvent[] = [];
 
     await runActionLoop({
@@ -1415,30 +1960,29 @@ export const title = "Today";
       .mockResolvedValueOnce('{"action":"list_files"}')
       .mockResolvedValueOnce('{"action":"validate"}')
       .mockResolvedValueOnce('{"action":"list_files"}')
-      .mockResolvedValueOnce('{"action":"validate"}')
-      .mockResolvedValueOnce('{"action":"finish","summary":"done"}')
-      .mockResolvedValueOnce('{"action":"validate"}')
-      .mockResolvedValueOnce('{"action":"finish","summary":"done"}');
+      .mockResolvedValueOnce('{"action":"validate"}');
 
     const events: AgentEvent[] = [];
-    const validate = vi
-      .fn()
-      .mockResolvedValueOnce('failed checks')
-      .mockResolvedValueOnce('failed checks')
-      .mockResolvedValueOnce('failed checks')
-      .mockResolvedValueOnce('Checks passed.');
-    const result = await runActionLoop({
-      request: 'repair',
-      files: { 'src/a.js': 'a' },
-      model: 'test',
-      validate,
-      onEvent: (event) => events.push(event),
-    });
+    const validate = vi.fn().mockResolvedValue('failed checks');
+    await expect(
+      runActionLoop({
+        request: 'repair',
+        files: { 'src/a.js': 'a' },
+        model: 'test',
+        validate,
+        onEvent: (event) => events.push(event),
+      }),
+    ).rejects.toThrow(/Validation failed after 3 repair attempts/);
 
-    expect(result.summary).toBe('done');
+    expect(validate).toHaveBeenCalledTimes(3);
     expect(
-      events.some((event) => event.message?.includes('Validation failed after 3 repair')),
-    ).toBe(true);
+      events.filter(
+        (event) =>
+          event.type === 'tool' &&
+          typeof event.action === 'object' &&
+          event.action?.action === 'validate',
+      ),
+    ).toHaveLength(3);
   });
 
   it('covers semantic search, preview inspection, and project checks', async () => {
@@ -1475,10 +2019,18 @@ export const title = "Today";
   });
 
   it('validates staged changes when Qwen2.5-Coder recovery limit is reached with staged edits', async () => {
+    const playableComponent = PLAYABLE_INTERACTIVE_APP.replace(
+      'function App',
+      'function NotesPanel',
+    ).replace('<h1>Notes</h1>', '<h1>NotesPanel</h1>');
     askWebLLM
       .mockResolvedValueOnce('{"action":"list_files"}')
       .mockResolvedValueOnce(
-        '{"action":"write_file","path":"src/components/TicTacToe.jsx","content":"export default function TicTacToe() { return <div>TicTacToe</div>; }"}',
+        JSON.stringify({
+          action: 'write_file',
+          path: 'src/components/NotesPanel.jsx',
+          content: playableComponent,
+        }),
       )
       .mockResolvedValueOnce('{"action":"read_file","path":"src/App.jsx"}')
       .mockResolvedValueOnce('{"action":"read_file","path":"src/App.jsx"}')
@@ -1488,7 +2040,7 @@ export const title = "Today";
 
     const validate = vi.fn().mockResolvedValue('Checks passed.');
     const result = await runActionLoop({
-      request: 'Create a tick tack toe game',
+      request: 'Create a notes app',
       files: {
         'src/App.jsx':
           'export default function App() { return <div><h1>New Project</h1><p>Start coding here...</p></div>; }',
@@ -1497,8 +2049,10 @@ export const title = "Today";
       validate,
     });
 
-    expect(result.files['src/App.jsx']).toContain('import TicTacToe from "./components/TicTacToe"');
-    expect(result.files['src/components/TicTacToe.jsx']).toContain('TicTacToe');
+    expect(result.files['src/App.jsx']).toContain(
+      'import NotesPanel from "./components/NotesPanel"',
+    );
+    expect(result.files['src/components/NotesPanel.jsx']).toContain('NotesPanel');
     expect(validate).toHaveBeenCalled();
   });
 

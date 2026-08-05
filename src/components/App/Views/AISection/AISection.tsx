@@ -4,6 +4,8 @@ import {
   AgentSessionState,
   formatReasoningEvents,
   getActiveAgentSession,
+  getLatestManagerError,
+  withoutManagerErrorMessages,
 } from '@/components/App/Panes/Prompt/AgentSessions';
 import { PromptUiState } from '@/components/App/Panes/Prompt/PromptState';
 import { requireStore } from '@/components/App/types';
@@ -119,6 +121,7 @@ export default function AISectionView({ tab }: { tab: Tab }) {
   const webLLMState = requireStore(WebLLMState.useState(['engines']));
   const promptUiState = requireStore(PromptUiState.useState(['selectedModel']));
   const [copied, setCopied] = useState(false);
+  const [autoScroll, setAutoScroll] = useState(true);
   const contentRef = useRef<HTMLDivElement | null>(null);
   const activeSession = getActiveAgentSession(agentSessionState);
   const [showStepIO, setShowStepIO] = useState(activeSession?.showStepIO === true);
@@ -145,8 +148,9 @@ export default function AISectionView({ tab }: { tab: Tab }) {
     ...(modelProgress ? [{ text: modelProgress, timestamp: '' }] : []),
     ...displayedReasoningEntries,
   ];
-  const transcriptText = activeSession?.messages?.length
-    ? activeSession.messages
+  const transcriptMessages = withoutManagerErrorMessages(activeSession?.messages || []);
+  const transcriptText = transcriptMessages.length
+    ? transcriptMessages
         .map((message) => `[${message.timestamp || 'now'}] ${message.role}: ${message.text}`)
         .join('\n\n')
     : '';
@@ -155,6 +159,7 @@ export default function AISectionView({ tab }: { tab: Tab }) {
     activeSession?.status,
     activeSession?.runUsage,
   );
+  const latestError = getLatestManagerError(activeSession);
 
   useEffect(() => {
     setShowStepIO(activeSession?.showStepIO === true);
@@ -180,13 +185,14 @@ export default function AISectionView({ tab }: { tab: Tab }) {
             ...changeSet.files.map((file) => `- ${file.path} (${file.status || 'pending review'})`),
           ].join('\n')
         : 'No active change set.'
-      : reasoningContent.length || transcriptText
+      : reasoningContent.length || transcriptText || latestError
         ? [
             transcriptText ? `--- Transcript ---\n${transcriptText}` : '',
             ...reasoningContent.map(
               ({ text, timestamp }) => `${timestamp ? `[${timestamp}] ` : ''}${text}`,
             ),
             runUsageSummary,
+            latestError ? `--- Latest error ---\n${latestError}` : '',
           ]
             .filter(Boolean)
             .join('\n\n')
@@ -204,8 +210,11 @@ export default function AISectionView({ tab }: { tab: Tab }) {
         title={titleBySection[section]}
         showStepIOToggle={section === 'reasoning'}
         showStepIO={section === 'reasoning' && showStepIO}
+        showAutoScrollToggle={section === 'reasoning'}
+        autoScroll={section === 'reasoning' && autoScroll}
         copied={copied}
         onToggleStepIO={toggleStepIO}
+        onToggleAutoScroll={() => setAutoScroll((enabled) => !enabled)}
         onCopy={copy}
       />
       {section === 'reasoning' ? (
@@ -213,9 +222,12 @@ export default function AISectionView({ tab }: { tab: Tab }) {
           activeSession={activeSession}
           reasoningGroups={reasoningGroups}
           runUsageSummary={runUsageSummary}
+          latestError={latestError}
           fallbackContent={content}
           content={content}
           contentRef={contentRef}
+          autoScroll={autoScroll}
+          onUserScroll={() => setAutoScroll(false)}
         />
       ) : (
         <AISectionChanges content={content} />

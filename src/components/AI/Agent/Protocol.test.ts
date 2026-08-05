@@ -13,6 +13,16 @@ describe('agent protocol', () => {
     expect(AGENT_SYSTEM_PROMPT).toContain('generic white card, system font, blue primary button');
   });
 
+  it('isolates generated preview colors from the host theme', () => {
+    expect(AGENT_SYSTEM_PROMPT).toContain(':global(:root)');
+    expect(AGENT_SYSTEM_PROMPT).toContain(':global(body)');
+    expect(AGENT_SYSTEM_PROMPT).toContain(':global(#root)');
+    expect(AGENT_SYSTEM_PROMPT).toContain('WCAG AA contrast');
+    expect(AGENT_SYSTEM_PROMPT).toContain(
+      'never combine a dark background with default black text',
+    );
+  });
+
   it('requires new CSS Modules before the components that import them', () => {
     expect(AGENT_SYSTEM_PROMPT).toContain(
       'write that complete *.module.css file before writing the importing JSX or TSX file',
@@ -38,6 +48,19 @@ describe('agent protocol', () => {
     expect(() => normalizeAgentPath('../secret')).toThrow(/workspace/);
   });
 
+  it('recovers unfenced source that follows write_file metadata', () => {
+    expect(
+      parseAgentAction(`{"action":"write_file","path":"src/App.jsx","reason":"build game"}
+export default function App() {
+  return <main>Tic Tac Toe</main>;
+}`),
+    ).toMatchObject({
+      action: 'write_file',
+      path: 'src/App.jsx',
+      content: 'export default function App() {\n  return <main>Tic Tac Toe</main>;\n}',
+    });
+  });
+
   it('requires complete content for writes', () => {
     expect(() => parseAgentAction('{"action":"write_file","path":"a.js"}')).toThrow(/content/);
     expect(() => parseAgentAction('```json\n{"action":"write_file","path":"a.js"}\n```')).toThrow(
@@ -58,6 +81,73 @@ export default function App() {
       path: 'src/App.jsx',
       reason: 'build UI',
       content: "export default function App() {\n  return <h1>Today's tasks</h1>;\n}",
+    });
+  });
+
+  it('accepts react-labelled fences and prefers them over empty JSON content', () => {
+    expect(
+      parseAgentAction(`{"action":"write_file","path":"src/App.jsx","content":"","reason":"build"}
+\`\`\`react
+import { useState } from "react";
+export default function App() {
+  const [board, setBoard] = useState(Array(9).fill(null));
+  return <main>{board.map((cell, i) => <button key={i} onClick={() => setBoard(board)}>{cell}</button>)}</main>;
+}
+\`\`\``),
+    ).toMatchObject({
+      action: 'write_file',
+      path: 'src/App.jsx',
+      content: expect.stringContaining('useState'),
+    });
+  });
+
+  it('prefers a complete source fence over a truncated JSON content field', () => {
+    expect(
+      parseAgentAction(`{"action":"write_file","path":"src/App.jsx","content":"export default function App() { return null; }","reason":"build"}
+\`\`\`jsx
+import { useState } from "react";
+export default function App() {
+  const [value, setValue] = useState(0);
+  return <button onClick={() => setValue(value + 1)}>{value}</button>;
+}
+\`\`\``),
+    ).toMatchObject({
+      action: 'write_file',
+      path: 'src/App.jsx',
+      content: expect.stringContaining('useState'),
+    });
+  });
+
+  it('recovers fence-only source when a default write path is supplied', () => {
+    expect(
+      parseAgentAction(
+        `\`\`\`jsx
+import { useState } from "react";
+export default function App() {
+  return <main>Ready</main>;
+}
+\`\`\``,
+        { defaultWritePath: 'src/App.jsx' },
+      ),
+    ).toMatchObject({
+      action: 'write_file',
+      path: 'src/App.jsx',
+      content: expect.stringContaining('export default function App'),
+    });
+  });
+
+  it('recovers raw source-only replies during targeted recovery', () => {
+    expect(
+      parseAgentAction(
+        `export default function App() {
+  return <main>Ready</main>;
+}`,
+        { defaultWritePath: 'src/App.jsx' },
+      ),
+    ).toMatchObject({
+      action: 'write_file',
+      path: 'src/App.jsx',
+      content: expect.stringContaining('Ready'),
     });
   });
 

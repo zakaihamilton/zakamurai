@@ -16,8 +16,11 @@ Zakamurai is a browser-based IDE built for editing, AI-assisted changes, in-brow
 
 ### Prerequisites
 
-- [Node.js](https://nodejs.org/) 24 (see [`.nvmrc`](./.nvmrc))
+- [Node.js](https://nodejs.org/) 24 as the baseline, with Node 25 compatibility-tested in CI (see [`.nvmrc`](./.nvmrc))
 - npm
+
+The supported Node.js engine range is `>=24 <26`; Node 24 is the canonical development and
+release target.
 
 ### Run locally
 
@@ -122,6 +125,7 @@ npm run test:promptfoo # Static AI compliance eval (no API keys)
 npm run test:ai-soak # Mocked 200-request AI lifecycle and cleanup regression
 npm run analyze:ai -- report.json # Summarize AI metrics from an exported support report
 npm run check:architecture # Enforce component architecture rules
+npm run check:runtime-assets # Verify generated compiler/RAG runtime assets and size
 npm run test:e2e      # Chromium smoke e2e (basic + advanced)
 npm run test:e2e:chromium # Alias for test:e2e
 npm run test:visual   # Screenshot regression (Chromium + WebKit)
@@ -145,6 +149,11 @@ architectural drift scan when `lucid` or `lucidshark` is on PATH, the AI lifecyc
 eval, performance budget, and full visual regression. Install lucidshark separately to enable the
 drift scan. For physical-device validation, follow the
 [AI memory profiling workflow](./docs/ai-memory-profiling.md).
+
+Generated browser runtime assets are prepared from a deterministic manifest. The setup step keeps
+only the compiler, preview worker, and RAG WASM files required by supported browser paths;
+`npm run check:runtime-assets` verifies that no stale maps, declarations, or unexpected runtime
+files remain and that the generated payload stays within its deployment budget.
 
 Static `npm run test:promptfoo` uses the `echo` provider in [promptfooconfig.yaml](./promptfooconfig.yaml)
 and golden fixtures in `tests/ai-golden/` — **no API keys required**. It is included in `verify` and CI.

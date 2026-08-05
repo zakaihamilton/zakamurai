@@ -1,9 +1,7 @@
 import { getCachedWebLLMModelIds } from '@/components/AI/WebLLMAPI';
 import { RECOMMENDED_WEB_LLM_MODEL, WEB_LLM_MODELS } from '@/components/AI/WebLLMModels';
 import { WebLLMState } from '@/components/AI/WebLLMState';
-import { AppState } from '@/components/App/AppState';
 import { PromptUiState } from '@/components/App/Panes/Prompt/PromptState';
-import { SidebarState } from '@/components/App/Panes/Sidebar';
 import { LogState } from '@/components/App/Views/LogArea';
 import Dialog from '@/components/ui/Dialog';
 import { Icons } from '@/components/ui/Icons';
@@ -18,8 +16,6 @@ export default function WelcomePrompt() {
   const promptUiState = PromptUiState.usePassiveState();
   const [value, setValue] = useState(() => promptUiState?.welcomePrompt || '');
   const [isDownloadConfirmationOpen, setDownloadConfirmationOpen] = useState(false);
-  const { isMobile } = requireStore(AppState.useState(['isMobile']));
-  const sidebarState = SidebarState.usePassiveState();
   const { isAIProcessing } = requireStore(LogState.useState(['isAIProcessing']));
   const { cachedModelIds = [] } = requireStore(WebLLMState.useState(['cachedModelIds']));
   const selectedModel = promptUiState?.selectedModel || RECOMMENDED_WEB_LLM_MODEL.id;
@@ -56,17 +52,15 @@ export default function WelcomePrompt() {
 
   const startRequest = useCallback(() => {
     const request = value.trim();
-    if (!request || isAIProcessing || !promptUiState || !sidebarState) return;
+    if (!request || isAIProcessing || !promptUiState) return;
 
     promptUiState((draft) => {
       draft.welcomeRequest = { text: request, scope: 'project' };
+      // Keep the last submitted prompt available when the Welcome page is opened again.
+      draft.welcomePrompt = request;
     });
-    sidebarState((draft) => {
-      if (isMobile) draft.isAIInputPopupOpen = true;
-      else draft.showAIInput = true;
-    });
-    handleValueChange('');
-  }, [handleValueChange, isAIProcessing, isMobile, promptUiState, sidebarState, value]);
+    setValue('');
+  }, [isAIProcessing, promptUiState, value]);
 
   const handleSubmit = useCallback(
     async (event: React.FormEvent<HTMLFormElement>) => {

@@ -112,9 +112,36 @@ describe('ReasoningPanel', () => {
     const error = screen.getByRole('alert');
     expect(error).toHaveTextContent('Latest error');
     expect(error).toHaveTextContent('The local model stopped responding.');
+    expect(error).not.toHaveTextContent('AI Manager error:');
+    expect(screen.queryByText(/AI Manager error:/)).toBeNull();
     expect(reasoning.compareDocumentPosition(error) & Node.DOCUMENT_POSITION_FOLLOWING).toBe(
       Node.DOCUMENT_POSITION_FOLLOWING,
     );
+  });
+
+  it('shows the latest error at the end of the scrollable log', () => {
+    mockAgentSessionStore = createDefaultAgentSessions();
+    const active = expectAgentSession(mockAgentSessionStore);
+    mockAgentSessionStore.sessions[active.id] = {
+      ...active,
+      reasoning: `${'Step complete.\n'.repeat(40)}Final step.`,
+      status: 'error',
+      messages: [
+        {
+          id: 1,
+          role: 'ai',
+          text: 'AI Manager error: Validation failed after 3 repair attempts.',
+          timestamp: '10:00:05',
+        },
+      ],
+    };
+
+    const { container } = render(<ReasoningPanel />);
+    const error = screen.getByRole('alert');
+    const scrollRegion = container.querySelector('[class*="reasoningContent"]');
+    expect(scrollRegion).toBeTruthy();
+    expect(scrollRegion?.contains(error)).toBe(true);
+    expect(scrollRegion?.lastElementChild).toBe(error);
   });
 
   it('clears a previous error while a new model run is active', () => {
@@ -176,6 +203,52 @@ describe('ReasoningPanel', () => {
     expect(screen.getByText('Qwen3.5-4B-q4f16_1-MLC')).toBeDefined();
     expect(screen.getByText('1.3 s')).toBeDefined();
     expect(screen.getByText('read_file ×2 · write_file ×1')).toBeDefined();
+  });
+
+  it('toggles auto-scroll on and off from the toolbar', () => {
+    setSessionReasoning('Scrolling log content');
+    const scrollTo = vi.fn();
+    const originalScrollTo = HTMLElement.prototype.scrollTo;
+    HTMLElement.prototype.scrollTo = scrollTo;
+
+    try {
+      render(<ReasoningPanel />);
+
+      const toggle = screen.getByRole('button', { name: 'Turn auto-scroll off' });
+      expect(toggle.getAttribute('aria-pressed')).toBe('true');
+      expect(scrollTo).toHaveBeenCalled();
+
+      scrollTo.mockClear();
+      fireEvent.click(toggle);
+
+      expect(
+        screen.getByRole('button', { name: 'Turn auto-scroll on' }).getAttribute('aria-pressed'),
+      ).toBe('false');
+      expect(scrollTo).not.toHaveBeenCalled();
+
+      fireEvent.click(screen.getByRole('button', { name: 'Turn auto-scroll on' }));
+      expect(
+        screen.getByRole('button', { name: 'Turn auto-scroll off' }).getAttribute('aria-pressed'),
+      ).toBe('true');
+      expect(scrollTo).toHaveBeenCalled();
+    } finally {
+      HTMLElement.prototype.scrollTo = originalScrollTo;
+    }
+  });
+
+  it('turns auto-scroll off when the user starts scrolling', () => {
+    setSessionReasoning('Review this reasoning');
+
+    render(<ReasoningPanel />);
+
+    const scrollRegion = document.querySelector('[class*="reasoningContent"]');
+    expect(scrollRegion).toBeTruthy();
+    fireEvent.wheel(scrollRegion as Element);
+
+    expect(screen.getByRole('button', { name: 'Turn auto-scroll on' })).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    );
   });
 
   it('toggles per-step model input/output and includes the visible setting in copies', async () => {

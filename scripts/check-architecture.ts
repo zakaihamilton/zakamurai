@@ -16,6 +16,15 @@ const COLOCATION_EXEMPT =
 
 type ArchitectureViolation = { file: string; reason: string };
 
+const LINE_BUDGETS: Record<string, number> = {
+  'src/components/AI/Agent/ActionLoop.ts': 1500,
+  'src/components/AI/WebLLMAPI.tsx': 1150,
+  'src/components/Storage/Settings.ts': 850,
+  'src/components/App/Views/EditorArea/highlighter.tsx': 800,
+  'src/components/App/Panes/Prompt/useAgentRunner.tsx': 750,
+  'src/components/AI/Agent/ManagerRunner.ts': 700,
+};
+
 async function collectSourceFiles(directory: string): Promise<string[]> {
   const entries = await readdir(directory, { withFileTypes: true });
   const files = await Promise.all(
@@ -150,6 +159,14 @@ function checkFile(filePath: string, content: string): ArchitectureViolation[] {
     violations.push({
       file: rel,
       reason: 'Global className strings are forbidden; use CSS module classes only.',
+    });
+  }
+
+  const lineBudget = LINE_BUDGETS[rel];
+  if (lineBudget && content.split('\n').length > lineBudget) {
+    violations.push({
+      file: rel,
+      reason: `Module exceeds its maintainability budget of ${lineBudget} lines.`,
     });
   }
 

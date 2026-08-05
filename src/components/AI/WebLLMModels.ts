@@ -51,28 +51,28 @@ export const WEB_LLM_MODELS: WebLLMModel[] = [
     name: 'Qwen2.5 Coder 3B',
     ramMB: 2504.76,
     storageMB: 1750,
-    requirement: 'Smaller coding-focused fallback. Better coding fit than many generic 3B models.',
+    requirement: 'Recommended coding model for reliable structured edits on modern WebGPU devices.',
     details: [
       ['System', 'Most modern WebGPU-capable devices'],
       ['Storage', 'Medium-small browser cache footprint'],
       ['Speed', 'Faster than 7B coding models'],
       ['Best for', 'Quick code edits, smaller React/TypeScript tasks, constrained devices'],
     ],
-    recommended: false,
+    recommended: true,
   },
   {
     id: 'Qwen2.5-Coder-1.5B-Instruct-q4f16_1-MLC',
     name: 'Qwen2.5 Coder 1.5B',
     ramMB: 1629.75,
     storageMB: 920,
-    requirement: 'Compact coding-focused model for lower-memory WebGPU devices.',
+    requirement: 'Compact coding-focused fallback for lower-memory WebGPU devices.',
     details: [
       ['System', 'Lower-memory WebGPU-capable devices with ~1.6 GB VRAM'],
       ['Storage', 'Small browser cache footprint'],
       ['Speed', 'Fast startup and responsive generation'],
       ['Best for', 'Small code edits, autocomplete, and short coding questions'],
     ],
-    recommended: true,
+    recommended: false,
   },
   {
     id: 'Qwen3.5-2B-q4f16_1-MLC',
@@ -124,6 +124,19 @@ export const RECOMMENDED_VISUAL_REVIEW_MODEL = WEB_LLM_MODELS.find(
   (model) => model.id === 'Qwen3.5-9B-q4f16_1-MLC',
 )!;
 
+const isMacDevice = (): boolean => {
+  if (typeof navigator === 'undefined') return false;
+  const currentNavigator = navigator as Navigator & {
+    userAgentData?: { platform?: string };
+  };
+  const platform =
+    currentNavigator.userAgentData?.platform ||
+    currentNavigator.platform ||
+    currentNavigator.userAgent ||
+    '';
+  return /mac/i.test(platform);
+};
+
 /**
  * Choose a conservative first-run default on memory-constrained machines.
  * `deviceMemory` is deliberately coarse, so an explicit user selection is
@@ -132,8 +145,11 @@ export const RECOMMENDED_VISUAL_REVIEW_MODEL = WEB_LLM_MODELS.find(
 export const getDeviceAppropriateDefaultModelId = (): string => {
   if (typeof navigator === 'undefined') return RECOMMENDED_WEB_LLM_MODEL.id;
   const deviceMemory = (navigator as Navigator & { deviceMemory?: number }).deviceMemory;
+  if (Number.isFinite(deviceMemory) && (deviceMemory || 0) <= 2) {
+    return 'Qwen3.5-0.8B-q4f16_1-MLC';
+  }
+  if (isMacDevice()) return RECOMMENDED_WEB_LLM_MODEL.id;
   if (!Number.isFinite(deviceMemory)) return RECOMMENDED_WEB_LLM_MODEL.id;
-  if ((deviceMemory || 0) <= 2) return 'Qwen3.5-0.8B-q4f16_1-MLC';
   return RECOMMENDED_WEB_LLM_MODEL.id;
 };
 

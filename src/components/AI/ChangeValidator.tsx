@@ -199,17 +199,179 @@ export function validateComponentStyling(path: string, content: string): string 
   return null;
 }
 
-/** Rejects comment-only scaffolding that claims an implementation belongs here. */
+/** Rejects comment-only scaffolding and non-code prose that claims to be an implementation. */
 export function validateGeneratedPlaceholder(path: string, content: string): string | null {
-  if (typeof content !== 'string' || stripComments(content).trim()) return null;
+  if (typeof content !== 'string') return null;
+  const stripped = stripComments(content).trim();
+  if (!stripped) {
+    if (
+      !/(?:your\s+)?implementation\b|goes\s+here|insert\s+(?:code|implementation)|\bTODO\b/i.test(
+        content,
+      )
+    ) {
+      return null;
+    }
+    return `Generated content for ${path} is only a placeholder. Return a complete working implementation instead.`;
+  }
+
+  if (!/\.(?:jsx|tsx)$/i.test(path)) return null;
+
+  // Stylesheet-shaped payloads are handled by validateFileContentType.
   if (
-    !/(?:your\s+)?implementation\b|goes\s+here|insert\s+(?:code|implementation)|\bTODO\b/i.test(
-      content,
+    /^(?:@(?:container|font-face|import|keyframes|layer|media|supports)\b|:root\b|[.#*\[]|(?:[a-z][\w-]*)(?:\s*\{|\s*[>+~]\s*|\s+|\s*,\s*[.#:]?)[^{]*\{)/i.test(
+      stripped,
     )
   ) {
     return null;
   }
-  return `Generated content for ${path} is only a placeholder. Return a complete working implementation instead.`;
+
+  const looksLikeSource =
+    /^(?:async\s+)?(?:class|const|enum|export|function|import|interface|let|type|var)\b/m.test(
+      stripped,
+    ) ||
+    /\b(?:export\s+default|function\s+[A-Za-z_$]|=>\s*[{(]|return\s*[(<]|use(?:State|Effect|Memo|Callback|Ref)\s*\(|<[A-Za-z][\w.]*)/.test(
+      stripped,
+    );
+  if (!looksLikeSource) {
+    return `Generated content for ${path} is not valid source code. Return a complete working implementation instead of prose or a request paraphrase.`;
+  }
+  return null;
+}
+
+const isAppEntryPath = (path: string): boolean =>
+  /(?:^|\/)(?:App|main|index)\.(?:jsx|tsx)$/i.test(path);
+
+const clipRequest = (request: string): string => request.trim().replace(/\s+/g, ' ').slice(0, 80);
+
+const isThinComponentShell = (path: string, content: string): boolean =>
+  isAppEntryPath(path) &&
+  /import\s+[A-Za-z_$][\w$]*\s+from\s+["']\.\/(?:components\/)?[^"']+["']/.test(content) &&
+  content.trim().length < 500;
+
+/**
+ * Rejects starter-template leftovers and trivial shells for create/build requests.
+ * Small local models often rename the placeholder title and finish without a real app.
+ */
+export function validateRequestFulfillment(
+  path: string,
+  content: string,
+  request: string,
+): string | null {
+  if (typeof content !== 'string' || typeof request !== 'string') return null;
+  if (!/\.(?:jsx|tsx)$/i.test(path)) return null;
+  if (!/\b(?:add|build|create|implement|make)\b/i.test(request)) return null;
+
+  const clipped = clipRequest(request);
+  if (/<h1>\s*New Project\s*<\/h1>/i.test(content) || /Start coding here\.\.\./i.test(content)) {
+    return `Generated content for ${path} still looks like the starter template. Implement the full request ("${clipped}") instead of leaving placeholder copy.`;
+  }
+
+  if (!isAppEntryPath(path) && !/components\//i.test(path)) return null;
+
+  // Thin App shells that only mount a component are fine; the component must fulfill the request.
+  if (isThinComponentShell(path, content)) return null;
+
+  const hasHeading = /<h[1-6]\b/i.test(content);
+  const hasMeaningfulSurface =
+    /<(?:button|input|select|textarea|a|img|canvas|form|section|article|ul|ol|p|table)\b/i.test(
+      content,
+    );
+  if (hasHeading && !hasMeaningfulSurface) {
+    return `Generated content for ${path} only renders a heading. Add the requested app's visible content, controls, or primary interaction before finishing.`;
+  }
+
+  if (content.trim().length < 400) {
+    return `Generated content for ${path} is too short to fulfill "${clipped}". Return a complete implementation instead of a stub.`;
+  }
+
+  const looksInteractive =
+    /<(?:button|input|select|textarea)\b/i.test(content) ||
+    /\bon(?:Click|Change|Submit|KeyDown)\b/.test(content);
+  if (!looksInteractive) return null;
+
+  const hasState = /\buse(?:State|Reducer)\b/.test(content);
+  const hasInteraction = /\bon(?:Click|Change|Submit|KeyDown)\b/.test(content);
+  if (!hasState || !hasInteraction) {
+    return `Generated content for ${path} does not look like a working implementation of "${clipped}". Include React state (useState/useReducer) and event handlers so the UI is interactive.`;
+  }
+
+  return null;
+}
+
+/** Rejects CSS Module rules that collapse referenced interactive controls. */
+export function validateInteractiveStyles(
+  path: string,
+  source: string,
+  stylesheetPath: string,
+  stylesheet: string,
+): string | null {
+  if (!/\.(jsx|tsx)$/i.test(path) || typeof source !== 'string') return null;
+  if (!/\.module\.css$/i.test(stylesheetPath) || typeof stylesheet !== 'string') return null;
+
+  const classNames = new Set(
+    [
+      ...source.matchAll(/\bstyles(?:\.([A-Za-z_-][\w-]*)|\[\s*["']([A-Za-z_-][\w-]*)["']\s*\])/g),
+    ].map((match) => match[1] || match[2]),
+  );
+  for (const className of classNames) {
+    const escaped = className.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const rule = new RegExp(`\\.${escaped}\\s*\\{([^}]*)\\}`, 'i').exec(stylesheet);
+    if (!rule) continue;
+    if (
+      /\b(?:height|min-height|max-height)\s*:\s*(?:0|[0-2]px)\b|\bdisplay\s*:\s*none\b|\bvisibility\s*:\s*hidden\b/i.test(
+        rule[1],
+      )
+    ) {
+      return `CSS Module rule .${className} in ${stylesheetPath} collapses or hides a referenced control. Give interactive elements a visible size, padding, and readable state. Do not use zero/near-zero height, display:none, or visibility:hidden.`;
+    }
+  }
+  return null;
+}
+
+/** True when staged JSX fulfills a create/build request (including required CSS Modules). */
+export function workspaceFulfillsInteractiveRequest(
+  files: Record<string, string>,
+  request: string,
+): string | null {
+  if (typeof request !== 'string') return null;
+  if (!/\b(?:add|build|create|implement|make)\b/i.test(request)) return null;
+
+  const jsxFiles = Object.entries(files).filter(([path]) => /\.(?:jsx|tsx)$/i.test(path));
+  for (const [path, content] of jsxFiles) {
+    if (/<h1>\s*New Project\s*<\/h1>/i.test(content) || /Start coding here\.\.\./i.test(content)) {
+      return `Generated content for ${path} still looks like the starter template. Implement the full request ("${clipRequest(request)}") instead of leaving placeholder copy.`;
+    }
+  }
+
+  const implementors = jsxFiles.filter(([path, content]) => !isThinComponentShell(path, content));
+  if (!implementors.length) {
+    return `Staged files do not fulfill "${clipRequest(request)}". Return a complete implementation before finishing.`;
+  }
+
+  for (const [path, content] of implementors) {
+    if (validateRequestFulfillment(path, content, request)) continue;
+    const needsStyles =
+      /<(?:button|input|select|textarea)\b/i.test(content) ||
+      /\bon(?:Click|Change|Submit|KeyDown)\b/.test(content);
+    if (needsStyles) {
+      const stylesheetPath = path.replace(/\.(jsx|tsx)$/i, '.module.css');
+      if (!/\.module\.css/.test(content) || !Object.hasOwn(files, stylesheetPath)) {
+        return `Generated content for ${path} is missing a co-located CSS Module (${stylesheetPath}). Import styles from that module and include layout rules for the UI.`;
+      }
+      const styleError = validateInteractiveStyles(
+        path,
+        content,
+        stylesheetPath,
+        files[stylesheetPath] || '',
+      );
+      if (styleError) {
+        return styleError;
+      }
+    }
+    return null;
+  }
+
+  return validateRequestFulfillment(implementors[0][0], implementors[0][1], request);
 }
 
 /** Keeps small generated apps on local state instead of adding unrequested state libraries. */
@@ -238,6 +400,12 @@ export function validateCssModuleUsage(path: string, content: string): string | 
   if (matches.some((match) => !match[1])) {
     return `CSS Modules in ${path} must be default-imported as a class map (for example, use a styles binding from the co-located module) instead of side-effect imported.`;
   }
+  if (
+    matches.some((match) => match[1] === 'styles') &&
+    /\b(?:const|let|var|function|class)\s+styles\b/.test(content)
+  ) {
+    return `The CSS Module binding styles is declared more than once in ${path}. Keep the imported styles class map and remove or rename the duplicate declaration.`;
+  }
   if (/\bclassName\s*=\s*["'][^"']+["']/.test(content)) {
     return `Use the imported CSS Module class map in ${path} (for example, className={styles.container}) instead of literal className strings.`;
   }
@@ -249,6 +417,15 @@ export function validateFileContentType(path: string, content: string): string |
   if (!/\.(jsx|tsx)$/i.test(path) || typeof content !== 'string') return null;
 
   const source = stripComments(content).trim();
+  const containsEmbeddedCss =
+    /(?:[.#][A-Za-z_-][\w-]*|:root|@(?:media|supports|keyframes|layer))\s*\{/i.test(source) ||
+    /--[\w-]+\s*:/m.test(source) ||
+    /(?:^|\n)\s*(?!import\b|export\b|const\b|let\b|var\b|function\b|return\b|if\b|for\b|while\b|switch\b|class\b)[a-z][\w-]*\s*\{\s*[-\w]+\s*:/im.test(
+      source,
+    );
+  if (containsEmbeddedCss) {
+    return `CSS content cannot be written to ${path}. Write it to a *.css or *.module.css file instead.`;
+  }
   if (
     /^(?:async\s+)?(?:class|const|enum|export|function|import|interface|let|type|var)\b/.test(
       source,

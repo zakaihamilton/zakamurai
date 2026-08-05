@@ -1,9 +1,10 @@
+import { withoutManagerErrorMessages } from '@/components/App/Panes/Prompt/AgentSessions';
 import type {
   AgentReasoningEntry,
   AgentSession,
   AgentSessionMessage,
 } from '@/components/state/domain-types';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import type { RefObject } from 'react';
 import ReactMarkdown, { type Components } from 'react-markdown';
 import styles from './AISectionReasoning.module.css';
@@ -14,9 +15,12 @@ type AISectionReasoningProps = {
   activeSession: AgentSession | null;
   reasoningGroups: ReasoningGroup[];
   runUsageSummary: string;
+  latestError?: string;
   fallbackContent: string;
   content: string;
   contentRef: RefObject<HTMLDivElement | null>;
+  autoScroll?: boolean;
+  onUserScroll?: () => void;
 };
 
 const markdownComponents: Components = {
@@ -107,30 +111,61 @@ export default function AISectionReasoning({
   activeSession,
   reasoningGroups,
   runUsageSummary,
+  latestError = '',
   fallbackContent,
   content,
   contentRef,
+  autoScroll = true,
+  onUserScroll,
 }: AISectionReasoningProps) {
-  const hasTranscript = Boolean(activeSession?.messages?.length);
+  const transcriptMessages = withoutManagerErrorMessages(activeSession?.messages || []);
+  const hasTranscript = transcriptMessages.length > 0;
+  const lastScrollTop = useRef(0);
+
+  const handleScroll = () => {
+    const contentElement = contentRef.current;
+    if (!contentElement) return;
+
+    if (contentElement.scrollTop < lastScrollTop.current && autoScroll) {
+      onUserScroll?.();
+    }
+    lastScrollTop.current = contentElement.scrollTop;
+  };
+
+  const handleUserScrollStart = () => {
+    if (autoScroll) onUserScroll?.();
+  };
 
   useEffect(() => {
-    if (!content || !contentRef.current) return;
+    if (!autoScroll || !content || !contentRef.current) return;
     contentRef.current.scrollTo({
       top: contentRef.current.scrollHeight,
       behavior: 'smooth',
     });
-  }, [content, contentRef]);
+  }, [autoScroll, content, contentRef]);
 
   return (
-    <div ref={contentRef} className={`${styles.content} ${styles.markdownContent}`}>
-      {hasTranscript ? <Transcript messages={activeSession?.messages || []} /> : null}
+    <div
+      ref={contentRef}
+      className={`${styles.content} ${styles.markdownContent}`}
+      onScroll={handleScroll}
+      onTouchMove={handleUserScrollStart}
+      onWheel={handleUserScrollStart}
+    >
+      {hasTranscript ? <Transcript messages={transcriptMessages} /> : null}
       <ReasoningGroups groups={reasoningGroups} />
       {runUsageSummary ? (
         <section className={styles.runSummary}>
           <ReactMarkdown components={summaryMarkdownComponents}>{runUsageSummary}</ReactMarkdown>
         </section>
       ) : null}
-      {!reasoningGroups.length && !runUsageSummary && !hasTranscript ? (
+      {latestError ? (
+        <aside className={styles.reasoningError} role="alert">
+          <strong className={styles.reasoningErrorLabel}>Latest error</strong>
+          <span>{latestError}</span>
+        </aside>
+      ) : null}
+      {!reasoningGroups.length && !runUsageSummary && !hasTranscript && !latestError ? (
         <section className={styles.reasoningGroup}>
           <article className={styles.reasoningEntry}>
             <div className={styles.reasoningText}>{fallbackContent}</div>
