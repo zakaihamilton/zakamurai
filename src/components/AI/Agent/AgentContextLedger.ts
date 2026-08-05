@@ -1,7 +1,5 @@
 import type { FileMap, WebLLMMessage } from '@/components/AI/types';
 
-export type AgentContextCacheState = 'hit' | 'cold-start' | 'rehydrated' | 'compacted' | 'evicted';
-
 export type AgentContextHandoff = {
   sessionId: string;
   modelId: string;

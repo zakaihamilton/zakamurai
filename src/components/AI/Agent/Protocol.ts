@@ -247,8 +247,6 @@ export function parseAgentAction(
   if (typeof text !== 'string') throw new Error('Agent response must be text');
   const allowed = new Set(allowedActions?.length ? allowedActions : ALL_AGENT_ACTIONS);
   let value: AgentAction;
-  const preview = text.slice(0, 180).replace(/\s+/g, ' ');
-  const fenceCount = (text.match(/```/g) || []).length;
   try {
     const fenced = text.match(/^\s*```json\s*([\s\S]*?)\s*```\s*$/i);
     value = parseJsonAction(fenced?.[1] || text);

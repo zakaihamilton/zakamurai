@@ -435,7 +435,9 @@ describe('browser-bundler', () => {
   });
 
   it('ignores vite.config files and only rejects unsupported CLI config flags', () => {
-    expect(() => assertBrowserBuildSupported(vfs({ '/vite.config.ts': '' }), 'vite build')).not.toThrow();
+    expect(() =>
+      assertBrowserBuildSupported(vfs({ '/vite.config.ts': '' }), 'vite build'),
+    ).not.toThrow();
     expect(() => assertBrowserBuildSupported(vfs({}), 'vite build --config custom.js')).toThrow(
       'do not support',
     );

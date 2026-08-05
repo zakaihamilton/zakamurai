@@ -1,21 +1,4 @@
-import type {
-  AgentChange,
-  RunAgentOptions,
-  RunAgentResult,
-  VerificationResult,
-  WebLLMMessage,
-} from '@/components/AI/types';
-
-export class AgentExecutionError extends Error {
-  changes: AgentChange[];
-  constructor(message: string, changes: AgentChange[]) {
-    super(message);
-    this.name = 'AgentExecutionError';
-    this.changes = changes;
-  }
-}
-
-class AgentRecoveryValidationError extends AgentExecutionError {}
+import type { RunAgentOptions, RunAgentResult, WebLLMMessage } from '@/components/AI/types';
 import {
   validateAIChanges,
   validateComponentStyling,
@@ -27,6 +10,7 @@ import {
   validateRequestFulfillment,
   workspaceFulfillsInteractiveRequest,
 } from '../ChangeValidator';
+import { AgentExecutionError, AgentRecoveryValidationError } from './ActionLoopErrors';
 import {
   AGENT_CONTEXT_WINDOW_SIZE,
   AGENT_GENERATION_TOKENS,
@@ -71,6 +55,7 @@ import {
   repairCssModuleStylesheet,
   rewriteInlineStylesToCssModule,
 } from './ActionLoopUtils';
+import { type ActionLoopValidationState, createValidationRunner } from './ActionLoopValidation';
 import { type ConsoleLogEntry, filterConsoleLogs, formatConsoleLogs } from './ConsoleLogInspector';
 import { AgentContextManager, formatVerificationResult } from './ContextManager';
 import { parseModelResult } from './ManagerProtocol';
@@ -147,9 +132,11 @@ export async function runActionLoop({
   let lastFingerprint = '';
   let repeatedActions = 0;
   let lastSuccessfulFingerprint = '';
-  let wroteSinceVerification = false;
-  let lastValidationFailed = false;
-  let repairAttempts = 0;
+  const validationState: ActionLoopValidationState = {
+    wroteSinceVerification: false,
+    lastValidationFailed: false,
+    repairAttempts: 0,
+  };
   let inspectedPreview = false;
   let recoveredNoOpWrite = '';
   let failedWritePath = '';
@@ -227,67 +214,15 @@ export async function runActionLoop({
       : base;
   };
 
-  const runValidation = async (
-    turn: number,
-    provenance: 'model' | 'recovery' = 'recovery',
-  ): Promise<string> => {
-    // Browser builds cannot execute Vite config files; stage their removal so validate can use
-    // supported defaults instead of burning repair attempts on an unfixable environment.
-    const unsupportedBrowserConfigs = [
-      'vite.config.js',
-      'vite.config.mjs',
-      'vite.config.cjs',
-      'vite.config.ts',
-      'vite.config.mts',
-    ];
-    const removedConfigs = unsupportedBrowserConfigs.filter((path) =>
-      Object.hasOwn(workspace.files, path),
-    );
-    for (const path of removedConfigs) {
-      workspace.delete(path);
-      onEvent({
-        type: 'tool',
-        turn,
-        action: { action: 'delete_file', path },
-        agentRole,
-        provenance: 'recovery',
-      });
-    }
-    onEvent({
-      type: 'tool',
-      turn,
-      action: { action: 'validate' },
-      agentRole,
-      provenance,
-    });
-    const rawVerification = validate
-      ? await validate(workspace.files)
-      : { status: 'unavailable', check: 'build', diagnostics: 'Validation is unavailable.' };
-    const verification: VerificationResult =
-      typeof rawVerification === 'string'
-        ? {
-            status: /\b(passed|success|ok)\b/i.test(rawVerification) ? 'passed' : 'failed',
-            check: 'build',
-            diagnostics: rawVerification,
-          }
-        : rawVerification;
-    const result = formatVerificationResult(verification);
-    context.record('verification', verification);
-    if (verification.status === 'passed' || verification.status === 'unavailable') {
-      wroteSinceVerification = false;
-      lastValidationFailed = false;
-      repairAttempts = 0;
-    } else {
-      lastValidationFailed = true;
-      if (++repairAttempts >= validationRepairLimit) {
-        throw new AgentExecutionError(
-          `Validation failed after ${validationRepairLimit} repair attempts. Last result: ${result}. Staged changes were preserved for review.`,
-          workspace.changes(),
-        );
-      }
-    }
-    return result;
-  };
+  const runValidation = createValidationRunner({
+    workspace,
+    validate,
+    onEvent,
+    agentRole,
+    context,
+    state: validationState,
+    validationRepairLimit,
+  });
 
   for (let turn = 1; turn <= maxTurns; turn++) {
     if (signal?.aborted) throw new DOMException('Agent stopped', 'AbortError');
@@ -752,7 +687,7 @@ export async function runActionLoop({
         stageRecoveredWrite(turn, stylesheet, cssModuleRecovery(source.content));
       }
       stageRecoveredWrite(turn, source.path, source.content);
-      wroteSinceVerification = true;
+      validationState.wroteSinceVerification = true;
       deferredSourceWrite = null;
       forcedWriteRecoveryPending = false;
       forcedRecoveryTargetPath = null;
@@ -1077,7 +1012,7 @@ export async function runActionLoop({
         }
         workspace.write(action.path || '', action.content || '');
         nonProductiveActionsWithoutWrite = 0;
-        wroteSinceVerification = true;
+        validationState.wroteSinceVerification = true;
         failedWritePath = '';
         unchangedReadSkips = 0;
         clearFailedWriteAttempts();
@@ -1157,7 +1092,7 @@ export async function runActionLoop({
 
         const newContent = applySearchReplaceBlock(existingContent, search, replace);
         workspace.write(path, newContent);
-        wroteSinceVerification = true;
+        validationState.wroteSinceVerification = true;
         nonProductiveActionsWithoutWrite = 0;
         unchangedReadSkips = 0;
         clearFailedWriteAttempts();
@@ -1173,7 +1108,7 @@ export async function runActionLoop({
           );
         }
         workspace.delete(path);
-        wroteSinceVerification = true;
+        validationState.wroteSinceVerification = true;
         nonProductiveActionsWithoutWrite = 0;
         unchangedReadSkips = 0;
         onEvent({ type: 'tool', turn, action, agentRole });
@@ -1183,7 +1118,7 @@ export async function runActionLoop({
         result = await runValidation(turn, 'model');
         if (
           workspace.changes().length > 0 &&
-          !lastValidationFailed &&
+          !validationState.lastValidationFailed &&
           !isFailedValidationResult(result)
         ) {
           result = `${result}\nValidation passed for the staged changes. Your next action must be finish with a brief summary. Do not validate again.`;
@@ -1298,7 +1233,7 @@ export async function runActionLoop({
             continue;
           }
         }
-        if (lastValidationFailed) {
+        if (validationState.lastValidationFailed) {
           const target: string =
             forcedRecoveryTargetPath ||
             recoveryWritePath(workspace.files, activeFile) ||
@@ -1329,7 +1264,7 @@ export async function runActionLoop({
           });
           continue;
         }
-        if (wroteSinceVerification && validate) {
+        if (validationState.wroteSinceVerification && validate) {
           messages.push({
             role: 'user',
             content: observation(
@@ -1419,7 +1354,7 @@ export async function runActionLoop({
         if (attempts >= 2) {
           const fallback = '.component {\n  display: block;\n}\n';
           workspace.write(stylesheetPath, fallback);
-          wroteSinceVerification = true;
+          validationState.wroteSinceVerification = true;
           failedWritePath = '';
           const message = `The local model repeatedly produced malformed CSS for ${stylesheetPath}. A safe minimal stylesheet was staged so implementation can continue.`;
           messages.push({ role: 'user', content: observation(action.action, true, message) });
