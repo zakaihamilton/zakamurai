@@ -309,6 +309,28 @@ export default function App() {
     );
   });
 
+  it('rejects a Tic-Tac-Toe heading without a playable board', () => {
+    const headingOnly = `
+      export default function App() {
+        return <main><h1>Tic Tac Toe</h1></main>;
+      }
+    `;
+    expect(
+      validateRequestFulfillment('src/App.jsx', headingOnly, 'create a tic tac toe game'),
+    ).toContain('only renders a Tic-Tac-Toe heading');
+  });
+
+  it('rejects a duplicate local styles declaration beside a CSS Module import', () => {
+    const duplicateStyles = `
+      import styles from './App.module.css';
+      const styles = {};
+      export default function App() { return <main className={styles.app} />; }
+    `;
+    expect(validateCssModuleUsage('src/App.jsx', duplicateStyles)).toContain(
+      'styles is declared more than once',
+    );
+  });
+
   it('accepts code with comments containing unmatched brackets', () => {
     const codeWithComments = `
       // Single line comment with unclosed { bracket

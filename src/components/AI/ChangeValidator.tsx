@@ -271,6 +271,15 @@ export function validateRequestFulfillment(
   // Thin App shells that only mount a component are fine; the component must fulfill the request.
   if (isThinComponentShell(path, content)) return null;
 
+  if (
+    /\btic[\s-]*tac[\s-]*toe\b/i.test(request) &&
+    /<h[1-3][^>]*>\s*tic[\s-]*tac[\s-]*toe\s*<\/h[1-3]>/i.test(content) &&
+    !/<button\b/i.test(content) &&
+    !/\bon(?:Click|KeyDown)\b/.test(content)
+  ) {
+    return `Generated content for ${path} only renders a Tic-Tac-Toe heading. Render a visible 3x3 board with nine playable cells, turn/status text, and a reset control before finishing.`;
+  }
+
   if (content.trim().length < 400) {
     return `Generated content for ${path} is too short to fulfill "${clipped}". Return a complete implementation instead of a stub.`;
   }
@@ -352,6 +361,12 @@ export function validateCssModuleUsage(path: string, content: string): string | 
   if (matches.some((match) => !match[1])) {
     return `CSS Modules in ${path} must be default-imported as a class map (for example, use a styles binding from the co-located module) instead of side-effect imported.`;
   }
+  if (
+    matches.some((match) => match[1] === 'styles') &&
+    /\b(?:const|let|var|function|class)\s+styles\b/.test(content)
+  ) {
+    return `The CSS Module binding styles is declared more than once in ${path}. Keep the imported styles class map and remove or rename the duplicate declaration.`;
+  }
   if (/\bclassName\s*=\s*["'][^"']+["']/.test(content)) {
     return `Use the imported CSS Module class map in ${path} (for example, className={styles.container}) instead of literal className strings.`;
   }
@@ -364,9 +379,11 @@ export function validateFileContentType(path: string, content: string): string |
 
   const source = stripComments(content).trim();
   const containsEmbeddedCss =
-    /(?:^|\n)\s*(?:[.#][A-Za-z_-][\w-]*|:root|@(?:media|supports|keyframes|layer)|(?!import\b|export\b|const\b|let\b|var\b|function\b|return\b|if\b|for\b|while\b|switch\b|class\b)[a-z][\w-]*)\s*\{/im.test(
+    /(?:[.#][A-Za-z_-][\w-]*|:root|@(?:media|supports|keyframes|layer))\s*\{/i.test(source) ||
+    /--[\w-]+\s*:/m.test(source) ||
+    /(?:^|\n)\s*(?!import\b|export\b|const\b|let\b|var\b|function\b|return\b|if\b|for\b|while\b|switch\b|class\b)[a-z][\w-]*\s*\{\s*[-\w]+\s*:/im.test(
       source,
-    ) || /^\s*--[\w-]+\s*:/m.test(source);
+    );
   if (containsEmbeddedCss) {
     return `CSS content cannot be written to ${path}. Write it to a *.css or *.module.css file instead.`;
   }

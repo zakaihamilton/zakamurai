@@ -123,6 +123,11 @@ specify a theme, use a light neutral surface with dark text and one accent. Give
 buttons explicit backgrounds, borders, and focus-visible styles instead of relying on browser
 defaults.
 
+For Tic-Tac-Toe requests, the rendered result must visibly include a 3x3 board with nine
+playable button cells, current-turn or result status, and a reset/new-game control. A heading
+alone is not an implementation; do not finish until those controls are present in the returned
+source and connected to React state/event handlers.
+
 After a successful write, use exactly one of:
 {"action":"validate"}
 {"action":"finish","summary":"brief result"}
