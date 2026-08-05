@@ -2159,6 +2159,79 @@ export default function App() {
     );
   });
 
+  it('recovers from an existing-file write by requesting a patch in Fix mode', async () => {
+    askWebLLM
+      .mockResolvedValueOnce(
+        JSON.stringify({
+          action: 'write_file',
+          path: 'src/App.jsx',
+          content: 'export default function App() { return <div>New</div>; }',
+        }),
+      )
+      .mockResolvedValueOnce(
+        JSON.stringify({
+          action: 'replace_file_content',
+          path: 'src/App.jsx',
+          search: 'return <div>Old</div>;',
+          replace: 'return <div>New</div>;',
+        }),
+      )
+      .mockResolvedValueOnce(JSON.stringify({ action: 'validate' }))
+      .mockResolvedValue(JSON.stringify({ action: 'finish', summary: 'Fixed the title.' }));
+
+    const result = await runActionLoop({
+      request: 'fix the title',
+      mode: 'fix',
+      files: { 'src/App.jsx': 'export default function App() { return <div>Old</div>; }' },
+      model: 'test',
+      validate: vi.fn().mockResolvedValue('Checks passed.'),
+    });
+
+    expect(result.files['src/App.jsx']).toContain('New');
+  });
+
+  it('requests a patch when lightweight Fix recovery finds an incomplete existing app', async () => {
+    const completeApp = `import styles from './App.module.css';\n${PLAYABLE_INTERACTIVE_APP}`;
+    const modelClient = vi
+      .fn()
+      .mockResolvedValueOnce(
+        JSON.stringify({
+          action: 'replace_file_content',
+          path: 'src/App.jsx',
+          search: 'return <main />;',
+          replace: 'return <main>Notes</main>;',
+        }),
+      )
+      .mockResolvedValueOnce(JSON.stringify({ action: 'finish', summary: 'Done.' }))
+      .mockResolvedValueOnce(
+        JSON.stringify({
+          action: 'replace_file_content',
+          path: 'src/App.jsx',
+          search: 'export default function App() { return <main>Notes</main>; }',
+          replace: completeApp,
+        }),
+      )
+      .mockResolvedValueOnce(JSON.stringify({ action: 'validate' }))
+      .mockResolvedValueOnce(JSON.stringify({ action: 'finish', summary: 'Created notes.' }));
+
+    await runActionLoop({
+      request: 'create a notes app',
+      mode: 'fix',
+      files: {
+        'src/App.jsx': 'export default function App() { return <main />; }',
+        'src/App.module.css': '.app { display: block; }',
+      },
+      model: 'Qwen2.5-Coder-1.5B-Instruct-q4f16_1-MLC',
+      modelClient,
+      validate: vi.fn().mockResolvedValue('Checks passed.'),
+    });
+
+    expect(modelClient.mock.calls[2][0].messages.at(-1).content).toContain('replace_file_content');
+    expect(modelClient.mock.calls[2][0].messages.at(-1).content).not.toContain(
+      'complete interactive implementation',
+    );
+  });
+
   it('supports get_file_symbols and manage_packages manager tools in action loop', async () => {
     askWebLLM
       .mockResolvedValueOnce(JSON.stringify({ action: 'get_file_symbols', path: 'src/App.jsx' }))

@@ -140,6 +140,98 @@ describe('runManager', () => {
     expect(askWebLLM).toHaveBeenCalledOnce();
   });
 
+  it('keeps Ask mode read-only even when the model returns changes', async () => {
+    const modelClient = vi.fn().mockResolvedValue(
+      JSON.stringify({
+        kind: 'changes',
+        summary: 'Changed the title.',
+        changes: [{ path: 'src/App.jsx', content: 'changed' }],
+      }),
+    );
+    const source = 'original';
+
+    await expect(
+      runManager({
+        request: 'change the title',
+        mode: 'ask',
+        files: { 'src/App.jsx': source },
+        activeFile: 'src/App.jsx',
+        model: 'test-model',
+        modelClient,
+      }),
+    ).rejects.toThrow("Prompt mode 'ask' is read-only");
+    expect(modelClient).toHaveBeenCalledOnce();
+  });
+
+  it('keeps Plan mode read-only while including the selected mode in the prompt', async () => {
+    const modelClient = vi.fn().mockResolvedValue(
+      JSON.stringify({
+        kind: 'plan',
+        summary: 'Update the title in src/App.jsx.',
+        plan: {
+          goals: ['Make the title clearer.'],
+          files: ['src/App.jsx'],
+          steps: ['Replace the current heading.'],
+        },
+      }),
+    );
+    const result = await runManager({
+      request: 'change the title',
+      mode: 'plan',
+      files: { 'src/App.jsx': 'export default function App() {}' },
+      activeFile: 'src/App.jsx',
+      model: 'test-model',
+      modelClient,
+    });
+
+    expect(result.changes).toEqual([]);
+    expect(result.modelPlan?.steps).toEqual(['Replace the current heading.']);
+    expect(modelClient.mock.calls[0][0].messages[1].content).toContain('Prompt mode: plan');
+    expect(modelClient.mock.calls[0][0].temperature).toBe(0.15);
+  });
+
+  it('collects local diagnostics before entering Fix mode', async () => {
+    const modelClient = vi
+      .fn()
+      .mockResolvedValueOnce(
+        JSON.stringify({
+          action: 'replace_file_content',
+          path: 'src/App.jsx',
+          search: 'return null;',
+          replace: 'return <h1>Fixed</h1>;',
+        }),
+      )
+      .mockResolvedValueOnce(JSON.stringify({ action: 'validate' }))
+      .mockResolvedValueOnce(JSON.stringify({ action: 'inspect_preview' }))
+      .mockResolvedValue(JSON.stringify({ action: 'finish', summary: 'Fixed the build.' }));
+    const runProjectCheck = vi.fn().mockResolvedValue('Build failed: missing render target.');
+    const inspectPreview = vi
+      .fn()
+      .mockResolvedValue({ status: 'failed', diagnostics: 'blank preview' });
+    const validate = vi.fn().mockResolvedValue({ status: 'passed', check: 'build' });
+
+    const result = await runManager({
+      request: 'fix the build',
+      mode: 'fix',
+      files: {
+        'package.json': JSON.stringify({ scripts: { build: 'vite' } }),
+        'src/App.jsx': 'export default function App() { return null; }',
+      },
+      activeFile: 'src/App.jsx',
+      model: 'test-model',
+      modelClient,
+      runProjectCheck,
+      inspectPreview,
+      validate,
+    });
+
+    expect(result.files['src/App.jsx']).toContain('Fixed');
+    expect(runProjectCheck).toHaveBeenCalledWith('build', expect.anything());
+    expect(inspectPreview).toHaveBeenCalled();
+    expect(modelClient.mock.calls[0][0].temperature).toBe(0.05);
+    expect(modelClient.mock.calls[0][0].messages[1].content).toContain('FIX MODE');
+  });
+
   it('reads bounded starter-file context for project edits without an active file', async () => {
     const modelClient = vi.fn().mockResolvedValue(
       JSON.stringify({

@@ -4,7 +4,11 @@ import {
 } from '@/components/AI/WebLLMModels';
 import Settings from '@/components/Storage/Settings';
 import { createState } from '@/components/state/State';
-import type { PromptStateShape, PromptUiStateShape } from '@/components/state/domain-types';
+import type {
+  PromptMode,
+  PromptStateShape,
+  PromptUiStateShape,
+} from '@/components/state/domain-types';
 
 export const PromptState = createState<PromptStateShape>('PromptState');
 export const PromptUiState = createState<PromptUiStateShape>('PromptUiState');
@@ -31,10 +35,15 @@ export function getInitialPromptUiState() {
     animatedWidth: 0,
     abortController: null,
     promptScope: 'project',
+    promptMode: normalizePromptMode(Settings.getAIPromptMode?.('ask')),
     welcomeRequest: null,
     runningSessionId: null,
     isAgentTreeOpen: false,
     latestManagerTrace: null,
     latestAIIncident: null,
   };
+}
+
+export function normalizePromptMode(value: unknown): PromptMode {
+  return value === 'plan' || value === 'edit' || value === 'fix' ? value : 'ask';
 }

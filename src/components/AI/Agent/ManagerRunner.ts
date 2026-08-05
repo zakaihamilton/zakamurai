@@ -23,6 +23,7 @@ import {
 import {
   MANAGER_SYSTEM_PROMPT,
   buildManagerModelPrompt,
+  formatModelPlan,
   parseModelResult,
 } from './ManagerProtocol';
 import { createManagerPlan } from './ManagerRouter';
@@ -38,6 +39,7 @@ import {
   ManagerTraceRecorder,
   classifyManagerError,
 } from './ManagerTrace';
+import { selectProjectCheck } from './ProjectChecks';
 
 const MAX_CONTEXT_ROUNDS = 3;
 const MAX_REPAIR_ATTEMPTS = 2;
@@ -93,8 +95,25 @@ type ManagerExecutionOptions = RunManagerOptions & {
   onWorkspace: (workspace: import('./Workspace').AgentWorkspace) => void;
 };
 
+const noChangeResult = (
+  workspace: import('./Workspace').AgentWorkspace,
+  plan: RunManagerResult['plan'],
+  summary: string,
+  events: number,
+  modelPlan?: RunManagerResult['modelPlan'],
+): ManagerExecutionResult => ({
+  changes: [],
+  files: workspace.files,
+  summary,
+  ...(modelPlan ? { modelPlan } : {}),
+  plan,
+  events,
+  workspace,
+});
+
 async function executeManager({
   request,
+  mode,
   sessionId,
   scope = 'file',
   activeFile,
@@ -116,7 +135,7 @@ async function executeManager({
   onWorkspace,
 }: ManagerExecutionOptions): Promise<ManagerExecutionResult> {
   if (signal?.aborted) throw new DOMException('Manager stopped', 'AbortError');
-  const plan = createManagerPlan(request);
+  const plan = createManagerPlan(request, mode);
   const tools = createManagerToolContext(files, workspaceIndex, {
     validate,
     runProjectCheck,
@@ -149,8 +168,23 @@ async function executeManager({
     return result;
   };
 
+  if (mode === 'fix') {
+    const checks = await notifyTool('list_project_checks');
+    const availableChecks = Array.isArray(checks.value)
+      ? checks.value.filter((value): value is string => typeof value === 'string')
+      : [];
+    const selectedCheck = selectProjectCheck(request, availableChecks);
+    if (selectedCheck) await notifyTool('run_project_check', { check: selectedCheck, request });
+    if (inspectPreview) await notifyTool('inspect_preview');
+  }
+
   recorder.setPlan(plan);
-  onEvent({ type: 'routing', turn: 0, plan, message: `Request routed to ${plan.intent}.` });
+  onEvent({
+    type: 'routing',
+    turn: 0,
+    plan,
+    message: `Request routed to ${mode ? `${mode} mode` : plan.intent}.`,
+  });
 
   if (!plan.modelRequired) {
     if (plan.intent === 'workspace-query') {
@@ -165,27 +199,13 @@ async function executeManager({
             : await notifyTool('list_files', { query: query || undefined });
       const summary = summarizeToolResult(result.tool, result.value);
       onEvent({ type: 'finished', turn: toolResults.length, message: summary });
-      return {
-        changes: [],
-        files: workspace.files,
-        summary,
-        plan,
-        events: toolResults.length,
-        workspace,
-      };
+      return noChangeResult(workspace, plan, summary, toolResults.length);
     }
     if (plan.intent === 'preview-inspection') {
       const result = await notifyTool('inspect_preview');
       const summary = summarizeToolResult(result.tool, result.value);
       onEvent({ type: 'finished', turn: toolResults.length, message: summary });
-      return {
-        changes: [],
-        files: workspace.files,
-        summary,
-        plan,
-        events: toolResults.length,
-        workspace,
-      };
+      return noChangeResult(workspace, plan, summary, toolResults.length);
     }
     const list = await notifyTool('list_project_checks');
     const checks = Array.isArray(list.value) ? list.value : [];
@@ -194,41 +214,21 @@ async function executeManager({
         ? `Available project checks:\n${checks.join('\n')}`
         : 'No eligible project checks were found in package.json.';
       onEvent({ type: 'finished', turn: toolResults.length, message: summary });
-      return {
-        changes: [],
-        files: workspace.files,
-        summary,
-        plan,
-        events: toolResults.length,
-        workspace,
-      };
+      return noChangeResult(workspace, plan, summary, toolResults.length);
     }
-    const check =
-      checks.find((name) => request.toLowerCase().includes(String(name).toLowerCase())) ||
-      checks[0];
+    const check = selectProjectCheck(
+      request,
+      checks.filter((name): name is string => typeof name === 'string'),
+    );
     if (!check) {
       const summary = 'No eligible project checks were found in package.json.';
       onEvent({ type: 'finished', turn: toolResults.length, message: summary });
-      return {
-        changes: [],
-        files: workspace.files,
-        summary,
-        plan,
-        events: toolResults.length,
-        workspace,
-      };
+      return noChangeResult(workspace, plan, summary, toolResults.length);
     }
     const result = await notifyTool('run_project_check', { check, request });
     const summary = summarizeToolResult(result.tool, result.value);
     onEvent({ type: 'finished', turn: toolResults.length, message: summary });
-    return {
-      changes: [],
-      files: workspace.files,
-      summary,
-      plan,
-      events: toolResults.length,
-      workspace,
-    };
+    return noChangeResult(workspace, plan, summary, toolResults.length);
   }
 
   onEvent({
@@ -249,7 +249,7 @@ async function executeManager({
     const listedPaths = Array.isArray(listed.value)
       ? listed.value.filter((item) => typeof item === 'string')
       : [];
-    if (plan.intent === 'edit' || plan.intent === 'mixed') {
+    if (plan.intent === 'edit' || plan.intent === 'mixed' || mode === 'ask' || mode === 'plan') {
       for (const contextPath of selectInitialContextFiles(listedPaths, activeFile)) {
         if (contextPath !== path) await notifyTool('read_file', { path: contextPath });
       }
@@ -276,6 +276,7 @@ async function executeManager({
     const actionContext = [handoffContext, contextText(toolResults)].filter(Boolean).join('\n\n');
     const actionResult = await runActionLoop({
       request,
+      mode,
       scope,
       activeFile,
       selectedLines,
@@ -364,15 +365,24 @@ async function executeManager({
   }
 
   const askModel = modelClient || (await loadModel());
+  const generationTemperature = mode === 'fix' ? 0.05 : mode === 'edit' ? 0.1 : 0.15;
+  const generationTopP = mode === 'fix' ? 0.75 : 0.8;
+  const normalizeOptions = { requirePatches: mode === 'edit' || mode === 'fix' };
   const messages: WebLLMMessage[] = [{ role: 'system', content: MANAGER_SYSTEM_PROMPT }];
   let task: 'answer' | 'generate-changes' | 'repair-changes' =
     plan.intent === 'explanation' ? 'answer' : 'generate-changes';
   let result: ModelResult | null = null;
   let diagnostics = '';
+  const buildPrompt = (
+    nextTask: 'answer' | 'generate-changes' | 'repair-changes',
+    nextDiagnostics = '',
+  ) => buildManagerModelPrompt(request, contextText(toolResults), nextTask, nextDiagnostics, mode);
+  const changesGuidance =
+    'Return a kind=changes response using exact search/replace patches for existing files; for new files, use an empty search and put the complete file in replace.';
 
   for (let round = 0; round < MAX_CONTEXT_ROUNDS; round++) {
     if (signal?.aborted) throw new DOMException('Manager stopped', 'AbortError');
-    const prompt = buildManagerModelPrompt(request, contextText(toolResults), task, diagnostics);
+    const prompt = buildPrompt(task, diagnostics);
     messages.push({ role: 'user', content: prompt });
     onEvent({
       type: 'model',
@@ -387,8 +397,8 @@ async function executeManager({
       signal,
       task,
       onMetrics,
-      temperature: 0.15,
-      top_p: 0.8,
+      temperature: generationTemperature,
+      top_p: generationTopP,
       max_tokens: task === 'answer' ? 1200 : AGENT_GENERATION_TOKENS,
       contextWindowSize: AGENT_CONTEXT_WINDOW_SIZE,
     });
@@ -420,8 +430,7 @@ async function executeManager({
       if (round === MAX_CONTEXT_ROUNDS - 1) {
         throw new Error('The model did not return changes for an edit request.');
       }
-      diagnostics =
-        'The previous model response did not return changes for an edit request. Return a kind=changes response with complete file contents.';
+      diagnostics = `The previous model response did not return changes for an edit request. ${changesGuidance}`;
       task = task === 'repair-changes' ? 'repair-changes' : 'generate-changes';
       continue;
     }
@@ -433,20 +442,27 @@ async function executeManager({
   }
 
   if (!result) throw new Error('The manager did not receive a model result.');
+  if (mode === 'ask' && result.kind !== 'answer') {
+    throw new Error(
+      `Prompt mode '${mode}' is read-only, but the model returned a non-answer result.`,
+    );
+  }
+  if (mode === 'plan' && result.kind !== 'plan')
+    throw new Error("Prompt mode 'plan' requires a structured plan result.");
   if (task !== 'answer' && result.kind !== 'changes')
     throw new Error('The model did not return changes for an edit request.');
+  if (result.kind === 'plan') {
+    if (!result.plan.steps.length)
+      throw new Error('The model returned an empty implementation plan.');
+    const summary = formatModelPlan(result);
+    onEvent({ type: 'finished', turn: messages.length, message: summary });
+    return noChangeResult(workspace, plan, summary, messages.length, result.plan);
+  }
   if (result.kind === 'answer') {
     onEvent({ type: 'finished', turn: messages.length, message: result.summary });
-    return {
-      changes: [],
-      files: workspace.files,
-      summary: result.summary,
-      plan,
-      events: messages.length,
-      workspace,
-    };
+    return noChangeResult(workspace, plan, result.summary, messages.length);
   }
-  let changes = normalizeModelChanges(result, workspace.files);
+  let changes = normalizeModelChanges(result, workspace.files, normalizeOptions);
   if (!changes.length) throw new Error('The model did not return any changes.');
 
   for (let repair = 0; repair <= MAX_REPAIR_ATTEMPTS; repair++) {
@@ -471,12 +487,7 @@ async function executeManager({
           diagnostics = verificationMessage;
           task = 'repair-changes';
           toolResults.push(verification);
-          const prompt = buildManagerModelPrompt(
-            request,
-            contextText(toolResults),
-            task,
-            diagnostics,
-          );
+          const prompt = buildPrompt(task, diagnostics);
           messages.push({ role: 'user', content: prompt });
           onEvent({
             type: 'model',
@@ -492,8 +503,8 @@ async function executeManager({
             task,
             onMetrics,
             onRecovery,
-            temperature: 0.1,
-            top_p: 0.8,
+            temperature: Math.min(generationTemperature, 0.1),
+            top_p: generationTopP,
             max_tokens: AGENT_GENERATION_TOKENS,
             contextWindowSize: AGENT_CONTEXT_WINDOW_SIZE,
           });
@@ -513,18 +524,18 @@ async function executeManager({
             });
             diagnostics = `${verificationMessage}\nThe repair response was invalid: ${
               error instanceof Error ? error.message : String(error)
-            }. Return a kind=changes response with complete file contents.`;
+            }. ${changesGuidance}`;
             changes = [];
             continue;
           }
           if (result.kind !== 'changes' || !result.changes.length) {
-            diagnostics = `${verificationMessage}\nThe repair response did not return any changes. Return a kind=changes response with complete file contents.`;
+            diagnostics = `${verificationMessage}\nThe repair response did not return any changes. ${changesGuidance}`;
             changes = [];
             continue;
           }
-          changes = normalizeModelChanges(result, workspace.files);
+          changes = normalizeModelChanges(result, workspace.files, normalizeOptions);
           if (!changes.length) {
-            diagnostics = `${verificationMessage}\nThe repair response did not contain usable changes. Return a kind=changes response with complete file contents.`;
+            diagnostics = `${verificationMessage}\nThe repair response did not contain usable changes. ${changesGuidance}`;
             changes = [];
             continue;
           }
@@ -557,7 +568,7 @@ async function executeManager({
       throw new Error(diagnostics || 'The generated changes failed deterministic validation.');
     }
     task = 'repair-changes';
-    const prompt = buildManagerModelPrompt(request, contextText(toolResults), task, diagnostics);
+    const prompt = buildPrompt(task, diagnostics);
     messages.push({ role: 'user', content: prompt });
     const reply = await askModel({
       model,
@@ -566,8 +577,8 @@ async function executeManager({
       task,
       onMetrics,
       onRecovery,
-      temperature: 0.1,
-      top_p: 0.8,
+      temperature: Math.min(generationTemperature, 0.1),
+      top_p: generationTopP,
       max_tokens: AGENT_GENERATION_TOKENS,
       contextWindowSize: AGENT_CONTEXT_WINDOW_SIZE,
     });
@@ -586,20 +597,18 @@ async function executeManager({
       });
       diagnostics = `The repair response was invalid: ${
         error instanceof Error ? error.message : String(error)
-      }. Return a kind=changes response with complete file contents.`;
+      }. ${changesGuidance}`;
       changes = [];
       continue;
     }
     if (result.kind !== 'changes' || !result.changes.length) {
-      diagnostics =
-        'The repair response did not return any changes. Return a kind=changes response with complete file contents.';
+      diagnostics = `The repair response did not return any changes. ${changesGuidance}`;
       changes = [];
       continue;
     }
-    changes = normalizeModelChanges(result, workspace.files);
+    changes = normalizeModelChanges(result, workspace.files, normalizeOptions);
     if (!changes.length) {
-      diagnostics =
-        'The repair response did not contain usable changes. Return a kind=changes response with complete file contents.';
+      diagnostics = `The repair response did not contain usable changes. ${changesGuidance}`;
       changes = [];
     }
   }

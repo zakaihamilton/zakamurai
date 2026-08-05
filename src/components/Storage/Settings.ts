@@ -47,6 +47,7 @@ const KEYS = {
   EXPANDED_FOLDERS: 'zakamurai_expanded_folders',
   AI_COMPLETION_ENABLED: 'zakamurai_ai_completion_enabled',
   AI_PROMPT_MODEL: 'zakamurai_ai_prompt_model',
+  AI_PROMPT_MODE: 'zakamurai_ai_prompt_mode',
   AI_MODEL_EXPANDED: 'zakamurai_ai_model_expanded',
   TEMPLATE: 'zakamurai_template',
   EDITOR_READ_ONLY: 'zakamurai_editor_read_only',
@@ -466,6 +467,14 @@ const Settings = {
 
   setAIPromptModel(modelId: string) {
     this.set(KEYS.AI_PROMPT_MODEL, modelId);
+  },
+
+  getAIPromptMode(defaultValue = 'ask') {
+    return this.get(KEYS.AI_PROMPT_MODE, defaultValue);
+  },
+
+  setAIPromptMode(mode: string) {
+    this.set(KEYS.AI_PROMPT_MODE, mode);
   },
 
   getAIModelExpanded() {

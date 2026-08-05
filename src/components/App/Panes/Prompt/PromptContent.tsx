@@ -50,6 +50,8 @@ export default function PromptContent({
   onChangeModel,
   onLoadCachedModelIds,
   onOpenModelManager,
+  promptMode,
+  onChangePromptMode,
   patchSession,
   onClearAIModelLog,
   latestManagerTrace,
@@ -164,6 +166,8 @@ export default function PromptContent({
           onChangeModel={onChangeModel}
           onLoadCachedModelIds={onLoadCachedModelIds}
           onOpenModelManager={onOpenModelManager}
+          promptMode={promptMode}
+          onChangePromptMode={onChangePromptMode}
         />
       </div>
     </aside>

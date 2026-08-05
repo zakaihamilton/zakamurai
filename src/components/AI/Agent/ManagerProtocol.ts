@@ -1,4 +1,5 @@
 import type { AgentChange, ContextRequest, ModelResult } from '@/components/AI/types';
+import type { PromptMode } from '@/components/state/domain-types';
 
 const ALLOWED_CONTEXT_TOOLS = new Set<ContextRequest['tool']>([
   'list_files',
@@ -15,22 +16,28 @@ Return exactly one JSON object and no markdown.
 For an explanation or answer:
 {"kind":"answer","summary":"concise answer grounded in the supplied context"}
 
+For a concrete implementation plan (without changing files):
+{"kind":"plan","summary":"short plan summary","plan":{"goals":["user outcome"],"files":["src/App.jsx"],"steps":["specific implementation step"]}}
+
 If more source context is required:
 {"kind":"request-context","requests":[{"tool":"read_file","input":{"path":"src/App.jsx"}}]}
 
 For code changes:
-{"kind":"changes","summary":"what changed","changes":[{"path":"src/App.jsx","content":"complete file content"}]}
+{"kind":"changes","summary":"what changed","changes":[{"path":"src/App.jsx","search":"exact existing text","replace":"new text"}]}
+
+For a new file, use an empty search string and put the complete new file in replace. For deletions, use delete=true.
 
 For deletions, use an explicit delete proposal:
 {"kind":"changes","summary":"what changed","changes":[{"path":"src/old-file.js","delete":true}]}
 
-Use only project-relative paths. Never use absolute paths or .. traversal. Return complete file contents for every changed file.
+Use only project-relative paths. Never use absolute paths or .. traversal. Existing-file edits must use exact search/replace patches; never return a complete replacement for an existing file.
 Never return placeholder comments, TODO stubs, or instructions such as "Your implementation goes here". Return a complete working implementation for the user request.
 Architecture and dependency rules:
 - Do not add Redux, Zustand, Recoil, or another state-management dependency unless it already exists in the workspace and the user explicitly requests it.
 - For a simple app, use React local state or plain browser state. Only import packages already present in package.json or packages supported by the empty-project scaffold.
 - Summaries must describe only libraries and files actually present in the returned changes; never invent a dependency.
-Do not return tool actions, write_file actions, role names, plans, or prose outside the JSON object.
+Do not return tool actions, write_file actions, role names, or prose outside the JSON object.
+When Prompt mode is ask, return kind=answer only. When Prompt mode is plan, return kind=plan only. When Prompt mode is edit or fix, return kind=changes only after using the supplied workspace evidence.
 `.trim();
 
 const repairJsonStringControls = (candidate: string): string => {
@@ -156,6 +163,9 @@ const safeContextRequests = (value: unknown): ContextRequest[] => {
     .filter((item): item is ContextRequest => Boolean(item));
 };
 
+const stringArray = (value: unknown): string[] =>
+  Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : [];
+
 const normalizeChanges = (value: unknown): AgentChange[] => {
   if (!Array.isArray(value)) return [];
   return value
@@ -167,6 +177,8 @@ const normalizeChanges = (value: unknown): AgentChange[] => {
       ...(typeof change.before === 'string' ? { before: change.before } : {}),
       ...(typeof change.after === 'string' ? { after: change.after } : {}),
       ...(typeof change.content === 'string' ? { content: change.content } : {}),
+      ...(typeof change.search === 'string' ? { search: change.search } : {}),
+      ...(typeof change.replace === 'string' ? { replace: change.replace } : {}),
       ...(change.delete === true ? { delete: true } : {}),
     }))
     .filter(
@@ -174,19 +186,42 @@ const normalizeChanges = (value: unknown): AgentChange[] => {
         Boolean(change.path) &&
         (typeof change.after === 'string' ||
           typeof change.content === 'string' ||
+          (typeof change.search === 'string' && typeof change.replace === 'string') ||
           change.delete === true),
     );
 };
+
+export const formatModelPlan = (result: Extract<ModelResult, { kind: 'plan' }>): string =>
+  [
+    result.summary,
+    `Goals:\n${result.plan.goals.map((goal) => `- ${goal}`).join('\n') || '- None specified'}`,
+    `Files:\n${result.plan.files.map((file) => `- ${file}`).join('\n') || '- None specified'}`,
+    `Steps:\n${result.plan.steps.map((step, index) => `${index + 1}. ${step}`).join('\n') || '1. No steps specified'}`,
+  ].join('\n\n');
 
 export function parseModelResult(text: string): ModelResult {
   const value = firstJsonObject(text) as {
     kind?: unknown;
     summary?: unknown;
+    plan?: unknown;
     requests?: unknown;
     changes?: unknown;
   };
   if (value.kind === 'answer') {
     return { kind: 'answer', summary: typeof value.summary === 'string' ? value.summary : '' };
+  }
+  if (value.kind === 'plan') {
+    const plan = value.plan && typeof value.plan === 'object' ? value.plan : {};
+    const planValue = plan as { goals?: unknown; files?: unknown; steps?: unknown };
+    return {
+      kind: 'plan',
+      summary: typeof value.summary === 'string' ? value.summary : '',
+      plan: {
+        goals: stringArray(planValue.goals),
+        files: stringArray(planValue.files),
+        steps: stringArray(planValue.steps),
+      },
+    };
   }
   if (value.kind === 'request-context') {
     return { kind: 'request-context', requests: safeContextRequests(value.requests) };
@@ -206,14 +241,20 @@ export function buildManagerModelPrompt(
   context: string,
   task: 'answer' | 'generate-changes' | 'repair-changes',
   diagnostics = '',
+  mode?: PromptMode,
 ): string {
   const taskInstruction =
-    task === 'answer'
-      ? 'Answer the user using the supplied workspace evidence.'
-      : task === 'repair-changes'
-        ? 'Repair the proposed changes using the validation diagnostics, then return complete replacement file contents.'
-        : 'Implement the user request and return complete replacement contents for every changed file.';
+    mode === 'plan'
+      ? 'Prepare a concrete implementation plan using the supplied workspace evidence. Do not return changes.'
+      : mode === 'ask'
+        ? 'Answer the user using the supplied workspace evidence. Do not return changes.'
+        : task === 'answer'
+          ? 'Answer the user using the supplied workspace evidence.'
+          : task === 'repair-changes'
+            ? 'Repair the proposed changes using the validation diagnostics, then return exact search/replace patches.'
+            : 'Implement the user request and return exact search/replace patches for existing files.';
   return [
+    mode ? `Prompt mode: ${mode}` : '',
     `User request:\n${request}`,
     `Task:\n${taskInstruction}`,
     context ? `Workspace evidence:\n${context}` : 'Workspace evidence: none was available.',

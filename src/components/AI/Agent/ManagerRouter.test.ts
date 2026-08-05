@@ -74,4 +74,33 @@ describe('manager router', () => {
     expect(isLikelyFileRequest('read src/App.jsx')).toBe(true);
     expect(isLikelyFileRequest('explain the component')).toBe(false);
   });
+
+  it('honors explicit prompt modes instead of inferring edit intent', () => {
+    expect(createManagerPlan('add a button', 'ask')).toMatchObject({
+      mode: 'ask',
+      intent: 'explanation',
+      modelRequired: true,
+    });
+    expect(createManagerPlan('add a button', 'plan')).toMatchObject({
+      mode: 'plan',
+      intent: 'explanation',
+      modelRequired: true,
+    });
+    expect(createManagerPlan('add a button', 'edit')).toMatchObject({
+      mode: 'edit',
+      intent: 'edit',
+      modelRequired: true,
+    });
+    expect(createManagerPlan('the build is broken', 'fix')).toMatchObject({
+      mode: 'fix',
+      intent: 'edit',
+      modelRequired: true,
+    });
+    expect(createManagerPlan('the build is broken', 'fix').steps).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ tool: 'run_project_check' }),
+        expect.objectContaining({ tool: 'inspect_preview' }),
+      ]),
+    );
+  });
 });

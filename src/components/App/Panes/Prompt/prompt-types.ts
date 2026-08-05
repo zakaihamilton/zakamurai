@@ -3,6 +3,7 @@ import type { ManagerTrace } from '@/components/AI/Agent/ManagerTrace';
 import type { AgentEvent, FileMap, WebLLMModel } from '@/components/AI/types';
 import type { ExtendedEditorState } from '@/components/App/Views/EditorArea/types';
 import type { FileSystemApi } from '@/components/App/types';
+import type { PromptMode } from '@/components/state/domain-types';
 import type {
   AgentSession,
   AgentSessionMessage,
@@ -138,6 +139,8 @@ export type PromptComposerProps = {
   onChangeModel?: (modelId: string) => void;
   onLoadCachedModelIds?: () => void;
   onOpenModelManager?: () => void;
+  promptMode?: PromptMode;
+  onChangePromptMode?: (mode: PromptMode) => void;
 };
 
 export type PromptHeaderProps = {
@@ -215,6 +218,8 @@ export type PromptContentProps = {
   onChangeModel: (modelId: string) => void;
   onLoadCachedModelIds: () => void;
   onOpenModelManager: () => void;
+  promptMode: PromptMode;
+  onChangePromptMode: (mode: PromptMode) => void;
   patchSession: (sessionId: string, patch: Partial<AgentSession>) => void;
   onClearAIModelLog: () => void;
   latestManagerTrace?: ManagerTrace | null;
@@ -231,6 +236,7 @@ export type UseAgentRunnerParams = {
   agentSessionState: StateStore<AgentSessionStateShape> | null;
   promptUiState: StateStore<PromptUiStateShape>;
   promptScope: string;
+  promptMode: PromptMode;
   selectedModel: string;
   abortController: AbortController | null;
   runningSessionId: string | null;

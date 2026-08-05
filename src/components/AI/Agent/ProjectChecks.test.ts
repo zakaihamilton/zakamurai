@@ -4,6 +4,7 @@ import {
   isEligibleProjectCheck,
   listProjectChecks,
   runProjectCheck,
+  selectProjectCheck,
   unavailableProjectCheck,
 } from './ProjectChecks';
 
@@ -23,6 +24,12 @@ describe('project checks', () => {
     expect(listProjectChecks(files)).toEqual(['lint', 'test']);
     expect(isEligibleProjectCheck('test', 'vitest run && echo done')).toBe(true);
     expect(isEligibleProjectCheck('test', 'vitest run | tee out')).toBe(false);
+  });
+
+  it('selects the check relevant to the request instead of always using the first one', () => {
+    expect(selectProjectCheck('fix the failing tests', ['lint', 'test'])).toBe('test');
+    expect(selectProjectCheck('build the app', ['lint', 'build'])).toBe('build');
+    expect(selectProjectCheck('run a check', ['lint', 'test'])).toBe('lint');
   });
 
   it('bounds check output and reports failures structurally', async () => {

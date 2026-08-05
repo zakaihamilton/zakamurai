@@ -114,4 +114,27 @@ describe('PromptComposer', () => {
     fireEvent.change(screen.getByLabelText('Model'), { target: { value: 'model-b' } });
     expect(onChangeModel).toHaveBeenCalledWith('model-b');
   });
+
+  it('exposes explicit prompt modes', () => {
+    const onChangePromptMode = vi.fn();
+    render(
+      <PromptComposer
+        value=""
+        onChange={vi.fn()}
+        onKeyDown={vi.fn()}
+        onSubmit={vi.fn()}
+        onStop={vi.fn()}
+        isAIProcessing={false}
+        isButtonActive={false}
+        isOpen={true}
+        promptMode="ask"
+        onChangePromptMode={onChangePromptMode}
+      />,
+    );
+
+    const mode = screen.getByLabelText('Mode');
+    expect(mode).toBeDefined();
+    fireEvent.change(mode, { target: { value: 'edit' } });
+    expect(onChangePromptMode).toHaveBeenCalledWith('edit');
+  });
 });

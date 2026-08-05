@@ -177,6 +177,7 @@ export function makePromptUiState(
     draftVal: '',
     welcomePrompt: '',
     selectedModel: '',
+    promptMode: 'ask',
     isModelManagerOpen: false,
     cachedModelIds: [],
     modelCacheWork: null,

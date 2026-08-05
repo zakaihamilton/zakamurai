@@ -102,6 +102,7 @@ function createRunnerProps(overrides: Partial<UseAgentRunnerParams> = {}): UseAg
     }),
     promptUiState: makePromptUiState(),
     promptScope: 'project',
+    promptMode: 'ask',
     selectedModel: 'test-model',
     abortController: new AbortController(),
     runningSessionId: 'session-1',
@@ -289,9 +290,7 @@ describe('useAgentRunner', () => {
     expect(props.promptUiState).toHaveBeenCalled();
   });
 
-  it('auto-approves and builds a successful welcome request over starter files', async () => {
-    const appState = makeAppState({ compileRequest: 0 });
-    vi.mocked(AppState.usePassiveState).mockReturnValue(appState);
+  it('stages a successful welcome request for review', async () => {
     applyAgentChanges.mockReturnValue({ applied: 1, deletions: [], changeSet: null });
     const props = createRunnerProps({
       editorState: createMockEditorState({
@@ -308,18 +307,19 @@ describe('useAgentRunner', () => {
       result.current.send(null, 'welcome build', 'project', true);
     });
 
-    await waitFor(() => expect(appState.compileRequest).toBe(1));
+    await waitFor(() => expect(applyAgentChanges).toHaveBeenCalled());
+    expect(runManager.mock.calls[0][0]).toMatchObject({ mode: 'edit' });
     expect(
       (
         applyAgentChanges as unknown as {
           mock: { calls: Array<[unknown, Record<string, unknown>]> };
         }
       ).mock.calls[0][1],
-    ).toMatchObject({ autoApprove: true });
+    ).toMatchObject({ autoApprove: false });
     expect(props.patchSession).toHaveBeenCalledWith(
       'session-1',
       expect.objectContaining({
-        reasoning: expect.stringContaining('Welcome project ready'),
+        reasoning: expect.stringContaining('Welcome project staged'),
       }),
     );
   });
@@ -454,7 +454,7 @@ describe('useAgentRunner', () => {
     expect(props.pushSessionMessage).toHaveBeenCalled();
   });
 
-  it('auto-approves the first prompt for an empty project', async () => {
+  it('keeps the first prompt staged for review in an empty project', async () => {
     const props = createRunnerProps({
       editorState: createMockEditorState({ fileContents: {}, selectedLines: {} }),
       sidebarState: makeSidebarState({ folderTree: [] }),
@@ -474,10 +474,10 @@ describe('useAgentRunner', () => {
           mock: { calls: Array<[unknown, Record<string, unknown>]> };
         }
       ).mock.calls[0][1],
-    ).toMatchObject({ autoApprove: true });
+    ).toMatchObject({ autoApprove: false });
   });
 
-  it('builds and opens preview through the compile request after initial files are applied', async () => {
+  it('does not build automatically after initial files are staged', async () => {
     const appState = makeAppState({ compileRequest: 0 });
     vi.mocked(AppState.usePassiveState).mockReturnValue(appState);
     applyAgentChanges.mockReturnValue({ applied: 1, deletions: [], changeSet: null });
@@ -491,13 +491,8 @@ describe('useAgentRunner', () => {
       result.current.send(mockFormEvent());
     });
 
-    await waitFor(() => expect(appState.compileRequest).toBe(1));
-    expect(props.patchSession).toHaveBeenCalledWith(
-      'session-1',
-      expect.objectContaining({
-        reasoning: expect.stringContaining('Initial project ready'),
-      }),
-    );
+    await waitFor(() => expect(applyAgentChanges).toHaveBeenCalled());
+    expect(appState.compileRequest).toBe(0);
   });
 
   it('keeps review enabled when the project already has files', async () => {

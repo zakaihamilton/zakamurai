@@ -4,6 +4,7 @@ import type {
   ManagerStep,
   ManagerToolName,
 } from '@/components/AI/types';
+import type { PromptMode } from '@/components/state/domain-types';
 
 const CHANGE_WORDS =
   /\b(add|build|change|create|delete|design|edit|fix|implement|improve|make|modify|refactor|remove|rename|replace|style|update|write)\b/i;
@@ -48,10 +49,66 @@ export function classifyManagerIntent(request: string): ManagerIntent | null {
   return null;
 }
 
-export function createManagerPlan(request: string): ManagerPlan {
+export function createManagerPlan(request: string, mode?: PromptMode): ManagerPlan {
+  if (mode === 'plan') {
+    return {
+      mode,
+      intent: 'explanation',
+      steps: [
+        tool('list_files', 'Inventory the workspace before preparing the implementation plan.'),
+        { kind: 'model', task: 'answer', reason: 'Prepare a plan without changing files.' },
+      ],
+      modelRequired: true,
+      confidence: 'high',
+    };
+  }
+
+  if (mode === 'edit' || mode === 'fix') {
+    return {
+      mode,
+      intent: 'edit',
+      steps: [
+        ...(mode === 'fix'
+          ? [
+              tool('list_project_checks', 'Discover local checks before repairing the issue.'),
+              tool('run_project_check', 'Collect deterministic diagnostics for the repair.'),
+              tool('inspect_preview', 'Collect preview evidence when available.'),
+            ]
+          : []),
+        tool('read_file', 'Read the relevant current source before editing.'),
+        {
+          kind: 'model',
+          task: 'generate-changes',
+          reason:
+            mode === 'fix' ? 'Repair the diagnosed issue.' : 'Generate the requested changes.',
+        },
+        tool('validate', 'Validate generated changes deterministically.'),
+      ],
+      modelRequired: true,
+      confidence: 'high',
+    };
+  }
+
   const intent = classifyManagerIntent(request);
+  if (mode === 'ask' && (intent === 'edit' || intent === 'mixed')) {
+    return {
+      mode,
+      intent: 'explanation',
+      steps: [
+        tool('read_file', 'Read the relevant source to answer without editing.'),
+        {
+          kind: 'model',
+          task: 'answer',
+          reason: 'Explain the requested change without applying it.',
+        },
+      ],
+      modelRequired: true,
+      confidence: 'high',
+    };
+  }
   if (!intent) {
     return {
+      ...(mode ? { mode } : {}),
       intent: 'explanation',
       steps: [
         { kind: 'model', task: 'answer', reason: 'The request needs semantic interpretation.' },
@@ -63,6 +120,7 @@ export function createManagerPlan(request: string): ManagerPlan {
 
   if (intent === 'project-check') {
     return {
+      ...(mode ? { mode } : {}),
       intent,
       steps: [
         tool('list_project_checks', 'Discover safe project checks declared by the workspace.'),
@@ -74,6 +132,7 @@ export function createManagerPlan(request: string): ManagerPlan {
   }
   if (intent === 'preview-inspection') {
     return {
+      ...(mode ? { mode } : {}),
       intent,
       steps: [tool('inspect_preview', 'Inspect deterministic preview and runtime evidence.')],
       modelRequired: false,
@@ -82,6 +141,7 @@ export function createManagerPlan(request: string): ManagerPlan {
   }
   if (intent === 'workspace-query') {
     return {
+      ...(mode ? { mode } : {}),
       intent,
       steps: [tool('list_files', 'Start with the workspace inventory.')],
       modelRequired: false,
@@ -90,6 +150,7 @@ export function createManagerPlan(request: string): ManagerPlan {
   }
   if (intent === 'explanation') {
     return {
+      ...(mode ? { mode } : {}),
       intent,
       steps: [
         tool(
@@ -125,6 +186,7 @@ export function createManagerPlan(request: string): ManagerPlan {
     };
   }
   return {
+    ...(mode ? { mode } : {}),
     intent: 'edit',
     steps: [
       tool('read_file', 'Read the active or most relevant source before editing.'),

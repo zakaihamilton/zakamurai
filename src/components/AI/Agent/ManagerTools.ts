@@ -8,7 +8,7 @@ import type {
 } from '@/components/AI/types';
 import { type ConsoleLogEntry, filterConsoleLogs, formatConsoleLogs } from './ConsoleLogInspector';
 import { type PackageAction, handlePackageOperation } from './PackageManager';
-import { listProjectChecks, runProjectCheck } from './ProjectChecks';
+import { listProjectChecks, runProjectCheck, selectProjectCheck } from './ProjectChecks';
 import { extractFileSymbols, formatSymbolOutline } from './SymbolInspector';
 import { AgentWorkspace } from './Workspace';
 
@@ -43,11 +43,6 @@ const asNumber = (
 ): number =>
   typeof input?.[key] === 'number' && Number.isFinite(input[key]) ? Number(input[key]) : fallback;
 
-function checkNameFromRequest(request: string, checks: string[]): string | null {
-  const normalized = request.toLowerCase();
-  return checks.find((check) => normalized.includes(check.toLowerCase())) || checks[0] || null;
-}
-
 export async function executeManagerTool(
   call: ManagerToolCall,
   context: ManagerToolContext,
@@ -77,7 +72,7 @@ export async function executeManagerTool(
     case 'run_project_check': {
       const checks = listProjectChecks(context.workspace.files);
       const requested = asString(input, 'check');
-      const check = requested || checkNameFromRequest(asString(input, 'request'), checks);
+      const check = requested || selectProjectCheck(asString(input, 'request'), checks);
       if (!check)
         value = { status: 'unavailable', diagnostics: 'No eligible project check was found.' };
       else {

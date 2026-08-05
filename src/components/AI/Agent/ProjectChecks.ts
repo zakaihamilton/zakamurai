@@ -17,6 +17,20 @@ export function listProjectChecks(files: FileMap = {}): string[] {
   }
 }
 
+export function selectProjectCheck(request: string, checks: string[]): string | null {
+  const normalized = request.toLowerCase();
+  return (
+    checks.find((check) => normalized.includes(check.toLowerCase())) ||
+    checks.find((check) =>
+      ['build', 'compile', 'test', 'lint', 'typecheck', 'verify'].some(
+        (keyword) => normalized.includes(keyword) && check.toLowerCase().includes(keyword),
+      ),
+    ) ||
+    checks[0] ||
+    null
+  );
+}
+
 export function isEligibleProjectCheck(name: string, command: string | null): boolean {
   if (!name || typeof command !== 'string' || BLOCKED_NAME.test(name)) return false;
   try {

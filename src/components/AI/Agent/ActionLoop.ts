@@ -58,6 +58,7 @@ import {
 import { type ActionLoopValidationState, createValidationRunner } from './ActionLoopValidation';
 import { type ConsoleLogEntry, filterConsoleLogs, formatConsoleLogs } from './ConsoleLogInspector';
 import { AgentContextManager, formatVerificationResult } from './ContextManager';
+import { normalizeModelChanges } from './ManagerContextUtils';
 import { parseModelResult } from './ManagerProtocol';
 import { type PackageAction, handlePackageOperation } from './PackageManager';
 import { listProjectChecks, runProjectCheck } from './ProjectChecks';
@@ -67,6 +68,7 @@ import { AgentWorkspace } from './Workspace';
 
 export async function runActionLoop({
   request,
+  mode,
   scope = 'file',
   activeFile,
   selectedLines = [],
@@ -107,25 +109,33 @@ export async function runActionLoop({
       : baseSystemPrompt;
   const lightweightTargetPath = recoveryWritePath(workspace.files, activeFile) || 'src/App.jsx';
   const contextReady = Boolean(priorContext) && !agentRole;
+  const modeInstruction =
+    mode === 'fix'
+      ? 'FIX MODE: repair only the diagnosed issue. Avoid unrelated refactors or visual changes. For existing files, use replace_file_content with exact search and replace text; use write_file only for new files.'
+      : mode === 'edit'
+        ? 'EDIT MODE: make only the requested changes and keep unrelated files untouched. For existing files, use replace_file_content with exact search and replace text; use write_file only for new files.'
+        : '';
+  const modeTemperature = mode === 'fix' ? 0.05 : 0.1;
+  const modeTopP = mode === 'fix' ? 0.75 : 0.8;
   const messages: WebLLMMessage[] = [
     { role: 'system', content: agentSystemPrompt },
     {
       role: 'user',
       content: contextReady
-        ? buildContextReadyUserRequest({
+        ? `${modeInstruction ? `${modeInstruction}\n\n` : ''}${buildContextReadyUserRequest({
             request,
             targetPath: lightweightTargetPath,
             files: workspace.files,
             priorContext,
             lightweight: lightweightModel,
-          })
-        : buildUserRequest({
+          })}`
+        : `${modeInstruction ? `${modeInstruction}\n\n` : ''}${buildUserRequest({
             request,
             scope,
             activeFile,
             selectedLines,
             priorContext: context.toString(),
-          }),
+          })}`,
     },
   ];
   let protocolFailures = 0;
@@ -162,6 +172,32 @@ export async function runActionLoop({
   const failedWriteAttemptLimit = lightweightModel ? 5 : 6;
   const malformedSourceAttemptLimit = lightweightModel ? 3 : 4;
   const validationRepairLimit = lightweightModel ? 2 : 3;
+
+  const patchRecoveryRequired = (target: string | null | undefined): boolean =>
+    Boolean(
+      target && (mode === 'edit' || mode === 'fix') && Object.hasOwn(workspace.files, target),
+    );
+  const recoveryWriteGuidance = (
+    target: string | null | undefined,
+    lightweight = false,
+  ): string => {
+    if (patchRecoveryRequired(target)) {
+      return `Return exactly one replace_file_content action for ${target} with an exact, unique search string and replacement text. Do not return a complete replacement file.`;
+    }
+    return lightweight
+      ? target
+        ? `Reply with ONLY a labelled code fence containing complete source for ${target}. Do not return JSON.`
+        : 'Reply with ONLY a labelled code fence containing complete source. Do not return JSON.'
+      : target
+        ? `Return exactly one write_file action for ${target} with complete source content.`
+        : 'Return exactly one write_file action with complete source content.';
+  };
+  const recoveryChangesGuidance = (target: string | null | undefined): string =>
+    patchRecoveryRequired(target)
+      ? `Return one kind=changes response for ${target} using an exact search and replace field pair. Do not return complete file contents.`
+      : target
+        ? `Return one kind=changes response containing complete content for ${target}.`
+        : 'Return one kind=changes response containing complete file contents.';
 
   const recordFailedWriteAttempt = (target: string): void => {
     failedWriteAttempts += 1;
@@ -269,6 +305,7 @@ export async function runActionLoop({
           targetPath: recoveryTarget,
           files: workspace.files,
           lightweight: lightweightModel,
+          patchMode: patchRecoveryRequired(recoveryTarget),
         })
       : forcedWriteRecoveryPending
         ? buildForcedWriteRecoveryMessages({
@@ -277,6 +314,7 @@ export async function runActionLoop({
             files: workspace.files,
             lightweight: lightweightModel,
             incompleteWrite: incompleteWriteRetries > 0,
+            patchMode: patchRecoveryRequired(recoveryTarget),
           })
         : messages;
     const safeModelMessages = modelMessages.filter(Boolean);
@@ -288,8 +326,8 @@ export async function runActionLoop({
           signal,
           task: 'generate-changes',
           onMetrics,
-          temperature: lightweightModel ? 0.2 : visualMode ? 0.12 : 0.15,
-          top_p: lightweightModel ? 0.85 : 0.8,
+          temperature: lightweightModel ? 0.2 : visualMode ? 0.12 : modeTemperature,
+          top_p: lightweightModel ? 0.85 : modeTopP,
           max_tokens: lightweightModel
             ? visualMode || failedWritePath || forcedWriteRecoveryPending
               ? LIGHTWEIGHT_AGENT_RECOVERY_TOKENS
@@ -307,8 +345,8 @@ export async function runActionLoop({
           signal,
           task: 'generate-changes',
           onMetrics,
-          temperature: lightweightModel ? 0.2 : visualMode ? 0.12 : 0.15,
-          top_p: lightweightModel ? 0.85 : 0.8,
+          temperature: lightweightModel ? 0.2 : visualMode ? 0.12 : modeTemperature,
+          top_p: lightweightModel ? 0.85 : modeTopP,
           max_tokens: lightweightModel
             ? visualMode || failedWritePath || forcedWriteRecoveryPending
               ? LIGHTWEIGHT_AGENT_RECOVERY_TOKENS
@@ -354,8 +392,8 @@ export async function runActionLoop({
                 message: `Local model recovery: ${action} after ${recovery.reason.replaceAll('-', ' ')}.`,
               });
             },
-            temperature: lightweightModel ? 0.2 : visualMode ? 0.12 : 0.15,
-            top_p: lightweightModel ? 0.85 : 0.8,
+            temperature: lightweightModel ? 0.2 : visualMode ? 0.12 : modeTemperature,
+            top_p: lightweightModel ? 0.85 : modeTopP,
             // Give a repair turn enough room to return one complete source file instead of
             // repeating a truncated payload from the preceding attempt.
             max_tokens: lightweightModel
@@ -399,14 +437,9 @@ export async function runActionLoop({
       try {
         const directResult = parseModelResult(replyText);
         if (directResult.kind === 'changes' && directResult.changes.length) {
-          const changes = directResult.changes.map((change) => ({
-            ...change,
-            path: change.path || change.filePath || '',
-            ...(typeof change.content === 'string' ? { after: change.content } : {}),
-            ...(change.before === undefined
-              ? { before: workspace.files[change.path || change.filePath || ''] }
-              : {}),
-          }));
+          const changes = normalizeModelChanges(directResult, workspace.files, {
+            requirePatches: mode === 'edit' || mode === 'fix',
+          });
           const validation = validateAIChanges(changes);
           if (validation.rejected.length || !validation.accepted.length) {
             messages.push({
@@ -439,7 +472,7 @@ export async function runActionLoop({
               content: observation(
                 'validate',
                 false,
-                `${verification}\nReturn a corrected kind=changes response with complete file contents.`,
+                `${verification}\n${recoveryChangesGuidance(forcedRecoveryTargetPath || recoveryWritePath(workspace.files, activeFile))}`,
               ),
             });
             continue;
@@ -479,7 +512,7 @@ export async function runActionLoop({
             content: observation(
               'changes',
               false,
-              'The previous model response did not return any changes for an edit request. return changes for an edit request as a complete kind=changes response with at least one file change.',
+              'The previous model response did not return any changes for an edit request. return changes for an edit request as a kind=changes response with at least one file change.',
             ),
           });
           continue;
@@ -502,9 +535,7 @@ export async function runActionLoop({
           if (incompleteWriteRetries > 1) {
             recordFailedWriteAttempt(target);
           }
-          const recoveryMessage = lightweightModel
-            ? `write_file metadata was returned without source content. Reply with ONLY a labelled code fence containing the complete source for ${target}. Do not return JSON.`
-            : `write_file metadata was returned without source content. Reply again with write_file for ${target} and include the complete file body in the same response (a labelled code fence immediately after the JSON line).`;
+          const recoveryMessage = `write_file metadata was returned without source content. ${recoveryWriteGuidance(target, lightweightModel)}`;
           messages.push({
             role: 'user',
             content: observation('protocol', false, recoveryMessage),
@@ -528,13 +559,7 @@ export async function runActionLoop({
             directChangesRecoveryPending = true;
             const target =
               forcedRecoveryTargetPath || recoveryWritePath(workspace.files, activeFile);
-            const recoveryMessage = lightweightModel
-              ? target
-                ? `Fence-only recovery is active. Reply with ONLY a labelled code fence containing complete source for ${target}. Do not return JSON.`
-                : 'Fence-only recovery is active. Reply with ONLY a labelled code fence containing complete source. Do not return JSON.'
-              : target
-                ? `Direct recovery is active. Return one kind=changes response containing complete content for ${target}. Do not return another action.`
-                : 'Direct recovery is active. Return one kind=changes response containing complete file contents. Do not return another action.';
+            const recoveryMessage = `Direct recovery is active. ${recoveryChangesGuidance(target)} Do not return another action.`;
             messages.push({
               role: 'user',
               content: observation('direct_recovery', false, recoveryMessage),
@@ -551,18 +576,12 @@ export async function runActionLoop({
             continue;
           }
           throw new AgentExecutionError(
-            'The local model could not provide a write_file action after forced recovery. Staged changes were preserved for review; retry with a stronger model or a narrower request.',
+            'The local model could not provide a write_file action or valid replacement action after forced recovery. Staged changes were preserved for review; retry with a stronger model or a narrower request.',
             workspace.changes(),
           );
         }
         const target = forcedRecoveryTargetPath || recoveryWritePath(workspace.files, activeFile);
-        const recoveryMessage = lightweightModel
-          ? target
-            ? `Recovery mode is active. Reply with ONLY a labelled code fence containing complete source for ${target}. Do not return JSON, list_files, validate, or prose.`
-            : 'Recovery mode is active. Reply with ONLY a labelled code fence containing complete source. Do not return JSON, list_files, validate, or prose.'
-          : target
-            ? `Recovery mode is active. Return exactly one write_file action for ${target} with complete source content. Do not use list_files, validate, inspect_preview, or prose.`
-            : 'Recovery mode is active. Return exactly one write_file action with complete source content. Do not use list_files, validate, inspect_preview, or prose.';
+        const recoveryMessage = `Recovery mode is active. ${recoveryWriteGuidance(target, lightweightModel)} Do not use list_files, validate, inspect_preview, or prose.`;
         messages.push({
           role: 'user',
           content: observation('protocol', false, `${err.message}. ${recoveryMessage}`),
@@ -582,9 +601,10 @@ export async function runActionLoop({
         throw new Error(
           `Local model could not follow the agent protocol after recovery: ${err.message}`,
         );
+      const protocolRecoveryTarget = recoveryWritePath(workspace.files, activeFile);
       const incompleteWriteGuidance = isIncompleteWriteError(err.message)
-        ? `${err.message}. Return write_file again with the complete file content in the same response.`
-        : `${err.message}. Do not write prose. Reply with exactly one JSON action that advances the request (prefer write_file with complete content for an edit request).`;
+        ? `${err.message}. ${recoveryWriteGuidance(protocolRecoveryTarget)}`
+        : `${err.message}. Do not write prose. ${recoveryWriteGuidance(protocolRecoveryTarget)}`;
       messages.push({
         role: 'user',
         content: observation('protocol', false, incompleteWriteGuidance),
@@ -592,18 +612,17 @@ export async function runActionLoop({
       continue;
     }
     const fingerprint = JSON.stringify(action);
-    if (forcedWriteRecoveryPending && action.action !== 'write_file') {
+    const currentRecoveryTarget =
+      forcedRecoveryTargetPath || recoveryWritePath(workspace.files, activeFile);
+    const recoveryActionAllowed =
+      action.action === 'write_file' ||
+      (action.action === 'replace_file_content' && patchRecoveryRequired(currentRecoveryTarget));
+    if (forcedWriteRecoveryPending && !recoveryActionAllowed) {
       forcedWriteRecoveryViolations += 1;
       if (forcedWriteRecoveryViolations === 1 && workspace.changes().length === 0) {
         directChangesRecoveryPending = true;
         const target = forcedRecoveryTargetPath || recoveryWritePath(workspace.files, activeFile);
-        const recoveryMessage = lightweightModel
-          ? target
-            ? `Fence-only recovery is active. Reply with ONLY a labelled code fence containing complete source for ${target}. Do not return another action.`
-            : 'Fence-only recovery is active. Reply with ONLY a labelled code fence containing complete source. Do not return another action.'
-          : target
-            ? `Direct recovery is active. Return one kind=changes response containing complete content for ${target}. Do not return another action.`
-            : 'Direct recovery is active. Return one kind=changes response containing complete file contents. Do not return another action.';
+        const recoveryMessage = `Direct recovery is active. ${recoveryChangesGuidance(target)} Do not return another action.`;
         messages.push({
           role: 'user',
           content: observation('direct_recovery', false, recoveryMessage),
@@ -643,13 +662,7 @@ export async function runActionLoop({
         if (!directChangesRecoveryPending) {
           directChangesRecoveryPending = true;
           const target = forcedRecoveryTargetPath || recoveryWritePath(workspace.files, activeFile);
-          const recoveryMessage = lightweightModel
-            ? target
-              ? `Fence-only recovery is active. Reply with ONLY a labelled code fence containing complete source for ${target}. Do not return another action.`
-              : 'Fence-only recovery is active. Reply with ONLY a labelled code fence containing complete source. Do not return another action.'
-            : target
-              ? `Direct recovery is active. Return one kind=changes response containing complete content for ${target}. Do not return another action.`
-              : 'Direct recovery is active. Return one kind=changes response containing complete file contents. Do not return another action.';
+          const recoveryMessage = `Direct recovery is active. ${recoveryChangesGuidance(target)} Do not return another action.`;
           messages.push({
             role: 'user',
             content: observation('direct_recovery', false, recoveryMessage),
@@ -663,13 +676,7 @@ export async function runActionLoop({
         );
       }
       const target = forcedRecoveryTargetPath || recoveryWritePath(workspace.files, activeFile);
-      const message = lightweightModel
-        ? target
-          ? `Recovery mode is active. Do not inspect files again. Reply with ONLY a labelled code fence containing complete source for ${target}.`
-          : 'Recovery mode is active. Do not inspect files again. Reply with ONLY a labelled code fence containing complete source.'
-        : target
-          ? `Recovery mode is active. Do not inspect files again. Your next response must be a write_file action for ${target} with complete source content that fulfills the original request.`
-          : 'Recovery mode is active. Do not inspect files again. Your next response must be a write_file action that fulfills the original request.';
+      const message = `Recovery mode is active. Do not inspect files again. ${recoveryWriteGuidance(target, lightweightModel)}`;
       messages.push({ role: 'user', content: observation(action.action, false, message) });
       context.record('stuck_read_recovery', message);
       onEvent({ type: 'observation', turn, action, error: true, message, agentRole });
@@ -709,9 +716,7 @@ export async function runActionLoop({
       ) {
         const target = forcedRecoveryTargetPath || recoveryWritePath(workspace.files, activeFile);
         forcedWriteRecoveryPending = true;
-        const message = target
-          ? `Recovery mode: the workspace has already been inspected. Do not list, search, or read files again. Your next response must be a write_file action for ${target} that fulfills the original request, with complete source content. Only call finish if no code change is needed.`
-          : 'Recovery mode: the workspace has already been inspected. Do not list, search, or read files again. Your next response must be a write_file action that fulfills the original request, with complete source content. Only call finish if no code change is needed.';
+        const message = `Recovery mode: the workspace has already been inspected. Do not list, search, or read files again. ${recoveryWriteGuidance(target)} Only call finish if no code change is needed.`;
         messages.push({
           content: observation('stuck_read_recovery', false, message),
           role: 'user',
@@ -740,9 +745,7 @@ export async function runActionLoop({
             content: observation(
               'stuck_read_recovery',
               false,
-              target
-                ? `Recovery mode: the workspace has already been inspected. Do not list, search, or read files again. Your next response must be a write_file action for ${target} that fulfills the original request, with complete source content. Only call finish if no code change is needed.`
-                : 'Recovery mode: the workspace has already been inspected. Do not list, search, or read files again. Your next response must be a write_file action that fulfills the original request, with complete source content. Only call finish if no code change is needed.',
+              `Recovery mode: the workspace has already been inspected. Do not list, search, or read files again. ${recoveryWriteGuidance(target)} Only call finish if no code change is needed.`,
             ),
           });
           continue;
@@ -831,7 +834,7 @@ export async function runActionLoop({
           const result = await runValidation(turn);
           const validationFailed = isFailedValidationResult(result);
           const finishHint = validationFailed
-            ? ' Validation failed for the staged changes. Do not finish. Return a corrected write_file action with complete working source.'
+            ? ` Validation failed for the staged changes. Do not finish. ${recoveryWriteGuidance(action.path || currentRecoveryTarget)}`
             : ' Validation passed for the staged changes. Your next action must be finish with a brief summary. Do not rewrite or validate again.';
           messages.push({
             role: 'user',
@@ -933,6 +936,14 @@ export async function runActionLoop({
         }
       }
       if (action.action === 'write_file') {
+        if (
+          (mode === 'edit' || mode === 'fix') &&
+          Object.hasOwn(workspace.files, action.path || '')
+        ) {
+          throw new Error(
+            `Cannot replace existing file ${action.path} with write_file in ${mode} mode. Use replace_file_content with exact search and replace text.`,
+          );
+        }
         const normalizedSideEffectCss = /\.(jsx|tsx)$/i.test(action.path || '')
           ? normalizeSideEffectCssSource(action.path || '', action.content || '')
           : null;
@@ -1096,6 +1107,9 @@ export async function runActionLoop({
         nonProductiveActionsWithoutWrite = 0;
         unchangedReadSkips = 0;
         clearFailedWriteAttempts();
+        forcedWriteRecoveryPending = false;
+        forcedRecoveryTargetPath = null;
+        forcedWriteRecoveryViolations = 0;
         onEvent({ type: 'tool', turn, action, agentRole });
         result = `Replaced target content in ${path}.`;
       }
@@ -1199,12 +1213,10 @@ export async function runActionLoop({
       if (action.action === 'finish') {
         onEvent({ type: 'tool', turn, action, agentRole });
         if (CHANGE_REQUEST_PATTERN.test(request) && workspace.changes().length === 0) {
-          const target = forcedRecoveryTargetPath || recoveryWritePath(workspace.files, activeFile);
+          const target = currentRecoveryTarget;
           forcedWriteRecoveryPending = true;
           forcedWriteRecoveryViolations = 0;
-          const message = target
-            ? `No file changes are staged for this edit request. Return exactly one write_file action for ${target} with the complete implementation before finishing.`
-            : 'No file changes are staged for this edit request. Return exactly one write_file action with the complete implementation before finishing.';
+          const message = `No file changes are staged for this edit request. ${recoveryWriteGuidance(target)} before finishing.`;
           messages.push({ role: 'user', content: observation('finish', false, message) });
           context.record('finish_recovery', message);
           continue;
@@ -1219,7 +1231,7 @@ export async function runActionLoop({
             forcedWriteRecoveryPending = true;
             forcedRecoveryTargetPath = target;
             forcedWriteRecoveryViolations = 0;
-            const message = `${fulfillmentError} Do not finish yet. Rewrite ${target} with a complete interactive implementation.`;
+            const message = `${fulfillmentError} Do not finish yet. ${recoveryWriteGuidance(target, lightweightModel)}`;
             messages.push({ role: 'user', content: observation('finish', false, message) });
             context.record('finish_fulfillment', message);
             onEvent({
@@ -1240,7 +1252,7 @@ export async function runActionLoop({
             'src/App.jsx';
           forcedWriteRecoveryPending = true;
           forcedRecoveryTargetPath = target;
-          const message = `Validation failed for the staged changes. Do not finish yet. Return a corrected write_file for ${target} with complete working source code that builds successfully.`;
+          const message = `Validation failed for the staged changes. Do not finish yet. ${recoveryWriteGuidance(target)}`;
           messages.push({ role: 'user', content: observation('finish', false, message) });
           context.record('finish_failed_validation', message);
           onEvent({

@@ -327,13 +327,35 @@ export const buildForcedWriteRecoveryMessages = ({
   files,
   lightweight = false,
   incompleteWrite = false,
+  patchMode = false,
 }: {
   request: string;
   targetPath: string | null;
   files: Record<string, string>;
   lightweight?: boolean;
   incompleteWrite?: boolean;
+  patchMode?: boolean;
 }): WebLLMMessage[] => {
+  if (patchMode && targetPath && Object.hasOwn(files, targetPath)) {
+    const context = `Current contents of ${targetPath}:\n${files[targetPath]}`;
+    const patchFormat = `{"action":"replace_file_content","path":"${targetPath}","search":"exact existing text","replace":"new text"}`;
+    return [
+      {
+        role: 'system',
+        content: `You are in emergency patch mode. Return exactly one replace_file_content action and nothing else:\n${patchFormat}\nUse an exact, unique search string from the current file. Do not return a complete replacement file, write_file, list files, validate, finish, or prose.`,
+      },
+      {
+        role: 'user',
+        content: [
+          `Original request: ${request}`,
+          ...(incompleteWrite ? ['The previous response did not contain a usable edit.'] : []),
+          `Required destination: ${targetPath}`,
+          context,
+          `Return exactly one replace_file_content action using this shape:\n${patchFormat}`,
+        ].join('\n\n'),
+      },
+    ];
+  }
   if (lightweight) {
     return buildFenceOnlyRecoveryMessages({
       request,
@@ -388,12 +410,33 @@ export const buildDirectChangesRecoveryMessages = ({
   targetPath,
   files,
   lightweight = false,
+  patchMode = false,
 }: {
   request: string;
   targetPath: string | null;
   files: Record<string, string>;
   lightweight?: boolean;
+  patchMode?: boolean;
 }): WebLLMMessage[] => {
+  if (patchMode && targetPath && Object.hasOwn(files, targetPath)) {
+    const context = `Current contents of ${targetPath}:\n${files[targetPath]}`;
+    return [
+      {
+        role: 'system',
+        content:
+          'You are in direct patch recovery mode. Return exactly one kind=changes JSON object. Existing files must use an exact search/replace pair; do not return complete file contents or prose.',
+      },
+      {
+        role: 'user',
+        content: [
+          `Original request: ${request}`,
+          `Primary file: ${targetPath}`,
+          context,
+          'Return this exact shape: {"kind":"changes","summary":"...","changes":[{"path":"...","search":"exact existing text","replace":"new text"}]}',
+        ].join('\n\n'),
+      },
+    ];
+  }
   if (lightweight) {
     return buildFenceOnlyRecoveryMessages({ request, targetPath, files });
   }

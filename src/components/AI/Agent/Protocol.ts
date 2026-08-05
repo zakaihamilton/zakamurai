@@ -295,6 +295,7 @@ Actions:
 {"action":"search_semantic","query":"natural language concept","k":5}
 {"action":"read_file","path":"relative/path"}
 {"action":"write_file","path":"relative/path","content":"complete new file content","reason":"brief reason"}
+{"action":"replace_file_content","path":"relative/path","search":"exact existing text","replace":"new text","reason":"brief reason"}
 {"action":"delete_file","path":"relative/path","reason":"brief reason"}
 {"action":"validate"}
 {"action":"list_project_checks"}
@@ -323,6 +324,8 @@ Reply with exactly one action per turn, without hidden reasoning. Use a JSON act
 ${ACTION_CATALOG}
 
 ${WRITE_FILE_PAYLOAD_FORMAT}
+
+When editing an existing file in Edit or Fix mode, use replace_file_content with an exact, unique search string and replacement. write_file is reserved for new files in those modes.
 
 Use list_files to check file existence or list paths by extension (e.g., list_files query: ".module.css"). Use search_workspace to search text inside file contents. Never repeat an identical read-only action after it succeeds; use the result already in the conversation and take the next productive action. Do not repeatedly search_workspace for file extensions. If read_file reports that a file is missing, do not retry it: use write_file to create the intended new file, or choose an existing path from list_files.
 When a component will import a new CSS Module, write that complete *.module.css file before writing the importing JSX or TSX file. Do not write a source file that imports a stylesheet which has not been created yet. If a tool queues a source file because its CSS Module is missing, immediately write the named stylesheet with the complete visual rules; do not inspect the workspace again.

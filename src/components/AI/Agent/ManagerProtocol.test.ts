@@ -52,6 +52,38 @@ describe('manager model protocol', () => {
     expect(() => parseModelResult('{"kind":"tool"}')).toThrow(/Unknown/);
   });
 
+  it('parses structured plans and exact edit patches', () => {
+    expect(
+      parseModelResult(
+        JSON.stringify({
+          kind: 'plan',
+          summary: 'Update the title.',
+          plan: {
+            goals: ['Clearer title'],
+            files: ['src/App.jsx'],
+            steps: ['Replace the heading'],
+          },
+        }),
+      ),
+    ).toEqual({
+      kind: 'plan',
+      summary: 'Update the title.',
+      plan: {
+        goals: ['Clearer title'],
+        files: ['src/App.jsx'],
+        steps: ['Replace the heading'],
+      },
+    });
+    expect(
+      parseModelResult(
+        JSON.stringify({
+          kind: 'changes',
+          changes: [{ path: 'src/App.jsx', search: 'Old', replace: 'New' }],
+        }),
+      ),
+    ).toMatchObject({ changes: [{ path: 'src/App.jsx', search: 'Old', replace: 'New' }] });
+  });
+
   it('recovers literal control characters inside model-generated JSON strings', () => {
     const malformed =
       '{"kind":"changes","changes":[{"path":"src/App.jsx","content":"line 1\nline 2\tready"}]}';
@@ -131,7 +163,7 @@ describe('manager model protocol', () => {
   it('builds answer, change, and repair prompts with bounded evidence', () => {
     expect(buildManagerModelPrompt('explain', '', 'answer')).toContain('Workspace evidence: none');
     expect(buildManagerModelPrompt('edit', 'evidence', 'generate-changes')).toContain(
-      'complete replacement',
+      'exact search/replace',
     );
     expect(
       buildManagerModelPrompt('repair', 'evidence', 'repair-changes', 'syntax error'),

@@ -78,15 +78,44 @@ export const selectInitialContextFiles = (
 export const normalizeModelChanges = (
   result: ModelResult,
   files: Record<string, string>,
+  options: { requirePatches?: boolean } = {},
 ): AgentChange[] => {
   if (result.kind !== 'changes') return [];
   return result.changes.map((change) => {
     const path = change.path || change.filePath || '';
+    const isExistingFile = Object.hasOwn(files, path);
+    const before = isExistingFile ? files[path] : change.before;
+    const hasPatch = typeof change.search === 'string' && typeof change.replace === 'string';
+    if (hasPatch && !change.delete) {
+      if (!isExistingFile) {
+        if (change.search) throw new Error(`Search text cannot target a new file: ${path}.`);
+        return { ...change, path, before, after: change.replace };
+      }
+      if (!change.search) {
+        throw new Error(`Search text must not be empty for existing file: ${path}.`);
+      }
+      if (typeof before !== 'string') throw new Error(`Could not read existing file: ${path}.`);
+      const firstMatch = before.indexOf(change.search);
+      if (firstMatch < 0) throw new Error(`Search text was not found in ${path}.`);
+      if (before.indexOf(change.search, firstMatch + change.search.length) >= 0) {
+        throw new Error(`Search text is ambiguous in ${path}; include a more specific patch.`);
+      }
+      const after =
+        before.slice(0, firstMatch) +
+        change.replace +
+        before.slice(firstMatch + change.search.length);
+      return { ...change, path, before, after };
+    }
+    if (options.requirePatches && isExistingFile && !change.delete) {
+      if (!hasPatch) {
+        throw new Error(`Existing file edits must use an exact search/replace patch: ${path}.`);
+      }
+    }
     const content = typeof change.after === 'string' ? change.after : change.content;
     return {
       ...change,
       path,
-      before: change.before ?? files[path],
+      before,
       ...(content !== undefined ? { after: content } : {}),
     };
   });

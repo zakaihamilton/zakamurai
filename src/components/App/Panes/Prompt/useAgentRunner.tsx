@@ -99,6 +99,7 @@ export default function useAgentRunner({
   agentSessionState,
   promptUiState,
   promptScope,
+  promptMode,
   selectedModel,
   abortController,
   runningSessionId,
@@ -175,12 +176,6 @@ export default function useAgentRunner({
       addToHistory(userMsg);
       const currentActiveTabId = tabState.activeTabId;
       const currentActiveTab = tabState.openTabs.find((tab) => tab.id === currentActiveTabId);
-      const autoApproveInitialProject =
-        activeSession.messages.length === 0 &&
-        Object.keys(editorState.fileContents || {}).length === 0 &&
-        (sidebarState.folderTree || []).length === 0;
-      const shouldAutoApprove = isWelcomePrompt || autoApproveInitialProject;
-
       pushSessionMessage(sessionId, createSessionMessage({ role: 'user', text: userMsg }));
       patchSession(sessionId, {
         status: 'running',
@@ -204,7 +199,7 @@ export default function useAgentRunner({
           {
             id: Date.now(),
             role: 'system',
-            text: 'AI Manager started.',
+            text: `AI Manager started in ${promptMode} mode.`,
             timestamp: new Date().toTimeString().split(' ')[0],
           },
         ];
@@ -337,6 +332,7 @@ export default function useAgentRunner({
           const manager = runManager as (options: RunManagerOptions) => Promise<RunManagerResult>;
           const result = await manager({
             request: userMsg,
+            mode: isWelcomePrompt ? 'edit' : promptMode,
             sessionId,
             priorContext: `Project preflight:\n${preflightSummary}`,
             scope: (effectiveScope === 'project' ? 'project' : 'file') as 'file' | 'project',
@@ -482,23 +478,18 @@ export default function useAgentRunner({
             draft.isAIProcessing = false;
           });
 
-          const { applied, deletions, changeSet } = applyAgentChanges(result.changes, {
+          const { deletions, changeSet } = applyAgentChanges(result.changes, {
             editorState: editorState as never,
             sidebarState: sidebarState as never,
             logState: logState as never,
             changeSetState: changeSetState as never,
             request: userMsg,
-            autoApprove: shouldAutoApprove,
+            autoApprove: false,
           });
-          if (isWelcomePrompt || (autoApproveInitialProject && applied > 0)) {
+          if (isWelcomePrompt && result.changes.length > 0) {
             appendReasoning(
-              isWelcomePrompt
-                ? '**Welcome project ready:** starting the first build now…'
-                : '**Initial project ready:** starting the first build now…',
+              '**Welcome project staged:** review the generated change set before building.',
             );
-            appState((draft) => {
-              draft.compileRequest = (draft.compileRequest || 0) + 1;
-            });
           }
           if (changeSet) {
             pushSessionMessage(
@@ -634,6 +625,7 @@ export default function useAgentRunner({
       webLLMEngines,
       patchSession,
       promptScope,
+      promptMode,
       promptUiState,
       pushSessionMessage,
       selectedModel,

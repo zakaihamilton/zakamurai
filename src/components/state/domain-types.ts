@@ -306,6 +306,8 @@ export interface PromptStateShape {
   promptHistory: string[];
 }
 
+export type PromptMode = 'ask' | 'plan' | 'edit' | 'fix';
+
 export interface PromptUiStateShape {
   val: string;
   historyIndex: number;
@@ -320,6 +322,7 @@ export interface PromptUiStateShape {
   animatedWidth: number;
   abortController: AbortController | null;
   promptScope: string;
+  promptMode: PromptMode;
   welcomeRequest: unknown;
   runningSessionId: string | null;
   isAgentTreeOpen: boolean;

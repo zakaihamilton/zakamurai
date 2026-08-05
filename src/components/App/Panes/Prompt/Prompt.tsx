@@ -7,6 +7,7 @@ import { TabState } from '@/components/App/Panes/TabBar';
 import { EditorState } from '@/components/App/Views/EditorArea';
 import { LogState } from '@/components/App/Views/LogArea';
 import { useFileSystem } from '@/components/Storage';
+import type { PromptMode } from '@/components/state/domain-types';
 import { useCallback, useEffect, useState } from 'react';
 import { requireStore } from '../../types';
 import { AgentSessionState, createAgentRunUsage, createSessionMessage } from './AgentSessions';
@@ -46,6 +47,7 @@ export default function Prompt() {
     abortController = null,
     welcomeRequest = null,
     runningSessionId = null,
+    promptMode = 'ask',
     sessionDialog = null,
     isAgentTreeOpen = false,
     latestManagerTrace = null,
@@ -107,6 +109,7 @@ export default function Prompt() {
     agentSessionState,
     promptUiState,
     promptScope: isFileScopeArmed ? 'file' : 'project',
+    promptMode,
     selectedModel,
     abortController,
     runningSessionId,
@@ -230,6 +233,14 @@ export default function Prompt() {
     },
     [promptUiState],
   );
+  const setPromptMode = useCallback(
+    (mode: PromptMode) => {
+      promptUiState((draft) => {
+        draft.promptMode = mode;
+      });
+    },
+    [promptUiState],
+  );
 
   const selectedModelInfo =
     WEB_LLM_MODELS.find((model) => model.id === selectedModel) || RECOMMENDED_WEB_LLM_MODEL;
@@ -289,6 +300,8 @@ export default function Prompt() {
         onChangeModel={setSelectedModel}
         onLoadCachedModelIds={loadCachedModelIds}
         onOpenModelManager={openModelManager}
+        promptMode={promptMode}
+        onChangePromptMode={setPromptMode}
         patchSession={patchSession}
         onClearAIModelLog={handleClearAIModelLog}
         latestManagerTrace={latestManagerTrace}

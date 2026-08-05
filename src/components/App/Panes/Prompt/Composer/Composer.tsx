@@ -1,3 +1,4 @@
+import type { PromptMode } from '@/components/state/domain-types';
 import { Icons } from '@/components/ui/Icons';
 import Select from '@/components/ui/Select';
 import Tooltip from '@/components/ui/Tooltip';
@@ -19,7 +20,15 @@ export default function PromptComposer({
   onChangeModel = () => {},
   onLoadCachedModelIds,
   onOpenModelManager,
+  promptMode = 'ask',
+  onChangePromptMode = () => {},
 }: PromptComposerProps) {
+  const modeOptions: Array<{ value: PromptMode; label: string }> = [
+    { value: 'ask', label: 'Ask' },
+    { value: 'plan', label: 'Plan' },
+    { value: 'edit', label: 'Edit' },
+    { value: 'fix', label: 'Fix' },
+  ];
   return (
     <form onSubmit={onSubmit} className={styles.form}>
       <div className={styles.composer}>
@@ -42,6 +51,16 @@ export default function PromptComposer({
           onPointerDown={onLoadCachedModelIds}
         >
           <div className={styles.modelControl}>
+            <Select
+              id="ai-prompt-mode"
+              label="Mode"
+              value={promptMode}
+              options={modeOptions}
+              onChange={(value) => onChangePromptMode(value as PromptMode)}
+              disabled={isAIProcessing || !isOpen}
+              tabIndex={isOpen ? undefined : -1}
+              className={styles.modeSelect}
+            />
             <Select
               id="ai-model-select"
               label="Model"

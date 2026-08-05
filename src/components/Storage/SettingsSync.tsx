@@ -39,7 +39,7 @@ export function useSettingsSync(
   previewState: Pick<PreviewStateShape, 'htmlContent'> | null | undefined,
   promptUiState:
     | (Pick<PromptUiStateShape, 'val' | 'selectedModel'> &
-        Partial<Pick<PromptUiStateShape, 'welcomePrompt'>>)
+        Partial<Pick<PromptUiStateShape, 'welcomePrompt' | 'promptMode'>>)
     | null
     | undefined,
   workspaceProfileState: StateStore<WorkspaceProfileStateShape> | null = null,
@@ -57,7 +57,7 @@ export function useSettingsSync(
   const { openTabs, activeTabId, lastCodeTabId } = tabState || {};
   const { logs } = logState || {};
   const { htmlContent } = previewState || {};
-  const { val: promptDraft, welcomePrompt, selectedModel } = promptUiState || {};
+  const { val: promptDraft, welcomePrompt, selectedModel, promptMode } = promptUiState || {};
   const workspaceProfile: WorkspaceProfileStateShape = workspaceProfileState ?? {
     include: [],
     exclude: [],
@@ -111,6 +111,10 @@ export function useSettingsSync(
       Settings.setAIPromptModel(selectedModel);
     }
   }, [selectedModel]);
+
+  useEffect(() => {
+    if (promptMode) Settings.setAIPromptMode?.(promptMode);
+  }, [promptMode]);
 
   useEffect(() => {
     if (typeof promptDraft !== 'string') return undefined;

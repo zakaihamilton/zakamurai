@@ -1,4 +1,4 @@
-import type { ChangeSetStateShape } from '@/components/state/domain-types';
+import type { ChangeSetStateShape, PromptMode } from '@/components/state/domain-types';
 import type { StateStore } from '@/components/state/types';
 import type { AiChange } from '@/contracts/ai';
 import type { DeviceCapabilityReport } from '@/contracts/capabilities';
@@ -55,6 +55,8 @@ export type AgentChange = {
   before?: string;
   after?: string;
   content?: string;
+  search?: string;
+  replace?: string;
   filePath?: string;
   delete?: boolean;
 };
@@ -165,6 +167,7 @@ export type ManagerStep =
   | { kind: 'model'; task: 'answer' | 'generate-changes' | 'repair-changes'; reason: string };
 
 export type ManagerPlan = {
+  mode?: PromptMode;
   intent: ManagerIntent;
   steps: ManagerStep[];
   modelRequired: boolean;
@@ -173,8 +176,15 @@ export type ManagerPlan = {
 
 export type ModelResult =
   | { kind: 'answer'; summary: string }
+  | { kind: 'plan'; summary: string; plan: ModelPlan }
   | { kind: 'request-context'; requests: ContextRequest[] }
   | { kind: 'changes'; summary: string; changes: AgentChange[] };
+
+export type ModelPlan = {
+  goals: string[];
+  files: string[];
+  steps: string[];
+};
 
 export type ManagerEventType = 'routing' | 'tool' | 'context' | 'model' | 'validation' | 'finished';
 
@@ -217,6 +227,7 @@ export type ManagerModelClient = (call: ManagerModelCall) => Promise<string>;
 /** Compatibility options for the proven iterative action runner used by ManagerRunner. */
 export type RunAgentOptions = {
   request: string;
+  mode?: PromptMode;
   scope?: 'file' | 'project';
   activeFile?: string | null;
   selectedLines?: number[];
@@ -276,6 +287,7 @@ export type ManagerToolOptions = {
 
 export type RunManagerOptions = ManagerToolOptions & {
   request: string;
+  mode?: PromptMode;
   scope?: 'file' | 'project';
   activeFile?: string | null;
   selectedLines?: number[];
@@ -297,6 +309,7 @@ export type RunManagerResult = {
   changes: AgentChange[];
   files: FileMap;
   summary: string;
+  modelPlan?: ModelPlan;
   plan: ManagerPlan;
   events: number;
   workspace: import('./Agent/Workspace').AgentWorkspace;
