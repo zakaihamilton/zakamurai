@@ -401,11 +401,15 @@ describe('runActionLoop', () => {
     expect(result.files['src/App.module.css']).toContain('.app');
     expect(result.files['src/App.module.css']).toContain('.button');
     expect(
-      events.some((event) => event.error && event.message?.includes('too short to fulfill')),
+      events.some((event) => event.error && event.message?.includes('only renders a heading')),
     ).toBe(true);
-    expect(askWebLLM.mock.calls[1]?.[3]?.messages?.[0]?.content).toContain(
-      'Reply with ONLY this labelled code fence',
-    );
+    expect(
+      askWebLLM.mock.calls.some((call) =>
+        call[3]?.messages?.some((message: { content?: string }) =>
+          message.content?.includes('labelled code fence'),
+        ),
+      ),
+    ).toBe(true);
   });
 
   it('auto-attaches a CSS Module when a lightweight model writes an unstyled interactive App', async () => {
@@ -997,6 +1001,35 @@ describe('runActionLoop', () => {
     expect(askWebLLM.mock.calls.length).toBeLessThanOrEqual(8);
   });
 
+  it('stops a lightweight model after two repeated validation failures', async () => {
+    const source = 'export default function App() { return <main>Broken</main>; }';
+    askWebLLM
+      .mockResolvedValueOnce(
+        `{"action":"write_file","path":"src/App.jsx","content":${JSON.stringify(source)}}`,
+      )
+      .mockResolvedValueOnce('{"action":"validate"}')
+      .mockResolvedValueOnce('{"action":"finish","summary":"done"}')
+      .mockResolvedValueOnce(
+        `{"action":"write_file","path":"src/App.jsx","content":${JSON.stringify(source)}}`,
+      )
+      .mockResolvedValueOnce('{"action":"validate"}');
+    const validate = vi.fn().mockResolvedValue({
+      status: 'failed',
+      check: 'build',
+      diagnostics: 'The symbol "styles" has already been declared.',
+    });
+
+    await expect(
+      runActionLoop({
+        request: 'style app',
+        files: { 'src/App.jsx': 'export default function App() { return null; }' },
+        model: 'Qwen2.5-Coder-1.5B-Instruct-q4f16_1-MLC',
+        validate,
+      }),
+    ).rejects.toThrow(/Validation failed after 2 repair attempts/);
+    expect(validate).toHaveBeenCalledTimes(2);
+  });
+
   it('removes unsupported Vite config files before validate so browser builds can use defaults', async () => {
     askWebLLM
       .mockResolvedValueOnce(
@@ -1187,17 +1220,42 @@ describe('runActionLoop', () => {
       }),
     ).rejects.toThrow(/could not provide a write_file action/);
 
-    const repairMessage = askWebLLM.mock.calls[1]?.[3]?.messages
-      ?.map((message: { content: string }) => message.content)
+    const repairMessage = askWebLLM.mock.calls
+      .flatMap((call) => call[3]?.messages || [])
+      .map((message: { content: string }) => message.content)
       .find((content: string) => content.includes('rejected source file'));
     expect(repairMessage).toContain('write only src/App.jsx');
     expect(repairMessage).toContain('using one jsx fence');
     expect(repairMessage).not.toContain('rejected stylesheet');
     expect(repairMessage).not.toContain('using one css fence');
-    expect(askWebLLM.mock.calls[1]?.[3]).toMatchObject({
-      max_tokens: 2200,
-      contextWindowSize: 4096,
-    });
+    expect(askWebLLM.mock.calls[1]?.[3]).toMatchObject({ contextWindowSize: 4096 });
+    expect(askWebLLM.mock.calls[1]?.[3]?.max_tokens).toBeLessThanOrEqual(2200);
+  });
+
+  it('stops after repeated malformed source responses instead of exhausting the turn budget', async () => {
+    askWebLLM
+      .mockResolvedValueOnce(
+        '{"action":"write_file","path":"src/App.jsx","content":"export default function App() { return <main><h1>Game</h1></main>; }}"}',
+      )
+      .mockResolvedValueOnce(
+        '{"action":"write_file","path":"src/App.jsx","content":"export default function App() { return <main><h1>Game</h1></main>; } } // retry"}',
+      )
+      .mockResolvedValueOnce(
+        '{"action":"write_file","path":"src/App.jsx","content":"export default function App() { return <main><h1>Game</h1></main>; }}"}',
+      )
+      .mockResolvedValueOnce(
+        '{"action":"write_file","path":"src/App.jsx","content":"export default function App() { return <main><h1>Game</h1></main>; } } // retry"}',
+      )
+      .mockResolvedValue('{"action":"finish","summary":"should not reach"}');
+
+    await expect(
+      runActionLoop({
+        request: 'fix syntax in the game',
+        files: { 'src/App.jsx': 'export default function App() { return null; }' },
+        model: 'Qwen2.5-Coder-1.5B-Instruct-q4f16_1-MLC',
+      }),
+    ).rejects.toThrow(/repeatedly produced malformed source/);
+    expect(askWebLLM.mock.calls.length).toBeLessThan(5);
   });
 
   it('rewrites dynamic inline styles with a safe co-located CSS Module fallback', async () => {

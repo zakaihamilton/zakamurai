@@ -164,6 +164,7 @@ export async function runActionLoop({
   let directRepairAttempts = 0;
   let incompleteWriteRetries = 0;
   let failedWriteAttempts = 0;
+  let malformedSourceAttempts = 0;
   const failedStylesheetWrites = new Map<string, number>();
   // Manager already collected workspace context; one redundant inspection is enough to force a write.
   const nonProductiveActionLimit = contextReady ? 1 : lightweightModel ? 2 : 4;
@@ -172,6 +173,8 @@ export async function runActionLoop({
   const incompleteWriteRetryLimit = lightweightModel ? 3 : 2;
   // Incomplete metadata ↔ prose oscillation must not burn the full step budget.
   const failedWriteAttemptLimit = lightweightModel ? 5 : 6;
+  const malformedSourceAttemptLimit = lightweightModel ? 3 : 4;
+  const validationRepairLimit = lightweightModel ? 2 : 3;
 
   const recordFailedWriteAttempt = (target: string): void => {
     failedWriteAttempts += 1;
@@ -276,9 +279,9 @@ export async function runActionLoop({
       repairAttempts = 0;
     } else {
       lastValidationFailed = true;
-      if (++repairAttempts >= 3) {
+      if (++repairAttempts >= validationRepairLimit) {
         throw new AgentExecutionError(
-          `Validation failed after 3 repair attempts. Last result: ${result}. Staged changes were preserved for review.`,
+          `Validation failed after ${validationRepairLimit} repair attempts. Last result: ${result}. Staged changes were preserved for review.`,
           workspace.changes(),
         );
       }
@@ -1078,6 +1081,7 @@ export async function runActionLoop({
         failedWritePath = '';
         unchangedReadSkips = 0;
         clearFailedWriteAttempts();
+        malformedSourceAttempts = 0;
         forcedWriteRecoveryPending = false;
         forcedRecoveryTargetPath = null;
         forcedWriteRecoveryViolations = 0;
@@ -1441,6 +1445,38 @@ export async function runActionLoop({
           : `${err.message} Return a complete working implementation for ${target} as source code, not a sentence describing the request.`;
         messages.push({ role: 'user', content: observation(action.action, false, message) });
         context.record('write_file', message);
+        onEvent({ type: 'observation', turn, action, error: true, message, agentRole });
+        continue;
+      }
+      if (
+        action.action === 'write_file' &&
+        /\.(?:jsx|tsx|js|ts)$/i.test(action.path || '') &&
+        /(?:bracket|string literal|Unclosed|Unterminated|Expected|Invalid|Unexpected|Parse error|Syntax error)/i.test(
+          err.message,
+        )
+      ) {
+        malformedSourceAttempts += 1;
+        const target =
+          action.path || recoveryWritePath(workspace.files, activeFile) || 'src/App.jsx';
+        if (lightweightModel) {
+          forcedWriteRecoveryPending = true;
+          forcedRecoveryTargetPath = target;
+          failedWritePath = target;
+        }
+        if (malformedSourceAttempts >= malformedSourceAttemptLimit) {
+          throw new AgentExecutionError(
+            `The local model repeatedly produced malformed source for ${target} (${malformedSourceAttempts} attempts). Staged changes were preserved for review; retry with a stronger model or a narrower request.`,
+            workspace.changes(),
+          );
+        }
+        const targetedRecovery =
+          writeRecovery(target, err.message, workspace.files) ||
+          writeRecovery(target, 'Unmatched bracket', workspace.files);
+        const message = lightweightModel
+          ? `${err.message}${targetedRecovery} Reply with ONLY a labelled code fence containing complete working source for ${target}. Check every bracket, quote, and JSX tag before responding. Do not return JSON.`
+          : `${err.message}${targetedRecovery || ` Return complete working source for ${target} with balanced brackets, quotes, and JSX tags. Do not return prose.`}`;
+        messages.push({ content: observation(action.action, false, message), role: 'user' });
+        context.record('malformed_source_recovery', message);
         onEvent({ type: 'observation', turn, action, error: true, message, agentRole });
         continue;
       }

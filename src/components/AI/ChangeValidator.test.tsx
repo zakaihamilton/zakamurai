@@ -211,7 +211,7 @@ describe('AI change validation', () => {
         'export default function App() { return <main><h1>Notes</h1></main>; }',
         'create a notes app',
       ),
-    ).toContain('too short to fulfill');
+    ).toContain('only renders a heading');
     expect(
       validateRequestFulfillment(
         'src/App.jsx',
@@ -228,7 +228,7 @@ describe('AI change validation', () => {
         },
         'create a notes app',
       ),
-    ).toContain('too short to fulfill');
+    ).toContain('only renders a heading');
     const playable = `import { useState } from "react";
 import styles from "./App.module.css";
 export default function App() {
@@ -309,17 +309,6 @@ export default function App() {
     );
   });
 
-  it('rejects a Tic-Tac-Toe heading without a playable board', () => {
-    const headingOnly = `
-      export default function App() {
-        return <main><h1>Tic Tac Toe</h1></main>;
-      }
-    `;
-    expect(
-      validateRequestFulfillment('src/App.jsx', headingOnly, 'create a tic tac toe game'),
-    ).toContain('only renders a Tic-Tac-Toe heading');
-  });
-
   it('rejects a duplicate local styles declaration beside a CSS Module import', () => {
     const duplicateStyles = `
       import styles from './App.module.css';
@@ -329,6 +318,23 @@ export default function App() {
     expect(validateCssModuleUsage('src/App.jsx', duplicateStyles)).toContain(
       'styles is declared more than once',
     );
+  });
+
+  it('rejects an interactive stylesheet that collapses referenced controls', () => {
+    const source = `${`
+      import { useState } from 'react';
+      import styles from './App.module.css';
+      export default function App() {
+        const [items, setItems] = useState(['one']);
+        return <main>{items.map((item) => <button key={item} onClick={() => setItems(items)} className={styles.cell}>{item}</button>)}</main>;
+      }
+    `}
+      /** ${'x'.repeat(300)} */`;
+    const result = workspaceFulfillsInteractiveRequest(
+      { 'src/App.jsx': source, 'src/App.module.css': '.cell { height: 2px; }' },
+      'create an interactive list',
+    );
+    expect(result).toContain('collapses or hides');
   });
 
   it('accepts code with comments containing unmatched brackets', () => {

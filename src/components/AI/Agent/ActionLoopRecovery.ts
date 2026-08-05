@@ -123,10 +123,11 @@ specify a theme, use a light neutral surface with dark text and one accent. Give
 buttons explicit backgrounds, borders, and focus-visible styles instead of relying on browser
 defaults.
 
-For Tic-Tac-Toe requests, the rendered result must visibly include a 3x3 board with nine
-playable button cells, current-turn or result status, and a reset/new-game control. A heading
-alone is not an implementation; do not finish until those controls are present in the returned
-source and connected to React state/event handlers.
+For interactive requests, the rendered result must visibly include its primary controls and
+status/content states, connected to React state and event handlers. A heading alone is not an
+implementation. Every referenced control needs a real visible size, readable text/state, and
+explicit spacing, background, border, and focus styles. Never collapse controls into thin bars
+or hide them with zero/near-zero dimensions, display:none, or visibility:hidden.
 
 After a successful write, use exactly one of:
 {"action":"validate"}

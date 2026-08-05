@@ -271,13 +271,13 @@ export function validateRequestFulfillment(
   // Thin App shells that only mount a component are fine; the component must fulfill the request.
   if (isThinComponentShell(path, content)) return null;
 
-  if (
-    /\btic[\s-]*tac[\s-]*toe\b/i.test(request) &&
-    /<h[1-3][^>]*>\s*tic[\s-]*tac[\s-]*toe\s*<\/h[1-3]>/i.test(content) &&
-    !/<button\b/i.test(content) &&
-    !/\bon(?:Click|KeyDown)\b/.test(content)
-  ) {
-    return `Generated content for ${path} only renders a Tic-Tac-Toe heading. Render a visible 3x3 board with nine playable cells, turn/status text, and a reset control before finishing.`;
+  const hasHeading = /<h[1-6]\b/i.test(content);
+  const hasMeaningfulSurface =
+    /<(?:button|input|select|textarea|a|img|canvas|form|section|article|ul|ol|p|table)\b/i.test(
+      content,
+    );
+  if (hasHeading && !hasMeaningfulSurface) {
+    return `Generated content for ${path} only renders a heading. Add the requested app's visible content, controls, or primary interaction before finishing.`;
   }
 
   if (content.trim().length < 400) {
@@ -295,6 +295,36 @@ export function validateRequestFulfillment(
     return `Generated content for ${path} does not look like a working implementation of "${clipped}". Include React state (useState/useReducer) and event handlers so the UI is interactive.`;
   }
 
+  return null;
+}
+
+/** Rejects CSS Module rules that collapse referenced interactive controls. */
+export function validateInteractiveStyles(
+  path: string,
+  source: string,
+  stylesheetPath: string,
+  stylesheet: string,
+): string | null {
+  if (!/\.(jsx|tsx)$/i.test(path) || typeof source !== 'string') return null;
+  if (!/\.module\.css$/i.test(stylesheetPath) || typeof stylesheet !== 'string') return null;
+
+  const classNames = new Set(
+    [
+      ...source.matchAll(/\bstyles(?:\.([A-Za-z_-][\w-]*)|\[\s*["']([A-Za-z_-][\w-]*)["']\s*\])/g),
+    ].map((match) => match[1] || match[2]),
+  );
+  for (const className of classNames) {
+    const escaped = className.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const rule = new RegExp(`\\.${escaped}\\s*\\{([^}]*)\\}`, 'i').exec(stylesheet);
+    if (!rule) continue;
+    if (
+      /\b(?:height|min-height|max-height)\s*:\s*(?:0|[0-2]px)\b|\bdisplay\s*:\s*none\b|\bvisibility\s*:\s*hidden\b/i.test(
+        rule[1],
+      )
+    ) {
+      return `CSS Module rule .${className} in ${stylesheetPath} collapses or hides a referenced control. Give interactive elements a visible size, padding, and readable state. Do not use zero/near-zero height, display:none, or visibility:hidden.`;
+    }
+  }
   return null;
 }
 
@@ -327,6 +357,15 @@ export function workspaceFulfillsInteractiveRequest(
       const stylesheetPath = path.replace(/\.(jsx|tsx)$/i, '.module.css');
       if (!/\.module\.css/.test(content) || !Object.hasOwn(files, stylesheetPath)) {
         return `Generated content for ${path} is missing a co-located CSS Module (${stylesheetPath}). Import styles from that module and include layout rules for the UI.`;
+      }
+      const styleError = validateInteractiveStyles(
+        path,
+        content,
+        stylesheetPath,
+        files[stylesheetPath] || '',
+      );
+      if (styleError) {
+        return styleError;
       }
     }
     return null;
