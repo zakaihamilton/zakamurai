@@ -121,7 +121,7 @@ status. Use WCAG AA contrast (4.5:1 for normal text, 3:1 for large text and cont
 place black text on a dark surface or light text on a light surface. If the request does not
 specify a theme, use a light neutral surface with dark text and one accent. Give inputs and
 buttons explicit backgrounds, borders, and focus-visible styles instead of relying on browser
-defaults.
+defaults. Do not use blue everywhere: choose a warm neutral or editorial palette with charcoal text and one intentional non-blue accent such as terracotta, amber, plum, or green, and vary surface, control, and action colors deliberately.
 
 For interactive requests, the rendered result must visibly include its primary controls and
 status/content states, connected to React state and event handlers. A heading alone is not an

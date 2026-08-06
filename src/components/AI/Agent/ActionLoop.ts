@@ -71,6 +71,9 @@ Make deliberate design decisions: establish a cohesive palette, typography hiera
 surface treatment, responsive layout, and hover/focus/disabled states. Style every visible input,
 button, form, list, and status element explicitly; browser-default controls are incomplete. Keep
 the preview isolated from the host by resetting the root, body, and app surface colors in CSS Modules.
+Do not fall back to blue everywhere or repeat one blue surface for the page, input, and button. When
+no theme is requested, prefer a warm neutral or editorial palette with charcoal text and one
+intentional accent such as terracotta, amber, plum, or green.
 Before finishing, inspect the preview and correct any runtime error, missing landmark, default-looking
 control, unreadable contrast, cramped spacing, or broken mobile layout. Do not finish after build
 validation alone.`;
@@ -151,7 +154,10 @@ export async function runActionLoop({
   };
   let inspectedPreview = false;
   let previewInspectionAccepted = false;
+  let lastPreviewResult = '';
   let recoveredNoOpWrite = '';
+  let finishAfterAutomaticValidation = false;
+  let automaticValidationResult = '';
   let failedWritePath = '';
   let forcedWriteRecoveryPending = false;
   let forcedRecoveryTargetPath: string | null = null;
@@ -236,6 +242,31 @@ export async function runActionLoop({
     state: validationState,
     validationRepairLimit,
   });
+
+  const inspectPreviewForLoop = async (turn: number): Promise<string> => {
+    if (inspectedPreview && previewInspectionAccepted && lastPreviewResult) {
+      return lastPreviewResult;
+    }
+    onEvent({ type: 'tool', turn, action: { action: 'inspect_preview' }, agentRole });
+    const preview = inspectPreview
+      ? await inspectPreview(workspace.files)
+      : { status: 'unavailable', diagnostics: 'Preview inspection is unavailable.' };
+    inspectedPreview = true;
+    const previewFailure = previewInspectionRequired
+      ? visualPreviewInspectionFailure(preview)
+      : null;
+    previewInspectionAccepted = !previewFailure;
+    const evidence = previewFailure
+      ? {
+          ...(typeof preview === 'object' && preview ? preview : {}),
+          visualReview: 'insufficient',
+          diagnostics: previewFailure,
+        }
+      : preview;
+    lastPreviewResult = JSON.stringify(evidence);
+    context.record('preview', preview);
+    return lastPreviewResult;
+  };
 
   for (let turn = 1; turn <= maxTurns; turn++) {
     if (signal?.aborted) throw new DOMException('Agent stopped', 'AbortError');
@@ -837,9 +868,33 @@ export async function runActionLoop({
         (fingerprint === lastSuccessfulFingerprint && workspace.changes().length > 0));
     // Finish on the second consecutive validate when staged work already exists —
     // small models often loop validate instead of emitting finish.
-    if (action.action === 'validate' && workspace.changes().length > 0 && repeatedActions >= 1) {
+    if (
+      action.action === 'validate' &&
+      workspace.changes().length > 0 &&
+      (repeatedActions >= 1 || finishAfterAutomaticValidation)
+    ) {
+      if (finishAfterAutomaticValidation && previewInspectionRequired && !inspectedPreview) {
+        const previewResult = await inspectPreviewForLoop(turn);
+        if (!previewInspectionAccepted) {
+          finishAfterAutomaticValidation = false;
+          messages.push({
+            role: 'user',
+            content: observation(
+              'inspect_preview',
+              false,
+              `${previewResult}\nThe preview is not ready for completion. Fix the rendered app or inspect it again before finishing.`,
+            ),
+          });
+          continue;
+        }
+      }
+      const validationResult = finishAfterAutomaticValidation
+        ? automaticValidationResult
+        : await runValidation(turn);
+      finishAfterAutomaticValidation = false;
+      automaticValidationResult = '';
       applyCssModuleRecovery(turn);
-      const result = await runValidation(turn);
+      const result = validationResult;
       if (isFailedValidationResult(result)) {
         messages.push({ role: 'user', content: observation(action.action, false, result) });
         onEvent({
@@ -888,6 +943,8 @@ export async function runActionLoop({
           });
           if (validationFailed) {
             recoveredNoOpWrite = '';
+            finishAfterAutomaticValidation = false;
+            automaticValidationResult = '';
             forcedWriteRecoveryPending = true;
             forcedRecoveryTargetPath = action.path || forcedRecoveryTargetPath;
             forcedWriteRecoveryViolations = 0;
@@ -895,6 +952,8 @@ export async function runActionLoop({
             continue;
           }
           recoveredNoOpWrite = fingerprint;
+          finishAfterAutomaticValidation = true;
+          automaticValidationResult = result;
           lastFingerprint = '';
           repeatedActions = 0;
           continue;
@@ -1049,6 +1108,9 @@ export async function runActionLoop({
         workspace.write(action.path || '', action.content || '');
         inspectedPreview = false;
         previewInspectionAccepted = false;
+        lastPreviewResult = '';
+        finishAfterAutomaticValidation = false;
+        automaticValidationResult = '';
         nonProductiveActionsWithoutWrite = 0;
         validationState.wroteSinceVerification = true;
         failedWritePath = '';
@@ -1132,6 +1194,9 @@ export async function runActionLoop({
         workspace.write(path, newContent);
         inspectedPreview = false;
         previewInspectionAccepted = false;
+        lastPreviewResult = '';
+        finishAfterAutomaticValidation = false;
+        automaticValidationResult = '';
         validationState.wroteSinceVerification = true;
         nonProductiveActionsWithoutWrite = 0;
         unchangedReadSkips = 0;
@@ -1150,6 +1215,9 @@ export async function runActionLoop({
         workspace.delete(path);
         inspectedPreview = false;
         previewInspectionAccepted = false;
+        lastPreviewResult = '';
+        finishAfterAutomaticValidation = false;
+        automaticValidationResult = '';
         validationState.wroteSinceVerification = true;
         nonProductiveActionsWithoutWrite = 0;
         unchangedReadSkips = 0;
@@ -1181,24 +1249,7 @@ export async function runActionLoop({
         context.record('project-check', checkResult);
       }
       if (action.action === 'inspect_preview') {
-        onEvent({ type: 'tool', turn, action, agentRole });
-        const preview = inspectPreview
-          ? await inspectPreview(workspace.files)
-          : { status: 'unavailable', diagnostics: 'Preview inspection is unavailable.' };
-        result = JSON.stringify(preview);
-        inspectedPreview = true;
-        const previewFailure = previewInspectionRequired
-          ? visualPreviewInspectionFailure(preview)
-          : null;
-        previewInspectionAccepted = !previewFailure;
-        if (previewFailure) {
-          result = JSON.stringify({
-            ...(typeof preview === 'object' && preview ? preview : {}),
-            visualReview: 'insufficient',
-            diagnostics: previewFailure,
-          });
-        }
-        context.record('preview', preview);
+        result = await inspectPreviewForLoop(turn);
       }
       if (action.action === 'inspect_console_logs') {
         onEvent({ type: 'tool', turn, action, agentRole });
@@ -1307,6 +1358,26 @@ export async function runActionLoop({
           continue;
         }
         if (previewInspectionRequired && (!inspectedPreview || !previewInspectionAccepted)) {
+          if (!inspectedPreview && inspectPreview) {
+            const previewResult = await inspectPreviewForLoop(turn);
+            messages.push({
+              role: 'user',
+              content: observation(
+                'inspect_preview',
+                previewInspectionAccepted,
+                `${previewResult}\nReview this preview evidence before choosing the next action.`,
+              ),
+            });
+            onEvent({
+              type: 'observation',
+              turn,
+              action: { action: 'inspect_preview' },
+              error: !previewInspectionAccepted,
+              message: previewResult,
+              agentRole,
+            });
+            continue;
+          }
           messages.push({
             role: 'user',
             content: observation(
@@ -1330,19 +1401,35 @@ export async function runActionLoop({
           });
           continue;
         }
-        const missingStylesheets = Object.entries(workspace.files).flatMap(([path, content]) =>
-          /\.(?:jsx|tsx)$/i.test(path)
-            ? missingCssModuleImports(path, content, workspace.files)
-            : [],
-        );
+        const missingStylesheets = [
+          ...new Set(
+            Object.entries(workspace.files).flatMap(([path, content]) =>
+              /\.(?:jsx|tsx)$/i.test(path)
+                ? missingCssModuleImports(path, content, workspace.files)
+                : [],
+            ),
+          ),
+        ];
         if (missingStylesheets.length) {
+          forcedWriteRecoveryPending = true;
+          forcedRecoveryTargetPath = missingStylesheets[0];
+          forcedWriteRecoveryViolations = 0;
           messages.push({
             role: 'user',
             content: observation(
               'finish',
               false,
-              `Create the missing CSS Module files before finishing: ${[...new Set(missingStylesheets)].join(', ')}.`,
+              `Create the missing CSS Module files before finishing: ${missingStylesheets.join(', ')}. Your next action must be write_file for ${missingStylesheets[0]}; do not validate or finish again until it exists.`,
             ),
+          });
+          context.record('finish_recovery', missingStylesheets.join(', '));
+          onEvent({
+            type: 'observation',
+            turn,
+            action,
+            error: true,
+            message: `Missing CSS Module files: ${missingStylesheets.join(', ')}. Forced stylesheet recovery is active.`,
+            agentRole,
           });
           continue;
         }

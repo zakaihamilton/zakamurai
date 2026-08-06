@@ -1535,6 +1535,31 @@ export default function App() {
     );
   });
 
+  it('does not loop when a model alternates finish and validate before preview review', async () => {
+    askWebLLM
+      .mockResolvedValueOnce('{"action":"finish","summary":"premature"}')
+      .mockResolvedValueOnce('{"action":"validate"}')
+      .mockResolvedValueOnce('{"action":"finish","summary":"reviewed"}');
+    const inspectPreview = vi.fn().mockResolvedValue({
+      status: 'passed',
+      elements: ['main: Dashboard', 'h1: Dashboard', 'button: Continue'],
+      screenshotCaptured: true,
+    });
+
+    const result = await runActionLoop({
+      request: 'review dashboard UI',
+      files: { 'src/a.tsx': 'export {}' },
+      model: 'test',
+      visualMode: true,
+      requirePreviewInspection: true,
+      inspectPreview,
+    });
+
+    expect(result.summary).toBe('reviewed');
+    expect(inspectPreview).toHaveBeenCalledOnce();
+    expect(askWebLLM).toHaveBeenCalledTimes(3);
+  });
+
   it('does not accept an empty passed preview as visual completion', async () => {
     askWebLLM
       .mockResolvedValueOnce(
@@ -1771,6 +1796,38 @@ export const title = "Today";
     expect(result.files['src/components/TodoApp.module.css']).toBe(todoStyles);
     expect(validate).toHaveBeenCalledOnce();
     expect(events.some((event) => event.message?.includes('Automatically validating'))).toBe(true);
+  });
+
+  it('finishes after a redundant validate following automatic saved-write validation', async () => {
+    const todoStyles = '.app { color: rebeccapurple; }';
+    askWebLLM
+      .mockResolvedValueOnce(
+        `{"action":"write_file","path":"src/components/TodoApp.module.css","content":${JSON.stringify(todoStyles)}}`,
+      )
+      .mockResolvedValueOnce(
+        `{"action":"write_file","path":"src/components/TodoApp.module.css","content":${JSON.stringify(todoStyles)}}`,
+      )
+      .mockResolvedValueOnce('{"action":"validate"}');
+    const validate = vi.fn().mockResolvedValue({ status: 'passed', check: 'build' });
+    const inspectPreview = vi.fn().mockResolvedValue({
+      status: 'passed',
+      elements: ['main: Todo', 'h1: Todo', 'button: Add'],
+      screenshotCaptured: true,
+    });
+
+    const result = await runActionLoop({
+      request: 'create a pro todo app',
+      files: { 'src/components/TodoApp.module.css': '' },
+      model: 'test',
+      validate,
+      inspectPreview,
+      requirePreviewInspection: true,
+      visualMode: true,
+    });
+
+    expect(result.summary).toContain('Completed the requested changes and validated the build');
+    expect(validate).toHaveBeenCalledOnce();
+    expect(inspectPreview).toHaveBeenCalledOnce();
   });
 
   it('auto-finishes a repeated write after staging normalizes its content', async () => {
@@ -2120,6 +2177,35 @@ export default function App() {
     expect(result.summary).toBe('done');
     expect(events.some((event) => event.error)).toBe(false);
     expect(validate).toHaveBeenCalled();
+  });
+
+  it('forces a missing stylesheet write instead of looping finish and validate', async () => {
+    const app = `import styles from './App.module.css';
+export default function App() { return <main className={styles.app}>Todo</main>; }`;
+    askWebLLM
+      .mockResolvedValueOnce(
+        '{"action":"write_file","path":"src/notes.js","content":"export default 1;"}',
+      )
+      .mockResolvedValueOnce('{"action":"finish","summary":"done"}')
+      .mockResolvedValueOnce('{"action":"validate"}')
+      .mockResolvedValueOnce(
+        '{"action":"write_file","path":"src/App.module.css","content":".app { color: #292521; }"}',
+      )
+      .mockResolvedValueOnce('{"action":"finish","summary":"done"}')
+      .mockResolvedValueOnce('{"action":"validate"}')
+      .mockResolvedValueOnce('{"action":"finish","summary":"done"}');
+    const validate = vi.fn().mockResolvedValue({ status: 'passed', check: 'build' });
+
+    const result = await runActionLoop({
+      request: 'edit the app',
+      files: { 'src/App.jsx': app },
+      model: 'test',
+      validate,
+    });
+
+    expect(result.files['src/App.module.css']).toContain('.app');
+    expect(result.summary).toBe('done');
+    expect(askWebLLM).toHaveBeenCalledTimes(7);
   });
 
   it('treats a missing file read as an actionable observation', async () => {

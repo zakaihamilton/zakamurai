@@ -17,7 +17,7 @@ const COLOCATION_EXEMPT =
 type ArchitectureViolation = { file: string; reason: string };
 
 const LINE_BUDGETS: Record<string, number> = {
-  'src/components/AI/Agent/ActionLoop.ts': 1500,
+  'src/components/AI/Agent/ActionLoop.ts': 1600,
   'src/components/AI/WebLLMAPI.tsx': 1150,
   'src/components/Storage/Settings.ts': 850,
   'src/components/App/Views/EditorArea/highlighter.tsx': 800,

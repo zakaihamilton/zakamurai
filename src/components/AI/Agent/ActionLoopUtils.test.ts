@@ -36,7 +36,34 @@ export default () => <main className={styles.app}><form><input placeholder="Add 
 
     expect(repaired).toContain(':global(button)');
     expect(repaired).toContain(':global(input), :global(select), :global(textarea)');
-    expect(repaired).toContain('background: #2563eb');
+    expect(repaired).toContain('background: #292521');
+  });
+
+  it('migrates the manager fallback palette without changing unrelated themes', () => {
+    const source =
+      "import styles from './App.module.css'; export default () => <main className={styles.app}><form><input className={styles.control} /><button className={styles.button}>Add</button></form></main>;";
+    const legacy = `:global(body) { background: #f8fafc; }
+.app { min-height: 100vh; padding: 2rem; color: #e2e8f0; background: #0f172a; }
+.control { width: 100%; padding: 0.65rem 0.75rem; color: #e2e8f0; background: #172554; }
+.button { background: #1e3a8a; color: #f8fafc; }`;
+
+    const repaired = appendMissingCssModuleRules(legacy, source);
+
+    expect(repaired).toContain('background: #fffdf8');
+    expect(repaired).toContain('background: #292521');
+    expect(repaired).not.toContain('background: #172554');
+    expect(repaired).not.toContain('background: #1e3a8a');
+  });
+
+  it('does not rewrite an intentionally authored theme with one fallback-like color', () => {
+    const source =
+      "import styles from './App.module.css'; export default () => <main className={styles.app}><button className={styles.button}>Save</button></main>;";
+    const authored = '.app { background: #0f172a; }\n.button { background: #d97706; }';
+
+    const repaired = appendMissingCssModuleRules(authored, source);
+
+    expect(repaired).toContain('background: #0f172a');
+    expect(repaired).toContain('background: #d97706');
   });
 
   it('recovers missing module files and missing rules without changing source', () => {
