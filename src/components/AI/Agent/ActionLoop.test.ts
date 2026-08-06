@@ -433,6 +433,122 @@ describe('runActionLoop', () => {
     expect(result.files['src/App.module.css']).toContain('.list');
   });
 
+  it('normalizes literal classes and generates complete generic recovery styles', async () => {
+    const source = `import { useState } from 'react';
+export default function App() {
+  const [items, setItems] = useState(['One']);
+  const [draft, setDraft] = useState('');
+  const addItem = (event) => {
+    event.preventDefault();
+    if (!draft.trim()) return;
+    setItems([...items, draft.trim()]);
+    setDraft('');
+  };
+  return <main className="todo-app"><h1 className="todo-title">Todo list</h1><form className="todo-form" onSubmit={addItem}><input className="todo-input" value={draft} onChange={(event) => setDraft(event.target.value)} placeholder="Add a task" /><button className="todo-button" type="submit">Add</button></form><ul className="todo-list">{items.map((item) => <li className="todo-item" key={item}>{item}</li>)}</ul></main>;
+}
+`;
+    askWebLLM
+      .mockResolvedValueOnce(`\`\`\`jsx\n${source}\n\`\`\``)
+      .mockResolvedValueOnce('{"action":"validate"}')
+      .mockResolvedValueOnce('{"action":"finish","summary":"Created todo list"}');
+    const validate = vi.fn().mockResolvedValue('Checks passed.');
+
+    const result = await runActionLoop({
+      request: 'create a todo app',
+      files: { 'src/App.jsx': 'export default function App() { return null; }' },
+      model: 'Qwen2.5-Coder-1.5B-Instruct-q4f16_1-MLC',
+      validate,
+      priorContext: '[list_files]\\nsrc/App.jsx',
+    });
+
+    expect(result.files['src/App.jsx']).toContain('styles["todo-app"]');
+    expect(result.files['src/App.jsx']).not.toContain('className="todo-app"');
+    expect(result.files['src/App.module.css']).toContain(':global(body)');
+    expect(result.files['src/App.module.css']).toContain('.todo-app');
+    expect(result.files['src/App.module.css']).toContain('.todo-item');
+    expect(result.files['src/App.module.css']).toContain('display: grid');
+  });
+
+  it('completes an existing CSS Module when interactive controls have no classes', async () => {
+    const source = `import { useState } from 'react';
+import styles from './App.module.css';
+export default function App() {
+  const [draft, setDraft] = useState('');
+  const [items, setItems] = useState([]);
+  const addItem = (event) => {
+    event.preventDefault();
+    if (!draft.trim()) return;
+    setItems([...items, draft.trim()]);
+    setDraft('');
+  };
+  return <main className={styles.app}><h1>Todo App</h1><form onSubmit={addItem}><input value={draft} onChange={(event) => setDraft(event.target.value)} placeholder="Add a new todo" /><button type="submit">Add</button></form><ul>{items.map((item) => <li key={item}>{item}</li>)}</ul></main>;
+}
+`;
+    askWebLLM
+      .mockResolvedValueOnce(`\`\`\`jsx\n${source}\n\`\`\``)
+      .mockResolvedValueOnce('{"action":"validate"}')
+      .mockResolvedValueOnce('{"action":"finish","summary":"Created todo app"}');
+    const validate = vi.fn().mockResolvedValue('Checks passed.');
+
+    const result = await runActionLoop({
+      request: 'create a todo app',
+      files: {
+        'src/App.jsx': 'export default function App() { return null; }',
+        'src/App.module.css': '.app { min-height: 100vh; background: #0f172a; }',
+      },
+      model: 'Qwen2.5-Coder-1.5B-Instruct-q4f16_1-MLC',
+      validate,
+      priorContext: '[list_files]\nsrc/App.jsx\nsrc/App.module.css',
+    });
+
+    expect(result.files['src/App.jsx']).toContain('styles.control');
+    expect(result.files['src/App.jsx']).toContain('styles.button');
+    expect(result.files['src/App.module.css']).toContain('.control');
+    expect(result.files['src/App.module.css']).toContain('.button');
+  });
+
+  it('preserves recovered control styles when the model writes the stylesheet afterward', async () => {
+    const source = `import { useState } from 'react';
+import styles from './App.module.css';
+export default function App() {
+  const [draft, setDraft] = useState('');
+  const [items, setItems] = useState([]);
+  const addItem = (event) => {
+    event.preventDefault();
+    if (!draft.trim()) return;
+    setItems([...items, draft.trim()]);
+    setDraft('');
+  };
+  return <main className={styles.app}><h1>Todo App</h1><form onSubmit={addItem}><input value={draft} onChange={(event) => setDraft(event.target.value)} placeholder="Add a new todo" /><button type="submit">Add</button></form><ul>{items.map((item) => <li key={item}>{item}</li>)}</ul></main>;
+}
+`;
+    askWebLLM
+      .mockResolvedValueOnce(
+        JSON.stringify({ action: 'write_file', path: 'src/App.jsx', content: source }),
+      )
+      .mockResolvedValueOnce(
+        JSON.stringify({
+          action: 'write_file',
+          path: 'src/App.module.css',
+          content: '.app { min-height: 100vh; background: #0f172a; }',
+        }),
+      )
+      .mockResolvedValueOnce('{"action":"validate"}')
+      .mockResolvedValueOnce('{"action":"finish","summary":"Created todo app"}');
+    const validate = vi.fn().mockResolvedValue('Checks passed.');
+
+    const result = await runActionLoop({
+      request: 'create a todo app',
+      files: { 'src/App.jsx': 'export default function App() { return null; }' },
+      model: 'Qwen2.5-Coder-1.5B-Instruct-q4f16_1-MLC',
+      validate,
+    });
+
+    expect(result.files['src/App.module.css']).toContain(':global(button)');
+    expect(result.files['src/App.module.css']).toContain('.control');
+    expect(result.files['src/App.module.css']).toContain('.button');
+  });
+
   it('rewrites generic lightweight finish summaries to mention the request', async () => {
     askWebLLM
       .mockResolvedValueOnce(`\`\`\`jsx\n${PLAYABLE_INTERACTIVE_APP}\n\`\`\``)

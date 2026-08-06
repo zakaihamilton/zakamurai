@@ -26,6 +26,19 @@ describe('generic CSS Module recovery', () => {
     ).toEqual([]);
   });
 
+  it('adds generic visible control defaults when markup has no control classes', () => {
+    const source = `import styles from './TodoApp.module.css';
+export default () => <main className={styles.app}><form><input placeholder="Add a task" /><button>Add</button></form></main>;`;
+    const repaired = appendMissingCssModuleRules(
+      '.app { min-height: 100vh; background: #0f172a; }',
+      source,
+    );
+
+    expect(repaired).toContain(':global(button)');
+    expect(repaired).toContain(':global(input), :global(select), :global(textarea)');
+    expect(repaired).toContain('background: #2563eb');
+  });
+
   it('recovers missing module files and missing rules without changing source', () => {
     const files = {
       'src/App.jsx':

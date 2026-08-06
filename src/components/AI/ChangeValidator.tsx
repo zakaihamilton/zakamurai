@@ -248,6 +248,69 @@ const isThinComponentShell = (path: string, content: string): boolean =>
   /import\s+[A-Za-z_$][\w$]*\s+from\s+["']\.\/(?:components\/)?[^"']+["']/.test(content) &&
   content.trim().length < 500;
 
+const braceDepthAt = (content: string, position: number): number => {
+  const source = stripComments(content.slice(0, position));
+  let depth = 0;
+  let quote: string | null = null;
+  let escaped = false;
+  for (const char of source) {
+    if (escaped) {
+      escaped = false;
+      continue;
+    }
+    if (quote) {
+      if (char === '\\') escaped = true;
+      else if (char === quote) quote = null;
+      continue;
+    }
+    if (char === "'" || char === '"' || char === '`') {
+      quote = char;
+      continue;
+    }
+    if (char === '{') depth += 1;
+    else if (char === '}') depth = Math.max(0, depth - 1);
+  }
+  return depth;
+};
+
+const functionBody = (content: string, start: number): string => {
+  const open = content.indexOf('{', start);
+  if (open < 0) return '';
+  let depth = 0;
+  for (let index = open; index < content.length; index++) {
+    if (content[index] === '{') depth += 1;
+    else if (content[index] === '}' && --depth === 0) return content.slice(open, index + 1);
+  }
+  return content.slice(open);
+};
+
+const validateStatefulCallbackScope = (content: string): string | null => {
+  const setters = [
+    ...content.matchAll(
+      /\bconst\s*\[\s*[A-Za-z_$][\w$]*\s*,\s*(set[A-Za-z_$][\w$]*)\s*\]\s*=\s*useState\b/g,
+    ),
+  ].map((match) => match[1]);
+  if (!setters.length) return null;
+
+  const isCallbackName = (name: string): boolean =>
+    /^(?:handle|on[A-Z]|reset|restart|new|add|remove|delete|toggle|submit|clear|update|set|save|load|apply|cancel|close|open|select|move|next|previous)/.test(
+      name,
+    );
+  const callbackPattern =
+    /\bfunction\s+([A-Za-z_$][\w$]*)\s*\([^)]*\)\s*\{|\b(?:const|let)\s+([A-Za-z_$][\w$]*)\s*=\s*(?:\([^)]*\)|[A-Za-z_$][\w$]*)\s*=>\s*\{/g;
+  for (const match of content.matchAll(callbackPattern)) {
+    const name = match[1] || match[2] || '';
+    if (!isCallbackName(name)) continue;
+    if (braceDepthAt(content, match.index ?? 0) !== 0) continue;
+    const body = functionBody(content, match.index ?? 0);
+    if (setters.some((setter) => new RegExp(`\\b${setter}\\s*\\(`).test(body))) {
+      return `${name} accesses React state setters outside the component. Keep state-dependent callbacks inside the component so they close over valid state.`;
+    }
+  }
+
+  return null;
+};
+
 /**
  * Rejects starter-template leftovers and trivial shells for create/build requests.
  * Small local models often rename the placeholder title and finish without a real app.
@@ -295,7 +358,7 @@ export function validateRequestFulfillment(
     return `Generated content for ${path} does not look like a working implementation of "${clipped}". Include React state (useState/useReducer) and event handlers so the UI is interactive.`;
   }
 
-  return null;
+  return validateStatefulCallbackScope(content);
 }
 
 /** Rejects CSS Module rules that collapse referenced interactive controls. */

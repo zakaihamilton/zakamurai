@@ -205,6 +205,79 @@ const CSS_MODULE_RECOVERY_RULES: Record<string, string> = {
   list: 'display: grid; gap: 0.75rem;',
 };
 
+const CSS_MODULE_RECOVERY_BASE = `:global(:root) {
+  color-scheme: light;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background: #f8fafc;
+  color: #0f172a;
+}
+
+:global(*), :global(*::before), :global(*::after) {
+  box-sizing: border-box;
+}
+
+:global(body) {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  background: #f8fafc;
+  color: #0f172a;
+}
+
+:global(#root) {
+  min-height: 100vh;
+}
+
+:global(button), :global(input), :global(select), :global(textarea) {
+  font: inherit;
+}
+
+:global(button) {
+  cursor: pointer;
+}
+
+:global(button:focus-visible), :global(input:focus-visible), :global(select:focus-visible), :global(textarea:focus-visible) {
+  outline: 3px solid #0ea5e9;
+  outline-offset: 2px;
+}
+
+:global(input::placeholder), :global(textarea::placeholder) {
+  color: #64748b;
+}
+`;
+
+const CSS_MODULE_INTERACTIVE_BASE = `:global(button) {
+  min-height: 2.75rem;
+  padding: 0.65rem 0.9rem;
+  color: #f8fafc;
+  font: inherit;
+  font-weight: 700;
+  background: #2563eb;
+  border: 1px solid #1d4ed8;
+  border-radius: 0.7rem;
+  cursor: pointer;
+}
+
+:global(input), :global(select), :global(textarea) {
+  min-height: 2.75rem;
+  padding: 0.65rem 0.75rem;
+  color: #0f172a;
+  font: inherit;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 0.7rem;
+}
+`;
+
+const hasInteractiveElements = (content: string): boolean =>
+  /<(?:button|input|select|textarea)\b/i.test(content);
+
+const hasInteractiveBase = (content: string): boolean =>
+  /:global\(button\)\s*\{[\s\S]*?background\s*:/.test(content) &&
+  /:global\(input\)\s*,\s*:global\(select\)\s*,\s*:global\(textarea\)\s*\{[\s\S]*?background\s*:/.test(
+    content,
+  );
+
 const cssModuleClassNames = (content: string): Set<string> =>
   new Set(
     [
@@ -215,12 +288,41 @@ const cssModuleClassNames = (content: string): Set<string> =>
 const definedCssModuleClassNames = (content: string): Set<string> =>
   new Set([...content.matchAll(/\.([A-Za-z_-][\w-]*)\s*\{/g)].map((match) => match[1]));
 
-const formatCssModuleRules = (classNames: Iterable<string>): string => {
+const recoveryRuleForClassName = (className: string): string => {
+  if (CSS_MODULE_RECOVERY_RULES[className]) return CSS_MODULE_RECOVERY_RULES[className];
+  const normalized = className.toLowerCase();
+  if (/(?:app|root|page|screen|shell|layout|wrapper|container|card|panel)/.test(normalized)) {
+    return 'display: grid; gap: 1.25rem; width: min(100%, 52rem); margin: 0 auto; padding: clamp(1rem, 4vw, 2.5rem); color: #0f172a; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 1.25rem; box-shadow: 0 18px 45px rgb(15 23 42 / 10%);';
+  }
+  if (/(?:list|grid|items|content|body|section|stack|columns)/.test(normalized)) {
+    return 'display: grid; gap: 0.85rem;';
+  }
+  if (/(?:title|heading|header|label|status|message|text|caption)/.test(normalized)) {
+    return 'color: #0f172a;';
+  }
+  if (/(?:form|field|group|row|toolbar|actions)/.test(normalized)) {
+    return 'display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center;';
+  }
+  if (/(?:item|entry|option|row)/.test(normalized)) {
+    return 'padding: 0.8rem 0.9rem; color: #0f172a; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 0.7rem;';
+  }
+  if (/(?:button|btn|control|input|select|textarea|action)/.test(normalized)) {
+    return 'min-height: 2.75rem; padding: 0.65rem 0.9rem; color: #0f172a; background: #ffffff; border: 1px solid #cbd5e1; border-radius: 0.7rem;';
+  }
+  if (/(?:muted|hint|meta|footer|secondary)/.test(normalized)) {
+    return 'color: #475569;';
+  }
+  return 'display: block; box-sizing: border-box; color: #0f172a;';
+};
+
+const formatCssModuleRules = (classNames: Iterable<string>, includeBase = true): string => {
   const selectedRules = [...classNames].map(
-    (className) =>
-      `.${className} {\n  ${CSS_MODULE_RECOVERY_RULES[className] || 'display: block;'}\n}`,
+    (className) => `.${className} {\n  ${recoveryRuleForClassName(className)}\n}`,
   );
-  return selectedRules.join('\n\n') || '.component {\n  display: block;\n}\n';
+  const rules = selectedRules.join('\n\n') || '.component {\n  display: block;\n}\n';
+  return includeBase
+    ? `${CSS_MODULE_RECOVERY_BASE}\n${CSS_MODULE_INTERACTIVE_BASE}\n${rules}`
+    : rules;
 };
 
 export const cssModuleRecovery = (content: string): string =>
@@ -251,7 +353,10 @@ export const incompleteCssModuleImports = (
   ].filter((stylesheetPath) => {
     if (!Object.hasOwn(files, stylesheetPath)) return false;
     const defined = definedCssModuleClassNames(files[stylesheetPath]);
-    return [...required].some((className) => !defined.has(className));
+    return (
+      [...required].some((className) => !defined.has(className)) ||
+      (hasInteractiveElements(content) && !hasInteractiveBase(files[stylesheetPath]))
+    );
   });
 };
 
@@ -263,9 +368,14 @@ export const appendMissingCssModuleRules = (
   const required = cssModuleClassNames(sourceContent);
   const defined = definedCssModuleClassNames(existingCss);
   const missing = [...required].filter((className) => !defined.has(className));
-  if (!missing.length) return null;
+  const needsInteractiveBase =
+    hasInteractiveElements(sourceContent) && !hasInteractiveBase(existingCss);
+  if (!missing.length && !needsInteractiveBase) return null;
 
-  const additions = [formatCssModuleRules(missing)];
+  const additions = [
+    ...(needsInteractiveBase ? [CSS_MODULE_INTERACTIVE_BASE.trim()] : []),
+    ...(missing.length ? [formatCssModuleRules(missing, false)] : []),
+  ];
   // Components often put a 3x3 board directly under `.container`. If cell/square
   // styles were missing, reinforce layout without deleting the existing rule.
   if (
@@ -585,7 +695,7 @@ const insertCssModuleImport = (content: string, importSpecifier: string): string
 const annotateInteractiveClassNames = (content: string): string => {
   let rewritten = content;
   rewritten = rewritten.replace(
-    /(return\s*\(\s*)<(main|div)(?![^>]*\bclassName\s*=)/,
+    /(return\s*(?:\(\s*)?)<(main|div|section|article|form)(?![^>]*\bclassName\s*=)/,
     '$1<$2 className={styles.app}',
   );
   rewritten = rewritten.replace(
@@ -605,28 +715,45 @@ const annotateInteractiveClassNames = (content: string): string => {
     /\.map\s*\(/.test(rewritten)
   ) {
     rewritten = rewritten.replace(
-      /<div(?![^>]*\bclassName\s*=)((?:[^>=]|=\{[^}]*\}|=[^>\s]+|\s)*)>(\s*\{[\s\S]{0,240}?\.map\s*\()/m,
-      '<div className={styles.list}$1>$2',
+      /<(div|ul|ol)(?![^>]*\bclassName\s*=)((?:[^>=]|=\{[^}]*\}|=[^>\s]+|\s)*)>(\s*\{[\s\S]{0,240}?\.map\s*\()/m,
+      '<$1 className={styles.list}$2>$3',
     );
   }
   return rewritten;
 };
 
+const normalizeLiteralClassNames = (content: string): string =>
+  content.replace(
+    /\bclassName\s*=\s*(["'])([^"']+)\1/g,
+    (_match, _quote: string, classValue: string) => {
+      const classes = classValue.trim().split(/\s+/).filter(Boolean);
+      if (!classes.length) return 'className={undefined}';
+      const references = classes.map((className) =>
+        /^[A-Za-z_$][\w$]*$/.test(className)
+          ? `styles.${className}`
+          : `styles[${JSON.stringify(className)}]`,
+      );
+      return `className={${references.join(" + ' ' + ")}}`;
+    },
+  );
+
 /**
- * Small local models often ship interactive JSX with no stylesheet. Attach a co-located
- * CSS Module and generic layout class names so the preview is usable without another turn.
+ * Generated interactive JSX can arrive without a stylesheet or with literal class names.
+ * Attach a co-located CSS Module and generic layout class names so the preview is usable
+ * without requiring another model turn.
  */
 export const ensureCoLocatedCssModule = (
   path: string,
   content: string,
 ): { content: string; stylesheetPath: string; stylesheet: string } | null => {
   if (!/\.(jsx|tsx)$/i.test(path) || typeof content !== 'string') return null;
-  if (/\bfrom\s+['"][^'"]+\.module\.css['"]/.test(content)) return null;
   if (!/\bon(?:Click|Change|Submit|KeyDown)\b/.test(content)) return null;
 
   const stylesheetPath = path.replace(/\.(jsx|tsx)$/i, '.module.css');
   const importSpecifier = `./${stylesheetPath.split('/').pop()}`;
-  const rewritten = annotateInteractiveClassNames(insertCssModuleImport(content, importSpecifier));
+  const rewritten = normalizeLiteralClassNames(
+    annotateInteractiveClassNames(insertCssModuleImport(content, importSpecifier)),
+  );
   return {
     content: rewritten,
     stylesheetPath,

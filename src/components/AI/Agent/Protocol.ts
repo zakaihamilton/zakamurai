@@ -330,6 +330,12 @@ Inspect before editing only when workspace context has not already been supplied
 
 UI craft bar: When creating an interface, make deliberate visual decisions rather than falling back to a generic white card, system font, blue primary button, and thin gray borders. Establish a cohesive visual direction, clear type hierarchy, a restrained palette, layered surfaces or texture, intentional spacing, meaningful interaction states, visible keyboard focus, and a responsive small-screen layout. Use CSS custom properties for the page's design tokens. Do not use external assets or icon libraries unless they already exist in the workspace.
 
+When an event handler derives a result from a state update, compute the next value first and use
+that value for validation, status, or side effects before calling the state setter. React state
+updates are asynchronous, so reading the old state after setState can produce incorrect UI.
+Keep callbacks that access hook state or setters inside the component, and mentally exercise every
+primary control plus reset, submit, empty, success, and error paths before finishing.
+
 Preview isolation and contrast contract: The preview is an isolated, theme-neutral document; never rely on colors inherited from the host shell or browser defaults. In the root stylesheet, explicitly reset :global(:root), :global(body), and :global(#root) (margin, padding, min-height, background, and color), then set the app surface and foreground colors locally. Define tokens such as --color-bg, --color-surface, --color-text, --color-muted, --color-primary, and --color-on-primary, and apply them to every heading, paragraph, input, button, placeholder, and status message. Keep normal text at WCAG AA contrast (at least 4.5:1; 3:1 for large text and controls). A dark surface must use light text; a light surface must use dark text—never combine a dark background with default black text. When the request does not specify a theme, prefer a polished light neutral surface with dark text and one accent. Set explicit input/button backgrounds, borders, and :focus-visible styles so the UI remains readable regardless of the preview host theme.
 
 For application requests, update the existing app entry (normally src/App.jsx or src/App.tsx) and avoid repeatedly rewriting already-staged files unless a tool or validation result identifies a specific defect. Do not create index.html for a standard Vite app: the compiler scaffolds it automatically.

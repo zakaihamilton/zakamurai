@@ -269,6 +269,28 @@ export default function App() {
     ).toContain('missing a co-located CSS Module');
   });
 
+  it('rejects stateful callbacks declared outside the component', () => {
+    const source = `import { useState } from 'react';
+function App() {
+  const [items, setItems] = useState(['One']);
+  const [status, setStatus] = useState('Ready');
+  const addItem = (item) => {
+    setItems([...items, item]);
+    setStatus('Added');
+  };
+  return <main><h1>Items</h1><p>{status}</p><button onClick={() => addItem('Two')}>Add</button></main>;
+}
+function clearItems() {
+  setItems([]);
+  setStatus('Empty');
+}
+export default App;
+`;
+    expect(validateRequestFulfillment('src/App.jsx', source, 'create an item list')).toContain(
+      'outside the component',
+    );
+  });
+
   it('rejects a stylesheet assigned to a JSX path', () => {
     const css = '.task { display: flex; }\n@media (width < 600px) { .task { display: block; } }';
     expect(validateFileContentType('src/components/Task.jsx', css)).toContain(

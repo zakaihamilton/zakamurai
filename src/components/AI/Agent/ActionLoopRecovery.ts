@@ -129,6 +129,12 @@ implementation. Every referenced control needs a real visible size, readable tex
 explicit spacing, background, border, and focus styles. Never collapse controls into thin bars
 or hide them with zero/near-zero dimensions, display:none, or visibility:hidden.
 
+When an event handler derives a result from a state update, compute the next value first and use
+that value for validation, status, or side effects before calling the state setter. React state
+updates are asynchronous, so reading the old state after setState can produce incorrect UI.
+Keep callbacks that access hook state or setters inside the component, and mentally exercise every
+primary control plus reset, submit, empty, success, and error paths before finishing.
+
 After a successful write, use exactly one of:
 {"action":"validate"}
 {"action":"finish","summary":"brief result"}

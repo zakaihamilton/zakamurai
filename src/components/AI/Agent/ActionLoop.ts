@@ -950,7 +950,7 @@ export async function runActionLoop({
           action = { ...action, content: rewrittenInlineStyles.content };
         }
         const ensuredCssModule =
-          lightweightModel && !rewrittenInlineStyles && /\.(jsx|tsx)$/i.test(action.path || '')
+          !rewrittenInlineStyles && /\.(jsx|tsx)$/i.test(action.path || '')
             ? ensureCoLocatedCssModule(action.path || '', action.content || '')
             : null;
         if (ensuredCssModule) {
