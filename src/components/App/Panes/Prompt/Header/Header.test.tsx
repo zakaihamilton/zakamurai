@@ -1,4 +1,4 @@
-import type { AIIncident, ManagerTrace } from '@/components/AI/Agent';
+import type { ManagerTrace } from '@/components/AI/Agent';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
@@ -129,22 +129,9 @@ describe('PromptHeader', () => {
     expect(screen.queryByRole('dialog', { name: 'Supported AI tools' })).toBeNull();
   });
 
-  it('exposes export action for the latest incident', () => {
-    const incident = { id: 'incident-header', classification: 'model-protocol' } as AIIncident;
-    const onExportAIIncident = vi.fn();
+  it('does not expose an AI incident export action', () => {
+    render(<PromptHeader isAIProcessing={false} isSystemProcessing={false} />);
 
-    render(
-      <PromptHeader
-        isAIProcessing={false}
-        isSystemProcessing={false}
-        latestAIIncident={incident}
-        onExportAIIncident={onExportAIIncident}
-      />,
-    );
-
-    fireEvent.click(screen.getByRole('button', { name: 'Export AI incident' }));
-
-    expect(onExportAIIncident).toHaveBeenCalledOnce();
-    expect(screen.queryByRole('button', { name: 'Copy AI diagnosis' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Export AI incident' })).toBeNull();
   });
 });

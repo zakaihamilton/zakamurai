@@ -53,8 +53,6 @@ export default function PromptContent({
   patchSession,
   onClearAIModelLog,
   latestManagerTrace,
-  latestAIIncident,
-  onExportAIIncident,
   traceFiles,
   onReplayRequest,
 }: PromptContentProps) {
@@ -100,8 +98,6 @@ export default function PromptContent({
           isSystemProcessing={isSystemProcessing}
           copyContent={agentPaneContent}
           latestManagerTrace={latestManagerTrace}
-          latestAIIncident={latestAIIncident}
-          onExportAIIncident={onExportAIIncident}
           traceFiles={traceFiles}
           onReplayRequest={onReplayRequest}
         />

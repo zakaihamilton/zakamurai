@@ -10,7 +10,7 @@
 }
 
 .reasoningVisible {
-  grid-template-rows: 1fr;
+  grid-template-rows: minmax(0, 1fr);
   flex: 1;
   opacity: 1;
   margin: 4px 0 12px;
@@ -31,6 +31,7 @@
   border-radius: 6px;
   padding: 10px;
   min-height: 0;
+  min-width: 0;
   overflow: hidden;
   position: relative;
   box-shadow: none;
@@ -153,6 +154,8 @@
   padding: 4px;
   opacity: 0.9;
   min-height: 0;
+  min-width: 0;
+  overscroll-behavior: contain;
 }
 
 .reasoningContent::-webkit-scrollbar {

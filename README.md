@@ -166,8 +166,7 @@ contains clipped and redacted inputs/outputs, routing/tool/model/validation even
 structured error codes. Run `npm run test:ai-manager:smoke` only when validating the browser’s real
 WebLLM integration; set `ZAKAMURAI_AI_MODEL` to override the model.
 
-When an AI run fails, the prompt header and More actions menu expose **Export AI incident**. The
-incident bundle is local and metadata-only: it includes WebLLM timing,
+When an AI run fails, the app can create a local, metadata-only incident bundle: it includes WebLLM timing,
 recovery, browser/model state, Manager protocol status, and staged-change information, but excludes
 workspace files, full prompts, and model output. Analyze an exported incident with
 `npm run analyze:ai -- incident.json`.

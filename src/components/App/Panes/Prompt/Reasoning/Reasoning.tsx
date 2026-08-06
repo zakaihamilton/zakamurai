@@ -59,7 +59,6 @@ function ReasoningPanelInner({
   const [isExpanded, setIsExpanded] = useState(true);
   const [autoScroll, setAutoScroll] = useState(true);
   const [showStepIO, setShowStepIO] = useState(showStepIOProp);
-  const lastScrollTop = useRef(0);
   const agentSessionState = requireStore(
     AgentSessionState.useState(['sessions', 'activeSessionId']),
   );
@@ -100,10 +99,11 @@ function ReasoningPanelInner({
     const contentElement = reasoningRef.current;
     if (!contentElement) return;
 
-    if (contentElement.scrollTop < lastScrollTop.current && autoScroll) {
+    const distanceFromBottom =
+      contentElement.scrollHeight - contentElement.clientHeight - contentElement.scrollTop;
+    if (distanceFromBottom > 4 && autoScroll) {
       disableAutoScroll();
     }
-    lastScrollTop.current = contentElement.scrollTop;
   }, [autoScroll, disableAutoScroll]);
 
   useEffect(() => {

@@ -251,6 +251,26 @@ describe('ReasoningPanel', () => {
     );
   });
 
+  it('turns auto-scroll off when the scroll position moves above the bottom', () => {
+    setSessionReasoning('Review this reasoning');
+
+    render(<ReasoningPanel />);
+
+    const scrollRegion = document.querySelector('[class*="reasoningContent"]');
+    expect(scrollRegion).toBeTruthy();
+    Object.defineProperties(scrollRegion, {
+      clientHeight: { configurable: true, value: 100 },
+      scrollHeight: { configurable: true, value: 300 },
+      scrollTop: { configurable: true, value: 40 },
+    });
+    fireEvent.scroll(scrollRegion as Element);
+
+    expect(screen.getByRole('button', { name: 'Turn auto-scroll on' })).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    );
+  });
+
   it('toggles per-step model input/output and includes the visible setting in copies', async () => {
     mockAgentSessionStore = createDefaultAgentSessions();
     const active = expectAgentSession(mockAgentSessionStore);

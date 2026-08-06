@@ -1587,6 +1587,32 @@ export const title = "Today";
     expect(events.some((event) => event.message?.includes('Automatically validating'))).toBe(true);
   });
 
+  it('auto-finishes a repeated write after staging normalizes its content', async () => {
+    const source = `export default function App() { return <main style={{ color: 'red' }}>Todo</main>; }`;
+    askWebLLM
+      .mockResolvedValueOnce(
+        `{"action":"write_file","path":"src/App.jsx","content":${JSON.stringify(source)}}`,
+      )
+      .mockResolvedValueOnce(
+        `{"action":"write_file","path":"src/App.jsx","content":${JSON.stringify(source)}}`,
+      )
+      .mockResolvedValueOnce('{"action":"finish","summary":"Styled the todo app"}');
+    const validate = vi.fn().mockResolvedValue({ status: 'passed', check: 'build' });
+
+    const result = await runActionLoop({
+      request: 'style the todo app',
+      files: { 'src/App.jsx': 'export default function App() { return <main />; }' },
+      model: 'test',
+      validate,
+    });
+
+    expect(result.summary).toBe('Styled the todo app');
+    expect(result.files['src/App.jsx']).toContain('className={styles.inline0}');
+    expect(result.files['src/App.module.css']).toContain('color: red');
+    expect(validate).toHaveBeenCalledOnce();
+    expect(askWebLLM).toHaveBeenCalledTimes(3);
+  });
+
   it('does not auto-finish when repeated-write validation fails', async () => {
     const brokenSource = 'export default function App() { return <main>Broken</main>; }';
     askWebLLM

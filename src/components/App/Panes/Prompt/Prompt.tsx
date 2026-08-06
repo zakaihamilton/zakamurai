@@ -49,7 +49,6 @@ export default function Prompt() {
     sessionDialog = null,
     isAgentTreeOpen = false,
     latestManagerTrace = null,
-    latestAIIncident = null,
   } = promptUiState || {};
   const { cachedModelIds = [], engines = {} } = requireStore(
     WebLLMState.useState(['cachedModelIds', 'engines']),
@@ -122,14 +121,6 @@ export default function Prompt() {
     cachedModelIds,
     webLLMEngines: engines,
   });
-
-  const handleExportAIIncident = useCallback(async () => {
-    if (!latestAIIncident) return;
-    const { downloadAIIncident } = await import(
-      /* webpackChunkName: "ai-incident" */ '@/components/AI/Agent/AIIncident'
-    );
-    downloadAIIncident(latestAIIncident);
-  }, [latestAIIncident]);
 
   const handleClearAIModelLog = useCallback(() => {
     if (!activeSession) return;
@@ -292,8 +283,6 @@ export default function Prompt() {
         patchSession={patchSession}
         onClearAIModelLog={handleClearAIModelLog}
         latestManagerTrace={latestManagerTrace}
-        latestAIIncident={latestAIIncident}
-        onExportAIIncident={handleExportAIIncident}
         traceFiles={editorState.fileContents}
         onReplayRequest={replayManagerRequest}
       />

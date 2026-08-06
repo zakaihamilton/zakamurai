@@ -11,8 +11,6 @@ export default function PromptHeader({
   isSystemProcessing,
   copyContent = '',
   latestManagerTrace,
-  latestAIIncident,
-  onExportAIIncident,
   traceFiles,
   onReplayRequest,
 }: PromptHeaderProps) {
@@ -51,18 +49,6 @@ export default function PromptHeader({
           files={traceFiles}
           onReplayRequest={onReplayRequest}
         />
-        {latestAIIncident && (
-          <Tooltip content="Export AI incident">
-            <button
-              type="button"
-              className={styles.headerActionBtn}
-              onClick={onExportAIIncident}
-              aria-label="Export AI incident"
-            >
-              <Icons.Download />
-            </button>
-          </Tooltip>
-        )}
         <Tooltip content={copied ? 'Copied!' : 'Copy full session (transcript & reasoning)'}>
           <button
             type="button"

@@ -797,8 +797,12 @@ export async function runActionLoop({
     const writePath = action.action === 'write_file' ? action.path || '' : '';
     const isRepeatedSavedWrite =
       action.action === 'write_file' &&
-      Object.hasOwn(workspace.files, writePath) &&
-      workspace.files[writePath] === (action.content || '');
+      ((Object.hasOwn(workspace.files, writePath) &&
+        workspace.files[writePath] === (action.content || '')) ||
+        // A successful write may be normalized before it is staged (for example, inline
+        // styles are moved into a CSS Module). In that case the raw model payload differs
+        // from the staged file even though repeating the action cannot add any new work.
+        (fingerprint === lastSuccessfulFingerprint && workspace.changes().length > 0));
     // Finish on the second consecutive validate when staged work already exists —
     // small models often loop validate instead of emitting finish.
     if (action.action === 'validate' && workspace.changes().length > 0 && repeatedActions >= 1) {
