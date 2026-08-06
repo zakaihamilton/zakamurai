@@ -28,7 +28,12 @@ describe('worker-resident WebLLM sessions', () => {
   });
 
   it('sends bootstrap context once and appends only the next delta', async () => {
-    const requests: Array<{ operation: string; messages?: Array<{ content: string }> }> = [];
+    const requests: Array<{
+      operation: string;
+      messages?: Array<{ content: string }>;
+      generation?: { stream_options?: { include_usage?: boolean } };
+    }> = [];
+    const metrics = vi.fn();
     const engine = {
       chat: { completions: { create: vi.fn() } },
       interruptGenerate: vi.fn(),
@@ -42,6 +47,14 @@ describe('worker-resident WebLLM sessions', () => {
       asyncGenerate: vi.fn(async function* () {
         yield { choices: [{ delta: { content: 'ok' } }] };
         yield { choices: [{ finish_reason: 'stop', delta: {} }] };
+        yield {
+          choices: [],
+          usage: {
+            prompt_tokens: 12,
+            completion_tokens: 4,
+            extra: { decode_tokens_per_s: 20, time_to_first_token_s: 0.02 },
+          },
+        };
       }),
     };
     createEngine.mockResolvedValue(engine);
@@ -60,16 +73,30 @@ describe('worker-resident WebLLM sessions', () => {
       model: 'session-model',
       sessionId: 'session-1',
       messages: first,
+      onMetrics: metrics,
     });
     await askWebLLM('', '', null, {
       model: 'session-model',
       sessionId: 'session-1',
       messages: second,
+      onMetrics: metrics,
     });
 
     expect(requests.map((request) => request.operation)).toEqual(['start', 'append']);
     expect(requests[0].messages).toHaveLength(2);
     expect(requests[1].messages).toEqual([{ role: 'user', content: 'second' }]);
+    expect(requests.every((request) => request.generation?.stream_options?.include_usage)).toBe(
+      true,
+    );
+    expect(metrics).toHaveBeenCalledTimes(2);
+    expect(metrics).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        promptTokens: 12,
+        completionTokens: 4,
+        decodeTokensPerSecond: 20,
+        timeToFirstTokenMs: 20,
+      }),
+    );
     await deleteCachedWebLLMModel('session-model');
   });
 

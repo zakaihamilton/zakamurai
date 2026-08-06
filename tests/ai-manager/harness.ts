@@ -46,7 +46,16 @@ export function createFakeTools(options?: {
   semanticResults?: SemanticSearchResult[];
 }): FakeManagerTools {
   const validation = [...(options?.validation || [{ status: 'passed', check: 'fake' }])];
-  const previews = [...(options?.previews || [{ status: 'passed', title: 'Fake preview' }])];
+  const previews = [
+    ...(options?.previews || [
+      {
+        status: 'passed',
+        title: 'Fake preview',
+        elements: ['main: Fake preview', 'h1: Fake preview'],
+        screenshotCaptured: true,
+      },
+    ]),
+  ];
   const calls: FakeToolCall[] = [];
   return {
     calls,
@@ -60,7 +69,14 @@ export function createFakeTools(options?: {
     },
     inspectPreview: async (files) => {
       calls.push({ tool: 'inspect_preview', input: {}, files: { ...files } });
-      return previews.shift() || { status: 'passed', title: 'Fake preview' };
+      return (
+        previews.shift() || {
+          status: 'passed',
+          title: 'Fake preview',
+          elements: ['main: Fake preview', 'h1: Fake preview'],
+          screenshotCaptured: true,
+        }
+      );
     },
     retrieveContext: async (query, k) => {
       calls.push({ tool: 'retrieve_context', input: { query, k } });

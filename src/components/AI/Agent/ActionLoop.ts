@@ -63,7 +63,17 @@ import { type PackageAction, handlePackageOperation } from './PackageManager';
 import { listProjectChecks, runProjectCheck } from './ProjectChecks';
 import { AGENT_SYSTEM_PROMPT, ALL_AGENT_ACTIONS, parseAgentAction } from './Protocol';
 import { extractFileSymbols, formatSymbolOutline } from './SymbolInspector';
+import { visualPreviewInspectionFailure } from './VisualPreviewEvidence';
 import { AgentWorkspace } from './Workspace';
+
+const VISUAL_QUALITY_INSTRUCTION = `Visual quality is a hard acceptance requirement for this UI request.
+Make deliberate design decisions: establish a cohesive palette, typography hierarchy, spacing scale,
+surface treatment, responsive layout, and hover/focus/disabled states. Style every visible input,
+button, form, list, and status element explicitly; browser-default controls are incomplete. Keep
+the preview isolated from the host by resetting the root, body, and app surface colors in CSS Modules.
+Before finishing, inspect the preview and correct any runtime error, missing landmark, default-looking
+control, unreadable contrast, cramped spacing, or broken mobile layout. Do not finish after build
+validation alone.`;
 
 export async function runActionLoop({
   request,
@@ -107,25 +117,27 @@ export async function runActionLoop({
       : baseSystemPrompt;
   const lightweightTargetPath = recoveryWritePath(workspace.files, activeFile) || 'src/App.jsx';
   const contextReady = Boolean(priorContext) && !agentRole;
+  const previewInspectionRequired = requirePreviewInspection && Boolean(inspectPreview);
+  const userRequest = contextReady
+    ? buildContextReadyUserRequest({
+        request,
+        targetPath: lightweightTargetPath,
+        files: workspace.files,
+        priorContext,
+        lightweight: lightweightModel,
+      })
+    : buildUserRequest({
+        request,
+        scope,
+        activeFile,
+        selectedLines,
+        priorContext: context.toString(),
+      });
   const messages: WebLLMMessage[] = [
     { role: 'system', content: agentSystemPrompt },
     {
       role: 'user',
-      content: contextReady
-        ? buildContextReadyUserRequest({
-            request,
-            targetPath: lightweightTargetPath,
-            files: workspace.files,
-            priorContext,
-            lightweight: lightweightModel,
-          })
-        : buildUserRequest({
-            request,
-            scope,
-            activeFile,
-            selectedLines,
-            priorContext: context.toString(),
-          }),
+      content: visualMode ? `${userRequest}\n\n${VISUAL_QUALITY_INSTRUCTION}` : userRequest,
     },
   ];
   let protocolFailures = 0;
@@ -138,6 +150,7 @@ export async function runActionLoop({
     repairAttempts: 0,
   };
   let inspectedPreview = false;
+  let previewInspectionAccepted = false;
   let recoveredNoOpWrite = '';
   let failedWritePath = '';
   let forcedWriteRecoveryPending = false;
@@ -445,13 +458,32 @@ export async function runActionLoop({
             continue;
           }
           let previewSummary = '';
-          if (requirePreviewInspection && !inspectedPreview) {
+          if (previewInspectionRequired && !inspectedPreview) {
             onEvent({ type: 'tool', turn, action: { action: 'inspect_preview' }, agentRole });
             const preview = inspectPreview
               ? await inspectPreview(workspace.files)
               : { status: 'unavailable', diagnostics: 'Preview inspection is unavailable.' };
             inspectedPreview = true;
-            previewSummary = `\n\nPreview inspection:\n${JSON.stringify(preview)}`;
+            const previewFailure = visualPreviewInspectionFailure(preview);
+            previewInspectionAccepted = !previewFailure;
+            if (inspectPreview) {
+              previewSummary = `\n\nPreview inspection:\n${JSON.stringify(
+                previewFailure
+                  ? {
+                      ...(typeof preview === 'object' && preview ? preview : {}),
+                      visualReview: 'insufficient',
+                      diagnostics: previewFailure,
+                    }
+                  : preview,
+              )}`;
+            }
+            if (previewFailure) {
+              messages.push({
+                role: 'user',
+                content: observation('inspect_preview', false, previewFailure),
+              });
+              continue;
+            }
           }
           const changesResult = workspace.changes();
           const summary =
@@ -1015,6 +1047,8 @@ export async function runActionLoop({
           );
         }
         workspace.write(action.path || '', action.content || '');
+        inspectedPreview = false;
+        previewInspectionAccepted = false;
         nonProductiveActionsWithoutWrite = 0;
         validationState.wroteSinceVerification = true;
         failedWritePath = '';
@@ -1096,6 +1130,8 @@ export async function runActionLoop({
 
         const newContent = applySearchReplaceBlock(existingContent, search, replace);
         workspace.write(path, newContent);
+        inspectedPreview = false;
+        previewInspectionAccepted = false;
         validationState.wroteSinceVerification = true;
         nonProductiveActionsWithoutWrite = 0;
         unchangedReadSkips = 0;
@@ -1112,6 +1148,8 @@ export async function runActionLoop({
           );
         }
         workspace.delete(path);
+        inspectedPreview = false;
+        previewInspectionAccepted = false;
         validationState.wroteSinceVerification = true;
         nonProductiveActionsWithoutWrite = 0;
         unchangedReadSkips = 0;
@@ -1149,6 +1187,17 @@ export async function runActionLoop({
           : { status: 'unavailable', diagnostics: 'Preview inspection is unavailable.' };
         result = JSON.stringify(preview);
         inspectedPreview = true;
+        const previewFailure = previewInspectionRequired
+          ? visualPreviewInspectionFailure(preview)
+          : null;
+        previewInspectionAccepted = !previewFailure;
+        if (previewFailure) {
+          result = JSON.stringify({
+            ...(typeof preview === 'object' && preview ? preview : {}),
+            visualReview: 'insufficient',
+            diagnostics: previewFailure,
+          });
+        }
         context.record('preview', preview);
       }
       if (action.action === 'inspect_console_logs') {
@@ -1257,13 +1306,15 @@ export async function runActionLoop({
           });
           continue;
         }
-        if (requirePreviewInspection && !inspectedPreview) {
+        if (previewInspectionRequired && (!inspectedPreview || !previewInspectionAccepted)) {
           messages.push({
             role: 'user',
             content: observation(
               'finish',
               false,
-              'Visual UI review requires action "inspect_preview" before finishing. Use its structured evidence to assess landmarks, named controls, runtime errors, and the visual brief.',
+              previewInspectionAccepted
+                ? 'Visual UI review requires action "inspect_preview" before finishing. Use its structured evidence to assess landmarks, named controls, runtime errors, and the visual brief.'
+                : 'The previous preview inspection was insufficient. Do not finish. Wait for rendered DOM evidence and a captured screenshot, then inspect_preview again. If the preview remains empty or unstyled, write the necessary JSX/CSS fixes first.',
             ),
           });
           continue;

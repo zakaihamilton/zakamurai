@@ -1117,6 +1117,32 @@ export default function App() {
     expect(askWebLLM.mock.calls.length).toBeLessThanOrEqual(8);
   });
 
+  it('does not ask the model to rewrite source for a local runtime validation failure', async () => {
+    askWebLLM
+      .mockResolvedValueOnce(
+        '{"action":"write_file","path":"src/App.jsx","content":"export default function App() { return <main><h1>Todo</h1></main>; }"}',
+      )
+      .mockResolvedValueOnce('{"action":"validate"}')
+      .mockResolvedValueOnce('{"action":"finish","summary":"Created todo app"}');
+    const validate = vi.fn().mockResolvedValue({
+      status: 'failed',
+      check: 'build',
+      diagnostics:
+        'Failed to fetch dynamically imported module: http://localhost:3000/lib/almostnode/index.mjs',
+    });
+
+    const result = await runActionLoop({
+      request: 'create a todo app',
+      files: { 'src/App.jsx': 'export default function App() { return null; }' },
+      model: 'test',
+      validate,
+    });
+
+    expect(result.summary).toBe('Created todo app');
+    expect(validate).toHaveBeenCalledOnce();
+    expect(askWebLLM).toHaveBeenCalledTimes(3);
+  });
+
   it('stops a lightweight model after two repeated validation failures', async () => {
     const source = 'export default function App() { return <main>Broken</main>; }';
     askWebLLM
@@ -1481,7 +1507,11 @@ export default function App() {
       .mockResolvedValueOnce('{"action":"finish","summary":"premature"}')
       .mockResolvedValueOnce('{"action":"inspect_preview"}')
       .mockResolvedValueOnce('{"action":"finish","summary":"reviewed"}');
-    const inspectPreview = vi.fn().mockResolvedValue({ status: 'passed', visualEvidence: {} });
+    const inspectPreview = vi.fn().mockResolvedValue({
+      status: 'passed',
+      elements: ['h1: Dashboard', 'button: Continue'],
+      screenshotCaptured: true,
+    });
 
     const result = await runActionLoop({
       request: 'review dashboard UI',
@@ -1500,6 +1530,46 @@ export default function App() {
       max_tokens: 2200,
       contextWindowSize: 4096,
     });
+    expect(askWebLLM.mock.calls[0]?.[3]?.messages?.[1]?.content).toContain(
+      'Visual quality is a hard acceptance requirement',
+    );
+  });
+
+  it('does not accept an empty passed preview as visual completion', async () => {
+    askWebLLM
+      .mockResolvedValueOnce(
+        JSON.stringify({
+          action: 'write_file',
+          path: 'src/App.jsx',
+          content:
+            'export default function App() { return <main><h1>Dashboard</h1><button>Save</button></main>; }',
+        }),
+      )
+      .mockResolvedValueOnce('{"action":"inspect_preview"}')
+      .mockResolvedValueOnce('{"action":"finish","summary":"premature"}')
+      .mockResolvedValueOnce('{"action":"inspect_preview"}')
+      .mockResolvedValueOnce('{"action":"validate"}')
+      .mockResolvedValueOnce('{"action":"finish","summary":"reviewed"}');
+    const inspectPreview = vi
+      .fn()
+      .mockResolvedValueOnce({ status: 'passed', elements: [], screenshotCaptured: false })
+      .mockResolvedValueOnce({
+        status: 'passed',
+        elements: ['main: Dashboard', 'h1: Dashboard', 'button: Save'],
+        screenshotCaptured: true,
+      });
+
+    const result = await runActionLoop({
+      request: 'update the dashboard UI',
+      files: { 'src/App.jsx': 'export default function App() { return null; }' },
+      model: 'test',
+      validate: vi.fn().mockResolvedValue({ status: 'passed', check: 'build' }),
+      inspectPreview,
+      requirePreviewInspection: true,
+    });
+
+    expect(result.summary).toBe('reviewed');
+    expect(inspectPreview).toHaveBeenCalledTimes(2);
   });
 
   it('covers list/search/delete tools and recovers from one protocol failure', async () => {

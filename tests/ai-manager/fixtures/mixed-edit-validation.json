@@ -11,7 +11,12 @@
     "{\"kind\":\"changes\",\"summary\":\"Updated title\",\"changes\":[{\"path\":\"src/App.jsx\",\"content\":\"export default function App() { return <h1>New</h1>; }\"}]}"
   ],
   "validationResponses": [{ "status": "passed", "check": "build" }],
-  "previewResponse": { "status": "passed", "title": "Updated preview" },
+  "previewResponse": {
+    "status": "passed",
+    "title": "Updated preview",
+    "elements": ["h1: New", "main: New"],
+    "screenshotCaptured": true
+  },
   "expected": {
     "intent": "mixed",
     "outcome": "success",

@@ -13,6 +13,8 @@ const CHECK_WORDS = /\b(build|compile|run|test|lint|check|verify|diagnos|error|f
 const TOOL_ONLY_CHECK =
   /\b(?:build|compile)\s+(?:the\s+)?(?:project|app)|\b(?:run|execute)\s+(?:the\s+)?(?:tests?|checks?|lint)|\b(?:test|lint|verify)\s+(?:the\s+)?project\b/i;
 const PREVIEW_WORDS = /\b(preview|render|inspect the app|browser output|runtime)\b/i;
+const UI_WORDS =
+  /\b(app|application|button|card|component|dashboard|form|game|interface|input|layout|list|menu|modal|page|screen|table|todo|ui|widget|website|visual|style|design|responsive|interactive)\b/i;
 const SEARCH_WORDS =
   /\b(search|find|grep|where|which files|list(?: the)? files|show files|what files)\b/i;
 const READ_WORDS = /\b(?:read|open)\b/i;
@@ -27,6 +29,11 @@ const tool = (
   input?: Record<string, unknown>,
 ): ManagerStep =>
   ({ kind: 'tool', tool: name, reason, ...(input ? { input } : {}) }) as ManagerStep;
+
+/** UI edits need a preview pass so build-success is not mistaken for visual completion. */
+export function isLikelyUiRequest(request: string): boolean {
+  return CHANGE_WORDS.test(request) && UI_WORDS.test(request);
+}
 
 export function classifyManagerIntent(request: string): ManagerIntent | null {
   const text = request.trim();
@@ -112,7 +119,7 @@ export function createManagerPlan(request: string): ManagerPlan {
       },
       tool('validate', 'Validate generated changes deterministically.'),
     ];
-    if (PREVIEW_WORDS.test(request)) {
+    if (PREVIEW_WORDS.test(request) || isLikelyUiRequest(request)) {
       steps.push(
         tool('inspect_preview', 'Inspect the updated workspace preview after validation.'),
       );
@@ -124,13 +131,17 @@ export function createManagerPlan(request: string): ManagerPlan {
       confidence: 'high',
     };
   }
+  const steps: ManagerStep[] = [
+    tool('read_file', 'Read the active or most relevant source before editing.'),
+    { kind: 'model', task: 'generate-changes', reason: 'Generate the requested code changes.' },
+    tool('validate', 'Validate generated changes deterministically.'),
+  ];
+  if (isLikelyUiRequest(request)) {
+    steps.push(tool('inspect_preview', 'Inspect the updated workspace preview after validation.'));
+  }
   return {
     intent: 'edit',
-    steps: [
-      tool('read_file', 'Read the active or most relevant source before editing.'),
-      { kind: 'model', task: 'generate-changes', reason: 'Generate the requested code changes.' },
-      tool('validate', 'Validate generated changes deterministically.'),
-    ],
+    steps,
     modelRequired: true,
     confidence: 'high',
   };

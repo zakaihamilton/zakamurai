@@ -30,9 +30,12 @@
   padding: 7px 9px;
   padding-right: 38px;
   resize: none;
+  max-height: 30dvh;
+  overflow-y: auto;
   color: var(--text-main);
   font: inherit;
   line-height: 1.45;
+  field-sizing: content;
   background: transparent;
   border: 0;
   outline: 0;

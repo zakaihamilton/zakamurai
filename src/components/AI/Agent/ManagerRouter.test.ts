@@ -4,6 +4,7 @@ import {
   createManagerPlan,
   isLikelyFileRequest,
   isLikelyProjectCheck,
+  isLikelyUiRequest,
 } from './ManagerRouter';
 
 describe('manager router', () => {
@@ -41,6 +42,11 @@ describe('manager router', () => {
       intent: 'edit',
       modelRequired: true,
     });
+    expect(isLikelyUiRequest('create a todo app')).toBe(true);
+    expect(createManagerPlan('create a todo app').steps).toContainEqual(
+      expect.objectContaining({ kind: 'tool', tool: 'inspect_preview' }),
+    );
+    expect(isLikelyUiRequest('rename a utility function')).toBe(false);
   });
 
   it('uses the fallback manager plan for ambiguous requests and exposes mixed routing', () => {

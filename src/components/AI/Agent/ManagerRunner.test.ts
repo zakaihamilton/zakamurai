@@ -357,9 +357,12 @@ describe('runManager', () => {
       }),
     );
     const validate = vi.fn().mockResolvedValue({ status: 'passed' });
-    const inspectPreview = vi
-      .fn()
-      .mockResolvedValue({ status: 'passed', title: 'Updated preview' });
+    const inspectPreview = vi.fn().mockResolvedValue({
+      status: 'passed',
+      title: 'Updated preview',
+      elements: ['h1: Updated app', 'button: Save'],
+      screenshotCaptured: true,
+    });
     const result = await runManager({
       request: 'change the app and inspect the preview',
       files: { 'src/App.jsx': 'export default function App() { return null; }' },

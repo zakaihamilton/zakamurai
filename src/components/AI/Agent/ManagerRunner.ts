@@ -25,7 +25,7 @@ import {
   buildManagerModelPrompt,
   parseModelResult,
 } from './ManagerProtocol';
-import { createManagerPlan } from './ManagerRouter';
+import { createManagerPlan, isLikelyUiRequest } from './ManagerRouter';
 import {
   type ManagerToolResult,
   createManagerToolContext,
@@ -292,6 +292,7 @@ async function executeManager({
       workspace,
       workspaceIndex,
       modelClient,
+      visualMode: isLikelyUiRequest(request) || planIncludesTool(plan, 'inspect_preview'),
       requirePreviewInspection: planIncludesTool(plan, 'inspect_preview'),
       onEvent: (event) => {
         const action = event.action;
@@ -533,7 +534,7 @@ async function executeManager({
         if (status === 'failed') throw new Error(verificationMessage);
       }
       let previewSummary = '';
-      if (planIncludesTool(plan, 'inspect_preview')) {
+      if (planIncludesTool(plan, 'inspect_preview') && inspectPreview) {
         const preview = await notifyTool('inspect_preview');
         previewSummary = `\n\nPreview inspection:\n${summarizeToolResult(preview.tool, preview.value)}`;
       }

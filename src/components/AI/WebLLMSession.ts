@@ -166,7 +166,10 @@ export const runSessionCompletion = async (
       sessionId,
       messages: outgoingMessages,
       modelId: [modelId],
-      generation: runtime.createGenerationOptions(modelId, options),
+      generation: {
+        ...runtime.createGenerationOptions(modelId, options),
+        stream_options: { include_usage: true },
+      },
     });
     for await (const chunk of engine.asyncGenerate(sessionId)) {
       if (options.signal?.aborted) throw runtime.abortError();

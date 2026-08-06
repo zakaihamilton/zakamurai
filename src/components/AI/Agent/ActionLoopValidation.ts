@@ -8,6 +8,14 @@ type ValidateWorkspace = (
   files: FileMap,
 ) => Promise<VerificationResult | string> | VerificationResult | string;
 
+/** Validation failures caused by the browser/runtime must not trigger source rewrites. */
+export const isInfrastructureValidationFailure = (verification: VerificationResult): boolean => {
+  const diagnostics = `${verification.check || ''} ${verification.diagnostics || ''}`;
+  return /failed to fetch dynamically imported module|failed to start (?:the )?container|(?:localhost|127\.0\.0\.1).*(?:fetch|connection)|err_connection_|service worker.*(?:failed|unavailable)|wasm.*(?:failed|unavailable)|network request failed/i.test(
+    diagnostics,
+  );
+};
+
 export type ActionLoopValidationState = {
   wroteSinceVerification: boolean;
   lastValidationFailed: boolean;
@@ -72,9 +80,21 @@ export const createValidationRunner = ({
             diagnostics: rawVerification,
           }
         : rawVerification;
-    const result = formatVerificationResult(verification);
-    context.record('verification', verification);
-    if (verification.status === 'passed' || verification.status === 'unavailable') {
+    const infrastructureFailure =
+      verification.status === 'failed' && isInfrastructureValidationFailure(verification);
+    const effectiveVerification = infrastructureFailure
+      ? {
+          ...verification,
+          status: 'unavailable',
+          diagnostics: `Validation could not run because the local preview/build runtime was unavailable. Do not rewrite source for this infrastructure failure. ${verification.diagnostics || ''}`,
+        }
+      : verification;
+    const result = formatVerificationResult(effectiveVerification);
+    context.record('verification', effectiveVerification);
+    if (
+      effectiveVerification.status === 'passed' ||
+      effectiveVerification.status === 'unavailable'
+    ) {
       state.wroteSinceVerification = false;
       state.lastValidationFailed = false;
       state.repairAttempts = 0;

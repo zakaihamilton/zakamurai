@@ -1,8 +1,9 @@
 .welcome {
   flex: 1;
+  min-height: 100%;
   display: flex;
-  align-items: center;
-  justify-content: center;
+  align-items: stretch;
+  justify-content: safe center;
   width: 100%;
   padding: 24px 28px;
   background: var(--bg-base);
@@ -11,11 +12,13 @@
 }
 
 .hero {
+  min-height: 100%;
   width: 100%;
   max-width: 720px;
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   text-align: center;
 }
 
@@ -33,6 +36,10 @@
   .welcome {
     align-items: flex-start;
     padding: 34px 18px 44px;
+  }
+
+  .hero {
+    justify-content: flex-start;
   }
 }
 

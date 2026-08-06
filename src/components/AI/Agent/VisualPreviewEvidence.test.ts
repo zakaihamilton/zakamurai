@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { summarizeVisualPreviewEvidence } from './VisualPreviewEvidence';
+import {
+  summarizeVisualPreviewEvidence,
+  visualPreviewInspectionFailure,
+} from './VisualPreviewEvidence';
 
 describe('summarizeVisualPreviewEvidence', () => {
   it('turns DOM evidence into deterministic visual-review signals', () => {
@@ -31,5 +34,22 @@ describe('summarizeVisualPreviewEvidence', () => {
         'interactive elements are missing accessible names',
       ]),
     );
+  });
+
+  it('rejects passed previews that contain no rendered evidence or screenshot', () => {
+    expect(
+      visualPreviewInspectionFailure({
+        status: 'passed',
+        elements: [],
+        screenshotCaptured: false,
+      }),
+    ).toContain('no DOM landmarks');
+    expect(
+      visualPreviewInspectionFailure({
+        status: 'passed',
+        elements: ['h1: Todo App'],
+        screenshotCaptured: false,
+      }),
+    ).toContain('did not capture a screenshot');
   });
 });
