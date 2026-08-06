@@ -873,7 +873,11 @@ export async function runActionLoop({
       workspace.changes().length > 0 &&
       (repeatedActions >= 1 || finishAfterAutomaticValidation)
     ) {
-      if (finishAfterAutomaticValidation && previewInspectionRequired && !inspectedPreview) {
+      if (
+        finishAfterAutomaticValidation &&
+        previewInspectionRequired &&
+        (!inspectedPreview || !previewInspectionAccepted)
+      ) {
         const previewResult = await inspectPreviewForLoop(turn);
         if (!previewInspectionAccepted) {
           finishAfterAutomaticValidation = false;
