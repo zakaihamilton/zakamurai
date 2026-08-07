@@ -1,4 +1,4 @@
-.editorArea {
+.surface {
   --editor-bg: #0f1317;
   --editor-gutter-bg: #121820;
   --editor-gutter-border: rgb(120 143 157 / 22%);
@@ -31,7 +31,7 @@
   overflow: hidden;
 }
 
-:global(.light) .editorArea {
+:global(.light) .surface {
   --editor-bg: #fbfcfd;
   --editor-gutter-bg: #f2f5f7;
   --editor-gutter-border: rgb(159 174 184 / 58%);

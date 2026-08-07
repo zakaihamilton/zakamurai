@@ -1,5 +1,5 @@
 import { Icons } from '@/components/ui/Icons';
-import type { ModelTableProps } from '../prompt-types';
+import type { ModelTableProps } from '../model-types';
 import ModelCacheToggle from './ModelCacheToggle';
 import styles from './ModelTable.module.css';
 import { COLUMNS, detailValue, formatSize } from './modelUtils';

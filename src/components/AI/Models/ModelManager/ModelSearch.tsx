@@ -1,4 +1,4 @@
-import type { ModelSearchProps } from '../prompt-types';
+import type { ModelSearchProps } from '../model-types';
 import styles from './ModelSearch.module.css';
 
 export default function ModelSearch({ searchTerm, onSearchTermChange }: ModelSearchProps) {

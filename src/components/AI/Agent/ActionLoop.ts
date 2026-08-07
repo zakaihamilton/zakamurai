@@ -11,22 +11,17 @@ import {
   workspaceFulfillsInteractiveRequest,
 } from '../ChangeValidator';
 import { AgentExecutionError, AgentRecoveryValidationError } from './ActionLoopErrors';
+import { requestNextAction } from './ActionLoopModel';
 import {
-  AGENT_CONTEXT_WINDOW_SIZE,
-  AGENT_GENERATION_TOKENS,
-  AGENT_RECOVERY_TOKENS,
   APP_ENTRY_PATHS,
   CHANGE_REQUEST_PATTERN,
   CONTEXT_READY_AGENT_INSTRUCTIONS,
-  LIGHTWEIGHT_AGENT_GENERATION_TOKENS,
-  LIGHTWEIGHT_AGENT_RECOVERY_TOKENS,
   LIGHTWEIGHT_AGENT_SYSTEM_PROMPT,
   LIGHTWEIGHT_CONTEXT_READY_INSTRUCTIONS,
   buildContextReadyUserRequest,
   buildDirectChangesRecoveryMessages,
   buildForcedWriteRecoveryMessages,
   buildUserRequest,
-  getModelDownloadProgress,
   isIncompleteWriteError,
   isLightweightAgentModel,
   loadAskWebLLM,
@@ -285,25 +280,6 @@ export async function runActionLoop({
       agentRole,
       message: 'Requesting the next action from the local model...',
     });
-    let receivedModelOutput = false;
-    let streamedCharacterCount = 0;
-    const responseStartedAt = Date.now();
-    const heartbeat = setInterval(() => {
-      const elapsedSeconds = Math.max(1, Math.floor((Date.now() - responseStartedAt) / 1000));
-      const downloadProgress = getModelDownloadProgress(model);
-      const progress = downloadProgress
-        ? downloadProgress
-        : receivedModelOutput
-          ? `${streamedCharacterCount.toLocaleString()} character(s) received; waiting for a complete JSON action before validation`
-          : 'the model has not started streaming yet; keeping the workspace context ready';
-      onEvent({
-        type: 'thinking',
-        turn,
-        agentRole,
-        replaceProgress: true,
-        message: `Local model is still working (${elapsedSeconds}s elapsed; ${progress})…`,
-      });
-    }, 3_000);
     let reply: string;
     const recoveryTarget =
       forcedRecoveryTargetPath || recoveryWritePath(workspace.files, activeFile);
@@ -324,99 +300,24 @@ export async function runActionLoop({
           })
         : messages;
     const safeModelMessages = modelMessages.filter(Boolean);
-    try {
-      if (modelSession) {
-        reply = await modelSession.generate({
-          model,
-          messages: safeModelMessages,
-          signal,
-          task: 'generate-changes',
-          onMetrics,
-          temperature: lightweightModel ? 0.2 : visualMode ? 0.12 : 0.15,
-          top_p: lightweightModel ? 0.85 : 0.8,
-          max_tokens: lightweightModel
-            ? visualMode || failedWritePath || forcedWriteRecoveryPending
-              ? LIGHTWEIGHT_AGENT_RECOVERY_TOKENS
-              : LIGHTWEIGHT_AGENT_GENERATION_TOKENS
-            : visualMode || failedWritePath || forcedWriteRecoveryPending
-              ? AGENT_RECOVERY_TOKENS
-              : AGENT_GENERATION_TOKENS,
-          contextWindowSize: AGENT_CONTEXT_WINDOW_SIZE,
-          sessionId,
-        });
-      } else if (modelClient) {
-        reply = await modelClient({
-          model,
-          messages: modelMessages,
-          signal,
-          task: 'generate-changes',
-          onMetrics,
-          temperature: lightweightModel ? 0.2 : visualMode ? 0.12 : 0.15,
-          top_p: lightweightModel ? 0.85 : 0.8,
-          max_tokens: lightweightModel
-            ? visualMode || failedWritePath || forcedWriteRecoveryPending
-              ? LIGHTWEIGHT_AGENT_RECOVERY_TOKENS
-              : LIGHTWEIGHT_AGENT_GENERATION_TOKENS
-            : visualMode || failedWritePath || forcedWriteRecoveryPending
-              ? AGENT_RECOVERY_TOKENS
-              : AGENT_GENERATION_TOKENS,
-          contextWindowSize: AGENT_CONTEXT_WINDOW_SIZE,
-          sessionId,
-        });
-      } else {
-        if (!askWebLLM) throw new Error('WebLLM is unavailable.');
-        reply = await askWebLLM(
-          '',
-          '',
-          (output) => {
-            streamedCharacterCount = output.length;
-            receivedModelOutput = true;
-            onEvent({
-              type: 'thinking',
-              turn,
-              agentRole,
-              replaceProgress: true,
-              message: `Local model is responding — streaming its next action (${streamedCharacterCount.toLocaleString()} character(s) received). Waiting for one complete JSON action before validation…`,
-            });
-          },
-          {
-            model,
-            messages: safeModelMessages,
-            signal,
-            requestKind: 'agent',
-            onMetrics,
-            onRecovery: (recovery) => {
-              const action =
-                recovery.action === 'fallback' || recovery.action === 'reuse-fallback'
-                  ? `continuing with cached fallback ${recovery.modelId}`
-                  : `rebuilding ${recovery.modelId} and retrying`;
-              onEvent({
-                type: 'thinking',
-                turn,
-                agentRole,
-                replaceProgress: true,
-                message: `Local model recovery: ${action} after ${recovery.reason.replaceAll('-', ' ')}.`,
-              });
-            },
-            temperature: lightweightModel ? 0.2 : visualMode ? 0.12 : 0.15,
-            top_p: lightweightModel ? 0.85 : 0.8,
-            // Give a repair turn enough room to return one complete source file instead of
-            // repeating a truncated payload from the preceding attempt.
-            max_tokens: lightweightModel
-              ? visualMode || failedWritePath || forcedWriteRecoveryPending
-                ? LIGHTWEIGHT_AGENT_RECOVERY_TOKENS
-                : LIGHTWEIGHT_AGENT_GENERATION_TOKENS
-              : visualMode || failedWritePath || forcedWriteRecoveryPending
-                ? AGENT_RECOVERY_TOKENS
-                : AGENT_GENERATION_TOKENS,
-            contextWindowSize: AGENT_CONTEXT_WINDOW_SIZE,
-            sessionId,
-          },
-        );
-      }
-    } finally {
-      clearInterval(heartbeat);
-    }
+    reply = await requestNextAction({
+      askWebLLM,
+      modelSession,
+      modelClient,
+      model,
+      messages: modelMessages,
+      safeModelMessages,
+      signal,
+      onMetrics,
+      sessionId,
+      lightweightModel,
+      visualMode,
+      failedWritePath,
+      forcedWriteRecoveryPending,
+      turn,
+      agentRole,
+      onEvent,
+    });
     onEvent({
       type: 'model_io',
       turn,

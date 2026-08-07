@@ -1,3 +1,4 @@
+import { useModelDownloader } from '@/components/AI/Models';
 import { RECOMMENDED_WEB_LLM_MODEL, WEB_LLM_MODELS } from '@/components/AI/WebLLMModels';
 import { WebLLMState } from '@/components/AI/WebLLMState';
 import { AppState } from '@/components/App/AppState';
@@ -11,7 +12,6 @@ import { useCallback, useEffect, useState } from 'react';
 import { requireStore } from '../../types';
 import { AgentSessionState, createAgentRunUsage, createSessionMessage } from './AgentSessions';
 import FileScopeDialog from './FileScopeDialog';
-import useModelDownloader from './ModelDownloader';
 import PromptContent from './PromptContent';
 import usePromptHistory from './PromptHistory';
 import { PromptState, PromptUiState, getInitialPromptUiState } from './PromptState';
@@ -243,48 +243,62 @@ export default function Prompt() {
         isMobile={isMobile}
         isOpen={isOpen}
         desktopWidth={desktopWidth}
-        isAIProcessing={isAIProcessing}
-        isSystemProcessing={isSystemProcessing}
-        activeSession={activeSession}
+        header={{
+          isAIProcessing,
+          isSystemProcessing,
+          latestManagerTrace,
+          traceFiles: editorState.fileContents,
+          onReplayRequest: replayManagerRequest,
+        }}
+        session={{
+          activeSession,
+          isOpen,
+          isAgentTreeOpen,
+          sessionDialog,
+          agentSessionState,
+          onOpenTree: openSessionTree,
+          onCloseTree: closeSessionTree,
+          onSelectSession: handleSelectSession,
+          onCreateSession: handleCreateSession,
+          onBranchSession: handleBranchSession,
+          onRenameSession: handleRenameSession,
+          onDeleteSession: handleDeleteSession,
+          runningSessionId,
+          isAIProcessing,
+          promptUiState,
+        }}
+        activity={{
+          activeSession,
+          onOpenSectionInTab: openSectionInTab,
+          isModelManagerOpen,
+          selectedModelInfo,
+          cachedModelIds,
+          onCloseModelManager: closeModelManager,
+          onModelCacheAction: handleModelCacheAction,
+          modelCacheWork: modelCacheWork as string | null,
+          modelCacheProgress,
+          modelCacheError,
+          isModelDownloading,
+          modelDownloadProgress,
+          patchSession,
+          onClearAIModelLog: handleClearAIModelLog,
+        }}
+        composer={{
+          value: val,
+          onChange: handleComposerChange,
+          onKeyDown: handleKeyDown,
+          onSubmit: handleSubmit,
+          onStop: handleStop,
+          isAIProcessing,
+          isButtonActive: Boolean(val.trim()) && !isAIProcessing,
+          isOpen,
+          selectedModelInfo,
+          modelOptions,
+          onChangeModel: setSelectedModel,
+          onLoadCachedModelIds: loadCachedModelIds,
+          onOpenModelManager: openModelManager,
+        }}
         sessionReasoning={activeSession?.reasoning || ''}
-        onOpenTree={openSessionTree}
-        isAgentTreeOpen={isAgentTreeOpen}
-        sessionDialog={sessionDialog}
-        agentSessionState={agentSessionState}
-        onCloseTree={closeSessionTree}
-        onSelectSession={handleSelectSession}
-        onCreateSession={handleCreateSession}
-        onBranchSession={handleBranchSession}
-        onRenameSession={handleRenameSession}
-        onDeleteSession={handleDeleteSession}
-        runningSessionId={runningSessionId}
-        promptUiState={promptUiState}
-        modelOptions={modelOptions}
-        onOpenSectionInTab={openSectionInTab}
-        isModelManagerOpen={isModelManagerOpen}
-        selectedModelInfo={selectedModelInfo}
-        cachedModelIds={cachedModelIds}
-        onCloseModelManager={closeModelManager}
-        onModelCacheAction={handleModelCacheAction}
-        modelCacheWork={modelCacheWork as string | null}
-        modelCacheProgress={modelCacheProgress}
-        modelCacheError={modelCacheError}
-        value={val}
-        onChange={handleComposerChange}
-        onKeyDown={handleKeyDown}
-        onSubmit={handleSubmit}
-        onStop={handleStop}
-        isButtonActive={Boolean(val.trim()) && !isAIProcessing}
-        isModelDownloading={isModelDownloading}
-        modelDownloadProgress={modelDownloadProgress}
-        onChangeModel={setSelectedModel}
-        onLoadCachedModelIds={loadCachedModelIds}
-        onOpenModelManager={openModelManager}
-        patchSession={patchSession}
-        onClearAIModelLog={handleClearAIModelLog}
-        latestManagerTrace={latestManagerTrace}
-        traceFiles={editorState.fileContents}
-        onReplayRequest={replayManagerRequest}
       />
       <FileScopeDialog
         isOpen={isFilePickerOpen}

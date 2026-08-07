@@ -1,5 +1,5 @@
 import type { WebLLMModel } from '@/components/AI/types';
-import type { ModelSortKey } from '../prompt-types';
+import type { ModelSortKey } from '../model-types';
 
 export const detailValue = (model: WebLLMModel, label: string): string =>
   model.details?.find(([key]) => key === label)?.[1] || '';

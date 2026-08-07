@@ -1,5 +1,6 @@
 import type { ManagerTrace } from '@/components/AI/Agent/ManagerTrace';
-import type { AgentEvent, FileMap, WebLLMModel } from '@/components/AI/types';
+import type { ModelOption, ModelSelectOption } from '@/components/AI/Models/model-types';
+import type { AgentEvent, FileMap } from '@/components/AI/types';
 import type { ExtendedEditorState } from '@/components/App/Views/EditorArea/types';
 import type { FileSystemApi } from '@/components/App/types';
 import type {
@@ -12,66 +13,11 @@ import type {
   TabStateShape,
 } from '@/components/state/domain-types';
 import type { StateStore } from '@/components/state/types';
-import type { SelectOption } from '@/components/ui/types';
 import type { ChangeEvent, FormEvent, KeyboardEvent } from 'react';
 
 export type WelcomeRequest = {
   text: string;
   scope: string;
-};
-
-export type ModelSortKey =
-  | 'model'
-  | 'bestFor'
-  | 'ram'
-  | 'storage'
-  | 'speed'
-  | 'status'
-  | 'searchText';
-
-export type ModelSortState = {
-  key: ModelSortKey;
-  direction: 'ascending' | 'descending';
-} | null;
-
-export type ModelManagerProps = {
-  isOpen: boolean;
-  selectedModelId: string;
-  cachedModelIds?: string[];
-  onCancel: () => void;
-  onModelCacheAction?: (model: ModelOption, action: 'cache' | 'uncache' | 'delete') => void;
-  modelCacheWork: string | null;
-  modelCacheProgress: string;
-  modelCacheError: string;
-};
-
-export type ModelCacheToggleProps = {
-  isCached: boolean;
-  isBusy: boolean;
-  disabled: boolean;
-  onToggle: () => void;
-};
-
-export type ModelSearchProps = {
-  searchTerm: string;
-  onSearchTermChange: (value: string) => void;
-};
-
-export type ModelTableProps = {
-  visibleModels: WebLLMModel[];
-  sort: ModelSortState;
-  onToggleSort: (key: ModelSortKey) => void;
-  selectedModelId: string;
-  cachedModelIds?: string[];
-  modelCacheWork: string | null;
-  onModelCacheAction?: (model: ModelOption, action: 'cache' | 'uncache' | 'delete') => void;
-  onRequestUncache: (model: ModelOption) => void;
-};
-
-export type RemoveCacheDialogProps = {
-  model: ModelOption | null;
-  onCancel: () => void;
-  onConfirm: () => void;
 };
 
 export type SessionManagerProps = {
@@ -112,17 +58,6 @@ export type UsePromptLayoutResult = {
   desktopWidth: string;
 };
 
-export type ModelOption = {
-  id: string;
-  label?: string;
-  name?: string;
-  ramMB?: number;
-  storageMB?: number;
-};
-
-/** Select dropdown option derived from WEB_LLM_MODELS (value/label shape). */
-export type ModelSelectOption = SelectOption;
-
 export type PromptComposerProps = {
   value: string;
   onChange: (event: ChangeEvent<HTMLTextAreaElement>) => void;
@@ -137,6 +72,44 @@ export type PromptComposerProps = {
   onChangeModel?: (modelId: string) => void;
   onLoadCachedModelIds?: () => void;
   onOpenModelManager?: () => void;
+};
+
+export type PromptSessionAreaProps = {
+  activeSession: AgentSession | null;
+  isOpen: boolean;
+  isAgentTreeOpen: boolean;
+  sessionDialog: SessionDialogState;
+  agentSessionState: StateStore<AgentSessionStateShape> | null;
+  onOpenTree: () => void;
+  onCloseTree: () => void;
+  onSelectSession: (sessionId: string) => void;
+  onCreateSession: () => void;
+  onBranchSession: (sessionId: string) => void;
+  onRenameSession: (sessionId: string) => void;
+  onDeleteSession: (sessionId: string) => void;
+  runningSessionId: string | null;
+  isAIProcessing: boolean;
+  promptUiState: StateStore<PromptUiStateShape>;
+};
+
+export type PromptActivityAreaProps = {
+  activeSession: AgentSession | null;
+  onOpenSectionInTab: (section: 'changes' | 'reasoning') => void;
+  isModelManagerOpen: boolean;
+  selectedModelInfo: { id: string; name?: string };
+  cachedModelIds: string[];
+  onCloseModelManager: () => void;
+  onModelCacheAction: (
+    model: ModelOption,
+    action: 'cache' | 'delete' | 'uncache',
+  ) => void | Promise<void>;
+  modelCacheWork: string | null;
+  modelCacheProgress: string;
+  modelCacheError: string;
+  isModelDownloading: boolean;
+  modelDownloadProgress: string;
+  patchSession: (sessionId: string, patch: Partial<AgentSession>) => void;
+  onClearAIModelLog: () => void;
 };
 
 export type PromptHeaderProps = {
@@ -172,51 +145,11 @@ export type PromptContentProps = {
   isMobile: boolean;
   isOpen: boolean;
   desktopWidth: string;
-  isAIProcessing: boolean;
-  isSystemProcessing: boolean;
-  activeSession: AgentSession | null;
+  header: PromptHeaderProps;
+  session: PromptSessionAreaProps;
+  activity: PromptActivityAreaProps;
+  composer: PromptComposerProps;
   sessionReasoning: string;
-  onOpenTree: () => void;
-  isAgentTreeOpen: boolean;
-  sessionDialog: SessionDialogState;
-  agentSessionState: StateStore<AgentSessionStateShape> | null;
-  onCloseTree: () => void;
-  onSelectSession: (sessionId: string) => void;
-  onCreateSession: () => void;
-  onBranchSession: (sessionId: string) => void;
-  onRenameSession: (sessionId: string) => void;
-  onDeleteSession: (sessionId: string) => void;
-  runningSessionId: string | null;
-  promptUiState: StateStore<PromptUiStateShape>;
-  modelOptions: ModelSelectOption[];
-  onOpenSectionInTab: (section: 'changes' | 'reasoning') => void;
-  isModelManagerOpen: boolean;
-  selectedModelInfo: { id: string; name?: string };
-  cachedModelIds: string[];
-  onCloseModelManager: () => void;
-  onModelCacheAction: (
-    model: ModelOption,
-    action: 'cache' | 'delete' | 'uncache',
-  ) => void | Promise<void>;
-  modelCacheWork: string | null;
-  modelCacheProgress: string;
-  modelCacheError: string;
-  value: string;
-  onChange: (event: ChangeEvent<HTMLTextAreaElement>) => void;
-  onKeyDown: (event: KeyboardEvent<HTMLTextAreaElement>) => void;
-  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
-  onStop: (event: React.MouseEvent<HTMLButtonElement>) => void;
-  isButtonActive: boolean;
-  isModelDownloading: boolean;
-  modelDownloadProgress: string;
-  onChangeModel: (modelId: string) => void;
-  onLoadCachedModelIds: () => void;
-  onOpenModelManager: () => void;
-  patchSession: (sessionId: string, patch: Partial<AgentSession>) => void;
-  onClearAIModelLog: () => void;
-  latestManagerTrace?: ManagerTrace | null;
-  traceFiles?: FileMap;
-  onReplayRequest?: (request: string) => void;
 };
 
 export type UseAgentRunnerParams = {

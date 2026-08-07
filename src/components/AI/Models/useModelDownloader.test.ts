@@ -1,7 +1,7 @@
 import { makePromptUiState } from '@/test-utils/stateMocks';
 import { act, renderHook } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import useModelDownloader from './ModelDownloader';
+import useModelDownloader from './useModelDownloader';
 
 vi.mock('@/components/AI/WebLLMAPI', () => ({
   getCachedWebLLMModelIds: vi.fn().mockResolvedValue(['Qwen3.5-4B-q4f16_1-MLC']),

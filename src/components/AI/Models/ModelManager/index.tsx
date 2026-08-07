@@ -2,7 +2,7 @@ import { WEB_LLM_MODELS } from '@/components/AI/WebLLMModels';
 import { useDeviceCapabilities } from '@/components/AI/useDeviceCapabilities';
 import Dialog from '@/components/ui/Dialog';
 import { useMemo, useState } from 'react';
-import type { ModelManagerProps, ModelOption, ModelSortKey, ModelSortState } from '../prompt-types';
+import type { ModelManagerProps, ModelOption, ModelSortKey, ModelSortState } from '../model-types';
 import styles from './ModelManager.module.css';
 import ModelSearch from './ModelSearch';
 import ModelTable from './ModelTable';

@@ -1,7 +1,7 @@
-import type { ModelOption } from '@/components/App/Panes/Prompt/prompt-types';
 import type { PromptUiStateShape } from '@/components/state/domain-types';
 import type { StateStore } from '@/components/state/types';
 import { useCallback, useRef } from 'react';
+import type { ModelOption } from './model-types';
 
 type PromptUiKey = keyof PromptUiStateShape;
 
@@ -44,7 +44,7 @@ export default function useModelDownloader(promptUiState: StateStore<PromptUiSta
       .then(({ getCachedWebLLMModelIds }) => getCachedWebLLMModelIds())
       .catch((error: unknown) => {
         hasLoadedModelCacheRef.current = false;
-        console.warn('[Prompt] Failed to load cached model metadata:', error);
+        console.warn('[AI Models] Failed to load cached model metadata:', error);
       });
   }, []);
 

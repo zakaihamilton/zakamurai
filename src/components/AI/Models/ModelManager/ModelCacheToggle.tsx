@@ -1,4 +1,4 @@
-import type { ModelCacheToggleProps } from '../prompt-types';
+import type { ModelCacheToggleProps } from '../model-types';
 import styles from './ModelCacheToggle.module.css';
 
 export default function ModelCacheToggle({

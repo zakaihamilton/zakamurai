@@ -282,6 +282,42 @@ export interface EditorAreaProps {
   fsHandle?: FileSystemFileHandle;
 }
 
+export interface EditorToolingProps {
+  filePath: string;
+  fileName?: string;
+  localContent: string;
+  setLocalContent: (value: string | ((prev: string) => string)) => void;
+  state: EditorStateStore;
+  fs: EditorFileSystem;
+  tabState: TabStateStore | undefined;
+  scrollContainerRef: ScrollContainerRef;
+  showFind: boolean;
+  setShowFind: (value: boolean | ((prev: boolean) => boolean)) => void;
+  findQuery: string;
+  setFindQuery: (value: string) => void;
+  replaceQuery: string;
+  setReplaceQuery: (value: string) => void;
+  matchIndex: number;
+  setMatchIndex: (value: number | ((prev: number) => number)) => void;
+  matches: FindMatch[];
+  setMatches: (value: FindMatch[] | ((prev: FindMatch[]) => FindMatch[])) => void;
+  hasDiff: boolean;
+  hasPendingDeletion: boolean;
+  handleApprove: () => void | Promise<void>;
+  handleUndo: () => void | Promise<void>;
+  showSideBySide: boolean;
+  setShowSideBySide: (value: boolean | ((prev: boolean) => boolean)) => void;
+  handleFormat: () => void;
+  onCopy: () => void;
+  associatedPath?: string | null;
+  onNavigateToAssociated: () => void;
+  isReadOnly: boolean;
+  setIsReadOnly: (value: boolean | ((prev: boolean) => boolean)) => void;
+  onSelectView: (viewType: string) => void;
+  onStateChange: (actions: DiffActions) => void;
+  handleChange: (event: { target: { value: string } }) => void;
+}
+
 export interface CodeEditorProps {
   localContent: string;
   handleChange?: (e: ChangeEvent<HTMLTextAreaElement> | { target: { value: string } }) => void;
@@ -373,6 +409,11 @@ export interface EditorContentProps {
   hasDiff: boolean;
   sideBySideProps: SideBySideEditorViewProps;
   singleEditorProps: SingleEditorViewProps;
+}
+
+export interface EditorSurfaceProps {
+  toolingProps: EditorToolingProps;
+  contentProps: EditorContentProps;
 }
 
 export interface EditorHeaderProps {

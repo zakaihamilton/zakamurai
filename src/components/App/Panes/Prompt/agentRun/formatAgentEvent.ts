@@ -1,0 +1,71 @@
+import type { ManagerEvent } from '@/components/AI/types';
+import type { AgentChange, AgentEvent } from '@/components/AI/types';
+import type { AgentEventFormatter } from '../prompt-types';
+
+const quoteDetail = (value: string): string => `\`${value.replaceAll('`', '\\`')}\``;
+
+const summarizeDetail = (value: string, maxCharacters = 240): string =>
+  value.length > maxCharacters ? `${value.slice(0, maxCharacters)}…` : value;
+
+const changedPaths = (changes: AgentChange[] = []): string[] => [
+  ...new Set(
+    changes
+      .map((change) => change.path || change.filePath)
+      .filter((path): path is string => Boolean(path)),
+  ),
+];
+
+export const formatAgentEvent: AgentEventFormatter = (event) => {
+  const managerEvent = event as ManagerEvent;
+  const legacy = event as AgentEvent;
+  if ('agentRole' in legacy || 'action' in legacy) {
+    const role = legacy.agentRole ? `**${legacy.agentRole}** · ` : '';
+    if (legacy.type === 'thinking')
+      return `${role}**Step ${legacy.turn}:** ${legacy.message || 'thinking…'}`;
+    if (legacy.type === 'tool') {
+      const action =
+        typeof legacy.action === 'string' ? legacy.action : legacy.action?.action || '';
+      return `${role}**Step ${legacy.turn}:** \`${action}\``;
+    }
+    if (legacy.type === 'observation') {
+      const action =
+        typeof legacy.action === 'string' ? legacy.action : legacy.action?.action || '';
+      return `${role}\`${action}\` ${legacy.error ? 'failed' : 'completed'}${legacy.message ? ` — ${legacy.message}` : ''}`;
+    }
+    if (legacy.type === 'finished') {
+      const paths = changedPaths(legacy.changes);
+      return `${role}**Ready for review:** ${legacy.message || 'Agent finished.'}${
+        paths.length
+          ? `\n\n**Changed files (${paths.length}):** ${paths.map(quoteDetail).join(', ')}`
+          : ''
+      }`;
+    }
+  }
+  if (managerEvent.type === 'routing') {
+    return `**Routing:** ${managerEvent.message || 'The manager is classifying the request.'}`;
+  }
+  if (managerEvent.type === 'tool') {
+    return `**Tool:** \`${managerEvent.tool || 'workspace'}\` — ${managerEvent.message || 'completed'}`;
+  }
+  if (managerEvent.type === 'context') {
+    return `**Context:** ${summarizeDetail(managerEvent.message || 'Workspace context updated.')}`;
+  }
+  if (managerEvent.type === 'model') {
+    return `**Model:** ${managerEvent.message || 'The model is working.'}`;
+  }
+  if (managerEvent.type === 'validation') {
+    return `**Validation:** ${managerEvent.message || 'Checking the proposed changes.'}`;
+  }
+  if (managerEvent.type === 'finished') {
+    return `**Ready:** ${managerEvent.message || 'The manager finished.'}`;
+  }
+  if (legacy.type === 'finished') {
+    const paths = changedPaths(legacy.changes);
+    return `**Ready for review:** ${legacy.message || 'Agent finished.'}${
+      paths.length
+        ? `\n\n**Changed files (${paths.length}):** ${paths.map(quoteDetail).join(', ')}`
+        : ''
+    }`;
+  }
+  return legacy.message || '';
+};

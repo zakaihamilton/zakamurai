@@ -1,5 +1,5 @@
 import Dialog from '@/components/ui/Dialog';
-import type { RemoveCacheDialogProps } from '../prompt-types';
+import type { RemoveCacheDialogProps } from '../model-types';
 import styles from './RemoveCacheDialog.module.css';
 
 export default function RemoveCacheDialog({ model, onCancel, onConfirm }: RemoveCacheDialogProps) {
