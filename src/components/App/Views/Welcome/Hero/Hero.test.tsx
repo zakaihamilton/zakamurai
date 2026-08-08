@@ -11,12 +11,10 @@ vi.mock('@/components/ui/Icons', () => ({
 describe('WelcomeHero', () => {
   it('renders hero content and intro steps', () => {
     render(<WelcomeHero />);
-    expect(screen.getByText('Welcome to Zakamurai')).toBeDefined();
-    expect(screen.getByText('Your AI coding workspace in the browser')).toBeDefined();
-    expect(
-      screen.getByText('Edit, prompt, build, and preview — all in one focused place.'),
-    ).toBeDefined();
-    expect(screen.getByText('Code')).toBeDefined();
+    expect(screen.getByText('Zero setup. Full workspace.')).toBeDefined();
+    expect(screen.getByText('Go from idea to running app—right in your browser.')).toBeDefined();
+    expect(screen.getByText(/Edit code, collaborate with private local AI/)).toBeDefined();
+    expect(screen.getByText('Open')).toBeDefined();
     expect(screen.getByText('Preview')).toBeDefined();
   });
 });

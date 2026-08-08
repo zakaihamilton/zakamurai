@@ -152,5 +152,6 @@ describe('AppContent', () => {
 
     const { container } = render(<AppContent />);
     expect(container.firstChild).toHaveProperty('className');
+    expect(container.firstChild).toHaveClass('light');
   });
 });

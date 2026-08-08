@@ -1,5 +1,5 @@
 .filterSection {
-  padding: 10px 14px;
+  padding: 10px 14px 12px;
   border-bottom: 1px solid var(--border);
 }
 
@@ -20,12 +20,12 @@
   width: 100%;
   background: var(--bg-input);
   border: 1px solid var(--border-light);
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   padding: 8px 10px 8px 32px;
   color: var(--text-main);
   font-size: 13px;
   outline: none;
-  transition: all 0.2s;
+  transition: all var(--transition-fast);
   box-shadow: none;
 }
 

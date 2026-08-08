@@ -3,11 +3,11 @@ import styles from './Header.module.css';
 export default function ProjectHeader() {
   return (
     <header className={styles.header}>
-      <span className={styles.eyebrow}>Browser IDE · local AI · instant preview</span>
+      <span className={styles.eyebrow}>Zero setup · local-first · browser-native</span>
       <h1 className={styles.title}>Zakamurai</h1>
       <p className={styles.pitch}>
-        Build, review, and preview web projects in your browser—with a focused editor and private AI
-        collaboration close at hand.
+        A professional browser workspace for building web projects without a local environment.
+        Edit, review, build, and preview with private AI collaboration close at hand.
       </p>
     </header>
   );

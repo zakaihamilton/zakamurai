@@ -15,7 +15,13 @@ export default function SidebarContent({
       aria-hidden={!isOpen}
       style={isMobile ? undefined : ({ '--panel-width': desktopWidth } as CssCustomProperties)}
     >
-      <div className={styles.contentWrapper}>{children}</div>
+      <div className={styles.contentWrapper}>
+        <div className={styles.sectionHeader}>
+          <span>Explorer</span>
+          <span aria-hidden="true">⌘</span>
+        </div>
+        {children}
+      </div>
     </aside>
   );
 }

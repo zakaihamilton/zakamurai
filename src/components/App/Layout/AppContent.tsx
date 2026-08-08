@@ -76,7 +76,7 @@ export default function AppContent() {
 
   return (
     <div
-      className={`${styles.appWrapper} ${theme === 'light' ? styles.light : ''} ${
+      className={`${styles.appWrapper} ${theme === 'light' ? `${styles.light} light` : ''} ${
         isResizing ? styles.isResizing : ''
       }`}
     >

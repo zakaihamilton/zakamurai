@@ -1,5 +1,5 @@
 .editorHeader {
-  padding: 12px 24px;
+  padding: 10px 20px;
   border-bottom: 1px solid var(--border);
   color: var(--text-muted);
   display: flex;
@@ -8,8 +8,8 @@
   gap: 12px;
   flex-shrink: 0;
   background: var(--bg-card);
-  min-height: 56px;
-  box-shadow: 0 1px 3px rgb(0 0 0 / 5%);
+  min-height: 52px;
+  box-shadow: var(--shadow-sm);
 }
 
 .headerActions {
@@ -24,11 +24,11 @@
   color: var(--text-muted);
   cursor: pointer;
   padding: 6px;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.2s;
+  transition: all var(--transition-fast);
 }
 
 .actionBtn:hover {
@@ -54,7 +54,7 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  font-family: "JetBrains Mono", monospace;
+  font-family: var(--font-mono);
   font-size: 13px;
 }
 
@@ -62,10 +62,10 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  background: rgb(76 175 80 / 5%);
+  background: var(--success-light);
   padding: 4px 12px;
-  border-radius: 8px;
-  border: 1px solid rgb(76 175 80 / 15%);
+  border-radius: var(--radius-md);
+  border: 1px solid color-mix(in srgb, var(--success) 28%, transparent);
   animation: fade-in 0.3s ease-out;
 }
 
@@ -86,7 +86,7 @@
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: #4caf50;
+  color: var(--success);
 }
 
 .diffButton {
@@ -101,7 +101,7 @@
   gap: 6px;
   font-size: 12px;
   font-weight: 500;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all var(--transition-fast);
 }
 
 .diffButton:hover {
@@ -110,25 +110,25 @@
 }
 
 .approveBtn {
-  border-color: rgb(76 175 80 / 30%);
-  color: #4caf50;
+  border-color: color-mix(in srgb, var(--success) 38%, transparent);
+  color: var(--success);
 }
 
 .approveBtn:hover {
-  background: #4caf50;
+  background: var(--success);
   color: white;
-  border-color: #4caf50;
+  border-color: var(--success);
 }
 
 .undoBtn {
-  border-color: rgb(244 67 54 / 30%);
-  color: #f44336;
+  border-color: color-mix(in srgb, var(--danger) 38%, transparent);
+  color: var(--danger);
 }
 
 .undoBtn:hover {
-  background: #f44336;
+  background: var(--danger);
   color: white;
-  border-color: #f44336;
+  border-color: var(--danger);
 }
 
 .sideBySideActive {

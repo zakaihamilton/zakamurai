@@ -10,17 +10,16 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
-  padding: 9px;
-  background: var(--bg-surface);
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  box-shadow: 0 16px 36px rgb(0 0 0 / 14%);
+  padding: 10px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
 }
 
 .composer:focus-within {
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 20%, transparent), 0 16px 36px
-    rgb(0 0 0 / 14%);
+  box-shadow: 0 0 0 3px var(--accent-glow), var(--shadow-md);
 }
 
 .input {
@@ -95,7 +94,7 @@
   font-weight: 700;
   background: var(--accent);
   border: 0;
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
   cursor: pointer;
 }
 
@@ -127,7 +126,7 @@
 }
 
 .sendButton:not(:disabled):hover {
-  filter: brightness(1.08);
+  background: var(--accent-hover);
 }
 
 @keyframes rise-in {

@@ -3,10 +3,10 @@
 }
 
 .tooltip {
-  --tooltip-bg: rgb(17 24 39 / 95%);
-  --tooltip-border: rgb(255 255 255 / 15%);
-  --tooltip-text: #fff;
-  --tooltip-shadow: 0 4px 12px rgb(0 0 0 / 50%);
+  --tooltip-bg: #1b2430;
+  --tooltip-border: var(--border-light);
+  --tooltip-text: var(--text-main);
+  --tooltip-shadow: var(--shadow-md);
 
   position: fixed;
   top: var(--tooltip-top);
@@ -22,7 +22,7 @@
   color: var(--tooltip-text);
   font-size: 12px;
   font-weight: 500;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   white-space: normal;
   overflow-wrap: break-word;
   width: max-content;
@@ -38,10 +38,10 @@
 }
 
 .light {
-  --tooltip-bg: rgb(255 255 255 / 95%);
-  --tooltip-border: rgb(0 0 0 / 10%);
-  --tooltip-text: #111827;
-  --tooltip-shadow: 0 4px 12px rgb(0 0 0 / 15%);
+  --tooltip-bg: #fff;
+  --tooltip-border: var(--border);
+  --tooltip-text: var(--text-main);
+  --tooltip-shadow: var(--shadow-md);
 }
 
 .top {
@@ -141,8 +141,7 @@
 .contentBody {
   display: block;
   color: color-mix(in srgb, var(--tooltip-text) 72%, transparent);
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
-    "Courier New", monospace;
+  font-family: var(--font-mono);
   font-size: 11px;
   font-weight: 500;
   margin-top: 2px;
@@ -158,8 +157,7 @@
   border-radius: 4px;
   font-size: 10px;
   color: var(--text-muted);
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
-    "Courier New", monospace;
+  font-family: var(--font-mono);
 }
 
 .light .shortcut {

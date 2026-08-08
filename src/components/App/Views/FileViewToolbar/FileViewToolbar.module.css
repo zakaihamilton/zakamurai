@@ -4,7 +4,7 @@
   gap: 2px;
   padding: 2px;
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   background: var(--bg-surface);
 }
 
@@ -15,7 +15,7 @@
   align-items: center;
   justify-content: center;
   border: 0;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   color: var(--text-muted);
   background: transparent;
   cursor: pointer;
