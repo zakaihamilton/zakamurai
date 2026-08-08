@@ -1,5 +1,5 @@
 import type { ManagerTrace } from '@/components/AI/Agent';
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import PromptHeader from './Header';
@@ -46,7 +46,9 @@ describe('PromptHeader', () => {
     const copyBtn = screen.getByRole('button', {
       name: 'Copy full session transcript and reasoning to clipboard',
     });
-    fireEvent.click(copyBtn);
+    await act(async () => {
+      fireEvent.click(copyBtn);
+    });
 
     expect(navigator.clipboard.writeText).toHaveBeenCalledWith('--- Transcript ---\nHello world');
   });

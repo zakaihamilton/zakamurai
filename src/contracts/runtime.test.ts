@@ -49,6 +49,13 @@ describe('runtime contracts', () => {
     expect(redactDiagnosticText('token=secret /Users/person/project')).toBe(
       'token=[redacted] [local-path]',
     );
+    expect(redactDiagnosticText('Authorization: Bearer sk-live-secret')).toBe(
+      'Authorization: [redacted]',
+    );
+    expect(redactDiagnosticText('{"apiKey":"sk-live-secret"}')).toBe('{"apiKey":[redacted]}');
+    expect(redactDiagnosticText("'refresh_token' = 'abc def'")).toBe(
+      "'refresh_token' = [redacted]",
+    );
     expect(redactDiagnosticText('x'.repeat(2100))).toHaveLength(2000);
   });
 

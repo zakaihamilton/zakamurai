@@ -48,7 +48,7 @@
     "test:promptfoo": "tsx scripts/run-promptfoo-checks.ts",
     "test:ai-soak": "vitest run src/components/AI/WebLLMAPI.test.ts -t \"sustains a mixed completion and agent lifecycle\"",
     "analyze:ai": "tsx scripts/analyze-ai-support-report.ts",
-    "audit": "npm audit --omit=dev --audit-level=critical",
+    "audit": "npm audit --omit=dev --audit-level=high",
     "verify": "npm run format:check && npm run lint && npm run stylelint && npm run deadcode && npm run check:architecture && npm run typecheck && npm run test:promptfoo && npm run test:coverage && npm run build && npm run perf && npm run check:runtime-assets && npm run test:performance && npm run test:e2e && npm run test:e2e:webkit && npm run test:e2e:isolated && npm run test:e2e:isolated:webkit && npm run check:preview && npm run test:visual && npm run audit",
     "verify:ai": "bash scripts/verify-ai.sh",
     "prepare": "husky"
@@ -91,6 +91,7 @@
   },
   "overrides": {
     "adm-zip": "0.6.0",
+    "nanoid": "3.3.17",
     "postcss": "8.5.25",
     "sharp": "0.35.3",
     "uuid": "11.1.1"

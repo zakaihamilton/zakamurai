@@ -165,20 +165,17 @@ describe('proxy', () => {
     expect(res.headers.get('Content-Security-Policy')).toBeUndefined();
   });
 
-  it('handles zakamurai-surface preview query on Vercel branch hosts', () => {
+  it('rejects path-based preview routing on Vercel branch IDE hosts', () => {
     const req = createMockProxyRequest(
       'https://zakamurai-git-feature-team.vercel.app/__preview/host?session=test&zakamurai-surface=preview',
       { host: 'zakamurai-git-feature-team.vercel.app' },
     );
     const res = proxy(req as unknown as NextRequest) as unknown as MockNextResponse;
-    expect(res.type).toBe('rewrite');
-    expect(res.url?.pathname).toBe('/preview-host');
-    expect(res.headers.get('Content-Security-Policy')).toContain(
-      'https://zakamurai-git-feature-team.vercel.app',
-    );
+    expect(res.type).toBe('next');
+    expect(res.headers.get('Cross-Origin-Opener-Policy')).toBe('same-origin-allow-popups');
   });
 
-  it('falls back safely when the configured branch origin is invalid', async () => {
+  it('does not let a configured IDE origin self-authorize as a preview surface', async () => {
     vi.stubEnv('NEXT_PUBLIC_VERCEL_BRANCH_URL', 'not a valid host');
     vi.stubEnv('NEXT_PUBLIC_IDE_ORIGIN', 'https://www.zakamurai.com');
     vi.resetModules();
@@ -188,32 +185,32 @@ describe('proxy', () => {
       'x-zakamurai-surface': 'preview',
     });
     const res = isolatedProxy(req as unknown as NextRequest) as unknown as MockNextResponse;
-    expect(res.type).toBe('rewrite');
-    expect(res.headers.get('Content-Security-Policy')).toContain('frame-ancestors');
+    expect(res.type).toBe('next');
+    expect(res.headers.get('Cross-Origin-Opener-Policy')).toBe('same-origin-allow-popups');
     vi.unstubAllEnvs();
     vi.resetModules();
     await import('./proxy');
   });
 
-  it('returns 503 for uncached /__preview virtual paths on Vercel branch hosts', () => {
+  it('keeps uncached Vercel branch virtual paths off the preview surface', () => {
     const req = createMockProxyRequest(
       'https://zakamurai-git-feature-team.vercel.app/__preview/session-123/dist/index.html',
       { host: 'zakamurai-git-feature-team.vercel.app' },
     );
     const res = proxy(req as unknown as NextRequest) as unknown as MockNextResponse;
-    expect(res.status).toBe(503);
-    expect(res.body).toContain('Preview service worker is not controlling this page');
+    expect(res.type).toBe('next');
+    expect(res.headers.get('Cross-Origin-Opener-Policy')).toBe('same-origin-allow-popups');
   });
 
-  it('handles x-zakamurai-surface preview header', () => {
+  it('rejects preview headers on the configured IDE origin', () => {
     vi.stubEnv('NEXT_PUBLIC_IDE_ORIGIN', 'https://www.zakamurai.com');
     const req = createMockProxyRequest('https://www.zakamurai.com/subpath', {
       host: 'www.zakamurai.com',
       'x-zakamurai-surface': 'preview',
     });
     const res = proxy(req as unknown as NextRequest) as unknown as MockNextResponse;
-    expect(res.type).toBe('rewrite');
-    expect(res.url?.pathname).toBe('/preview-host/subpath');
+    expect(res.type).toBe('next');
+    expect(res.headers.get('Cross-Origin-Opener-Policy')).toBe('same-origin-allow-popups');
     vi.unstubAllEnvs();
   });
 

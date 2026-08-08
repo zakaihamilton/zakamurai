@@ -58,7 +58,8 @@ export function normalizeRecoveryCheckpoint(value: unknown): RecoveryCheckpoint 
   };
 }
 
-const SENSITIVE_VALUE = /((?:authorization|token|api[_-]?key|password|secret)\s*[:=]\s*)[^\s,;]+/gi;
+const SENSITIVE_VALUE =
+  /((?:["'])?(?:authorization|access[_-]?token|refresh[_-]?token|token|api[_-]?key|password|secret)(?:["'])?\s*[:=]\s*)(?:["'][^"']*["']|(?:bearer|basic)\s+[^\s,;}\]]+|[^\s,;}\]]+)/gi;
 const ABSOLUTE_PATH = /(?:file:\/\/)?(?:[A-Z]:\\|\/Users\/|\/home\/)[^\s\n]*/g;
 
 export function redactDiagnosticText(value: unknown): string {

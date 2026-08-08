@@ -1,28 +1,29 @@
 import '@testing-library/jest-dom';
 
-if (
-  typeof globalThis.localStorage === 'undefined' ||
-  typeof globalThis.localStorage.getItem !== 'function'
-) {
-  const store = new Map<string, string>();
+const localStorageEntries = new Map<string, string>();
 
-  globalThis.localStorage = {
-    getItem: (key: string) => store.get(key) ?? null,
+// Node 25 exposes a warning-producing localStorage getter unless a backing
+// file is configured. Replace it without reading the getter so tests use a
+// deterministic, browser-shaped store on every supported Node version.
+Object.defineProperty(globalThis, 'localStorage', {
+  configurable: true,
+  value: {
+    getItem: (key: string) => localStorageEntries.get(key) ?? null,
     setItem: (key: string, value: string) => {
-      store.set(key, String(value));
+      localStorageEntries.set(key, String(value));
     },
     removeItem: (key: string) => {
-      store.delete(key);
+      localStorageEntries.delete(key);
     },
     clear: () => {
-      store.clear();
+      localStorageEntries.clear();
     },
     get length() {
-      return store.size;
+      return localStorageEntries.size;
     },
-    key: (index: number) => [...store.keys()][index] ?? null,
-  };
-}
+    key: (index: number) => [...localStorageEntries.keys()][index] ?? null,
+  } satisfies Storage,
+});
 // Mock Worker
 if (typeof globalThis.Worker === 'undefined') {
   class MockWorker extends EventTarget {
