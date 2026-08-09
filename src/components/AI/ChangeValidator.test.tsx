@@ -7,6 +7,7 @@ import {
   validateContentSyntaxAsync,
   validateCssContentSafety,
   validateCssModuleUsage,
+  validateDeclaredStateVariables,
   validateFileContentType,
   validateForbiddenStateLibraryUsage,
   validateGeneratedPlaceholder,
@@ -472,5 +473,26 @@ export default App;
         },
       ),
     );
+  });
+
+  it('rejects undeclared React state setters in components', () => {
+    const invalid = `import { useState } from 'react';
+export default function App() {
+  const [todos, setTodos] = useState([]);
+  const handleAdd = () => { setNewTodo(''); };
+  return <input onChange={(e) => setNewTodo(e.target.value)} />;
+}`;
+    expect(validateDeclaredStateVariables('src/App.jsx', invalid)).toContain(
+      "Undeclared state setter 'setNewTodo'",
+    );
+
+    const valid = `import { useState } from 'react';
+export default function App() {
+  const [newTodo, setNewTodo] = useState('');
+  const [todos, setTodos] = useState([]);
+  const handleAdd = () => { setNewTodo(''); };
+  return <input value={newTodo} onChange={(e) => setNewTodo(e.target.value)} />;
+}`;
+    expect(validateDeclaredStateVariables('src/App.jsx', valid)).toBeNull();
   });
 });

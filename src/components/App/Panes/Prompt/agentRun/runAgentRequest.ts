@@ -121,8 +121,8 @@ export async function runAgentRequest({
       },
       ...createManagerToolOptions({ Compiler, fs, sidebarState }),
       onEvent: (managerEvent) => {
-        if (managerEvent.type === 'tool') {
-          const legacyAction = managerEvent as unknown as AgentEvent;
+        const legacyAction = managerEvent as unknown as AgentEvent;
+        if (managerEvent.type === 'tool' || legacyAction.type === 'tool') {
           const tool =
             managerEvent.tool ||
             (typeof legacyAction.action === 'string'
@@ -130,8 +130,10 @@ export async function runAgentRequest({
               : legacyAction.action?.action);
           if (tool) runState.recordTool(tool);
         }
-        const line = formatAgentEvent(managerEvent as unknown as AgentEvent);
-        if (line) runState.appendReasoning(line, managerEvent.replaceProgress === true);
+        const line = formatAgentEvent(legacyAction);
+        const isToolStart = managerEvent.type === 'tool' || legacyAction.type === 'tool';
+        const isProgress = managerEvent.replaceProgress === true || isToolStart;
+        if (line) runState.appendReasoning(line, isProgress);
         if (managerEvent.input || managerEvent.output) {
           runState.appendReasoning('', false, {
             turn: managerEvent.turn,

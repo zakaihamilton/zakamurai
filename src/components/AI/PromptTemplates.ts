@@ -17,6 +17,8 @@ Rules:
 5. If providing a snippet WITHOUT SEARCH/REPLACE, you MUST include 1-2 lines of existing code as context (anchors) so the change can be located.
 6. Architecture: Decompose UI into modular sub-components in src/components/ with co-located CSS Modules (*.module.css). Avoid single-file App.jsx monoliths.
 7. CSS Modules: Import every *.module.css file as its default class map (for example, bind the co-located module to \`styles\`). Apply module-local classes with \`styles.className\` or \`styles["kebab-case"]\`; never side-effect import a CSS Module or pass its local class names as raw JSX class values.
+8. Styling Quality: Use modern Flexbox/Grid layouts, clean CSS variables, smooth transitions, and polished responsive UI. Never pollute component *.module.css files with un-scoped :global() element resets.
+9. Code Correctness: Every variable, state variable (e.g. useState declarations), handler, and prop used in JSX must be explicitly declared and imported. Never reference undeclared variables.
 `.trim();
 
 export const SEARCH_REPLACE_INSTRUCTION = `
@@ -72,6 +74,8 @@ Rules:
 2. Ensure exact character matching for the SEARCH section.
 3. Never use placeholders like "[...rest of code...]".
 4. For CSS Modules, default-import the class map and use it for every module-local class. Do not side-effect import *.module.css files or use their local class names as literal className strings.
+5. Styling Quality: Use modern Flexbox/Grid layouts, CSS variables, and clean component-scoped styles. Do not include :global() element resets inside *.module.css files.
+6. Code Correctness: Declare all state variables (const [state, setState] = useState(...)), variables, and handlers referenced in JSX. Never reference undeclared variables.
 `.trim();
 
 export const REPAIR_SYSTEM_PROMPT = `

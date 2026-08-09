@@ -72,6 +72,17 @@ export function createAgentRunState({
     replaceProgress = false,
     metadata: Pick<AgentReasoningEntry, 'turn' | 'input' | 'output'> = {},
   ) => {
+    const lastEntry = events[events.length - 1];
+    if (
+      line &&
+      !replaceProgress &&
+      lastEntry?.text === line &&
+      !metadata.input &&
+      !metadata.output
+    ) {
+      return;
+    }
+
     const entry: AgentReasoningEntry = {
       text: line,
       timestamp: new Date().toTimeString().split(' ')[0],
@@ -79,8 +90,9 @@ export function createAgentRunState({
       ...(metadata.input ? { input: clipReasoningStepIO(metadata.input) } : {}),
       ...(metadata.output ? { output: clipReasoningStepIO(metadata.output) } : {}),
     };
-    if (replaceProgress && progressEventIndex !== null) events[progressEventIndex] = entry;
-    else {
+    if (replaceProgress && progressEventIndex !== null) {
+      events[progressEventIndex] = entry;
+    } else {
       events.push(entry);
       progressEventIndex = replaceProgress ? events.length - 1 : null;
     }

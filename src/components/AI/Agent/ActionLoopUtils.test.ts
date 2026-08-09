@@ -26,7 +26,7 @@ describe('generic CSS Module recovery', () => {
     ).toEqual([]);
   });
 
-  it('adds generic visible control defaults when markup has no control classes', () => {
+  it('recovers component classes without injecting global element resets', () => {
     const source = `import styles from './TodoApp.module.css';
 export default () => <main className={styles.app}><form><input placeholder="Add a task" /><button>Add</button></form></main>;`;
     const repaired = appendMissingCssModuleRules(
@@ -34,9 +34,9 @@ export default () => <main className={styles.app}><form><input placeholder="Add 
       source,
     );
 
-    expect(repaired).toContain(':global(button)');
-    expect(repaired).toContain(':global(input), :global(select), :global(textarea)');
-    expect(repaired).toContain('background: #292521');
+    expect(repaired).toContain('.app');
+    expect(repaired).not.toContain(':global(button)');
+    expect(repaired).not.toContain(':global(input)');
   });
 
   it('migrates the manager fallback palette without changing unrelated themes', () => {
@@ -49,8 +49,8 @@ export default () => <main className={styles.app}><form><input placeholder="Add 
 
     const repaired = appendMissingCssModuleRules(legacy, source);
 
-    expect(repaired).toContain('background: #fffdf8');
-    expect(repaired).toContain('background: #292521');
+    expect(repaired).toContain('background: #ffffff');
+    expect(repaired).toContain('background: #4f46e5');
     expect(repaired).not.toContain('background: #172554');
     expect(repaired).not.toContain('background: #1e3a8a');
   });
@@ -62,8 +62,7 @@ export default () => <main className={styles.app}><form><input placeholder="Add 
 
     const repaired = appendMissingCssModuleRules(authored, source);
 
-    expect(repaired).toContain('background: #0f172a');
-    expect(repaired).toContain('background: #d97706');
+    expect(repaired).toBeNull();
   });
 
   it('recovers missing module files and missing rules without changing source', () => {

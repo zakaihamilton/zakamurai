@@ -172,43 +172,45 @@ export const normalizeSideEffectCssSource = (
 };
 
 const CSS_MODULE_RECOVERY_RULES: Record<string, string> = {
-  app: 'min-height: 100vh; width: min(100%, 54rem); margin: 0 auto; padding: clamp(1.25rem, 5vw, 3.5rem); color: #292521; background: #fffdf8;',
+  app: 'min-height: 100vh; max-width: 48rem; margin: 2rem auto; padding: 2.5rem; color: #0f172a; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 1rem; box-shadow: 0 10px 25px -5px rgb(0 0 0 / 0.05), 0 8px 10px -6px rgb(0 0 0 / 0.05);',
   container:
-    'width: min(100%, 42rem); margin: 0 auto; padding: 2rem; border-radius: 1.5rem; color: #292521; background: #fffdf8; border: 1px solid #e3d9cc; box-shadow: 0 24px 60px rgb(65 48 36 / 12%);',
-  header: 'display: grid; gap: 0.75rem; margin-bottom: 1.5rem; text-align: center;',
-  title: 'margin: 0; font-size: clamp(2rem, 8vw, 3.75rem); letter-spacing: -0.06em;',
+    'max-width: 42rem; margin: 0 auto; padding: 2rem; border-radius: 1rem; color: #0f172a; background: #ffffff; border: 1px solid #e2e8f0; box-shadow: 0 10px 25px -5px rgb(0 0 0 / 0.05);',
+  header:
+    'display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 1.5rem; text-align: left;',
+  title:
+    'margin: 0 0 1rem 0; font-size: 2.25rem; font-weight: 800; color: #0f172a; letter-spacing: -0.03em;',
   scores: 'display: flex; justify-content: center; gap: 0.75rem;',
   scoreItem:
-    'padding: 0.45rem 0.75rem; border-radius: 999px; background: rgb(255 255 255 / 12%); font-weight: 700;',
+    'padding: 0.45rem 0.75rem; border-radius: 999px; background: #f1f5f9; font-weight: 600; color: #334155;',
   gameArea: 'display: grid; gap: 1.25rem;',
   board: 'display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.65rem;',
   grid: 'display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.65rem;',
   square:
-    'aspect-ratio: 1; font-size: clamp(2rem, 11vw, 4.75rem); font-weight: 800; color: #f8fafc; background: #1e3a8a; border: 1px solid rgb(255 255 255 / 22%); border-radius: 1rem; cursor: pointer;',
-  cell: 'aspect-ratio: 1; font-size: clamp(2rem, 11vw, 4.75rem); font-weight: 800; color: #f8fafc; background: #1e3a8a; border: 1px solid rgb(255 255 255 / 22%); border-radius: 1rem; cursor: pointer;',
-  x: 'color: #67e8f9;',
-  o: 'color: #f472b6;',
+    'aspect-ratio: 1; font-size: clamp(2rem, 11vw, 4.75rem); font-weight: 800; color: #0f172a; background: #ffffff; border: 1px solid #cbd5e1; border-radius: 0.75rem; cursor: pointer; transition: all 150ms ease;',
+  cell: 'aspect-ratio: 1; font-size: clamp(2rem, 11vw, 4.75rem); font-weight: 800; color: #0f172a; background: #ffffff; border: 1px solid #cbd5e1; border-radius: 0.75rem; cursor: pointer; transition: all 150ms ease;',
+  x: 'color: #4f46e5;',
+  o: 'color: #06b6d4;',
   status:
-    'justify-self: center; padding: 0.55rem 0.8rem; border-radius: 999px; background: rgb(255 255 255 / 12%); font-weight: 700;',
+    'justify-self: center; padding: 0.55rem 0.8rem; border-radius: 999px; background: #e0e7ff; font-weight: 600; color: #3730a3;',
   result: 'display: grid; min-height: 18rem; place-content: center; gap: 1rem; text-align: center;',
-  resultText: 'margin: 0; color: #fef08a; font-size: clamp(1.5rem, 6vw, 2.5rem); font-weight: 800;',
-  winnerText: 'margin: 0; color: #fef08a; font-size: clamp(2rem, 9vw, 4rem);',
+  resultText: 'margin: 0; color: #4f46e5; font-size: clamp(1.5rem, 6vw, 2.5rem); font-weight: 800;',
+  winnerText: 'margin: 0; color: #4f46e5; font-size: clamp(2rem, 9vw, 4rem); font-weight: 800;',
   resetBtn:
-    'justify-self: center; padding: 0.7rem 1rem; color: #0f172a; font: inherit; font-weight: 800; background: #67e8f9; border: 0; border-radius: 0.75rem; cursor: pointer;',
+    'justify-self: center; padding: 0.7rem 1.25rem; color: #ffffff; font-family: inherit; font-weight: 600; background: #4f46e5; border: 0; border-radius: 0.5rem; cursor: pointer; transition: background 150ms ease;',
   newGameBtn:
-    'padding: 0.7rem 1rem; color: #0f172a; font: inherit; font-weight: 800; background: #67e8f9; border: 0; border-radius: 0.75rem; cursor: pointer;',
-  footer: 'margin-top: 1.5rem; color: #94a3b8; text-align: center;',
+    'padding: 0.7rem 1.25rem; color: #ffffff; font-family: inherit; font-weight: 600; background: #4f46e5; border: 0; border-radius: 0.5rem; cursor: pointer; transition: background 150ms ease;',
+  footer: 'margin-top: 1.5rem; color: #64748b; text-align: center;',
   button:
-    'min-height: 2.75rem; padding: 0.7rem 1rem; color: #fffaf5; font: inherit; font-weight: 700; background: #292521; border: 1px solid #292521; border-radius: 0.75rem; cursor: pointer; transition: background 160ms ease, transform 160ms ease;',
+    'min-height: 2.75rem; padding: 0.7rem 1.25rem; color: #ffffff; font-family: inherit; font-size: 0.95rem; font-weight: 600; background: #4f46e5; border: none; border-radius: 0.5rem; cursor: pointer; transition: background 150ms ease, transform 150ms ease; box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);',
   control:
-    'flex: 1 1 18rem; min-width: 0; min-height: 2.75rem; padding: 0.7rem 0.8rem; color: #292521; font: inherit; background: #fffaf5; border: 1px solid #d8cec2; border-radius: 0.75rem;',
-  list: 'display: grid; gap: 0.75rem;',
+    'flex: 1 1 18rem; min-width: 0; min-height: 2.75rem; padding: 0.7rem 0.85rem; color: #0f172a; font-family: inherit; font-size: 0.95rem; background: #ffffff; border: 1px solid #cbd5e1; border-radius: 0.5rem; transition: border-color 150ms ease;',
+  list: 'display: flex; flex-direction: column; gap: 0.75rem; margin-top: 1rem;',
 };
 
 const CSS_MODULE_RECOVERY_BASE = `:global(:root) {
   color-scheme: light;
-  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  background: #f8fafc;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background-color: #f8fafc;
   color: #0f172a;
 }
 
@@ -218,76 +220,41 @@ const CSS_MODULE_RECOVERY_BASE = `:global(:root) {
 
 :global(body) {
   margin: 0;
-  min-width: 320px;
   min-height: 100vh;
-  background: #f8fafc;
+  background-color: #f8fafc;
   color: #0f172a;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
 }
 
-:global(#root) {
-  min-height: 100vh;
+:global(ul), :global(ol) {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+:global(form) {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
 }
 
 :global(button), :global(input), :global(select), :global(textarea) {
-  font: inherit;
-}
-
-:global(button) {
-  cursor: pointer;
-}
-
-:global(button:focus-visible), :global(input:focus-visible), :global(select:focus-visible), :global(textarea:focus-visible) {
-  outline: 3px solid #0ea5e9;
-  outline-offset: 2px;
-}
-
-:global(input::placeholder), :global(textarea::placeholder) {
-  color: #64748b;
-}
-`;
-
-const CSS_MODULE_INTERACTIVE_BASE = `:global(button) {
-  min-height: 2.75rem;
-  padding: 0.65rem 0.9rem;
-  color: #fffaf5;
-  font: inherit;
-  font-weight: 700;
-  background: #292521;
-  border: 1px solid #292521;
-  border-radius: 0.7rem;
-  cursor: pointer;
-  transition: background 160ms ease, transform 160ms ease;
-}
-
-:global(input), :global(select), :global(textarea) {
-  min-height: 2.75rem;
-  padding: 0.65rem 0.75rem;
-  color: #292521;
-  font: inherit;
-  background: #fffaf5;
-  border: 1px solid #d8cec2;
-  border-radius: 0.7rem;
+  font-family: inherit;
 }
 
 :global(button:hover) {
-  background: #b85c45;
-  border-color: #b85c45;
-  transform: translateY(-1px);
-}
-
-:global(button:active) {
-  transform: translateY(0);
+  opacity: 0.95;
 }
 `;
+
+const CSS_MODULE_INTERACTIVE_BASE = '';
 
 const hasInteractiveElements = (content: string): boolean =>
   /<(?:button|input|select|textarea)\b/i.test(content);
 
 const hasInteractiveBase = (content: string): boolean =>
-  /:global\(button\)\s*\{[\s\S]*?background\s*:/.test(content) &&
-  /:global\(input\)\s*,\s*:global\(select\)\s*,\s*:global\(textarea\)\s*\{[\s\S]*?background\s*:/.test(
-    content,
-  );
+  /\.button\s*\{/.test(content) || /\.control\s*\{/.test(content);
 
 const cssModuleClassNames = (content: string): Set<string> =>
   new Set(
@@ -303,7 +270,7 @@ const recoveryRuleForClassName = (className: string): string => {
   if (CSS_MODULE_RECOVERY_RULES[className]) return CSS_MODULE_RECOVERY_RULES[className];
   const normalized = className.toLowerCase();
   if (/(?:app|root|page|screen|shell|layout|wrapper|container|card|panel)/.test(normalized)) {
-    return 'display: grid; gap: 1.25rem; width: min(100%, 52rem); margin: 0 auto; padding: clamp(1rem, 4vw, 2.5rem); color: #0f172a; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 1.25rem; box-shadow: 0 18px 45px rgb(15 23 42 / 10%);';
+    return 'display: grid; gap: 1.25rem; width: min(100%, 52rem); margin: 0 auto; padding: clamp(1rem, 4vw, 2.5rem); color: #0f172a; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 1rem; box-shadow: 0 10px 25px -5px rgb(0 0 0 / 0.05);';
   }
   if (/(?:list|grid|items|content|body|section|stack|columns)/.test(normalized)) {
     return 'display: grid; gap: 0.85rem;';
@@ -315,10 +282,10 @@ const recoveryRuleForClassName = (className: string): string => {
     return 'display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center;';
   }
   if (/(?:item|entry|option|row)/.test(normalized)) {
-    return 'padding: 0.8rem 0.9rem; color: #0f172a; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 0.7rem;';
+    return 'padding: 0.8rem 0.9rem; color: #0f172a; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 0.5rem;';
   }
   if (/(?:button|btn|control|input|select|textarea|action)/.test(normalized)) {
-    return 'min-height: 2.75rem; padding: 0.65rem 0.9rem; color: #0f172a; background: #ffffff; border: 1px solid #cbd5e1; border-radius: 0.7rem;';
+    return 'min-height: 2.75rem; padding: 0.65rem 0.9rem; color: #0f172a; background: #ffffff; border: 1px solid #cbd5e1; border-radius: 0.5rem;';
   }
   if (/(?:muted|hint|meta|footer|secondary)/.test(normalized)) {
     return 'color: #475569;';
@@ -349,9 +316,7 @@ const formatCssModuleRules = (classNames: Iterable<string>, includeBase = true):
     (className) => `.${className} {\n  ${recoveryRuleForClassName(className)}\n}`,
   );
   const rules = selectedRules.join('\n\n') || '.component {\n  display: block;\n}\n';
-  return includeBase
-    ? `${CSS_MODULE_RECOVERY_BASE}\n${CSS_MODULE_INTERACTIVE_BASE}\n${rules}`
-    : rules;
+  return includeBase ? `${CSS_MODULE_RECOVERY_BASE}\n${rules}` : rules;
 };
 
 export const cssModuleRecovery = (content: string): string =>
@@ -402,12 +367,10 @@ export const appendMissingCssModuleRules = (
   const missing = [...required].filter((className) => !defined.has(className));
   const needsInteractiveBase =
     hasInteractiveElements(sourceContent) && !hasInteractiveBase(normalizedExistingCss);
-  if (!missing.length && !needsInteractiveBase) return null;
+  const wasNormalized = normalizedExistingCss !== existingCss;
+  if (!missing.length && !needsInteractiveBase && !wasNormalized) return null;
 
-  const additions = [
-    ...(needsInteractiveBase ? [CSS_MODULE_INTERACTIVE_BASE.trim()] : []),
-    ...(missing.length ? [formatCssModuleRules(missing, false)] : []),
-  ];
+  const additions = [...(missing.length ? [formatCssModuleRules(missing)] : [])];
   // Components often put a 3x3 board directly under `.container`. If cell/square
   // styles were missing, reinforce layout without deleting the existing rule.
   if (

@@ -361,6 +361,36 @@ export function validateRequestFulfillment(
   return validateStatefulCallbackScope(content);
 }
 
+/** Ensures referenced React state setters have a co-located useState declaration. */
+export function validateDeclaredStateVariables(path: string, content: string): string | null {
+  if (!/\.(jsx|tsx)$/i.test(path) || typeof content !== 'string') return null;
+  const clean = stripComments(content);
+
+  const declaredStateVars = new Set<string>();
+  const declaredSetters = new Set<string>();
+
+  const useStateMatches = clean.matchAll(
+    /\bconst\s*\[\s*([A-Za-z_$][\w$]*)\s*,\s*([A-Za-z_$][\w$]*)\s*\]\s*=\s*useState\b/g,
+  );
+  for (const match of useStateMatches) {
+    declaredStateVars.add(match[1]);
+    declaredSetters.add(match[2]);
+  }
+
+  const setterUsages = clean.matchAll(/\b(set[A-Z][A-Za-z0-9_$]*)\s*\(/g);
+  for (const match of setterUsages) {
+    const setterName = match[1];
+    if (!declaredSetters.has(setterName)) {
+      const stateVarName = setterName.slice(3, 4).toLowerCase() + setterName.slice(4);
+      if (!declaredStateVars.has(stateVarName)) {
+        return `Undeclared state setter '${setterName}' in ${path}. Declare const [${stateVarName}, ${setterName}] = useState(...) inside the component.`;
+      }
+    }
+  }
+
+  return null;
+}
+
 /** Rejects CSS Module rules that collapse referenced interactive controls. */
 export function validateInteractiveStyles(
   path: string,
@@ -637,6 +667,17 @@ export async function validateAIChangesAsync(
         });
         continue;
       }
+      const stateVarError = validateDeclaredStateVariables(path as string, content);
+      if (stateVarError) {
+        rejected.push(stateVarError);
+        details.push({
+          path: String(path),
+          error: stateVarError,
+          type: 'syntax',
+          failedContent: content,
+        });
+        continue;
+      }
       const syntaxError = await validateContentSyntaxAsync(
         path as string,
         content,
@@ -717,6 +758,11 @@ export function validateAIChanges(changes: AgentChange[]): ValidatedAIChanges {
       const cssSafetyError = validateCssContentSafety(path as string, content);
       if (cssSafetyError) {
         rejected.push(cssSafetyError);
+        continue;
+      }
+      const stateVarError = validateDeclaredStateVariables(path as string, content);
+      if (stateVarError) {
+        rejected.push(stateVarError);
         continue;
       }
       const syntaxError = validateContentSyntax(path as string, content);
