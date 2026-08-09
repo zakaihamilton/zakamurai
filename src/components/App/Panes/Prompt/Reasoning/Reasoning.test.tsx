@@ -236,14 +236,25 @@ describe('ReasoningPanel', () => {
     }
   });
 
-  it('turns auto-scroll off when the user starts scrolling', () => {
+  it('turns auto-scroll off when scrolling up above the bottom', () => {
     setSessionReasoning('Review this reasoning');
 
     render(<ReasoningPanel />);
 
     const scrollRegion = document.querySelector('[class*="reasoningContent"]');
     expect(scrollRegion).toBeTruthy();
-    fireEvent.wheel(scrollRegion as Element);
+
+    // Establish initial scroll position at bottom (lastScrollTop = 200)
+    Object.defineProperties(scrollRegion, {
+      clientHeight: { configurable: true, value: 100 },
+      scrollHeight: { configurable: true, value: 300 },
+      scrollTop: { configurable: true, value: 200 },
+    });
+    fireEvent.scroll(scrollRegion as Element);
+
+    // Scroll up (40 < 200 and not at bottom)
+    Object.defineProperty(scrollRegion, 'scrollTop', { configurable: true, value: 40 });
+    fireEvent.scroll(scrollRegion as Element);
 
     expect(screen.getByRole('button', { name: 'Turn auto-scroll on' })).toHaveAttribute(
       'aria-pressed',
@@ -251,23 +262,36 @@ describe('ReasoningPanel', () => {
     );
   });
 
-  it('turns auto-scroll off when the scroll position moves above the bottom', () => {
+  it('automatically re-enables auto-scroll when scrolled back to the bottom', () => {
     setSessionReasoning('Review this reasoning');
 
     render(<ReasoningPanel />);
 
     const scrollRegion = document.querySelector('[class*="reasoningContent"]');
     expect(scrollRegion).toBeTruthy();
+
+    // Establish initial scroll position at bottom (lastScrollTop = 200)
     Object.defineProperties(scrollRegion, {
       clientHeight: { configurable: true, value: 100 },
       scrollHeight: { configurable: true, value: 300 },
-      scrollTop: { configurable: true, value: 40 },
+      scrollTop: { configurable: true, value: 200 },
     });
     fireEvent.scroll(scrollRegion as Element);
 
+    // Scroll up (40 < 200) -> turns auto-scroll off
+    Object.defineProperty(scrollRegion, 'scrollTop', { configurable: true, value: 40 });
+    fireEvent.scroll(scrollRegion as Element);
     expect(screen.getByRole('button', { name: 'Turn auto-scroll on' })).toHaveAttribute(
       'aria-pressed',
       'false',
+    );
+
+    // Scroll back to bottom (200) -> re-enables auto-scroll
+    Object.defineProperty(scrollRegion, 'scrollTop', { configurable: true, value: 200 });
+    fireEvent.scroll(scrollRegion as Element);
+    expect(screen.getByRole('button', { name: 'Turn auto-scroll off' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
     );
   });
 

@@ -91,20 +91,22 @@ function ReasoningPanelInner({
     : '';
   const reasoningRef = useRef<HTMLDivElement | null>(null);
 
-  const disableAutoScroll = useCallback(() => {
-    setAutoScroll(false);
-  }, []);
+  const lastScrollTop = useRef(0);
 
   const handleScroll = useCallback(() => {
     const contentElement = reasoningRef.current;
     if (!contentElement) return;
 
-    const distanceFromBottom =
-      contentElement.scrollHeight - contentElement.clientHeight - contentElement.scrollTop;
-    if (distanceFromBottom > 4 && autoScroll) {
-      disableAutoScroll();
+    const { scrollTop, scrollHeight, clientHeight } = contentElement;
+    const isAtBottom = Math.abs(scrollHeight - clientHeight - scrollTop) < 10;
+
+    if (isAtBottom) {
+      setAutoScroll(true);
+    } else if (scrollTop < lastScrollTop.current && autoScroll) {
+      setAutoScroll(false);
     }
-  }, [autoScroll, disableAutoScroll]);
+    lastScrollTop.current = scrollTop;
+  }, [autoScroll]);
 
   useEffect(() => {
     setShowStepIO(showStepIOProp);
@@ -216,13 +218,7 @@ function ReasoningPanelInner({
           </div>
         </div>
         {isExpanded && (
-          <div
-            ref={reasoningRef}
-            className={styles.reasoningContent}
-            onScroll={handleScroll}
-            onTouchMove={disableAutoScroll}
-            onWheel={disableAutoScroll}
-          >
+          <div ref={reasoningRef} className={styles.reasoningContent} onScroll={handleScroll}>
             {transcriptMessages.length ? (
               <section className={styles.transcriptSection} aria-label="Session transcript">
                 {transcriptMessages.map((message: AgentSessionMessage) => {

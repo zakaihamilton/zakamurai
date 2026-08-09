@@ -20,7 +20,7 @@ type AISectionReasoningProps = {
   content: string;
   contentRef: RefObject<HTMLDivElement | null>;
   autoScroll?: boolean;
-  onUserScroll?: () => void;
+  onUserScroll?: (autoScroll: boolean) => void;
 };
 
 const markdownComponents: Components = {
@@ -126,21 +126,22 @@ export default function AISectionReasoning({
     const contentElement = contentRef.current;
     if (!contentElement) return;
 
-    if (contentElement.scrollTop < lastScrollTop.current && autoScroll) {
-      onUserScroll?.();
-    }
-    lastScrollTop.current = contentElement.scrollTop;
-  };
+    const { scrollTop, scrollHeight, clientHeight } = contentElement;
+    const isAtBottom = Math.abs(scrollHeight - clientHeight - scrollTop) < 10;
 
-  const handleUserScrollStart = () => {
-    if (autoScroll) onUserScroll?.();
+    if (isAtBottom) {
+      onUserScroll?.(true);
+    } else if (scrollTop < lastScrollTop.current && autoScroll) {
+      onUserScroll?.(false);
+    }
+    lastScrollTop.current = scrollTop;
   };
 
   useEffect(() => {
     if (!autoScroll || !content || !contentRef.current) return;
     contentRef.current.scrollTo({
       top: contentRef.current.scrollHeight,
-      behavior: 'smooth',
+      behavior: 'auto',
     });
   }, [autoScroll, content, contentRef]);
 
@@ -149,8 +150,6 @@ export default function AISectionReasoning({
       ref={contentRef}
       className={`${styles.content} ${styles.markdownContent}`}
       onScroll={handleScroll}
-      onTouchMove={handleUserScrollStart}
-      onWheel={handleUserScrollStart}
     >
       {hasTranscript ? <Transcript messages={transcriptMessages} /> : null}
       <ReasoningGroups groups={reasoningGroups} />
