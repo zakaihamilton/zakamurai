@@ -4,6 +4,7 @@ import { TabState } from '@/components/App/Panes/TabBar';
 import { PreviewState } from '@/components/App/PreviewState';
 import { LogState } from '@/components/App/Views/LogArea';
 import { Icons } from '@/components/ui/Icons';
+import ToolbarButton from '@/components/ui/ToolbarButton';
 import Tooltip from '@/components/ui/Tooltip';
 import { formatShortcut } from '@/utils/os';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -164,40 +165,39 @@ export default function ActionButtons({
       </div>
 
       <div className={styles.viewTabs}>
-        <Tooltip content="Goto Code">
-          <button
-            type="button"
-            className={`${styles.tabBtn} ${activeTabId && !isViewTab(activeTabId) ? styles.activeTab : ''}`}
-            onClick={handleOpenLastContentTab}
-            aria-label="Goto Code"
-            data-testid="code-tab"
-            disabled={!lastContentTab}
-          >
-            <Icons.Code />
-          </button>
-        </Tooltip>
-        <Tooltip content="Goto Logs" shortcut={formatShortcut('⌃U')}>
-          <button
-            type="button"
-            className={`${styles.tabBtn} ${activeTabId === 'ai-logs' ? styles.activeTab : ''}`}
-            onClick={onOpenLog}
-            aria-label="Goto Logs"
-            data-testid="logs-tab"
-          >
-            <Icons.Terminal />
-          </button>
-        </Tooltip>
-        <Tooltip content="Goto Preview" shortcut={formatShortcut('⌃I')}>
-          <button
-            type="button"
-            className={`${styles.tabBtn} ${activeTabId === 'preview' ? styles.activeTab : ''}`}
-            onClick={onOpenPreview}
-            aria-label="Goto Preview"
-            data-testid="preview-tab"
-          >
-            <Icons.Globe />
-          </button>
-        </Tooltip>
+        <ToolbarButton
+          className={`${styles.tabBtn} ${activeTabId && !isViewTab(activeTabId) ? styles.activeTab : ''}`}
+          onClick={handleOpenLastContentTab}
+          tooltip="Goto Code"
+          aria-label="Goto Code"
+          data-testid="code-tab"
+          disabled={!lastContentTab}
+          showCompletedIcon={false}
+        >
+          <Icons.Code />
+        </ToolbarButton>
+        <ToolbarButton
+          className={`${styles.tabBtn} ${activeTabId === 'ai-logs' ? styles.activeTab : ''}`}
+          onClick={onOpenLog}
+          tooltip="Goto Logs"
+          shortcut={formatShortcut('⌃U')}
+          aria-label="Goto Logs"
+          data-testid="logs-tab"
+          showCompletedIcon={false}
+        >
+          <Icons.Terminal />
+        </ToolbarButton>
+        <ToolbarButton
+          className={`${styles.tabBtn} ${activeTabId === 'preview' ? styles.activeTab : ''}`}
+          onClick={onOpenPreview}
+          tooltip="Goto Preview"
+          shortcut={formatShortcut('⌃I')}
+          aria-label="Goto Preview"
+          data-testid="preview-tab"
+          showCompletedIcon={false}
+        >
+          <Icons.Globe />
+        </ToolbarButton>
       </div>
       <ViewSwitcher
         activeView={activeView}
@@ -208,20 +208,17 @@ export default function ActionButtons({
       />
 
       <div className={styles.sidebarToggleGroup}>
-        <Tooltip
-          content={isAIInputActive ? 'Hide Agent' : 'Show Agent'}
+        <ToolbarButton
+          className={`${styles.sidebarBtn} ${isAIInputActive ? styles.activeSidebar : ''}`}
+          onClick={onToggleAIInput}
+          tooltip={isAIInputActive ? 'Hide Agent' : 'Show Agent'}
           shortcut={formatShortcut('⌃J')}
+          aria-label={isAIInputActive ? 'Hide Agent' : 'Show Agent'}
+          data-testid="ai-prompt-toggle"
+          showCompletedIcon={false}
         >
-          <button
-            type="button"
-            className={`${styles.sidebarBtn} ${isAIInputActive ? styles.activeSidebar : ''}`}
-            onClick={onToggleAIInput}
-            aria-label={isAIInputActive ? 'Hide Agent' : 'Show Agent'}
-            data-testid="ai-prompt-toggle"
-          >
-            <Icons.AIPrompt />
-          </button>
-        </Tooltip>
+          <Icons.AIPrompt />
+        </ToolbarButton>
       </div>
     </div>
   );

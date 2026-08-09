@@ -1,4 +1,4 @@
-import Tooltip from '@/components/ui/Tooltip';
+import ToolbarButton from '@/components/ui/ToolbarButton';
 import { useState } from 'react';
 import styles from './SectionExpandButton.module.css';
 
@@ -19,26 +19,23 @@ export default function SectionActions({
 
   return (
     <div className={styles.actions}>
-      <Tooltip content={copied ? 'Copied!' : 'Copy to clipboard'}>
-        <button
-          type="button"
-          className={styles.button}
-          onClick={copy}
-          aria-label={copied ? 'Copied to clipboard' : 'Copy to clipboard'}
-        >
-          <span aria-hidden="true">{copied ? '✓' : '⧉'}</span>
-        </button>
-      </Tooltip>
-      <Tooltip content="Open as tab">
-        <button
-          type="button"
-          className={styles.button}
-          onClick={onOpenInTab}
-          aria-label="Open section as tab"
-        >
-          <span aria-hidden="true">↗</span>
-        </button>
-      </Tooltip>
+      <ToolbarButton
+        className={styles.button}
+        onClick={copy}
+        tooltip={copied ? 'Copied!' : 'Copy to clipboard'}
+        aria-label={copied ? 'Copied to clipboard' : 'Copy to clipboard'}
+        showCompletedIcon={false}
+      >
+        <span aria-hidden="true">{copied ? '✓' : '⧉'}</span>
+      </ToolbarButton>
+      <ToolbarButton
+        className={styles.button}
+        onClick={onOpenInTab}
+        tooltip="Open as tab"
+        aria-label="Open section as tab"
+      >
+        <span aria-hidden="true">↗</span>
+      </ToolbarButton>
     </div>
   );
 }

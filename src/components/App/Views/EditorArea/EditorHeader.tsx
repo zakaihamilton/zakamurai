@@ -1,6 +1,6 @@
 import FileViewToolbar from '@/components/App/Views/FileViewToolbar';
 import { Icons } from '@/components/ui/Icons';
-import Tooltip from '@/components/ui/Tooltip';
+import ToolbarButton from '@/components/ui/ToolbarButton';
 import { FILE_VIEW_TYPES } from '@/utils/fileViews';
 import { formatShortcut } from '@/utils/os';
 import styles from './EditorHeader.module.css';
@@ -31,110 +31,90 @@ export default function EditorHeader({
         <span className={styles.filePath}>{filePath}</span>
       </div>
       <div className={styles.headerActions}>
-        <Tooltip
-          content={isReadOnly ? 'Switch to Edit Mode' : 'Switch to Inspection Mode'}
+        <ToolbarButton
+          className={`${styles.actionBtn} ${isReadOnly ? styles.actionBtnActive : ''}`}
+          onClick={() => setIsReadOnly(!isReadOnly)}
+          tooltip={isReadOnly ? 'Switch to Edit Mode' : 'Switch to Inspection Mode'}
           shortcut={formatShortcut('⌃E')}
+          aria-label={isReadOnly ? 'Switch to edit mode' : 'Switch to inspection mode'}
+          aria-pressed={isReadOnly}
         >
-          <button
-            type="button"
-            className={`${styles.actionBtn} ${isReadOnly ? styles.actionBtnActive : ''}`}
-            onClick={() => setIsReadOnly(!isReadOnly)}
-            aria-label={isReadOnly ? 'Switch to edit mode' : 'Switch to inspection mode'}
-            aria-pressed={isReadOnly}
-          >
-            {isReadOnly ? <Icons.Code size={14} /> : <Icons.Edit size={14} />}
-          </button>
-        </Tooltip>
-        <Tooltip content="Find/Replace" shortcut={formatShortcut('⌘F')}>
-          <button
-            type="button"
-            className={styles.actionBtn}
-            onClick={() => setShowFind(!showFind)}
-            aria-label="Find and replace"
-            aria-pressed={showFind}
-          >
-            <Icons.Search />
-          </button>
-        </Tooltip>
-        <Tooltip content="Format Code" shortcut={formatShortcut('⌃⇧F')}>
-          <button
-            type="button"
-            className={styles.actionBtn}
-            onClick={handleFormat}
-            aria-label="Format code"
-          >
-            <Icons.Layout />
-          </button>
-        </Tooltip>
-        <Tooltip content="Copy Code to Clipboard">
-          <button
-            type="button"
-            className={styles.actionBtn}
-            onClick={onCopy}
-            aria-label="Copy code to clipboard"
-          >
-            <Icons.Copy />
-          </button>
-        </Tooltip>
+          {isReadOnly ? <Icons.Code size={14} /> : <Icons.Edit size={14} />}
+        </ToolbarButton>
+        <ToolbarButton
+          className={styles.actionBtn}
+          onClick={() => setShowFind(!showFind)}
+          tooltip="Find/Replace"
+          shortcut={formatShortcut('⌘F')}
+          aria-label="Find and replace"
+          aria-pressed={showFind}
+        >
+          <Icons.Search />
+        </ToolbarButton>
+        <ToolbarButton
+          className={styles.actionBtn}
+          onClick={handleFormat}
+          tooltip="Format Code"
+          shortcut={formatShortcut('⌃⇧F')}
+          aria-label="Format code"
+        >
+          <Icons.Layout />
+        </ToolbarButton>
+        <ToolbarButton
+          className={styles.actionBtn}
+          onClick={onCopy}
+          tooltip="Copy Code to Clipboard"
+          aria-label="Copy code to clipboard"
+        >
+          <Icons.Copy />
+        </ToolbarButton>
         {hasPendingDeletion && (
           <div className={styles.diffHeaderToolbar}>
             <span className={styles.diffLabel}>Review AI Deletion:</span>
-            <Tooltip content="Approve Deletion" shortcut={formatShortcut('⌘S')}>
-              <button
-                type="button"
-                onClick={handleApprove}
-                className={`${styles.diffButton} ${styles.approveBtn}`}
-              >
-                <Icons.Check /> Delete
-              </button>
-            </Tooltip>
-            <Tooltip
-              content="Keep File"
+            <ToolbarButton
+              onClick={handleApprove}
+              className={`${styles.diffButton} ${styles.approveBtn}`}
+              tooltip="Approve Deletion"
+              shortcut={formatShortcut('⌘S')}
+            >
+              <Icons.Check /> Delete
+            </ToolbarButton>
+            <ToolbarButton
+              onClick={handleUndo}
+              className={`${styles.diffButton} ${styles.undoBtn}`}
+              tooltip="Keep File"
               shortcut={`${formatShortcut('⌘.')} / ${formatShortcut('⌘⌫')}`}
             >
-              <button
-                type="button"
-                onClick={handleUndo}
-                className={`${styles.diffButton} ${styles.undoBtn}`}
-              >
-                <Icons.Undo /> Keep
-              </button>
-            </Tooltip>
+              <Icons.Undo /> Keep
+            </ToolbarButton>
           </div>
         )}
         {hasDiff && !hasPendingDeletion && (
           <div className={styles.diffHeaderToolbar}>
             <span className={styles.diffLabel}>Review AI Changes:</span>
-            <Tooltip content="Approve Changes" shortcut={formatShortcut('⌘S')}>
-              <button
-                type="button"
-                onClick={handleApprove}
-                className={`${styles.diffButton} ${styles.approveBtn}`}
-              >
-                <Icons.Check /> Approve
-              </button>
-            </Tooltip>
-            <Tooltip
-              content="Cancel Changes"
+            <ToolbarButton
+              onClick={handleApprove}
+              className={`${styles.diffButton} ${styles.approveBtn}`}
+              tooltip="Approve Changes"
+              shortcut={formatShortcut('⌘S')}
+            >
+              <Icons.Check /> Approve
+            </ToolbarButton>
+            <ToolbarButton
+              onClick={handleUndo}
+              className={`${styles.diffButton} ${styles.undoBtn}`}
+              tooltip="Cancel Changes"
               shortcut={`${formatShortcut('⌘.')} / ${formatShortcut('⌘⌫')}`}
             >
-              <button
-                type="button"
-                onClick={handleUndo}
-                className={`${styles.diffButton} ${styles.undoBtn}`}
-              >
-                <Icons.Undo /> Undo
-              </button>
-            </Tooltip>
-            <Tooltip content="Toggle Side by Side View">
-              <button
-                type="button"
-                onClick={() => setShowSideBySide(!showSideBySide)}
-                className={`${styles.diffButton} ${showSideBySide ? styles.sideBySideActive : ''}`}
-              >
-                <Icons.Columns /> Diff
-              </button>
-            </Tooltip>
+              <Icons.Undo /> Undo
+            </ToolbarButton>
+            <ToolbarButton
+              onClick={() => setShowSideBySide(!showSideBySide)}
+              className={`${styles.diffButton} ${showSideBySide ? styles.sideBySideActive : ''}`}
+              tooltip="Toggle Side by Side View"
+            >
+              <Icons.Columns /> Diff
+            </ToolbarButton>
           </div>
         )}
         <FileViewToolbar

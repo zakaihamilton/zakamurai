@@ -1,5 +1,5 @@
 import { Icons } from '@/components/ui/Icons';
-import Tooltip from '@/components/ui/Tooltip';
+import ToolbarButton from '@/components/ui/ToolbarButton';
 import { getFileViews } from '@/utils/fileViews';
 import styles from './FileViewToolbar.module.css';
 import type { FileViewToolbarProps } from './file-view-toolbar-types';
@@ -22,17 +22,17 @@ export default function FileViewToolbar({
   return (
     <div className={styles.viewSwitch} aria-label="Open with">
       {views.map((view) => (
-        <Tooltip key={view.id} content={`Open with ${view.label}`}>
-          <button
-            type="button"
-            className={`${styles.viewButton} ${activeViewType === view.id ? styles.active : ''}`}
-            onClick={() => onSelectView(view.id)}
-            aria-label={`Open with ${view.label}`}
-            aria-pressed={activeViewType === view.id}
-          >
-            <ViewIcon icon={view.icon} />
-          </button>
-        </Tooltip>
+        <ToolbarButton
+          key={view.id}
+          className={`${styles.viewButton} ${activeViewType === view.id ? styles.active : ''}`}
+          onClick={() => onSelectView(view.id)}
+          tooltip={`Open with ${view.label}`}
+          aria-label={`Open with ${view.label}`}
+          aria-pressed={activeViewType === view.id}
+          showCompletedIcon={false}
+        >
+          <ViewIcon icon={view.icon} />
+        </ToolbarButton>
       ))}
     </div>
   );

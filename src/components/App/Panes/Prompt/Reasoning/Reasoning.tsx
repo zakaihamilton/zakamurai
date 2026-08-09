@@ -1,6 +1,7 @@
 import Node from '@/components/state/Node';
 import type { AgentSessionMessage } from '@/components/state/domain-types';
 import { Icons } from '@/components/ui/Icons';
+import ToolbarButton from '@/components/ui/ToolbarButton';
 import Tooltip from '@/components/ui/Tooltip';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
@@ -171,49 +172,43 @@ function ReasoningPanelInner({
             </Tooltip>
           </div>
           <div className={styles.reasoningActions}>
-            <Tooltip
-              content={
+            <ToolbarButton
+              className={styles.clearLogButton}
+              onClick={onClearLog}
+              disabled={isLogClearDisabled}
+              tooltip={
                 activeSession?.status === 'running'
                   ? 'Clear AI Model log after the current run'
                   : 'Clear AI Model log'
               }
+              aria-label="Clear AI Model log"
             >
-              <button
-                type="button"
-                className={styles.clearLogButton}
-                aria-label="Clear AI Model log"
-                onClick={onClearLog}
-                disabled={isLogClearDisabled}
-              >
-                <Icons.Trash size={14} />
-              </button>
-            </Tooltip>
-            <Tooltip content={autoScroll ? 'Turn auto-scroll off' : 'Turn auto-scroll on'}>
-              <button
-                type="button"
-                className={`${styles.stepIOToggle} ${autoScroll ? styles.stepIOToggleActive : ''}`}
-                aria-label={autoScroll ? 'Turn auto-scroll off' : 'Turn auto-scroll on'}
-                aria-pressed={autoScroll}
-                onClick={() => setAutoScroll((enabled) => !enabled)}
-              >
-                <Icons.ArrowDownToLine size={14} />
-              </button>
-            </Tooltip>
-            <Tooltip content={`${showStepIO ? 'Hide' : 'Show'} input/output for each agent step`}>
-              <button
-                type="button"
-                className={`${styles.stepIOToggle} ${showStepIO ? styles.stepIOToggleActive : ''}`}
-                aria-label={`${showStepIO ? 'Hide' : 'Show'} input/output for each agent step`}
-                aria-pressed={showStepIO}
-                onClick={() => {
-                  const next = !showStepIO;
-                  setShowStepIO(next);
-                  onToggleStepIO?.(next);
-                }}
-              >
-                <Icons.Terminal size={14} />
-              </button>
-            </Tooltip>
+              <Icons.Trash size={14} />
+            </ToolbarButton>
+            <ToolbarButton
+              className={`${styles.stepIOToggle} ${autoScroll ? styles.stepIOToggleActive : ''}`}
+              onClick={() => setAutoScroll((enabled) => !enabled)}
+              tooltip={autoScroll ? 'Turn auto-scroll off' : 'Turn auto-scroll on'}
+              aria-label={autoScroll ? 'Turn auto-scroll off' : 'Turn auto-scroll on'}
+              aria-pressed={autoScroll}
+              showCompletedIcon={false}
+            >
+              <Icons.ArrowDownToLine size={14} />
+            </ToolbarButton>
+            <ToolbarButton
+              className={`${styles.stepIOToggle} ${showStepIO ? styles.stepIOToggleActive : ''}`}
+              onClick={() => {
+                const next = !showStepIO;
+                setShowStepIO(next);
+                onToggleStepIO?.(next);
+              }}
+              tooltip={`${showStepIO ? 'Hide' : 'Show'} input/output for each agent step`}
+              aria-label={`${showStepIO ? 'Hide' : 'Show'} input/output for each agent step`}
+              aria-pressed={showStepIO}
+              showCompletedIcon={false}
+            >
+              <Icons.Terminal size={14} />
+            </ToolbarButton>
             <SectionActions content={reasoningText} onOpenInTab={onOpenInTab} />
           </div>
         </div>

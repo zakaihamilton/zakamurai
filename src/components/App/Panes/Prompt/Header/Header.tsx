@@ -1,5 +1,5 @@
 import { Icons } from '@/components/ui/Icons';
-import Tooltip from '@/components/ui/Tooltip';
+import ToolbarButton from '@/components/ui/ToolbarButton';
 import { useState } from 'react';
 import ManagerTraceInspector from '../ManagerTraceInspector';
 import type { PromptHeaderProps } from '../prompt-types';
@@ -33,36 +33,33 @@ export default function PromptHeader({
       <h2 className={styles.title}>AI Manager</h2>
       <div className={styles.headerActions}>
         {isSystemProcessing && <span className={styles.status}>Compiling</span>}
-        <Tooltip content="View supported AI tools">
-          <button
-            type="button"
-            className={styles.headerActionBtn}
-            onClick={() => setIsToolsDialogOpen(true)}
-            aria-haspopup="dialog"
-            aria-label="View supported AI tools"
-          >
-            <Icons.Grid size={15} />
-          </button>
-        </Tooltip>
+        <ToolbarButton
+          className={styles.headerActionBtn}
+          onClick={() => setIsToolsDialogOpen(true)}
+          tooltip="View supported AI tools"
+          aria-haspopup="dialog"
+          aria-label="View supported AI tools"
+        >
+          <Icons.Grid size={15} />
+        </ToolbarButton>
         <ManagerTraceInspector
           trace={latestManagerTrace || null}
           files={traceFiles}
           onReplayRequest={onReplayRequest}
         />
-        <Tooltip content={copied ? 'Copied!' : 'Copy full session (transcript & reasoning)'}>
-          <button
-            type="button"
-            className={`${styles.headerActionBtn} ${copied ? styles.headerActionBtnActive : ''}`}
-            onClick={handleCopy}
-            aria-label={
-              copied
-                ? 'Copied full session to clipboard'
-                : 'Copy full session transcript and reasoning to clipboard'
-            }
-          >
-            {copied ? <Icons.Check /> : <Icons.Copy />}
-          </button>
-        </Tooltip>
+        <ToolbarButton
+          className={`${styles.headerActionBtn} ${copied ? styles.headerActionBtnActive : ''}`}
+          onClick={handleCopy}
+          tooltip={copied ? 'Copied!' : 'Copy full session (transcript & reasoning)'}
+          aria-label={
+            copied
+              ? 'Copied full session to clipboard'
+              : 'Copy full session transcript and reasoning to clipboard'
+          }
+          showCompletedIcon={false}
+        >
+          {copied ? <Icons.Check /> : <Icons.Copy />}
+        </ToolbarButton>
       </div>
       <SupportedToolsDialog
         isOpen={isToolsDialogOpen}

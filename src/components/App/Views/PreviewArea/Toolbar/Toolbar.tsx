@@ -1,5 +1,5 @@
 import { Icons } from '@/components/ui/Icons';
-import Tooltip from '@/components/ui/Tooltip';
+import ToolbarButton from '@/components/ui/ToolbarButton';
 import type { PreviewToolbarProps } from '../preview-types';
 import styles from './Toolbar.module.css';
 
@@ -24,35 +24,58 @@ export default function PreviewToolbar({
       </div>
 
       <div className={styles.toolbarActions}>
-        <Tooltip content="Zoom out">
-          <button type="button" className={styles.toolBtn} onClick={onZoomOut}>
-            −
-          </button>
-        </Tooltip>
-        <button type="button" className={styles.zoomLevel} onClick={onZoomReset}>
+        <ToolbarButton
+          className={styles.toolBtn}
+          onClick={onZoomOut}
+          tooltip="Zoom out"
+          aria-label="Zoom out"
+          showCompletedIcon={false}
+        >
+          −
+        </ToolbarButton>
+        <ToolbarButton
+          className={styles.zoomLevel}
+          onClick={onZoomReset}
+          tooltip="Reset zoom"
+          aria-label="Reset zoom"
+          showCompletedIcon={false}
+        >
           {Math.round(scale * 100)}%
-        </button>
-        <Tooltip content="Zoom in">
-          <button type="button" className={styles.toolBtn} onClick={onZoomIn}>
-            +
-          </button>
-        </Tooltip>
+        </ToolbarButton>
+        <ToolbarButton
+          className={styles.toolBtn}
+          onClick={onZoomIn}
+          tooltip="Zoom in"
+          aria-label="Zoom in"
+          showCompletedIcon={false}
+        >
+          +
+        </ToolbarButton>
         <div className={styles.separator} />
-        <Tooltip content="Refresh preview">
-          <button type="button" className={styles.toolBtn} onClick={onRefresh}>
-            <Icons.Refresh />
-          </button>
-        </Tooltip>
-        <Tooltip content="Open in new tab">
-          <button type="button" className={styles.toolBtn} onClick={onOpenExternal}>
-            <Icons.ExternalLink />
-          </button>
-        </Tooltip>
-        <Tooltip content={isMaximized ? 'Exit maximize' : 'Maximize preview'}>
-          <button type="button" className={styles.toolBtn} onClick={onToggleMaximize}>
-            {isMaximized ? <Icons.Minimize /> : <Icons.Maximize />}
-          </button>
-        </Tooltip>
+        <ToolbarButton
+          className={styles.toolBtn}
+          onClick={onRefresh}
+          tooltip="Refresh preview"
+          aria-label="Refresh preview"
+        >
+          <Icons.Refresh />
+        </ToolbarButton>
+        <ToolbarButton
+          className={styles.toolBtn}
+          onClick={onOpenExternal}
+          tooltip="Open in new tab"
+          aria-label="Open in new tab"
+        >
+          <Icons.ExternalLink />
+        </ToolbarButton>
+        <ToolbarButton
+          className={styles.toolBtn}
+          onClick={onToggleMaximize}
+          tooltip={isMaximized ? 'Exit maximize' : 'Maximize preview'}
+          aria-label={isMaximized ? 'Exit maximize' : 'Maximize preview'}
+        >
+          {isMaximized ? <Icons.Minimize /> : <Icons.Maximize />}
+        </ToolbarButton>
       </div>
     </div>
   );

@@ -1,5 +1,5 @@
 import { Icons } from '@/components/ui/Icons';
-import Tooltip from '@/components/ui/Tooltip';
+import ToolbarButton from '@/components/ui/ToolbarButton';
 import { formatShortcut } from '@/utils/os';
 import type { LogToolbarProps } from '../log-area-types';
 import styles from './Toolbar.module.css';
@@ -26,38 +26,33 @@ export default function LogToolbar({
             aria-label="Filter logs"
           />
           {filterText && (
-            <Tooltip content="Clear filter">
-              <button
-                type="button"
-                className={styles.filterClearBtn}
-                onClick={onClearFilter}
-                aria-label="Clear log filter"
-              >
-                <Icons.Close />
-              </button>
-            </Tooltip>
+            <ToolbarButton
+              className={styles.filterClearBtn}
+              onClick={onClearFilter}
+              tooltip="Clear filter"
+              aria-label="Clear log filter"
+            >
+              <Icons.Close />
+            </ToolbarButton>
           )}
         </div>
-        <Tooltip content={copied ? 'Copied!' : 'Copy all logs'}>
-          <button
-            type="button"
-            className={`${styles.headerBtn} ${copied ? styles.copied : ''}`}
-            onClick={onCopyAll}
-            aria-label="Copy all logs"
-          >
-            {copied ? <Icons.Check /> : <Icons.Copy />}
-          </button>
-        </Tooltip>
-        <Tooltip content="Clear logs" shortcut={formatShortcut('⌃K')}>
-          <button
-            type="button"
-            onClick={onClearLogs}
-            className={styles.headerBtn}
-            aria-label="Clear logs"
-          >
-            <Icons.Trash />
-          </button>
-        </Tooltip>
+        <ToolbarButton
+          className={`${styles.headerBtn} ${copied ? styles.copied : ''}`}
+          onClick={onCopyAll}
+          tooltip={copied ? 'Copied!' : 'Copy all logs'}
+          aria-label="Copy all logs"
+        >
+          {copied ? <Icons.Check /> : <Icons.Copy />}
+        </ToolbarButton>
+        <ToolbarButton
+          className={styles.headerBtn}
+          onClick={onClearLogs}
+          tooltip="Clear logs"
+          shortcut={formatShortcut('⌃K')}
+          aria-label="Clear logs"
+        >
+          <Icons.Trash />
+        </ToolbarButton>
       </div>
     </div>
   );
