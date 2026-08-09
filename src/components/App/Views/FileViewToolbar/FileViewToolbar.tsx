@@ -29,7 +29,6 @@ export default function FileViewToolbar({
           tooltip={`Open with ${view.label}`}
           aria-label={`Open with ${view.label}`}
           aria-pressed={activeViewType === view.id}
-          showCompletedIcon={false}
         >
           <ViewIcon icon={view.icon} />
         </ToolbarButton>

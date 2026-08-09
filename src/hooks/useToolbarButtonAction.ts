@@ -5,8 +5,8 @@ export type UseToolbarButtonActionOptions = {
   feedbackDuration?: number;
 };
 
-export function useToolbarButtonAction<T = void>(
-  action?: (...args: unknown[]) => T | Promise<T>,
+export function useToolbarButtonAction<TArgs extends unknown[] = [], T = void>(
+  action?: (...args: TArgs) => T | Promise<T>,
   options: UseToolbarButtonActionOptions = {},
 ) {
   const { feedbackDuration = 1200 } = options;
@@ -16,7 +16,7 @@ export function useToolbarButtonAction<T = void>(
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const handleClick = useCallback(
-    async (...args: unknown[]) => {
+    async (...args: TArgs) => {
       if (!action) return;
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current);

@@ -24,7 +24,6 @@ export default function SectionActions({
         onClick={copy}
         tooltip={copied ? 'Copied!' : 'Copy to clipboard'}
         aria-label={copied ? 'Copied to clipboard' : 'Copy to clipboard'}
-        showCompletedIcon={false}
       >
         <span aria-hidden="true">{copied ? '✓' : '⧉'}</span>
       </ToolbarButton>

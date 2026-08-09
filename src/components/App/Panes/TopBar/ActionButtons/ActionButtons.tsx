@@ -172,7 +172,6 @@ export default function ActionButtons({
           aria-label="Goto Code"
           data-testid="code-tab"
           disabled={!lastContentTab}
-          showCompletedIcon={false}
         >
           <Icons.Code />
         </ToolbarButton>
@@ -183,7 +182,6 @@ export default function ActionButtons({
           shortcut={formatShortcut('⌃U')}
           aria-label="Goto Logs"
           data-testid="logs-tab"
-          showCompletedIcon={false}
         >
           <Icons.Terminal />
         </ToolbarButton>
@@ -194,7 +192,6 @@ export default function ActionButtons({
           shortcut={formatShortcut('⌃I')}
           aria-label="Goto Preview"
           data-testid="preview-tab"
-          showCompletedIcon={false}
         >
           <Icons.Globe />
         </ToolbarButton>
@@ -215,7 +212,6 @@ export default function ActionButtons({
           shortcut={formatShortcut('⌃J')}
           aria-label={isAIInputActive ? 'Hide Agent' : 'Show Agent'}
           data-testid="ai-prompt-toggle"
-          showCompletedIcon={false}
         >
           <Icons.AIPrompt />
         </ToolbarButton>

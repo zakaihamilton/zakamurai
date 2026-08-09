@@ -29,7 +29,6 @@ export default function PreviewToolbar({
           onClick={onZoomOut}
           tooltip="Zoom out"
           aria-label="Zoom out"
-          showCompletedIcon={false}
         >
           −
         </ToolbarButton>
@@ -38,7 +37,6 @@ export default function PreviewToolbar({
           onClick={onZoomReset}
           tooltip="Reset zoom"
           aria-label="Reset zoom"
-          showCompletedIcon={false}
         >
           {Math.round(scale * 100)}%
         </ToolbarButton>
@@ -47,7 +45,6 @@ export default function PreviewToolbar({
           onClick={onZoomIn}
           tooltip="Zoom in"
           aria-label="Zoom in"
-          showCompletedIcon={false}
         >
           +
         </ToolbarButton>

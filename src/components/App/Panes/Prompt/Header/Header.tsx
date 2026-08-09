@@ -56,7 +56,6 @@ export default function PromptHeader({
               ? 'Copied full session to clipboard'
               : 'Copy full session transcript and reasoning to clipboard'
           }
-          showCompletedIcon={false}
         >
           {copied ? <Icons.Check /> : <Icons.Copy />}
         </ToolbarButton>

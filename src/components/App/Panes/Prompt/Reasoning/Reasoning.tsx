@@ -191,7 +191,6 @@ function ReasoningPanelInner({
               tooltip={autoScroll ? 'Turn auto-scroll off' : 'Turn auto-scroll on'}
               aria-label={autoScroll ? 'Turn auto-scroll off' : 'Turn auto-scroll on'}
               aria-pressed={autoScroll}
-              showCompletedIcon={false}
             >
               <Icons.ArrowDownToLine size={14} />
             </ToolbarButton>
@@ -205,7 +204,6 @@ function ReasoningPanelInner({
               tooltip={`${showStepIO ? 'Hide' : 'Show'} input/output for each agent step`}
               aria-label={`${showStepIO ? 'Hide' : 'Show'} input/output for each agent step`}
               aria-pressed={showStepIO}
-              showCompletedIcon={false}
             >
               <Icons.Terminal size={14} />
             </ToolbarButton>
