@@ -135,7 +135,7 @@ export default function WelcomePrompt() {
               aria-label="Start building with AI"
             >
               <Icons.Send size={18} />
-              <span>Build</span>
+              <span>Build with AI</span>
             </button>
           </div>
         </div>

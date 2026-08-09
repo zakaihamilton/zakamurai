@@ -1,6 +1,6 @@
 .header {
   --topbar-control-height: 34px;
-  --topbar-control-radius: 6px;
+  --topbar-control-radius: var(--radius-sm);
   --topbar-control-padding-x: 11px;
 
   height: 52px;
@@ -10,11 +10,11 @@
   justify-content: space-between;
   padding: 0 14px;
   background: var(--glass-bg);
-  backdrop-filter: none;
+  backdrop-filter: var(--glass-blur);
   position: sticky;
   top: 0;
   z-index: 2000;
-  box-shadow: none;
+  box-shadow: 0 1px 0 rgb(255 255 255 / 2%);
 }
 
 .header::after {
@@ -22,7 +22,7 @@
 }
 
 .aiHighlight {
-  color: #a78bfa;
+  color: var(--accent-hover);
   font-weight: 680;
   filter: none;
 }
@@ -102,14 +102,14 @@
   justify-content: center;
   background: transparent;
   border: 1px solid transparent;
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   color: var(--text-main);
   padding: 3px 7px 3px 3px;
   cursor: pointer;
   margin-right: 18px;
   flex-shrink: 0;
-  transition: transform 0.18s var(--ease-premium), background 0.18s var(--ease-premium),
-    border-color 0.18s var(--ease-premium), color 0.18s var(--ease-premium);
+  transition: transform var(--transition-fast), background var(--transition-fast), border-color
+    0.18s var(--ease-premium), color 0.18s var(--ease-premium);
 }
 
 .menuToggle:hover {

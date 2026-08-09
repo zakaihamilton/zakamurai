@@ -10,8 +10,8 @@
 .backdrop {
   position: absolute;
   inset: 0;
-  background: rgb(0 0 0 / 60%);
-  backdrop-filter: blur(4px);
+  background: rgb(4 7 12 / 72%);
+  backdrop-filter: blur(8px);
   border: 0;
   cursor: default;
   padding: 0;
@@ -21,14 +21,14 @@
   position: relative;
   background: var(--bg-panel);
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: var(--radius-lg);
   width: 90%;
   max-width: 400px;
   max-height: calc(100vh - 32px);
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  box-shadow: 0 20px 40px rgb(0 0 0 / 40%);
+  box-shadow: var(--shadow-lg);
   animation: modal-in 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
@@ -45,7 +45,7 @@
 }
 
 .header {
-  padding: 20px 24px;
+  padding: 18px 20px;
   border-bottom: 1px solid var(--border);
   display: flex;
   align-items: center;
@@ -86,7 +86,7 @@
 }
 
 .content {
-  padding: 20px 24px;
+  padding: 18px 20px;
   min-height: 0;
   overflow: auto;
 }
@@ -119,13 +119,13 @@
 }
 
 .footer {
-  padding: 16px 24px;
+  padding: 14px 20px;
   display: flex;
   justify-content: flex-end;
   gap: 12px;
   background: var(--bg-surface);
-  border-bottom-left-radius: 12px;
-  border-bottom-right-radius: 12px;
+  border-bottom-left-radius: var(--radius-lg);
+  border-bottom-right-radius: var(--radius-lg);
 }
 
 .footer button {

@@ -1,18 +1,18 @@
 .mountSection {
-  padding: 10px 14px;
+  padding: 12px 14px;
   border-bottom: 1px solid var(--border);
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 7px;
 }
 
 .mountButton,
 .relinkButton {
   width: 100%;
   padding: 8px 10px;
-  background: var(--bg-surface);
+  background: var(--bg-input);
   border: 1px dashed var(--border-light);
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   color: var(--text-muted);
   font-size: 13px;
   font-weight: 500;
@@ -21,7 +21,7 @@
   justify-content: center;
   gap: 10px;
   cursor: pointer;
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all var(--transition-fast);
   font-family: inherit;
   box-shadow: none;
   white-space: nowrap;

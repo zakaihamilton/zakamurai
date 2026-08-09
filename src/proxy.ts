@@ -6,7 +6,6 @@ import {
   PREVIEW_SURFACE_VALUE,
   getPreviewFrameAncestors,
   isPreviewHost,
-  isVercelAppHost,
 } from './components/App/Views/PreviewArea/previewOrigins';
 
 function getPreviewOriginUrl(): URL {
@@ -33,16 +32,6 @@ function isPreviewHostRequest(request: NextRequest): boolean {
   return isPreviewHost(host, previewOrigins);
 }
 
-function isVercelSurfaceHost(request: NextRequest): boolean {
-  const host = request.headers.get('host');
-  if (!host) return false;
-  try {
-    return isVercelAppHost(new URL(`https://${host}`).hostname);
-  } catch {
-    return false;
-  }
-}
-
 function isLocalDevHost(request: NextRequest): boolean {
   const host = (request.headers.get('host') || '').split(':')[0].toLowerCase();
   return host === 'localhost' || host === '127.0.0.1' || host === '[::1]';
@@ -62,28 +51,10 @@ function isPreviewSurfaceRequest(request: NextRequest): boolean {
   // Next route and the iframe shows "This page could not be found."
   if (isLocalDevHost(request)) return true;
 
-  const configuredIdeOrigin = process.env.NEXT_PUBLIC_IDE_ORIGIN;
-  if (
-    configuredIdeOrigin &&
-    isPreviewHost(request.headers.get('host'), {
-      ideOrigin: configuredIdeOrigin,
-      previewOrigin: configuredIdeOrigin,
-      isIsolated: false,
-    })
-  ) {
-    return true;
-  }
-
-  const branchOrigin = toHostOrigin(process.env.NEXT_PUBLIC_VERCEL_BRANCH_URL);
-  return Boolean(
-    (branchOrigin &&
-      isPreviewHost(request.headers.get('host'), {
-        ideOrigin: branchOrigin,
-        previewOrigin: branchOrigin,
-        isIsolated: false,
-      })) ||
-      isVercelSurfaceHost(request),
-  );
+  // In production, only the configured preview host may serve preview
+  // surfaces. Path-based routing on an IDE or Vercel branch origin would give
+  // workspace code access to all origin-wide IDE data.
+  return false;
 }
 
 function resolveIdeOriginForPreviewHeaders(request: NextRequest): string | null {

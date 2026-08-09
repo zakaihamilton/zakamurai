@@ -143,14 +143,16 @@ test.describe('Zakamurai Visual Regression', () => {
     await page.getByRole('button', { name: 'Instructions' }).click();
 
     // Wait for the refreshed instructions view to be ready.
-    await expect(page.getByText('Build your next idea here')).toBeVisible();
-    await expect(
-      page.getByText(/Zakamurai keeps the editor, local AI, browser build/),
-    ).toBeVisible();
+    await expect(page.getByText('A focused loop from idea to preview.')).toBeVisible();
+    await expect(page.getByText(/Start coding without local setup/)).toBeVisible();
 
     await page.waitForTimeout(1000);
 
     await expect(page).toHaveScreenshot('instructions-view.png');
+
+    await page.getByTestId('theme-toggle').filter({ visible: true }).click();
+    await page.waitForTimeout(500);
+    await expect(page).toHaveScreenshot('instructions-view-light.png');
   });
 
   test('Project Info View', async ({ page }) => {
@@ -164,6 +166,10 @@ test.describe('Zakamurai Visual Regression', () => {
     await page.waitForTimeout(1000);
 
     await expect(page).toHaveScreenshot('project-info-view.png');
+
+    await page.getByTestId('theme-toggle').filter({ visible: true }).click();
+    await page.waitForTimeout(500);
+    await expect(page).toHaveScreenshot('project-info-view-light.png');
   });
 
   test('Readiness View', async ({ page }) => {
@@ -176,6 +182,10 @@ test.describe('Zakamurai Visual Regression', () => {
     await page.waitForTimeout(1000);
 
     await expect(page).toHaveScreenshot('readiness-view.png');
+
+    await page.getByTestId('theme-toggle').filter({ visible: true }).click();
+    await page.waitForTimeout(500);
+    await expect(page).toHaveScreenshot('readiness-view-light.png');
   });
 
   test('Dialogs - Keyboard Shortcuts', async ({ page }) => {
@@ -208,5 +218,33 @@ test.describe('Zakamurai Visual Regression', () => {
 
     // Close dialog
     await page.getByRole('button', { name: 'Cancel' }).click();
+  });
+
+  test('Mobile workspace surfaces', async ({ page }) => {
+    await page.setViewportSize({ width: 375, height: 812 });
+    await page.waitForTimeout(500);
+    await expect(page).toHaveScreenshot('mobile-welcome.png', { animations: 'disabled' });
+
+    const toggle = page.getByTestId('sidebar-toggle').filter({ visible: true });
+    await toggle.click();
+    await expect(page).toHaveScreenshot('mobile-sidebar.png', { animations: 'disabled' });
+
+    await toggle.click();
+    await page.getByTestId('ai-prompt-toggle').filter({ visible: true }).click();
+    await expect(page.getByPlaceholder('Tell the AI Manager what to do...')).toBeVisible();
+    await expect(page).toHaveScreenshot('mobile-agent.png', { animations: 'disabled' });
+  });
+
+  test('Narrow mobile workspace has no horizontal overflow', async ({ page }) => {
+    await page.setViewportSize({ width: 320, height: 720 });
+    await page.waitForTimeout(500);
+    const dimensions = await page.evaluate(() => ({
+      viewport: window.innerWidth,
+      documentWidth: document.documentElement.scrollWidth,
+      bodyWidth: document.body.scrollWidth,
+    }));
+    expect(dimensions.documentWidth).toBeLessThanOrEqual(dimensions.viewport);
+    expect(dimensions.bodyWidth).toBeLessThanOrEqual(dimensions.viewport);
+    await expect(page).toHaveScreenshot('mobile-narrow-welcome.png', { animations: 'disabled' });
   });
 });

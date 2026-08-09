@@ -19,7 +19,7 @@
   gap: 8px;
   padding: 0 8px 0 10px;
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   background: var(--bg-surface);
   color: var(--text-muted);
 }
@@ -86,7 +86,7 @@
   border: 1px solid var(--border);
   color: var(--text-muted);
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all var(--transition-fast);
 }
 
 .headerBtn:hover {
@@ -96,13 +96,13 @@
 }
 
 .headerBtn.copied {
-  color: #10b981;
-  border-color: #10b981;
+  color: var(--success);
+  border-color: var(--success);
 }
 
 .headerBtn[aria-label="Clear logs"]:hover {
-  color: #ef4444;
-  border-color: #ef4444;
+  color: var(--danger);
+  border-color: var(--danger);
 }
 
 @media (width <= 768px) {

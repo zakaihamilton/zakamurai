@@ -11,20 +11,20 @@ export default function Instructions() {
     <div className={styles.wrapper}>
       <div className={styles.container}>
         <header className={styles.header}>
-          <span className={styles.eyebrow}>Getting started</span>
-          <h1 className={styles.title}>Build your next idea here</h1>
+          <span className={styles.eyebrow}>The Zakamurai workflow</span>
+          <h1 className={styles.title}>A focused loop from idea to preview.</h1>
           <p className={styles.pitch}>
-            Zakamurai keeps the editor, local AI, browser build, and live preview in one focused
-            workspace.
+            Start coding without local setup. Keep your files, local AI, browser build, review flow,
+            and live preview in one workspace.
           </p>
         </header>
 
         <div className={styles.quickStart}>
           <span className={styles.quickStartLabel}>The short version</span>
           <ol>
-            <li>Open or create a file.</li>
-            <li>Ask the local agent for help.</li>
-            <li>Review the diff, then build and preview.</li>
+            <li>Open or create a project.</li>
+            <li>Edit, prompt, and review every change.</li>
+            <li>Build, preview, and debug in place.</li>
           </ol>
         </div>
 

@@ -4,9 +4,9 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #0b0f19;
-  color: #f9fafb;
-  font-family: Inter, system-ui, sans-serif;
+  background: var(--bg-base);
+  color: var(--text-main);
+  font-family: var(--font-sans);
   position: fixed;
   inset: 0;
   z-index: 9999;
@@ -52,7 +52,7 @@
   font-size: 24px;
   font-weight: 700;
   letter-spacing: -0.02em;
-  color: #fff;
+  color: var(--text-main);
 }
 
 .loadingText p {
@@ -64,7 +64,7 @@
 .progressTrack {
   width: 160px;
   height: 4px;
-  background: rgb(255 255 255 / 5%);
+  background: var(--bg-surface);
   border-radius: 2px;
   overflow: hidden;
   margin: 0 auto;

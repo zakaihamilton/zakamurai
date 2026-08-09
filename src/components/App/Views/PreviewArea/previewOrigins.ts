@@ -84,13 +84,16 @@ export function isVercelAppHost(hostname: string): boolean {
   return typeof hostname === 'string' && hostname.toLowerCase().endsWith('.vercel.app');
 }
 
-function getVercelSurfaceOrigins(windowOrigin: string): PreviewOrigins | null {
+function getVercelDeploymentOrigins(windowOrigin: string): PreviewOrigins | null {
   if (!windowOrigin || !isVercelAppHost(new URL(windowOrigin).hostname)) return null;
+
+  // A path or service-worker scope cannot isolate origin-wide storage. Fail
+  // closed on branch deployments instead of executing workspace code beside
+  // the IDE's localStorage, IndexedDB, cookies, and parent DOM.
   return {
     ideOrigin: windowOrigin,
-    previewOrigin: windowOrigin,
+    previewOrigin: null,
     isIsolated: false,
-    useSurfaceQuery: true,
   };
 }
 
@@ -206,9 +209,9 @@ export function getPreviewOrigins({
     };
   }
 
-  const vercelSurfaceOrigins = windowOrigin ? getVercelSurfaceOrigins(windowOrigin) : null;
-  if (vercelSurfaceOrigins) {
-    return vercelSurfaceOrigins;
+  const vercelDeploymentOrigins = windowOrigin ? getVercelDeploymentOrigins(windowOrigin) : null;
+  if (vercelDeploymentOrigins) {
+    return vercelDeploymentOrigins;
   }
 
   if (windowOrigin) {

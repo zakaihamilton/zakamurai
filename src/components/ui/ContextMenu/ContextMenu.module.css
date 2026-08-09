@@ -6,13 +6,13 @@
   backdrop-filter: var(--glass-blur);
   border: 1px solid var(--border);
   box-shadow: var(--shadow-lg);
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   z-index: 100000;
   min-width: 220px;
   padding: 6px;
   display: flex;
   flex-direction: column;
-  animation: fade-in 0.15s ease-out;
+  animation: fade-in var(--transition-fast) both;
 }
 
 @keyframes fade-in {

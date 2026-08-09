@@ -20,7 +20,7 @@ vi.mock('@/components/ui/Icons', () => ({
 describe('Instructions', () => {
   it('renders instruction sections', () => {
     render(<Instructions />);
-    expect(screen.getByText('Build your next idea here')).toBeDefined();
+    expect(screen.getByText('A focused loop from idea to preview.')).toBeDefined();
     expect(screen.getByRole('heading', { name: /1\. Shape the workspace/ })).toBeDefined();
     expect(screen.getByRole('heading', { name: /2\. Collaborate with local AI/ })).toBeDefined();
     expect(screen.getByRole('heading', { name: /3\. Review every AI change/ })).toBeDefined();

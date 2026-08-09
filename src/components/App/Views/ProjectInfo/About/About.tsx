@@ -11,11 +11,11 @@ export default function ProjectAbout() {
         <p>
           Zakamurai is a browser-based development workspace for turning an idea into a working web
           project without a local setup. Open the app, edit files, ask for help, and see the result
-          in a live preview.
+          in a live preview—all in the same focused loop.
         </p>
         <p>
           Projects, builds, and local AI models stay in the browser. IndexedDB is used when
-          available, with localStorage as a fallback, so your workspace can remain useful even
+          available, with localStorage as a fallback, so the workspace remains private and useful
           without a backend service.
         </p>
       </div>

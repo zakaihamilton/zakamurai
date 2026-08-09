@@ -27,9 +27,9 @@
   max-width: 960px;
   margin: 0 auto;
   padding: 42px 40px 64px;
-  color: var(--text);
+  color: var(--text-main);
   line-height: 1.6;
-  animation: fade-in 0.4s ease-out;
+  animation: fade-in var(--transition-medium) both;
 }
 
 @keyframes fade-in {
@@ -79,14 +79,15 @@
   margin-bottom: 26px;
   padding: 16px 18px;
   border: 1px solid var(--border-light);
-  border-radius: 12px;
+  border-radius: var(--radius-lg);
   background: var(--accent-light);
 }
 
 .quickStart ol {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px 28px;
+  grid-template-columns: repeat(3, max-content);
+  justify-content: space-between;
+  gap: 12px 24px;
   margin: 10px 0 0;
   padding-left: 22px;
   color: var(--text-main);
@@ -97,15 +98,17 @@
   margin-bottom: 18px;
   padding: 24px 26px;
   border: 1px solid var(--border);
-  border-radius: 14px;
-  background: var(--bg-surface);
-  box-shadow: 0 10px 26px rgb(0 0 0 / 8%);
-  transition: border-color 0.2s ease, transform 0.2s ease;
+  border-radius: var(--radius-lg);
+  background: var(--bg-panel);
+  box-shadow: var(--shadow-sm);
+  transition: border-color var(--transition-fast), transform var(--transition-fast), box-shadow
+    var(--transition-fast);
 }
 
 .section:hover {
   border-color: var(--accent);
   transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
 }
 
 .section h2 {

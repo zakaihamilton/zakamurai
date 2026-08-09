@@ -3,6 +3,7 @@ const SKIP_NAMES = new Set(['node_modules', '.git', 'dist', '.next', '.npm', 'co
 type PendingRequest = {
   resolve: (value: unknown) => void;
   reject: (reason?: unknown) => void;
+  timeout: ReturnType<typeof setTimeout>;
 };
 
 type FileChangeEntry = {
@@ -17,6 +18,8 @@ type IndexProfile = {
   exclude?: string[];
 };
 
+const DEFAULT_REQUEST_TIMEOUT_MS = 30_000;
+
 export class WorkspaceIndexController {
   worker: Worker | null;
   sequence: number;
@@ -30,24 +33,65 @@ export class WorkspaceIndexController {
 
   async init(): Promise<void> {
     if (this.worker) return;
-    this.worker = new Worker(new URL('./workspace-index-worker.ts', import.meta.url), {
+    const worker = new Worker(new URL('./workspace-index-worker.ts', import.meta.url), {
       type: 'module',
     });
-    this.worker.addEventListener('message', ({ data }) => {
+    this.worker = worker;
+    worker.addEventListener('message', ({ data }) => {
       const request = this.pending.get(data.id);
       if (!request) return;
       this.pending.delete(data.id);
+      clearTimeout(request.timeout);
       if (data.type === 'ERROR') request.reject(new Error(data.error));
       else request.resolve(data.payload);
     });
+    worker.addEventListener('error', (event: ErrorEvent) => {
+      this.failWorker(new Error(event.message || 'Workspace index worker crashed.'), worker);
+    });
+    worker.addEventListener('messageerror', () => {
+      this.failWorker(new Error('Workspace index worker message could not be decoded.'), worker);
+    });
   }
 
-  async request(type: string, payload: Record<string, unknown> = {}): Promise<unknown> {
+  private failWorker(error: Error, expectedWorker = this.worker): void {
+    if (expectedWorker && expectedWorker !== this.worker) return;
+    expectedWorker?.terminate();
+    if (this.worker === expectedWorker) this.worker = null;
+    for (const request of this.pending.values()) {
+      clearTimeout(request.timeout);
+      request.reject(error);
+    }
+    this.pending.clear();
+  }
+
+  async request(
+    type: string,
+    payload: Record<string, unknown> = {},
+    timeoutMs = DEFAULT_REQUEST_TIMEOUT_MS,
+  ): Promise<unknown> {
     await this.init();
     return new Promise((resolve, reject) => {
+      const worker = this.worker;
+      if (!worker) {
+        reject(new Error('Workspace index worker is not available.'));
+        return;
+      }
       const id = ++this.sequence;
-      this.pending.set(id, { resolve, reject });
-      this.worker?.postMessage({ id, type, payload });
+      const timeout = setTimeout(() => {
+        this.failWorker(
+          new Error(`Workspace index ${type} request timed out after ${timeoutMs}ms.`),
+          worker,
+        );
+      }, timeoutMs);
+      this.pending.set(id, { resolve, reject, timeout });
+      try {
+        worker.postMessage({ id, type, payload });
+      } catch (error) {
+        this.failWorker(
+          error instanceof Error ? error : new Error(`Workspace index ${type} request failed.`),
+          worker,
+        );
+      }
     });
   }
 
@@ -64,9 +108,7 @@ export class WorkspaceIndexController {
     return this.request('HEALTH', {});
   }
   dispose(): void {
-    this.worker?.terminate();
-    this.worker = null;
-    this.pending.clear();
+    this.failWorker(new Error('Workspace index worker was disposed.'));
   }
 }
 
