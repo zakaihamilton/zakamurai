@@ -31,6 +31,7 @@ export type BreadcrumbProps = {
 
 export type ActionButtonsProps = {
   onCompile: () => void;
+  onStopAI?: () => void;
   onRebuild: () => void | Promise<void>;
   onOpenLog: () => void;
   onOpenPreview: () => void;

@@ -34,6 +34,7 @@ vi.mock('@/components/ui/Icons', () => ({
     Globe: () => <span />,
     ChevronDown: () => <span />,
     AIPrompt: () => <span />,
+    Close: () => <span />,
   },
 }));
 
@@ -196,6 +197,31 @@ describe('ActionButtons', () => {
       'data-tooltip-content',
       'Stop Build — [NPM] Downloading nanoid@3.3.16…',
     );
+  });
+
+  it('uses the build slot to stop an active AI prompt', () => {
+    const onStopAI = vi.fn();
+    vi.mocked(LogState.useState).mockReturnValue(
+      makeLogState({ isSystemProcessing: false, isAIProcessing: true }),
+    );
+    vi.mocked(TabState.useState).mockReturnValue(makeTabState());
+
+    render(
+      <ActionButtons
+        onCompile={vi.fn()}
+        onStopAI={onStopAI}
+        onRebuild={vi.fn()}
+        onOpenLog={vi.fn()}
+        onOpenPreview={vi.fn()}
+        onToggleAIInput={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByTestId('compile-btn'));
+
+    expect(onStopAI).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId('compile-btn')).toHaveAccessibleName('Stop Agent');
+    expect(screen.getByText('Stop Agent')).toBeDefined();
   });
 
   it('switches to last content tab via code tab', () => {

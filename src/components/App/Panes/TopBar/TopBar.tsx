@@ -90,6 +90,7 @@ export function resetNewProjectState({
     draft.historyIndex = -1;
     draft.welcomeRequest = null;
     draft.runningSessionId = null;
+    draft.stopRequest = 0;
     draft.isAgentTreeOpen = false;
     draft.sessionDialog = null;
     draft.isModelManagerOpen = false;
@@ -229,6 +230,11 @@ export default function TopBar() {
       <div className={styles.actions}>
         <ActionButtons
           onCompile={handleCompile}
+          onStopAI={() =>
+            promptUiState?.((draft) => {
+              draft.stopRequest = (draft.stopRequest || 0) + 1;
+            })
+          }
           onRebuild={handleRebuild}
           onOpenLog={handleOpenLog}
           onOpenPreview={handleOpenPreview}

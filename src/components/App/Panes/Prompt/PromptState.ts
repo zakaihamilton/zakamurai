@@ -33,6 +33,7 @@ export function getInitialPromptUiState() {
     promptScope: 'project',
     welcomeRequest: null,
     runningSessionId: null,
+    stopRequest: 0,
     isAgentTreeOpen: false,
     latestManagerTrace: null,
     latestAIIncident: null,

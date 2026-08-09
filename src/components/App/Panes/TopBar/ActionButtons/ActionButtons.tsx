@@ -19,6 +19,7 @@ const REBUILD_HOLD_DELAY = 600;
 
 export default function ActionButtons({
   onCompile,
+  onStopAI,
   onRebuild,
   onOpenLog,
   onOpenPreview,
@@ -27,7 +28,9 @@ export default function ActionButtons({
   const [isRebuildReady, setIsRebuildReady] = useState(false);
   const rebuildTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const didLongPressRef = useRef(false);
-  const { isSystemProcessing } = requireStore(LogState.useState('isSystemProcessing'));
+  const { isSystemProcessing, isAIProcessing } = requireStore(
+    LogState.useState(['isSystemProcessing', 'isAIProcessing']),
+  );
   const { compileStatus, compilePhase } = requireStore(
     PreviewState.useState(['compileStatus', 'compilePhase']),
   );
@@ -102,8 +105,13 @@ export default function ActionButtons({
     onCompile();
   };
 
-  const buildTooltip =
-    compileStatus === 'building'
+  const handleStopAIClick = () => {
+    onStopAI?.();
+  };
+
+  const buildTooltip = isAIProcessing
+    ? 'Stop Agent'
+    : compileStatus === 'building'
       ? `Stop Build — ${compilePhase || 'Compiling…'}`
       : isRebuildReady
         ? 'Release to rebuild from a fresh compiler environment'
@@ -120,28 +128,36 @@ export default function ActionButtons({
   return (
     <div className={styles.actionGroups}>
       <div className={styles.compileGroup}>
-        <Tooltip content={buildTooltip} shortcut={formatShortcut('⌘↵')}>
+        <Tooltip content={buildTooltip} shortcut={formatShortcut(isAIProcessing ? '⌘.' : '⌘↵')}>
           <button
             type="button"
             className={styles.compileBtn}
-            onClick={handleBuildClick}
-            onPointerDown={handleBuildPointerDown}
-            onPointerUp={handleBuildPointerUp}
-            onPointerCancel={handleBuildPointerCancel}
-            onPointerLeave={handleBuildPointerCancel}
-            disabled={isSystemProcessing}
+            onClick={isAIProcessing ? handleStopAIClick : handleBuildClick}
+            onPointerDown={isAIProcessing ? undefined : handleBuildPointerDown}
+            onPointerUp={isAIProcessing ? undefined : handleBuildPointerUp}
+            onPointerCancel={isAIProcessing ? undefined : handleBuildPointerCancel}
+            onPointerLeave={isAIProcessing ? undefined : handleBuildPointerCancel}
+            disabled={isSystemProcessing && !isAIProcessing}
             aria-label={
-              compileStatus === 'building'
-                ? 'Stop Build'
-                : isRebuildReady
-                  ? 'Release to rebuild project'
-                  : 'Build project'
+              isAIProcessing
+                ? 'Stop Agent'
+                : compileStatus === 'building'
+                  ? 'Stop Build'
+                  : isRebuildReady
+                    ? 'Release to rebuild project'
+                    : 'Build project'
             }
             data-testid="compile-btn"
           >
-            <Icons.Play />
+            {isAIProcessing ? <Icons.Close /> : <Icons.Play />}
             <span className={styles.hideOnMobile}>
-              {compileStatus === 'building' ? 'Stop Build' : isRebuildReady ? 'Rebuild' : 'Build'}
+              {isAIProcessing
+                ? 'Stop Agent'
+                : compileStatus === 'building'
+                  ? 'Stop Build'
+                  : isRebuildReady
+                    ? 'Rebuild'
+                    : 'Build'}
             </span>
           </button>
         </Tooltip>

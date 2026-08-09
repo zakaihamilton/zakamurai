@@ -37,8 +37,8 @@ export default function useAgentRunner({
   const appState = requireStore(AppState.usePassiveState());
 
   const handleStop = useCallback(
-    (e: React.MouseEvent<HTMLButtonElement>) => {
-      e.preventDefault();
+    (e?: React.MouseEvent<HTMLButtonElement>) => {
+      e?.preventDefault();
       abortController?.abort();
       import('@/components/AI/WebLLMAPI').then(({ interruptWebLLM }) => interruptWebLLM());
       const sessionId = runningSessionId || agentSessionState?.activeSessionId;

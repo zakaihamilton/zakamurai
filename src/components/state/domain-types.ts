@@ -325,6 +325,7 @@ export interface PromptUiStateShape {
   isAgentTreeOpen: boolean;
   latestManagerTrace: ManagerTrace | null;
   latestAIIncident: AIIncident | null;
+  stopRequest: number;
   sessionDialog?: import('@/components/App/Panes/Prompt/prompt-types').SessionDialogState;
 }
 

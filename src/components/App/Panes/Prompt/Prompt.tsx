@@ -8,7 +8,7 @@ import { TabState } from '@/components/App/Panes/TabBar';
 import { EditorState } from '@/components/App/Views/EditorArea';
 import { LogState } from '@/components/App/Views/LogArea';
 import { useFileSystem } from '@/components/Storage';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { requireStore } from '../../types';
 import { AgentSessionState, createAgentRunUsage, createSessionMessage } from './AgentSessions';
 import FileScopeDialog from './FileScopeDialog';
@@ -46,6 +46,7 @@ export default function Prompt() {
     abortController = null,
     welcomeRequest = null,
     runningSessionId = null,
+    stopRequest = 0,
     sessionDialog = null,
     isAgentTreeOpen = false,
     latestManagerTrace = null,
@@ -68,6 +69,7 @@ export default function Prompt() {
   const isOpen = isMobile ? sidebarState.isAIInputPopupOpen : sidebarState.showAIInput;
   const [filePromptRemainder, setFilePromptRemainder] = useState('');
   const [isFileScopeArmed, setIsFileScopeArmed] = useState(false);
+  const lastStopRequestRef = useRef(0);
 
   const {
     activeSession,
@@ -121,6 +123,12 @@ export default function Prompt() {
     cachedModelIds,
     webLLMEngines: engines,
   });
+
+  useEffect(() => {
+    if (stopRequest === lastStopRequestRef.current) return;
+    lastStopRequestRef.current = stopRequest;
+    if (stopRequest > 0 && isAIProcessing) handleStop();
+  }, [handleStop, isAIProcessing, stopRequest]);
 
   const handleClearAIModelLog = useCallback(() => {
     if (!activeSession) return;
