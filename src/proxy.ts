@@ -6,6 +6,7 @@ import {
   PREVIEW_SURFACE_VALUE,
   getPreviewFrameAncestors,
   isPreviewHost,
+  isVercelAppHost,
 } from './components/App/Views/PreviewArea/previewOrigins';
 
 function getPreviewOriginUrl(): URL {
@@ -37,6 +38,22 @@ function isLocalDevHost(request: NextRequest): boolean {
   return host === 'localhost' || host === '127.0.0.1' || host === '[::1]';
 }
 
+function isUnconfiguredVercelSurfaceHost(request: NextRequest): boolean {
+  const hasOriginConfiguration = [
+    process.env.NEXT_PUBLIC_IDE_ORIGIN,
+    process.env.NEXT_PUBLIC_PREVIEW_ORIGIN,
+  ].some((value) => typeof value === 'string' && value.trim());
+  if (hasOriginConfiguration) return false;
+
+  const host = request.headers.get('host');
+  if (!host) return false;
+  try {
+    return isVercelAppHost(new URL(`https://${host}`).hostname);
+  } catch {
+    return false;
+  }
+}
+
 function isPreviewSurfaceRequest(request: NextRequest): boolean {
   if (isPreviewHostRequest(request)) return true;
   const hasSurfaceSignal =
@@ -52,9 +69,9 @@ function isPreviewSurfaceRequest(request: NextRequest): boolean {
   if (isLocalDevHost(request)) return true;
 
   // In production, only the configured preview host may serve preview
-  // surfaces. Path-based routing on an IDE or Vercel branch origin would give
-  // workspace code access to all origin-wide IDE data.
-  return false;
+  // surfaces. An unconfigured Vercel deployment is the documented compatibility
+  // fallback and opts into the same-origin preview surface explicitly.
+  return isUnconfiguredVercelSurfaceHost(request);
 }
 
 function resolveIdeOriginForPreviewHeaders(request: NextRequest): string | null {

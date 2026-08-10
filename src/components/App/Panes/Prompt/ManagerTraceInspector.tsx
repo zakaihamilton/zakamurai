@@ -1,4 +1,3 @@
-import { createManagerReplayFixtureFromTrace } from '@/components/AI/Agent/ManagerReplay';
 import type { ManagerTrace } from '@/components/AI/Agent/ManagerTrace';
 import type { FileMap } from '@/components/AI/types';
 import Dialog from '@/components/ui/Dialog';
@@ -55,8 +54,12 @@ export default function ManagerTraceInspector({
   };
 
   const copyTrace = () => copy(JSON.stringify(trace, null, 2));
-  const copyReplayFixture = () =>
-    copy(JSON.stringify(createManagerReplayFixtureFromTrace(trace, files), null, 2));
+  const copyReplayFixture = async () => {
+    const { createManagerReplayFixtureFromTrace } = await import(
+      '@/components/AI/Agent/ManagerReplay'
+    );
+    await copy(JSON.stringify(createManagerReplayFixtureFromTrace(trace, files), null, 2));
+  };
 
   return (
     <div className={styles.container} data-testid="manager-trace-inspector">

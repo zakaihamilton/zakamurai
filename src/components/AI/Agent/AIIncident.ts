@@ -82,6 +82,9 @@ export type AIIncident = {
         | 'errorName'
         | 'errorMessageLength'
         | 'errorMessageFingerprint'
+        | 'taskKind'
+        | 'attempt'
+        | 'structuredOutput'
       >
     >;
     recoveries: WebLLMRecoveryEvent[];
@@ -327,6 +330,11 @@ export function createAIIncident({
           : {}),
         ...(metric.errorMessageFingerprint
           ? { errorMessageFingerprint: metric.errorMessageFingerprint }
+          : {}),
+        ...(metric.taskKind ? { taskKind: metric.taskKind } : {}),
+        ...(metric.attempt !== undefined ? { attempt: metric.attempt } : {}),
+        ...(metric.structuredOutput !== undefined
+          ? { structuredOutput: metric.structuredOutput }
           : {}),
       })),
       recoveries: recoveries.map((recovery) => ({ ...recovery })),

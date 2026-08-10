@@ -12,6 +12,7 @@ import {
   validateFileContentType,
   validateForbiddenStateLibraryUsage,
   validateGeneratedPlaceholder,
+  validateGeneratedSourceShape,
   validateProjectPath,
   validateRequestFulfillment,
   workspaceFulfillsInteractiveRequest,
@@ -372,6 +373,20 @@ export default App;
     `;
     expect(validateCssModuleUsage('src/App.jsx', duplicateStyles)).toContain(
       'styles is declared more than once',
+    );
+  });
+
+  it('rejects component payloads that include bootstrap code or CSS-style objects', () => {
+    const bootstrap = `import ReactDOM from 'react-dom/client';
+export default function App() { return <main />; }
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);`;
+    const cssObject = `const styles = { minHeight: '100vh', background: '#111' };
+export default function App() { return <main />; }`;
+
+    expect(validateGeneratedSourceShape('src/App.jsx', bootstrap)).toContain('ReactDOM bootstrap');
+    expect(validateGeneratedSourceShape('src/App.jsx', cssObject)).toContain('CSS-style object');
+    expect(validateAIChanges([{ path: 'src/App.jsx', content: bootstrap }]).rejected[0]).toContain(
+      'ReactDOM bootstrap',
     );
   });
 

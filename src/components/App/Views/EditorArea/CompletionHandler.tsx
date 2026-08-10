@@ -1,3 +1,4 @@
+import { COMPLETION_RESPONSE_FORMAT } from '@/components/AI/CompletionResponseFormat';
 import { COMPLETION_SYSTEM_PROMPT } from '@/components/AI/Prompts';
 import { RagState } from '@/components/AI/RagState';
 import {
@@ -379,6 +380,9 @@ export default function useCompletion({
             model: completionModelId,
             signal: completionController.signal,
             requestKind: 'completion',
+            responseFormat: COMPLETION_RESPONSE_FORMAT,
+            taskKind: 'completion',
+            attempt: 1,
             onRecovery: (recovery) => {
               actualCompletionModelId = recovery.modelId;
               activeCompletionModelRef.current = recovery.modelId;

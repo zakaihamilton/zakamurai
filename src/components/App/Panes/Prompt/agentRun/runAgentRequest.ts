@@ -1,5 +1,4 @@
 import { applyAgentChanges } from '@/components/AI/Agent/Applier';
-import { runManager } from '@/components/AI/Agent/ManagerRunner';
 import type { AgentEvent, RunManagerOptions, RunManagerResult } from '@/components/AI/types';
 import type { ExtendedEditorState } from '@/components/App/Views/EditorArea/types';
 import type { FileSystemApi } from '@/components/App/types';
@@ -99,6 +98,7 @@ export async function runAgentRequest({
       appState,
       appendReasoning: runState.appendReasoning,
     });
+    const { runManager } = await import('@/components/AI/Agent/ManagerRunner');
     const manager = runManager as (options: RunManagerOptions) => Promise<RunManagerResult>;
     const result = await manager({
       request: userMsg,
@@ -124,6 +124,16 @@ export async function runAgentRequest({
       },
       ...createManagerToolOptions({ Compiler, fs, sidebarState }),
       onEvent: (managerEvent) => {
+        if (managerEvent.type === 'validation') {
+          const output = managerEvent.output || managerEvent.message || '';
+          runState.recordValidation(
+            /(?:"status"\s*:\s*"passed"|validation passed)/i.test(output)
+              ? 'passed'
+              : /(?:"status"\s*:\s*"failed"|validation failed)/i.test(output)
+                ? 'failed'
+                : 'unavailable',
+          );
+        }
         const legacyAction = managerEvent as unknown as AgentEvent;
         if (managerEvent.type === 'tool' || legacyAction.type === 'tool') {
           const tool =

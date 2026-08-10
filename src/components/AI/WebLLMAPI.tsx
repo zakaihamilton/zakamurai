@@ -1,6 +1,3 @@
-/**
- * @fileoverview Browser-local LLM inference via @mlc-ai/web-llm (lazy-loaded).
- */
 import type {
   WebLLMGenerationMetrics,
   WebLLMMessage,
@@ -25,6 +22,12 @@ import {
   recoveryReason,
   unwrapAttemptError,
 } from './WebLLMRecovery';
+import {
+  clearModelCircuitBreakers,
+  clearModelFailure,
+  isModelCircuitOpen,
+  noteModelFailure,
+} from './WebLLMReliabilityState';
 import { clearSessionHistories, runSessionCompletion } from './WebLLMSession';
 import { setWebLLMCachedModelIds, updateWebLLMEngine } from './WebLLMState';
 export { RECOMMENDED_WEB_LLM_MODEL, WEB_LLM_MODELS } from './WebLLMModels';
@@ -38,6 +41,7 @@ const CONTEXT_SAFETY_TOKENS = 128;
 const DEFAULT_CONTEXT_WINDOW_SIZE = 4096;
 const WEB_LLM_IDLE_UNLOAD_MS = 60_000;
 const RAG_RELEASE_TIMEOUT_MS = 12_000;
+const FALLBACK_TTL_MS = 10 * 60_000;
 
 type CompletionUsage = {
   prompt_tokens?: number;
@@ -96,6 +100,7 @@ type PendingRequest = {
 type SessionFallback = {
   modelId: string;
   reason: WebLLMRecoveryReason;
+  expiresAt: number;
 };
 
 type AttemptResult = {
@@ -420,7 +425,6 @@ const createEngine = async (
     });
     throw error;
   }
-
   try {
     const engine = await raceWithAbort(Promise.race([rawEnginePromise, stall]), options.signal);
     updateWebLLMEngine(selectedModel, {
@@ -503,6 +507,8 @@ const createGenerationOptions = (modelId: string, options: WebLLMOptions) => {
     ...(modelId.startsWith('Qwen3') ? { extra_body: { enable_thinking: false } } : {}),
   };
   if (options.max_tokens !== undefined) generationOptions.max_tokens = options.max_tokens;
+  if (options.seed !== undefined) generationOptions.seed = options.seed;
+  if (options.responseFormat) generationOptions.response_format = options.responseFormat;
   return generationOptions;
 };
 
@@ -715,6 +721,10 @@ const runAttempt = async (
 const getRememberedFallback = async (requestedModelId: string): Promise<SessionFallback | null> => {
   const fallback = sessionFallbacks.get(requestedModelId);
   if (!fallback) return null;
+  if (fallback.expiresAt <= Date.now()) {
+    sessionFallbacks.delete(requestedModelId);
+    return null;
+  }
   try {
     const { hasModelInCache } = await loadWebLLM();
     if (await hasModelInCache(fallback.modelId)) return fallback;
@@ -724,6 +734,8 @@ const getRememberedFallback = async (requestedModelId: string): Promise<SessionF
   sessionFallbacks.delete(requestedModelId);
   return null;
 };
+
+const waitForNetworkRetry = () => new Promise<void>((resolve) => setTimeout(resolve, 250));
 
 const emitRecovery = (options: WebLLMOptions, event: WebLLMRecoveryEvent) => {
   safeCallback(options.onRecovery, event);
@@ -742,8 +754,13 @@ const executeWithRecovery = async (
   options: WebLLMOptions,
 ): Promise<{ result: AttemptResult; recoveryCount: number }> => {
   let recoveryCount = 0;
+  let retryMessages = messages;
   const rememberedFallback = await getRememberedFallback(requestedModelId);
-  const modelId = rememberedFallback?.modelId || requestedModelId;
+  let modelId = rememberedFallback?.modelId || requestedModelId;
+  if (!rememberedFallback && isModelCircuitOpen(requestedModelId)) {
+    const cachedModelIds = await getCachedWebLLMModelIds();
+    modelId = findCachedFallbackModelId(requestedModelId, cachedModelIds) || requestedModelId;
+  }
   if (rememberedFallback) {
     recoveryCount++;
     emitRecovery(options, {
@@ -757,11 +774,15 @@ const executeWithRecovery = async (
   }
 
   try {
-    return { result: await runAttempt(modelId, messages, onUpdate, options), recoveryCount };
+    const result = await runAttempt(modelId, messages, onUpdate, options);
+    clearModelFailure(modelId);
+    if (modelId === requestedModelId) sessionFallbacks.delete(requestedModelId);
+    return { result, recoveryCount };
   } catch (firstError) {
     if (isAbortError(firstError, options.signal)) throw firstError;
     const firstReason = recoveryReason(firstError);
     if (!firstReason) throw firstError;
+    noteModelFailure(modelId, firstReason);
     recoveryCount++;
     // runAttempt wraps every non-abort failure with its phase.
     const firstPhase = (firstError as WebLLMAttemptError).phase;
@@ -775,15 +796,50 @@ const executeWithRecovery = async (
     });
     updateWebLLMEngine(modelId, { status: 'recovering', error: errorMessage(firstError) });
     safeCallback(onUpdate, '');
-    await disposeCurrentEngine(modelId);
+    if (firstReason === 'invalid-context') {
+      clearSessionHistories();
+      retryMessages = ensureSystemMessageFirst(messages.map((message) => ({ ...message })));
+    } else {
+      await disposeCurrentEngine(modelId);
+    }
+    if (firstReason === 'network-failure') await waitForNetworkRetry();
+
+    // Retrying the same allocation after OOM is counterproductive. A repeatedly stalled
+    // model is also isolated for this session and moved directly to a cached smaller tier.
+    if (firstReason === 'out-of-memory' || isModelCircuitOpen(modelId)) {
+      const cachedModelIds = await getCachedWebLLMModelIds();
+      const fallbackModelId = findCachedFallbackModelId(modelId, cachedModelIds);
+      if (!fallbackModelId) throw firstError;
+      recoveryCount++;
+      emitRecovery(options, {
+        requestedModelId,
+        modelId: fallbackModelId,
+        phase: firstPhase,
+        action: 'fallback',
+        reason: firstReason,
+        attempt: recoveryCount,
+      });
+      sessionFallbacks.set(requestedModelId, {
+        modelId: fallbackModelId,
+        reason: firstReason,
+        expiresAt: Date.now() + FALLBACK_TTL_MS,
+      });
+      const result = await runAttempt(fallbackModelId, retryMessages, onUpdate, options);
+      clearModelFailure(fallbackModelId);
+      return { result, recoveryCount };
+    }
   }
 
   try {
-    return { result: await runAttempt(modelId, messages, onUpdate, options), recoveryCount };
+    const result = await runAttempt(modelId, retryMessages, onUpdate, options);
+    clearModelFailure(modelId);
+    sessionFallbacks.delete(requestedModelId);
+    return { result, recoveryCount };
   } catch (retryError) {
     if (isAbortError(retryError, options.signal)) throw retryError;
     const retryReason = recoveryReason(retryError);
     if (!retryReason) throw retryError;
+    noteModelFailure(modelId, retryReason);
     const cachedModelIds = await getCachedWebLLMModelIds();
     const fallbackModelId = findCachedFallbackModelId(modelId, cachedModelIds);
     if (!fallbackModelId) throw retryError;
@@ -802,6 +858,7 @@ const executeWithRecovery = async (
     sessionFallbacks.set(requestedModelId, {
       modelId: fallbackModelId,
       reason: retryReason,
+      expiresAt: Date.now() + FALLBACK_TTL_MS,
     });
     await disposeCurrentEngine(modelId);
     updateWebLLMEngine(modelId, {
@@ -809,10 +866,9 @@ const executeWithRecovery = async (
       error: `Using cached fallback ${fallbackModelId}.`,
       generating: false,
     });
-    return {
-      result: await runAttempt(fallbackModelId, messages, onUpdate, options),
-      recoveryCount,
-    };
+    const result = await runAttempt(fallbackModelId, messages, onUpdate, options);
+    clearModelFailure(fallbackModelId);
+    return { result, recoveryCount };
   }
 };
 
@@ -880,9 +936,11 @@ export const cacheWebLLMModel = async (
 };
 
 export const deleteCachedWebLLMModel = async (modelId: string): Promise<void> => {
+  clearModelFailure(modelId);
   for (const [requestedModelId, fallback] of sessionFallbacks.entries()) {
     if (requestedModelId === modelId || fallback.modelId === modelId) {
       sessionFallbacks.delete(requestedModelId);
+      clearModelFailure(requestedModelId);
     }
   }
   await interruptWebLLMModel(modelId);
@@ -987,6 +1045,9 @@ export const askWebLLM = async (
       submittedDeltaBytes: result.submittedDeltaBytes,
       submittedDeltaTokens: result.submittedDeltaTokens,
       reusedContextTokens: result.reusedContextTokens,
+      taskKind: requestOptions.taskKind,
+      attempt: requestOptions.attempt,
+      structuredOutput: Boolean(requestOptions.responseFormat),
       ...heapMetrics(),
     });
     return result.text;
@@ -1003,6 +1064,9 @@ export const askWebLLM = async (
       startedAt,
       totalMs: Date.now() - startedAt,
       recoveryCount,
+      taskKind: requestOptions.taskKind,
+      attempt: requestOptions.attempt,
+      structuredOutput: Boolean(requestOptions.responseFormat),
       ...(failurePhase ? { failurePhase } : {}),
       ...(typeof failureDetails?.name === 'string' ? { errorName: failureDetails.name } : {}),
       ...(!aborted
@@ -1075,6 +1139,7 @@ export const unloadAllWebLLMEngines = async (): Promise<void> => {
   clearIdleUnloadTimer();
   unloadWhenIdle = false;
   sessionFallbacks.clear();
+  clearModelCircuitBreakers();
   await interruptWebLLM();
   await enqueueGeneration(undefined, async () => {
     await disposeCurrentEngine();

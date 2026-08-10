@@ -29,6 +29,9 @@ const trimOrigin = (value: unknown): string | null => {
   }
 };
 
+const hasOriginValue = (value: unknown): boolean =>
+  typeof value === 'string' && value.trim().length > 0;
+
 const toHostOrigin = (host: unknown): string | null => {
   if (typeof host !== 'string' || !host.trim()) return null;
   return trimOrigin(host.includes('://') ? host : `https://${host}`);
@@ -84,8 +87,20 @@ export function isVercelAppHost(hostname: string): boolean {
   return typeof hostname === 'string' && hostname.toLowerCase().endsWith('.vercel.app');
 }
 
-function getVercelDeploymentOrigins(windowOrigin: string): PreviewOrigins | null {
+function getVercelDeploymentOrigins(
+  windowOrigin: string,
+  { allowSameOriginFallback }: { allowSameOriginFallback: boolean },
+): PreviewOrigins | null {
   if (!windowOrigin || !isVercelAppHost(new URL(windowOrigin).hostname)) return null;
+
+  if (allowSameOriginFallback) {
+    return {
+      ideOrigin: windowOrigin,
+      previewOrigin: windowOrigin,
+      isIsolated: false,
+      useSurfaceQuery: true,
+    };
+  }
 
   // A path or service-worker scope cannot isolate origin-wide storage. Fail
   // closed on branch deployments instead of executing workspace code beside
@@ -209,7 +224,13 @@ export function getPreviewOrigins({
     };
   }
 
-  const vercelDeploymentOrigins = windowOrigin ? getVercelDeploymentOrigins(windowOrigin) : null;
+  const vercelDeploymentOrigins = windowOrigin
+    ? getVercelDeploymentOrigins(windowOrigin, {
+        allowSameOriginFallback:
+          !hasOriginValue(process.env.NEXT_PUBLIC_IDE_ORIGIN) &&
+          !hasOriginValue(process.env.NEXT_PUBLIC_PREVIEW_ORIGIN),
+      })
+    : null;
   if (vercelDeploymentOrigins) {
     return vercelDeploymentOrigins;
   }

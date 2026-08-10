@@ -50,7 +50,7 @@ preview runtime at `http://localhost:3001`. The preview executes user projects i
 the browser on the second origin; it never receives same-origin access to the IDE.
 
 For production, configure these Vercel environment variables and attach both domains
-to the same Vercel project:
+to the same Vercel project for isolated preview execution:
 
 ```bash
 NEXT_PUBLIC_IDE_ORIGIN=https://www.zakamurai.com
@@ -60,9 +60,11 @@ NEXT_PUBLIC_PREVIEW_ORIGIN=https://preview.zakamurai.com
 Add `preview.zakamurai.com` in **Project Settings → Domains** and create the CNAME
 record Vercel provides. The preview subdomain must not redirect to `www`.
 
-The preview must remain on a different origin from the IDE. Its handshake accepts only the active
-iframe, configured origin, and current session; missing or matching origins show a setup error
-rather than falling back to same-origin execution.
+If these variables are omitted on a `*.vercel.app` deployment, the app automatically uses a
+same-origin `/__preview/` surface so it remains usable without deployment configuration. This
+fallback has weaker isolation because preview code shares the deployment origin; configure both
+variables for production isolation. Its handshake still accepts only the active iframe, expected
+origin, protocol version, and current session.
 
 ### Production build
 
@@ -122,6 +124,9 @@ npm run test:ai-manager:watch # Watch the focused manager suite while debugging
 npm run test:ai-manager:replay # Replay deterministic JSON manager fixtures
 npm run test:ai-manager:smoke # Opt-in real WebLLM manager smoke test
 npm run test:promptfoo # Static AI compliance eval (no API keys)
+npm run test:ai-evals # Deterministic, baseline-gated AI reliability suite
+npm run test:ai-qualification # Seeded real-WebGPU release qualification
+npm run update:ai-eval-baseline -- --qualification-reports run-1.json,run-2.json,run-3.json # Explicit baseline ratchet
 npm run test:ai-soak # Mocked 200-request AI lifecycle and cleanup regression
 npm run analyze:ai -- report.json # Summarize AI metrics from an exported support report
 npm run check:architecture # Enforce component architecture rules
@@ -157,6 +162,16 @@ files remain and that the generated payload stays within its deployment budget.
 
 Static `npm run test:promptfoo` uses the `echo` provider in [promptfooconfig.yaml](./promptfooconfig.yaml)
 and golden fixtures in `tests/ai-golden/` — **no API keys required**. It is included in `verify` and CI.
+
+The versioned reliability suite in `tests/ai-evals/` covers agent edits, completions, grounded
+answers, model lifecycle, and injected recovery failures for the 3B, 2B, 1.5B, and 0.8B tiers.
+`test:ai-evals` is deterministic and blocks ordinary verification. Release qualification runs each
+model-facing case with three fixed seeds on real WebGPU; set `ZAKAMURAI_AI_BROWSER_PROFILE`,
+`ZAKAMURAI_AI_HARDWARE_PROFILE`, and `ZAKAMURAI_AI_QUALIFICATION_REPORT` before saving its JSON
+report. Use `ZAKAMURAI_AI_QUALIFICATION_RECORD_ONLY=1` while collecting the first three reports for
+a new profile. Baselines may be updated only from
+three qualification reports via `update:ai-eval-baseline`, which prints score deltas and newly
+passing or failing cases for review.
 
 The AI Manager has a fast deterministic debugging loop. Add or update a versioned fixture under
 `tests/ai-manager/fixtures/`, then run `npm run test:ai-manager:replay` to exercise the real manager

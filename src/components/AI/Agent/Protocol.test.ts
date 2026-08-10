@@ -166,8 +166,8 @@ export default function App() {
     });
   });
 
-  it('accepts separately fenced metadata and an unfinished source fence', () => {
-    expect(
+  it('rejects separately fenced metadata with an unfinished source fence', () => {
+    expect(() =>
       parseAgentAction(`\`\`\`json
 {"action":"write_file","path":"src/App.jsx"}
 \`\`\`
@@ -176,11 +176,19 @@ export default function App() {
 export default function App() {
   return <main>Tasks</main>;
 }`),
-    ).toMatchObject({
-      action: 'write_file',
-      path: 'src/App.jsx',
-      content: 'export default function App() {\n  return <main>Tasks</main>;\n}',
-    });
+    ).toThrow(/content/);
+  });
+
+  it('rejects multiple source fences for the same destination', () => {
+    expect(() =>
+      parseAgentAction(`{"action":"write_file","path":"src/App.jsx"}
+\`\`\`jsx
+export default function App() { return <main>First</main>; }
+\`\`\`
+\`\`\`jsx
+export default function App() { return <main>Second</main>; }
+\`\`\``),
+    ).toThrow(/exactly one source fence/);
   });
 
   it('recovers loose single-quoted write metadata next to a source fence', () => {

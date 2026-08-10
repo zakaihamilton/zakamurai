@@ -76,7 +76,7 @@ describe('isolated preview configuration', () => {
     });
   });
 
-  it('fails closed instead of running previews on Vercel branch IDE origins', () => {
+  it('fails closed instead of running previews on configured Vercel branch IDE origins', () => {
     vi.stubEnv('NEXT_PUBLIC_IDE_ORIGIN', 'https://www.zakamurai.com');
     vi.stubEnv('NEXT_PUBLIC_PREVIEW_ORIGIN', 'https://preview.zakamurai.com');
 
@@ -92,11 +92,27 @@ describe('isolated preview configuration', () => {
     expect(getPreviewServiceWorkerScope(origins)).toBe('/');
   });
 
-  it('does not invent preview subdomains for Vercel deployment URLs', () => {
+  it('uses a same-origin preview surface for unconfigured Vercel deployments', () => {
+    const windowOrigin = 'https://zakamurai-nlxp189a3-zakai-hamiltons-projects.vercel.app';
+    const origins = getPreviewOrigins({ windowOrigin });
+    expect(origins).toEqual({
+      ideOrigin: windowOrigin,
+      previewOrigin: windowOrigin,
+      isIsolated: false,
+      useSurfaceQuery: true,
+    });
+    expect(getPreviewConfigurationError(origins)).toBeNull();
+    expect(buildPreviewUrl(origins, 'session-123')).toBe(
+      `${windowOrigin}/__preview/host?session=session-123&zakamurai-surface=preview`,
+    );
+  });
+
+  it('does not use the fallback when an origin variable is partially configured', () => {
+    vi.stubEnv('NEXT_PUBLIC_IDE_ORIGIN', 'https://www.zakamurai.com');
     const windowOrigin = 'https://zakamurai-nlxp189a3-zakai-hamiltons-projects.vercel.app';
     const origins = getPreviewOrigins({ windowOrigin });
     expect(origins.previewOrigin).toBeNull();
-    expect(origins.useSurfaceQuery).toBeUndefined();
+    expect(getPreviewConfigurationError(origins)).toContain('not configured');
   });
 
   it('derives preview and IDE hosts from a preview subdomain when no Vercel URLs exist', () => {

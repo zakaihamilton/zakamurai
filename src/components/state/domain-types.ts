@@ -145,6 +145,7 @@ export interface AgentReasoningEntry {
 
 export interface AgentRunUsage {
   modelIds: string[];
+  requestedModelIds?: string[];
   modelCalls: number;
   outcomes: { success: number; error: number; aborted: number };
   promptTokens: number;
@@ -157,6 +158,10 @@ export interface AgentRunUsage {
   decodeTokensPerSecond: number;
   decodeTokensPerSecondCalls: number;
   toolCalls: Record<string, number>;
+  taskKinds?: string[];
+  recoveryReasons?: string[];
+  repairAttempts?: number;
+  finalValidationStatus?: 'passed' | 'failed' | 'unavailable';
 }
 
 export interface AgentSession {

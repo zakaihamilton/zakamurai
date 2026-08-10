@@ -30,10 +30,20 @@ export function createAgentRunState({
   const recordMetrics = (metrics: WebLLMGenerationMetrics) => {
     runMetrics.push(metrics);
     const modelIds = new Set(runUsage.modelIds);
+    const requestedModelIds = new Set(runUsage.requestedModelIds || []);
+    const taskKinds = new Set(runUsage.taskKinds || []);
     if (metrics.modelId) modelIds.add(metrics.modelId);
+    if (metrics.requestedModelId) requestedModelIds.add(metrics.requestedModelId);
+    if (metrics.taskKind) taskKinds.add(metrics.taskKind);
     runUsage = {
       ...runUsage,
       modelIds: [...modelIds],
+      requestedModelIds: [...requestedModelIds],
+      taskKinds: [...taskKinds],
+      repairAttempts:
+        metrics.taskKind === 'repair-file'
+          ? Math.max(runUsage.repairAttempts || 0, metrics.attempt || 1)
+          : runUsage.repairAttempts || 0,
       modelCalls: runUsage.modelCalls + 1,
       outcomes: {
         ...runUsage.outcomes,
@@ -57,6 +67,16 @@ export function createAgentRunState({
 
   const recordRecovery = (event: WebLLMRecoveryEvent) => {
     runRecoveries.push(event);
+    runUsage = {
+      ...runUsage,
+      recoveryReasons: [...new Set([...(runUsage.recoveryReasons || []), event.reason])],
+    };
+    publishRunUsage();
+  };
+
+  const recordValidation = (status: 'passed' | 'failed' | 'unavailable') => {
+    runUsage = { ...runUsage, finalValidationStatus: status };
+    publishRunUsage();
   };
 
   const recordTool = (tool: string) => {
@@ -112,6 +132,7 @@ export function createAgentRunState({
     runRecoveries,
     recordMetrics,
     recordRecovery,
+    recordValidation,
     recordTool,
     appendReasoning,
   };

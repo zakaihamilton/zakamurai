@@ -206,6 +206,11 @@ export type ManagerModelCall = {
   top_p: number;
   max_tokens: number;
   contextWindowSize?: number;
+  /** Repeatable sampling for qualification runs. Production calls normally omit this. */
+  seed?: number;
+  responseFormat?: ModelResponseFormat;
+  taskKind?: ModelTaskKind;
+  attempt?: number;
   onMetrics?: (metrics: WebLLMGenerationMetrics) => void;
   onRecovery?: (event: WebLLMRecoveryEvent) => void;
   /** Stable prompt-conversation key used by the worker-resident context session. */
@@ -243,6 +248,8 @@ export type RunAgentOptions = {
   /** Optional worker-resident model session. Falls back to the legacy client when absent. */
   modelSession?: AgentModelSession;
   styleProfile?: import('./Agent/ProjectStyleProfile').ProjectStyleProfile;
+  /** Qualification-only deterministic sampling seed. */
+  seed?: number;
 };
 
 export type AgentModelSession = {
@@ -293,6 +300,8 @@ export type RunManagerOptions = ManagerToolOptions & {
   modelSession?: AgentModelSession;
   onTrace?: (trace: import('./Agent/ManagerTrace').ManagerTrace) => void;
   styleProfile?: import('./Agent/ProjectStyleProfile').ProjectStyleProfile;
+  /** Qualification-only deterministic sampling seed. */
+  seed?: number;
 };
 
 export type RunManagerResult = {
@@ -330,6 +339,54 @@ export type WebLLMMessage = {
 };
 
 export type WebLLMRequestKind = 'agent' | 'completion' | 'model-cache' | 'general';
+
+export type ModelTaskKind = 'plan-edit' | 'write-file' | 'repair-file' | 'answer' | 'completion';
+
+export type ModelResponseFormat =
+  | { type: 'json_object'; schema?: string }
+  | { type: 'grammar'; grammar: string };
+
+export type TaskContract = {
+  version: 1;
+  request: string;
+  scope: 'file' | 'project';
+  activeFile: string | null;
+  allowedPaths: string[];
+  acceptanceCriteria: string[];
+  requiredValidations: Array<'content' | 'build' | 'preview' | 'console'>;
+  maxModelCalls: number;
+  maxRepairRounds: number;
+};
+
+export type ModelTask =
+  | { kind: 'plan-edit'; contract: TaskContract; evidence: string }
+  | {
+      kind: 'write-file';
+      contract: TaskContract;
+      targetPath: string;
+      currentContent: string;
+      relatedFiles: FileMap;
+    }
+  | {
+      kind: 'repair-file';
+      contract: TaskContract;
+      targetPath: string;
+      currentContent: string;
+      diagnostics: string;
+      attempt: number;
+    }
+  | { kind: 'answer'; contract: TaskContract; evidence: string }
+  | { kind: 'completion'; filePath: string; before: string; after: string };
+
+export type ModelCapabilityProfile = {
+  tier: 'recommended' | 'compact' | 'recovery';
+  contextWindowSize: number;
+  generationTokens: number;
+  recoveryTokens: number;
+  filesPerGeneration: 1;
+  supportsAllTaskKinds: true;
+  hostAssistance: 'standard' | 'enhanced';
+};
 
 export type WebLLMRecoveryReason =
   | 'device-lost'
@@ -373,6 +430,9 @@ export type WebLLMGenerationMetrics = {
   submittedDeltaBytes?: number;
   submittedDeltaTokens?: number;
   reusedContextTokens?: number;
+  taskKind?: ModelTaskKind;
+  attempt?: number;
+  structuredOutput?: boolean;
 };
 
 export type WebLLMOptions = {
@@ -393,6 +453,10 @@ export type WebLLMOptions = {
   onRecovery?: ((event: WebLLMRecoveryEvent) => void) | null;
   onMetrics?: ((metrics: WebLLMGenerationMetrics) => void) | null;
   sessionId?: string;
+  seed?: number;
+  responseFormat?: ModelResponseFormat;
+  taskKind?: ModelTaskKind;
+  attempt?: number;
 };
 
 export type AskWebLLM = (
