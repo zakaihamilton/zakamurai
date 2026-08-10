@@ -78,6 +78,9 @@ export default function PreviewArea() {
       });
       previewState((draft) => {
         draft.serverError = message;
+        if (message.includes('Preview server is not ready')) {
+          draft.isCompilerReady = false;
+        }
       });
     },
     [previewAreaUiState, previewState],

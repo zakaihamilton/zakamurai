@@ -409,6 +409,7 @@ export interface WorkspaceProfileStateShape {
   include: string[];
   exclude: string[];
   maxFileBytes: number;
+  styleProfile: import('@/components/AI/Agent/ProjectStyleProfile').ProjectStyleProfile | null;
 }
 
 export interface WorkspaceHealthStateShape {

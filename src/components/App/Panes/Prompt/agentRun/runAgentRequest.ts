@@ -49,6 +49,7 @@ export type RunAgentRequestParams = {
   selectedModel: string;
   cachedModelIds: string[];
   webLLMEngines: Record<string, WebLLMEngineState>;
+  styleProfile?: import('@/components/AI/Agent/ProjectStyleProfile').ProjectStyleProfile;
   patchSession: (sessionId: string, patch: Partial<AgentSession>) => void;
   pushSessionMessage: (sessionId: string, message: AgentSessionMessage) => void;
   createSessionMessage: SessionMessageFactory;
@@ -74,6 +75,7 @@ export async function runAgentRequest({
   selectedModel,
   cachedModelIds,
   webLLMEngines,
+  styleProfile,
   patchSession,
   pushSessionMessage,
   createSessionMessage,
@@ -110,6 +112,7 @@ export async function runAgentRequest({
       selectedLines: effectiveScope === 'file' ? selectedLines : [],
       files: workspaceFiles,
       model: selectedModel,
+      styleProfile,
       signal: controller.signal,
       workspaceIndex: getWorkspaceIndex() as never,
       onMetrics: runState.recordMetrics,

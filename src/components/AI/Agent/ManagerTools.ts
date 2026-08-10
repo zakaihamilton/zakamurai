@@ -24,6 +24,7 @@ export type ManagerToolCall = {
 
 export type ManagerToolResult = {
   tool: ManagerToolName;
+  input?: Record<string, unknown>;
   value: unknown;
   text: string;
 };
@@ -172,6 +173,7 @@ export async function executeManagerTool(
 
   return {
     tool: call.tool,
+    ...(input && Object.keys(input).length ? { input: { ...input } } : {}),
     value,
     text: clip(typeof value === 'string' ? value : JSON.stringify(value)),
   };
@@ -186,7 +188,12 @@ export function createManagerToolContext(
 }
 
 export function formatContextResults(results: ManagerToolResult[]): string {
-  return results.map((result) => `[${result.tool}]\n${result.text}`).join('\n\n');
+  return results
+    .map((result) => {
+      const input = result.input ? ` ${JSON.stringify(result.input)}` : '';
+      return `[${result.tool}${input}]\n${result.text}`;
+    })
+    .join('\n\n');
 }
 
 export type { SemanticSearchResult };

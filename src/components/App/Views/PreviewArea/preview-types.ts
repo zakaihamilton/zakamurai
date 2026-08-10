@@ -90,6 +90,17 @@ export type PreviewMessage = {
   elements?: string[];
   screenshotCaptured?: boolean;
   screenshot?: string;
+  styleAudit?: PreviewStyleAudit;
+};
+
+export type PreviewStyleAudit = {
+  horizontalOverflow: boolean;
+  collapsedControls: string[];
+  missingExplicitColors: string[];
+  contrastFailures: string[];
+  unnamedControls: string[];
+  missingFocusVisible: boolean;
+  issues: string[];
 };
 
 export type PreviewEvidence = {
@@ -99,6 +110,7 @@ export type PreviewEvidence = {
   elements?: string[];
   screenshotCaptured?: boolean;
   screenshot?: string;
+  styleAudit?: PreviewStyleAudit;
 };
 
 export type PreviewErrorActionsProps = {

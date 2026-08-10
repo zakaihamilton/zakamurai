@@ -111,6 +111,7 @@ async function executeManager({
   onMetrics,
   onRecovery,
   priorContext = '',
+  styleProfile,
   modelClient,
   recorder,
   onWorkspace,
@@ -151,6 +152,13 @@ async function executeManager({
 
   recorder.setPlan(plan);
   onEvent({ type: 'routing', turn: 0, plan, message: `Request routed to ${plan.intent}.` });
+  if (styleProfile) {
+    onEvent({
+      type: 'context',
+      turn: 0,
+      message: `Project style profile: ${styleProfile.source}; fingerprint ${styleProfile.fingerprint}.`,
+    });
+  }
 
   if (!plan.modelRequired) {
     if (plan.intent === 'workspace-query') {
@@ -292,6 +300,7 @@ async function executeManager({
       workspace,
       workspaceIndex,
       modelClient,
+      styleProfile,
       visualMode: isLikelyUiRequest(request) || planIncludesTool(plan, 'inspect_preview'),
       requirePreviewInspection: planIncludesTool(plan, 'inspect_preview'),
       onEvent: (event) => {

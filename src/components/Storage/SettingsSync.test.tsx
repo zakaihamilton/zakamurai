@@ -410,6 +410,7 @@ describe('useSettingsSync', () => {
       include: ['src'],
       exclude: ['dist'],
       maxFileBytes: 1024,
+      styleProfile: null,
     });
     expect(Settings.setChangeSets).toHaveBeenCalledWith({
       activeId: 'cs-1',

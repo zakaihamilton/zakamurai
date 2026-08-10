@@ -242,6 +242,7 @@ export type RunAgentOptions = {
   modelClient?: ManagerModelClient;
   /** Optional worker-resident model session. Falls back to the legacy client when absent. */
   modelSession?: AgentModelSession;
+  styleProfile?: import('./Agent/ProjectStyleProfile').ProjectStyleProfile;
 };
 
 export type AgentModelSession = {
@@ -291,6 +292,7 @@ export type RunManagerOptions = ManagerToolOptions & {
   sessionId?: string;
   modelSession?: AgentModelSession;
   onTrace?: (trace: import('./Agent/ManagerTrace').ManagerTrace) => void;
+  styleProfile?: import('./Agent/ProjectStyleProfile').ProjectStyleProfile;
 };
 
 export type RunManagerResult = {

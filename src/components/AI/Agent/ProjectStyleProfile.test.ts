@@ -1,0 +1,199 @@
+import { DEFAULT_CONTENTS } from '@/components/Storage/InitialData';
+import { describe, expect, it } from 'vitest';
+import {
+  createProjectStyleProfile,
+  generateProjectCssModule,
+  resolveProjectStyleProfile,
+} from './ProjectStyleProfile';
+
+describe('ProjectStyleProfile', () => {
+  it('uses the stable warm profile for an unstyled scratch project', () => {
+    const profile = createProjectStyleProfile({ 'src/App.jsx': 'export default null' });
+    expect(profile).toMatchObject({ source: 'default' });
+    expect(profile.tokens).toMatchObject({ background: '#f5f1ea', accent: '#a4472f' });
+  });
+
+  it('prefers project custom properties when inferring tokens', () => {
+    const profile = createProjectStyleProfile({
+      'src/App.module.css': `:root {
+        --color-bg: #101418;
+        --color-surface: #202830;
+        --color-text: #f4f6f8;
+        --color-accent: #d18b47;
+        --radius: 18px;
+      }`,
+    });
+    expect(profile.source).toBe('inferred');
+    expect(profile.tokens).toMatchObject({
+      background: '#101418',
+      surface: '#202830',
+      text: '#f4f6f8',
+      accent: '#d18b47',
+      radius: '18px',
+    });
+  });
+
+  it('preserves the existing dark-purple starter direction', () => {
+    const profile = createProjectStyleProfile(DEFAULT_CONTENTS);
+    expect(profile).toMatchObject({ source: 'inferred' });
+    expect(profile.tokens).toMatchObject({
+      background: '#050505',
+      text: '#ffffff',
+      accent: '#1f143a',
+      radius: '12px',
+    });
+  });
+
+  it('refreshes after CSS changes and discards persisted legacy overrides', () => {
+    const files = { 'src/App.module.css': ':root { --color-bg: #ffffff; }' };
+    const legacyOverride = {
+      ...createProjectStyleProfile(files),
+      source: 'override',
+      preference: 'charcoal-dark',
+    } as unknown as ReturnType<typeof createProjectStyleProfile>;
+    const replacement = resolveProjectStyleProfile(files, legacyOverride);
+    expect(replacement).not.toBe(legacyOverride);
+    expect(replacement).toMatchObject({ source: 'inferred' });
+
+    const inferred = createProjectStyleProfile(files);
+    const refreshed = resolveProjectStyleProfile(
+      { 'src/App.module.css': ':root { --color-bg: #111111; }' },
+      inferred,
+    );
+    expect(refreshed).not.toBe(inferred);
+    expect(refreshed.tokens.background).toBe('#111111');
+  });
+
+  it('generates byte-stable tokenized CSS from semantic roles', () => {
+    const profile = createProjectStyleProfile({});
+    const first = generateProjectCssModule({
+      source:
+        'import styles from "./App.module.css"; export default () => <main className={styles.app}><button className={styles.primaryAction}>Save</button><div className={styles.grid} /></main>;',
+      stylesheetPath: 'src/App.module.css',
+      profile,
+    });
+    const second = generateProjectCssModule({
+      source:
+        'import styles from "./App.module.css"; export default () => <main className={styles.grid}><button className={styles.primaryAction} /><div className={styles.app} /></main>;',
+      stylesheetPath: 'src/App.module.css',
+      profile,
+    });
+    expect(second).toBe(first);
+    expect(first).toContain('--color-accent: #a4472f');
+    expect(first).toContain('var(--color-accent)');
+    expect(first).toContain(':focus-visible');
+    expect(first).toContain('@media (width <= 640px)');
+  });
+
+  it('preserves authored declarations and adds only missing selectors', () => {
+    const profile = createProjectStyleProfile({});
+    const css = generateProjectCssModule({
+      source:
+        'import styles from "./Card.module.css"; export default () => <div className={styles.card}><p className={styles.muted}>Text</p></div>;',
+      stylesheetPath: 'src/components/Card.module.css',
+      profile,
+      existingCss: '.card { color: rebeccapurple; }',
+    });
+    expect(css).toContain('.card { color: rebeccapurple; }');
+    expect(css.match(/\.card\s*\{/g)).toHaveLength(1);
+    expect(css).toContain('.muted');
+    expect(css).not.toContain(':global(:root)');
+  });
+
+  it('fills a partial root token foundation without replacing authored token values', () => {
+    const existingCss = ':global(:root) { --color-bg: #101418; }\n.app { min-height: 100vh; }';
+    const css = generateProjectCssModule({
+      source:
+        'import styles from "./App.module.css"; export default () => <main className={styles.app}><input className={styles.control} /></main>;',
+      stylesheetPath: 'src/App.module.css',
+      profile: createProjectStyleProfile({ 'src/App.module.css': existingCss }),
+      existingCss,
+    });
+    expect(css.match(/--color-bg\s*:/g)).toHaveLength(1);
+    expect(css).toContain('--color-surface:');
+    expect(css).toContain('--color-text:');
+    expect(css).toContain('--font-family:');
+    expect(css).toContain('background: var(--color-bg)');
+  });
+
+  it('keeps inferred root tokens idempotent', () => {
+    const source =
+      'import styles from "./App.module.css"; export default () => <main className={styles.app} />;';
+    const warm = generateProjectCssModule({
+      source,
+      stylesheetPath: 'src/App.module.css',
+      profile: createProjectStyleProfile({}),
+    });
+    expect(
+      generateProjectCssModule({
+        source,
+        stylesheetPath: 'src/App.module.css',
+        profile: createProjectStyleProfile({ 'src/App.module.css': warm }),
+        existingCss: warm,
+      }),
+    ).toBe(warm);
+  });
+
+  it('fills interaction states per role when another focus rule is already authored', () => {
+    const existingCss = `.primaryAction { display: block; }
+.primaryAction:focus-visible { outline: 2px solid currentColor; }
+.control { display: block; }`;
+    const css = generateProjectCssModule({
+      source:
+        'import styles from "./Form.module.css"; export default () => <><button className={styles.primaryAction}>Save</button><input className={styles.control} /></>;',
+      stylesheetPath: 'src/components/Form.module.css',
+      profile: createProjectStyleProfile({}),
+      existingCss,
+    });
+    expect(css.match(/\.primaryAction:focus-visible/g)).toHaveLength(1);
+    expect(css).toContain('.primaryAction:hover:not(:disabled)');
+    expect(css).toContain('.primaryAction:disabled');
+    expect(css).toContain('.control:focus-visible');
+  });
+
+  it('emits responsive selectors only for roles referenced by the component', () => {
+    const css = generateProjectCssModule({
+      source:
+        'import styles from "./Feature.module.css"; export default () => <div className={styles.shell}><button className={styles.primaryAction}>Save</button></div>;',
+      stylesheetPath: 'src/components/Feature.module.css',
+      profile: createProjectStyleProfile({}),
+    });
+    const media = css.slice(css.indexOf('@media'));
+    expect(media).toContain('.primaryAction');
+    expect(media).not.toContain('.row');
+    expect(media).not.toContain('.grid');
+    expect(media).not.toContain('.secondaryAction');
+    expect(media).not.toContain('.dangerAction');
+  });
+
+  it.each([
+    {
+      name: 'form',
+      roles: ['field', 'control', 'primaryAction', 'error'],
+      expected: ['width: 100%', ':focus-visible', ':disabled'],
+    },
+    {
+      name: 'collection states',
+      roles: ['list', 'item', 'selected', 'completed', 'success'],
+      expected: ['list-style: none', 'text-decoration: line-through', '--color-success'],
+    },
+    {
+      name: 'responsive grid',
+      roles: ['shell', 'grid', 'card', 'secondaryAction'],
+      expected: ['repeat(auto-fit', '@media (width <= 640px)', '--shadow'],
+    },
+    {
+      name: 'game board',
+      roles: ['board', 'cell', 'status', 'dangerAction'],
+      expected: ['repeat(3', 'aspect-ratio: 1', '--color-danger'],
+    },
+  ])('generates the deterministic $name recipe', ({ roles, expected }) => {
+    const references = roles.map((role) => `<div className={styles.${role}} />`).join('');
+    const css = generateProjectCssModule({
+      source: `import styles from './Feature.module.css'; export default () => <>${references}</>;`,
+      stylesheetPath: 'src/components/Feature.module.css',
+      profile: createProjectStyleProfile({}),
+    });
+    for (const fragment of expected) expect(css).toContain(fragment);
+  });
+});

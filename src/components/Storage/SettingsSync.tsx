@@ -62,6 +62,7 @@ export function useSettingsSync(
     include: [],
     exclude: [],
     maxFileBytes: 512 * 1024,
+    styleProfile: null,
   };
   const { activeId: changeSetActiveId = null, items: changeSetItems = [] } = changeSetState ?? {
     activeId: null,
@@ -240,11 +241,13 @@ export function useSettingsSync(
       include: workspaceProfile.include || [],
       exclude: workspaceProfile.exclude || [],
       maxFileBytes: workspaceProfile.maxFileBytes,
+      styleProfile: workspaceProfile.styleProfile || null,
     });
   }, [
     workspaceProfile.exclude,
     workspaceProfile.include,
     workspaceProfile.maxFileBytes,
+    workspaceProfile.styleProfile,
     workspaceProfileState,
   ]);
 

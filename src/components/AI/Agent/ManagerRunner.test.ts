@@ -172,8 +172,11 @@ describe('runManager', () => {
       'Your next response must be exactly one write_file action for src/App.jsx',
     );
     expect(modelClient.mock.calls[0][0].messages[1].content).toContain('"react":"latest"');
-    expect(modelClient.mock.calls[0][0].messages[1].content).not.toContain(
+    expect(modelClient.mock.calls[0][0].messages[1].content).toContain(
       "import App from './App.jsx';",
+    );
+    expect(modelClient.mock.calls[0][0].messages[1].content).toContain(
+      'explicit import extensions',
     );
   });
 

@@ -4,6 +4,7 @@ import {
   PREVIEW_IFRAME_SANDBOX,
   PREVIEW_MESSAGE_SOURCE,
   PREVIEW_MESSAGE_TYPES,
+  collectPreviewStyleEvidence,
   injectPreviewErrorBridge,
   isTrustedPreviewMessage,
   parsePreviewMessage,
@@ -22,6 +23,9 @@ describe('previewSandbox', () => {
     const next = injectPreviewErrorBridge(html);
     expect(next).toContain('__zakamuraiPreviewBridge');
     expect(next.indexOf('__zakamuraiPreviewBridge')).toBeLessThan(next.indexOf('</head>'));
+    expect(next).toContain('control.labels');
+    expect(next).toContain('matchesSurface');
+    expect(next).toContain('firstElementChild');
   });
 
   it('is idempotent', () => {
@@ -52,6 +56,48 @@ describe('previewSandbox', () => {
         message: { nested: true },
       })?.message,
     ).toBe('[object Object]');
+  });
+
+  it('bounds and preserves computed style audit evidence', () => {
+    const parsed = parsePreviewMessage({
+      source: PREVIEW_MESSAGE_SOURCE,
+      type: PREVIEW_MESSAGE_TYPES.EVIDENCE,
+      styleAudit: {
+        horizontalOverflow: true,
+        collapsedControls: ['Save'],
+        missingExplicitColors: ['body background'],
+        contrastFailures: ['button 1.2:1'],
+        unnamedControls: ['input'],
+        missingFocusVisible: true,
+        issues: ['horizontal overflow'],
+      },
+    });
+    expect(parsed?.styleAudit).toMatchObject({
+      horizontalOverflow: true,
+      collapsedControls: ['Save'],
+      missingFocusVisible: true,
+      issues: ['horizontal overflow'],
+    });
+  });
+
+  it('recognizes associated labels, scoped page colors, and per-control focus rules', () => {
+    const originalRect = HTMLElement.prototype.getBoundingClientRect;
+    HTMLElement.prototype.getBoundingClientRect = () => ({ width: 32, height: 32 }) as DOMRect;
+    document.body.innerHTML = `<style>
+      .root_hash { color: rgb(20, 20, 20); background: rgb(245, 245, 245); }
+      .control_hash:focus-visible { outline: 2px solid currentColor; }
+    </style><div id="root"><main class="root_hash"><label for="note">Note</label><input id="note" class="control_hash" /></main></div>`;
+    try {
+      const evidence = collectPreviewStyleEvidence(document, window);
+      expect(evidence.styleAudit).toMatchObject({
+        unnamedControls: [],
+        missingExplicitColors: [],
+        missingFocusVisible: false,
+      });
+    } finally {
+      HTMLElement.prototype.getBoundingClientRect = originalRect;
+      document.body.innerHTML = '';
+    }
   });
 
   it('sanitizes navigate paths to /preview only', () => {

@@ -252,6 +252,7 @@ export default function useProjectCompiler() {
       await Compiler.reset();
       previewState((draft) => {
         draft.htmlContent = null;
+        draft.isCompilerReady = false;
       });
       logState((draft) => {
         draft.logs = [
@@ -290,6 +291,9 @@ export default function useProjectCompiler() {
     try {
       const { Compiler } = await loadCompiler();
       await Compiler.reset();
+      previewState((draft) => {
+        draft.isCompilerReady = false;
+      });
       await handleCompile();
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : String(err);
@@ -310,7 +314,7 @@ export default function useProjectCompiler() {
     } finally {
       isRebuildingRef.current = false;
     }
-  }, [handleCompile, logState, handleOpenLog, addNotification]);
+  }, [handleCompile, previewState, logState, handleOpenLog, addNotification]);
 
   return {
     handleCompile,

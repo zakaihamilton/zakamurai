@@ -32,6 +32,7 @@ export default function useAgentRunner({
   logState,
   cachedModelIds = [],
   webLLMEngines = {},
+  styleProfile,
 }: UseAgentRunnerParams) {
   const changeSetState = requireStore(ChangeSetState.usePassiveState());
   const appState = requireStore(AppState.usePassiveState());
@@ -43,7 +44,7 @@ export default function useAgentRunner({
       import('@/components/AI/WebLLMAPI').then(({ interruptWebLLM }) => interruptWebLLM());
       const sessionId = runningSessionId || agentSessionState?.activeSessionId;
       if (sessionId) {
-        patchSession(sessionId, { status: 'idle', reasoning: '', reasoningEvents: [] });
+        patchSession(sessionId, { status: 'idle' });
         pushSessionMessage(
           sessionId,
           createSessionMessage({ role: 'system', text: 'AI Manager stopped by user.' }),
@@ -149,6 +150,7 @@ export default function useAgentRunner({
         selectedModel,
         cachedModelIds,
         webLLMEngines,
+        styleProfile,
         patchSession,
         pushSessionMessage,
         createSessionMessage,
@@ -166,6 +168,7 @@ export default function useAgentRunner({
       logState,
       cachedModelIds,
       webLLMEngines,
+      styleProfile,
       patchSession,
       promptScope,
       promptUiState,

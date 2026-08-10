@@ -17,6 +17,7 @@ export const DEFAULT_WORKSPACE_PROFILE = {
   include: [],
   exclude: [],
   maxFileBytes: 512 * 1024,
+  styleProfile: null,
 };
 
 export const DEFAULT_WORKSPACE_HEALTH = {

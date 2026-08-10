@@ -72,6 +72,7 @@ export type PromptComposerProps = {
   onChangeModel?: (modelId: string) => void;
   onLoadCachedModelIds?: () => void;
   onOpenModelManager?: () => void;
+  onRefreshProjectStyle?: () => void;
 };
 
 export type PromptSessionAreaProps = {
@@ -177,6 +178,7 @@ export type UseAgentRunnerParams = {
   logState: StateStore<LogStateShape>;
   cachedModelIds?: string[];
   webLLMEngines?: Record<string, import('@/components/state/domain-types').WebLLMEngineState>;
+  styleProfile?: import('@/components/AI/Agent/ProjectStyleProfile').ProjectStyleProfile;
 };
 
 export type AgentEventFormatter = (event: AgentEvent) => string;

@@ -914,7 +914,9 @@ export default function App() {
     expect(events).toContainEqual(
       expect.objectContaining({
         type: 'thinking',
-        message: 'Requesting the next action from the local model...',
+        message: expect.stringMatching(
+          /Reviewing the request and available workspace context|Requesting the next action from the local model/,
+        ),
       }),
     );
     expect(events).toContainEqual(
@@ -1452,9 +1454,13 @@ export default function App() {
 
     const result = await runActionLoop({
       request: 'create a reminder app',
-      files: { 'src/App.jsx': 'export default function App() { return null; }' },
+      files: {
+        'src/App.jsx': 'export default function App() { return null; }',
+        'src/utils/conventions.js': 'export const formatReminder = (value) => value.trim();',
+      },
       model: 'test',
-      priorContext: '[list_files]\nsrc/App.jsx\n[read_file]\nexisting app source',
+      priorContext:
+        '[list_files]\nsrc/App.jsx\n\n[read_file {"path":"src/App.jsx"}]\nexisting app source\n\n[read_file {"path":"src/utils/conventions.js"}]\nexport const formatReminder = (value) => value.trim();',
     });
 
     expect(result.files['src/App.jsx']).toContain('Reminders');
@@ -1464,6 +1470,11 @@ export default function App() {
     );
     expect(prompt).toContain('The workspace has already been inspected');
     expect(prompt).toContain('--- src/App.jsx ---');
+    expect(prompt).toContain('Manager-selected context');
+    expect(prompt).toContain('src/utils/conventions.js');
+    expect(prompt).toContain('formatReminder');
+    expect(prompt).toContain('Project code contract:');
+    expect(prompt).not.toContain('[read_file {"path":"src/App.jsx"}]');
     expect(prompt).not.toContain('[list_files]');
     expect(askWebLLM.mock.calls[0]?.[3]?.messages?.[0]?.content).toContain(
       'your next response must be exactly one write_file or',
@@ -1531,7 +1542,7 @@ export default function App() {
       contextWindowSize: 4096,
     });
     expect(askWebLLM.mock.calls[0]?.[3]?.messages?.[1]?.content).toContain(
-      'Visual quality is a hard acceptance requirement',
+      'Visual quality is a hard requirement for UI requests',
     );
   });
 
@@ -2480,5 +2491,184 @@ export default function App() { return <main className={styles.app}>Todo</main>;
     });
 
     expect(result.files['package.json']).toContain('"axios": "^1.0.0"');
+  });
+
+  it('auto-finishes lightweight models immediately after a repeated write passes validation', async () => {
+    const todoAppSource = `import React, { useState } from 'react';
+import styles from './App.module.css';
+
+export default function App() {
+  const [todos, setTodos] = useState([{ id: 1, text: 'First task', completed: false }]);
+  const [input, setInput] = useState('');
+
+  const handleAdd = () => {
+    if (!input.trim()) return;
+    setTodos([...todos, { id: Date.now(), text: input.trim(), completed: false }]);
+    setInput('');
+  };
+
+  return (
+    <main className={styles.app}>
+      <h1>Todo App</h1>
+      <div className={styles.control}>
+        <input
+          type="text"
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          placeholder="Add a new task..."
+        />
+        <button onClick={handleAdd}>Add Task</button>
+      </div>
+      <ul className={styles.list}>
+        {todos.map((todo) => (
+          <li key={todo.id}>{todo.text}</li>
+        ))}
+      </ul>
+    </main>
+  );
+}`;
+    const codeFence = `\`\`\`jsx\n${todoAppSource}\n\`\`\``;
+    askWebLLM.mockResolvedValueOnce(codeFence).mockResolvedValueOnce(codeFence);
+
+    const validate = vi.fn().mockResolvedValue({ status: 'passed', check: 'build' });
+
+    const result = await runActionLoop({
+      request: 'create a todo app',
+      activeFile: 'src/App.jsx',
+      files: {
+        'src/App.jsx': 'export default function App() { return null; }',
+        'src/App.module.css': '.app { display: block; }',
+        'package.json': '{\n  "dependencies": {}\n}\n',
+      },
+      model: 'Qwen2.5-Coder-1.5B-Instruct-q4f16_1-MLC',
+      validate,
+    });
+
+    expect(result.summary).toContain('Completed the requested changes and validated the build');
+    expect(result.files['src/App.jsx']).toBe(todoAppSource);
+    expect(validate).toHaveBeenCalledOnce();
+    expect(askWebLLM).toHaveBeenCalledTimes(2);
+  });
+
+  it('recovers cleanly when model echoes raw validation JSON after automatic validation', async () => {
+    const todoAppSource = `import React, { useState } from 'react';
+import styles from './App.module.css';
+
+export default function App() {
+  const [todos, setTodos] = useState([{ id: 1, text: 'First task', completed: false }]);
+  const [input, setInput] = useState('');
+
+  const handleAdd = () => {
+    if (!input.trim()) return;
+    setTodos([...todos, { id: Date.now(), text: input.trim(), completed: false }]);
+    setInput('');
+  };
+
+  return (
+    <main className={styles.app}>
+      <h1>Todo App</h1>
+      <div className={styles.control}>
+        <input
+          type="text"
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          placeholder="Add a new task..."
+        />
+        <button onClick={handleAdd}>Add Task</button>
+      </div>
+      <ul className={styles.list}>
+        {todos.map((todo) => (
+          <li key={todo.id}>{todo.text}</li>
+        ))}
+      </ul>
+    </main>
+  );
+}`;
+    const writeJson = JSON.stringify({
+      action: 'write_file',
+      path: 'src/App.jsx',
+      content: todoAppSource,
+    });
+    const echoedValidationJson = JSON.stringify({
+      status: 'passed',
+      check: 'build',
+      diagnostics: ['Bundling complete. Generated /dist: index.html'],
+    });
+
+    askWebLLM
+      .mockResolvedValueOnce(writeJson)
+      .mockResolvedValueOnce(writeJson)
+      .mockResolvedValueOnce(echoedValidationJson);
+
+    const validate = vi.fn().mockResolvedValue({ status: 'passed', check: 'build' });
+
+    const result = await runActionLoop({
+      request: 'create a todo app',
+      activeFile: 'src/App.jsx',
+      files: {
+        'src/App.jsx': 'export default function App() { return null; }',
+        'src/App.module.css': '.app { display: block; }',
+      },
+      model: 'test-model',
+      validate,
+    });
+
+    expect(result.summary).toContain('Completed the requested changes and validated the build');
+    expect(result.files['src/App.jsx']).toBe(todoAppSource);
+  });
+
+  it('auto-finishes lightweight model when it produces prose chatter after staging changes', async () => {
+    const todoAppSource = `import React, { useState } from 'react';
+import styles from './App.module.css';
+
+export default function App() {
+  const [todos, setTodos] = useState([{ id: 1, text: 'First task', completed: false }]);
+  const [input, setInput] = useState('');
+
+  const handleAdd = () => {
+    if (!input.trim()) return;
+    setTodos([...todos, { id: Date.now(), text: input.trim(), completed: false }]);
+    setInput('');
+  };
+
+  return (
+    <main className={styles.app}>
+      <h1>Todo App</h1>
+      <div className={styles.control}>
+        <input
+          type="text"
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          placeholder="Add a new task..."
+        />
+        <button onClick={handleAdd}>Add Task</button>
+      </div>
+      <ul className={styles.list}>
+        {todos.map((todo) => (
+          <li key={todo.id}>{todo.text}</li>
+        ))}
+      </ul>
+    </main>
+  );
+}`;
+    const codeFence = `\`\`\`jsx\n${todoAppSource}\n\`\`\``;
+
+    askWebLLM
+      .mockResolvedValueOnce(codeFence)
+      .mockResolvedValueOnce('Completed the requested changes and built the todo app.');
+
+    const validate = vi.fn().mockResolvedValue({ status: 'passed', check: 'build' });
+
+    const result = await runActionLoop({
+      request: 'create a todo app',
+      activeFile: 'src/App.jsx',
+      files: { 'src/App.jsx': 'export default function App() { return null; }' },
+      model: 'Qwen2.5-Coder-1.5B-Instruct-q4f16_1-MLC',
+      validate,
+    });
+
+    expect(result.summary).toContain('Completed the requested changes and validated the build');
+    expect(result.files['src/App.jsx']).toBe(todoAppSource);
+    expect(validate).toHaveBeenCalledOnce();
   });
 });

@@ -1,4 +1,7 @@
-import type { PreviewEvidence } from '@/components/App/Views/PreviewArea/preview-types';
+import type {
+  PreviewEvidence,
+  PreviewStyleAudit,
+} from '@/components/App/Views/PreviewArea/preview-types';
 
 type VisualPreviewEvidence = {
   title: string;
@@ -8,6 +11,7 @@ type VisualPreviewEvidence = {
   runtimeErrors: string[];
   issues: string[];
   screenshotCaptured: boolean;
+  styleAuditIssues: string[];
 };
 
 /** Returns a deterministic failure when a preview result cannot support visual review. */
@@ -24,6 +28,10 @@ export function visualPreviewInspectionFailure(value: unknown): string | null {
     title: typeof record.title === 'string' ? record.title : undefined,
     text: typeof record.domSummary === 'string' ? record.domSummary : undefined,
     elements,
+    styleAudit:
+      record.styleAudit && typeof record.styleAudit === 'object'
+        ? (record.styleAudit as PreviewStyleAudit)
+        : undefined,
     screenshotCaptured: record.screenshotCaptured === true,
   });
   if (!elements.length) {
@@ -34,6 +42,9 @@ export function visualPreviewInspectionFailure(value: unknown): string | null {
   }
   if (evidence.runtimeErrors.length) {
     return `Preview inspection reported runtime errors: ${evidence.runtimeErrors.join('; ')}.`;
+  }
+  if (evidence.styleAuditIssues.length) {
+    return `Preview style audit reported: ${evidence.styleAuditIssues.join('; ')}.`;
   }
   return null;
 }
@@ -67,6 +78,7 @@ export function summarizeVisualPreviewEvidence(
       ? 'interactive elements are missing accessible names'
       : '',
   ].filter(Boolean);
+  const styleAuditIssues = evidence?.styleAudit?.issues || [];
 
   return {
     title: evidence?.title || '',
@@ -76,5 +88,6 @@ export function summarizeVisualPreviewEvidence(
     runtimeErrors,
     issues,
     screenshotCaptured: Boolean(evidence?.screenshotCaptured),
+    styleAuditIssues,
   };
 }

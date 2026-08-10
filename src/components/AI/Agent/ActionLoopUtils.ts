@@ -1,4 +1,5 @@
 import type { AgentAction } from '@/components/AI/types';
+import { type ProjectStyleProfile, generateProjectCssModule } from './ProjectStyleProfile';
 
 const MAX_REASONING_RESULT_CHARS = 3000;
 
@@ -38,6 +39,35 @@ export const isFailedValidationResult = (result: string): boolean => {
   } catch {
     return /\bfailed\b/i.test(result);
   }
+};
+
+export const formatValidationSummary = (rawResult: string): string => {
+  if (typeof rawResult !== 'string') return String(rawResult ?? '');
+  const trimmed = rawResult.trim();
+  if (trimmed.startsWith('{')) {
+    try {
+      const parsed = JSON.parse(trimmed) as {
+        status?: string;
+        check?: string;
+        diagnostics?: string | string[];
+      };
+      if (parsed && typeof parsed === 'object' && parsed.status) {
+        const isPassed = parsed.status === 'passed';
+        const statusText = isPassed
+          ? 'Build validation passed successfully.'
+          : `Build validation status: ${parsed.status}.`;
+        const diagnostics = Array.isArray(parsed.diagnostics)
+          ? parsed.diagnostics.join('\n')
+          : typeof parsed.diagnostics === 'string'
+            ? parsed.diagnostics
+            : '';
+        return diagnostics ? `${statusText}\n${diagnostics}` : statusText;
+      }
+    } catch {
+      // Ignore JSON parse errors
+    }
+  }
+  return rawResult;
 };
 
 export const READ_ONLY_ACTIONS = new Set([
@@ -205,50 +235,24 @@ const CSS_MODULE_RECOVERY_RULES: Record<string, string> = {
   control:
     'flex: 1 1 18rem; min-width: 0; min-height: 2.75rem; padding: 0.7rem 0.85rem; color: #0f172a; font-family: inherit; font-size: 0.95rem; background: #ffffff; border: 1px solid #cbd5e1; border-radius: 0.5rem; transition: border-color 150ms ease;',
   list: 'display: flex; flex-direction: column; gap: 0.75rem; margin-top: 1rem;',
+  todoItem:
+    'display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; padding: 0.75rem 1rem; color: #0f172a; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 0.5rem; transition: all 150ms ease;',
+  taskItem:
+    'display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; padding: 0.75rem 1rem; color: #0f172a; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 0.5rem; transition: all 150ms ease;',
+  item: 'display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; padding: 0.75rem 1rem; color: #0f172a; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 0.5rem; transition: all 150ms ease;',
+  todoText: 'flex: 1; min-width: 0; font-size: 0.95rem; color: #0f172a; word-break: break-word;',
+  completedText:
+    'flex: 1; min-width: 0; font-size: 0.95rem; color: #64748b; text-decoration: line-through; opacity: 0.6;',
+  checkbox:
+    'width: 1.25rem; height: 1.25rem; accent-color: #4f46e5; cursor: pointer; flex-shrink: 0;',
+  deleteBtn:
+    'padding: 0.4rem 0.75rem; color: #ef4444; font-family: inherit; font-size: 0.85rem; font-weight: 600; background: #fef2f2; border: 1px solid #fecaca; border-radius: 0.375rem; cursor: pointer; transition: all 150ms ease;',
+  form: 'display: flex; gap: 0.75rem; align-items: center; margin-bottom: 1.25rem;',
+  input:
+    'flex: 1; min-width: 0; min-height: 2.75rem; padding: 0.7rem 0.85rem; color: #0f172a; font-family: inherit; font-size: 0.95rem; background: #ffffff; border: 1px solid #cbd5e1; border-radius: 0.5rem; transition: border-color 150ms ease;',
+  addBtn:
+    'min-height: 2.75rem; padding: 0.7rem 1.25rem; color: #ffffff; font-family: inherit; font-size: 0.95rem; font-weight: 600; background: #4f46e5; border: none; border-radius: 0.5rem; cursor: pointer; transition: background 150ms ease, transform 150ms ease; box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);',
 };
-
-const CSS_MODULE_RECOVERY_BASE = `:global(:root) {
-  color-scheme: light;
-  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  background-color: #f8fafc;
-  color: #0f172a;
-}
-
-:global(*), :global(*::before), :global(*::after) {
-  box-sizing: border-box;
-}
-
-:global(body) {
-  margin: 0;
-  min-height: 100vh;
-  background-color: #f8fafc;
-  color: #0f172a;
-  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  -webkit-font-smoothing: antialiased;
-}
-
-:global(ul), :global(ol) {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-}
-
-:global(form) {
-  display: flex;
-  gap: 0.75rem;
-  align-items: center;
-}
-
-:global(button), :global(input), :global(select), :global(textarea) {
-  font-family: inherit;
-}
-
-:global(button:hover) {
-  opacity: 0.95;
-}
-`;
-
-const CSS_MODULE_INTERACTIVE_BASE = '';
 
 const hasInteractiveElements = (content: string): boolean =>
   /<(?:button|input|select|textarea)\b/i.test(content);
@@ -293,6 +297,27 @@ const recoveryRuleForClassName = (className: string): string => {
   return 'display: block; box-sizing: border-box; color: #0f172a;';
 };
 
+const LEGACY_RECOVERY_BASE = `:global(:root), :global(body) {
+  margin: 0;
+  min-height: 100vh;
+  color: #0f172a;
+  background: #f8fafc;
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+}
+
+:global(*), :global(*::before), :global(*::after) {
+  box-sizing: border-box;
+}`;
+
+const legacyCssModuleRules = (classNames: Iterable<string>, includeBase: boolean): string => {
+  const rules = [...classNames]
+    .map((className) => `.${className} {\n  ${recoveryRuleForClassName(className)}\n}`)
+    .join('\n\n');
+  return [includeBase ? LEGACY_RECOVERY_BASE : '', rules || '.component {\n  display: block;\n}']
+    .filter(Boolean)
+    .join('\n\n');
+};
+
 const LEGACY_RECOVERY_SIGNATURE =
   /#0f172a[\s\S]*#172554|#172554[\s\S]*#1e3a8a|#0f172a[\s\S]*#1e3a8a/i;
 
@@ -311,16 +336,14 @@ const normalizeLegacyRecoveryStylesheet = (content: string): string => {
   return normalized;
 };
 
-const formatCssModuleRules = (classNames: Iterable<string>, includeBase = true): string => {
-  const selectedRules = [...classNames].map(
-    (className) => `.${className} {\n  ${recoveryRuleForClassName(className)}\n}`,
-  );
-  const rules = selectedRules.join('\n\n') || '.component {\n  display: block;\n}\n';
-  return includeBase ? `${CSS_MODULE_RECOVERY_BASE}\n${rules}` : rules;
-};
-
-export const cssModuleRecovery = (content: string): string =>
-  formatCssModuleRules(cssModuleClassNames(content));
+export const cssModuleRecovery = (
+  content: string,
+  profile?: ProjectStyleProfile,
+  stylesheetPath = 'src/App.module.css',
+): string =>
+  profile
+    ? generateProjectCssModule({ source: content, stylesheetPath, profile })
+    : `${legacyCssModuleRules(cssModuleClassNames(content), true)}\n`;
 
 /**
  * When a JSX/TSX write imports an existing CSS Module that does not define the
@@ -360,6 +383,8 @@ export const incompleteCssModuleImports = (
 export const appendMissingCssModuleRules = (
   existingCss: string,
   sourceContent: string,
+  profile?: ProjectStyleProfile,
+  stylesheetPath = 'src/App.module.css',
 ): string | null => {
   const required = cssModuleClassNames(sourceContent);
   const normalizedExistingCss = normalizeLegacyRecoveryStylesheet(existingCss);
@@ -370,18 +395,31 @@ export const appendMissingCssModuleRules = (
   const wasNormalized = normalizedExistingCss !== existingCss;
   if (!missing.length && !needsInteractiveBase && !wasNormalized) return null;
 
-  const additions = [...(missing.length ? [formatCssModuleRules(missing)] : [])];
-  // Components often put a 3x3 board directly under `.container`. If cell/square
-  // styles were missing, reinforce layout without deleting the existing rule.
+  if (profile) {
+    let generated = generateProjectCssModule({
+      source: sourceContent,
+      stylesheetPath,
+      profile,
+      existingCss: normalizedExistingCss,
+    });
+    if (
+      defined.has('container') &&
+      missing.some((className) => className === 'cell' || className === 'square')
+    ) {
+      generated +=
+        '\n.container {\n  display: grid;\n  grid-template-columns: repeat(3, minmax(0, 1fr));\n  gap: var(--space);\n}\n';
+    }
+    return generated;
+  }
+  const additions = [legacyCssModuleRules(missing, false)];
   if (
     defined.has('container') &&
     missing.some((className) => className === 'cell' || className === 'square')
   ) {
     additions.unshift(
-      '.container {\n  display: grid;\n  grid-template-columns: repeat(3, minmax(0, 1fr));\n  gap: 0.65rem;\n  width: min(100%, 22rem);\n  align-content: center;\n  justify-items: stretch;\n}',
+      '.container {\n  display: grid;\n  grid-template-columns: repeat(3, minmax(0, 1fr));\n  gap: 0.65rem;\n}',
     );
   }
-
   return `${normalizedExistingCss.trimEnd()}\n\n${additions.join('\n\n').trim()}\n`;
 };
 
@@ -391,6 +429,7 @@ export const appendMissingCssModuleRules = (
  */
 export const recoverWorkspaceCssModules = (
   files: Record<string, string>,
+  profile?: ProjectStyleProfile,
 ): Array<{ path: string; content: string }> => {
   const next = { ...files };
   const updated = new Set<string>();
@@ -398,7 +437,7 @@ export const recoverWorkspaceCssModules = (
   for (const [path, content] of Object.entries(files)) {
     if (!/\.(jsx|tsx)$/i.test(path)) continue;
     for (const stylesheet of missingCssModuleImports(path, content, next)) {
-      next[stylesheet] = `${cssModuleRecovery(content).trimEnd()}\n`;
+      next[stylesheet] = cssModuleRecovery(content, profile, stylesheet);
       updated.add(stylesheet);
     }
   }
@@ -406,7 +445,12 @@ export const recoverWorkspaceCssModules = (
   for (const [path, content] of Object.entries(files)) {
     if (!/\.(jsx|tsx)$/i.test(path)) continue;
     for (const stylesheet of incompleteCssModuleImports(path, content, next)) {
-      const merged = appendMissingCssModuleRules(next[stylesheet] || '', content);
+      const merged = appendMissingCssModuleRules(
+        next[stylesheet] || '',
+        content,
+        profile,
+        stylesheet,
+      );
       if (!merged) continue;
       next[stylesheet] = merged;
       updated.add(stylesheet);
@@ -448,10 +492,16 @@ export const repairCssModuleStylesheet = (
   stylesheetPath: string,
   content: string,
   files: Record<string, string>,
+  profile?: ProjectStyleProfile,
 ): string => {
   let repaired = content;
   for (const importer of cssModuleImporters(stylesheetPath, files)) {
-    const merged = appendMissingCssModuleRules(repaired, files[importer] || '');
+    const merged = appendMissingCssModuleRules(
+      repaired,
+      files[importer] || '',
+      profile,
+      stylesheetPath,
+    );
     if (merged) repaired = merged;
   }
   return repaired;
@@ -740,6 +790,7 @@ const normalizeLiteralClassNames = (content: string): string =>
 export const ensureCoLocatedCssModule = (
   path: string,
   content: string,
+  profile?: ProjectStyleProfile,
 ): { content: string; stylesheetPath: string; stylesheet: string } | null => {
   if (!/\.(jsx|tsx)$/i.test(path) || typeof content !== 'string') return null;
   if (!/\bon(?:Click|Change|Submit|KeyDown)\b/.test(content)) return null;
@@ -752,6 +803,8 @@ export const ensureCoLocatedCssModule = (
   return {
     content: rewritten,
     stylesheetPath,
-    stylesheet: `${formatCssModuleRules(cssModuleClassNames(rewritten))}\n`,
+    stylesheet: profile
+      ? generateProjectCssModule({ source: rewritten, stylesheetPath, profile })
+      : cssModuleRecovery(rewritten, undefined, stylesheetPath),
   };
 };

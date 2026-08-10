@@ -1,5 +1,6 @@
 import type { WebLLMMessage } from '@/components/AI/types';
 import { getWebLLMStore } from '../WebLLMState';
+import { type ProjectStyleProfile, formatProjectStyleContract } from './ProjectStyleProfile';
 import type { AgentWorkspace } from './Workspace';
 
 export const AGENT_CONTEXT_WINDOW_SIZE = 4096;
@@ -93,10 +94,32 @@ export const wireNewComponentIntoScratchEntry = (workspace: AgentWorkspace): str
 export const CHANGE_REQUEST_PATTERN =
   /\b(?:add|build|change|create|delete|design|fix|implement|improve|make|modify|refactor|remove|rename|replace|style|update)\b/i;
 
+export const createAutoFinishSummary =
+  (request: string) =>
+  (
+    reason: 'validate' | 'identical-write' | 'unchanged-reads' | 'safety-limit',
+    wiredEntry: string | null,
+  ): string => {
+    const base = CHANGE_REQUEST_PATTERN.test(request)
+      ? reason === 'safety-limit'
+        ? 'Completed the requested changes after the agent reached its step safety limit and validated the build.'
+        : 'Completed the requested changes and validated the build.'
+      : reason === 'validate'
+        ? 'Validated the staged changes after the local model repeated validation.'
+        : reason === 'identical-write'
+          ? 'Validated the staged changes after the local model repeated an identical write action.'
+          : reason === 'unchanged-reads'
+            ? 'Validated the staged changes after the local model repeatedly read unchanged files.'
+            : 'Validated the staged changes after the agent reached its step safety limit.';
+    return wiredEntry
+      ? `${base} wired ${wiredEntry} to the new component so it renders in the app.`
+      : base;
+  };
+
 export const isLightweightAgentModel = (model: string): boolean =>
   /(?:0\.8|1\.5|1\.7|2)B(?:-|$)/i.test(model);
 
-export const LIGHTWEIGHT_AGENT_SYSTEM_PROMPT = `
+export const LEGACY_LIGHTWEIGHT_AGENT_SYSTEM_PROMPT = `
 You are a small local coding model. Reply with exactly one response and no explanation.
 For a create, build, fix, or update request, write the application source immediately when
 workspace context is supplied. Do not list, search, or read files again.
@@ -140,6 +163,21 @@ After a successful write, use exactly one of:
 {"action":"finish","summary":"brief result"}
 `.trim();
 
+export const LIGHTWEIGHT_AGENT_SYSTEM_PROMPT = `
+You are a small local coding model. Reply once with no explanation. When workspace context is
+supplied, write the complete target component immediately. Do not list, search, or read again.
+
+Reply with only one labelled source-code fence containing the complete file. Do not return JSON.
+The host saves the source and generates missing CSS Module rules.
+
+Default-import the co-located CSS Module as styles. Use only semantic roles from the supplied
+project style contract. For interactive work, include React state, handlers, primary controls,
+and visible empty, success, and error states. Never leave starter placeholder text.
+
+Compute derived values before state setters and keep state-dependent callbacks in the component.
+After a successful write, the host saves the source, validates the build, and finishes automatically.
+`.trim();
+
 export const CONTEXT_READY_AGENT_INSTRUCTIONS = `
 IMPORTANT: The manager has already inspected the workspace and supplied the relevant file
 contents below. For an edit request, your next response must be exactly one write_file or
@@ -155,7 +193,7 @@ contents below. For an edit request, reply with ONLY a labelled code fence conta
 complete source for the target file. Include state and event handlers when the UI is
 interactive, and prefer a co-located CSS Module. Do not return JSON write_file metadata,
 list files, search, read files, or explain. Do not leave starter-template placeholder text.
-After a successful write, validate and then finish.
+After a successful write, the host validates and finishes automatically.
 `.trim();
 
 export const isScratchEntry = (content: string | undefined): boolean =>
@@ -240,11 +278,59 @@ const extractConversationalPrior = (priorContext: string): string | null => {
     .filter(Boolean)
     .filter(
       (block) =>
-        !/^\[(?:list_files|read_file|search_workspace|search_semantic|prior)\]/i.test(block) &&
-        !/^---\s+\S/.test(block),
+        !/^\[(?:list_files|read_file|search_workspace|search_semantic|prior)(?:\s|\])/i.test(
+          block,
+        ) && !/^---\s+\S/.test(block),
     );
   if (!conversational.length) return null;
   return conversational.join('\n\n').slice(0, 1200);
+};
+
+const extractManagerSelectedPrior = (
+  priorContext: string,
+  includedPaths: string[],
+): string | null => {
+  const included = new Set(includedPaths);
+  const selected = priorContext
+    .split(/\n{2,}/)
+    .map((block) => block.trim())
+    .filter((block) => /^\[(?:read_file|search_workspace|search_semantic)(?:\s|\])/i.test(block))
+    .filter((block) => {
+      const input = block.match(/^\[[^\s\]]+\s+(\{[^\]]+\})\]/)?.[1];
+      if (!input) return true;
+      try {
+        const path = JSON.parse(input)?.path;
+        return typeof path !== 'string' || !included.has(path);
+      } catch {
+        return true;
+      }
+    })
+    .slice(0, 3)
+    .map((block) => block.slice(0, 1400));
+  return selected.length ? selected.join('\n\n').slice(0, 3200) : null;
+};
+
+const formatProjectCodeContract = (files: Record<string, string>, targetPath: string): string => {
+  const sources = Object.entries(files).filter(([path]) => /\.(?:jsx|tsx)$/i.test(path));
+  const defaultExports = sources.filter(([, content]) =>
+    /\bexport\s+default\b/.test(content),
+  ).length;
+  const namedExports = sources.filter(([, content]) =>
+    /\bexport\s+(?:const|function|class)\b/.test(content),
+  ).length;
+  const imports = sources.flatMap(([, content]) => [
+    ...content.matchAll(/\bfrom\s+["'](\.{1,2}\/[^"']+)["']/g),
+  ]);
+  const explicitExtensions = imports.filter((match) => /\.[a-z]+$/i.test(match[1])).length;
+  const extensionless = imports.length - explicitExtensions;
+  return [
+    /\.tsx$/i.test(targetPath) ? 'TypeScript/TSX' : 'JavaScript/JSX',
+    defaultExports >= namedExports ? 'default component exports' : 'named component exports',
+    extensionless >= explicitExtensions
+      ? 'extensionless relative imports'
+      : 'explicit import extensions',
+    'default-import co-located CSS Modules as styles',
+  ].join('; ');
 };
 
 export const buildContextReadyUserRequest = ({
@@ -253,12 +339,14 @@ export const buildContextReadyUserRequest = ({
   files,
   priorContext = '',
   lightweight = false,
+  styleProfile,
 }: {
   request: string;
   targetPath: string;
   files: Record<string, string>;
   priorContext?: string;
   lightweight?: boolean;
+  styleProfile?: ProjectStyleProfile;
 }): string => {
   const stylesheetPath = targetPath.replace(/\.(jsx|tsx)$/i, '.module.css');
   const contextPaths = [targetPath, stylesheetPath, 'package.json'].filter(
@@ -267,17 +355,42 @@ export const buildContextReadyUserRequest = ({
   const fileContext = contextPaths.length
     ? contextPaths.map((path) => `--- ${path} ---\n${files[path]}`).join('\n\n')
     : 'No relevant source file exists yet.';
+  const targetDirectory = targetPath.split('/').slice(0, -1).join('/');
+  const reference = Object.keys(files)
+    .filter(
+      (path) =>
+        /\.(?:jsx|tsx)$/i.test(path) &&
+        path !== targetPath &&
+        Object.hasOwn(files, path.replace(/\.(jsx|tsx)$/i, '.module.css')),
+    )
+    .sort((left, right) => {
+      const leftNearby = left.startsWith(`${targetDirectory}/`) ? 1 : 0;
+      const rightNearby = right.startsWith(`${targetDirectory}/`) ? 1 : 0;
+      return rightNearby - leftNearby || left.localeCompare(right);
+    })[0];
+  const referenceContext = reference
+    ? [reference, reference.replace(/\.(jsx|tsx)$/i, '.module.css')]
+        .map((path) => `--- Style reference: ${path} ---\n${files[path].slice(0, 1400)}`)
+        .join('\n\n')
+    : null;
   const conversation = extractConversationalPrior(priorContext);
+  const managerContext = extractManagerSelectedPrior(priorContext, contextPaths);
   const nextStep = lightweight
     ? `Your next response must be ONLY a labelled code fence with the complete source for ${targetPath}. Do not return JSON.`
     : `Your next response must be exactly one write_file action for ${targetPath}.`;
   return [
     `Request: ${request}`,
     ...(conversation ? [`Prior conversation:\n${conversation}`] : []),
+    ...(managerContext ? [`Manager-selected context:\n${managerContext}`] : []),
     'The workspace has already been inspected. Do not list, search, or read files.',
     nextStep,
+    `Project code contract: ${formatProjectCodeContract(files, targetPath)}.`,
+    ...(styleProfile
+      ? [`Project generation contract:\n${formatProjectStyleContract(styleProfile)}`]
+      : []),
     'Use the supplied files as context and return the complete implementation now.',
     fileContext,
+    ...(referenceContext ? [referenceContext] : []),
   ].join('\n\n');
 };
 

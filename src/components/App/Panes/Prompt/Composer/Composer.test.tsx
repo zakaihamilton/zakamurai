@@ -114,4 +114,25 @@ describe('PromptComposer', () => {
     fireEvent.change(screen.getByLabelText('Model'), { target: { value: 'model-b' } });
     expect(onChangeModel).toHaveBeenCalledWith('model-b');
   });
+
+  it('shows inferred project style without a dropdown and refreshes it', () => {
+    const onRefreshProjectStyle = vi.fn();
+    render(
+      <PromptComposer
+        value=""
+        onChange={vi.fn()}
+        onKeyDown={vi.fn()}
+        onSubmit={vi.fn()}
+        onStop={vi.fn()}
+        isAIProcessing={false}
+        isButtonActive={false}
+        isOpen={true}
+        onRefreshProjectStyle={onRefreshProjectStyle}
+      />,
+    );
+    expect(screen.getByText('Project style · Inferred')).toBeDefined();
+    expect(screen.queryByRole('combobox', { name: 'Project style' })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Re-infer project style' }));
+    expect(onRefreshProjectStyle).toHaveBeenCalledOnce();
+  });
 });

@@ -402,10 +402,7 @@ describe('useAgentRunner', () => {
     });
 
     expect(abort).toHaveBeenCalled();
-    expect(props.patchSession).toHaveBeenCalledWith(
-      'session-1',
-      expect.objectContaining({ status: 'idle', reasoning: '', reasoningEvents: [] }),
-    );
+    expect(props.patchSession).toHaveBeenCalledWith('session-1', { status: 'idle' });
     expect(props.pushSessionMessage).toHaveBeenCalled();
     expect(props.promptUiState).toHaveBeenCalled();
     expect(props.logState).toHaveBeenCalled();

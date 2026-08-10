@@ -3,8 +3,8 @@
  * Heavy deps (browser-bundler / esbuild-wasm, almostnode) load only when compile runs.
  */
 
-import { isBrowserBundleCommand, parseBuildCommand } from './browser-bundler';
 import { reportDiagnostic } from '@/components/Diagnostics';
+import { isBrowserBundleCommand, parseBuildCommand } from './browser-bundler';
 import { getSharedContainer, initContainer, resetContainer } from './container';
 import { setupSmartDevServer } from './dev-server';
 import { scaffoldMissingFiles } from './scaffold';

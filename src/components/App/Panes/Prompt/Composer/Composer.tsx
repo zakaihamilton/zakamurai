@@ -19,6 +19,7 @@ export default function PromptComposer({
   onChangeModel = () => {},
   onLoadCachedModelIds,
   onOpenModelManager,
+  onRefreshProjectStyle = () => {},
 }: PromptComposerProps) {
   return (
     <form onSubmit={onSubmit} className={styles.form}>
@@ -62,6 +63,19 @@ export default function PromptComposer({
                 tabIndex={isOpen ? undefined : -1}
               >
                 <Icons.Info size={15} />
+              </button>
+            </Tooltip>
+            <span className={styles.styleIndicator}>Project style · Inferred</span>
+            <Tooltip content="Re-infer project style from CSS">
+              <button
+                type="button"
+                className={styles.styleRefreshButton}
+                onClick={onRefreshProjectStyle}
+                disabled={!isOpen || isAIProcessing}
+                aria-label="Re-infer project style"
+                tabIndex={isOpen ? undefined : -1}
+              >
+                <span aria-hidden="true">↻</span>
               </button>
             </Tooltip>
           </div>

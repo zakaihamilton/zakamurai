@@ -22,6 +22,7 @@ import {
   buildDirectChangesRecoveryMessages,
   buildForcedWriteRecoveryMessages,
   buildUserRequest,
+  createAutoFinishSummary,
   isIncompleteWriteError,
   isLightweightAgentModel,
   loadAskWebLLM,
@@ -40,6 +41,7 @@ import {
   cssModuleRecovery,
   ensureCoLocatedCssModule,
   formatReasoningResult,
+  formatValidationSummary,
   incompleteCssModuleImports,
   isFailedValidationResult,
   missingCssModuleImports,
@@ -51,27 +53,26 @@ import {
   rewriteInlineStylesToCssModule,
 } from './ActionLoopUtils';
 import { type ActionLoopValidationState, createValidationRunner } from './ActionLoopValidation';
-import { type ConsoleLogEntry, filterConsoleLogs, formatConsoleLogs } from './ConsoleLogInspector';
+import type { ConsoleLogEntry } from './ConsoleLogInspector';
+import { filterConsoleLogs, formatConsoleLogs } from './ConsoleLogInspector';
 import { AgentContextManager, formatVerificationResult } from './ContextManager';
 import { parseModelResult } from './ManagerProtocol';
 import { type PackageAction, handlePackageOperation } from './PackageManager';
 import { listProjectChecks, runProjectCheck } from './ProjectChecks';
+import {
+  ensureProjectRootTokens,
+  projectStyleGenerationTrace,
+  projectStyleRecoveryTrace,
+  repairProjectStyleRelationships,
+  resolveProjectStyleProfile,
+} from './ProjectStyleProfile';
 import { AGENT_SYSTEM_PROMPT, ALL_AGENT_ACTIONS, parseAgentAction } from './Protocol';
 import { extractFileSymbols, formatSymbolOutline } from './SymbolInspector';
 import { visualPreviewInspectionFailure } from './VisualPreviewEvidence';
 import { AgentWorkspace } from './Workspace';
 
-const VISUAL_QUALITY_INSTRUCTION = `Visual quality is a hard acceptance requirement for this UI request.
-Make deliberate design decisions: establish a cohesive palette, typography hierarchy, spacing scale,
-surface treatment, responsive layout, and hover/focus/disabled states. Style every visible input,
-button, form, list, and status element explicitly; browser-default controls are incomplete. Keep
-the preview isolated from the host by resetting the root, body, and app surface colors in CSS Modules.
-Do not fall back to blue everywhere or repeat one blue surface for the page, input, and button. When
-no theme is requested, prefer a warm neutral or editorial palette with charcoal text and one
-intentional accent such as terracotta, amber, plum, or green.
-Before finishing, inspect the preview and correct any runtime error, missing landmark, default-looking
-control, unreadable contrast, cramped spacing, or broken mobile layout. Do not finish after build
-validation alone.`;
+const VISUAL_QUALITY_INSTRUCTION =
+  'Visual quality is a hard requirement for UI requests: cohesive palette, clear typography, proper spacing, flex/grid layouts, responsive hover/focus states. For list/todo apps: inputs and submit buttons in horizontal flex rows; todo items as compact flex rows with styled checkboxes on the left and compact delete buttons on the right; strike through completed items with reduced opacity. Correct runtime errors, unreadable contrast, or broken layout before finishing.';
 
 export async function runActionLoop({
   request,
@@ -99,11 +100,15 @@ export async function runActionLoop({
   requirePreviewInspection = false,
   modelClient,
   modelSession,
+  styleProfile,
 }: RunAgentOptions): Promise<RunAgentResult> {
   const askWebLLM = modelClient ? null : await loadAskWebLLM();
   const workspace = existingWorkspace || new AgentWorkspace(files, workspaceIndex);
   const context = new AgentContextManager({ request, priorContext });
   const lightweightModel = isLightweightAgentModel(model);
+  const resolvedStyleProfile = lightweightModel
+    ? resolveProjectStyleProfile(files, styleProfile)
+    : undefined;
   const baseSystemPrompt =
     lightweightModel && !agentRole ? LIGHTWEIGHT_AGENT_SYSTEM_PROMPT : systemPrompt;
   const contextReadyInstructions = lightweightModel
@@ -123,6 +128,7 @@ export async function runActionLoop({
         files: workspace.files,
         priorContext,
         lightweight: lightweightModel,
+        styleProfile: resolvedStyleProfile,
       })
     : buildUserRequest({
         request,
@@ -135,7 +141,10 @@ export async function runActionLoop({
     { role: 'system', content: agentSystemPrompt },
     {
       role: 'user',
-      content: visualMode ? `${userRequest}\n\n${VISUAL_QUALITY_INSTRUCTION}` : userRequest,
+      content:
+        visualMode && !lightweightModel
+          ? `${userRequest}\n\n${VISUAL_QUALITY_INSTRUCTION}`
+          : userRequest,
     },
   ];
   let protocolFailures = 0;
@@ -203,30 +212,18 @@ export async function runActionLoop({
   };
 
   const applyCssModuleRecovery = (turn: number): string[] => {
-    const recovered = recoverWorkspaceCssModules(workspace.files);
+    const recovered = recoverWorkspaceCssModules(workspace.files, resolvedStyleProfile);
     for (const { path, content } of recovered) stageRecoveredWrite(turn, path, content);
+    const trace = projectStyleRecoveryTrace(
+      workspace.files,
+      recovered.map(({ path }) => path),
+      resolvedStyleProfile,
+    );
+    if (trace) context.record('style_recovery', trace);
     return recovered.map((entry) => entry.path);
   };
 
-  const autoFinishSummary = (
-    reason: 'validate' | 'identical-write' | 'unchanged-reads' | 'safety-limit',
-    wiredEntry: string | null,
-  ): string => {
-    const base = CHANGE_REQUEST_PATTERN.test(request)
-      ? reason === 'safety-limit'
-        ? 'Completed the requested changes after the agent reached its step safety limit and validated the build.'
-        : 'Completed the requested changes and validated the build.'
-      : reason === 'validate'
-        ? 'Validated the staged changes after the local model repeated validation.'
-        : reason === 'identical-write'
-          ? 'Validated the staged changes after the local model repeated an identical write action.'
-          : reason === 'unchanged-reads'
-            ? 'Validated the staged changes after the local model repeatedly read unchanged files.'
-            : 'Validated the staged changes after the agent reached its step safety limit.';
-    return wiredEntry
-      ? `${base} wired ${wiredEntry} to the new component so it renders in the app.`
-      : base;
-  };
+  const autoFinishSummary = createAutoFinishSummary(request);
 
   const runValidation = createValidationRunner({
     workspace,
@@ -243,13 +240,22 @@ export async function runActionLoop({
       return lastPreviewResult;
     }
     onEvent({ type: 'tool', turn, action: { action: 'inspect_preview' }, agentRole });
-    const preview = inspectPreview
+    let preview = inspectPreview
       ? await inspectPreview(workspace.files)
       : { status: 'unavailable', diagnostics: 'Preview inspection is unavailable.' };
     inspectedPreview = true;
-    const previewFailure = previewInspectionRequired
-      ? visualPreviewInspectionFailure(preview)
-      : null;
+    let previewFailure = previewInspectionRequired ? visualPreviewInspectionFailure(preview) : null;
+    if (previewFailure && resolvedStyleProfile && /style audit/i.test(previewFailure)) {
+      const recovered = applyCssModuleRecovery(turn);
+      if (recovered.length && inspectPreview) {
+        preview = await inspectPreview(workspace.files);
+        previewFailure = visualPreviewInspectionFailure(preview);
+        context.record('style_audit_repair', {
+          recovered,
+          remaining: previewFailure || 'passed',
+        });
+      }
+    }
     previewInspectionAccepted = !previewFailure;
     const evidence = previewFailure
       ? {
@@ -272,13 +278,7 @@ export async function runActionLoop({
       message:
         turn === 1
           ? 'Reviewing the request and available workspace context before choosing an action…'
-          : 'Reviewing the latest tool result and choosing the next action…',
-    });
-    onEvent({
-      type: 'thinking',
-      turn,
-      agentRole,
-      message: 'Requesting the next action from the local model...',
+          : 'Requesting the next action from the local model...',
     });
     let reply: string;
     const recoveryTarget =
@@ -438,6 +438,22 @@ export async function runActionLoop({
           };
         }
         if (directResult.kind === 'answer') {
+          if (lightweightModel && workspace.changes().length > 0 && validate) {
+            try {
+              applyCssModuleRecovery(turn);
+              const validationResult = await runValidation(turn);
+              if (!isFailedValidationResult(validationResult)) {
+                const wiredEntry = wireNewComponentIntoScratchEntry(workspace);
+                const changes = workspace.changes();
+                const summary = autoFinishSummary('validate', wiredEntry);
+                onEvent({ type: 'finished', turn, changes, message: summary, agentRole });
+                context.record('validation', validationResult);
+                return { changes, files: workspace.files, summary, events: turn, workspace };
+              }
+            } catch {
+              // If validation fails, fall through to observation below
+            }
+          }
           messages.push({
             role: 'user',
             content: observation(
@@ -521,12 +537,8 @@ export async function runActionLoop({
         }
         const target = forcedRecoveryTargetPath || recoveryWritePath(workspace.files, activeFile);
         const recoveryMessage = lightweightModel
-          ? target
-            ? `Recovery mode is active. Reply with ONLY a labelled code fence containing complete source for ${target}. Do not return JSON, list_files, validate, or prose.`
-            : 'Recovery mode is active. Reply with ONLY a labelled code fence containing complete source. Do not return JSON, list_files, validate, or prose.'
-          : target
-            ? `Recovery mode is active. Return exactly one write_file action for ${target} with complete source content. Do not use list_files, validate, inspect_preview, or prose.`
-            : 'Recovery mode is active. Return exactly one write_file action with complete source content. Do not use list_files, validate, inspect_preview, or prose.';
+          ? `Recovery mode is active. Reply with ONLY a labelled code fence containing complete source${target ? ` for ${target}` : ''}. Do not return JSON, list_files, validate, or prose.`
+          : `Recovery mode is active. Return exactly one write_file action${target ? ` for ${target}` : ''} with complete source content. Do not use list_files, validate, inspect_preview, or prose.`;
         messages.push({
           role: 'user',
           content: observation('protocol', false, `${err.message}. ${recoveryMessage}`),
@@ -542,13 +554,44 @@ export async function runActionLoop({
         });
         continue;
       }
+      if (finishAfterAutomaticValidation && workspace.changes().length > 0) {
+        applyCssModuleRecovery(turn);
+        const wiredEntry = wireNewComponentIntoScratchEntry(workspace);
+        const changes = workspace.changes();
+        const summary = autoFinishSummary('identical-write', wiredEntry);
+        onEvent({ type: 'finished', turn, changes, message: summary, agentRole });
+        context.record('validation', automaticValidationResult || 'passed');
+        return { changes, files: workspace.files, summary, events: turn, workspace };
+      }
+      if (lightweightModel && workspace.changes().length > 0 && validate) {
+        try {
+          applyCssModuleRecovery(turn);
+          const validationResult = await runValidation(turn);
+          if (!isFailedValidationResult(validationResult)) {
+            const wiredEntry = wireNewComponentIntoScratchEntry(workspace);
+            const changes = workspace.changes();
+            const summary = autoFinishSummary('validate', wiredEntry);
+            onEvent({ type: 'finished', turn, changes, message: summary, agentRole });
+            context.record('validation', validationResult);
+            return { changes, files: workspace.files, summary, events: turn, workspace };
+          }
+        } catch {
+          // If validation fails, fall through to protocol recovery below
+        }
+      }
       if (protocolFailures >= 4)
         throw new Error(
           `Local model could not follow the agent protocol after recovery: ${err.message}`,
         );
-      const incompleteWriteGuidance = isIncompleteWriteError(err.message)
-        ? `${err.message}. Return write_file again with the complete file content in the same response.`
-        : `${err.message}. Do not write prose. Reply with exactly one JSON action that advances the request (prefer write_file with complete content for an edit request).`;
+      const incompleteWriteGuidance = lightweightModel
+        ? `${err.message}. Reply with ONLY a labelled code fence containing complete source code for ${
+            forcedRecoveryTargetPath ||
+            recoveryWritePath(workspace.files, activeFile) ||
+            'the target file'
+          }. Do not return JSON or prose.`
+        : isIncompleteWriteError(err.message)
+          ? `${err.message}. Return write_file again with the complete file content in the same response.`
+          : `${err.message}. Do not write prose. Reply with exactly one JSON action that advances the request (prefer write_file with complete content for an edit request).`;
       messages.push({
         role: 'user',
         content: observation('protocol', false, incompleteWriteGuidance),
@@ -562,12 +605,8 @@ export async function runActionLoop({
         directChangesRecoveryPending = true;
         const target = forcedRecoveryTargetPath || recoveryWritePath(workspace.files, activeFile);
         const recoveryMessage = lightweightModel
-          ? target
-            ? `Fence-only recovery is active. Reply with ONLY a labelled code fence containing complete source for ${target}. Do not return another action.`
-            : 'Fence-only recovery is active. Reply with ONLY a labelled code fence containing complete source. Do not return another action.'
-          : target
-            ? `Direct recovery is active. Return one kind=changes response containing complete content for ${target}. Do not return another action.`
-            : 'Direct recovery is active. Return one kind=changes response containing complete file contents. Do not return another action.';
+          ? `Fence-only recovery is active. Reply with ONLY a labelled code fence containing complete source${target ? ` for ${target}` : ''}. Do not return another action.`
+          : `Direct recovery is active. Return one kind=changes response containing complete content${target ? ` for ${target}` : ''}. Do not return another action.`;
         messages.push({
           role: 'user',
           content: observation('direct_recovery', false, recoveryMessage),
@@ -648,7 +687,11 @@ export async function runActionLoop({
     ) {
       const source = deferredSourceWrite;
       for (const stylesheet of source.stylesheets) {
-        stageRecoveredWrite(turn, stylesheet, cssModuleRecovery(source.content));
+        stageRecoveredWrite(
+          turn,
+          stylesheet,
+          cssModuleRecovery(source.content, resolvedStyleProfile, stylesheet),
+        );
       }
       stageRecoveredWrite(turn, source.path, source.content);
       validationState.wroteSinceVerification = true;
@@ -673,9 +716,7 @@ export async function runActionLoop({
       ) {
         const target = forcedRecoveryTargetPath || recoveryWritePath(workspace.files, activeFile);
         forcedWriteRecoveryPending = true;
-        const message = target
-          ? `Recovery mode: the workspace has already been inspected. Do not list, search, or read files again. Your next response must be a write_file action for ${target} that fulfills the original request, with complete source content. Only call finish if no code change is needed.`
-          : 'Recovery mode: the workspace has already been inspected. Do not list, search, or read files again. Your next response must be a write_file action that fulfills the original request, with complete source content. Only call finish if no code change is needed.';
+        const message = `Recovery mode: the workspace has already been inspected. Do not list, search, or read files again. Your next response must be a write_file action${target ? ` for ${target}` : ''} that fulfills the original request, with complete source content. Only call finish if no code change is needed.`;
         messages.push({
           content: observation('stuck_read_recovery', false, message),
           role: 'user',
@@ -699,15 +740,10 @@ export async function runActionLoop({
         if (unchangedReadSkips === 1 && workspace.changes().length === 0) {
           const target = forcedRecoveryTargetPath || recoveryWritePath(workspace.files, activeFile);
           forcedWriteRecoveryPending = true;
+          const recoveryMsg = `Recovery mode: the workspace has already been inspected. Do not list, search, or read files again. Your next response must be a write_file action${target ? ` for ${target}` : ''} that fulfills the original request, with complete source content. Only call finish if no code change is needed.`;
           messages.push({
             role: 'user',
-            content: observation(
-              'stuck_read_recovery',
-              false,
-              target
-                ? `Recovery mode: the workspace has already been inspected. Do not list, search, or read files again. Your next response must be a write_file action for ${target} that fulfills the original request, with complete source content. Only call finish if no code change is needed.`
-                : 'Recovery mode: the workspace has already been inspected. Do not list, search, or read files again. Your next response must be a write_file action that fulfills the original request, with complete source content. Only call finish if no code change is needed.',
-            ),
+            content: observation('stuck_read_recovery', false, recoveryMsg),
           });
           continue;
         }
@@ -826,6 +862,7 @@ export async function runActionLoop({
           applyCssModuleRecovery(turn);
           const result = await runValidation(turn);
           const validationFailed = isFailedValidationResult(result);
+          const summaryText = formatValidationSummary(result);
           const finishHint = validationFailed
             ? ' Validation failed for the staged changes. Do not finish. Return a corrected write_file action with complete working source.'
             : ' Validation passed for the staged changes. Your next action must be finish with a brief summary. Do not rewrite or validate again.';
@@ -834,7 +871,7 @@ export async function runActionLoop({
             content: observation(
               action.action,
               !validationFailed,
-              `${message}\n${result}${finishHint}`,
+              `${message}\n${summaryText}${finishHint}`,
             ),
           });
           context.record('write_file', message);
@@ -843,7 +880,7 @@ export async function runActionLoop({
             turn,
             action,
             error: validationFailed,
-            message: formatReasoningResult(action, `${message} ${result}`),
+            message: formatReasoningResult(action, `${message} ${summaryText}`),
             agentRole,
           });
           if (validationFailed) {
@@ -855,6 +892,14 @@ export async function runActionLoop({
             forcedWriteRecoveryViolations = 0;
             failedWritePath = action.path || failedWritePath;
             continue;
+          }
+          if (lightweightModel) {
+            const wiredEntry = wireNewComponentIntoScratchEntry(workspace);
+            const changes = workspace.changes();
+            const summary = autoFinishSummary('identical-write', wiredEntry);
+            onEvent({ type: 'finished', turn, changes, message: summary, agentRole });
+            context.record('validation', result);
+            return { changes, files: workspace.files, summary, events: turn, workspace };
           }
           recoveredNoOpWrite = fingerprint;
           finishAfterAutomaticValidation = true;
@@ -947,7 +992,11 @@ export async function runActionLoop({
         }
         const ensuredCssModule =
           !rewrittenInlineStyles && /\.(jsx|tsx)$/i.test(action.path || '')
-            ? ensureCoLocatedCssModule(action.path || '', action.content || '')
+            ? ensureCoLocatedCssModule(
+                action.path || '',
+                action.content || '',
+                resolvedStyleProfile,
+              )
             : null;
         if (ensuredCssModule) {
           action = { ...action, content: ensuredCssModule.content };
@@ -997,6 +1046,7 @@ export async function runActionLoop({
               action.path || '',
               action.content || '',
               workspace.files,
+              resolvedStyleProfile,
             ),
           };
         }
@@ -1029,7 +1079,11 @@ export async function runActionLoop({
         if (normalizedSideEffectCss) {
           for (const stylesheet of normalizedSideEffectCss.stylesheets) {
             if (Object.hasOwn(workspace.files, stylesheet)) continue;
-            stageRecoveredWrite(turn, stylesheet, cssModuleRecovery(action.content || ''));
+            stageRecoveredWrite(
+              turn,
+              stylesheet,
+              cssModuleRecovery(action.content || '', resolvedStyleProfile, stylesheet),
+            );
           }
         }
         if (rewrittenInlineStyles) {
@@ -1055,8 +1109,22 @@ export async function runActionLoop({
           const merged = appendMissingCssModuleRules(
             workspace.files[stylesheet] || '',
             action.content || '',
+            resolvedStyleProfile,
+            stylesheet,
           );
           if (merged) stageRecoveredWrite(turn, stylesheet, merged);
+        }
+        if (resolvedStyleProfile) {
+          const rootTokens = ensureProjectRootTokens(workspace.files, resolvedStyleProfile);
+          if (rootTokens && rootTokens.path !== action.path) {
+            stageRecoveredWrite(turn, rootTokens.path, rootTokens.content);
+          }
+          const trace = projectStyleGenerationTrace(
+            action.path || '',
+            action.content || '',
+            resolvedStyleProfile,
+          );
+          if (trace) context.record('style_generation', trace);
         }
         if (
           deferredSourceWrite?.stylesheets.every((path) => Object.hasOwn(workspace.files, path))
@@ -1242,6 +1310,23 @@ export async function runActionLoop({
             continue;
           }
         }
+        if (lightweightModel) {
+          const styleRepair = repairProjectStyleRelationships({
+            files: workspace.files,
+            targetPath: lightweightTargetPath,
+            requireCoLocated: visualMode,
+            repair: () => applyCssModuleRecovery(turn),
+          });
+          if (styleRepair) {
+            if (styleRepair.remaining.length) {
+              const message = `CSS Module contract is incomplete: ${styleRepair.remaining.join(' ')}`;
+              messages.push({ role: 'user', content: observation('finish', false, message) });
+              context.record('style_contract', message);
+              continue;
+            }
+            context.record('style_recovery', `Recovered: ${styleRepair.recovered.join(', ')}`);
+          }
+        }
         if (validationState.lastValidationFailed) {
           const target: string =
             forcedRecoveryTargetPath ||
@@ -1399,7 +1484,13 @@ export async function runActionLoop({
         const attempts = (failedStylesheetWrites.get(stylesheetPath) || 0) + 1;
         failedStylesheetWrites.set(stylesheetPath, attempts);
         if (attempts >= 2) {
-          const fallback = '.component {\n  display: block;\n}\n';
+          const fallback = resolvedStyleProfile
+            ? cssModuleRecovery(
+                deferredSourceWrite?.content || '',
+                resolvedStyleProfile,
+                stylesheetPath,
+              )
+            : '.component {\n  display: block;\n}\n';
           workspace.write(stylesheetPath, fallback);
           validationState.wroteSinceVerification = true;
           failedWritePath = '';
@@ -1462,16 +1553,18 @@ export async function runActionLoop({
         onEvent({ type: 'observation', turn, action, error: true, message, agentRole });
         continue;
       }
-      const recovery =
-        action.action === 'read_file' && /^File not found: /.test(err.message)
-          ? ' The requested file is absent. Do not call read_file for this path again. If this is a new component or stylesheet you need, create it with write_file; otherwise use one of the paths returned by list_files.'
-          : action.action === 'write_file'
-            ? /Missing CSS Module import/.test(err.message)
-              ? ` The source file was not staged. Create the missing co-located stylesheet now: ${err.message.replace(/^.*?: /, '').replace(/\.$/, '')}. Then retry the source file with its CSS Module import.`
-              : writeRecovery(action.path || '', err.message, workspace.files)
-            : action.action === 'delete_file' && /Cannot delete CSS Module/.test(err.message)
-              ? ' The stylesheet was not deleted. Update or remove its importing component files first, then retry the deletion.'
-              : '';
+      let recovery = '';
+      if (action.action === 'read_file' && /^File not found: /.test(err.message)) {
+        recovery =
+          ' The requested file is absent. Do not call read_file for this path again. If this is a new component or stylesheet you need, create it with write_file; otherwise use one of the paths returned by list_files.';
+      } else if (action.action === 'write_file') {
+        recovery = /Missing CSS Module import/.test(err.message)
+          ? ` The source file was not staged. Create the missing co-located stylesheet now: ${err.message.replace(/^.*?: /, '').replace(/\.$/, '')}. Then retry the source file with its CSS Module import.`
+          : writeRecovery(action.path || '', err.message, workspace.files);
+      } else if (action.action === 'delete_file' && /Cannot delete CSS Module/.test(err.message)) {
+        recovery =
+          ' The stylesheet was not deleted. Update or remove its importing component files first, then retry the deletion.';
+      }
       if (action.action === 'write_file' && recovery) {
         failedWritePath = action.path || '';
       }

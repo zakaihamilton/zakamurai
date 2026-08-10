@@ -53,6 +53,8 @@ export async function requestNextAction({
 }): Promise<string> {
   let receivedModelOutput = false;
   let streamedCharacterCount = 0;
+  let lastEmitTime = 0;
+  let lastEmitCharCount = 0;
   const responseStartedAt = Date.now();
   const heartbeat = setInterval(() => {
     const elapsedSeconds = Math.max(1, Math.floor((Date.now() - responseStartedAt) / 1000));
@@ -60,7 +62,7 @@ export async function requestNextAction({
     const progress = downloadProgress
       ? downloadProgress
       : receivedModelOutput
-        ? `${streamedCharacterCount.toLocaleString()} character(s) received; waiting for a complete JSON action before validation`
+        ? `${streamedCharacterCount.toLocaleString()} character(s) received; waiting for a complete action before validation`
         : 'the model has not started streaming yet; keeping the workspace context ready';
     onEvent({
       type: 'thinking',
@@ -84,7 +86,7 @@ export async function requestNextAction({
     : visualMode || failedWritePath || forcedWriteRecoveryPending
       ? recoveryTokens
       : generationTokens;
-  const temperature = lightweightModel ? 0.2 : visualMode ? 0.12 : 0.15;
+  const temperature = lightweightModel ? 0.05 : visualMode ? 0.12 : 0.15;
   const topP = lightweightModel ? 0.85 : 0.8;
 
   try {
@@ -122,14 +124,30 @@ export async function requestNextAction({
       '',
       (output) => {
         streamedCharacterCount = output.length;
+        const now = Date.now();
+        const isFirstChunk = !receivedModelOutput;
         receivedModelOutput = true;
-        onEvent({
-          type: 'thinking',
-          turn,
-          agentRole,
-          replaceProgress: true,
-          message: `Local model is responding — streaming its next action (${streamedCharacterCount.toLocaleString()} character(s) received). Waiting for one complete JSON action before validation…`,
-        });
+
+        const charDelta = streamedCharacterCount - lastEmitCharCount;
+        const timeDelta = now - lastEmitTime;
+
+        if (
+          isFirstChunk ||
+          timeDelta >= 500 ||
+          charDelta >= 100 ||
+          (charDelta >= 15 && timeDelta === 0)
+        ) {
+          lastEmitTime = now;
+          lastEmitCharCount = streamedCharacterCount;
+          const waitingTarget = lightweightModel ? 'complete source code' : 'one complete action';
+          onEvent({
+            type: 'thinking',
+            turn,
+            agentRole,
+            replaceProgress: true,
+            message: `Local model is responding — streaming its next action (${streamedCharacterCount.toLocaleString()} character(s) received). Waiting for ${waitingTarget} before validation…`,
+          });
+        }
       },
       {
         model,

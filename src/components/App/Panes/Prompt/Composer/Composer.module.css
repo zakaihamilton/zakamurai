@@ -50,6 +50,8 @@
 
 .modelControl {
   display: flex;
+  flex: 1;
+  flex-wrap: wrap;
   align-items: center;
   min-width: 0;
   gap: 8px;
@@ -72,7 +74,14 @@
   white-space: nowrap;
 }
 
-.modelManagerButton {
+.styleIndicator {
+  color: var(--text-muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.modelManagerButton,
+.styleRefreshButton {
   width: 30px;
   height: 36px;
   border: 0;
@@ -85,11 +94,13 @@
   cursor: pointer;
 }
 
-.modelManagerButton:disabled {
+.modelManagerButton:disabled,
+.styleRefreshButton:disabled {
   opacity: 0.5;
 }
 
-.modelManagerButton:hover:not(:disabled) {
+.modelManagerButton:hover:not(:disabled),
+.styleRefreshButton:hover:not(:disabled) {
   color: var(--accent);
   background: var(--bg-hover);
 }
@@ -156,5 +167,10 @@
   .modelSelect {
     width: min(180px, calc(100vw - 140px));
     max-width: 180px;
+  }
+
+  .styleIndicator,
+  .styleRefreshButton {
+    display: none;
   }
 }

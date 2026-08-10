@@ -137,6 +137,7 @@ export function createManagerToolOptions({
           title: evidence?.title || 'Preview ready',
           domSummary: evidence?.text || 'Preview evidence is available.',
           elements: evidence?.elements || [],
+          styleAudit: evidence?.styleAudit,
           screenshotCaptured: Boolean(evidence?.screenshotCaptured),
           diagnostics: logs.slice(-12).join('\n'),
         };

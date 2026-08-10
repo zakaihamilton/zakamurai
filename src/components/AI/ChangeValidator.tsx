@@ -505,6 +505,77 @@ export function validateCssModuleUsage(path: string, content: string): string | 
   return null;
 }
 
+const resolveModulePath = (fromPath: string, specifier: string): string => {
+  const parts = fromPath.split('/').slice(0, -1);
+  for (const part of specifier.split('/')) {
+    if (!part || part === '.') continue;
+    if (part === '..') parts.pop();
+    else parts.push(part);
+  }
+  return parts.join('/');
+};
+
+/** Validates CSS Module imports and selector references against a complete workspace snapshot. */
+export function validateCssModuleRelationships(
+  files: Record<string, string>,
+  options: { requireCoLocatedFor?: string[] } = {},
+): string[] {
+  const errors: string[] = [];
+  const requireCoLocatedFor = new Set(options.requireCoLocatedFor || []);
+  for (const [path, content] of Object.entries(files).sort(([left], [right]) =>
+    left.localeCompare(right),
+  )) {
+    if (!/\.(?:jsx|tsx)$/i.test(path)) continue;
+    const usageError = validateCssModuleUsage(path, content);
+    if (usageError) errors.push(usageError);
+    const imports = [
+      ...content.matchAll(/\bimport\s+(\w+)\s+from\s+["'](\.{1,2}\/[^"']+\.module\.css)["']/g),
+    ];
+    if (requireCoLocatedFor.has(path)) {
+      const expectedPath = path.replace(/\.(?:jsx|tsx)$/i, '.module.css');
+      const importsExpectedModule = imports.some(
+        (match) => resolveModulePath(path, match[2]) === expectedPath,
+      );
+      if (!importsExpectedModule) {
+        errors.push(
+          `Generated component ${path} is missing its co-located ${expectedPath} import.`,
+        );
+      }
+    }
+    for (const match of imports) {
+      const [, binding, specifier] = match;
+      const stylesheetPath = resolveModulePath(path, specifier);
+      const stylesheet = files[stylesheetPath];
+      if (typeof stylesheet !== 'string') {
+        errors.push(`CSS Module import in ${path} does not resolve: ${stylesheetPath}.`);
+        continue;
+      }
+      const referenced = new Set(
+        [
+          ...content.matchAll(
+            new RegExp(
+              `\\b${binding}(?:\\.([A-Za-z_-][\\w-]*)|\\[\\s*["']([A-Za-z_-][\\w-]*)["']\\s*\\])`,
+              'g',
+            ),
+          ),
+        ].map((reference) => reference[1] || reference[2]),
+      );
+      const defined = new Set(
+        [...stylesheet.matchAll(/\.([A-Za-z_-][\w-]*)\s*(?=[:.{,\s])/g)].map(
+          (selector) => selector[1],
+        ),
+      );
+      const missing = [...referenced].filter((className) => !defined.has(className)).sort();
+      if (missing.length) {
+        errors.push(
+          `CSS Module ${stylesheetPath} is missing selectors referenced by ${path}: ${missing.join(', ')}.`,
+        );
+      }
+    }
+  }
+  return [...new Set(errors)];
+}
+
 /** Reject a stylesheet that was accidentally assigned a JSX or TSX path. */
 export function validateFileContentType(path: string, content: string): string | null {
   if (!/\.(jsx|tsx)$/i.test(path) || typeof content !== 'string') return null;

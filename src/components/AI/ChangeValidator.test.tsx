@@ -6,6 +6,7 @@ import {
   validateContentSyntax,
   validateContentSyntaxAsync,
   validateCssContentSafety,
+  validateCssModuleRelationships,
   validateCssModuleUsage,
   validateDeclaredStateVariables,
   validateFileContentType,
@@ -17,6 +18,37 @@ import {
 } from './ChangeValidator';
 
 describe('AI change validation', () => {
+  it('validates CSS Module imports and referenced selectors across the workspace', () => {
+    const source =
+      'import styles from "./App.module.css"; export default () => <main className={styles.app}><button className={styles.primaryAction}>Save</button></main>;';
+    expect(
+      validateCssModuleRelationships({
+        'src/App.jsx': source,
+        'src/App.module.css': '.app {}\n.primaryAction {}',
+      }),
+    ).toEqual([]);
+    expect(
+      validateCssModuleRelationships({
+        'src/App.jsx': source,
+        'src/App.module.css': '.app {}',
+      })[0],
+    ).toContain('primaryAction');
+    expect(validateCssModuleRelationships({ 'src/App.jsx': source })[0]).toContain(
+      'does not resolve',
+    );
+  });
+
+  it('can require a generated component to import its co-located module', () => {
+    expect(
+      validateCssModuleRelationships(
+        { 'src/App.jsx': 'export default () => <main>App</main>;' },
+        { requireCoLocatedFor: ['src/App.jsx'] },
+      ),
+    ).toEqual([
+      'Generated component src/App.jsx is missing its co-located src/App.module.css import.',
+    ]);
+  });
+
   it('accepts a project-relative multi-file change set', () => {
     const result = validateAIChanges([
       { path: 'src/App.jsx', after: 'export default null' },

@@ -1,3 +1,7 @@
+import {
+  createProjectStyleProfile,
+  resolveProjectStyleProfile,
+} from '@/components/AI/Agent/ProjectStyleProfile';
 import { useModelDownloader } from '@/components/AI/Models';
 import { RECOMMENDED_WEB_LLM_MODEL, WEB_LLM_MODELS } from '@/components/AI/WebLLMModels';
 import { WebLLMState } from '@/components/AI/WebLLMState';
@@ -8,6 +12,7 @@ import { TabState } from '@/components/App/Panes/TabBar';
 import { EditorState } from '@/components/App/Views/EditorArea';
 import { LogState } from '@/components/App/Views/LogArea';
 import { useFileSystem } from '@/components/Storage';
+import { WorkspaceProfileState } from '@/components/Workspace';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { requireStore } from '../../types';
 import { AgentSessionState, createAgentRunUsage, createSessionMessage } from './AgentSessions';
@@ -63,6 +68,7 @@ export default function Prompt() {
   );
   const tabState = requireStore(TabState.useState(['activeTabId', 'openTabs']));
   const editorState = requireStore(EditorState.useState(['selectedLines', 'fileContents']));
+  const workspaceProfileState = requireStore(WorkspaceProfileState.useState(['styleProfile']));
   const agentSessionState = requireStore(
     AgentSessionState.useState(['sessions', 'activeSessionId']),
   );
@@ -70,6 +76,23 @@ export default function Prompt() {
   const [filePromptRemainder, setFilePromptRemainder] = useState('');
   const [isFileScopeArmed, setIsFileScopeArmed] = useState(false);
   const lastStopRequestRef = useRef(0);
+  const styleProfile = resolveProjectStyleProfile(
+    editorState.fileContents || {},
+    workspaceProfileState.styleProfile,
+  );
+
+  useEffect(() => {
+    const current = workspaceProfileState.styleProfile;
+    if (
+      current?.fingerprint === styleProfile.fingerprint &&
+      current.source === styleProfile.source
+    ) {
+      return;
+    }
+    workspaceProfileState((draft) => {
+      draft.styleProfile = styleProfile;
+    });
+  }, [styleProfile, workspaceProfileState]);
 
   const {
     activeSession,
@@ -122,6 +145,7 @@ export default function Prompt() {
     logState,
     cachedModelIds,
     webLLMEngines: engines,
+    styleProfile,
   });
 
   useEffect(() => {
@@ -229,6 +253,11 @@ export default function Prompt() {
     },
     [promptUiState],
   );
+  const refreshProjectStyle = useCallback(() => {
+    workspaceProfileState((draft) => {
+      draft.styleProfile = createProjectStyleProfile(editorState.fileContents || {});
+    });
+  }, [editorState.fileContents, workspaceProfileState]);
 
   const selectedModelInfo =
     WEB_LLM_MODELS.find((model) => model.id === selectedModel) || RECOMMENDED_WEB_LLM_MODEL;
@@ -305,6 +334,7 @@ export default function Prompt() {
           onChangeModel: setSelectedModel,
           onLoadCachedModelIds: loadCachedModelIds,
           onOpenModelManager: openModelManager,
+          onRefreshProjectStyle: refreshProjectStyle,
         }}
         sessionReasoning={activeSession?.reasoning || ''}
       />

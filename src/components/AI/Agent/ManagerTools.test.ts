@@ -23,6 +23,16 @@ describe('manager tools', () => {
     expect(formatContextResults([{ tool: 'read_file', value: 'x', text: 'x' }])).toContain(
       '[read_file]',
     );
+    expect(
+      formatContextResults([
+        {
+          tool: 'read_file',
+          input: { path: 'src/App.jsx' },
+          value: 'x',
+          text: 'x',
+        },
+      ]),
+    ).toContain('[read_file {"path":"src/App.jsx"}]');
   });
 
   it('supports semantic retrieval and unavailable fallbacks', async () => {

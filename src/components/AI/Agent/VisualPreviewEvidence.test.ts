@@ -52,4 +52,23 @@ describe('summarizeVisualPreviewEvidence', () => {
       }),
     ).toContain('did not capture a screenshot');
   });
+
+  it('rejects concrete computed-style audit failures', () => {
+    expect(
+      visualPreviewInspectionFailure({
+        status: 'passed',
+        elements: ['h1: Demo', 'button: Save'],
+        screenshotCaptured: true,
+        styleAudit: {
+          horizontalOverflow: true,
+          collapsedControls: [],
+          missingExplicitColors: [],
+          contrastFailures: [],
+          unnamedControls: [],
+          missingFocusVisible: false,
+          issues: ['horizontal overflow'],
+        },
+      }),
+    ).toContain('horizontal overflow');
+  });
 });
