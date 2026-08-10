@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
+import { COMPLETION_RESPONSE_GRAMMAR } from './CompletionResponseFormat';
 import {
-  COMPLETION_RESPONSE_GRAMMAR,
   buildTaskContract,
   formatTaskContract,
   getModelCapabilityProfile,

@@ -1,5 +1,5 @@
 import type { ManagerTrace } from '@/components/AI/Agent';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import ManagerTraceInspector from './ManagerTraceInspector';
 
@@ -79,7 +79,7 @@ describe('ManagerTraceInspector', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Copy replay fixture' }));
     fireEvent.click(screen.getByRole('button', { name: 'Replay request' }));
 
-    expect(writeText).toHaveBeenCalledTimes(2);
+    await waitFor(() => expect(writeText).toHaveBeenCalledTimes(2));
     expect(writeText.mock.calls[1][0]).toContain('trace-test-run');
     expect(onReplayRequest).toHaveBeenCalledWith('list files');
   });

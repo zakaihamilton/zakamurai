@@ -1,4 +1,5 @@
 import { validateProjectPath } from './ChangeValidator';
+import { COMPLETION_RESPONSE_FORMAT } from './CompletionResponseFormat';
 import type {
   FileMap,
   ModelCapabilityProfile,
@@ -118,16 +119,9 @@ export function getModelCapabilityProfile(modelId: string): ModelCapabilityProfi
   };
 }
 
-export const COMPLETION_RESPONSE_GRAMMAR = String.raw`
-root ::= "<completion>" content "</completion>"
-content ::= [\u0000-\U0010ffff]*
-`.trim();
-
 export function responseFormatForTask(taskKind: ModelTaskKind): ModelResponseFormat | undefined {
   if (taskKind === 'plan-edit' || taskKind === 'answer') return { type: 'json_object' };
-  if (taskKind === 'completion') {
-    return { type: 'grammar', grammar: COMPLETION_RESPONSE_GRAMMAR };
-  }
+  if (taskKind === 'completion') return COMPLETION_RESPONSE_FORMAT;
   // File bodies remain raw text. The host owns the target path and stages the content.
   return undefined;
 }

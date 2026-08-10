@@ -1,6 +1,6 @@
+import { COMPLETION_RESPONSE_FORMAT } from '@/components/AI/CompletionResponseFormat';
 import { COMPLETION_SYSTEM_PROMPT } from '@/components/AI/Prompts';
 import { RagState } from '@/components/AI/RagState';
-import { responseFormatForTask } from '@/components/AI/ReliabilityContracts';
 import {
   RECOMMENDED_COMPLETION_MODEL,
   resolveCompletionModelId,
@@ -380,7 +380,7 @@ export default function useCompletion({
             model: completionModelId,
             signal: completionController.signal,
             requestKind: 'completion',
-            responseFormat: responseFormatForTask('completion'),
+            responseFormat: COMPLETION_RESPONSE_FORMAT,
             taskKind: 'completion',
             attempt: 1,
             onRecovery: (recovery) => {
