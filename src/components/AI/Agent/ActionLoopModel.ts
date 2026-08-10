@@ -1,3 +1,4 @@
+import { getModelCapabilityProfile } from '@/components/AI/ReliabilityContracts';
 import type {
   AgentModelSession,
   ManagerModelClient,
@@ -5,14 +6,7 @@ import type {
   WebLLMMessage,
   WebLLMRecoveryEvent,
 } from '@/components/AI/types';
-import {
-  AGENT_CONTEXT_WINDOW_SIZE,
-  AGENT_GENERATION_TOKENS,
-  AGENT_RECOVERY_TOKENS,
-  LIGHTWEIGHT_AGENT_GENERATION_TOKENS,
-  LIGHTWEIGHT_AGENT_RECOVERY_TOKENS,
-  getModelDownloadProgress,
-} from './ActionLoopRecovery';
+import { getModelDownloadProgress } from './ActionLoopRecovery';
 
 type AskWebLLM = Awaited<ReturnType<typeof import('./ActionLoopRecovery').loadAskWebLLM>>;
 
@@ -33,6 +27,7 @@ export async function requestNextAction({
   turn,
   agentRole,
   onEvent,
+  seed,
 }: {
   askWebLLM: AskWebLLM | null;
   modelSession?: AgentModelSession;
@@ -50,6 +45,7 @@ export async function requestNextAction({
   turn: number;
   agentRole: string | null;
   onEvent: NonNullable<RunAgentOptions['onEvent']>;
+  seed?: number;
 }): Promise<string> {
   let receivedModelOutput = false;
   let streamedCharacterCount = 0;
@@ -73,21 +69,15 @@ export async function requestNextAction({
     });
   }, 3_000);
 
-  const recoveryTokens = lightweightModel
-    ? LIGHTWEIGHT_AGENT_RECOVERY_TOKENS
-    : AGENT_RECOVERY_TOKENS;
-  const generationTokens = lightweightModel
-    ? LIGHTWEIGHT_AGENT_GENERATION_TOKENS
-    : AGENT_GENERATION_TOKENS;
-  const maxTokens = lightweightModel
-    ? visualMode || failedWritePath || forcedWriteRecoveryPending
-      ? recoveryTokens
-      : generationTokens
-    : visualMode || failedWritePath || forcedWriteRecoveryPending
-      ? recoveryTokens
-      : generationTokens;
+  const profile = getModelCapabilityProfile(model);
+  const maxTokens =
+    visualMode || failedWritePath || forcedWriteRecoveryPending
+      ? profile.recoveryTokens
+      : profile.generationTokens;
   const temperature = lightweightModel ? 0.05 : visualMode ? 0.12 : 0.15;
   const topP = lightweightModel ? 0.85 : 0.8;
+  const taskKind = failedWritePath || forcedWriteRecoveryPending ? 'repair-file' : 'write-file';
+  const attemptSeed = seed === undefined ? undefined : seed + turn - 1;
 
   try {
     if (modelSession) {
@@ -100,8 +90,11 @@ export async function requestNextAction({
         temperature,
         top_p: topP,
         max_tokens: maxTokens,
-        contextWindowSize: AGENT_CONTEXT_WINDOW_SIZE,
+        contextWindowSize: profile.contextWindowSize,
         sessionId,
+        seed: attemptSeed,
+        taskKind,
+        attempt: turn,
       });
     }
     if (modelClient) {
@@ -114,8 +107,11 @@ export async function requestNextAction({
         temperature,
         top_p: topP,
         max_tokens: maxTokens,
-        contextWindowSize: AGENT_CONTEXT_WINDOW_SIZE,
+        contextWindowSize: profile.contextWindowSize,
         sessionId,
+        seed: attemptSeed,
+        taskKind,
+        attempt: turn,
       });
     }
     if (!askWebLLM) throw new Error('WebLLM is unavailable.');
@@ -171,8 +167,11 @@ export async function requestNextAction({
         temperature,
         top_p: topP,
         max_tokens: maxTokens,
-        contextWindowSize: AGENT_CONTEXT_WINDOW_SIZE,
+        contextWindowSize: profile.contextWindowSize,
         sessionId,
+        seed: attemptSeed,
+        taskKind,
+        attempt: turn,
       },
     );
   } finally {

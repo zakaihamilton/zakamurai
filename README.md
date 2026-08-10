@@ -122,6 +122,9 @@ npm run test:ai-manager:watch # Watch the focused manager suite while debugging
 npm run test:ai-manager:replay # Replay deterministic JSON manager fixtures
 npm run test:ai-manager:smoke # Opt-in real WebLLM manager smoke test
 npm run test:promptfoo # Static AI compliance eval (no API keys)
+npm run test:ai-evals # Deterministic, baseline-gated AI reliability suite
+npm run test:ai-qualification # Seeded real-WebGPU release qualification
+npm run update:ai-eval-baseline -- --qualification-reports run-1.json,run-2.json,run-3.json # Explicit baseline ratchet
 npm run test:ai-soak # Mocked 200-request AI lifecycle and cleanup regression
 npm run analyze:ai -- report.json # Summarize AI metrics from an exported support report
 npm run check:architecture # Enforce component architecture rules
@@ -157,6 +160,16 @@ files remain and that the generated payload stays within its deployment budget.
 
 Static `npm run test:promptfoo` uses the `echo` provider in [promptfooconfig.yaml](./promptfooconfig.yaml)
 and golden fixtures in `tests/ai-golden/` — **no API keys required**. It is included in `verify` and CI.
+
+The versioned reliability suite in `tests/ai-evals/` covers agent edits, completions, grounded
+answers, model lifecycle, and injected recovery failures for the 3B, 2B, 1.5B, and 0.8B tiers.
+`test:ai-evals` is deterministic and blocks ordinary verification. Release qualification runs each
+model-facing case with three fixed seeds on real WebGPU; set `ZAKAMURAI_AI_BROWSER_PROFILE`,
+`ZAKAMURAI_AI_HARDWARE_PROFILE`, and `ZAKAMURAI_AI_QUALIFICATION_REPORT` before saving its JSON
+report. Use `ZAKAMURAI_AI_QUALIFICATION_RECORD_ONLY=1` while collecting the first three reports for
+a new profile. Baselines may be updated only from
+three qualification reports via `update:ai-eval-baseline`, which prints score deltas and newly
+passing or failing cases for review.
 
 The AI Manager has a fast deterministic debugging loop. Add or update a versioned fixture under
 `tests/ai-manager/fixtures/`, then run `npm run test:ai-manager:replay` to exercise the real manager

@@ -1,8 +1,13 @@
 import { validateAIChanges } from '../ChangeValidator';
+import {
+  MAX_RELIABILITY_MODEL_CALLS,
+  buildTaskContract,
+  formatModelTask,
+  responseFormatForTask,
+  validateGroundedAnswer,
+} from '../ReliabilityContracts';
 import type {
   ManagerEventHandler,
-  ManagerModelCall,
-  ManagerModelClient,
   ManagerToolName,
   ModelResult,
   RunManagerOptions,
@@ -20,6 +25,7 @@ import {
   selectInitialContextFiles,
   summarizeToolResult,
 } from './ManagerContextUtils';
+import { loadManagerModel } from './ManagerModelClient';
 import {
   MANAGER_SYSTEM_PROMPT,
   buildManagerModelPrompt,
@@ -57,35 +63,6 @@ const getContextLedger = (
   contextLedgers.set(key, ledger);
   return ledger;
 };
-async function loadModel(): Promise<ManagerModelClient> {
-  const { askWebLLM } = await import('../WebLLMAPI');
-  return async ({
-    model,
-    messages,
-    signal,
-    onMetrics,
-    onRecovery,
-    temperature,
-    top_p,
-    max_tokens,
-    contextWindowSize,
-    sessionId,
-  }: ManagerModelCall) =>
-    askWebLLM('', '', null, {
-      model,
-      messages,
-      signal,
-      requestKind: 'agent',
-      onMetrics,
-      onRecovery,
-      temperature,
-      top_p,
-      max_tokens,
-      contextWindowSize,
-      sessionId,
-    });
-}
-
 type ManagerExecutionResult = Omit<RunManagerResult, 'trace'>;
 
 type ManagerExecutionOptions = RunManagerOptions & {
@@ -112,12 +89,14 @@ async function executeManager({
   onRecovery,
   priorContext = '',
   styleProfile,
+  seed,
   modelClient,
   recorder,
   onWorkspace,
 }: ManagerExecutionOptions): Promise<ManagerExecutionResult> {
   if (signal?.aborted) throw new DOMException('Manager stopped', 'AbortError');
   const plan = createManagerPlan(request);
+  const taskContract = buildTaskContract({ request, scope, activeFile, files });
   const tools = createManagerToolContext(files, workspaceIndex, {
     validate,
     runProjectCheck,
@@ -152,6 +131,11 @@ async function executeManager({
 
   recorder.setPlan(plan);
   onEvent({ type: 'routing', turn: 0, plan, message: `Request routed to ${plan.intent}.` });
+  onEvent({
+    type: 'context',
+    turn: 0,
+    message: `Reliability contract: ${taskContract.requiredValidations.join(', ')}; model-call cap ${taskContract.maxModelCalls}; repair cap ${taskContract.maxRepairRounds}.`,
+  });
   if (styleProfile) {
     onEvent({
       type: 'context',
@@ -281,7 +265,13 @@ async function executeManager({
       'run_project_check',
       'inspect_preview',
     ]);
-    const actionContext = [handoffContext, contextText(toolResults)].filter(Boolean).join('\n\n');
+    const actionContext = [
+      formatModelTask({ kind: 'plan-edit', contract: taskContract, evidence: handoffContext }),
+      handoffContext,
+      contextText(toolResults),
+    ]
+      .filter(Boolean)
+      .join('\n\n');
     const actionResult = await runActionLoop({
       request,
       scope,
@@ -303,6 +293,8 @@ async function executeManager({
       styleProfile,
       visualMode: isLikelyUiRequest(request) || planIncludesTool(plan, 'inspect_preview'),
       requirePreviewInspection: planIncludesTool(plan, 'inspect_preview'),
+      maxTurns: MAX_RELIABILITY_MODEL_CALLS,
+      seed,
       onEvent: (event) => {
         const action = event.action;
         const actionName = typeof action === 'string' ? action : action?.action;
@@ -373,7 +365,7 @@ async function executeManager({
     };
   }
 
-  const askModel = modelClient || (await loadModel());
+  const askModel = modelClient || (await loadManagerModel());
   const messages: WebLLMMessage[] = [{ role: 'system', content: MANAGER_SYSTEM_PROMPT }];
   let task: 'answer' | 'generate-changes' | 'repair-changes' =
     plan.intent === 'explanation' ? 'answer' : 'generate-changes';
@@ -401,6 +393,10 @@ async function executeManager({
       top_p: 0.8,
       max_tokens: task === 'answer' ? 1200 : AGENT_GENERATION_TOKENS,
       contextWindowSize: AGENT_CONTEXT_WINDOW_SIZE,
+      seed,
+      responseFormat: responseFormatForTask('answer'),
+      taskKind: 'answer',
+      attempt: round + 1,
     });
     messages.push({ role: 'assistant', content: reply });
     onEvent({ type: 'model', turn: round + 1, task, output: reply });
@@ -446,6 +442,8 @@ async function executeManager({
   if (task !== 'answer' && result.kind !== 'changes')
     throw new Error('The model did not return changes for an edit request.');
   if (result.kind === 'answer') {
+    const groundingError = validateGroundedAnswer(result.summary, contextText(toolResults));
+    if (groundingError) throw new Error(groundingError);
     onEvent({ type: 'finished', turn: messages.length, message: result.summary });
     return {
       changes: [],
@@ -506,6 +504,10 @@ async function executeManager({
             top_p: 0.8,
             max_tokens: AGENT_GENERATION_TOKENS,
             contextWindowSize: AGENT_CONTEXT_WINDOW_SIZE,
+            seed: seed === undefined ? undefined : seed + repair + 1,
+            responseFormat: responseFormatForTask('repair-file'),
+            taskKind: 'repair-file',
+            attempt: repair + 1,
           });
           messages.push({ role: 'assistant', content: reply });
           onEvent({ type: 'model', turn: repair + 2, task, output: reply });
@@ -580,6 +582,10 @@ async function executeManager({
       top_p: 0.8,
       max_tokens: AGENT_GENERATION_TOKENS,
       contextWindowSize: AGENT_CONTEXT_WINDOW_SIZE,
+      seed: seed === undefined ? undefined : seed + repair + 1,
+      responseFormat: responseFormatForTask('repair-file'),
+      taskKind: 'repair-file',
+      attempt: repair + 1,
     });
     messages.push({ role: 'assistant', content: reply });
     try {

@@ -124,6 +124,16 @@ export async function runAgentRequest({
       },
       ...createManagerToolOptions({ Compiler, fs, sidebarState }),
       onEvent: (managerEvent) => {
+        if (managerEvent.type === 'validation') {
+          const output = managerEvent.output || managerEvent.message || '';
+          runState.recordValidation(
+            /(?:"status"\s*:\s*"passed"|validation passed)/i.test(output)
+              ? 'passed'
+              : /(?:"status"\s*:\s*"failed"|validation failed)/i.test(output)
+                ? 'failed'
+                : 'unavailable',
+          );
+        }
         const legacyAction = managerEvent as unknown as AgentEvent;
         if (managerEvent.type === 'tool' || legacyAction.type === 'tool') {
           const tool =

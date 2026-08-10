@@ -19,6 +19,16 @@ npx tsx scripts/run-promptfoo-checks.ts
 echo "--- Starting AI Lifecycle Soak Regression ---"
 npm run test:ai-soak
 
+echo "--- Starting Deterministic AI Reliability Evaluations ---"
+npm run test:ai-evals
+
+if [ "${ZAKAMURAI_AI_QUALIFICATION:-0}" = "1" ]; then
+    echo "--- Starting Seeded WebGPU Model Qualification ---"
+    npm run test:ai-qualification
+else
+    echo "--- Seeded WebGPU qualification skipped (set ZAKAMURAI_AI_QUALIFICATION=1 for release qualification) ---"
+fi
+
 echo "--- Starting promptfoo eval (optional report) ---"
 npx promptfoo eval || echo "Warning: promptfoo eval reported failures; static checks above are authoritative."
 

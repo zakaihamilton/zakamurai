@@ -10,6 +10,12 @@ import {
   validateRequestFulfillment,
   workspaceFulfillsInteractiveRequest,
 } from '../ChangeValidator';
+import {
+  MAX_RELIABILITY_MODEL_CALLS,
+  assertTaskPathAllowed,
+  buildTaskContract,
+  isTaskPathAllowed,
+} from '../ReliabilityContracts';
 import { AgentExecutionError, AgentRecoveryValidationError } from './ActionLoopErrors';
 import { requestNextAction } from './ActionLoopModel';
 import {
@@ -89,7 +95,7 @@ export async function runActionLoop({
   signal,
   onEvent = () => {},
   onMetrics,
-  maxTurns = 30,
+  maxTurns = MAX_RELIABILITY_MODEL_CALLS,
   systemPrompt = AGENT_SYSTEM_PROMPT,
   allowedActions = ALL_AGENT_ACTIONS,
   priorContext = '',
@@ -101,9 +107,11 @@ export async function runActionLoop({
   modelClient,
   modelSession,
   styleProfile,
+  seed,
 }: RunAgentOptions): Promise<RunAgentResult> {
   const askWebLLM = modelClient ? null : await loadAskWebLLM();
   const workspace = existingWorkspace || new AgentWorkspace(files, workspaceIndex);
+  const taskContract = buildTaskContract({ request, scope, activeFile, files });
   const context = new AgentContextManager({ request, priorContext });
   const lightweightModel = isLightweightAgentModel(model);
   const resolvedStyleProfile = lightweightModel
@@ -184,7 +192,7 @@ export async function runActionLoop({
   // Incomplete metadata ↔ prose oscillation must not burn the full step budget.
   const failedWriteAttemptLimit = lightweightModel ? 5 : 6;
   const malformedSourceAttemptLimit = lightweightModel ? 3 : 4;
-  const validationRepairLimit = lightweightModel ? 2 : 3;
+  const validationRepairLimit = taskContract.maxRepairRounds;
 
   const recordFailedWriteAttempt = (target: string): void => {
     failedWriteAttempts += 1;
@@ -317,6 +325,7 @@ export async function runActionLoop({
       turn,
       agentRole,
       onEvent,
+      seed,
     });
     onEvent({
       type: 'model_io',
@@ -353,6 +362,14 @@ export async function runActionLoop({
               : {}),
           }));
           const validation = validateAIChanges(changes);
+          const outsideContract = validation.accepted.find(
+            (change) => !isTaskPathAllowed(taskContract, change.path),
+          );
+          if (outsideContract) {
+            validation.rejected.push(
+              `Target path is outside the task contract: ${outsideContract.path}`,
+            );
+          }
           if (validation.rejected.length || !validation.accepted.length) {
             messages.push({
               role: 'user',
@@ -978,6 +995,7 @@ export async function runActionLoop({
         }
       }
       if (action.action === 'write_file') {
+        assertTaskPathAllowed(taskContract, action.path || '');
         const normalizedSideEffectCss = /\.(jsx|tsx)$/i.test(action.path || '')
           ? normalizeSideEffectCssSource(action.path || '', action.content || '')
           : null;
@@ -1141,6 +1159,7 @@ export async function runActionLoop({
       }
       if (action.action === 'replace_file_content') {
         const path = action.path || '';
+        assertTaskPathAllowed(taskContract, path);
         const existingContent = workspace.read(path);
         if (!existingContent && existingContent !== '') {
           throw new Error(`File not found: ${path}. Cannot perform replace_file_content.`);
@@ -1179,6 +1198,7 @@ export async function runActionLoop({
       }
       if (action.action === 'delete_file') {
         const path = action.path || '';
+        assertTaskPathAllowed(taskContract, path);
         const importers = cssModuleImporters(path, workspace.files);
         if (importers.length) {
           throw new Error(
@@ -1595,9 +1615,12 @@ export async function runActionLoop({
         );
       }
       const needsEntryWiring = newlyCreatedComponentsNeedEntryWiring(workspace);
-      const summary = needsEntryWiring
-        ? `Validated a partial draft after the agent reached its ${maxTurns}-step safety limit. It created new components without wiring them into the application entry point; review the draft before applying it.`
-        : autoFinishSummary('safety-limit', wiredEntry);
+      const detail = wiredEntry
+        ? ` Host recovery wired ${wiredEntry} before validation.`
+        : needsEntryWiring
+          ? ' The partial draft created new components without wiring them into the application entry point.'
+          : '';
+      const summary = `The agent reached its ${maxTurns}-step safety limit. Its partial draft passed deterministic validation but remains incomplete and is preserved for review; it was not reported as a completed request.${detail}`;
       onEvent({
         type: 'finished',
         turn: maxTurns,

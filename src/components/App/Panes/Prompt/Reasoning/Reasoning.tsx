@@ -250,6 +250,16 @@ function ReasoningPanelInner({
                 <dl className={styles.diagnosticsGrid}>
                   <dt>Model</dt>
                   <dd>{runUsage.modelIds.join(', ') || 'unknown'}</dd>
+                  <dt>Requested</dt>
+                  <dd>{runUsage.requestedModelIds?.join(', ') || 'unknown'}</dd>
+                  <dt>Task stages</dt>
+                  <dd>{runUsage.taskKinds?.join(' → ') || 'unknown'}</dd>
+                  <dt>Recovery</dt>
+                  <dd>{runUsage.recoveryReasons?.join(', ') || 'none'}</dd>
+                  <dt>Repairs</dt>
+                  <dd>{runUsage.repairAttempts || 0}</dd>
+                  <dt>Validation</dt>
+                  <dd>{runUsage.finalValidationStatus || 'unavailable'}</dd>
                   <dt>Calls</dt>
                   <dd>{runUsage.modelCalls}</dd>
                   <dt>Outcome</dt>

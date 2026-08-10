@@ -13,6 +13,7 @@ import {
   getCachedWebLLMModelIds,
   interruptWebLLM,
   pruneWebLLMMessages,
+  unloadAllWebLLMEngines,
 } from './WebLLMAPI';
 import type { WebLLMMessage } from './types';
 
@@ -63,6 +64,7 @@ describe('WebLLMAPI', () => {
   let mockEngine: MockEngine;
 
   beforeEach(async () => {
+    await unloadAllWebLLMEngines();
     vi.clearAllMocks();
     mockRagUnloadModel.mockResolvedValue(undefined);
     vi.stubGlobal(
@@ -320,7 +322,7 @@ describe('WebLLMAPI', () => {
     ).rejects.toMatchObject({ name: 'AbortError' });
   });
 
-  it('supports custom messages, max tokens, and Qwen3 generation options', async () => {
+  it('supports custom messages, seeded structured output, and Qwen3 generation options', async () => {
     mockEngine.chat.completions.create.mockResolvedValue({
       choices: [{ message: { content: 'Custom response' } }],
     });
@@ -329,17 +331,33 @@ describe('WebLLMAPI', () => {
       { role: 'system', content: 'sys' },
       { role: 'user', content: 'user' },
     ];
+    const onMetrics = vi.fn();
+    const responseFormat = { type: 'json_object' as const };
     await askWebLLM('ignored', '', null, {
       model: 'Qwen3-4B-test',
       messages,
       max_tokens: 128,
+      seed: 42,
+      responseFormat,
+      taskKind: 'answer',
+      attempt: 2,
+      onMetrics,
     });
 
     expect(mockEngine.chat.completions.create).toHaveBeenCalledWith(
       expect.objectContaining({
         messages,
         max_tokens: 128,
+        seed: 42,
+        response_format: responseFormat,
         extra_body: { enable_thinking: false },
+      }),
+    );
+    expect(onMetrics).toHaveBeenCalledWith(
+      expect.objectContaining({
+        taskKind: 'answer',
+        attempt: 2,
+        structuredOutput: true,
       }),
     );
   });
@@ -578,7 +596,7 @@ describe('WebLLMAPI', () => {
     await unloadAllWebLLMEngines();
   });
 
-  it.each(['out of memory', 'worker terminated unexpectedly'])(
+  it.each(['worker terminated unexpectedly'])(
     'classifies and retries a recoverable "%s" failure',
     async (failure) => {
       mockEngine.chat.completions.create
@@ -600,6 +618,37 @@ describe('WebLLMAPI', () => {
       warn.mockRestore();
     },
   );
+
+  it('rebuilds canonical context without changing models after invalid context', async () => {
+    mockEngine.chat.completions.create
+      .mockRejectedValueOnce(new Error('SystemMessageOrderError'))
+      .mockResolvedValueOnce({ choices: [{ message: { content: 'recovered' } }] });
+
+    await expect(askWebLLM('hello', '', null, { model: 'test-model' })).resolves.toBe('recovered');
+
+    expect(mockedCreateWebWorkerMLCEngine).toHaveBeenCalledTimes(1);
+    expect(mockEngine.chat.completions.create).toHaveBeenCalledTimes(2);
+  });
+
+  it('moves directly to a cached smaller model after out of memory', async () => {
+    const selected = 'Qwen2.5-Coder-3B-Instruct-q4f16_1-MLC';
+    const fallback = 'Qwen2.5-Coder-1.5B-Instruct-q4f16_1-MLC';
+    mockEngine.chat.completions.create
+      .mockRejectedValueOnce(new Error('out of memory'))
+      .mockResolvedValueOnce({ choices: [{ message: { content: 'recovered' } }] });
+    mockedHasModelInCache.mockImplementation(async (modelId: string) => modelId === fallback);
+    const recoveries: string[] = [];
+
+    await expect(
+      askWebLLM('hello', '', null, {
+        model: selected,
+        onRecovery: (event) => recoveries.push(`${event.action}:${event.modelId}`),
+      }),
+    ).resolves.toBe('recovered');
+
+    expect(mockEngine.chat.completions.create).toHaveBeenCalledTimes(2);
+    expect(recoveries).toContain(`fallback:${fallback}`);
+  });
 
   it('recovers when a worker rejects with a non-Error value', async () => {
     mockEngine.chat.completions.create

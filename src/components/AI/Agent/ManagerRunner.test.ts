@@ -681,8 +681,8 @@ describe('runManager', () => {
         model: 'test-model',
         validate,
       }),
-    ).rejects.toThrow(/still broken|Validation failed after 3 repair attempts/);
-    expect(validate).toHaveBeenCalledTimes(3);
+    ).rejects.toThrow(/still broken|Validation failed after 2 repair attempts/);
+    expect(validate).toHaveBeenCalledTimes(2);
   });
 
   it('runs the main-branch action protocol through write, validate, and finish', async () => {

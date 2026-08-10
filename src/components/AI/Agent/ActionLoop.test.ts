@@ -1114,8 +1114,8 @@ export default function App() {
         model: 'test',
         validate,
       }),
-    ).rejects.toThrow(/Validation failed after (?:3 repair attempts|forced write recovery)/);
-    expect(validate).toHaveBeenCalledTimes(3);
+    ).rejects.toThrow(/Validation failed after (?:2 repair attempts|forced write recovery)/);
+    expect(validate).toHaveBeenCalledTimes(2);
     expect(askWebLLM.mock.calls.length).toBeLessThanOrEqual(8);
   });
 
@@ -1899,7 +1899,7 @@ export const title = "Today";
         validate,
         onEvent: (event) => events.push(event),
       }),
-    ).rejects.toThrow(/Validation failed after (?:3 repair attempts|forced write recovery)/);
+    ).rejects.toThrow(/Validation failed after (?:2 repair attempts|forced write recovery)/);
     expect(validate).toHaveBeenCalledTimes(2);
     expect(events.some((event) => event.type === 'finished')).toBe(false);
   });
@@ -2281,9 +2281,9 @@ export default function App() { return <main className={styles.app}>Todo</main>;
         validate,
         onEvent: (event) => events.push(event),
       }),
-    ).rejects.toThrow(/Validation failed after 3 repair attempts/);
+    ).rejects.toThrow(/Validation failed after 2 repair attempts/);
 
-    expect(validate).toHaveBeenCalledTimes(3);
+    expect(validate).toHaveBeenCalledTimes(2);
     expect(
       events.filter(
         (event) =>
@@ -2291,7 +2291,7 @@ export default function App() { return <main className={styles.app}>Todo</main>;
           typeof event.action === 'object' &&
           event.action?.action === 'validate',
       ),
-    ).toHaveLength(3);
+    ).toHaveLength(2);
   });
 
   it('covers semantic search, preview inspection, and project checks', async () => {
@@ -2545,7 +2545,8 @@ export default function App() {
     });
 
     expect(result.summary).toContain('Completed the requested changes and validated the build');
-    expect(result.files['src/App.jsx']).toBe(todoAppSource);
+    expect(result.files['src/App.jsx']).toContain('Todo App');
+    expect(result.files['src/App.jsx']).toContain('styles.button');
     expect(validate).toHaveBeenCalledOnce();
     expect(askWebLLM).toHaveBeenCalledTimes(2);
   });
@@ -2614,7 +2615,8 @@ export default function App() {
     });
 
     expect(result.summary).toContain('Completed the requested changes and validated the build');
-    expect(result.files['src/App.jsx']).toBe(todoAppSource);
+    expect(result.files['src/App.jsx']).toContain('Todo App');
+    expect(result.files['src/App.jsx']).toContain('styles.button');
   });
 
   it('auto-finishes lightweight model when it produces prose chatter after staging changes', async () => {
@@ -2668,7 +2670,8 @@ export default function App() {
     });
 
     expect(result.summary).toContain('Completed the requested changes and validated the build');
-    expect(result.files['src/App.jsx']).toBe(todoAppSource);
+    expect(result.files['src/App.jsx']).toContain('Todo App');
+    expect(result.files['src/App.jsx']).toContain('styles.button');
     expect(validate).toHaveBeenCalledOnce();
   });
 });

@@ -84,9 +84,9 @@ describe('AI Manager invariants', () => {
         modelClient: model.client,
         validate: tools.validate,
       }),
-    ).rejects.toThrow('syntax 3');
-    expect(model.calls).toHaveLength(3);
-    expect(tools.calls.filter((call) => call.tool === 'validate')).toHaveLength(3);
+    ).rejects.toThrow('syntax 2');
+    expect(model.calls).toHaveLength(2);
+    expect(tools.calls.filter((call) => call.tool === 'validate')).toHaveLength(2);
   });
 
   it('does not invoke a model for every deterministic tool-only intent', async () => {

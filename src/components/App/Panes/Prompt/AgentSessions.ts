@@ -20,6 +20,7 @@ export const MAX_REASONING_EVENTS = 160;
 
 export const createAgentRunUsage = (): AgentRunUsage => ({
   modelIds: [],
+  requestedModelIds: [],
   modelCalls: 0,
   outcomes: { success: 0, error: 0, aborted: 0 },
   promptTokens: 0,
@@ -32,6 +33,10 @@ export const createAgentRunUsage = (): AgentRunUsage => ({
   decodeTokensPerSecond: 0,
   decodeTokensPerSecondCalls: 0,
   toolCalls: {},
+  taskKinds: [],
+  recoveryReasons: [],
+  repairAttempts: 0,
+  finalValidationStatus: 'unavailable',
 });
 
 export const MAX_STEP_IO_CHARACTERS = 24000;
@@ -108,6 +113,9 @@ const normalizeAgentRunUsage = (value: unknown): AgentRunUsage => {
           ),
         ]
       : [],
+    requestedModelIds: Array.isArray(usage.requestedModelIds)
+      ? [...new Set(usage.requestedModelIds.filter((id): id is string => typeof id === 'string'))]
+      : [],
     modelCalls: finiteNonNegative(usage.modelCalls),
     outcomes: {
       success: finiteNonNegative(outcomes.success),
@@ -130,6 +138,21 @@ const normalizeAgentRunUsage = (value: unknown): AgentRunUsage => {
           : [],
       ),
     ),
+    taskKinds: Array.isArray(usage.taskKinds)
+      ? [...new Set(usage.taskKinds.filter((kind): kind is string => typeof kind === 'string'))]
+      : [],
+    recoveryReasons: Array.isArray(usage.recoveryReasons)
+      ? [
+          ...new Set(
+            usage.recoveryReasons.filter((reason): reason is string => typeof reason === 'string'),
+          ),
+        ]
+      : [],
+    repairAttempts: finiteNonNegative(usage.repairAttempts),
+    finalValidationStatus:
+      usage.finalValidationStatus === 'passed' || usage.finalValidationStatus === 'failed'
+        ? usage.finalValidationStatus
+        : 'unavailable',
   };
 };
 
