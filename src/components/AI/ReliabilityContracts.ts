@@ -90,8 +90,8 @@ export function getModelCapabilityProfile(modelId: string): ModelCapabilityProfi
     return {
       tier: 'recovery',
       contextWindowSize: 4096,
-      generationTokens: 1800,
-      recoveryTokens: 2400,
+      generationTokens: 2000,
+      recoveryTokens: 2600,
       filesPerGeneration: 1,
       supportsAllTaskKinds: true,
       hostAssistance: 'enhanced',
@@ -101,8 +101,8 @@ export function getModelCapabilityProfile(modelId: string): ModelCapabilityProfi
     return {
       tier: 'compact',
       contextWindowSize: 4096,
-      generationTokens: 1800,
-      recoveryTokens: 2200,
+      generationTokens: 2000,
+      recoveryTokens: 2600,
       filesPerGeneration: 1,
       supportsAllTaskKinds: true,
       hostAssistance: /2B(?:-|$)/i.test(modelId) ? 'enhanced' : 'standard',
@@ -111,8 +111,8 @@ export function getModelCapabilityProfile(modelId: string): ModelCapabilityProfi
   return {
     tier: 'recommended',
     contextWindowSize: 4096,
-    generationTokens: 1800,
-    recoveryTokens: 2200,
+    generationTokens: 2000,
+    recoveryTokens: 2600,
     filesPerGeneration: 1,
     supportsAllTaskKinds: true,
     hostAssistance: 'standard',

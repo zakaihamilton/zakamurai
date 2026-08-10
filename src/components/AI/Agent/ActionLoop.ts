@@ -35,6 +35,7 @@ import {
   newlyCreatedComponentsNeedEntryWiring,
   normalizeFinishSummary,
   recoveryWritePath,
+  recordTruncatedModelOutput,
   wireNewComponentIntoScratchEntry,
   writeRecovery,
 } from './ActionLoopRecovery';
@@ -308,7 +309,7 @@ export async function runActionLoop({
           })
         : messages;
     const safeModelMessages = modelMessages.filter(Boolean);
-    reply = await requestNextAction({
+    const modelResponse = await requestNextAction({
       askWebLLM,
       modelSession,
       modelClient,
@@ -327,6 +328,7 @@ export async function runActionLoop({
       onEvent,
       seed,
     });
+    reply = modelResponse.text;
     onEvent({
       type: 'model_io',
       turn,
@@ -336,6 +338,23 @@ export async function runActionLoop({
         .join('\n\n'),
       output: reply,
     });
+
+    if (modelResponse.finishReason === 'length') {
+      const target: string =
+        forcedRecoveryTargetPath || recoveryWritePath(workspace.files, activeFile) || 'src/App.jsx';
+      incompleteWriteRetries += 1;
+      forcedWriteRecoveryPending = true;
+      forcedRecoveryTargetPath = target;
+      failedWritePath = target;
+      recordTruncatedModelOutput({ turn, target, agentRole, messages, context, onEvent });
+      if (incompleteWriteRetries >= incompleteWriteRetryLimit) {
+        throw new AgentExecutionError(
+          `The local model repeatedly reached the output token limit while generating ${target}. Staged changes were preserved for review; retry with a stronger model or a narrower request.`,
+          workspace.changes(),
+        );
+      }
+      continue;
+    }
     messages.push({ role: 'assistant', content: reply });
     let action: ReturnType<typeof parseAgentAction> | undefined;
     try {
@@ -1544,7 +1563,7 @@ export async function runActionLoop({
       if (
         action.action === 'write_file' &&
         /\.(?:jsx|tsx|js|ts)$/i.test(action.path || '') &&
-        /(?:bracket|string literal|Unclosed|Unterminated|Expected|Invalid|Unexpected|Parse error|Syntax error)/i.test(
+        /(?:bracket|string literal|Unclosed|Unterminated|Expected|Invalid|Unexpected|Parse error|Syntax error|ReactDOM bootstrap|CSS-style object|nested code fence)/i.test(
           err.message,
         )
       ) {

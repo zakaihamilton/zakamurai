@@ -10,6 +10,11 @@ import { getModelDownloadProgress } from './ActionLoopRecovery';
 
 type AskWebLLM = Awaited<ReturnType<typeof import('./ActionLoopRecovery').loadAskWebLLM>>;
 
+type ActionModelResponse = {
+  text: string;
+  finishReason?: string | null;
+};
+
 export async function requestNextAction({
   askWebLLM,
   modelSession,
@@ -46,7 +51,7 @@ export async function requestNextAction({
   agentRole: string | null;
   onEvent: NonNullable<RunAgentOptions['onEvent']>;
   seed?: number;
-}): Promise<string> {
+}): Promise<ActionModelResponse> {
   let receivedModelOutput = false;
   let streamedCharacterCount = 0;
   let lastEmitTime = 0;
@@ -78,15 +83,25 @@ export async function requestNextAction({
   const topP = lightweightModel ? 0.85 : 0.8;
   const taskKind = failedWritePath || forcedWriteRecoveryPending ? 'repair-file' : 'write-file';
   const attemptSeed = seed === undefined ? undefined : seed + turn - 1;
+  let finishReason: string | null | undefined;
+  const handleMetrics: RunAgentOptions['onMetrics'] = (metrics) => {
+    if (
+      metrics.requestKind === 'agent' &&
+      (metrics.attempt === undefined || metrics.attempt === turn)
+    ) {
+      finishReason = metrics.finishReason;
+    }
+    onMetrics?.(metrics);
+  };
 
   try {
     if (modelSession) {
-      return await modelSession.generate({
+      const text = await modelSession.generate({
         model,
         messages: safeModelMessages,
         signal,
         task: 'generate-changes',
-        onMetrics,
+        onMetrics: handleMetrics,
         temperature,
         top_p: topP,
         max_tokens: maxTokens,
@@ -96,14 +111,15 @@ export async function requestNextAction({
         taskKind,
         attempt: turn,
       });
+      return { text, finishReason };
     }
     if (modelClient) {
-      return await modelClient({
+      const text = await modelClient({
         model,
         messages,
         signal,
         task: 'generate-changes',
-        onMetrics,
+        onMetrics: handleMetrics,
         temperature,
         top_p: topP,
         max_tokens: maxTokens,
@@ -113,9 +129,10 @@ export async function requestNextAction({
         taskKind,
         attempt: turn,
       });
+      return { text, finishReason };
     }
     if (!askWebLLM) throw new Error('WebLLM is unavailable.');
-    return await askWebLLM(
+    const text = await askWebLLM(
       '',
       '',
       (output) => {
@@ -150,7 +167,7 @@ export async function requestNextAction({
         messages: safeModelMessages,
         signal,
         requestKind: 'agent',
-        onMetrics,
+        onMetrics: handleMetrics,
         onRecovery: (recovery: WebLLMRecoveryEvent) => {
           const action =
             recovery.action === 'fallback' || recovery.action === 'reuse-fallback'
@@ -174,6 +191,7 @@ export async function requestNextAction({
         attempt: turn,
       },
     );
+    return { text, finishReason };
   } finally {
     clearInterval(heartbeat);
   }

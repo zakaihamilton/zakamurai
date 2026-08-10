@@ -1,13 +1,15 @@
-import type { WebLLMMessage } from '@/components/AI/types';
+import type { AgentEventHandler, WebLLMMessage } from '@/components/AI/types';
 import { getWebLLMStore } from '../WebLLMState';
 import { type ProjectStyleProfile, formatProjectStyleContract } from './ProjectStyleProfile';
+import type { AgentContextManager } from './ContextManager';
+import { observation } from './ActionLoopUtils';
 import type { AgentWorkspace } from './Workspace';
 
 export const AGENT_CONTEXT_WINDOW_SIZE = 4096;
-export const AGENT_GENERATION_TOKENS = 1800;
-export const AGENT_RECOVERY_TOKENS = 2200;
-export const LIGHTWEIGHT_AGENT_GENERATION_TOKENS = 1800;
-export const LIGHTWEIGHT_AGENT_RECOVERY_TOKENS = 2400;
+export const AGENT_GENERATION_TOKENS = 2000;
+export const AGENT_RECOVERY_TOKENS = 2600;
+export const LIGHTWEIGHT_AGENT_GENERATION_TOKENS = 2000;
+export const LIGHTWEIGHT_AGENT_RECOVERY_TOKENS = 2600;
 
 export const loadAskWebLLM = async () => (await import('../WebLLMAPI')).askWebLLM;
 
@@ -56,6 +58,34 @@ export const getModelDownloadProgress = (modelId: string): string | null => {
   return downloadingEngine.progressText
     ? `the model is downloading — ${downloadingEngine.progressText}`
     : 'the model is downloading; waiting for model files';
+};
+
+export const recordTruncatedModelOutput = ({
+  turn,
+  target,
+  agentRole,
+  messages,
+  context,
+  onEvent,
+}: {
+  turn: number;
+  target: string;
+  agentRole: string | null;
+  messages: WebLLMMessage[];
+  context: AgentContextManager;
+  onEvent: AgentEventHandler;
+}): void => {
+  const message = `The previous model response reached the output token limit before producing a complete file. The response was not staged. Return only one closed source fence containing the complete source for ${target}. Do not include ReactDOM bootstrap code, CSS declarations, a JavaScript styles object, another file, or prose.`;
+  messages.push({ role: 'user', content: observation('model_output', false, message) });
+  context.record('truncated_model_output', message);
+  onEvent({
+    type: 'observation',
+    turn,
+    action: { action: 'write_file', path: target },
+    error: true,
+    message,
+    agentRole,
+  });
 };
 
 export const wireNewComponentIntoScratchEntry = (workspace: AgentWorkspace): string | null => {
@@ -174,6 +204,12 @@ Default-import the co-located CSS Module as styles. Use only semantic roles from
 project style contract. For interactive work, include React state, handlers, primary controls,
 and visible empty, success, and error states. Never leave starter placeholder text.
 
+The output is one component file, not an application bootstrap. Never emit ReactDOM.createRoot,
+ReactDOM.render, ReactDOM imports, a second source file, a CSS-style object such as
+const styles = { display: ..., background: ..., or CSS declarations outside a CSS Module.
+Never put a stylesheet, JSON metadata, prose, or another code fence in the component response.
+The source fence must be closed and the file must end with complete JSX and JavaScript.
+
 Compute derived values before state setters and keep state-dependent callbacks in the component.
 After a successful write, the host saves the source, validates the build, and finishes automatically.
 `.trim();
@@ -193,6 +229,9 @@ contents below. For an edit request, reply with ONLY a labelled code fence conta
 complete source for the target file. Include state and event handlers when the UI is
 interactive, and prefer a co-located CSS Module. Do not return JSON write_file metadata,
 list files, search, read files, or explain. Do not leave starter-template placeholder text.
+Return one closed source fence only. The target is a component file: never include
+ReactDOM.createRoot, ReactDOM.render, ReactDOM imports, CSS declarations, a JavaScript
+styles object, another source file, or an unfinished response.
 After a successful write, the host validates and finishes automatically.
 `.trim();
 
@@ -216,6 +255,11 @@ export const writeRecovery = (
   message: string,
   files: Record<string, string>,
 ): string => {
+  if (/ReactDOM bootstrap|CSS-style object|nested code fence/i.test(message)) {
+    const language = sourceFenceLanguage(path);
+    return ` The rejected component was not staged. Write only ${path} in one closed ${language} fence. Return component source only: remove ReactDOM bootstrap code, CSS declarations, JavaScript style objects, nested markdown fences, and any other file content.`;
+  }
+
   if (/CSS content cannot be written/.test(message)) {
     const language = sourceFenceLanguage(path);
     return ` The rejected content was not staged. You put CSS in a JSX/TSX action. Return exactly one write_file action for ${path} with one ${language} source fence. Create the matching *.module.css in a separate action on a later turn.`;
@@ -368,11 +412,12 @@ export const buildContextReadyUserRequest = ({
       const rightNearby = right.startsWith(`${targetDirectory}/`) ? 1 : 0;
       return rightNearby - leftNearby || left.localeCompare(right);
     })[0];
-  const referenceContext = reference
-    ? [reference, reference.replace(/\.(jsx|tsx)$/i, '.module.css')]
-        .map((path) => `--- Style reference: ${path} ---\n${files[path].slice(0, 1400)}`)
-        .join('\n\n')
-    : null;
+  const referenceContext =
+    reference && !lightweight
+      ? [reference, reference.replace(/\.(jsx|tsx)$/i, '.module.css')]
+          .map((path) => `--- Style reference: ${path} ---\n${files[path].slice(0, 1400)}`)
+          .join('\n\n')
+      : null;
   const conversation = extractConversationalPrior(priorContext);
   const managerContext = extractManagerSelectedPrior(priorContext, contextPaths);
   const nextStep = lightweight
@@ -425,7 +470,7 @@ const buildFenceOnlyRecoveryMessages = ({
   return [
     {
       role: 'system',
-      content: `You are in emergency write mode. Reply with ONLY this labelled code fence and nothing else:\n${fenceFormat}\nReplace the placeholder with complete working source. Do not return JSON, list files, validate, finish, or explain.`,
+      content: `You are in emergency write mode. Reply with ONLY this labelled code fence and nothing else:\n${fenceFormat}\nReplace the placeholder with complete working source. The response must be one closed component source fence. Do not return JSON, list files, validate, finish, prose, ReactDOM bootstrap code, CSS declarations, a JavaScript styles object, or another source file.`,
     },
     {
       role: 'user',

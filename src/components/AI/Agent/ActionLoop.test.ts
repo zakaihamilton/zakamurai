@@ -33,6 +33,40 @@ export default function App() {
 }
 `;
 
+const TIC_TAC_TOE_APP = `import { useState } from "react";
+import styles from "./App.module.css";
+
+const WINNING_LINES = [[0, 1, 2], [3, 4, 5], [6, 7, 8], [0, 3, 6], [1, 4, 7], [2, 5, 8], [0, 4, 8], [2, 4, 6]];
+
+export default function App() {
+  const [board, setBoard] = useState(Array(9).fill(null));
+  const [xIsNext, setXIsNext] = useState(true);
+  const winner = WINNING_LINES.map(([a, b, c]) => board[a] && board[a] === board[b] && board[a] === board[c] ? board[a] : null).find(Boolean);
+  const draw = !winner && board.every(Boolean);
+  const play = (index) => {
+    if (board[index] || winner) return;
+    const nextBoard = [...board];
+    nextBoard[index] = xIsNext ? "X" : "O";
+    setBoard(nextBoard);
+    setXIsNext(!xIsNext);
+  };
+  const reset = () => {
+    setBoard(Array(9).fill(null));
+    setXIsNext(true);
+  };
+  return (
+    <main className={styles.app}>
+      <h1 className={styles.title}>Tic Tac Toe</h1>
+      <p className={styles.status}>{winner ? \`Winner: \${winner}\` : draw ? "Draw game" : \`\${xIsNext ? "X" : "O"}'s turn\`}</p>
+      <div className={styles.board} role="grid">
+        {board.map((cell, index) => <button className={styles.cell} key={index} type="button" onClick={() => play(index)}>{cell}</button>)}
+      </div>
+      <button className={styles.reset} type="button" onClick={reset}>Reset game</button>
+    </main>
+  );
+}
+`;
+
 describe('runActionLoop', () => {
   let askWebLLM: Mock<AskWebLLM>;
 
@@ -1344,7 +1378,7 @@ export default function App() {
     expect(repairMessage).toContain('must write only src/components/Todo.module.css');
     expect(repairMessage).toContain('.app { display: block; }');
     expect(askWebLLM.mock.calls[1]?.[3]).toMatchObject({
-      max_tokens: 2200,
+      max_tokens: 2600,
       contextWindowSize: 4096,
     });
   });
@@ -1373,7 +1407,7 @@ export default function App() {
     expect(repairMessage).not.toContain('rejected stylesheet');
     expect(repairMessage).not.toContain('using one css fence');
     expect(askWebLLM.mock.calls[1]?.[3]).toMatchObject({ contextWindowSize: 4096 });
-    expect(askWebLLM.mock.calls[1]?.[3]?.max_tokens).toBeLessThanOrEqual(2200);
+    expect(askWebLLM.mock.calls[1]?.[3]?.max_tokens).toBeLessThanOrEqual(2600);
   });
 
   it('stops after repeated malformed source responses instead of exhausting the turn budget', async () => {
@@ -1481,6 +1515,82 @@ export default function App() {
     );
   });
 
+  it('rejects transcript-shaped mixed source and recovers a complete Tic Tac Toe component', async () => {
+    const malformed = `import ReactDOM from "react-dom/client";
+const styles = { minHeight: "100vh", background: "#050505" };
+export default function App() { return <main>broken</main>; }
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);`;
+    askWebLLM
+      .mockResolvedValueOnce(
+        JSON.stringify({ action: 'write_file', path: 'src/App.jsx', content: malformed }),
+      )
+      .mockResolvedValueOnce(`\`\`\`jsx\n${TIC_TAC_TOE_APP}\n\`\`\``)
+      .mockResolvedValueOnce('{"action":"validate"}')
+      .mockResolvedValueOnce('{"action":"finish","summary":"Created Tic Tac Toe"}');
+    const validate = vi.fn().mockResolvedValue('Checks passed.');
+
+    const result = await runActionLoop({
+      request: 'create a tic tac toe game',
+      activeFile: 'src/App.jsx',
+      files: {
+        'src/App.jsx': 'export default function App() { return null; }',
+        'src/App.module.css': '.app {} .title {} .status {} .board {} .cell {} .reset {}',
+        'src/components/AnimatedCard.jsx':
+          'export default function AnimatedCard() { return null; }',
+        'src/components/AnimatedCard.module.css': '.card {}',
+      },
+      model: 'Qwen2.5-Coder-1.5B-Instruct-q4f16_1-MLC',
+      priorContext: '[list_files]\nsrc/App.jsx\n[read_file]\nexisting workspace context',
+      validate,
+    });
+
+    expect(result.files['src/App.jsx']).toContain('WINNING_LINES');
+    expect(result.files['src/App.jsx']).toContain('onClick');
+    expect(result.files['src/App.jsx']).toContain('Reset game');
+    expect(result.files['src/App.jsx']).not.toContain('ReactDOM.createRoot');
+    expect(result.files['src/App.jsx']).not.toContain('const styles = {');
+    expect(result.files['src/App.module.css']).toContain('.cell');
+    expect(askWebLLM.mock.calls[0]?.[3]?.messages?.[1]?.content).not.toContain(
+      'Style reference: src/components/AnimatedCard.jsx',
+    );
+  });
+
+  it('recovers after WebLLM reports an output-length stop before staging the response', async () => {
+    askWebLLM.mockImplementationOnce(async (_prompt, _system, _update, options) => {
+      options?.onMetrics?.({
+        requestKind: 'agent',
+        requestedModelId: 'Qwen2.5-Coder-1.5B-Instruct-q4f16_1-MLC',
+        modelId: 'Qwen2.5-Coder-1.5B-Instruct-q4f16_1-MLC',
+        outcome: 'success',
+        startedAt: 1,
+        totalMs: 20,
+        recoveryCount: 0,
+        finishReason: 'length',
+        attempt: 1,
+      });
+      return '```jsx\nexport default function App() { return <main>truncated';
+    });
+    askWebLLM
+      .mockResolvedValueOnce(`\`\`\`jsx\n${TIC_TAC_TOE_APP}\n\`\`\``)
+      .mockResolvedValueOnce('{"action":"validate"}')
+      .mockResolvedValueOnce('{"action":"finish","summary":"Created Tic Tac Toe"}');
+    const validate = vi.fn().mockResolvedValue('Checks passed.');
+
+    const result = await runActionLoop({
+      request: 'create a tic tac toe game',
+      files: {
+        'src/App.jsx': 'export default function App() { return null; }',
+        'src/App.module.css': '.app {} .title {} .status {} .board {} .cell {} .reset {}',
+      },
+      model: 'Qwen2.5-Coder-1.5B-Instruct-q4f16_1-MLC',
+      validate,
+    });
+
+    expect(result.files['src/App.jsx']).toContain('WINNING_LINES');
+    expect(askWebLLM.mock.calls[1]?.[3]?.messages?.[0]?.content).toContain('emergency write mode');
+    expect(askWebLLM.mock.calls[1]?.[3]?.messages?.[0]?.content).toContain('one closed component');
+  });
+
   it('forces a write after one redundant inspection when manager context is already ready', async () => {
     askWebLLM
       .mockResolvedValueOnce('{"action":"list_files"}')
@@ -1508,7 +1618,7 @@ export default function App() {
     );
     expect(askWebLLM.mock.calls[1]?.[3]?.messages?.[0]?.content).toContain('emergency write mode');
     expect(askWebLLM.mock.calls[0]?.[3]).toMatchObject({
-      max_tokens: 1800,
+      max_tokens: 2000,
       contextWindowSize: 4096,
     });
   });
@@ -1538,7 +1648,7 @@ export default function App() {
     expect(askWebLLM.mock.calls[0]?.[3]).toMatchObject({
       temperature: 0.12,
       top_p: 0.8,
-      max_tokens: 2200,
+      max_tokens: 2600,
       contextWindowSize: 4096,
     });
     expect(askWebLLM.mock.calls[0]?.[3]?.messages?.[1]?.content).toContain(

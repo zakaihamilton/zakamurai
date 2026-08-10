@@ -202,6 +202,8 @@ export function validateComponentStyling(path: string, content: string): string 
 /** Rejects comment-only scaffolding and non-code prose that claims to be an implementation. */
 export function validateGeneratedPlaceholder(path: string, content: string): string | null {
   if (typeof content !== 'string') return null;
+  const sourceShapeError = validateGeneratedSourceShape(path, content);
+  if (sourceShapeError) return sourceShapeError;
   const stripped = stripComments(content).trim();
   if (!stripped) {
     if (
@@ -240,6 +242,29 @@ export function validateGeneratedPlaceholder(path: string, content: string): str
 
 const isAppEntryPath = (path: string): boolean =>
   /(?:^|\/)(?:App|main|index)\.(?:jsx|tsx)$/i.test(path);
+
+/** Reject common small-model payloads that are balanced but target the wrong source boundary. */
+export function validateGeneratedSourceShape(path: string, content: string): string | null {
+  if (!/\.(?:jsx|tsx)$/i.test(path) || typeof content !== 'string') return null;
+
+  if (isAppEntryPath(path) && /\bReactDOM\.(?:createRoot|render)\s*\(/.test(content)) {
+    return `Generated component ${path} contains ReactDOM bootstrap code. Return only the component source; keep createRoot/render in the existing entry file.`;
+  }
+
+  if (
+    /\b(?:const|let|var)\s+styles\s*=\s*\{[\s\S]*?\b(?:display|position|background(?:-color)?|color|padding|margin|width|height|min-height|border-radius)\s*:/.test(
+      content,
+    )
+  ) {
+    return `Generated component ${path} contains a CSS-style object. Move visual rules to the co-located CSS Module and use the imported styles class map.`;
+  }
+
+  if (/```/.test(content)) {
+    return `Generated component ${path} contains a nested code fence. Return the complete source without markdown fences inside the file.`;
+  }
+
+  return null;
+}
 
 const clipRequest = (request: string): string => request.trim().replace(/\s+/g, ' ').slice(0, 80);
 

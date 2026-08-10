@@ -96,10 +96,15 @@ AI changes must use project-relative paths. `validateAIChanges` rejects absolute
 
 ## 8. Preview Security Model
 
-- IDE and preview run on **different origins** in production (`NEXT_PUBLIC_IDE_ORIGIN`, `NEXT_PUBLIC_PREVIEW_ORIGIN`).
+- IDE and preview run on **different origins** in configured production deployments
+  (`NEXT_PUBLIC_IDE_ORIGIN`, `NEXT_PUBLIC_PREVIEW_ORIGIN`). Unconfigured `*.vercel.app`
+  deployments use an explicit same-origin `/__preview/` compatibility surface with weaker
+  isolation.
 - `PreviewBridge` (IDE side) and `PreviewHost` (preview origin) exchange a one-time `zakamurai-preview-connect` handshake with protocol version and session ID before transferring a `MessagePort`.
 - `isValidPreviewHandshake` in `previewOrigins.ts` is shared — do not relax checks on one side only.
-- User project code never receives same-origin access to IDE storage or cookies.
+- In isolated mode, user project code never receives same-origin access to IDE storage, cookies,
+  or the parent DOM. The unconfigured Vercel compatibility surface intentionally has weaker
+  same-origin isolation.
 
 ## 9. Testing Expectations
 
@@ -110,4 +115,3 @@ AI changes must use project-relative paths. `validateAIChanges` rejects absolute
 - Pre-commit: lint-staged runs Biome and `vitest related` on changed files.
 
 Contributors and agents should run `npm run verify` before opening a PR.
-

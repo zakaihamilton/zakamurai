@@ -40,9 +40,13 @@ const looksLikeScriptSource = (content: string): boolean =>
 /** Pull source from a labelled fence or a raw script-shaped reply. */
 export function extractSourcePayload(text: string): string | null {
   if (typeof text !== 'string' || !text.trim()) return null;
+  const openings = text.match(/```[^\r\n]*\r?\n/g)?.length || 0;
+  const closings = text.match(/\r?\n```\s*/g)?.length || 0;
+  if (openings > closings) return null;
   const blocks = [...text.matchAll(/```([^\r\n]*)\r?\n([\s\S]*?)(?:\r?\n```|$)/g)].map((match) => ({
     language: match[1].trim().toLowerCase(),
     content: match[2],
+    closed: /\r?\n```\s*$/.test(match[0]),
   }));
   const scriptLanguages = new Set([
     '',
@@ -58,6 +62,7 @@ export function extractSourcePayload(text: string): string | null {
     .reverse()
     .find(
       (block) =>
+        block.closed &&
         scriptLanguages.has(block.language) &&
         looksLikeScriptSource(block.content) &&
         block.content.trim().length > 20,
@@ -145,11 +150,16 @@ const parseFencedWrite = (text: string, metadata?: AgentAction): AgentAction | n
   // A smaller local model can emit several files in one response despite the one-action
   // protocol. Prefer the source fence whose language matches the requested destination
   // so a trailing CSS fence is never accidentally written to a .jsx file.
+  const openings = text.match(/```[^\r\n]*\r?\n/g)?.length || 0;
+  const closings = text.match(/\r?\n```\s*/g)?.length || 0;
+  if (openings > closings) return null;
   const blocks = [...text.matchAll(/```([^\r\n]*)\r?\n([\s\S]*?)(?:\r?\n```|$)/g)].map((match) => ({
     language: match[1].trim().toLowerCase(),
     content: match[2],
+    closed: /\r?\n```\s*$/.test(match[0]),
   }));
   const sourceBlocks = blocks.filter((block) => {
+    if (!block.closed) return false;
     try {
       const parsed = JSON.parse(block.content) as { action?: unknown };
       return typeof parsed.action !== 'string';
@@ -174,19 +184,28 @@ const parseFencedWrite = (text: string, metadata?: AgentAction): AgentAction | n
     /^(?:import|export|const|let|var|function|class|\/[/*]|<\w)/m.test(content.trim());
   const looksLikeCss = (content: string) =>
     /^(?:@|\:root|[.#*\[]|[a-z][\w-]*\s*\{)/m.test(content.trim());
-  const matchingSource = sourceBlocks
-    .filter((block) => acceptedLanguages.includes(block.language))
-    .at(-1);
-  const compatibleSource = sourceBlocks
-    .filter((block) => {
-      if (matchingSource) return false;
-      if (isScriptPath) return !block.language || looksLikeScript(block.content);
-      if (isCssPath)
-        return !block.language || looksLikeCss(block.content) || block.language === 'css';
-      return !block.language;
-    })
-    .at(-1);
-  const source = matchingSource || compatibleSource;
+  const matchingSources = sourceBlocks.filter((block) =>
+    acceptedLanguages.includes(block.language),
+  );
+  if (matchingSources.length > 1) {
+    throw new Error(
+      'A write_file response must contain exactly one source fence for the target file.',
+    );
+  }
+  const matchingSource = matchingSources[0];
+  const compatibleSources = sourceBlocks.filter((block) => {
+    if (matchingSource) return false;
+    if (isScriptPath) return !block.language || looksLikeScript(block.content);
+    if (isCssPath)
+      return !block.language || looksLikeCss(block.content) || block.language === 'css';
+    return !block.language;
+  });
+  if (compatibleSources.length > 1) {
+    throw new Error(
+      'A write_file response must contain exactly one source fence for the target file.',
+    );
+  }
+  const source = matchingSource || compatibleSources[0];
   if (source !== undefined) return { ...value, content: source.content };
 
   // Small models often emit write_file metadata and then raw source without a fence.
