@@ -542,8 +542,8 @@ describe('runManager', () => {
     );
     expect(result.summary).toBe('Fixed after retry');
     expect(modelClient).toHaveBeenCalledTimes(3);
-    expect(modelClient.mock.calls[2][0].messages.at(-2).content).toContain(
-      'did not return any changes',
+    expect(modelClient.mock.calls[2][0].messages[0].content).toContain(
+      'repairing one failed source file',
     );
   });
 

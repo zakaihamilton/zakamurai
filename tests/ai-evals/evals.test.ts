@@ -1,11 +1,11 @@
-import baseline from './baseline.json';
-import { describe, expect, it } from 'vitest';
 import {
   type AIEvalBaseline,
   compareAIEvalResults,
   qualificationProfileMatches,
   scoreAIEvalCase,
 } from '@/components/AI/AIEvals';
+import { describe, expect, it } from 'vitest';
+import baseline from './baseline.json';
 import { AI_EVAL_CASES, QUALIFICATION_MODEL_IDS } from './cases';
 
 describe('versioned AI reliability evaluations', () => {
@@ -17,13 +17,13 @@ describe('versioned AI reliability evaluations', () => {
       ]),
     );
     expect(counts).toEqual({
-      agent: 12,
+      agent: 13,
       completion: 6,
       explanation: 4,
       lifecycle: 4,
       recovery: 4,
     });
-    expect(new Set(AI_EVAL_CASES.map((testCase) => testCase.id)).size).toBe(30);
+    expect(new Set(AI_EVAL_CASES.map((testCase) => testCase.id)).size).toBe(31);
   });
 
   it('passes every deterministic hard gate and the committed model floors', () => {

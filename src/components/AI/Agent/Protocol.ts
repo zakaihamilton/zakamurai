@@ -335,6 +335,17 @@ For a stylesheet, keep both the path and fence language aligned:
 \`\`\`
 The JSON metadata must be on one line and the following single code fence is the content to write. The path extension determines the destination: never write raw CSS to a .jsx or .tsx path. Do not include a content property when using this format. If multiple files are needed, create exactly one file per turn; never append another source fence to an action.`.trim();
 
+export const RESPONSIVE_GENERATION_CONTRACT = `
+For new application-generation requests, treat responsive behavior as part of the implementation contract.
+Author layouts that remain usable at 320px, 375px, 768px, and 1440px wide:
+- Prefer fluid sizing: minmax(0, 1fr), auto-fit, flex-wrap, min-width: 0, max-width, and clamp() for typography and spacing.
+- Do not use unnecessary fixed widths, fixed heights, giant cards, or square aspect-ratio containers for ordinary content.
+- Stack rows, forms, navigation, and action controls on small screens; let controls become full-width when a compact row no longer fits.
+- Keep cards content-sized, preserve readable line lengths, and prevent horizontal overflow without hiding broken layout.
+- Keep interactive targets at least 2.75rem high with visible focus states and explicit colors.
+This contract is for creating a new app. Apply it to an existing interface only when the user explicitly requests responsive, mobile, or tablet behavior.
+`.trim();
+
 export const AGENT_SYSTEM_PROMPT = `
 You are a local coding agent operating in a private browser workspace. Work autonomously until the request is complete.
 Reply with exactly one action per turn, without hidden reasoning. Use a JSON action unless writing source code, in which case use the fenced write format below.
@@ -348,6 +359,7 @@ When a component will import a new CSS Module, write that complete *.module.css 
 Inspect before editing only when workspace context has not already been supplied. When the request says that workspace context was already supplied, treat the workspace as inspected and do not call list_files, search_workspace, search_semantic, or read_file again; use the supplied context and implement the request immediately. You may edit any relevant workspace file. Validate after meaningful changes. Always run validate before calling finish when edits have been made. Fix validation failures when possible. Never claim success without either validation or a clear explanation.
 
 UI craft bar: When creating an interface, make deliberate visual decisions rather than falling back to a generic white card, system font, blue primary button, and thin gray borders. Establish a cohesive visual direction, clear type hierarchy, a restrained palette, layered surfaces or texture, intentional spacing, meaningful interaction states, visible keyboard focus, and a responsive small-screen layout. Use CSS custom properties for the page's design tokens. Do not use external assets or icon libraries unless they already exist in the workspace.
+${RESPONSIVE_GENERATION_CONTRACT}
 If the user does not specify a theme, choose a polished neutral surface with dark text and one intentional accent such as indigo, emerald, terracotta, or violet.
 For list and task-management applications (such as Todo apps):
 - Container: Center the app in a polished card container (max-width: 32rem to 42rem) with subtle shadow, clear header, item counter, and filter tabs (All, Active, Completed).

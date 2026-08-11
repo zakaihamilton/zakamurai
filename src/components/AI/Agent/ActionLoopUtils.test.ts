@@ -2,7 +2,10 @@ import { describe, expect, it } from 'vitest';
 import {
   appendMissingCssModuleRules,
   missingCssModuleRules,
+  normalizeGeneratedInteractiveSource,
+  normalizeSideEffectCssSource,
   recoverWorkspaceCssModules,
+  repairCssModuleStylesheet,
   rewriteInlineStylesToCssModule,
 } from './ActionLoopUtils';
 
@@ -88,5 +91,133 @@ export default () => <main className={styles.app}><form><input placeholder="Add 
     expect(rewritten?.content).not.toContain('style=');
     expect(rewritten?.content).toContain('styles.inline0');
     expect(rewritten?.stylesheet).toContain('.inline0');
+  });
+
+  it('scopes literal classes inside template className expressions', () => {
+    const normalized = normalizeSideEffectCssSource(
+      'src/App.jsx',
+      'import "./App.css"; export default () => <main className={`cell ${value ? `player-${value}` : ""}`} />;',
+    );
+
+    expect(normalized?.content).toContain('className={styles.cell}');
+    expect(normalized?.content).not.toContain('className={`');
+  });
+
+  it('converts mapped div click targets into typed buttons without changing their content', () => {
+    const normalized = normalizeSideEffectCssSource(
+      'src/App.jsx',
+      `import './App.css';
+export default function App({ items }) {
+  return <section>{items.map((item) => (
+    <div className={\`item \${item.id}\`} onClick={() => select(item)}>
+      <strong>{item.label}</strong>
+    </div>
+  ))}</section>;
+}`,
+    );
+
+    expect(normalized?.content).toContain('<button type="button"');
+    expect(normalized?.content).toContain('<strong>{item.label}</strong>');
+    expect(normalized?.content).toContain('onClick={() => select(item)}');
+    expect(normalized?.content).not.toContain('<div className=');
+    expect(normalized?.content).not.toContain('</div>');
+  });
+
+  it('leaves non-collection layout click handlers unchanged', () => {
+    const normalized = normalizeSideEffectCssSource(
+      'src/App.jsx',
+      `import './App.css';
+export default function App() {
+  return <div onClick={() => openPanel()}><span>Open panel</span></div>;
+}`,
+    );
+
+    expect(normalized?.content).toContain('<div onClick={() => openPanel()}>');
+    expect(normalized?.content).not.toContain('<button type="button"');
+  });
+
+  it('moves top-level callbacks that use React setters into the owning component', () => {
+    const normalized = normalizeSideEffectCssSource(
+      'src/App.jsx',
+      `import React, { useState } from 'react';
+import './App.css';
+function App() {
+  const [value, setValue] = useState('ready');
+  return <button onClick={resetValue}>{value}</button>;
+}
+function resetValue() {
+  setValue('reset');
+}
+export default App;`,
+    );
+
+    const content = normalized?.content || '';
+    expect(content.match(/function resetValue/g)).toHaveLength(1);
+    expect(content.indexOf('function resetValue')).toBeGreaterThan(content.indexOf('function App'));
+    expect(content).toContain("setValue('reset')");
+  });
+
+  it('fluidizes oversized fixed dimensions on generated interactive controls', () => {
+    const source =
+      'import styles from "./App.module.css"; export default function App() { return <button className={styles.cell}>A</button>; }';
+    const repaired = repairCssModuleStylesheet(
+      'src/App.module.css',
+      '.cell { width: 100px; height: 100px; padding: 1rem; }',
+      { 'src/App.jsx': source },
+      undefined,
+      { responsive: true },
+    );
+
+    expect(repaired).toContain('width: min(100%, 12rem);');
+    expect(repaired).toContain('height: auto; min-height: 2.75rem;');
+    expect(repaired).not.toContain('width: 100px');
+    expect(repaired).not.toContain('height: 100px');
+  });
+
+  it('repairs hard-coded turn guards and stale derived-state reads generically', () => {
+    const source = `import { useState } from 'react';
+export default function App() {
+  const [items, setItems] = useState([]);
+  const [currentTurn, setCurrentTurn] = useState('first');
+  const calculateStatus = () => items[0] || 'empty';
+  const handleMove = (item) => {
+    if (currentTurn !== 'first') return;
+    const nextItems = [...items, item];
+    setItems(nextItems);
+    setCurrentTurn(currentTurn === 'first' ? 'second' : 'first');
+    calculateStatus();
+  };
+  return <button onClick={() => handleMove('new')}>{calculateStatus()}</button>;
+}`;
+
+    const normalized = normalizeGeneratedInteractiveSource(source);
+
+    expect(normalized).not.toContain("currentTurn !== 'first'");
+    expect(normalized).toContain('const calculateStatus = (nextItems = items)');
+    expect(normalized).toContain('setItems(nextItems);\n    setCurrentTurn');
+    expect(normalized).toContain('calculateStatus(nextItems);');
+    expect(normalized).toContain('calculateStatus()}');
+  });
+
+  it('repairs the player naming shape used by generated turn-based interfaces', () => {
+    const normalized = normalizeGeneratedInteractiveSource(`import { useState } from 'react';
+export default function App() {
+  const [board, setBoard] = useState(Array(9).fill(null));
+  const [ currentPlayer, setCurrentPlayer] = useState('X');
+  const checkForWin = () => board[0];
+  const handleCellClick = (index) => {
+    if (gameOver || board[index] || currentPlayer !== 'X') return;
+    const newBoard = [...board];
+    newBoard[index] = currentPlayer;
+    setBoard(newBoard);
+    setCurrentPlayer(currentPlayer === 'X' ? 'O' : 'X');
+    checkForWin();
+  };
+  return <button onClick={() => handleCellClick(0)}>{checkForWin()}</button>;
+}`);
+
+    expect(normalized).not.toContain("currentPlayer !== 'X'");
+    expect(normalized).toContain('const checkForWin = (newBoard = board)');
+    expect(normalized).toContain('checkForWin(newBoard);');
   });
 });

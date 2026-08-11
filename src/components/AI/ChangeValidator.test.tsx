@@ -263,6 +263,47 @@ describe('AI change validation', () => {
         'create a notes app',
       ),
     ).toContain('only renders a heading');
+    expect(
+      validateCssModuleUsage(
+        'src/App.jsx',
+        'import styles from "./App.module.css"; export default function App() { return <button className={`cell ${styles.cell}`}>X</button>; }',
+      ),
+    ).toContain('instead of global or template class names');
+    expect(
+      validateRequestFulfillment(
+        'src/App.jsx',
+        'import { useState } from "react"; export default function App() { const [board, setBoard] = useState(Array(9).fill(null)); const handleClick = (index) => setBoard((prevBoard) => [...prevBoard, "X"]); return <button onClick={() => handleClick(0)}>X</button>; }',
+        'create a tic tac toe game',
+      ),
+    ).toContain('appends an indexed interaction');
+    expect(
+      validateRequestFulfillment(
+        'src/App.jsx',
+        'import { useState } from "react"; export default function App() { const [board, setBoard] = useState(Array(9).fill(null)); const checkWin = () => board[0]; return <div>{board.map((cell, index) => <div onClick={() => setBoard(board)}>{cell}</div>)}</div>; }',
+        'create a tic tac toe game',
+      ),
+    ).toContain('uses a non-interactive element');
+    expect(
+      validateRequestFulfillment(
+        'src/App.jsx',
+        'import { useState } from "react"; export default function App() { const [board, setBoard] = useState(Array(9).fill(null)); return <main><div>{board.map((cell, index) => <div onClick={() => setBoard(board)}>{cell}</div>)}</div><button onClick={() => setBoard(Array(9).fill(null))}>Reset</button></main>; }',
+        'create a tic tac toe game',
+      ),
+    ).toContain('uses a non-interactive element');
+    expect(
+      validateRequestFulfillment(
+        'src/App.jsx',
+        'import { useState } from "react"; export default function App() { const [board, setBoard] = useState(Array(9).fill(null)); const checkWin = () => board[0]; const resetGame = () => setBoard(Array(9).fill(null)); const handleClick = () => { setBoard(board); checkWin(); }; return <main>{board.map((cell, index) => <button onClick={handleClick}>{cell}</button>)}<button onClick={resetGame}>Reset</button></main>; }',
+        'create a tic tac toe game',
+      ),
+    ).toContain('derives status from stale state');
+    expect(
+      validateRequestFulfillment(
+        'src/App.jsx',
+        'import { useState } from "react"; export default function App() { const [currentPlayer, setCurrentPlayer] = useState("X"); const [value, setValue] = useState(null); const handleMove = () => { if (currentPlayer !== "X") return; setValue(currentPlayer); }; return <button onClick={handleMove}>{value}</button>; }',
+        'create a turn-based board app',
+      ),
+    ).toContain('hard-coded player or turn');
     const playable = `import { useState } from "react";
 import styles from "./App.module.css";
 export default function App() {

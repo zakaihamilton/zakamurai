@@ -1,4 +1,4 @@
-import { AI_EVAL_VERSION, type AIEvalCase } from '@/components/AI/AIEvals';
+import { type AIEvalCase, AI_EVAL_VERSION } from '@/components/AI/AIEvals';
 
 export const QUALIFICATION_MODEL_IDS = [
   'Qwen2.5-Coder-3B-Instruct-q4f16_1-MLC',
@@ -40,6 +40,43 @@ const component = (body: string) =>
   `export default function App() { return <main><h1>${body}</h1><button type="button">Save</button></main>; }`;
 
 export const AI_EVAL_CASES: AIEvalCase[] = [
+  base(
+    'agent-new-responsive-dashboard',
+    'agent',
+    'Create a responsive dashboard',
+    {
+      changes: [
+        {
+          path: 'src/App.jsx',
+          content:
+            'import styles from "./App.module.css"; export default function App() { return <main className={styles.shell}><h1>Dashboard</h1><div className={styles.grid}><article className={styles.card}>Overview</article></div></main>; }',
+        },
+        {
+          path: 'src/App.module.css',
+          content:
+            '.shell { min-width: 0; width: min(100%, 64rem); } .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr)); } @media (width <= 640px) { .grid { grid-template-columns: 1fr; } }',
+        },
+      ],
+      buildStatus: 'passed',
+      previewStatus: 'passed',
+      mutatedInput: false,
+      latencyMs: 1,
+      memoryMB: 1,
+      repairCount: 0,
+      fallbackCount: 0,
+    },
+    {
+      requiredIncludes: [
+        'Dashboard',
+        'min-width: 0',
+        'minmax(min(100%, 14rem), 1fr)',
+        '@media (width <= 640px)',
+      ],
+      forbiddenIncludes: ['TODO', 'Your implementation'],
+      requireBuild: true,
+      requirePreview: true,
+    },
+  ),
   ...[
     ['agent-new-todo', 'Create a todo app', 'Todo'],
     ['agent-new-dashboard', 'Create a dashboard', 'Dashboard'],

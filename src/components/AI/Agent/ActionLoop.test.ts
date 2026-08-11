@@ -150,6 +150,89 @@ describe('runActionLoop', () => {
     expect(onMetrics).toHaveBeenCalledWith(expect.objectContaining({ promptTokens: 12 }));
   });
 
+  it('repairs a failed source file using its exact diagnostic before retrying the request', async () => {
+    const brokenSource = 'export default function App() { return <main>Tic tac toe</main>;';
+    const fixedSource = 'export default function App() { return <main>Tic tac toe</main>; }';
+    const modelClient = vi
+      .fn()
+      .mockResolvedValueOnce(
+        JSON.stringify({
+          action: 'write_file',
+          path: 'src/App.jsx',
+          content: brokenSource,
+        }),
+      )
+      .mockResolvedValueOnce(
+        JSON.stringify({
+          action: 'write_file',
+          path: 'src/App.jsx',
+          content: fixedSource,
+        }),
+      )
+      .mockResolvedValueOnce('{"action":"validate"}')
+      .mockResolvedValueOnce('{"action":"finish","summary":"Created tic tac toe"}');
+    const validate = vi.fn().mockResolvedValue('Checks passed.');
+
+    const result = await runActionLoop({
+      request: 'create a tic tac toe game',
+      files: { 'src/App.jsx': 'export default function App() { return null; }' },
+      model: 'test',
+      modelClient,
+      validate,
+    });
+
+    expect(result.files['src/App.jsx']).toBe(fixedSource);
+    expect(modelClient.mock.calls[1][0].messages[0].content).toContain(
+      'repairing one failed source file',
+    );
+    expect(modelClient.mock.calls[1][0].messages[1].content).toContain("Unclosed '{'");
+    expect(modelClient.mock.calls[1][0].messages[1].content).toContain('Tic tac toe');
+    expect(validate).toHaveBeenCalledWith(result.files);
+  });
+
+  it('repairs the staged file after a build validation failure', async () => {
+    const brokenSource = 'export default function App() { return <main>Build broken</main>; }';
+    const fixedSource = 'export default function App() { return <main>Build fixed</main>; }';
+    const modelClient = vi
+      .fn()
+      .mockResolvedValueOnce(
+        JSON.stringify({
+          action: 'write_file',
+          path: 'src/App.jsx',
+          content: brokenSource,
+        }),
+      )
+      .mockResolvedValueOnce('{"action":"validate"}')
+      .mockResolvedValueOnce(
+        JSON.stringify({
+          action: 'write_file',
+          path: 'src/App.jsx',
+          content: fixedSource,
+        }),
+      )
+      .mockResolvedValueOnce('{"action":"validate"}')
+      .mockResolvedValueOnce('{"action":"finish","summary":"Fixed the app"}');
+    const validate = vi
+      .fn()
+      .mockResolvedValueOnce({ status: 'failed', diagnostics: 'Build failed: missing export' })
+      .mockResolvedValueOnce({ status: 'passed', check: 'build' });
+
+    const result = await runActionLoop({
+      request: 'fix the app',
+      files: { 'src/App.jsx': 'export default function App() { return null; }' },
+      model: 'test',
+      modelClient,
+      validate,
+    });
+
+    expect(result.files['src/App.jsx']).toBe(fixedSource);
+    expect(modelClient.mock.calls[2][0].messages[1].content).toContain(
+      'Build failed: missing export',
+    );
+    expect(modelClient.mock.calls[2][0].messages[1].content).toContain('Build broken');
+    expect(validate).toHaveBeenCalledTimes(2);
+  });
+
   it('uses the injected model client for action turns', async () => {
     const modelClient = vi.fn().mockResolvedValue('{"action":"finish","summary":"done"}');
 
@@ -444,6 +527,91 @@ describe('runActionLoop', () => {
         ),
       ),
     ).toBe(true);
+  });
+
+  it('strengthens repeated interactive repairs instead of accepting another heading-only file', async () => {
+    askWebLLM
+      .mockResolvedValueOnce(
+        '{"action":"write_file","path":"src/App.jsx","content":"export default function App() { return <main><h1>Tic Tac Toe</h1></main>; }"}',
+      )
+      .mockResolvedValueOnce(
+        '{"action":"write_file","path":"src/App.jsx","content":"export default function App() { return <main><h1>Tic Tac Toe</h1></main>; }"}',
+      )
+      .mockResolvedValueOnce(`\`\`\`jsx\n${TIC_TAC_TOE_APP}\n\`\`\``)
+      .mockResolvedValueOnce('{"action":"validate"}')
+      .mockResolvedValueOnce('{"action":"finish","summary":"Created tic tac toe"}');
+    const validate = vi.fn().mockResolvedValue('Checks passed.');
+
+    const result = await runActionLoop({
+      request: 'create a tic tac toe game',
+      files: { 'src/App.jsx': 'export default function App() { return null; }' },
+      model: 'Qwen2.5-Coder-1.5B-Instruct-q4f16_1-MLC',
+      validate,
+    });
+
+    expect(result.files['src/App.jsx']).toContain('useState');
+    expect(result.files['src/App.jsx']).toContain('onClick');
+    const repairPrompt = askWebLLM.mock.calls[1]?.[3]?.messages
+      ?.map((message: { content: string }) => message.content)
+      .join('\n');
+    expect(repairPrompt).toContain('targeted item or cell by index');
+    expect(repairPrompt).toContain('reset, clear, or restart control');
+  });
+
+  it('repairs generic turn guards and stale derived state before staging a lightweight app', async () => {
+    const brokenInteractiveSource = `import { useState } from 'react';
+export default function App() {
+  const [board, setBoard] = useState(Array(4).fill(null));
+  const [currentPlayer, setCurrentPlayer] = useState('A');
+  const checkStatus = () => board[0] || 'empty';
+  const handleMove = (index) => {
+    if (currentPlayer !== 'A') return;
+    const nextBoard = [...board];
+    nextBoard[index] = currentPlayer;
+    setBoard(nextBoard);
+    setCurrentPlayer(currentPlayer === 'A' ? 'B' : 'A');
+    checkStatus();
+  };
+  return <button onClick={() => handleMove(0)}>{checkStatus()}</button>;
+}`;
+    askWebLLM
+      .mockResolvedValueOnce(`\`\`\`jsx\n${brokenInteractiveSource}\n\`\`\``)
+      .mockResolvedValueOnce('{"action":"validate"}')
+      .mockResolvedValueOnce('{"action":"finish","summary":"Created board app"}');
+    const validate = vi.fn().mockResolvedValue({ status: 'passed', check: 'build' });
+
+    const result = await runActionLoop({
+      request: 'create a turn-based board app',
+      files: { 'src/App.jsx': 'export default function App() { return null; }' },
+      model: 'Qwen2.5-Coder-1.5B-Instruct-q4f16_1-MLC',
+      validate,
+    });
+
+    expect(result.files['src/App.jsx']).not.toContain("currentPlayer !== 'A'");
+    expect(result.files['src/App.jsx']).toContain('const checkStatus = (nextBoard = board)');
+    expect(result.files['src/App.jsx']).toContain('checkStatus(nextBoard);');
+  });
+
+  it('finishes a complete staged app before a lightweight repair can regress it to a shell', async () => {
+    askWebLLM
+      .mockResolvedValueOnce(`\`\`\`jsx\n${TIC_TAC_TOE_APP}\n\`\`\``)
+      .mockResolvedValueOnce(
+        '```css\n.app { display: grid; }\n.board { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }\n.cell { min-width: 0; min-height: 44px; }\n.reset { min-height: 44px; }\n```',
+      )
+      .mockResolvedValueOnce(
+        '```jsx\nexport default function App() { return <main><h1>Tic Tac Toe</h1></main>; }\n```',
+      );
+
+    const result = await runActionLoop({
+      request: 'create a tic tac toe game',
+      files: { 'src/App.jsx': 'export default function App() { return null; }' },
+      model: 'Qwen2.5-Coder-1.5B-Instruct-q4f16_1-MLC',
+    });
+
+    expect(result.files['src/App.jsx']).toContain('useState');
+    expect(result.files['src/App.jsx']).toContain('onClick');
+    expect(result.files['src/App.module.css']).toContain('grid-template-columns');
+    expect(askWebLLM).toHaveBeenCalledTimes(2);
   });
 
   it('auto-attaches a CSS Module when a lightweight model writes an unstyled interactive App', async () => {

@@ -368,6 +368,46 @@ export function validateRequestFulfillment(
     return `Generated content for ${path} only renders a heading. Add the requested app's visible content, controls, or primary interaction before finishing.`;
   }
 
+  const hasIndexedInteraction =
+    /\b(?:index|position|row|column)\b/.test(content) &&
+    /\bon(?:Click|Change|Input|KeyDown)\b/.test(content);
+  if (
+    hasIndexedInteraction &&
+    /\bset[A-Z][A-Za-z0-9_$]*\s*\(\s*\(\s*prev[A-Za-z_$]*\s*\)\s*=>\s*\[\s*\.\.\.\s*prev[A-Za-z_$]*\s*,/i.test(
+      content,
+    )
+  ) {
+    return `Generated content for ${path} appends an indexed interaction to a collection instead of updating the targeted item. Copy the collection, assign nextValue[index] (or the equivalent targeted position), and derive dependent status from that next value before updating state.`;
+  }
+
+  if (
+    /\b(?:current|active)(?:Player|Turn)\b\s*!==?\s*["'][^"']+["']/i.test(content) &&
+    /\bon(?:Click|Change|Submit|KeyDown)\b/.test(content)
+  ) {
+    return `Generated content for ${path} blocks an interactive turn for every value except a hard-coded player or turn. Allow each active turn to act, or implement an explicit opponent rule without silently disabling the other values.`;
+  }
+
+  const mappedClickableElement =
+    /\.map\s*\(\s*(?:\([^)]*\)|[A-Za-z_$][\w$]*)\s*=>\s*(?:\(\s*)?<([a-z][\w.-]*)\b([\s\S]*?)\bonClick\s*=/i.exec(
+      content,
+    );
+  if (
+    mappedClickableElement &&
+    mappedClickableElement[1].toLowerCase() !== 'button' &&
+    !/role\s*=\s*["']button["']/i.test(mappedClickableElement[2])
+  ) {
+    return `Generated content for ${path} uses a non-interactive element as a clickable collection item. Use a button or an element with an explicit button role, keyboard handler, focus state, and visible control styling.`;
+  }
+
+  if (
+    /\b(?:check|calculate|derive|evaluate)(?:Win|Winner|Status|Result)?\s*\(\s*\)/i.test(content) &&
+    /(?:function\s+(?:check|calculate|derive|evaluate)[A-Za-z_$]*\b|(?:const|let)\s+(?:check|calculate|derive|evaluate)[A-Za-z_$]*\s*=\s*(?:\([^)]*\)|[A-Za-z_$][\w$]*)\s*=>)[\s\S]*\b(?:board|items|value|state)\s*(?:\.|\[)/i.test(
+      content,
+    )
+  ) {
+    return `Generated content for ${path} derives status from stale state after an update. Pass the next value into the calculation, derive the result before state setters, then update state and status together.`;
+  }
+
   if (content.trim().length < 400) {
     return `Generated content for ${path} is too short to fulfill "${clipped}". Return a complete implementation instead of a stub.`;
   }
@@ -526,6 +566,24 @@ export function validateCssModuleUsage(path: string, content: string): string | 
   }
   if (/\bclassName\s*=\s*["'][^"']+["']/.test(content)) {
     return `Use the imported CSS Module class map in ${path} (for example, className={styles.container}) instead of literal className strings.`;
+  }
+  const classNameExpressions = [...content.matchAll(/\bclassName\s*=\s*\{([^{}]*)\}/g)].map(
+    (match) => match[1],
+  );
+  const templateClassNameExpressions = [
+    ...content.matchAll(/\bclassName\s*=\s*\{`([\s\S]*?)`\}/g),
+  ].map((match) => match[1]);
+  if (
+    classNameExpressions.some(
+      (expression) =>
+        !/\bstyles(?:\.|\[)/.test(expression) &&
+        (/[`"'][^`"']+[`"']/.test(expression) || /\?[^:]+:[^:]+/.test(expression)),
+    ) ||
+    templateClassNameExpressions.some((expression) =>
+      /[A-Za-z_-][\w-]*/.test(expression.replace(/\$\{[\s\S]*?\}/g, '')),
+    )
+  ) {
+    return `Use the imported CSS Module class map in ${path} (for example, className={styles.container}) instead of global or template class names.`;
   }
   return null;
 }

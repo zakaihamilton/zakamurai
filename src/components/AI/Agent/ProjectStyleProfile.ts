@@ -1,5 +1,6 @@
 import { validateCssModuleRelationships } from '@/components/AI/ChangeValidator';
 import type { FileMap } from '@/components/AI/types';
+import { RESPONSIVE_GENERATION_CONTRACT } from './Protocol';
 
 export type ProjectStyleProfileSource = 'inferred' | 'default';
 
@@ -250,13 +251,17 @@ export const resolveProjectStyleProfile = (
   return createProjectStyleProfile(files);
 };
 
-export const formatProjectStyleContract = (profile: ProjectStyleProfile): string => {
+export const formatProjectStyleContract = (
+  profile: ProjectStyleProfile,
+  options: { responsive?: boolean } = {},
+): string => {
   const { tokens } = profile;
   return [
     `Project style: ${profile.source}.`,
     `Use only semantic CSS Module roles: ${PROJECT_STYLE_ROLES.join(', ')}.`,
     `Tokens: background ${tokens.background}; surface ${tokens.surface}; text ${tokens.text}; muted ${tokens.muted}; accent ${tokens.accent}; spacing ${tokens.spacing}; radius ${tokens.radius}.`,
     'Return component source only. The host generates missing CSS Module rules deterministically.',
+    ...(options.responsive ? [RESPONSIVE_GENERATION_CONTRACT] : []),
   ].join('\n');
 };
 
@@ -324,13 +329,15 @@ export const repairProjectStyleRelationships = ({
 const ruleForRole = (role: string): string => {
   const rules: Record<string, string> = {
     app: 'min-height: 100vh; padding: clamp(1rem, 4vw, 3rem); color: var(--color-text); background: var(--color-bg);',
-    shell: 'width: min(100%, 64rem); margin: 0 auto; display: grid; gap: calc(var(--space) * 1.5);',
-    section: 'display: grid; gap: var(--space);',
-    stack: 'display: flex; flex-direction: column; gap: var(--space);',
-    row: 'display: flex; flex-wrap: wrap; align-items: center; gap: var(--space);',
-    grid: 'display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr)); gap: var(--space);',
-    board: 'display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space);',
-    card: 'padding: calc(var(--space) * 1.25); color: var(--color-text); background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius); box-shadow: var(--shadow);',
+    shell:
+      'width: min(100%, 64rem); min-width: 0; margin: 0 auto; display: grid; gap: clamp(1rem, 3vw, calc(var(--space) * 1.5));',
+    section: 'display: grid; min-width: 0; gap: var(--space);',
+    stack: 'display: flex; min-width: 0; flex-direction: column; gap: var(--space);',
+    row: 'display: flex; min-width: 0; flex-wrap: wrap; align-items: center; gap: var(--space);',
+    grid: 'display: grid; min-width: 0; grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr)); gap: var(--space);',
+    board:
+      'display: grid; min-width: 0; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space);',
+    card: 'min-width: 0; padding: clamp(1rem, 3vw, calc(var(--space) * 1.25)); color: var(--color-text); background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius); box-shadow: var(--shadow);',
     title:
       'margin: 0; color: var(--color-text); font-size: clamp(2rem, 6vw, 3.75rem); line-height: 1.05; letter-spacing: -0.035em;',
     subtitle:
@@ -349,12 +356,12 @@ const ruleForRole = (role: string): string => {
     dangerAction:
       'min-height: 2.75rem; padding: calc(var(--space) * 0.7) var(--space); color: var(--color-on-danger); background: var(--color-danger); border: 1px solid transparent; border-radius: var(--radius); cursor: pointer; font-weight: 600;',
     list: 'display: flex; flex-direction: column; gap: calc(var(--space) * 0.6); margin: 0; padding: 0; list-style: none;',
-    item: 'display: flex; align-items: center; justify-content: space-between; gap: var(--space); padding: calc(var(--space) * 0.75) var(--space); color: var(--color-text); background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius); transition: all var(--duration) var(--easing);',
+    item: 'display: flex; min-width: 0; align-items: center; justify-content: space-between; gap: var(--space); padding: calc(var(--space) * 0.75) var(--space); color: var(--color-text); background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius); transition: all var(--duration) var(--easing);',
     checkbox:
       'width: 1.25rem; height: 1.25rem; accent-color: var(--color-accent); cursor: pointer; flex-shrink: 0;',
     toggle:
       'width: 1.25rem; height: 1.25rem; accent-color: var(--color-accent); cursor: pointer; flex-shrink: 0;',
-    form: 'display: flex; gap: var(--space); align-items: center;',
+    form: 'display: flex; min-width: 0; flex-wrap: wrap; gap: var(--space); align-items: center;',
     square:
       'aspect-ratio: 1; min-width: 0; padding: var(--space); color: var(--color-text); background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius); cursor: pointer;',
     cell: 'aspect-ratio: 1; min-width: 0; padding: var(--space); color: var(--color-text); background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius); cursor: pointer;',
@@ -515,8 +522,13 @@ const selectorDeclares = (css: string, role: string, property: string): boolean 
 const responsiveRules = (roles: string[], existingCss: string): string => {
   const mediaCss = atRuleBlocks(existingCss, 'media');
   const declarations: string[] = [];
-  if (roles.includes('row') && !selectorDeclares(mediaCss, 'row', 'flex-direction')) {
-    declarations.push('  .row { align-items: stretch; flex-direction: column; }');
+  const stackRoles = roles.filter(
+    (role) => ['row', 'form'].includes(role) && !selectorDeclares(mediaCss, role, 'flex-direction'),
+  );
+  if (stackRoles.length) {
+    declarations.push(
+      `  ${stackRoles.map((role) => `.${role}`).join(', ')} { align-items: stretch; flex-direction: column; }`,
+    );
   }
   if (roles.includes('grid') && !selectorDeclares(mediaCss, 'grid', 'grid-template-columns')) {
     declarations.push('  .grid { grid-template-columns: 1fr; }');

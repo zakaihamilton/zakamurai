@@ -24,18 +24,19 @@ import {
   CONTEXT_READY_AGENT_INSTRUCTIONS,
   LIGHTWEIGHT_AGENT_SYSTEM_PROMPT,
   LIGHTWEIGHT_CONTEXT_READY_INSTRUCTIONS,
+  buildActionLoopModelMessages,
   buildContextReadyUserRequest,
-  buildDirectChangesRecoveryMessages,
-  buildForcedWriteRecoveryMessages,
   buildUserRequest,
   createAutoFinishSummary,
   isIncompleteWriteError,
   isLightweightAgentModel,
+  isNewAppGenerationRequest,
   loadAskWebLLM,
   newlyCreatedComponentsNeedEntryWiring,
   normalizeFinishSummary,
-  recoveryWritePath,
   recordTruncatedModelOutput,
+  recoverDeferredSource,
+  recoveryWritePath,
   wireNewComponentIntoScratchEntry,
   writeRecovery,
 } from './ActionLoopRecovery';
@@ -53,6 +54,7 @@ import {
   isFailedValidationResult,
   missingCssModuleImports,
   missingCssModuleRules,
+  normalizeGeneratedInteractiveSource,
   normalizeSideEffectCssSource,
   observation,
   recoverWorkspaceCssModules,
@@ -138,6 +140,7 @@ export async function runActionLoop({
         priorContext,
         lightweight: lightweightModel,
         styleProfile: resolvedStyleProfile,
+        responsiveGeneration: isNewAppGenerationRequest(request),
       })
     : buildUserRequest({
         request,
@@ -172,6 +175,8 @@ export async function runActionLoop({
   let finishAfterAutomaticValidation = false;
   let automaticValidationResult = '';
   let failedWritePath = '';
+  let failedWriteContent = '';
+  let failedWriteDiagnostic = '';
   let forcedWriteRecoveryPending = false;
   let forcedRecoveryTargetPath: string | null = null;
   let forcedWriteRecoveryViolations = 0;
@@ -218,6 +223,30 @@ export async function runActionLoop({
       agentRole,
       provenance: 'recovery',
     });
+  };
+
+  const stageDeferredRecovery = (
+    source: { path: string; content: string },
+    turn: number,
+    action: NonNullable<ReturnType<typeof parseAgentAction>>,
+  ): string | null => {
+    const recovery = recoverDeferredSource({
+      source,
+      files: workspace.files,
+      request,
+      lightweight: lightweightModel,
+      turn,
+      action,
+      agentRole,
+      onEvent,
+      fulfills: workspaceFulfillsInteractiveRequest,
+    });
+    if (!recovery) return null;
+    failedWritePath = recovery.path;
+    failedWriteContent = recovery.content;
+    failedWriteDiagnostic = recovery.diagnostic;
+    forcedWriteRecoveryPending = true;
+    return recovery.diagnostic;
   };
 
   const applyCssModuleRecovery = (turn: number): string[] => {
@@ -292,22 +321,19 @@ export async function runActionLoop({
     let reply: string;
     const recoveryTarget =
       forcedRecoveryTargetPath || recoveryWritePath(workspace.files, activeFile);
-    const modelMessages = directChangesRecoveryPending
-      ? buildDirectChangesRecoveryMessages({
-          request,
-          targetPath: recoveryTarget,
-          files: workspace.files,
-          lightweight: lightweightModel,
-        })
-      : forcedWriteRecoveryPending
-        ? buildForcedWriteRecoveryMessages({
-            request,
-            targetPath: recoveryTarget,
-            files: workspace.files,
-            lightweight: lightweightModel,
-            incompleteWrite: incompleteWriteRetries > 0,
-          })
-        : messages;
+    const modelMessages = buildActionLoopModelMessages({
+      request,
+      targetPath: recoveryTarget,
+      files: workspace.files,
+      failedWritePath,
+      failedWriteContent,
+      failedWriteDiagnostic,
+      directChangesRecoveryPending,
+      forcedWriteRecoveryPending,
+      incompleteWriteRetries,
+      lightweight: lightweightModel,
+      messages,
+    });
     const safeModelMessages = modelMessages.filter(Boolean);
     const modelResponse = await requestNextAction({
       askWebLLM,
@@ -415,6 +441,14 @@ export async function runActionLoop({
           if (verification.includes('"status":"failed"')) {
             if (++directRepairAttempts > 2)
               throw new AgentExecutionError(verification, workspace.changes());
+            failedWritePath =
+              changes.find((change) => change.after !== undefined)?.path ||
+              recoveryWritePath(workspace.files, activeFile) ||
+              '';
+            failedWriteContent = failedWritePath ? workspace.files[failedWritePath] || '' : '';
+            failedWriteDiagnostic = verification;
+            forcedWriteRecoveryPending = Boolean(failedWritePath);
+            forcedRecoveryTargetPath = failedWritePath || forcedRecoveryTargetPath;
             messages.push({
               role: 'user',
               content: observation(
@@ -599,16 +633,26 @@ export async function runActionLoop({
         context.record('validation', automaticValidationResult || 'passed');
         return { changes, files: workspace.files, summary, events: turn, workspace };
       }
-      if (lightweightModel && workspace.changes().length > 0 && validate) {
+      if (
+        lightweightModel &&
+        workspace.changes().length > 0 &&
+        (validate || isNewAppGenerationRequest(request))
+      ) {
         try {
           applyCssModuleRecovery(turn);
-          const validationResult = await runValidation(turn);
-          if (!isFailedValidationResult(validationResult)) {
+          const fulfillmentError = isNewAppGenerationRequest(request)
+            ? workspaceFulfillsInteractiveRequest(workspace.files, request)
+            : null;
+          if (fulfillmentError) throw new Error(fulfillmentError);
+          const validationResult = validate
+            ? await runValidation(turn)
+            : 'Deterministic request-fulfillment checks passed.';
+          if (!validate || !isFailedValidationResult(validationResult)) {
             const wiredEntry = wireNewComponentIntoScratchEntry(workspace);
             const changes = workspace.changes();
             const summary = autoFinishSummary('validate', wiredEntry);
             onEvent({ type: 'finished', turn, changes, message: summary, agentRole });
-            context.record('validation', validationResult);
+            context.record(validate ? 'validation' : 'fulfillment', validationResult);
             return { changes, files: workspace.files, summary, events: turn, workspace };
           }
         } catch {
@@ -732,6 +776,14 @@ export async function runActionLoop({
       stageRecoveredWrite(turn, source.path, source.content);
       validationState.wroteSinceVerification = true;
       deferredSourceWrite = null;
+      const recoveryMessage = stageDeferredRecovery(source, turn, action);
+      if (recoveryMessage) {
+        messages.push({
+          role: 'user',
+          content: observation('css_recovery', false, recoveryMessage),
+        });
+        continue;
+      }
       forcedWriteRecoveryPending = false;
       forcedRecoveryTargetPath = null;
       const message = `The model did not provide the requested CSS Module, so staged ${source.path} with generated semantic CSS recovery for ${source.stylesheets.join(', ')}.`;
@@ -873,6 +925,12 @@ export async function runActionLoop({
       applyCssModuleRecovery(turn);
       const result = validationResult;
       if (isFailedValidationResult(result)) {
+        failedWritePath =
+          forcedRecoveryTargetPath || recoveryWritePath(workspace.files, activeFile) || '';
+        failedWriteContent = failedWritePath ? workspace.files[failedWritePath] || '' : '';
+        failedWriteDiagnostic = result;
+        forcedWriteRecoveryPending = Boolean(failedWritePath);
+        forcedRecoveryTargetPath = failedWritePath || forcedRecoveryTargetPath;
         messages.push({ role: 'user', content: observation(action.action, false, result) });
         onEvent({
           type: 'observation',
@@ -927,6 +985,8 @@ export async function runActionLoop({
             forcedRecoveryTargetPath = action.path || forcedRecoveryTargetPath;
             forcedWriteRecoveryViolations = 0;
             failedWritePath = action.path || failedWritePath;
+            failedWriteContent = workspace.files[action.path || ''] || action.content || '';
+            failedWriteDiagnostic = summaryText;
             continue;
           }
           if (lightweightModel) {
@@ -1038,6 +1098,12 @@ export async function runActionLoop({
         if (ensuredCssModule) {
           action = { ...action, content: ensuredCssModule.content };
         }
+        if (isNewAppGenerationRequest(request) && /\.(?:jsx|tsx)$/i.test(action.path || '')) {
+          action = {
+            ...action,
+            content: normalizeGeneratedInteractiveSource(action.content || ''),
+          };
+        }
         const stylingError = validateComponentStyling(action.path || '', action.content || '');
         if (stylingError) throw new Error(stylingError);
         const contentTypeError = validateFileContentType(action.path || '', action.content || '');
@@ -1084,6 +1150,7 @@ export async function runActionLoop({
               action.content || '',
               workspace.files,
               resolvedStyleProfile,
+              { responsive: isNewAppGenerationRequest(request) },
             ),
           };
         }
@@ -1106,6 +1173,8 @@ export async function runActionLoop({
         nonProductiveActionsWithoutWrite = 0;
         validationState.wroteSinceVerification = true;
         failedWritePath = '';
+        failedWriteContent = '';
+        failedWriteDiagnostic = '';
         unchangedReadSkips = 0;
         clearFailedWriteAttempts();
         malformedSourceAttempts = 0;
@@ -1166,11 +1235,21 @@ export async function runActionLoop({
         if (
           deferredSourceWrite?.stylesheets.every((path) => Object.hasOwn(workspace.files, path))
         ) {
-          stageRecoveredWrite(turn, deferredSourceWrite.path, deferredSourceWrite.content);
-          result = `Staged ${action.path} and the queued source file ${deferredSourceWrite.path}.`;
+          const source = deferredSourceWrite;
+          stageRecoveredWrite(turn, source.path, source.content);
           deferredSourceWrite = null;
+          const recoveryMessage = stageDeferredRecovery(source, turn, action);
+          if (recoveryMessage) {
+            result = recoveryMessage;
+            messages.push({
+              role: 'user',
+              content: observation('css_recovery', false, result),
+            });
+            continue;
+          }
           forcedWriteRecoveryPending = false;
           forcedRecoveryTargetPath = null;
+          result = `Staged ${action.path} and the queued source file ${source.path}.`;
         } else {
           result = `Staged ${action.path} (${(action.content || '').length} characters).`;
         }
@@ -1238,6 +1317,14 @@ export async function runActionLoop({
       }
       if (action.action === 'validate') {
         result = await runValidation(turn, 'model');
+        if (isFailedValidationResult(result)) {
+          failedWritePath =
+            forcedRecoveryTargetPath || recoveryWritePath(workspace.files, activeFile) || '';
+          failedWriteContent = failedWritePath ? workspace.files[failedWritePath] || '' : '';
+          failedWriteDiagnostic = result;
+          forcedWriteRecoveryPending = Boolean(failedWritePath);
+          forcedRecoveryTargetPath = failedWritePath || forcedRecoveryTargetPath;
+        }
         if (
           workspace.changes().length > 0 &&
           !validationState.lastValidationFailed &&
@@ -1515,6 +1602,15 @@ export async function runActionLoop({
           continue;
         }
       }
+      if (action.action === 'write_file') {
+        const targetPath = action.path || '';
+        failedWritePath = targetPath || failedWritePath;
+        const hasStagedTarget = workspace.changes().some((change) => change.path === targetPath);
+        failedWriteContent = hasStagedTarget ? '' : failedWriteContent || action.content || '';
+        failedWriteDiagnostic = err.message;
+        forcedWriteRecoveryPending = true;
+        forcedRecoveryTargetPath = action.path || forcedRecoveryTargetPath;
+      }
       if (
         action.action === 'write_file' &&
         /\.module\.css$/i.test(stylesheetPath) &&
@@ -1533,6 +1629,11 @@ export async function runActionLoop({
           workspace.write(stylesheetPath, fallback);
           validationState.wroteSinceVerification = true;
           failedWritePath = '';
+          failedWriteContent = '';
+          failedWriteDiagnostic = '';
+          forcedWriteRecoveryPending = false;
+          forcedRecoveryTargetPath = null;
+          forcedWriteRecoveryViolations = 0;
           const message = `The local model repeatedly produced malformed CSS for ${stylesheetPath}. A safe minimal stylesheet was staged so implementation can continue.`;
           messages.push({ role: 'user', content: observation(action.action, true, message) });
           context.record('write_file', message);

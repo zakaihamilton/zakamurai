@@ -31,10 +31,10 @@ const stripFence = (value: string): string =>
 describe('real WebGPU AI qualification matrix', () => {
   it('covers every model-facing case with three fixed seeds and every supported tier', () => {
     const modelFacing = AI_EVAL_CASES.filter((testCase) => testCase.modelFacing);
-    expect(modelFacing).toHaveLength(22);
+    expect(modelFacing).toHaveLength(23);
     expect(QUALIFICATION_MODEL_IDS).toHaveLength(4);
     expect(seeds).toHaveLength(3);
-    expect(modelFacing.length * QUALIFICATION_MODEL_IDS.length * seeds.length).toBe(264);
+    expect(modelFacing.length * QUALIFICATION_MODEL_IDS.length * seeds.length).toBe(276);
   });
 
   it.skipIf(!enabled)(

@@ -2,6 +2,7 @@ import type { AgentAction } from '@/components/AI/types';
 import { type ProjectStyleProfile, generateProjectCssModule } from './ProjectStyleProfile';
 
 const MAX_REASONING_RESULT_CHARS = 3000;
+const escapeRegExp = (value: string): string => value.replace(/[.+^${}()|[\]\\]/g, '\\$&');
 
 const truncateReasoningResult = (value: string): string =>
   value.length > MAX_REASONING_RESULT_CHARS
@@ -183,20 +184,7 @@ export const normalizeSideEffectCssSource = (
     },
   );
 
-  normalized = normalized.replace(
-    /className\s*=\s*(["'])([^"']+)\1/g,
-    (_match, _quote: string, classValue: string) => {
-      const classes = classValue.trim().split(/\s+/).filter(Boolean);
-      if (!classes.length) return 'className={undefined}';
-      const references = classes.map((className) =>
-        /^[A-Za-z_$][\w$]*$/.test(className)
-          ? `styles.${className}`
-          : `styles[${JSON.stringify(className)}]`,
-      );
-      if (references.length === 1) return `className={${references[0]}}`;
-      return `className={${references.join(" + ' ' + ")}}`;
-    },
-  );
+  normalized = normalizeClassNameExpressions(normalized);
 
   return { content: normalized, stylesheets: [...stylesheets] };
 };
@@ -266,6 +254,43 @@ const cssModuleClassNames = (content: string): Set<string> =>
       ...content.matchAll(/\bstyles(?:\.([A-Za-z_-][\w-]*)|\[\s*["']([A-Za-z_-][\w-]*)["']\s*\])/g),
     ].map((match) => match[1] || match[2]),
   );
+
+const interactiveCssModuleClassNames = (content: string): Set<string> =>
+  new Set(
+    [
+      ...content.matchAll(
+        /<(?:button|input|select|textarea)\b[^>]*\bstyles(?:\.([A-Za-z_-][\w-]*)|\[\s*["']([A-Za-z_-][\w-]*)["']\s*\])/gis,
+      ),
+    ].map((match) => match[1] || match[2]),
+  );
+
+/** Replaces oversized fixed dimensions on generated controls with fluid sizing. */
+const normalizeOversizedInteractiveRules = (stylesheet: string, source: string): string => {
+  const interactiveClasses = interactiveCssModuleClassNames(source);
+  if (!interactiveClasses.size) return stylesheet;
+
+  let normalized = stylesheet;
+  for (const className of interactiveClasses) {
+    const rulePattern = new RegExp(`\\.${escapeRegExp(className)}\\s*\\{([^}]*)\\}`, 'i');
+    const match = rulePattern.exec(normalized);
+    if (!match) continue;
+    const hasOversizedDimension = [
+      ...match[1].matchAll(/\b(?:width|height)\s*:\s*(\d+(?:\.\d+)?)\s*(px|rem)\s*;/gi),
+    ].some((dimension) =>
+      dimension[2].toLowerCase() === 'px' ? Number(dimension[1]) > 96 : Number(dimension[1]) > 6,
+    );
+    if (!hasOversizedDimension) continue;
+
+    const repairedBody = match[1]
+      .replace(/\bwidth\s*:\s*\d+(?:\.\d+)?\s*(?:px|rem)\s*;/gi, 'width: min(100%, 12rem);')
+      .replace(
+        /\bheight\s*:\s*\d+(?:\.\d+)?\s*(?:px|rem)\s*;/gi,
+        'height: auto; min-height: 2.75rem;',
+      );
+    normalized = `${normalized.slice(0, match.index)}.${className} {${repairedBody}}${normalized.slice(match.index + match[0].length)}`;
+  }
+  return normalized;
+};
 
 const definedCssModuleClassNames = (content: string): Set<string> =>
   new Set([...content.matchAll(/\.([A-Za-z_-][\w-]*)\s*\{/g)].map((match) => match[1]));
@@ -493,6 +518,7 @@ export const repairCssModuleStylesheet = (
   content: string,
   files: Record<string, string>,
   profile?: ProjectStyleProfile,
+  options: { responsive?: boolean } = {},
 ): string => {
   let repaired = content;
   for (const importer of cssModuleImporters(stylesheetPath, files)) {
@@ -504,7 +530,14 @@ export const repairCssModuleStylesheet = (
     );
     if (merged) repaired = merged;
   }
-  return repaired;
+  return options.responsive
+    ? normalizeOversizedInteractiveRules(
+        repaired,
+        cssModuleImporters(stylesheetPath, files)
+          .map((path) => files[path] || '')
+          .join('\n'),
+      )
+    : repaired;
 };
 
 const UNITLESS_STYLE_NUMBERS = new Set([
@@ -563,6 +596,381 @@ const extractBalancedBraces = (text: string, openIndex: number): string | null =
     }
   }
   return null;
+};
+
+const findJsxTagEnd = (content: string, start: number): number => {
+  let quote: string | null = null;
+  let braceDepth = 0;
+  let escaped = false;
+  for (let index = start; index < content.length; index++) {
+    const char = content[index];
+    if (escaped) {
+      escaped = false;
+      continue;
+    }
+    if (quote) {
+      if (char === '\\') escaped = true;
+      else if (char === quote) quote = null;
+      continue;
+    }
+    if (char === '"' || char === "'" || char === '`') {
+      quote = char;
+      continue;
+    }
+    if (char === '{') {
+      braceDepth += 1;
+      continue;
+    }
+    if (char === '}') {
+      braceDepth = Math.max(0, braceDepth - 1);
+      continue;
+    }
+    if (char === '>' && braceDepth === 0) return index;
+  }
+  return -1;
+};
+
+const findMatchingJsxClose = (content: string, openEnd: number, tagName: string): number => {
+  let depth = 1;
+  for (let index = openEnd + 1; index < content.length; index++) {
+    if (content[index] !== '<') continue;
+    const tagEnd = findJsxTagEnd(content, index + 1);
+    if (tagEnd < 0) return -1;
+    const tag = content.slice(index + 1, tagEnd).trim();
+    const closing = tag.startsWith('/');
+    const normalizedTag = (closing ? tag.slice(1) : tag).trim();
+    const nameMatch = /^([A-Za-z][\w.-]*)\b/.exec(normalizedTag);
+    if (!nameMatch || nameMatch[1] !== tagName) {
+      index = tagEnd;
+      continue;
+    }
+    if (closing) {
+      depth -= 1;
+      if (depth === 0) return index;
+    } else if (!/\/\s*$/.test(normalizedTag)) {
+      depth += 1;
+    }
+    index = tagEnd;
+  }
+  return -1;
+};
+
+type FunctionSpan = {
+  name: string;
+  start: number;
+  end: number;
+  body: string;
+};
+
+const topLevelFunctionSpans = (content: string): FunctionSpan[] => {
+  const functions: FunctionSpan[] = [];
+  for (const match of content.matchAll(/\bfunction\s+([A-Za-z_$][\w$]*)\s*\([^)]*\)\s*\{/g)) {
+    const start = match.index ?? 0;
+    const openIndex = start + match[0].length - 1;
+    const body = extractBalancedBraces(content, openIndex);
+    if (!body) continue;
+    if (functions.some((candidate) => start > candidate.start && start < candidate.end)) continue;
+    functions.push({ name: match[1], start, end: openIndex + body.length, body });
+  }
+  return functions;
+};
+
+const normalizeExternalStateCallbacks = (content: string): string => {
+  const setters = [
+    ...content.matchAll(
+      /\bconst\s*\[\s*[A-Za-z_$][\w$]*\s*,\s*(set[A-Za-z_$][\w$]*)\s*\]\s*=\s*useState\b/g,
+    ),
+  ].map((match) => match[1]);
+  if (!setters.length) return content;
+
+  const functions = topLevelFunctionSpans(content);
+  const component = functions.find((candidate) => /\buseState\b/.test(candidate.body));
+  if (!component) return content;
+  const externalCallbacks = functions.filter(
+    (candidate) =>
+      candidate !== component &&
+      setters.some((setter) => new RegExp(`\\b${setter}\\s*\\(`).test(candidate.body)),
+  );
+  if (!externalCallbacks.length) return content;
+
+  const moved = externalCallbacks
+    .map((callback) => content.slice(callback.start, callback.end).replace(/^/gm, '  '))
+    .join('\n\n');
+  let normalized = content;
+  for (const callback of [...externalCallbacks].sort((left, right) => right.start - left.start)) {
+    const lineStart = normalized.lastIndexOf('\n', callback.start - 1) + 1;
+    const removalStart = /^\s*$/.test(normalized.slice(lineStart, callback.start))
+      ? lineStart
+      : callback.start;
+    const afterFunction =
+      callback.end < normalized.length && normalized[callback.end] === '\n'
+        ? callback.end + 1
+        : callback.end;
+    normalized = `${normalized.slice(0, removalStart)}${normalized.slice(afterFunction)}`;
+  }
+
+  const componentMatch = new RegExp(`\\bfunction\\s+${component.name}\\s*\\([^)]*\\)\\s*\\{`).exec(
+    normalized,
+  );
+  if (!componentMatch || componentMatch.index === undefined) return content;
+  const componentOpen = componentMatch.index + componentMatch[0].length - 1;
+  return `${normalized.slice(0, componentOpen + 1)}\n${moved}\n${normalized.slice(componentOpen + 1)}`;
+};
+
+/** Converts safe mapped collection item click targets into semantic buttons. */
+const normalizeMappedInteractiveElements = (content: string): string => {
+  const mapPattern =
+    /\.map\s*\(\s*(?:\([^)]*\)|[A-Za-z_$][\w$]*)\s*=>\s*(?:\(\s*)?<(?<tag>div|span)\b/i;
+  let normalized = content;
+  let searchStart = 0;
+  while (searchStart < normalized.length) {
+    const match = mapPattern.exec(normalized.slice(searchStart));
+    if (!match?.groups?.tag || match.index === undefined) break;
+    const openStart = searchStart + match.index + match[0].lastIndexOf('<');
+    const tagName = match.groups.tag.toLowerCase();
+    const openEnd = findJsxTagEnd(normalized, openStart + 1);
+    if (openEnd < 0) break;
+    const openingTag = normalized.slice(openStart, openEnd + 1);
+    if (!/\bonClick\s*=/.test(openingTag)) {
+      searchStart = openEnd + 1;
+      continue;
+    }
+    const replacementOpening = `<button type="button"${openingTag.slice(1 + tagName.length, -1)}>`;
+    if (/\/\s*>$/.test(openingTag)) {
+      normalized = `${normalized.slice(0, openStart)}${replacementOpening}${normalized.slice(openEnd + 1)}`;
+      searchStart = openStart + replacementOpening.length;
+      continue;
+    }
+    const closeStart = findMatchingJsxClose(normalized, openEnd, tagName);
+    if (closeStart < 0) break;
+    normalized = `${normalized.slice(0, openStart)}${replacementOpening}${normalized.slice(openEnd + 1, closeStart)}</button>${normalized.slice(closeStart + tagName.length + 3)}`;
+    searchStart = openStart + replacementOpening.length;
+  }
+  return normalized;
+};
+
+const normalizeHardCodedTurnGuards = (content: string): string => {
+  let normalized = content;
+  const declarations = [
+    ...content.matchAll(
+      /\bconst\s*\[\s*((?:current|active)(?:Player|Turn))\s*,\s*(set[A-Z][A-Za-z0-9_$]*)\s*\]\s*=\s*useState\b/gi,
+    ),
+  ];
+
+  for (const declaration of declarations) {
+    const stateName = declaration[1];
+    const setterName = declaration[2];
+    const advancesTurn = new RegExp(
+      `\\b${escapeRegExp(setterName)}\\s*\\(\\s*${escapeRegExp(stateName)}\\s*===|\\b${escapeRegExp(setterName)}\\s*\\(\\s*prev[A-Za-z_$]*\\s*=>`,
+      'i',
+    ).test(normalized);
+    if (!advancesTurn) continue;
+
+    const guardExpression = `(?:${escapeRegExp(stateName)}\\s*!==?\\s*["'][^"']+["']|["'][^"']+["']\\s*!==?\\s*${escapeRegExp(stateName)})`;
+    const guardInIf = /\bif\s*\(([^()]*)\)\s*(?:\{\s*)?return\s*;\s*(?:\})?/gi;
+    normalized = normalized.replace(guardInIf, (statement, condition: string) => {
+      if (!new RegExp(guardExpression, 'i').test(condition)) return statement;
+      const cleanedCondition = condition
+        .replace(
+          new RegExp(
+            `(?:\\s*(?:\\|\\||&&)\\s*${guardExpression}|${guardExpression}\\s*(?:\\|\\||&&)?\\s*)`,
+            'i',
+          ),
+          '',
+        )
+        .trim();
+      return cleanedCondition ? statement.replace(condition, cleanedCondition) : '';
+    });
+  }
+
+  return normalized;
+};
+
+/**
+ * Repairs a common stale-derived-state shape from small local models: a next
+ * collection is prepared, its setter is called, and a zero-argument calculator
+ * immediately reads the old collection. The default keeps direct callers valid.
+ */
+const normalizeStaleDerivedState = (content: string): string => {
+  let normalized = content;
+  const stateDeclarations = [
+    ...content.matchAll(
+      /\bconst\s*\[\s*([A-Za-z_$][\w$]*)\s*,\s*(set[A-Z][A-Za-z0-9_$]*)\s*\]\s*=\s*useState\b/g,
+    ),
+  ];
+  const functionPattern =
+    /\bfunction\s+([A-Za-z_$][\w$]*)\s*\(\s*\)\s*\{|\b(?:const|let)\s+([A-Za-z_$][\w$]*)\s*=\s*\(\s*\)\s*=>\s*\{/g;
+
+  for (const stateDeclaration of stateDeclarations) {
+    const stateName = stateDeclaration[1];
+    const setterName = stateDeclaration[2];
+    const nextValueMatches = [
+      ...normalized.matchAll(
+        new RegExp(
+          `\\bconst\\s+([A-Za-z_$][\\w$]*)\\s*=\\s*[^;\\n]*\\b${escapeRegExp(stateName)}\\b[^;\\n]*;`,
+          'g',
+        ),
+      ),
+    ];
+    if (!nextValueMatches.length) continue;
+
+    for (const nextValueMatch of nextValueMatches) {
+      const nextValueName = nextValueMatch[1];
+      const conciseFunctions = [
+        ...normalized.matchAll(
+          /\b(?:const|let)\s+([A-Za-z_$][\w$]*)\s*=\s*\(\s*\)\s*=>\s*([^;\n]+);/g,
+        ),
+      ];
+      for (const conciseFunction of conciseFunctions) {
+        const functionName = conciseFunction[1];
+        const expression = conciseFunction[2];
+        if (!new RegExp(`\\b${escapeRegExp(stateName)}\\s*(?:\\.|\\[)`).test(expression)) {
+          continue;
+        }
+        const setterMatch = new RegExp(
+          `\\b${escapeRegExp(setterName)}\\s*\\(\\s*${escapeRegExp(nextValueName)}\\s*\\)`,
+        ).exec(normalized);
+        if (!setterMatch) continue;
+        const callMatch = new RegExp(`\\b${escapeRegExp(functionName)}\\s*\\(\\s*\\)`).exec(
+          normalized.slice(setterMatch.index + setterMatch[0].length),
+        );
+        if (!callMatch || callMatch.index > 500) continue;
+        const absoluteCallIndex = setterMatch.index + setterMatch[0].length + callMatch.index;
+        normalized = `${normalized.slice(0, absoluteCallIndex)}${callMatch[0].replace(
+          /\(\s*\)\s*$/,
+          `(${nextValueName})`,
+        )}${normalized.slice(absoluteCallIndex + callMatch[0].length)}`;
+        const definition = new RegExp(
+          `(\\b(?:const|let)\\s+${escapeRegExp(functionName)}\\s*=\\s*)\\(\\s*\\)\\s*=>\\s*([^;\\n]+);`,
+        ).exec(normalized);
+        if (!definition) break;
+        const repairedExpression = definition[2].replace(
+          new RegExp(`\\b${escapeRegExp(stateName)}\\b`, 'g'),
+          nextValueName,
+        );
+        normalized = `${normalized.slice(0, definition.index)}${definition[1]}(${nextValueName} = ${stateName}) => ${repairedExpression};${normalized.slice(definition.index + definition[0].length)}`;
+        break;
+      }
+    }
+
+    const functions = [...normalized.matchAll(functionPattern)];
+    for (const functionMatch of functions) {
+      const functionName = functionMatch[1] || functionMatch[2];
+      const openBrace = (functionMatch.index ?? 0) + functionMatch[0].length - 1;
+      const functionBody = extractBalancedBraces(normalized, openBrace);
+      if (
+        !functionBody ||
+        !new RegExp(`\\b${escapeRegExp(stateName)}\\s*(?:\\.|\\[)`).test(functionBody)
+      ) {
+        continue;
+      }
+
+      for (const nextValueMatch of nextValueMatches) {
+        const nextValueName = nextValueMatch[1];
+        const setterPattern = new RegExp(
+          `\\b${escapeRegExp(setterName)}\\s*\\(\\s*${escapeRegExp(nextValueName)}\\s*\\)`,
+          'g',
+        );
+        const setterMatch = setterPattern.exec(normalized);
+        if (!setterMatch) continue;
+        const callPattern = new RegExp(`\\b${escapeRegExp(functionName)}\\s*\\(\\s*\\)`, 'g');
+        callPattern.lastIndex = setterMatch.index + setterMatch[0].length;
+        const callMatch = callPattern.exec(normalized);
+        if (!callMatch || callMatch.index - setterMatch.index > 500) continue;
+
+        normalized = `${normalized.slice(0, callMatch.index)}${callMatch[0].replace(
+          /\(\s*\)\s*$/,
+          `(${nextValueName})`,
+        )}${normalized.slice(callMatch.index + callMatch[0].length)}`;
+
+        const refreshedFunction = new RegExp(
+          `(\\bfunction\\s+${escapeRegExp(functionName)}\\s*)\\(\\s*\\)(\\s*\\{)|((?:\\bconst|\\blet)\\s+${escapeRegExp(functionName)}\\s*=\\s*\\(\\s*)\\)(\\s*=>\\s*\\{)`,
+          'g',
+        ).exec(normalized);
+        if (!refreshedFunction) break;
+        const refreshedOpenBrace = (refreshedFunction.index ?? 0) + refreshedFunction[0].length - 1;
+        const refreshedBody = extractBalancedBraces(normalized, refreshedOpenBrace);
+        if (!refreshedBody) break;
+        const parameter = `${nextValueName} = ${stateName}`;
+        const bodyStart = refreshedOpenBrace;
+        const bodyEnd = bodyStart + refreshedBody.length;
+        const bodyContent = refreshedBody
+          .slice(1, -1)
+          .replace(new RegExp(`\\b${escapeRegExp(stateName)}\\b`, 'g'), nextValueName);
+        const definition = refreshedFunction[1]
+          ? `${refreshedFunction[1]}(${parameter})${refreshedFunction[2]}`
+          : `${refreshedFunction[3]}${parameter})${refreshedFunction[4]}`;
+        normalized = `${normalized.slice(0, refreshedFunction.index)}${definition}${bodyContent}}${normalized.slice(bodyEnd)}`;
+        break;
+      }
+    }
+  }
+
+  return normalized;
+};
+
+export const normalizeGeneratedInteractiveSource = (content: string): string =>
+  normalizeStaleDerivedState(normalizeHardCodedTurnGuards(content));
+
+const staticTemplateClassNames = (template: string): string[] => {
+  const body = template.slice(1, -1);
+  let staticText = '';
+  for (let index = 0; index < body.length; index++) {
+    if (body[index] === '$' && body[index + 1] === '{') {
+      const expression = extractBalancedBraces(body, index + 1);
+      if (expression) {
+        staticText += ' ';
+        index += expression.length;
+        continue;
+      }
+    }
+    staticText += body[index];
+  }
+  return staticText.match(/[A-Za-z_-][\w-]*/g) || [];
+};
+
+const normalizeClassNameExpressions = (content: string): string => {
+  let normalized = normalizeExternalStateCallbacks(
+    normalizeMappedInteractiveElements(content),
+  ).replace(/className\s*=\s*(["'])([^"']+)\1/g, (_match, _quote: string, classValue: string) => {
+    const classes = classValue.trim().split(/\s+/).filter(Boolean);
+    if (!classes.length) return 'className={undefined}';
+    const references = classes.map((className) =>
+      /^[A-Za-z_$][\w$]*$/.test(className)
+        ? `styles.${className}`
+        : `styles[${JSON.stringify(className)}]`,
+    );
+    if (references.length === 1) return `className={${references[0]}}`;
+    return `className={${references.join(" + ' ' + ")}}`;
+  });
+  const templateMatches = [...normalized.matchAll(/className\s*=\s*\{/g)];
+  const replacements: Array<{ start: number; end: number; value: string }> = [];
+  for (const match of templateMatches) {
+    const openIndex = (match.index || 0) + match[0].length - 1;
+    const expression = extractBalancedBraces(normalized, openIndex);
+    if (!expression) continue;
+    const value = expression.slice(1, -1).trim();
+    if (!value.startsWith('`') || !value.endsWith('`')) continue;
+    const classes = staticTemplateClassNames(value);
+    const references = classes.map((className) =>
+      /^[A-Za-z_$][\w$]*$/.test(className)
+        ? `styles.${className}`
+        : `styles[${JSON.stringify(className)}]`,
+    );
+    replacements.push({
+      start: match.index || 0,
+      end: openIndex + expression.length,
+      value: references.length
+        ? references.length === 1
+          ? `className={${references[0]}}`
+          : `className={[${references.join(', ')}].filter(Boolean).join(' ')}`
+        : 'className={undefined}',
+    });
+  }
+  for (const replacement of replacements.reverse()) {
+    normalized = `${normalized.slice(0, replacement.start)}${replacement.value}${normalized.slice(replacement.end)}`;
+  }
+  return normalized;
 };
 
 const camelToKebab = (name: string): string =>
@@ -767,21 +1175,6 @@ const annotateInteractiveClassNames = (content: string): string => {
   return rewritten;
 };
 
-const normalizeLiteralClassNames = (content: string): string =>
-  content.replace(
-    /\bclassName\s*=\s*(["'])([^"']+)\1/g,
-    (_match, _quote: string, classValue: string) => {
-      const classes = classValue.trim().split(/\s+/).filter(Boolean);
-      if (!classes.length) return 'className={undefined}';
-      const references = classes.map((className) =>
-        /^[A-Za-z_$][\w$]*$/.test(className)
-          ? `styles.${className}`
-          : `styles[${JSON.stringify(className)}]`,
-      );
-      return `className={${references.join(" + ' ' + ")}}`;
-    },
-  );
-
 /**
  * Generated interactive JSX can arrive without a stylesheet or with literal class names.
  * Attach a co-located CSS Module and generic layout class names so the preview is usable
@@ -797,7 +1190,7 @@ export const ensureCoLocatedCssModule = (
 
   const stylesheetPath = path.replace(/\.(jsx|tsx)$/i, '.module.css');
   const importSpecifier = `./${stylesheetPath.split('/').pop()}`;
-  const rewritten = normalizeLiteralClassNames(
+  const rewritten = normalizeClassNameExpressions(
     annotateInteractiveClassNames(insertCssModuleImport(content, importSpecifier)),
   );
   return {

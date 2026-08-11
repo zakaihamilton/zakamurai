@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { AGENT_SYSTEM_PROMPT, normalizeAgentPath, parseAgentAction } from './Protocol';
+import {
+  AGENT_SYSTEM_PROMPT,
+  RESPONSIVE_GENERATION_CONTRACT,
+  normalizeAgentPath,
+  parseAgentAction,
+} from './Protocol';
 
 describe('agent protocol', () => {
   it('requires generated CSS Modules to use their exported class maps', () => {
@@ -21,6 +26,17 @@ describe('agent protocol', () => {
     expect(AGENT_SYSTEM_PROMPT).toContain(
       'never combine a dark background with default black text',
     );
+  });
+
+  it('defines a responsive contract for newly generated applications', () => {
+    expect(RESPONSIVE_GENERATION_CONTRACT).toContain('320px, 375px, 768px, and 1440px');
+    expect(RESPONSIVE_GENERATION_CONTRACT).toContain('minmax(0, 1fr)');
+    expect(RESPONSIVE_GENERATION_CONTRACT).toContain('auto-fit');
+    expect(RESPONSIVE_GENERATION_CONTRACT).toContain('flex-wrap');
+    expect(RESPONSIVE_GENERATION_CONTRACT).toContain('min-width: 0');
+    expect(RESPONSIVE_GENERATION_CONTRACT).toContain('clamp()');
+    expect(RESPONSIVE_GENERATION_CONTRACT).toContain('square aspect-ratio containers');
+    expect(AGENT_SYSTEM_PROMPT).toContain(RESPONSIVE_GENERATION_CONTRACT);
   });
 
   it('requires new CSS Modules before the components that import them', () => {

@@ -1,8 +1,8 @@
-import type { AgentEventHandler, WebLLMMessage } from '@/components/AI/types';
+import type { AgentAction, AgentEventHandler, FileMap, WebLLMMessage } from '@/components/AI/types';
 import { getWebLLMStore } from '../WebLLMState';
-import { type ProjectStyleProfile, formatProjectStyleContract } from './ProjectStyleProfile';
-import type { AgentContextManager } from './ContextManager';
 import { observation } from './ActionLoopUtils';
+import type { AgentContextManager } from './ContextManager';
+import { type ProjectStyleProfile, formatProjectStyleContract } from './ProjectStyleProfile';
 import type { AgentWorkspace } from './Workspace';
 
 export const AGENT_CONTEXT_WINDOW_SIZE = 4096;
@@ -33,6 +33,41 @@ export const recoveryWritePath = (
     Object.keys(files).find((path) => /\.(?:[jt]sx?)$/i.test(path)) ||
     null
   );
+};
+
+export const recoverDeferredSource = ({
+  source,
+  files,
+  request,
+  lightweight,
+  turn,
+  action,
+  agentRole,
+  onEvent,
+  fulfills,
+}: {
+  source: { path: string; content: string };
+  files: FileMap;
+  request: string;
+  lightweight: boolean;
+  turn: number;
+  action: AgentAction;
+  agentRole: string | null;
+  onEvent: AgentEventHandler;
+  fulfills: (files: FileMap, request: string) => string | null;
+}): { path: string; content: string; diagnostic: string } | null => {
+  if (!lightweight) return null;
+  const diagnostic = fulfills(files, request);
+  if (!diagnostic) return null;
+  onEvent({
+    type: 'observation',
+    turn,
+    action,
+    error: true,
+    message: `${diagnostic} The queued source was staged for context, but it is not accepted as complete. Return a corrected write_file action for ${source.path} with the complete implementation.`,
+    agentRole,
+  });
+  return { path: source.path, content: files[source.path] || source.content, diagnostic };
 };
 
 export const newlyCreatedComponentsNeedEntryWiring = (workspace: AgentWorkspace): boolean =>
@@ -123,6 +158,12 @@ export const wireNewComponentIntoScratchEntry = (workspace: AgentWorkspace): str
 
 export const CHANGE_REQUEST_PATTERN =
   /\b(?:add|build|change|create|delete|design|fix|implement|improve|make|modify|refactor|remove|rename|replace|style|update)\b/i;
+
+const NEW_APP_GENERATION_PATTERN =
+  /\b(?:build|create|generate|scaffold|start|make)\b.*\b(?:app|application|dashboard|form|game|interface|layout|list|menu|page|screen|table|todo|ui|widget|website)\b/i;
+
+export const isNewAppGenerationRequest = (request: string): boolean =>
+  NEW_APP_GENERATION_PATTERN.test(request) && !/\b(?:existing|current|this)\b/i.test(request);
 
 export const createAutoFinishSummary =
   (request: string) =>
@@ -384,6 +425,7 @@ export const buildContextReadyUserRequest = ({
   priorContext = '',
   lightweight = false,
   styleProfile,
+  responsiveGeneration = false,
 }: {
   request: string;
   targetPath: string;
@@ -391,6 +433,7 @@ export const buildContextReadyUserRequest = ({
   priorContext?: string;
   lightweight?: boolean;
   styleProfile?: ProjectStyleProfile;
+  responsiveGeneration?: boolean;
 }): string => {
   const stylesheetPath = targetPath.replace(/\.(jsx|tsx)$/i, '.module.css');
   const contextPaths = [targetPath, stylesheetPath, 'package.json'].filter(
@@ -431,7 +474,9 @@ export const buildContextReadyUserRequest = ({
     nextStep,
     `Project code contract: ${formatProjectCodeContract(files, targetPath)}.`,
     ...(styleProfile
-      ? [`Project generation contract:\n${formatProjectStyleContract(styleProfile)}`]
+      ? [
+          `Project generation contract:\n${formatProjectStyleContract(styleProfile, { responsive: responsiveGeneration })}`,
+        ]
       : []),
     'Use the supplied files as context and return the complete implementation now.',
     fileContext,
@@ -547,6 +592,71 @@ export const buildForcedWriteRecoveryMessages = ({
   ];
 };
 
+export const buildRepairFileMessages = ({
+  request,
+  targetPath,
+  files,
+  failedContent = '',
+  diagnostic,
+  lightweight = false,
+}: {
+  request: string;
+  targetPath: string | null;
+  files: Record<string, string>;
+  failedContent?: string;
+  diagnostic: string;
+  lightweight?: boolean;
+}): WebLLMMessage[] => {
+  const repairPath = targetPath || 'src/App.jsx';
+  const language = sourceFenceLanguage(repairPath);
+  const cleanedFailedContent = failedContent
+    .replace(/^```(?:jsx|tsx|js|ts)?\s*/i, '')
+    .replace(/\n(?:Return only|Your next response|The corrected source)[\s\S]*$/i, '')
+    .replace(/\n```[\s\S]*$/i, '')
+    .trim();
+  const currentContent = cleanedFailedContent || files[repairPath] || '(file does not exist yet)';
+  const context = currentContent.slice(0, 16000);
+  const fence = [`\`\`\`${language}`, 'complete corrected source here', '```'].join('\n');
+  const sourceOnly = lightweight;
+  const legacyGuidance = writeRecovery(repairPath, diagnostic, files);
+  const interactiveRepairGuidance = [
+    'This is an interactive app repair, not a copy-edit.',
+    'Render the requested content visibly, including its primary controls and current status.',
+    'Keep React state and event handlers inside the component and make the controls change that state.',
+    'For grids, lists, and games, update the targeted item or cell by index instead of appending a new item; compute derived status from the next state before calling setters.',
+    'For turn-based interactions, do not guard the handler against one hard-coded player or value; allow each active turn to act unless an explicit opponent rule is implemented.',
+    'Include an accessible reset, clear, or restart control whenever the interaction has a restartable state.',
+    'If the failed response is truncated or contains repair instructions, ignore that wrapper and regenerate the complete source from scratch; never echo the repair prompt into the file.',
+  ].join('\n');
+  const mappedClickableRepairGuidance =
+    /non-interactive element as a clickable collection item/i.test(diagnostic)
+      ? 'Specific structural fix: every item returned from a .map() that has onClick must be a <button type="button">, not a <div> or <span>. Preserve the item content and handler, move the existing className to the button, and return the entire file changed; do not repeat the failed JSX unchanged.'
+      : null;
+  return [
+    {
+      role: 'system',
+      content: sourceOnly
+        ? `You are in emergency write mode repairing one failed source file. Reply with ONLY this labelled code fence and nothing else. Return one closed component source fence. Preserve the requested behavior and fix the reported issue. Do not return JSON, prose, CSS, another file, or an unfinished response.\n${fence}`
+        : `You are repairing one failed source file. Return exactly one write_file action for ${repairPath} using this parser-safe format:\n{"action":"write_file","path":"${repairPath}","reason":"repair the failed file"}\n${fence}\nReplace only the source fence contents. Do not list, search, validate, finish, explain, or include another file.`,
+    },
+    {
+      role: 'user',
+      content: [
+        `Original request: ${request}`,
+        `Repair target: ${repairPath}`,
+        `Validation or syntax diagnostic:\n${diagnostic}`,
+        ...(legacyGuidance ? [`Targeted recovery guidance:${legacyGuidance}`] : []),
+        ...(mappedClickableRepairGuidance ? [mappedClickableRepairGuidance] : []),
+        interactiveRepairGuidance,
+        `Failed source for ${repairPath}:\n${context}`,
+        sourceOnly
+          ? `Return only the corrected source in this format:\n${fence}`
+          : `Return exactly one write_file action for ${repairPath} with complete corrected source in the fence.`,
+      ].join('\n\n'),
+    },
+  ];
+};
+
 export const buildDirectChangesRecoveryMessages = ({
   request,
   targetPath,
@@ -592,6 +702,56 @@ export const buildDirectChangesRecoveryMessages = ({
       ].join('\n\n'),
     },
   ];
+};
+
+export const buildActionLoopModelMessages = ({
+  request,
+  targetPath,
+  files,
+  failedWritePath,
+  failedWriteContent,
+  failedWriteDiagnostic,
+  directChangesRecoveryPending,
+  forcedWriteRecoveryPending,
+  incompleteWriteRetries,
+  lightweight,
+  messages,
+}: {
+  request: string;
+  targetPath: string | null;
+  files: Record<string, string>;
+  failedWritePath: string;
+  failedWriteContent: string;
+  failedWriteDiagnostic: string;
+  directChangesRecoveryPending: boolean;
+  forcedWriteRecoveryPending: boolean;
+  incompleteWriteRetries: number;
+  lightweight: boolean;
+  messages: WebLLMMessage[];
+}): WebLLMMessage[] => {
+  if (failedWritePath) {
+    return buildRepairFileMessages({
+      request,
+      targetPath,
+      files,
+      failedContent: failedWriteContent,
+      diagnostic: failedWriteDiagnostic,
+      lightweight,
+    });
+  }
+  if (directChangesRecoveryPending) {
+    return buildDirectChangesRecoveryMessages({ request, targetPath, files, lightweight });
+  }
+  if (forcedWriteRecoveryPending) {
+    return buildForcedWriteRecoveryMessages({
+      request,
+      targetPath,
+      files,
+      lightweight,
+      incompleteWrite: incompleteWriteRetries > 0,
+    });
+  }
+  return messages;
 };
 
 export const isIncompleteWriteError = (message: string): boolean =>

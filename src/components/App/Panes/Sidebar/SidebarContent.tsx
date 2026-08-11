@@ -18,7 +18,6 @@ export default function SidebarContent({
       <div className={styles.contentWrapper}>
         <div className={styles.sectionHeader}>
           <span>Explorer</span>
-          <span aria-hidden="true">⌘</span>
         </div>
         {children}
       </div>

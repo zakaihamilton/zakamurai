@@ -144,12 +144,7 @@ export async function requestNextAction({
         const charDelta = streamedCharacterCount - lastEmitCharCount;
         const timeDelta = now - lastEmitTime;
 
-        if (
-          isFirstChunk ||
-          timeDelta >= 500 ||
-          charDelta >= 100 ||
-          (charDelta >= 15 && timeDelta === 0)
-        ) {
+        if (isFirstChunk || timeDelta >= 500 || charDelta >= 15) {
           lastEmitTime = now;
           lastEmitCharCount = streamedCharacterCount;
           const waitingTarget = lightweightModel ? 'complete source code' : 'one complete action';

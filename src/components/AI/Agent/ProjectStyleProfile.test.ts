@@ -2,6 +2,7 @@ import { DEFAULT_CONTENTS } from '@/components/Storage/InitialData';
 import { describe, expect, it } from 'vitest';
 import {
   createProjectStyleProfile,
+  formatProjectStyleContract,
   generateProjectCssModule,
   resolveProjectStyleProfile,
 } from './ProjectStyleProfile';
@@ -85,6 +86,14 @@ describe('ProjectStyleProfile', () => {
     expect(first).toContain('@media (width <= 640px)');
   });
 
+  it('adds the responsive generation contract only when requested', () => {
+    const profile = createProjectStyleProfile({});
+    expect(formatProjectStyleContract(profile)).not.toContain('320px, 375px, 768px, and 1440px');
+    expect(formatProjectStyleContract(profile, { responsive: true })).toContain(
+      '320px, 375px, 768px, and 1440px',
+    );
+  });
+
   it('preserves authored declarations and adds only missing selectors', () => {
     const profile = createProjectStyleProfile({});
     const css = generateProjectCssModule({
@@ -164,6 +173,22 @@ describe('ProjectStyleProfile', () => {
     expect(media).not.toContain('.grid');
     expect(media).not.toContain('.secondaryAction');
     expect(media).not.toContain('.dangerAction');
+  });
+
+  it('generates fluid and mobile-safe recipes for dashboard-style layouts', () => {
+    const css = generateProjectCssModule({
+      source:
+        "import styles from './Dashboard.module.css'; export default () => <main className={styles.shell}><form className={styles.form}><input className={styles.control} /><button className={styles.primaryAction}>Add</button></form><div className={styles.grid}><article className={styles.card}>Card</article></div></main>;",
+      stylesheetPath: 'src/Dashboard.module.css',
+      profile: createProjectStyleProfile({}),
+    });
+    expect(css).toContain('min-width: 0');
+    expect(css).toContain('repeat(auto-fit, minmax(min(100%, 14rem), 1fr))');
+    expect(css).toContain('clamp(');
+    expect(css).toContain('@media (width <= 640px)');
+    expect(css).toContain('.form { align-items: stretch; flex-direction: column; }');
+    expect(css).toContain('.primaryAction { width: 100%; }');
+    expect(css).not.toMatch(/\.card\s*\{[^}]*\bheight\s*:/s);
   });
 
   it.each([
