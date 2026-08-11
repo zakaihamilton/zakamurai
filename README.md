@@ -1,28 +1,54 @@
 # Zakamurai
 
-Your AI coding workspace in the browser.
+<div align="center">
 
-Zakamurai is a browser-based IDE built for editing, AI-assisted changes, in-browser builds, logs, and live preview. Open it, start coding, and skip the local setup.
+### Your AI coding workspace in the browser
 
-## Features
+Edit projects, ask for help, build in the browser, and see the result in a live preview—without a local toolchain.
 
-- **File explorer & editor** — Manage HTML, CSS, JavaScript, and JSON files with syntax highlighting, smart formatting, and browser persistence through IndexedDB with a localStorage fallback.
-- **AI collaboration** — Prompt an integrated AI that understands your project context. Review suggested changes in a side-by-side diff before applying them. Models run locally in the browser via WebLLM for a private, fast experience.
-- **Build & preview** — Compile projects directly in the browser using [almostnode](https://www.npmjs.com/package/almostnode), a virtual Node.js-like environment. Preview the result and inspect build or runtime output in the logs panel.
-- **Readiness diagnostics** — Use the read-only Runtime & Device Readiness page to check project compatibility, WebGPU, Web Workers, memory, storage, and the recommended local AI model.
-- **Focused workflow** — Tabbed workspace, light/dark themes, keyboard shortcuts, CSS/JS navigation, and project export as a ZIP.
+[![Quality gates](https://github.com/zakaihamilton/zakamurai/actions/workflows/component-tests.yml/badge.svg)](https://github.com/zakaihamilton/zakamurai/actions/workflows/component-tests.yml)
 
-## Getting Started
+[Try Zakamurai](https://www.zakamurai.com) · [Run locally](#run-locally)
+
+</div>
+
+![Zakamurai browser IDE](docs/images/zakamurai-preview.png)
+
+Zakamurai is a browser-based IDE for building and iterating on web projects. It combines a focused code workspace with browser-local AI assistance, in-browser builds, runtime logs, and live preview in one place.
+
+## Why Zakamurai?
+
+- **A complete browser workspace** — Explore files, edit code, format documents, navigate between CSS and JavaScript references, and switch between code, logs, and preview.
+- **AI that works beside you** — Ask questions or request changes with project context. Review structured side-by-side diffs before anything is applied.
+- **Build without leaving the browser** — Compile supported projects with browser-based runtime and bundling tools, then inspect build output and runtime logs.
+- **A focused idea-to-preview loop** — Move from a change to a working result without setting up a separate editor, build process, and preview server.
+- **Built around browser storage** — Projects persist locally in IndexedDB, with a localStorage fallback when IndexedDB is unavailable. Export a project as a ZIP whenever you need a portable copy.
+
+## From idea to preview
+
+1. **Edit** your project in the file explorer and editor.
+2. **Prompt** the local AI assistant for an explanation, suggestion, or code change.
+3. **Review** the generated diff and approve only the changes you want.
+4. **Build** with `Cmd+Enter` on macOS or the **Build** button.
+5. **Preview** the result and inspect logs when something needs attention.
+
+## Browser capabilities
+
+Zakamurai keeps the core workflow in the browser:
+
+- **Local AI** uses WebLLM and WebGPU when the browser and device support them. Web Workers are also required for local AI inference.
+- **Editing and builds** remain available without local AI, so a device without WebGPU can still be used for browser-based projects.
+- **Project data** is stored in the browser. The File System Access API is optional and only available in compatible browsers.
+- **Preview isolation** uses a separate origin in configured production deployments, keeping preview code away from the IDE’s storage, cookies, and parent DOM.
+
+## Run locally
 
 ### Prerequisites
 
-- [Node.js](https://nodejs.org/) 24 as the baseline, with Node 25 compatibility-tested in CI (see [`.nvmrc`](./.nvmrc))
-- npm
+- [Node.js](https://nodejs.org/) 24 (the supported range is `>=24 <26`; Node.js 25 is compatibility-tested in CI)
+- npm 10 or newer
 
-The supported Node.js engine range is `>=24 <26`; Node 24 is the canonical development and
-release target.
-
-### Run locally
+### Start the development server
 
 ```bash
 git clone https://github.com/zakaihamilton/zakamurai.git
@@ -31,40 +57,19 @@ npm install
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) in your browser.
+Open [http://localhost:3000](http://localhost:3000).
 
-The `postinstall`, `predev`, and `prebuild` scripts copy almostnode and ONNX Runtime Web assets into `public/` automatically.
-
-### Browser storage and recovery
-
-Zakamurai stores projects locally in IndexedDB and falls back to browser localStorage when
-IndexedDB is unavailable. If both stores cannot accept a write (for example, because quota is
-exhausted), the open workspace remains available in memory and the app offers an immediate ZIP
-export. Export before closing the tab in that state. The File System Access API is optional and
-available only in compatible browsers.
+The `postinstall`, `predev`, and `prebuild` scripts prepare the browser runtime assets used by the in-browser compiler, preview, and AI features.
 
 ### Isolated preview development
 
-Run `npm run dev:isolated` to start the IDE at `http://localhost:3000` and the
-preview runtime at `http://localhost:3001`. The preview executes user projects in
-the browser on the second origin; it never receives same-origin access to the IDE.
-
-For production, configure these Vercel environment variables and attach both domains
-to the same Vercel project for isolated preview execution:
+To run the IDE and preview runtime on separate local origins:
 
 ```bash
-NEXT_PUBLIC_IDE_ORIGIN=https://www.zakamurai.com
-NEXT_PUBLIC_PREVIEW_ORIGIN=https://preview.zakamurai.com
+npm run dev:isolated
 ```
 
-Add `preview.zakamurai.com` in **Project Settings → Domains** and create the CNAME
-record Vercel provides. The preview subdomain must not redirect to `www`.
-
-If these variables are omitted on a `*.vercel.app` deployment, the app automatically uses a
-same-origin `/__preview/` surface so it remains usable without deployment configuration. This
-fallback has weaker isolation because preview code shares the deployment origin; configure both
-variables for production isolation. Its handshake still accepts only the active iframe, expected
-origin, protocol version, and current session.
+The IDE runs at `http://localhost:3000` and the preview runtime at `http://localhost:3001`.
 
 ### Production build
 
@@ -73,143 +78,82 @@ npm run build
 npm start
 ```
 
-## Usage
+## Storage and recovery
 
-1. **Explore** — Use the file explorer on the left to create, rename, and open files.
-2. **Prompt** — Toggle the AI sidebar with `Ctrl+J` (or the top bar button) to ask questions or request changes.
-3. **Build** — Press `Cmd+Enter` (Mac) or click **Build** in the top bar.
-4. **Preview** — After a successful build, the Preview tab opens with your running app.
+Zakamurai saves projects locally in IndexedDB and falls back to browser localStorage when needed. If both stores reject a write—for example, because browser quota is exhausted—the current workspace remains available in memory and the app offers an immediate ZIP export. Export before closing the tab in that situation.
 
-### In-app reference pages
+## Production preview isolation
 
-The Welcome page links to three reference views:
+For isolated preview execution on Vercel, configure both origins and attach them to the same Vercel project:
 
-- **Project Info** — Product overview, privacy and browser-storage notes, technology stack, and project vision.
-- **Instructions** — A complete workflow for editing, local AI, reviewing changes, building, previewing, recovery, and troubleshooting.
-- **Runtime & Device Readiness** — Read-only live status cards for project health and browser/device AI support. The device card includes WebGPU, Web Workers, memory, storage quota, and the recommended model. Use **Recheck** after changing browser or device conditions.
+```bash
+NEXT_PUBLIC_IDE_ORIGIN=https://www.zakamurai.com
+NEXT_PUBLIC_PREVIEW_ORIGIN=https://preview.zakamurai.com
+```
 
-Local AI requires WebGPU and Web Workers. If the device is not compatible, you can continue editing and building browser projects without downloading a model.
+Add `preview.zakamurai.com` in **Project Settings → Domains** and create the CNAME record Vercel provides. The preview subdomain must not redirect to `www`.
 
-Press `?` in the app to view the full keyboard shortcut reference.
-
-## Tech Stack
-
-| Layer | Technologies |
-| --- | --- |
-| App framework | [Next.js](https://nextjs.org/) 16, [React](https://react.dev/) 19 |
-| Styling | CSS Modules |
-| In-browser build | [almostnode](https://www.npmjs.com/package/almostnode) |
-| Local AI | [WebLLM](https://webllm.mlc.ai/) (`@mlc-ai/web-llm`), WebAssembly |
-| State | Custom hierarchical proxy-based state (see [ARCHITECTURE.md](./ARCHITECTURE.md)) |
-| Tooling | [Biome](https://biomejs.dev/), [Vitest](https://vitest.dev/), [Playwright](https://playwright.dev/) |
-
-Browser builds support package scripts parsed as shell-free commands joined with `&&`; pipes,
-redirects, and other shell constructs are intentionally rejected. The browser runtime supports the
-bundled TypeScript, Rollup, and esbuild paths plus browser-oriented bundling.
+If these variables are omitted on a `*.vercel.app` deployment, Zakamurai uses a same-origin `/__preview/` compatibility surface so the app remains usable without additional deployment configuration. This fallback has weaker isolation; configure both origins for production deployments.
 
 ## Development
 
+The main quality gate mirrors CI and checks formatting, linting, architecture, types, tests, builds, performance budgets, preview security, visual regressions, and dependency advisories:
+
 ```bash
-npm run lint          # Biome lint check
-npm run format:check  # Verify formatting without changing files
-npm run format        # Apply Biome formatting changes
-npm run stylelint     # Check CSS
-npm run stylelint:fix # Apply CSS lint fixes
-npm run deadcode      # Check unused files and dependencies (Knip)
-npm run test          # Unit tests (Vitest)
-npm run test:watch    # Vitest in watch mode
-npm run test:coverage # Unit tests with coverage thresholds
-npm run test:ai-manager # Focused manager, replay, trace, and prompt-runner tests
-npm run test:ai-manager:watch # Watch the focused manager suite while debugging
-npm run test:ai-manager:replay # Replay deterministic JSON manager fixtures
-npm run test:ai-manager:smoke # Opt-in real WebLLM manager smoke test
-npm run test:promptfoo # Static AI compliance eval (no API keys)
-npm run test:ai-evals # Deterministic, baseline-gated AI reliability suite
-npm run test:ai-qualification # Seeded real-WebGPU release qualification
-npm run update:ai-eval-baseline -- --qualification-reports run-1.json,run-2.json,run-3.json # Explicit baseline ratchet
-npm run test:ai-soak # Mocked 200-request AI lifecycle and cleanup regression
-npm run analyze:ai -- report.json # Summarize AI metrics from an exported support report
-npm run check:architecture # Enforce component architecture rules
-npm run check:runtime-assets # Verify generated compiler/RAG runtime assets and size
-npm run test:e2e      # Chromium smoke e2e (basic + advanced)
-npm run test:e2e:chromium # Alias for test:e2e
-npm run test:visual   # Screenshot regression (Chromium + WebKit)
-npm run test:visual:chromium # Screenshot regression on Chromium only
-npm run build         # Production build
-npm run perf          # Enforce the 500 KB per application-entry asset budget after a build
-npm run audit         # Fail only on critical production dependency advisories
-npm run verify        # Run all non-mutating local quality gates (matches CI)
-npm run verify:ai     # Optional: extended local AI regression (lucid + full visual)
+npm run verify
 ```
 
-`verify` never rewrites source files. Formatting and CSS fixes are intentionally opt-in via
-`format` and `stylelint:fix`. CI and `verify` run architecture checks, static promptfoo eval,
-Chromium smoke e2e (`test:e2e`), isolated preview security tests (`test:e2e:isolated`), Chromium
-visual regression (`test:visual:chromium`), and dependency audit. Full screenshot regression
-across browsers (`test:visual`, including WebKit) remains available locally while WebKit
-host-level browser dependencies are stabilized.
+Useful focused commands:
 
-`verify:ai` runs [scripts/verify-ai.sh](./scripts/verify-ai.sh) for optional extended checks:
-architectural drift scan when `lucid` or `lucidshark` is on PATH, the AI lifecycle soak, promptfoo
-eval, performance budget, and full visual regression. Install lucidshark separately to enable the
-drift scan. For physical-device validation, follow the
-[AI memory profiling workflow](./docs/ai-memory-profiling.md).
+| Command | Purpose |
+| --- | --- |
+| `npm run test` | Run the unit test suite |
+| `npm run test:coverage` | Run unit tests with coverage thresholds |
+| `npm run test:e2e` | Run Chromium smoke tests |
+| `npm run test:visual:chromium` | Run Chromium visual regression tests |
+| `npm run test:promptfoo` | Run static AI compliance checks without API keys |
+| `npm run check:architecture` | Enforce project architecture rules |
+| `npm run check:runtime-assets` | Verify generated browser runtime assets |
+| `npm run verify:ai` | Run optional extended AI regression checks |
 
-Generated browser runtime assets are prepared from a deterministic manifest. The setup step keeps
-only the compiler, preview worker, and RAG WASM files required by supported browser paths;
-`npm run check:runtime-assets` verifies that no stale maps, declarations, or unexpected runtime
-files remain and that the generated payload stays within its deployment budget.
+For AI reliability and browser memory profiling, see the [AI memory profiling workflow](./docs/ai-memory-profiling.md). The static AI checks use the local echo provider and golden fixtures in [`tests/ai-golden/`](./tests/ai-golden/); they do not require API keys.
 
-Static `npm run test:promptfoo` uses the `echo` provider in [promptfooconfig.yaml](./promptfooconfig.yaml)
-and golden fixtures in `tests/ai-golden/` — **no API keys required**. It is included in `verify` and CI.
+## Architecture and contributing
 
-The versioned reliability suite in `tests/ai-evals/` covers agent edits, completions, grounded
-answers, model lifecycle, and injected recovery failures for the 3B, 2B, 1.5B, and 0.8B tiers.
-`test:ai-evals` is deterministic and blocks ordinary verification. Release qualification runs each
-model-facing case with three fixed seeds on real WebGPU; set `ZAKAMURAI_AI_BROWSER_PROFILE`,
-`ZAKAMURAI_AI_HARDWARE_PROFILE`, and `ZAKAMURAI_AI_QUALIFICATION_REPORT` before saving its JSON
-report. Use `ZAKAMURAI_AI_QUALIFICATION_RECORD_ONLY=1` while collecting the first three reports for
-a new profile. Baselines may be updated only from
-three qualification reports via `update:ai-eval-baseline`, which prints score deltas and newly
-passing or failing cases for review.
+Before changing the application, read:
 
-The AI Manager has a fast deterministic debugging loop. Add or update a versioned fixture under
-`tests/ai-manager/fixtures/`, then run `npm run test:ai-manager:replay` to exercise the real manager
-and deterministic tools without loading WebLLM. During development, the Manager debug trace is
-available in non-production builds and can be exported as JSON from the prompt pane. The trace
-contains clipped and redacted inputs/outputs, routing/tool/model/validation events, timings, and
-structured error codes. Run `npm run test:ai-manager:smoke` only when validating the browser’s real
-WebLLM integration; set `ZAKAMURAI_AI_MODEL` to override the model.
+- [Architecture and state-management rules](./ARCHITECTURE.md)
+- [Contributor guide](./CONTRIBUTING.md)
+- [AI assistant instructions](./AGENTS.md)
 
-When an AI run fails, the app can create a local, metadata-only incident bundle: it includes WebLLM timing,
-recovery, browser/model state, Manager protocol status, and staged-change information, but excludes
-workspace files, full prompts, and model output. Analyze an exported incident with
-`npm run analyze:ai -- incident.json`.
+The project uses a custom hierarchical proxy-based state system, CSS Modules, and browser-first persistence. Shared state should use the project’s state primitives rather than Redux, Zustand, Recoil, or a second global store.
 
-Knip exclusions are intentional: browser-only build/runtime dependencies (`almostnode`
-and `esbuild-wasm`) and optional developer tooling (`fast-check` and `promptfoo`) are loaded
-outside Knip's static application entrypoints.
-
-Contributors working on React components should read [ARCHITECTURE.md](./ARCHITECTURE.md) before making changes. AI-assisted contributors should also read [AGENTS.md](./AGENTS.md) and [CONTRIBUTING.md](./CONTRIBUTING.md). This project uses a custom proxy-based state system—not Redux, Zustand, or React Context for shared state.
-
-## Project Structure
-
-```
+```text
 src/
-├── app/              # Next.js app router (layout, page, preview routes)
+├── app/              # Next.js app router and preview routes
 ├── components/
-│   ├── AI/           # WebLLM integration, prompts, diff processor
-│   ├── App/          # IDE shell: editor, sidebar, preview, top bar
-│   ├── state/        # Proxy state primitives (Node, Object, State)
-│   ├── Storage/      # Settings, LocalFS, and initial project data
+│   ├── AI/           # WebLLM integration, prompts, diffs, and agent flow
+│   ├── App/          # IDE shell, editor, sidebar, preview, and top bar
+│   ├── state/        # Hierarchical proxy state primitives
+│   ├── Storage/      # Settings, LocalFS, and project persistence
 │   └── ui/           # Shared UI components
-├── constants/        # Shared app constants
-└── utils/            # Compiler, navigation, formatting, RAG helpers
+├── constants/        # Shared application constants
+└── utils/            # Compiler, navigation, formatting, and RAG helpers
 ```
+
+## Tech stack
+
+| Layer | Technologies |
+| --- | --- |
+| Application | [Next.js](https://nextjs.org/) 16, [React](https://react.dev/) 19, TypeScript |
+| Styling | CSS Modules |
+| Browser build | [almostnode](https://www.npmjs.com/package/almostnode), [esbuild-wasm](https://www.npmjs.com/package/esbuild-wasm) |
+| Local AI | [WebLLM](https://webllm.mlc.ai/), WebGPU, WebAssembly |
+| Testing | [Vitest](https://vitest.dev/), [Playwright](https://playwright.dev/), Biome, Stylelint |
 
 ## Author
 
 **Zakai Hamilton**
 
-- GitHub: [@zakaihamilton](https://github.com/zakaihamilton/zakamurai)
+- GitHub: [@zakaihamilton](https://github.com/zakaihamilton)
 - LinkedIn: [zakai-hamilton](https://www.linkedin.com/in/zakai-hamilton)
