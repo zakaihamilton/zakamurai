@@ -53,3 +53,5 @@ next-env.d.ts
 /public/esbuild
 
 .cursor
+
+.repnix

@@ -2,8 +2,8 @@ import { Icons } from '@/components/ui/Icons';
 import { useEffect, useRef } from 'react';
 import { requireStore } from '../../types';
 import styles from './CreateRowInput.module.css';
-import { TreeItemState } from './TreeItem';
 import type { CreateRowInputProps } from './sidebar-types';
+import { TreeItemState } from './useTreeItemControls';
 
 export default function CreateRowInput({ row, onCreate, onCancelCreate }: CreateRowInputProps) {
   const { level = 0, createType, parentRow } = row;
