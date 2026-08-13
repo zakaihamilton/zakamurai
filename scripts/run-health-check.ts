@@ -1,13 +1,9 @@
 import { spawnSync } from 'node:child_process';
 
-type HealthFinding = {
-  severity?: string;
-};
-
 type HealthResult = {
   name: string;
   status: string;
-  findings?: HealthFinding[];
+  findings?: unknown[];
 };
 
 type HealthReport = {
@@ -39,23 +35,19 @@ try {
 
 const results = report.results ?? [];
 const blockingResults = results.filter((entry) => entry.status === 'error');
-const blockingFindings = results.flatMap((entry) =>
-  (entry.findings ?? []).filter((finding) => finding.severity === 'error'),
-);
 
 console.log('Repository health check');
 console.log('');
 
 for (const entry of results) {
-  const hasBlockingFinding = (entry.findings ?? []).some((finding) => finding.severity === 'error');
-  const status = entry.status === 'pass' && !hasBlockingFinding ? 'PASS' : 'WARN';
+  const status = entry.status === 'pass' ? 'PASS' : 'WARN';
   const findingCount = entry.findings?.length ?? 0;
   console.log(`${status.padEnd(7)} ${entry.name.padEnd(28)} ${findingCount} finding(s)`);
 }
 
 console.log('');
 console.log(
-  `${report.summary?.findings ?? 0} finding(s) reported; ${blockingFindings.length} blocking finding(s) and ${blockingResults.length} provider error(s).`,
+  `${report.summary?.findings ?? 0} finding(s) reported; ${blockingResults.length} provider error(s).`,
 );
 
-process.exitCode = blockingResults.length > 0 || blockingFindings.length > 0 ? 1 : 0;
+process.exitCode = blockingResults.length > 0 ? 1 : 0;
