@@ -1,6 +1,6 @@
 # Project Architecture & State Management Rules
 
-**CRITICAL INSTRUCTION FOR AI ASSISTANTS:** This project does **not** use Redux, Zustand, Recoil, or React Context + `useState` for **shared domain state**. Shared state uses a custom hierarchical Proxy system under `src/components/state/`.
+**CRITICAL INSTRUCTION FOR AI ASSISTANTS:** This project does **not** use Redux, Zustand, Recoil, or React Context + `useState` for **shared domain state**. Shared state uses the hierarchical Proxy system provided by the `triactor` package.
 
 `Node.js` does use React `createContext` internally to walk the component tree — do not add a second global store on top of that.
 
@@ -8,12 +8,12 @@
 
 | Module | Path | Role |
 | --- | --- | --- |
-| **Node** | `src/components/state/Node.tsx` | Spatial hierarchy mirroring the React tree. Stores attach to nodes. |
-| **Object** | `src/components/state/Object.ts` | Proxy wrapper; mutations notify subscribers (microtask-batched). |
-| **State** | `src/components/state/State.tsx` | `createState(displayName)` factory → component + hooks. |
+| **StateRoot / Node** | `triactor` | Isolated state tree mirroring the React hierarchy. Stores attach to nodes. |
+| **Store** | `triactor` | Callable proxy wrapper; mutations notify subscribers (microtask-batched). |
+| **State** | `triactor` | `createState(displayName)` factory → component + hooks. |
 | **StateUtils** | `src/utils/StateUtils.ts` | `setInDraft`, `updateInDraft`, `deleteInDraft`, `remapKeysInDraft`, `deleteKeysWithPrefixInDraft`. |
 
-Domain stores (`AppState`, `EditorState`, …) are **bootstrapped in `App.tsx` on the root node** via `XState.useState(null, initial)`. Per-file UI stores pass `initial` under `<Node id={filePath}>` so they are scoped to that node.
+The application is wrapped in `<StateRoot>`. Domain stores (`AppState`, `EditorState`, …) are **bootstrapped in `App.tsx` on the root node** via `XState.useState(null, initial)`. Per-file UI stores pass `initial` under `<Node id={filePath}>` so they are scoped to that node.
 
 ## 2. Reading State
 
@@ -77,7 +77,7 @@ Manual edits clear `pendingDiffs[path]`. Pending review blocks FS auto-save.
 
 1. Prefer presentational components that receive props.
 2. Containers subscribe with `XState.useState(...)` / `usePassiveState` and pass primitives down.
-3. Do not modify `Node.tsx`, `Object.ts`, or `State.tsx` unless explicitly instructed.
+3. Treat `triactor` as the state implementation; do not add a second shared-state library.
 4. For nested map updates, prefer `StateUtils` helpers so Proxy notifications always fire.
 
 ## 7. AI Pipeline

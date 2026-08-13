@@ -1,4 +1,3 @@
-import type { StateStore } from '@/components/state/types';
 import type {
   AgentSessionStateShape,
   AppStateShape,
@@ -10,6 +9,7 @@ import type {
   SidebarStateShape,
   TabStateShape,
 } from '@/types/domain-types';
+import type { StateStore } from 'triactor';
 export type ResetNewProjectStateParams = {
   template?: string;
   appState: StateStore<AppStateShape>;

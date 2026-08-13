@@ -1,5 +1,5 @@
-import { createState } from '@/components/state/State';
 import type { StorageHealthStateShape } from '@/types/domain-types';
+import { createState } from 'triactor';
 
 export const STORAGE_RECOVERY_EVENT = 'zakamurai:export-recovery-zip';
 

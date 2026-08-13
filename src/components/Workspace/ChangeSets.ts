@@ -1,6 +1,6 @@
 import { computeDiff } from '@/components/AI/Processor/utils/DiffEngine';
-import type { Draft, StateStore } from '@/components/state/types';
 import type { ChangeSetStateShape } from '@/types/domain-types';
+import type { Draft, StateStore } from 'triactor';
 
 export function createChangeSet({
   request = '',

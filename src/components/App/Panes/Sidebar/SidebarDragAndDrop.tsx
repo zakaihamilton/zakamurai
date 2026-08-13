@@ -1,7 +1,7 @@
 import type { FlatTreeRow } from '@/components/App/types';
-import type { Draft } from '@/components/state/types';
 import type { SidebarStateShape } from '@/types/domain-types';
 import { useCallback } from 'react';
+import type { Draft } from 'triactor';
 import { getPathStr } from './TreeUtils';
 import type { UseSidebarDragAndDropParams } from './sidebar-types';
 

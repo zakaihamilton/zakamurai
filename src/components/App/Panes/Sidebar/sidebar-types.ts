@@ -1,5 +1,4 @@
 import type { FileSystemApi, FlatTreeRow, NormalizedTreeNode } from '@/components/App/types';
-import type { StateStore } from '@/components/state/types';
 import type { SidebarStateShape, SidebarUiStateShape } from '@/types/domain-types';
 import type {
   CSSProperties,
@@ -11,6 +10,7 @@ import type {
   RefObject,
   SetStateAction,
 } from 'react';
+import type { StateStore } from 'triactor';
 
 export type SidebarCreateRow = FlatTreeRow & {
   key: string;

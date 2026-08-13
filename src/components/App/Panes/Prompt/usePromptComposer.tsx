@@ -1,5 +1,4 @@
 import type { ExtendedEditorState } from '@/components/App/Views/EditorArea/types';
-import type { StateStore } from '@/components/state/types';
 import type {
   PromptUiStateShape,
   SidebarStateShape,
@@ -8,6 +7,7 @@ import type {
 } from '@/types/domain-types';
 import { useCallback, useState } from 'react';
 import type { ChangeEvent, FormEvent, KeyboardEvent, MouseEvent } from 'react';
+import type { StateStore } from 'triactor';
 import { parseFileCommand } from './filePrompt';
 
 type PromptEvent = FormEvent<HTMLFormElement> | KeyboardEvent<HTMLTextAreaElement>;

@@ -3,10 +3,10 @@ import type { ExtendedEditorState } from '@/components/App/Views/EditorArea/type
 import type { FileSystemApi } from '@/components/App/types';
 import Settings from '@/components/Storage/Settings';
 import { getWorkspaceIndex } from '@/components/Workspace';
-import type { StateStore } from '@/components/state/types';
 import { analyzeProjectHealth } from '@/contracts/project';
 import { createWorkspaceSnapshot } from '@/contracts/workspace';
 import type { AppStateShape, SidebarStateShape, TabStateShape } from '@/types/domain-types';
+import type { StateStore } from 'triactor';
 import { toCompilerFs } from '../../../types';
 
 export async function prepareAgentRunContext({

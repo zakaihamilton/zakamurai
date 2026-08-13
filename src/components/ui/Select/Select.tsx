@@ -1,9 +1,8 @@
-import Node from '@/components/state/Node';
-import { createState } from '@/components/state/State';
 import { Icons } from '@/components/ui/Icons';
 import type { SelectOption, SelectProps } from '@/components/ui/types';
 import type { SelectStateShape } from '@/types/domain-types';
 import { useEffect, useRef } from 'react';
+import { Node, createState } from 'triactor';
 import styles from './Select.module.css';
 
 const SelectState = createState<SelectStateShape>('SelectState');

@@ -1,6 +1,6 @@
-import { createState } from '@/components/state/State';
 import type { LogAreaUiStateShape, LogStateShape } from '@/types/domain-types';
 import { useEffect, useRef } from 'react';
+import { createState } from 'triactor';
 import { requireStore } from '../../types';
 import LogList from './List';
 import styles from './LogArea.module.css';

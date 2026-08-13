@@ -1,7 +1,7 @@
 import { TabState } from '@/components/App/Panes/TabBar';
 import { useFileSystem } from '@/components/Storage';
-import Node from '@/components/state/Node';
-import { createState } from '@/components/state/State';
+import { Node } from 'triactor';
+import { createState } from 'triactor';
 import EditorSurface from './EditorSurface';
 import type { EditorAreaProps, ExtendedEditorState } from './types';
 import useEditorAreaController from './useEditorAreaController';

@@ -3,7 +3,6 @@ import type { AgentEvent, RunManagerOptions, RunManagerResult } from '@/componen
 import type { ExtendedEditorState } from '@/components/App/Views/EditorArea/types';
 import type { FileSystemApi } from '@/components/App/types';
 import { getWorkspaceIndex } from '@/components/Workspace';
-import type { StateStore } from '@/components/state/types';
 import type {
   AgentSession,
   AppStateShape,
@@ -17,6 +16,7 @@ import type {
   TabStateShape,
   WebLLMEngineState,
 } from '@/types/domain-types';
+import type { StateStore } from 'triactor';
 import { createManagerToolOptions, prepareAgentRunContext } from './agentRunContext';
 import { handleAgentRunError } from './agentRunErrors';
 import { createAgentRunState } from './agentRunState';

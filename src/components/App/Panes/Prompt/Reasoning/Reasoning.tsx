@@ -1,10 +1,10 @@
-import Node from '@/components/state/Node';
 import { Icons } from '@/components/ui/Icons';
 import ToolbarButton from '@/components/ui/ToolbarButton';
 import Tooltip from '@/components/ui/Tooltip';
 import type { AgentSessionMessage } from '@/types/domain-types';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
+import { Node } from 'triactor';
 import { requireStore } from '../../../types';
 import {
   AgentSessionState,

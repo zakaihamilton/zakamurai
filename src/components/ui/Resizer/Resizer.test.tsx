@@ -1,6 +1,6 @@
-import type { StateStore } from '@/components/state/types';
 import { fireEvent, render, screen } from '@testing-library/react';
 import type { ReactNode } from 'react';
+import type { StateStore } from 'triactor';
 import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 import Resizer from './Resizer';
 
@@ -11,7 +11,7 @@ const { mockUseState, mockStateComponent } = vi.hoisted(() => {
   return { mockUseState, mockStateComponent };
 });
 
-vi.mock('@/components/state/State', () => ({
+vi.mock('triactor', () => ({
   createState: vi.fn(() => mockStateComponent),
 }));
 

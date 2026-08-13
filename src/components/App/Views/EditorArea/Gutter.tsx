@@ -1,10 +1,10 @@
-import Node from '@/components/state/Node';
-import { createState } from '@/components/state/State';
 import { Icons } from '@/components/ui/Icons';
 import Tooltip from '@/components/ui/Tooltip';
 import type { GutterStateShape } from '@/types/domain-types';
 import type React from 'react';
 import { useEffect, useMemo } from 'react';
+import { Node } from 'triactor';
+import { createState } from 'triactor';
 import styles from './Gutter.module.css';
 import type { CodeFold, EditorLineItem, GutterProps } from './types';
 

@@ -119,8 +119,8 @@ export const AI_EVAL_CASES: AIEvalCase[] = [
     [
       'explain-state',
       'Explain state management',
-      'src/components/state/State.tsx creates state stores.',
-      'src/components/state/State.tsx',
+      'The triactor package creates state stores.',
+      'triactor',
     ],
     [
       'explain-build',

@@ -1,6 +1,6 @@
-import type { StateStore } from '@/components/state/types';
 import type { PreviewAreaUiStateShape, PreviewStateShape } from '@/types/domain-types';
 import type { RefObject } from 'react';
+import type { StateStore } from 'triactor';
 import type { PreviewOrigins } from './previewOrigins';
 
 export type PreviewSurfaceKind = 'iframe' | 'external';

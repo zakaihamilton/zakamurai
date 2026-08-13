@@ -1,7 +1,7 @@
-import type { StateStore } from '@/components/state/types';
 import { asDirectoryHandle } from '@/test-utils/vitest-mocks';
 import type { FileSystemStateShape } from '@/types/domain-types';
 import { act, renderHook } from '@testing-library/react';
+import type { StateStore } from 'triactor';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { FileSystemState, useFileSystem } from './LocalFS';
 

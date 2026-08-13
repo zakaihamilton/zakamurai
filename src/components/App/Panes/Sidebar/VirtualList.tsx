@@ -1,7 +1,7 @@
-import Node from '@/components/state/Node';
-import { createState } from '@/components/state/State';
 import type { VirtualListStateShape } from '@/types/domain-types';
 import React, { useCallback, useLayoutEffect, useMemo, useRef } from 'react';
+import { Node } from 'triactor';
+import { createState } from 'triactor';
 import { requireStore } from '../../types';
 import styles from './VirtualList.module.css';
 import type { VirtualListProps } from './sidebar-types';

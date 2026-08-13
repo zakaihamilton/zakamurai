@@ -1,6 +1,6 @@
 import Resizer from '@/components/ui/Resizer';
 import type React from 'react';
-import Node from '../../state/Node';
+import { Node } from 'triactor';
 import { AppState } from '../AppState';
 import { Sidebar, SidebarState, StatusBar, TopBar } from '../Panes';
 import { CompletionDebug, ShortcutsHelp } from '../Popups';

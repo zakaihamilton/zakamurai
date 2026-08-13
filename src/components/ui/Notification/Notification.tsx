@@ -1,8 +1,8 @@
-import { createState } from '@/components/state/State';
 import { Icons } from '@/components/ui/Icons';
 import type { NotificationItem, NotificationStateShape } from '@/types/domain-types';
 import { useCallback, useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { createState } from 'triactor';
 import styles from './Notification.module.css';
 
 export const NotificationState = createState<NotificationStateShape>('NotificationState');

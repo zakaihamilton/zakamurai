@@ -1,5 +1,4 @@
 import type { ExtendedEditorState } from '@/components/App/Views/EditorArea/types';
-import type { StateStore } from '@/components/state/types';
 import {
   createMockEditorState,
   createMockShouldScrollRef,
@@ -13,6 +12,7 @@ import {
   getStyleAtCursor,
 } from '@/utils/navigation';
 import { act, renderHook } from '@testing-library/react';
+import type { StateStore } from 'triactor';
 import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 import useAssociationNavigator from './AssociationNavigator';
 

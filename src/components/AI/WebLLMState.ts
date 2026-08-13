@@ -1,7 +1,7 @@
 import type { StateHandle, WebLLMEngineState, WebLLMStateDraft } from '@/components/AI/types';
-import { createState } from '@/components/state/State';
 import type { DeviceCapabilityReport } from '@/contracts/capabilities';
 import type { WebLLMStateShape } from '@/types/domain-types';
+import { createState } from 'triactor';
 
 export const WebLLMState = createState<WebLLMStateShape>('WebLLMState');
 

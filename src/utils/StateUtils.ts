@@ -1,7 +1,7 @@
 /**
  * Utilities for working with the custom Proxy-based state management system.
  */
-import type { Draft } from '@/components/state/types';
+import type { Draft } from 'triactor';
 
 /**
  * Safely updates a nested value in a state draft, ensuring that all ancestor

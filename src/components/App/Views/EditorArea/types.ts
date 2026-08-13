@@ -1,5 +1,4 @@
 import type { Diff } from '@/components/AI/types';
-import type { Draft, StateStore } from '@/components/state/types';
 import type {
   CursorPosition,
   EditorStateShape,
@@ -8,6 +7,7 @@ import type {
 } from '@/types/domain-types';
 import type { FileContents, NavigationTarget, SourceLocation } from '@/utils/navigation/types';
 import type { ChangeEvent, MutableRefObject, RefObject } from 'react';
+import type { Draft, StateStore } from 'triactor';
 
 // ---------------------------------------------------------------------------
 // Extended editor state (runtime fields not in EditorStateShape)

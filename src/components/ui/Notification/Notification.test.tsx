@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { Notification, NotificationState, useNotification } from './Notification';
 
-vi.mock('@/components/state/State', () => ({
+vi.mock('triactor', () => ({
   createState: vi.fn(() => {
     const state = ({ children }: { children?: ReactNode }) => <div>{children}</div>;
     state.useState = vi.fn();

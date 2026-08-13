@@ -1,11 +1,11 @@
 import { SidebarState } from '@/components/App/Panes/Sidebar';
-import { createState } from '@/components/state/State';
-import type { StateStore } from '@/components/state/types';
 import { Icons } from '@/components/ui/Icons';
 import Tooltip from '@/components/ui/Tooltip';
 import type { SidebarStateShape, TabBarUiStateShape, TabStateShape } from '@/types/domain-types';
 import type React from 'react';
 import { useRef, useState } from 'react';
+import { createState } from 'triactor';
+import type { StateStore } from 'triactor';
 import { requireStore } from '../../types';
 import styles from './TabBar.module.css';
 import TabContextMenu from './TabContextMenu';

@@ -13,7 +13,7 @@ Zakamurai is a single Next.js 16 / React 19 app (no backend, no database). Persi
 
 ## Architecture rules (summary)
 
-1. **State** — Use `XState.useState` / `usePassiveState` from `src/components/state/`. Never use Redux, Zustand, Recoil, or React `useState` for shared domain state.
+1. **State** — Use `XState.useState` / `usePassiveState` from `triactor`, under the application’s `StateRoot`. Never use Redux, Zustand, Recoil, or React `useState` for shared domain state.
 2. **Styling** — CSS Modules only in UI components. No Tailwind. Avoid inline `style={{}}` when the file imports a `.module.css`.
 3. **AI edits** — Use SEARCH/REPLACE blocks (`<<<<<<< SEARCH` / `=======` / `>>>>>>> REPLACE`). Paths must be project-relative; absolute paths and `../` traversal are rejected.
 4. **Preview** — Preview runs on a separate origin. MessagePort handshakes require matching origin, session ID, and protocol version. No wildcard target origins.

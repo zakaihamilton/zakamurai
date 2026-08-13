@@ -1,6 +1,5 @@
 import type { ExtendedEditorState } from '@/components/App/Views/EditorArea/types';
 import type { ShortcutActionContext } from '@/components/App/types';
-import type { Draft, StateStore } from '@/components/state/types';
 import type {
   AgentSessionStateShape,
   AppStateShape,
@@ -15,21 +14,8 @@ import type {
   SidebarUiStateShape,
   TabStateShape,
 } from '@/types/domain-types';
+import type { Draft, StateStore } from 'triactor';
 import { type Mock, vi } from 'vitest';
-
-function createStoreInternals<T extends object>() {
-  return {
-    __monitor: vi.fn(),
-    __unmonitor: vi.fn(),
-    __monitored: [] as never[],
-    __unique: 'mock',
-    __id: undefined,
-    __object: {} as T,
-    __counter: 0,
-    __string: 'mock',
-    __node: undefined,
-  };
-}
 
 /** Build a callable mock state store with snapshot properties. */
 export function createMockStateStore<T extends object>(initial: T): StateStore<T> & Mock {
@@ -48,18 +34,18 @@ export function createMockStateStore<T extends object>(initial: T): StateStore<T
     syncProps();
   }) as StateStore<T> & Mock;
 
-  Object.assign(updater, state, createStoreInternals<T>());
+  Object.assign(updater, state);
   syncProps();
 
   return new Proxy(updater, {
     set(target, prop, value, receiver) {
-      if (typeof prop === 'string' && !prop.startsWith('__') && prop in state) {
+      if (typeof prop === 'string' && prop in state) {
         (state as Record<string, unknown>)[prop] = value;
       }
       return Reflect.set(target, prop, value, receiver);
     },
     get(target, prop, receiver) {
-      if (typeof prop === 'string' && !prop.startsWith('__') && prop in state) {
+      if (typeof prop === 'string' && prop in state) {
         return (state as Record<string, unknown>)[prop];
       }
       return Reflect.get(target, prop, receiver);

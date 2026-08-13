@@ -56,8 +56,9 @@ vi.mock('../Views/TokenBreakdown', () => ({
 }));
 vi.mock('../Views/ImageViewer', () => ({ default: () => <div data-testid="image-viewer" /> }));
 vi.mock('../Views/AISection', () => ({ default: () => <div data-testid="ai-section" /> }));
-vi.mock('../../state/Node', () => ({
-  default: ({ children }: { children?: ReactNode }) => <>{children}</>,
+vi.mock('triactor', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('triactor')>()),
+  Node: ({ children }: { children?: ReactNode }) => <>{children}</>,
 }));
 
 describe('WorkspaceArea', () => {

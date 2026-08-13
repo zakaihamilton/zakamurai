@@ -3,8 +3,8 @@ import {
   resolveWebLLMModelId,
 } from '@/components/AI/WebLLMModels';
 import Settings from '@/components/Storage/Settings';
-import { createState } from '@/components/state/State';
 import type { PromptStateShape, PromptUiStateShape } from '@/types/domain-types';
+import { createState } from 'triactor';
 
 export const PromptState = createState<PromptStateShape>('PromptState');
 export const PromptUiState = createState<PromptUiStateShape>('PromptUiState');

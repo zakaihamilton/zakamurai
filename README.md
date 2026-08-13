@@ -126,7 +126,7 @@ Before changing the application, read:
 - [Contributor guide](./CONTRIBUTING.md)
 - [AI assistant instructions](./AGENTS.md)
 
-The project uses a custom hierarchical proxy-based state system, CSS Modules, and browser-first persistence. Shared state should use the project’s state primitives rather than Redux, Zustand, Recoil, or a second global store.
+The project uses the `triactor` hierarchical proxy-state package, CSS Modules, and browser-first persistence. Shared state should use `triactor` rather than Redux, Zustand, Recoil, or a second global store.
 
 ```text
 src/
@@ -134,7 +134,6 @@ src/
 ├── components/
 │   ├── AI/           # WebLLM integration, prompts, diffs, and agent flow
 │   ├── App/          # IDE shell, editor, sidebar, preview, and top bar
-│   ├── state/        # Hierarchical proxy state primitives
 │   ├── Storage/      # Settings, LocalFS, and project persistence
 │   └── ui/           # Shared UI components
 ├── constants/        # Shared application constants

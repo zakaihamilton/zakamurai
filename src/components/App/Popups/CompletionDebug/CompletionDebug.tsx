@@ -1,10 +1,10 @@
 import { EditorState } from '@/components/App/Views/EditorArea';
-import { createState } from '@/components/state/State';
 import { Icons } from '@/components/ui/Icons';
 import type { AiCompletionDebug } from '@/types/domain-types';
 import type { CompletionDebugStateShape } from '@/types/domain-types';
 import React from 'react';
 import { createPortal } from 'react-dom';
+import { createState } from 'triactor';
 import { requireStore } from '../../types';
 import type { CompletionDebugProps } from '../popup-types';
 import styles from './CompletionDebug.module.css';

@@ -1,8 +1,8 @@
 'use client';
 
-import { createState } from '@/components/state/State';
 import type { PreviewAreaUiStateShape } from '@/types/domain-types';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { createState } from 'triactor';
 import { PreviewState } from '../../PreviewState';
 import { requireStore } from '../../types';
 import { PreviewErrorState, PreviewUnavailableState } from './PreviewEmptyState';

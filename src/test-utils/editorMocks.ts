@@ -8,25 +8,11 @@ import type {
   ShouldScrollRef,
   TextareaRef,
 } from '@/components/App/Views/EditorArea/types';
-import type { Draft, StateStore } from '@/components/state/types';
 import type { PendingDiff, Tab, TabStateShape } from '@/types/domain-types';
 import type { NavigationTarget, SourceLocation } from '@/utils/navigation/types';
 import type { KeyboardEvent } from 'react';
+import type { Draft, StateStore } from 'triactor';
 import { type Mock, vi } from 'vitest';
-
-function createStoreInternals<T extends object>() {
-  return {
-    __monitor: vi.fn(),
-    __unmonitor: vi.fn(),
-    __monitored: [] as never[],
-    __unique: 'mock',
-    __id: undefined,
-    __object: {} as T,
-    __counter: 0,
-    __string: 'mock',
-    __node: undefined,
-  };
-}
 
 function createCallableMockStore<T extends object>(initial: T): StateStore<T> & Mock {
   const snapshot = { ...initial };
@@ -45,18 +31,18 @@ function createCallableMockStore<T extends object>(initial: T): StateStore<T> & 
     return snapshot;
   }) as StateStore<T> & Mock;
 
-  Object.assign(updater, snapshot, createStoreInternals<T>());
+  Object.assign(updater, snapshot);
   syncProps();
 
   return new Proxy(updater, {
     get(target, prop, receiver) {
-      if (typeof prop === 'string' && !prop.startsWith('__') && prop in snapshot) {
+      if (typeof prop === 'string' && prop in snapshot) {
         return (snapshot as Record<string, unknown>)[prop];
       }
       return Reflect.get(target, prop, receiver);
     },
     set(target, prop, value, receiver) {
-      if (typeof prop === 'string' && !prop.startsWith('__') && prop in snapshot) {
+      if (typeof prop === 'string' && prop in snapshot) {
         (snapshot as Record<string, unknown>)[prop] = value;
       }
       return Reflect.set(target, prop, value, receiver);

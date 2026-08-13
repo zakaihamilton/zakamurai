@@ -1,5 +1,4 @@
 import type { ExtendedEditorState } from '@/components/App/Views/EditorArea/types';
-import type { StateStore } from '@/components/state/types';
 import type {
   AgentSession,
   AgentSessionMessage,
@@ -19,6 +18,7 @@ import type {
 } from '@/types/domain-types';
 import type { LocalFsLike } from '@/utils/compiler/types';
 import type { CSSProperties, Dispatch, SetStateAction } from 'react';
+import type { StateStore } from 'triactor';
 
 /** Tree node after `normalizeChildren` assigns `path` and `type`. */
 export type NormalizedTreeNode = TreeNode & {

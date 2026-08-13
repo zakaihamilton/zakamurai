@@ -6,10 +6,10 @@ import {
   storageFailureMessage,
   storageHealthMessage,
 } from '@/components/Storage/StorageHealth';
-import type { Draft } from '@/components/state/types';
 import { useNotification } from '@/components/ui/Notification';
 import type { StorageHealthStateShape } from '@/types/domain-types';
 import { useCallback, useRef } from 'react';
+import type { Draft } from 'triactor';
 
 const SAVE_FAIL_MESSAGE =
   'Could not save project data — browser storage is full. Export or free space to avoid data loss.';

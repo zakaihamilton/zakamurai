@@ -1,7 +1,7 @@
 import { PromptState } from '@/components/App/Panes/Prompt/PromptState';
-import type { StateStore } from '@/components/state/types';
 import type { PromptUiStateShape } from '@/types/domain-types';
 import { useCallback } from 'react';
+import type { StateStore } from 'triactor';
 
 export default function usePromptHistory(
   val: string,

@@ -2,11 +2,14 @@
 
 import App from '@/components/App';
 import AppErrorBoundary from '@/components/App/AppErrorBoundary';
+import { StateRoot } from 'triactor';
 
 export default function Home() {
   return (
-    <AppErrorBoundary>
-      <App />
-    </AppErrorBoundary>
+    <StateRoot>
+      <AppErrorBoundary>
+        <App />
+      </AppErrorBoundary>
+    </StateRoot>
   );
 }

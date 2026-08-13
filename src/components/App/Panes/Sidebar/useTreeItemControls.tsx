@@ -1,7 +1,7 @@
-import { createState } from '@/components/state/State';
 import type { TreeItemStateShape } from '@/types/domain-types';
 import { useLongPress } from '@/utils/touch';
 import { type TouchEvent as ReactTouchEvent, useEffect, useRef } from 'react';
+import { createState } from 'triactor';
 import { requireStore } from '../../types';
 import type { UseTreeItemControlsParams } from './sidebar-types';
 

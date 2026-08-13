@@ -1,5 +1,4 @@
 import type { AgentSessionTreeRow, CreateAgentSessionOptions } from '@/components/App/types';
-import { createState } from '@/components/state/State';
 import type {
   AgentReasoningEntry,
   AgentRunUsage,
@@ -7,6 +6,7 @@ import type {
   AgentSessionMessage,
   AgentSessionStateShape,
 } from '@/types/domain-types';
+import { createState } from 'triactor';
 
 export const MAX_AGENT_SESSIONS = 50;
 export const MAX_SESSION_MESSAGES = 40;

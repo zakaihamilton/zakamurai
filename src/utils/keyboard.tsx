@@ -1,6 +1,6 @@
-import { createState } from '@/components/state/State';
 import type { KeyboardShortcutStateShape } from '@/types/domain-types';
 import { useEffect } from 'react';
+import { createState } from 'triactor';
 
 export const KeyboardShortcutState =
   createState<KeyboardShortcutStateShape>('KeyboardShortcutState');

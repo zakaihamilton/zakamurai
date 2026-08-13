@@ -1,6 +1,6 @@
-import type { StateStore } from '@/components/state/types';
 import type { PromptUiStateShape } from '@/types/domain-types';
 import { useCallback, useRef } from 'react';
+import type { StateStore } from 'triactor';
 import type { ModelOption } from './model-types';
 
 type PromptUiKey = keyof PromptUiStateShape;

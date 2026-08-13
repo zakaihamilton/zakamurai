@@ -3,7 +3,6 @@ import type { ModelOption, ModelSelectOption } from '@/components/AI/Models/mode
 import type { AgentEvent, FileMap } from '@/components/AI/types';
 import type { ExtendedEditorState } from '@/components/App/Views/EditorArea/types';
 import type { FileSystemApi } from '@/components/App/types';
-import type { StateStore } from '@/components/state/types';
 import type {
   AgentSession,
   AgentSessionMessage,
@@ -14,6 +13,7 @@ import type {
   TabStateShape,
 } from '@/types/domain-types';
 import type { ChangeEvent, FormEvent, KeyboardEvent } from 'react';
+import type { StateStore } from 'triactor';
 
 export type WelcomeRequest = {
   text: string;

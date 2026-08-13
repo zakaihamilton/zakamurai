@@ -1,5 +1,5 @@
 import type { CssCustomProperties } from '@/components/App/types';
-import Node from '@/components/state/Node';
+import { Node } from 'triactor';
 import CreateRowInput from './CreateRowInput';
 import TreeItemContent from './TreeItemContent';
 import type { TreeItemContentProps, TreeItemProps } from './sidebar-types';

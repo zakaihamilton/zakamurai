@@ -5,7 +5,6 @@ import type {
   WebLLMRecoveryEvent,
 } from '@/components/AI/types';
 import type { ExtendedEditorState } from '@/components/App/Views/EditorArea/types';
-import type { StateStore } from '@/components/state/types';
 import type {
   ChangeSetStateShape,
   PromptUiStateShape,
@@ -13,6 +12,7 @@ import type {
 } from '@/types/domain-types';
 import type { AgentSessionMessage, LogStateShape, SidebarStateShape } from '@/types/domain-types';
 import type { AgentSession } from '@/types/domain-types';
+import type { StateStore } from 'triactor';
 
 type SessionMessageFactory = (message: {
   role: string;

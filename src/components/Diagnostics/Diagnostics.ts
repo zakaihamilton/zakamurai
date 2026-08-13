@@ -1,11 +1,11 @@
-import { createState } from '@/components/state/State';
-import type { StateStore } from '@/components/state/types';
 import { normalizeDiagnosticEvent, redactDiagnosticText } from '@/contracts/runtime';
 import type {
   DiagnosticsStateShape,
   LogEntry,
   StorageHealthStateShape,
 } from '@/types/domain-types';
+import { createState } from 'triactor';
+import type { StateStore } from 'triactor';
 
 const MAX_DIAGNOSTICS = 200;
 

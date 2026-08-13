@@ -6,9 +6,9 @@ import {
   resolveCompletionModelId,
 } from '@/components/AI/WebLLMModels';
 import { PromptUiState } from '@/components/App/Panes/Prompt/PromptState';
-import { createState } from '@/components/state/State';
 import type { CompletionStateShape, CursorPosition } from '@/types/domain-types';
 import { useCallback, useEffect, useRef } from 'react';
+import { createState } from 'triactor';
 import {
   COMPLETION_DEBOUNCE_MS,
   COMPLETION_PHASES,

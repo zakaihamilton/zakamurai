@@ -1,14 +1,14 @@
 import { TabState } from '@/components/App/Panes/TabBar';
 import FileViewToolbar from '@/components/App/Views/FileViewToolbar';
 import type { CssCustomProperties } from '@/components/App/types';
-import Node from '@/components/state/Node';
-import { createState } from '@/components/state/State';
 import { Icons } from '@/components/ui/Icons';
 import Tooltip from '@/components/ui/Tooltip';
 import type { ImageViewerStateShape, Tab } from '@/types/domain-types';
 import type { FileViewType } from '@/utils/fileViews';
 import { FILE_VIEW_TYPES } from '@/utils/fileViews';
 import { useEffect } from 'react';
+import { Node } from 'triactor';
+import { createState } from 'triactor';
 import { requireStore } from '../../types';
 import styles from './ImageViewer.module.css';
 

@@ -30,7 +30,6 @@ export default defineConfig({
         'src/**/*-types.ts',
         'src/**/domain-types.ts',
         'src/components/AI/types.ts',
-        'src/components/state/types.ts',
         'src/components/App/Views/EditorArea/types.ts',
         'src/utils/compiler/types.ts',
       ],

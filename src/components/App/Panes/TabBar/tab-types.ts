@@ -1,6 +1,6 @@
-import type { StateStore } from '@/components/state/types';
 import type { Tab, TabBarUiStateShape, TabStateShape } from '@/types/domain-types';
 import type { DragEvent, KeyboardEvent, MouseEvent, RefCallback } from 'react';
+import type { StateStore } from 'triactor';
 
 export type TabContextMenuState = {
   tab: Tab;

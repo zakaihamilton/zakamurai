@@ -51,8 +51,9 @@ vi.mock('../Popups', () => ({
       </button>
     ) : null,
 }));
-vi.mock('../../state/Node', () => ({
-  default: ({ children }: { children?: ReactNode }) => <>{children}</>,
+vi.mock('triactor', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('triactor')>()),
+  Node: ({ children }: { children?: ReactNode }) => <>{children}</>,
 }));
 
 describe('AppContent', () => {

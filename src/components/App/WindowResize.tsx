@@ -1,7 +1,7 @@
-import type { StateStore } from '@/components/state/types';
 import { MOBILE_BREAKPOINT } from '@/constants/Layout';
 import type { AppStateShape, SidebarStateShape } from '@/types/domain-types';
 import { useEffect, useRef } from 'react';
+import type { StateStore } from 'triactor';
 
 export function useWindowResize(
   appState: StateStore<AppStateShape>,
