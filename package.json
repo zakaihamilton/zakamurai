@@ -55,7 +55,7 @@
     "verify": "npm run format:check && npm run lint && npm run stylelint && npm run deadcode && npm run check:architecture && npm run typecheck && npm run test:promptfoo && npm run test:ai-evals && npm run test:coverage && npm run build && npm run perf && npm run check:runtime-assets && npm run test:performance && npm run test:e2e && npm run test:e2e:webkit && npm run test:e2e:isolated && npm run test:e2e:isolated:webkit && npm run check:preview && npm run test:visual && npm run audit",
     "verify:ai": "bash scripts/verify-ai.sh",
     "prepare": "husky",
-    "health": "repnix check",
+    "health": "tsx scripts/run-health-check.ts",
     "health:duplication": "jscpd src",
     "health:coverage": "c8 --all --reporter=text yarn test",
     "health:architecture": "depcruise --output-type json --config -- src",
