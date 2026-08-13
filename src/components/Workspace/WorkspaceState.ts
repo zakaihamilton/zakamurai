@@ -4,7 +4,7 @@ import type {
   ProblemsStateShape,
   WorkspaceHealthStateShape,
   WorkspaceProfileStateShape,
-} from '@/components/state/domain-types';
+} from '@/types/domain-types';
 
 /** Project-wide metadata that is deliberately separate from editor buffers. */
 export const WorkspaceProfileState =

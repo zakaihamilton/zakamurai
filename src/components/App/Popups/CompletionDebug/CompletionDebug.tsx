@@ -1,8 +1,8 @@
 import { EditorState } from '@/components/App/Views/EditorArea';
 import { createState } from '@/components/state/State';
-import type { AiCompletionDebug } from '@/components/state/domain-types';
-import type { CompletionDebugStateShape } from '@/components/state/domain-types';
 import { Icons } from '@/components/ui/Icons';
+import type { AiCompletionDebug } from '@/types/domain-types';
+import type { CompletionDebugStateShape } from '@/types/domain-types';
 import React from 'react';
 import { createPortal } from 'react-dom';
 import { requireStore } from '../../types';

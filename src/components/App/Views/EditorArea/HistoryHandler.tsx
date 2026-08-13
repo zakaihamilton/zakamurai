@@ -1,4 +1,4 @@
-import type { CursorPosition } from '@/components/state/domain-types';
+import type { CursorPosition } from '@/types/domain-types';
 import { useEffect, useRef } from 'react';
 import type { HistoryHandlerProps } from './types';
 

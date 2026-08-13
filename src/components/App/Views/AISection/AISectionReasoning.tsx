@@ -1,9 +1,5 @@
 import { withoutManagerErrorMessages } from '@/components/App/Panes/Prompt/AgentSessions';
-import type {
-  AgentReasoningEntry,
-  AgentSession,
-  AgentSessionMessage,
-} from '@/components/state/domain-types';
+import type { AgentReasoningEntry, AgentSession, AgentSessionMessage } from '@/types/domain-types';
 import { useEffect, useRef } from 'react';
 import type { RefObject } from 'react';
 import ReactMarkdown, { type Components } from 'react-markdown';

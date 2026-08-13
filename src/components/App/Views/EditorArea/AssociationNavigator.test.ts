@@ -1,11 +1,11 @@
 import type { ExtendedEditorState } from '@/components/App/Views/EditorArea/types';
-import type { TabStateShape } from '@/components/state/domain-types';
 import type { StateStore } from '@/components/state/types';
 import {
   createMockEditorState,
   createMockShouldScrollRef,
   createMockTabState,
 } from '@/test-utils/editorMocks';
+import type { TabStateShape } from '@/types/domain-types';
 import {
   findClassInCss,
   findClassReferenceInJs,

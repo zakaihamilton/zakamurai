@@ -1,4 +1,4 @@
-import type { CursorPosition } from '@/components/state/domain-types';
+import type { CursorPosition } from '@/types/domain-types';
 import { findNavigationTargets } from '@/utils/navigation';
 import type { NavigationTarget } from '@/utils/navigation/types';
 import highlighterStyles from './Highlighter.module.css';

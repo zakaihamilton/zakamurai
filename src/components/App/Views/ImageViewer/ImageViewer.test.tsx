@@ -1,7 +1,7 @@
 import { TabState } from '@/components/App/Panes/TabBar';
-import type { Tab } from '@/components/state/domain-types';
 import { createMockTab } from '@/test-utils/editorMocks';
 import { makeTabState } from '@/test-utils/stateMocks';
+import type { Tab } from '@/types/domain-types';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';

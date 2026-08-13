@@ -1,7 +1,7 @@
 import type { StateHandle, WebLLMEngineState, WebLLMStateDraft } from '@/components/AI/types';
 import { createState } from '@/components/state/State';
-import type { WebLLMStateShape } from '@/components/state/domain-types';
 import type { DeviceCapabilityReport } from '@/contracts/capabilities';
+import type { WebLLMStateShape } from '@/types/domain-types';
 
 export const WebLLMState = createState<WebLLMStateShape>('WebLLMState');
 

@@ -1,6 +1,6 @@
 import type { SidebarFileLoaderParams } from '@/components/App/types';
 import type { FlatTreeRow, NormalizedTreeNode } from '@/components/App/types';
-import { deleteKeysWithPrefixInDraft, remapKeysInDraft } from '@/components/state/StateUtils';
+import { deleteKeysWithPrefixInDraft, remapKeysInDraft } from '@/utils/StateUtils';
 import { isMediaFile } from '@/utils/file';
 import { FILE_VIEW_TYPES, getDefaultFileViewType } from '@/utils/fileViews';
 import { useCallback } from 'react';
@@ -286,7 +286,7 @@ export default function useSidebarFileLoader({
           draft.folderTree = addNodeAtPath(draft.folderTree, row.path, {
             name,
             kind: type === 'folder' ? 'directory' : 'file',
-          } as import('@/components/state/domain-types').TreeNode);
+          } as import('@/types/domain-types').TreeNode);
         });
       }
       addNotification(`${type === 'folder' ? 'Folder' : 'File'} "${name}" created`, 'success');

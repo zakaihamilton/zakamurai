@@ -1,5 +1,5 @@
-import type { ChangeSet, LogEntry, PendingDiff } from '@/components/state/domain-types';
 import type { RecoveryCheckpoint } from '@/contracts/runtime';
+import type { ChangeSet, LogEntry, PendingDiff } from '@/types/domain-types';
 
 export type LargeCacheKey =
   | 'fileContents'

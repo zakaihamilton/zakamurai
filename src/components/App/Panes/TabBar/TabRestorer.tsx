@@ -1,7 +1,7 @@
 import { TabState } from '@/components/App/Panes/TabBar';
 import { EditorState } from '@/components/App/Views/EditorArea';
 import { useFileSystem } from '@/components/Storage';
-import type { Tab } from '@/components/state/domain-types';
+import type { Tab } from '@/types/domain-types';
 import { isMediaFile } from '@/utils/file';
 import { useEffect, useRef } from 'react';
 import { requireStore } from '../../types';

@@ -1,5 +1,5 @@
 import { LogState } from '@/components/App/Views/LogArea';
-import { setInDraft } from '@/components/state/StateUtils';
+import { setInDraft } from '@/utils/StateUtils';
 import { useCallback, useEffect, useRef } from 'react';
 import useAssociationNavigator from './AssociationNavigator';
 import useCompletion from './CompletionHandler';

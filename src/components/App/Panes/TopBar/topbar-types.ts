@@ -1,3 +1,4 @@
+import type { StateStore } from '@/components/state/types';
 import type {
   AgentSessionStateShape,
   AppStateShape,
@@ -8,8 +9,7 @@ import type {
   PromptUiStateShape,
   SidebarStateShape,
   TabStateShape,
-} from '@/components/state/domain-types';
-import type { StateStore } from '@/components/state/types';
+} from '@/types/domain-types';
 export type ResetNewProjectStateParams = {
   template?: string;
   appState: StateStore<AppStateShape>;
@@ -21,7 +21,7 @@ export type ResetNewProjectStateParams = {
   promptState?: StateStore<PromptStateShape> | null;
   agentSessionState?: StateStore<AgentSessionStateShape> | null;
   logState?: StateStore<LogStateShape> | null;
-  changeSetState?: StateStore<import('@/components/state/domain-types').ChangeSetStateShape> | null;
+  changeSetState?: StateStore<import('@/types/domain-types').ChangeSetStateShape> | null;
 };
 
 export type BreadcrumbProps = {

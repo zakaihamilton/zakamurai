@@ -1,4 +1,4 @@
-import type { AgentSession, AgentSessionMessage } from '@/components/state/domain-types';
+import type { AgentSession, AgentSessionMessage } from '@/types/domain-types';
 import { useCallback, useEffect } from 'react';
 import {
   addAgentSession,

@@ -5,18 +5,14 @@ import type {
   WebLLMRecoveryEvent,
 } from '@/components/AI/types';
 import type { ExtendedEditorState } from '@/components/App/Views/EditorArea/types';
+import type { StateStore } from '@/components/state/types';
 import type {
   ChangeSetStateShape,
   PromptUiStateShape,
   WebLLMEngineState,
-} from '@/components/state/domain-types';
-import type {
-  AgentSessionMessage,
-  LogStateShape,
-  SidebarStateShape,
-} from '@/components/state/domain-types';
-import type { AgentSession } from '@/components/state/domain-types';
-import type { StateStore } from '@/components/state/types';
+} from '@/types/domain-types';
+import type { AgentSessionMessage, LogStateShape, SidebarStateShape } from '@/types/domain-types';
+import type { AgentSession } from '@/types/domain-types';
 
 type SessionMessageFactory = (message: {
   role: string;

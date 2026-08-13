@@ -10,7 +10,7 @@ import type {
   StateHandle,
 } from '@/components/AI/types';
 import { addChangeSet, createChangeSet } from '@/components/Workspace/ChangeSets';
-import { setInDraft, updateInDraft } from '@/components/state/StateUtils';
+import { setInDraft, updateInDraft } from '@/utils/StateUtils';
 import { formatCode } from '@/utils/formatter';
 import { validateAIChanges } from '../ChangeValidator';
 

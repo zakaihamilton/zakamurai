@@ -1,6 +1,6 @@
 import { PreviewState } from '@/components/App/PreviewState';
-import type { PreviewAreaUiStateShape, PreviewStateShape } from '@/components/state/domain-types';
 import { makePreviewAreaUiState, makePreviewState } from '@/test-utils/stateMocks';
+import type { PreviewAreaUiStateShape, PreviewStateShape } from '@/types/domain-types';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import type { ReactElement, ReactNode } from 'react';

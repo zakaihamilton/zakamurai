@@ -1,5 +1,6 @@
 import { serializeAgentSessions } from '@/components/App/Panes/Prompt/AgentSessions';
 import Settings from '@/components/Storage/Settings';
+import type { StateStore } from '@/components/state/types';
 import type {
   AgentSessionStateShape,
   AppStateShape,
@@ -13,8 +14,7 @@ import type {
   SidebarStateShape,
   TabStateShape,
   WorkspaceProfileStateShape,
-} from '@/components/state/domain-types';
-import type { StateStore } from '@/components/state/types';
+} from '@/types/domain-types';
 import { useEffect } from 'react';
 import useStoragePersistenceStatus from './useStoragePersistenceStatus';
 

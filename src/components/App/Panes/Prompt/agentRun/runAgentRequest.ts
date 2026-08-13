@@ -3,20 +3,20 @@ import type { AgentEvent, RunManagerOptions, RunManagerResult } from '@/componen
 import type { ExtendedEditorState } from '@/components/App/Views/EditorArea/types';
 import type { FileSystemApi } from '@/components/App/types';
 import { getWorkspaceIndex } from '@/components/Workspace';
+import type { StateStore } from '@/components/state/types';
 import type {
   AgentSession,
   AppStateShape,
   ChangeSetStateShape,
   PromptUiStateShape,
-} from '@/components/state/domain-types';
+} from '@/types/domain-types';
 import type {
   AgentSessionMessage,
   LogStateShape,
   SidebarStateShape,
   TabStateShape,
   WebLLMEngineState,
-} from '@/components/state/domain-types';
-import type { StateStore } from '@/components/state/types';
+} from '@/types/domain-types';
 import { createManagerToolOptions, prepareAgentRunContext } from './agentRunContext';
 import { handleAgentRunError } from './agentRunErrors';
 import { createAgentRunState } from './agentRunState';

@@ -1,5 +1,6 @@
 import type { ExtendedEditorState } from '@/components/App/Views/EditorArea/types';
 import type { ShortcutActionContext } from '@/components/App/types';
+import type { Draft, StateStore } from '@/components/state/types';
 import type {
   AgentSessionStateShape,
   AppStateShape,
@@ -13,8 +14,7 @@ import type {
   SidebarStateShape,
   SidebarUiStateShape,
   TabStateShape,
-} from '@/components/state/domain-types';
-import type { Draft, StateStore } from '@/components/state/types';
+} from '@/types/domain-types';
 import { type Mock, vi } from 'vitest';
 
 function createStoreInternals<T extends object>() {
@@ -148,8 +148,8 @@ export function makeLogState(
 }
 
 export function makeLogAreaUiState(
-  overrides: Partial<import('@/components/state/domain-types').LogAreaUiStateShape> = {},
-): StateStore<import('@/components/state/domain-types').LogAreaUiStateShape> & Mock {
+  overrides: Partial<import('@/types/domain-types').LogAreaUiStateShape> = {},
+): StateStore<import('@/types/domain-types').LogAreaUiStateShape> & Mock {
   return createMockStateStore({
     copied: false,
     autoScroll: true,
@@ -258,8 +258,8 @@ export function makeChangeSetState(
 }
 
 export function makeWebLLMState(
-  overrides: Partial<import('@/components/state/domain-types').WebLLMStateShape> = {},
-): StateStore<import('@/components/state/domain-types').WebLLMStateShape> & Mock {
+  overrides: Partial<import('@/types/domain-types').WebLLMStateShape> = {},
+): StateStore<import('@/types/domain-types').WebLLMStateShape> & Mock {
   return createMockStateStore({
     cachedModelIds: [],
     engines: {},
@@ -270,8 +270,8 @@ export function makeWebLLMState(
 }
 
 export function makeWorkspaceHealthState(
-  overrides: Partial<import('@/components/state/domain-types').WorkspaceHealthStateShape> = {},
-): StateStore<import('@/components/state/domain-types').WorkspaceHealthStateShape> & Mock {
+  overrides: Partial<import('@/types/domain-types').WorkspaceHealthStateShape> = {},
+): StateStore<import('@/types/domain-types').WorkspaceHealthStateShape> & Mock {
   return createMockStateStore({
     status: 'idle',
     error: null,

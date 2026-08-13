@@ -1,6 +1,6 @@
 import type { EditorStateDraft } from '@/components/App/Views/EditorArea/types';
 import type { ShortcutActionContext } from '@/components/App/types';
-import type { CursorPosition, NavigationHistoryEntry } from '@/components/state/domain-types';
+import type { CursorPosition, NavigationHistoryEntry } from '@/types/domain-types';
 import {
   findClassInCss,
   findClassReferenceInJs,

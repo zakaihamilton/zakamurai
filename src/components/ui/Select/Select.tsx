@@ -1,8 +1,8 @@
 import Node from '@/components/state/Node';
 import { createState } from '@/components/state/State';
-import type { SelectStateShape } from '@/components/state/domain-types';
 import { Icons } from '@/components/ui/Icons';
 import type { SelectOption, SelectProps } from '@/components/ui/types';
+import type { SelectStateShape } from '@/types/domain-types';
 import { useEffect, useRef } from 'react';
 import styles from './Select.module.css';
 

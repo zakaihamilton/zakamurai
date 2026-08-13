@@ -11,7 +11,7 @@ import {
 } from '@/components/Storage/InitialData';
 import Settings from '@/components/Storage/Settings';
 import { normalizePendingDeletions } from '@/components/Storage/SettingsSerialization';
-import type { PendingDiff } from '@/components/state/domain-types';
+import type { PendingDiff } from '@/types/domain-types';
 import { useEffect, useState } from 'react';
 import styles from './App.module.css';
 import { normalizeAgentSessions } from './Panes/Prompt/AgentSessions';

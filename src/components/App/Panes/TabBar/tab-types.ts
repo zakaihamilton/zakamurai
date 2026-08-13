@@ -1,5 +1,5 @@
-import type { Tab, TabBarUiStateShape, TabStateShape } from '@/components/state/domain-types';
 import type { StateStore } from '@/components/state/types';
+import type { Tab, TabBarUiStateShape, TabStateShape } from '@/types/domain-types';
 import type { DragEvent, KeyboardEvent, MouseEvent, RefCallback } from 'react';
 
 export type TabContextMenuState = {

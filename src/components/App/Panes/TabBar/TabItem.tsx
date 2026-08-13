@@ -1,6 +1,6 @@
-import type { Tab } from '@/components/state/domain-types';
 import { Icons } from '@/components/ui/Icons';
 import Tooltip from '@/components/ui/Tooltip';
+import type { Tab } from '@/types/domain-types';
 import { isMediaFile } from '@/utils/file';
 import { FILE_VIEW_TYPES, type FileViewType, getFileViewByType } from '@/utils/fileViews';
 import styles from './TabItem.module.css';

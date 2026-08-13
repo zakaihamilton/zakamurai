@@ -1,4 +1,4 @@
-import type { AgentSession } from '@/components/state/domain-types';
+import type { AgentSession } from '@/types/domain-types';
 import { formatReasoningEvents } from './AgentSessions';
 import type { PromptActivityAreaProps } from './prompt-types';
 

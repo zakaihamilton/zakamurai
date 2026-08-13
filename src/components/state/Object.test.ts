@@ -1,6 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createObject, filterObjectByKeys, objectChangedKeys } from './Object';
-import { setInDraft } from './StateUtils';
 
 describe('Object utils', () => {
   describe('objectChangedKeys', () => {
@@ -78,25 +77,25 @@ describe('Object utils', () => {
 
     it('fires parent keys for nested map/array mutation hygiene paths', async () => {
       const obj = createObject({
-        isCompleting: { 'a.js': false },
-        completionActivity: {},
-        expandedFolders: { src: true },
+        isCompleting: { 'a.js': false } as Record<string, boolean>,
+        completionActivity: {} as Record<string, unknown>,
+        expandedFolders: { src: true } as Record<string, boolean>,
         openTabs: [{ id: 'a.js' }],
         history: { past: [{ id: 1 }, { id: 2 }], future: [] as Array<{ id: number }> },
-        selectedLines: { 'a.js': [1] },
+        selectedLines: { 'a.js': [1] } as Record<string, number[]>,
       });
       const handler = vi.fn();
       obj.__monitor(null, handler);
 
       obj((draft) => {
-        setInDraft(draft, ['isCompleting', 'a.js'], true);
-        setInDraft(draft, ['completionActivity', 'a.js'], { status: 'thinking' });
-        setInDraft(draft, ['expandedFolders', 'src/lib'], true);
+        draft.isCompleting = { ...draft.isCompleting, 'a.js': true };
+        draft.completionActivity = { ...draft.completionActivity, 'a.js': { status: 'thinking' } };
+        draft.expandedFolders = { ...draft.expandedFolders, 'src/lib': true };
         draft.openTabs = [...draft.openTabs, { id: 'b.js' }];
         const past = [...draft.history.past];
         past.pop();
         draft.history = { ...draft.history, past, future: [{ id: 2 }] };
-        setInDraft(draft, ['selectedLines', 'a.js'], [1, 2]);
+        draft.selectedLines = { ...draft.selectedLines, 'a.js': [1, 2] };
       });
 
       await vi.runAllTimersAsync();

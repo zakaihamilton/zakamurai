@@ -1,11 +1,11 @@
 import type { FileSystemApi, FlatTreeRow, NormalizedTreeNode } from '@/components/App/types';
+import type { StateStore } from '@/components/state/types';
 import type {
   SidebarStateShape,
   SidebarUiStateShape,
   TabStateShape,
   TreeNode,
-} from '@/components/state/domain-types';
-import type { StateStore } from '@/components/state/types';
+} from '@/types/domain-types';
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 import type { RefObject } from 'react';
 import { flattenTree, insertCreateRow, isNodeModulesPath, normalizeChildren } from './TreeUtils';

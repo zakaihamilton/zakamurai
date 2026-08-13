@@ -1,5 +1,5 @@
-import type { CursorPosition } from '@/components/state/domain-types';
 import Dialog from '@/components/ui/Dialog';
+import type { CursorPosition } from '@/types/domain-types';
 import { findNavigationTargets } from '@/utils/navigation';
 import type React from 'react';
 import { type ChangeEvent, useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react';

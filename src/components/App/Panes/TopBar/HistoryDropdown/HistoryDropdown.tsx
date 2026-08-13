@@ -1,4 +1,4 @@
-import type { NavigationHistoryEntry } from '@/components/state/domain-types';
+import type { NavigationHistoryEntry } from '@/types/domain-types';
 import type { HistoryDropdownProps } from '../topbar-types';
 import styles from './HistoryDropdown.module.css';
 

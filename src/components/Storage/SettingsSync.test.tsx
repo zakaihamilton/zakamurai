@@ -1,6 +1,6 @@
 import Settings from '@/components/Storage/Settings';
-import type { SidebarStateShape } from '@/components/state/domain-types';
 import { useNotification } from '@/components/ui/Notification';
+import type { SidebarStateShape } from '@/types/domain-types';
 import { act, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useSettingsSync } from './SettingsSync';

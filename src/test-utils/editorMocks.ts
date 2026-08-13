@@ -8,8 +8,8 @@ import type {
   ShouldScrollRef,
   TextareaRef,
 } from '@/components/App/Views/EditorArea/types';
-import type { PendingDiff, Tab, TabStateShape } from '@/components/state/domain-types';
 import type { Draft, StateStore } from '@/components/state/types';
+import type { PendingDiff, Tab, TabStateShape } from '@/types/domain-types';
 import type { NavigationTarget, SourceLocation } from '@/utils/navigation/types';
 import type { KeyboardEvent } from 'react';
 import { type Mock, vi } from 'vitest';

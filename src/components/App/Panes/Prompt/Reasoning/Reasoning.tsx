@@ -1,8 +1,8 @@
 import Node from '@/components/state/Node';
-import type { AgentSessionMessage } from '@/components/state/domain-types';
 import { Icons } from '@/components/ui/Icons';
 import ToolbarButton from '@/components/ui/ToolbarButton';
 import Tooltip from '@/components/ui/Tooltip';
+import type { AgentSessionMessage } from '@/types/domain-types';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { requireStore } from '../../../types';

@@ -1,9 +1,9 @@
 import { AppState } from '@/components/App/AppState';
 import Node from '@/components/state/Node';
 import { createState } from '@/components/state/State';
-import type { TooltipStateShape } from '@/components/state/domain-types';
 import { DIALOG_FOCUS_RESTORED_EVENT } from '@/components/ui/focusRestore';
 import type { TooltipProps } from '@/components/ui/types';
+import type { TooltipStateShape } from '@/types/domain-types';
 import { useShouldShowKeyboardShortcuts } from '@/utils/keyboard';
 import React, { useCallback, useEffect, useLayoutEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';

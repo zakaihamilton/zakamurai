@@ -1,6 +1,6 @@
 import type { NormalizedTreeNode } from '@/components/App/types';
 import type { FlatTreeRow } from '@/components/App/types';
-import type { TreeNode } from '@/components/state/domain-types';
+import type { TreeNode } from '@/types/domain-types';
 
 /** Cast partial tree fixture data for unit tests. */
 export function asTreeNode(value: Partial<TreeNode> & Record<string, unknown>): TreeNode {

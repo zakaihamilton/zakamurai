@@ -1,6 +1,6 @@
 import { EditorState } from '@/components/App/Views/EditorArea';
 import { useFileSystem } from '@/components/Storage';
-import type { WorkspaceSkippedFile } from '@/components/state/domain-types';
+import type { WorkspaceSkippedFile } from '@/types/domain-types';
 import {
   WorkspaceIndexController,
   hashContent,

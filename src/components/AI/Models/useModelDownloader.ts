@@ -1,5 +1,5 @@
-import type { PromptUiStateShape } from '@/components/state/domain-types';
 import type { StateStore } from '@/components/state/types';
+import type { PromptUiStateShape } from '@/types/domain-types';
 import { useCallback, useRef } from 'react';
 import type { ModelOption } from './model-types';
 

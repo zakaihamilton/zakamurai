@@ -1,6 +1,6 @@
 import { EditorState } from '@/components/App/Views/EditorArea';
 import Settings from '@/components/Storage/Settings';
-import type { PendingDiff } from '@/components/state/domain-types';
+import type { PendingDiff } from '@/types/domain-types';
 import { useEffect } from 'react';
 
 let skipNextEditorBufferFlush = false;

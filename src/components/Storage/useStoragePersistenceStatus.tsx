@@ -6,9 +6,9 @@ import {
   storageFailureMessage,
   storageHealthMessage,
 } from '@/components/Storage/StorageHealth';
-import type { StorageHealthStateShape } from '@/components/state/domain-types';
 import type { Draft } from '@/components/state/types';
 import { useNotification } from '@/components/ui/Notification';
+import type { StorageHealthStateShape } from '@/types/domain-types';
 import { useCallback, useRef } from 'react';
 
 const SAVE_FAIL_MESSAGE =

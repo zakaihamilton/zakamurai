@@ -1,8 +1,8 @@
 import { TabState } from '@/components/App/Panes/TabBar';
 import { EditorState } from '@/components/App/Views/EditorArea';
-import type { NavigationHistory } from '@/components/state/domain-types';
 import { Icons } from '@/components/ui/Icons';
 import Tooltip from '@/components/ui/Tooltip';
+import type { NavigationHistory } from '@/types/domain-types';
 import { formatShortcut } from '@/utils/os';
 import { useEffect, useRef, useState } from 'react';
 import { requireStore } from '../../../types';
@@ -78,7 +78,7 @@ export default function NavigationControls() {
     editorState((draft) => {
       draft.cursorPos = {
         ...(draft.cursorPos || {}),
-        [targetPath]: targetLoc as import('@/components/state/domain-types').CursorPosition,
+        [targetPath]: targetLoc as import('@/types/domain-types').CursorPosition,
       };
       draft.shouldScrollTo = {
         filePath: targetPath,

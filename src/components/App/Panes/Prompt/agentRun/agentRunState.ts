@@ -1,11 +1,11 @@
 import type { WebLLMGenerationMetrics, WebLLMRecoveryEvent } from '@/components/AI/types';
+import type { StateStore } from '@/components/state/types';
 import type {
   AgentReasoningEntry,
   AgentRunUsage,
   AgentSession,
   LogStateShape,
-} from '@/components/state/domain-types';
-import type { StateStore } from '@/components/state/types';
+} from '@/types/domain-types';
 import { MAX_REASONING_EVENTS, clipReasoningStepIO, createAgentRunUsage } from '../AgentSessions';
 
 type PatchSession = (sessionId: string, patch: Partial<AgentSession>) => void;

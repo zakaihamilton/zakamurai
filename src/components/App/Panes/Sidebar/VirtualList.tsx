@@ -1,6 +1,6 @@
 import Node from '@/components/state/Node';
 import { createState } from '@/components/state/State';
-import type { VirtualListStateShape } from '@/components/state/domain-types';
+import type { VirtualListStateShape } from '@/types/domain-types';
 import React, { useCallback, useLayoutEffect, useMemo, useRef } from 'react';
 import { requireStore } from '../../types';
 import styles from './VirtualList.module.css';

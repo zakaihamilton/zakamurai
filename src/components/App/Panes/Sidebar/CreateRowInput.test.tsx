@@ -1,7 +1,7 @@
 import type { SidebarCreateRow } from '@/components/App/Panes/Sidebar/sidebar-types';
-import type { TreeItemStateShape } from '@/components/state/domain-types';
 import { createMockStateStore } from '@/test-utils/stateMocks';
 import { makeFlatTreeRow, makeNormalizedTreeNode } from '@/test-utils/treeMocks';
+import type { TreeItemStateShape } from '@/types/domain-types';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import CreateRowInput from './CreateRowInput';

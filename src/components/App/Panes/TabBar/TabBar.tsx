@@ -1,13 +1,9 @@
 import { SidebarState } from '@/components/App/Panes/Sidebar';
 import { createState } from '@/components/state/State';
-import type {
-  SidebarStateShape,
-  TabBarUiStateShape,
-  TabStateShape,
-} from '@/components/state/domain-types';
 import type { StateStore } from '@/components/state/types';
 import { Icons } from '@/components/ui/Icons';
 import Tooltip from '@/components/ui/Tooltip';
+import type { SidebarStateShape, TabBarUiStateShape, TabStateShape } from '@/types/domain-types';
 import type React from 'react';
 import { useRef, useState } from 'react';
 import { requireStore } from '../../types';

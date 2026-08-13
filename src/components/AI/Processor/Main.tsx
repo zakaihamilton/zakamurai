@@ -9,8 +9,8 @@ import type {
   StateHandle,
   TabState,
 } from '@/components/AI/types';
+import { setInDraft, updateInDraft } from '@/utils/StateUtils';
 import { formatCode } from '@/utils/formatter';
-import { setInDraft, updateInDraft } from '../../state/StateUtils';
 import { ensureFileInTree } from '../Agent/Applier';
 import { validateAIChangesAsync } from '../ChangeValidator';
 import { applyFileUpdate, computeDiff } from './utils/Applier';

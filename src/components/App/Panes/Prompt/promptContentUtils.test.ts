@@ -1,4 +1,4 @@
-import type { AgentSession } from '@/components/state/domain-types';
+import type { AgentSession } from '@/types/domain-types';
 import { describe, expect, it } from 'vitest';
 import { getAgentPaneContent } from './promptContentUtils';
 

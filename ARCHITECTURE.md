@@ -11,7 +11,7 @@
 | **Node** | `src/components/state/Node.tsx` | Spatial hierarchy mirroring the React tree. Stores attach to nodes. |
 | **Object** | `src/components/state/Object.ts` | Proxy wrapper; mutations notify subscribers (microtask-batched). |
 | **State** | `src/components/state/State.tsx` | `createState(displayName)` factory → component + hooks. |
-| **StateUtils** | `src/components/state/StateUtils.tsx` | `setInDraft`, `updateInDraft`, `deleteInDraft`, `remapKeysInDraft`, `deleteKeysWithPrefixInDraft`. |
+| **StateUtils** | `src/utils/StateUtils.ts` | `setInDraft`, `updateInDraft`, `deleteInDraft`, `remapKeysInDraft`, `deleteKeysWithPrefixInDraft`. |
 
 Domain stores (`AppState`, `EditorState`, …) are **bootstrapped in `App.tsx` on the root node** via `XState.useState(null, initial)`. Per-file UI stores pass `initial` under `<Node id={filePath}>` so they are scoped to that node.
 

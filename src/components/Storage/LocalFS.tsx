@@ -1,7 +1,7 @@
 import type { FileSystemApi } from '@/components/App/types';
 import { createState } from '@/components/state/State';
-import type { FileSystemStateShape } from '@/components/state/domain-types';
 import type { Draft } from '@/components/state/types';
+import type { FileSystemStateShape } from '@/types/domain-types';
 import { useCallback, useEffect, useMemo } from 'react';
 import { clearHandle, loadHandle, saveHandle, withTimeout } from './LocalFSPersistence';
 export const FileSystemState = createState<FileSystemStateShape>('FileSystemState');

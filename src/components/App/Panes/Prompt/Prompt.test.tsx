@@ -4,7 +4,6 @@ import { SidebarState } from '@/components/App/Panes/Sidebar';
 import { TabState } from '@/components/App/Panes/TabBar';
 import { EditorState } from '@/components/App/Views/EditorArea';
 import { LogState } from '@/components/App/Views/LogArea';
-import type { AgentSessionStateShape, TreeNode } from '@/components/state/domain-types';
 import { expectAgentSession } from '@/test-utils/agentSessionMocks';
 import {
   makeAppState,
@@ -16,6 +15,7 @@ import {
   makeTabState,
   makeWorkspaceHealthState,
 } from '@/test-utils/stateMocks';
+import type { AgentSessionStateShape, TreeNode } from '@/types/domain-types';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import React from 'react';
 import type { ReactElement, ReactNode } from 'react';

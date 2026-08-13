@@ -6,7 +6,7 @@ import type {
   AgentSession,
   AgentSessionMessage,
   AgentSessionStateShape,
-} from '@/components/state/domain-types';
+} from '@/types/domain-types';
 
 export const MAX_AGENT_SESSIONS = 50;
 export const MAX_SESSION_MESSAGES = 40;

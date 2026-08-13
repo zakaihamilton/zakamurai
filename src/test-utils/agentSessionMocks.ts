@@ -1,4 +1,4 @@
-import type { AgentSession, AgentSessionStateShape } from '@/components/state/domain-types';
+import type { AgentSession, AgentSessionStateShape } from '@/types/domain-types';
 
 /** Build a minimal AgentSession fixture for tests. */
 export function makeAgentSession(overrides: Partial<AgentSession> = {}): AgentSession {

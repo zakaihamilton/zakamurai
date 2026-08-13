@@ -1,6 +1,6 @@
 import { createState } from '@/components/state/State';
-import type { NotificationItem, NotificationStateShape } from '@/components/state/domain-types';
 import { Icons } from '@/components/ui/Icons';
+import type { NotificationItem, NotificationStateShape } from '@/types/domain-types';
 import { useCallback, useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import styles from './Notification.module.css';

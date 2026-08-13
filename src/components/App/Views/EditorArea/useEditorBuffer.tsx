@@ -1,6 +1,6 @@
 import { DEFAULT_CONTENTS, SCRATCH_CONTENTS } from '@/components/Storage/InitialData';
 import Settings from '@/components/Storage/Settings';
-import type { EditorAreaUiStateShape } from '@/components/state/domain-types';
+import type { EditorAreaUiStateShape } from '@/types/domain-types';
 import { formatCode } from '@/utils/formatter';
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 import useCodeFolding from './CodeFolding';

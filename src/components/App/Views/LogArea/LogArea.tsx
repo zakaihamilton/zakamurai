@@ -1,5 +1,5 @@
 import { createState } from '@/components/state/State';
-import type { LogAreaUiStateShape, LogStateShape } from '@/components/state/domain-types';
+import type { LogAreaUiStateShape, LogStateShape } from '@/types/domain-types';
 import { useEffect, useRef } from 'react';
 import { requireStore } from '../../types';
 import LogList from './List';

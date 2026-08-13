@@ -1,8 +1,8 @@
 import { SidebarState } from '@/components/App/Panes/Sidebar';
-import type { Tab } from '@/components/state/domain-types';
 import { requireElement } from '@/test-utils/domMocks';
 import { createMockTab } from '@/test-utils/editorMocks';
 import { makeSidebarState, makeTabState } from '@/test-utils/stateMocks';
+import type { Tab } from '@/types/domain-types';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';

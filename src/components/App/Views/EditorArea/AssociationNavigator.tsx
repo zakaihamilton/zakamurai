@@ -1,4 +1,4 @@
-import type { CursorPosition } from '@/components/state/domain-types';
+import type { CursorPosition } from '@/types/domain-types';
 import {
   findClassInCss,
   findClassReferenceInJs,

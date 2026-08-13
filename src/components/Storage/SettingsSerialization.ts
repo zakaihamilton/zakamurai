@@ -1,4 +1,4 @@
-import type { PendingDiff, Tab } from '@/components/state/domain-types';
+import type { PendingDiff, Tab } from '@/types/domain-types';
 
 export function parseStoredJson<T>(value: unknown, fallback: T): T {
   if (value == null || value === '') return fallback;

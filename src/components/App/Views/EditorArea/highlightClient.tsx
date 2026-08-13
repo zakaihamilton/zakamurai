@@ -3,7 +3,7 @@
  * Falls back to synchronous highlightCode when Workers are unavailable.
  */
 
-import type { CursorPosition } from '@/components/state/domain-types';
+import type { CursorPosition } from '@/types/domain-types';
 import highlighterStyles from './Highlighter.module.css';
 import { highlightCode } from './highlighter';
 import type {

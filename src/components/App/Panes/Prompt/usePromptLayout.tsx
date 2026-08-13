@@ -1,4 +1,4 @@
-import type { PromptUiStateShape } from '@/components/state/domain-types';
+import type { PromptUiStateShape } from '@/types/domain-types';
 import { useCallback, useEffect } from 'react';
 import type { UsePromptLayoutParams, UsePromptLayoutResult } from './prompt-types';
 

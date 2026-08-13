@@ -1,6 +1,6 @@
 import { reportDiagnostic } from '@/components/Diagnostics';
-import type { ChangeSet, LogEntry, PendingDiff, Tab } from '@/components/state/domain-types';
 import { isStringRecord, normalizeRecoveryCheckpoint } from '@/contracts/runtime';
+import type { ChangeSet, LogEntry, PendingDiff, Tab } from '@/types/domain-types';
 import { createLargePersistence } from './SettingsLargePersistence';
 import {
   MAX_RECOVERY_CHECKPOINTS,

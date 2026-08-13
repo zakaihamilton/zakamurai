@@ -1,5 +1,5 @@
 import { createState } from '@/components/state/State';
-import type { TreeItemStateShape } from '@/components/state/domain-types';
+import type { TreeItemStateShape } from '@/types/domain-types';
 import { useLongPress } from '@/utils/touch';
 import { type TouchEvent as ReactTouchEvent, useEffect, useRef } from 'react';
 import { requireStore } from '../../types';

@@ -1,11 +1,11 @@
 import type { ExtendedEditorState } from '@/components/App/Views/EditorArea/types';
+import type { StateStore } from '@/components/state/types';
 import type {
   PromptUiStateShape,
   SidebarStateShape,
   TabStateShape,
   TreeNode,
-} from '@/components/state/domain-types';
-import type { StateStore } from '@/components/state/types';
+} from '@/types/domain-types';
 import { useCallback, useState } from 'react';
 import type { ChangeEvent, FormEvent, KeyboardEvent, MouseEvent } from 'react';
 import { parseFileCommand } from './filePrompt';

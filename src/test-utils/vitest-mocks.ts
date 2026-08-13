@@ -1,5 +1,5 @@
-import type { ChangeSetStateShape, FileSystemStateShape } from '@/components/state/domain-types';
 import type { Draft, StateStore } from '@/components/state/types';
+import type { ChangeSetStateShape, FileSystemStateShape } from '@/types/domain-types';
 import type { Mock } from 'vitest';
 import { vi } from 'vitest';
 

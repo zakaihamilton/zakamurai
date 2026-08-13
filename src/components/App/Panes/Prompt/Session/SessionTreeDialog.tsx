@@ -1,6 +1,6 @@
-import type { AgentSession } from '@/components/state/domain-types';
 import Dialog from '@/components/ui/Dialog';
 import { Icons } from '@/components/ui/Icons';
+import type { AgentSession } from '@/types/domain-types';
 import { useEffect, useMemo, useState } from 'react';
 import { getAgentSessionChildren } from '../AgentSessions';
 import type { SessionTreeDialogProps } from '../prompt-types';

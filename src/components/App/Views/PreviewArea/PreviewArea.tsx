@@ -1,7 +1,7 @@
 'use client';
 
 import { createState } from '@/components/state/State';
-import type { PreviewAreaUiStateShape } from '@/components/state/domain-types';
+import type { PreviewAreaUiStateShape } from '@/types/domain-types';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { PreviewState } from '../../PreviewState';
 import { requireStore } from '../../types';

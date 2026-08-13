@@ -4,7 +4,7 @@ import {
 } from '@/components/AI/WebLLMModels';
 import Settings from '@/components/Storage/Settings';
 import { createState } from '@/components/state/State';
-import type { PromptStateShape, PromptUiStateShape } from '@/components/state/domain-types';
+import type { PromptStateShape, PromptUiStateShape } from '@/types/domain-types';
 
 export const PromptState = createState<PromptStateShape>('PromptState');
 export const PromptUiState = createState<PromptUiStateShape>('PromptUiState');

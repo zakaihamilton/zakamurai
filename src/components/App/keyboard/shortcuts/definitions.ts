@@ -1,5 +1,5 @@
 import type { ShortcutDefinition } from '@/components/App/types';
-import { deleteKeysWithPrefixInDraft } from '@/components/state/StateUtils';
+import { deleteKeysWithPrefixInDraft } from '@/utils/StateUtils';
 import {
   navigateBackAction,
   navigateForwardAction,

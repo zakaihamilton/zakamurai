@@ -1,6 +1,6 @@
 import type { FileSystemApi, FlatTreeRow, NormalizedTreeNode } from '@/components/App/types';
-import type { SidebarStateShape, SidebarUiStateShape } from '@/components/state/domain-types';
 import type { StateStore } from '@/components/state/types';
+import type { SidebarStateShape, SidebarUiStateShape } from '@/types/domain-types';
 import type {
   CSSProperties,
   ChangeEvent,

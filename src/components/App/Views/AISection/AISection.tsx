@@ -10,7 +10,7 @@ import {
 import { PromptUiState } from '@/components/App/Panes/Prompt/PromptState';
 import { requireStore } from '@/components/App/types';
 import { ChangeSetState } from '@/components/Workspace';
-import type { AgentReasoningEntry, AgentRunUsage, Tab } from '@/components/state/domain-types';
+import type { AgentReasoningEntry, AgentRunUsage, Tab } from '@/types/domain-types';
 import { useEffect, useRef, useState } from 'react';
 import styles from './AISection.module.css';
 import AISectionChanges from './AISectionChanges';

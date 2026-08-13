@@ -1,4 +1,5 @@
 import type { ExtendedEditorState } from '@/components/App/Views/EditorArea/types';
+import type { StateStore } from '@/components/state/types';
 import type {
   AgentSession,
   AgentSessionMessage,
@@ -15,8 +16,7 @@ import type {
   Tab,
   TabStateShape,
   TreeNode,
-} from '@/components/state/domain-types';
-import type { StateStore } from '@/components/state/types';
+} from '@/types/domain-types';
 import type { LocalFsLike } from '@/utils/compiler/types';
 import type { CSSProperties, Dispatch, SetStateAction } from 'react';
 
@@ -101,7 +101,7 @@ export type InitialAppValues = {
   tabs: Tab[];
   activeTabId: string | null;
   lastCodeTabId: string | null;
-  aiLogs: import('@/components/state/domain-types').LogEntry[];
+  aiLogs: import('@/types/domain-types').LogEntry[];
   sidebarWidth: number;
   promptWidth: number;
   isSidebarOpen: boolean;
@@ -112,9 +112,9 @@ export type InitialAppValues = {
   promptHistory: string[];
   previewHtml: string | null;
   pendingDiffs: Record<string, PendingDiff>;
-  pendingDeletions: import('@/components/state/domain-types').EditorStateShape['pendingDeletions'];
+  pendingDeletions: import('@/types/domain-types').EditorStateShape['pendingDeletions'];
   agentSessions: AgentSessionStateShape;
-  workspaceProfile: Partial<import('@/components/state/domain-types').WorkspaceProfileStateShape>;
+  workspaceProfile: Partial<import('@/types/domain-types').WorkspaceProfileStateShape>;
   changeSets: ChangeSetStateShape;
 };
 

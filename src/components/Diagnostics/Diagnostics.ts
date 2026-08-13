@@ -1,9 +1,11 @@
 import { createState } from '@/components/state/State';
-import type { DiagnosticsStateShape } from '@/components/state/domain-types';
-import type { LogEntry } from '@/components/state/domain-types';
-import type { StorageHealthStateShape } from '@/components/state/domain-types';
 import type { StateStore } from '@/components/state/types';
 import { normalizeDiagnosticEvent, redactDiagnosticText } from '@/contracts/runtime';
+import type {
+  DiagnosticsStateShape,
+  LogEntry,
+  StorageHealthStateShape,
+} from '@/types/domain-types';
 
 const MAX_DIAGNOSTICS = 200;
 

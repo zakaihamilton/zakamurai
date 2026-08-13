@@ -1,6 +1,6 @@
-import type { AppStateShape, SidebarStateShape } from '@/components/state/domain-types';
 import type { StateStore } from '@/components/state/types';
 import { MOBILE_BREAKPOINT } from '@/constants/Layout';
+import type { AppStateShape, SidebarStateShape } from '@/types/domain-types';
 import { useEffect, useRef } from 'react';
 
 export function useWindowResize(

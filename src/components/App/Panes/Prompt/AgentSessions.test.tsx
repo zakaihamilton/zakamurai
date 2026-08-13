@@ -1,14 +1,14 @@
 import type { CreateAgentSessionOptions } from '@/components/App/types';
-import type {
-  AgentSession,
-  AgentSessionMessage,
-  AgentSessionStateShape,
-} from '@/components/state/domain-types';
 import {
   expectAgentSession,
   requireActiveSession,
   requireSessionId,
 } from '@/test-utils/agentSessionMocks';
+import type {
+  AgentSession,
+  AgentSessionMessage,
+  AgentSessionStateShape,
+} from '@/types/domain-types';
 import { describe, expect, it } from 'vitest';
 import {
   MAX_AGENT_SESSIONS,

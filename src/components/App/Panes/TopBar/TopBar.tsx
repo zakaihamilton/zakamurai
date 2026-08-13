@@ -19,10 +19,10 @@ import {
 import Settings from '@/components/Storage/Settings';
 import { STORAGE_RECOVERY_EVENT } from '@/components/Storage/StorageHealth';
 import { ChangeSetState } from '@/components/Workspace';
-import { setInDraft } from '@/components/state/StateUtils';
 import Dialog from '@/components/ui/Dialog';
 import { Icons } from '@/components/ui/Icons';
 import Tooltip from '@/components/ui/Tooltip';
+import { setInDraft } from '@/utils/StateUtils';
 import { formatShortcut } from '@/utils/os';
 import { useEffect } from 'react';
 import { requireStore } from '../../types';
@@ -58,7 +58,7 @@ export function resetNewProjectState({
     draft.projectName = Settings.getProjectName() || '';
   });
   sidebarState((draft) => {
-    draft.folderTree = initialFiles as import('@/components/state/domain-types').TreeNode[];
+    draft.folderTree = initialFiles as import('@/types/domain-types').TreeNode[];
     draft.expandedFolders = {};
   });
   tabState((draft) => {

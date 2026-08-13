@@ -1,4 +1,4 @@
-import type { LogEntry } from '@/components/state/domain-types';
+import type { LogEntry } from '@/types/domain-types';
 import type { ChangeEvent } from 'react';
 
 export type VisibleLogEntry = {

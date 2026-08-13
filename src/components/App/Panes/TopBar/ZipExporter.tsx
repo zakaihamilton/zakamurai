@@ -2,7 +2,7 @@ import { AppState } from '@/components/App/AppState';
 import { SidebarState } from '@/components/App/Panes/Sidebar';
 import { EditorState } from '@/components/App/Views/EditorArea';
 import { useFileSystem } from '@/components/Storage';
-import type { TreeNode } from '@/components/state/domain-types';
+import type { TreeNode } from '@/types/domain-types';
 import { ZipWriter } from '@/utils/zip';
 import { useCallback, useState } from 'react';
 import { requireStore } from '../../types';

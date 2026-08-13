@@ -1,6 +1,6 @@
 import type { FlatTreeRow } from '@/components/App/types';
-import type { SidebarStateShape } from '@/components/state/domain-types';
 import type { Draft } from '@/components/state/types';
+import type { SidebarStateShape } from '@/types/domain-types';
 import { useCallback } from 'react';
 import { getPathStr } from './TreeUtils';
 import type { UseSidebarDragAndDropParams } from './sidebar-types';

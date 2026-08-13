@@ -3,8 +3,8 @@ import { removeNodeAtPath } from '@/components/App/Panes/Sidebar/TreeUtils';
 import { TabState } from '@/components/App/Panes/TabBar';
 import Settings from '@/components/Storage/Settings';
 import { ChangeSetState, updateChangeSetFile } from '@/components/Workspace';
-import { deleteKeysWithPrefixInDraft, setInDraft } from '@/components/state/StateUtils';
-import type { CursorPosition } from '@/components/state/domain-types';
+import type { CursorPosition } from '@/types/domain-types';
+import { deleteKeysWithPrefixInDraft, setInDraft } from '@/utils/StateUtils';
 import { useCallback, useEffect, useRef } from 'react';
 import type { DiffActions, DiffHandlerProps, PendingDeletionEntry } from './types';
 

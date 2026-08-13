@@ -3,6 +3,7 @@ import type { ModelOption, ModelSelectOption } from '@/components/AI/Models/mode
 import type { AgentEvent, FileMap } from '@/components/AI/types';
 import type { ExtendedEditorState } from '@/components/App/Views/EditorArea/types';
 import type { FileSystemApi } from '@/components/App/types';
+import type { StateStore } from '@/components/state/types';
 import type {
   AgentSession,
   AgentSessionMessage,
@@ -11,8 +12,7 @@ import type {
   PromptUiStateShape,
   SidebarStateShape,
   TabStateShape,
-} from '@/components/state/domain-types';
-import type { StateStore } from '@/components/state/types';
+} from '@/types/domain-types';
 import type { ChangeEvent, FormEvent, KeyboardEvent } from 'react';
 
 export type WelcomeRequest = {
@@ -177,7 +177,7 @@ export type UseAgentRunnerParams = {
   sidebarState: StateStore<SidebarStateShape>;
   logState: StateStore<LogStateShape>;
   cachedModelIds?: string[];
-  webLLMEngines?: Record<string, import('@/components/state/domain-types').WebLLMEngineState>;
+  webLLMEngines?: Record<string, import('@/types/domain-types').WebLLMEngineState>;
   styleProfile?: import('@/components/AI/Agent/ProjectStyleProfile').ProjectStyleProfile;
 };
 
