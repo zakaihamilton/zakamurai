@@ -334,6 +334,45 @@ export default function App() {
 `;
     expect(validateRequestFulfillment('src/App.jsx', playable, 'create a notes app')).toBeNull();
     expect(
+      validateRequestFulfillment(
+        'src/App.jsx',
+        `import { useState } from "react";
+import styles from "./App.module.css";
+export default function App() {
+  const [todoItems, setTodoItems] = useState([]);
+  const [newTodo, setNewTodo] = useState("");
+  const handleAddTodo = () => {
+    if (newTodo.trim() === "") return;
+    setTodoItems([...todoItems, newTodo]);
+    setNewTodo("");
+  };
+  const handleDeleteTodo = (index) => {
+    const updatedItems = [...todoItems];
+    updatedItems.splice(index, 1);
+    setTodoItems(updatedItems);
+  };
+  return (
+    <div className={styles.container}>
+      <h1 className={styles.title}>Todo App</h1>
+      <input className={styles.control} value={newTodo} onChange={(e) => setNewTodo(e.target.value)} />
+      <button type="button" className={styles.primaryAction} onClick={handleAddTodo}>Add</button>
+      <ul className={styles.list}>
+        {todoItems.map((item, index) => (
+          <li key={index} className={styles.item}>
+            {item}
+            <button type="button" className={styles.dangerAction} onClick={() => handleDeleteTodo(index)}>
+              Delete
+            </button>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}`,
+        'build a todo app',
+      ),
+    ).toBeNull();
+    expect(
       workspaceFulfillsInteractiveRequest(
         { 'src/App.jsx': playable, 'src/App.module.css': '.app { display: grid; }\n' },
         'create a notes app',

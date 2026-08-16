@@ -66,6 +66,8 @@ describe('responsive generation scope', () => {
     });
 
     expect(messages[1].content).toContain('<button type="button">');
+    expect(messages[1].content).toContain('mapped root element itself has onClick');
+    expect(messages[1].content).toContain('Nested controls inside a <li>');
     expect(messages[1].content).toContain('do not repeat the failed JSX unchanged');
   });
 

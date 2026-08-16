@@ -417,8 +417,10 @@ export function validateRequestFulfillment(
     return `Generated content for ${path} blocks an interactive turn for every value except a hard-coded player or turn. Allow each active turn to act, or implement an explicit opponent rule without silently disabling the other values.`;
   }
 
+  // Only the mapped root opening tag matters. Nested delete/toggle buttons inside
+  // <li>/<div> are valid; a bare <div onClick> cell is not.
   const mappedClickableElement =
-    /\.map\s*\(\s*(?:\([^)]*\)|[A-Za-z_$][\w$]*)\s*=>\s*(?:\(\s*)?<([a-z][\w.-]*)\b([\s\S]*?)\bonClick\s*=/i.exec(
+    /\.map\s*\(\s*(?:\([^)]*\)|[A-Za-z_$][\w$]*)\s*=>\s*(?:\(\s*)?<([a-z][\w.-]*)\b([^>]*?)\bonClick\s*=/i.exec(
       content,
     );
   if (

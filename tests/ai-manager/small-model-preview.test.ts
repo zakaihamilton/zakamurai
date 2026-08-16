@@ -351,6 +351,90 @@ export default function App() {
     expect(tools.calls.map((call) => call.tool)).toContain('validate');
   });
 
+  it('accepts a todo list with nested delete buttons inside mapped list items', async () => {
+    const model = 'Qwen2.5-Coder-1.5B-Instruct-q4f16_1-MLC';
+    const source = `import { useState } from 'react';
+import styles from './App.module.css';
+
+export default function App() {
+  const [todoItems, setTodoItems] = useState([]);
+  const [newTodo, setNewTodo] = useState('');
+  const handleAddTodo = () => {
+    if (newTodo.trim() === '') return;
+    setTodoItems([...todoItems, newTodo]);
+    setNewTodo('');
+  };
+  const handleDeleteTodo = (index) => {
+    const updatedItems = [...todoItems];
+    updatedItems.splice(index, 1);
+    setTodoItems(updatedItems);
+  };
+  return (
+    <div className={styles.shell}>
+      <h1 className={styles.title}>Todo App</h1>
+      <input className={styles.control} value={newTodo} onChange={(event) => setNewTodo(event.target.value)} placeholder="Add a new todo" />
+      <button type="button" className={styles.primaryAction} onClick={handleAddTodo}>Add</button>
+      <ul className={styles.list}>
+        {todoItems.map((item, index) => (
+          <li key={index} className={styles.item}>
+            {item}
+            <button type="button" className={styles.dangerAction} onClick={() => handleDeleteTodo(index)}>
+              Delete
+            </button>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}`;
+    const modelClient = createFakeModel([
+      fence(source),
+      '{"action":"finish","summary":"Created todo app"}',
+    ]);
+    const tools = createFakeTools({
+      validation: [{ status: 'passed', check: 'build' }],
+      previews: [
+        {
+          status: 'passed',
+          title: 'Todo App',
+          elements: ['h1: Todo App', 'input: Add a new todo', 'button: Add', 'button: Delete'],
+          screenshotCaptured: true,
+          styleAudit: {
+            horizontalOverflow: false,
+            collapsedControls: [],
+            missingExplicitColors: [],
+            contrastFailures: [],
+            unnamedControls: [],
+            missingFocusVisible: false,
+            issues: [],
+          },
+        },
+      ],
+    });
+
+    const result = await runManager({
+      request: 'build a todo app',
+      files: {
+        'src/App.jsx':
+          'import AnimatedCard from "./components/AnimatedCard";\nimport styles from "./App.module.css";\nexport default function App() { return <div className={styles.container}><AnimatedCard /></div>; }',
+        'src/App.module.css': '.container { min-height: 100vh; }',
+        'src/components/AnimatedCard.jsx':
+          'export default function AnimatedCard() { return null; }',
+      },
+      activeFile: 'src/App.jsx',
+      model,
+      modelClient: modelClient.client,
+      validate: tools.validate,
+      inspectPreview: tools.inspectPreview,
+    });
+
+    expect(result.trace.outcome).toBe('success');
+    expect(modelClient.calls.length).toBeLessThanOrEqual(2);
+    expect(result.files['src/App.jsx']).toContain('handleDeleteTodo');
+    expect(result.files['src/App.jsx']).toContain('<li');
+    expect(workspaceFulfillsInteractiveRequest(result.files, 'build a todo app')).toBeNull();
+  });
+
   it('narrows demanding architecture prompts on recovery models but still finishes a single-file preview', async () => {
     const model = 'Qwen3.5-0.8B-q4f16_1-MLC';
     const events: Array<{ message?: string }> = [];

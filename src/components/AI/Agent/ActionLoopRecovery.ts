@@ -627,7 +627,7 @@ export const buildRepairFileMessages = ({
   ].join('\n');
   const mappedClickableRepairGuidance =
     /non-interactive element as a clickable collection item/i.test(diagnostic)
-      ? 'Specific structural fix: every item returned from a .map() that has onClick must be a <button type="button">, not a <div> or <span>. Preserve the item content and handler, move the existing className to the button, and return the entire file changed; do not repeat the failed JSX unchanged.'
+      ? 'Specific structural fix: if the mapped root element itself has onClick (for example a board cell), make that element a <button type="button">. Nested controls inside a <li> or row (delete, toggle, checkbox) are already fine — do not rewrite those list items into buttons. Return the entire file changed; do not repeat the failed JSX unchanged.'
       : null;
   return [
     {
