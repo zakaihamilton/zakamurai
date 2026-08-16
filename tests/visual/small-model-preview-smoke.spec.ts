@@ -63,7 +63,10 @@ const SEEDED_FILES = {
     '{\n  "name": "small-model-notes",\n  "private": true,\n  "version": "0.1.0",\n  "type": "module",\n  "scripts": {\n    "dev": "vite",\n    "build": "vite build",\n    "preview": "vite preview"\n  },\n  "dependencies": {\n    "react": "^19.0.0",\n    "react-dom": "^19.0.0"\n  }\n}',
 };
 
-async function seedFileContents(page: import('@playwright/test').Page, files: Record<string, string>) {
+async function seedFileContents(
+  page: import('@playwright/test').Page,
+  files: Record<string, string>,
+) {
   await page.addInitScript((seed) => {
     const DB_NAME = 'zakamurai-project';
     const STORE_NAME = 'kv';
@@ -95,7 +98,9 @@ test.describe('small-model IDE preview smoke', () => {
     await expect(page.getByText('Initializing workspace...')).not.toBeVisible({ timeout: 60000 });
     await page.waitForSelector('[data-testid]', { state: 'visible', timeout: 30000 });
 
-    await expect(page.getByText('App.jsx', { exact: true }).first()).toBeVisible({ timeout: 30000 });
+    await expect(page.getByText('App.jsx', { exact: true }).first()).toBeVisible({
+      timeout: 30000,
+    });
     await page.getByTestId('compile-btn').filter({ visible: true }).click();
     await expect(page.getByTestId('preview-tab').filter({ visible: true })).toBeVisible({
       timeout: 120000,

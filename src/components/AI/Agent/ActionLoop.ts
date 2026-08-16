@@ -1521,7 +1521,7 @@ export async function runActionLoop({
             // Host assistance: omit validate between write and finish for small models.
             const validationResult = await runValidation(turn);
             if (isFailedValidationResult(validationResult)) {
-              const target =
+              const target: string =
                 forcedRecoveryTargetPath ||
                 recoveryWritePath(workspace.files, activeFile) ||
                 'src/App.jsx';

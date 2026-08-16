@@ -63,9 +63,7 @@ describe('WebLLMModels', () => {
       configurable: true,
       value: { deviceMemory: 2 },
     });
-    expect(getDeviceAppropriateDefaultModelId()).toBe(
-      'Qwen2.5-Coder-0.5B-Instruct-q4f16_1-MLC',
-    );
+    expect(getDeviceAppropriateDefaultModelId()).toBe('Qwen2.5-Coder-0.5B-Instruct-q4f16_1-MLC');
     Object.defineProperty(globalThis, 'navigator', {
       configurable: true,
       value: originalNavigator,
