@@ -281,6 +281,76 @@ describe('small-model preview prompts', () => {
     );
   });
 
+  it('finishes a responsive dashboard on the lightweight path without an extra validate turn', async () => {
+    const model = 'Qwen2.5-Coder-0.5B-Instruct-q4f16_1-MLC';
+    const source = `import styles from './App.module.css';
+
+export default function App() {
+  return (
+    <main className={styles.shell}>
+      <h1 className={styles.title}>Dashboard</h1>
+      <p className={styles.muted}>Overview of the latest activity across the workspace.</p>
+      <section className={styles.grid}>
+        <article className={styles.card}>
+          <h2 className={styles.subtitle}>Visitors</h2>
+          <p className={styles.status}>1,240</p>
+        </article>
+        <article className={styles.card}>
+          <h2 className={styles.subtitle}>Orders</h2>
+          <p className={styles.status}>86</p>
+        </article>
+        <article className={styles.card}>
+          <h2 className={styles.subtitle}>Revenue</h2>
+          <p className={styles.status}>$12.4k</p>
+        </article>
+      </section>
+    </main>
+  );
+}`;
+    const modelClient = createFakeModel([
+      fence(source),
+      '{"action":"finish","summary":"Created responsive dashboard"}',
+    ]);
+    const tools = createFakeTools({
+      validation: [{ status: 'passed', check: 'build' }],
+      previews: [
+        {
+          status: 'passed',
+          title: 'Dashboard',
+          elements: ['main: Dashboard', 'h1: Dashboard', 'h2: Visitors', 'h2: Orders'],
+          screenshotCaptured: true,
+          styleAudit: {
+            horizontalOverflow: false,
+            collapsedControls: [],
+            missingExplicitColors: [],
+            contrastFailures: [],
+            unnamedControls: [],
+            missingFocusVisible: false,
+            issues: [],
+          },
+        },
+      ],
+    });
+
+    const result = await runManager({
+      request: 'Create a responsive dashboard',
+      files: { 'src/App.jsx': 'export default function App() { return null; }' },
+      activeFile: 'src/App.jsx',
+      model,
+      modelClient: modelClient.client,
+      validate: tools.validate,
+      inspectPreview: tools.inspectPreview,
+    });
+
+    expect(result.trace.outcome).toBe('success');
+    // Fence write + one finish: host owns CSS, inspect_preview, and validate.
+    expect(modelClient.calls.length).toBeLessThanOrEqual(2);
+    expect(result.files['src/App.jsx']).toContain('Dashboard');
+    expect(result.files['src/App.module.css']).toMatch(/@media/);
+    expect(tools.calls.map((call) => call.tool)).toContain('inspect_preview');
+    expect(tools.calls.map((call) => call.tool)).toContain('validate');
+  });
+
   it('narrows demanding architecture prompts on recovery models but still finishes a single-file preview', async () => {
     const model = 'Qwen3.5-0.8B-q4f16_1-MLC';
     const events: Array<{ message?: string }> = [];

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   appendMissingCssModuleRules,
+  ensureCoLocatedCssModule,
   missingCssModuleRules,
   normalizeGeneratedInteractiveSource,
   normalizeSideEffectCssSource,
@@ -8,6 +9,7 @@ import {
   repairCssModuleStylesheet,
   rewriteInlineStylesToCssModule,
 } from './ActionLoopUtils';
+import { resolveProjectStyleProfile } from './ProjectStyleProfile';
 
 describe('generic CSS Module recovery', () => {
   it('completes a stylesheet rewrite with every class used by its importer', () => {
@@ -219,5 +221,33 @@ export default function App() {
     expect(normalized).not.toContain("currentPlayer !== 'X'");
     expect(normalized).toContain('const checkForWin = (newBoard = board)');
     expect(normalized).toContain('checkForWin(newBoard);');
+  });
+});
+
+describe('ensureCoLocatedCssModule', () => {
+  it('generates CSS for static dashboards that already bind a CSS Module', () => {
+    const source = `import styles from './App.module.css';
+
+export default function App() {
+  return (
+    <main className={styles.shell}>
+      <h1 className={styles.title}>Dashboard</h1>
+      <section className={styles.grid}>
+        <article className={styles.card}>
+          <h2 className={styles.subtitle}>Visitors</h2>
+          <p className={styles.status}>1,240</p>
+        </article>
+      </section>
+    </main>
+  );
+}`;
+    const profile = resolveProjectStyleProfile({
+      'src/App.jsx': source,
+      'package.json': '{"name":"app"}',
+    });
+    const ensured = ensureCoLocatedCssModule('src/App.jsx', source, profile);
+    expect(ensured?.stylesheetPath).toBe('src/App.module.css');
+    expect(ensured?.stylesheet).toMatch(/@media/);
+    expect(ensured?.stylesheet).toContain('.grid');
   });
 });

@@ -793,7 +793,8 @@ export async function runActionLoop({
       messages.push({ role: 'user', content: observation('css_recovery', true, message) });
       context.record('css_recovery', message);
       onEvent({ type: 'observation', turn, action, message, agentRole });
-      continue;
+      // Lightweight finish can proceed on the recovered workspace without another model turn.
+      if (!(lightweightModel && action.action === 'finish')) continue;
     }
     if (
       CHANGE_REQUEST_PATTERN.test(request) &&
@@ -1479,14 +1480,6 @@ export async function runActionLoop({
         if (previewInspectionRequired && (!inspectedPreview || !previewInspectionAccepted)) {
           if (!inspectedPreview && inspectPreview) {
             const previewResult = await inspectPreviewForLoop(turn);
-            messages.push({
-              role: 'user',
-              content: observation(
-                'inspect_preview',
-                previewInspectionAccepted,
-                `${previewResult}\nReview this preview evidence before choosing the next action.`,
-              ),
-            });
             onEvent({
               type: 'observation',
               turn,
@@ -1495,30 +1488,69 @@ export async function runActionLoop({
               message: previewResult,
               agentRole,
             });
+            // Lightweight: host-owned inspect — fall through to validate/finish.
+            if (!(lightweightModel && previewInspectionAccepted)) {
+              messages.push({
+                role: 'user',
+                content: observation(
+                  'inspect_preview',
+                  previewInspectionAccepted,
+                  previewInspectionAccepted
+                    ? `${previewResult}\nReview this preview evidence before choosing the next action.`
+                    : `${previewResult}\nThe preview is not ready for completion. Fix the rendered app or inspect it again before finishing.`,
+                ),
+              });
+              continue;
+            }
+          } else {
+            messages.push({
+              role: 'user',
+              content: observation(
+                'finish',
+                false,
+                previewInspectionAccepted
+                  ? 'Visual UI review requires action "inspect_preview" before finishing. Use its structured evidence to assess landmarks, named controls, runtime errors, and the visual brief.'
+                  : 'The previous preview inspection was insufficient. Do not finish. Wait for rendered DOM evidence and a captured screenshot, then inspect_preview again. If the preview remains empty or unstyled, write the necessary JSX/CSS fixes first.',
+              ),
+            });
             continue;
           }
-          messages.push({
-            role: 'user',
-            content: observation(
-              'finish',
-              false,
-              previewInspectionAccepted
-                ? 'Visual UI review requires action "inspect_preview" before finishing. Use its structured evidence to assess landmarks, named controls, runtime errors, and the visual brief.'
-                : 'The previous preview inspection was insufficient. Do not finish. Wait for rendered DOM evidence and a captured screenshot, then inspect_preview again. If the preview remains empty or unstyled, write the necessary JSX/CSS fixes first.',
-            ),
-          });
-          continue;
         }
         if (validationState.wroteSinceVerification && validate) {
-          messages.push({
-            role: 'user',
-            content: observation(
-              'finish',
-              false,
-              'Validate the staged edits by running action "validate" before finishing.',
-            ),
-          });
-          continue;
+          if (lightweightModel) {
+            // Host assistance: omit validate between write and finish for small models.
+            const validationResult = await runValidation(turn);
+            if (isFailedValidationResult(validationResult)) {
+              const target =
+                forcedRecoveryTargetPath ||
+                recoveryWritePath(workspace.files, activeFile) ||
+                'src/App.jsx';
+              forcedWriteRecoveryPending = true;
+              forcedRecoveryTargetPath = target;
+              const message = `${validationResult} Do not finish yet. Rewrite ${target} with a complete working implementation.`;
+              messages.push({ role: 'user', content: observation('finish', false, message) });
+              context.record('finish_failed_validation', message);
+              onEvent({
+                type: 'observation',
+                turn,
+                action,
+                error: true,
+                message,
+                agentRole,
+              });
+              continue;
+            }
+          } else {
+            messages.push({
+              role: 'user',
+              content: observation(
+                'finish',
+                false,
+                'Validate the staged edits by running action "validate" before finishing.',
+              ),
+            });
+            continue;
+          }
         }
         const missingStylesheets = [
           ...new Set(
