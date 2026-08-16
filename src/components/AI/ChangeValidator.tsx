@@ -251,6 +251,14 @@ export function validateGeneratedSourceShape(path: string, content: string): str
     return `Generated component ${path} contains ReactDOM bootstrap code. Return only the component source; keep createRoot/render in the existing entry file.`;
   }
 
+  if (/(?:<!DOCTYPE\s+html\b|<html[\s>])/i.test(content)) {
+    return `Generated component ${path} contains an HTML document. Return only the React component module source.`;
+  }
+
+  if (/<style\b/i.test(content)) {
+    return `Generated component ${path} contains a <style> tag. Move visual rules to the co-located CSS Module instead.`;
+  }
+
   if (
     /\b(?:const|let|var)\s+styles\s*=\s*\{[\s\S]*?\b(?:display|position|background(?:-color)?|color|padding|margin|width|height|min-height|border-radius)\s*:/.test(
       content,
@@ -261,6 +269,28 @@ export function validateGeneratedSourceShape(path: string, content: string): str
 
   if (/```/.test(content)) {
     return `Generated component ${path} contains a nested code fence. Return the complete source without markdown fences inside the file.`;
+  }
+
+  const defaultExports = content.match(/\bexport\s+default\b/g) || [];
+  if (defaultExports.length > 1) {
+    return `Generated component ${path} contains multiple default exports. Return exactly one default-exported component.`;
+  }
+
+  if (
+    isAppEntryPath(path) &&
+    /\bdocument\.(?:getElementById|querySelector|querySelectorAll)\s*\(/.test(content)
+  ) {
+    return `Generated component ${path} queries the document DOM directly. Return component JSX only; keep DOM mounting in the existing entry file.`;
+  }
+
+  const trimmed = content.trimEnd();
+  if (
+    /(?:\.\.\.|…)\s*$/.test(trimmed) ||
+    /(?:\/\/\s*(?:TODO|FIXME|implementation goes here)|\/\*\s*(?:TODO|FIXME)\b)[^\n]*$/i.test(
+      trimmed,
+    )
+  ) {
+    return `Generated content for ${path} looks truncated or unfinished. Return the complete working source file.`;
   }
 
   return null;

@@ -386,6 +386,24 @@ export type ModelCapabilityProfile = {
   filesPerGeneration: 1;
   supportsAllTaskKinds: true;
   hostAssistance: 'standard' | 'enhanced';
+  /** Max workspace files the manager should preload for this model. */
+  maxContextFiles: number;
+  /** Soft character budget for host-assembled prior/context text. */
+  maxContextChars: number;
+  temperature: number;
+  topP: number;
+};
+
+export type SmallModelRequestComplexity = 'simple' | 'moderate' | 'demanding';
+
+export type SmallModelRequestAssessment = {
+  complexity: SmallModelRequestComplexity;
+  /** When true, host should keep edits on a single target file. */
+  forceSingleFile: boolean;
+  /** Soft signal that a larger cached model would be more reliable. */
+  preferEscalate: boolean;
+  /** Host-facing guidance injected into prompts / UI events. */
+  guidance: string | null;
 };
 
 export type WebLLMRecoveryReason =

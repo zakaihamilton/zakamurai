@@ -6,6 +6,7 @@ import type {
   ModelResponseFormat,
   ModelTask,
   ModelTaskKind,
+  SmallModelRequestAssessment,
   TaskContract,
 } from './types';
 
@@ -17,6 +18,11 @@ const CHANGE_REQUEST =
   /\b(?:add|build|change|create|delete|design|edit|fix|implement|improve|make|modify|refactor|remove|rename|replace|style|update|write)\b/i;
 const UI_REQUEST =
   /\b(?:app|application|button|card|component|dashboard|form|interface|layout|list|menu|modal|page|screen|table|todo|ui|widget|website|visual|responsive)\b/i;
+
+const DEMANDING_REQUEST =
+  /\b(?:architect(?:ure|ing)?|redesign\s+(?:the\s+)?(?:entire|whole)|migrat(?:e|ion)|rewrite\s+(?:the\s+)?(?:entire|whole|all)|across\s+(?:the\s+)?(?:codebase|project|app|files)|multi[- ]file|multiple\s+files|every\s+file|all\s+files|entire\s+(?:codebase|project)|split\s+into\s+components|extract\s+(?:into|to)\s+components|monorepo)\b/i;
+const MODERATE_REQUEST =
+  /\b(?:refactor|restructure|reorganiz|decompose|modulari[sz]e|add\s+(?:a\s+)?(?:new\s+)?(?:page|route|screen)|multi[- ]step|and\s+also)\b/i;
 
 const allowedWorkspacePaths = (files: FileMap): string[] => {
   const roots = new Set(
@@ -95,9 +101,14 @@ export function getModelCapabilityProfile(modelId: string): ModelCapabilityProfi
       filesPerGeneration: 1,
       supportsAllTaskKinds: true,
       hostAssistance: 'enhanced',
+      maxContextFiles: 2,
+      maxContextChars: 6000,
+      temperature: 0.02,
+      topP: 0.8,
     };
   }
   if (/(?:2|3)B(?:-|$)/i.test(modelId)) {
+    const enhanced = /2B(?:-|$)/i.test(modelId);
     return {
       tier: 'compact',
       contextWindowSize: 4096,
@@ -105,7 +116,11 @@ export function getModelCapabilityProfile(modelId: string): ModelCapabilityProfi
       recoveryTokens: 2600,
       filesPerGeneration: 1,
       supportsAllTaskKinds: true,
-      hostAssistance: /2B(?:-|$)/i.test(modelId) ? 'enhanced' : 'standard',
+      hostAssistance: enhanced ? 'enhanced' : 'standard',
+      maxContextFiles: enhanced ? 3 : 4,
+      maxContextChars: enhanced ? 8000 : 12000,
+      temperature: enhanced ? 0.05 : 0.1,
+      topP: enhanced ? 0.85 : 0.8,
     };
   }
   return {
@@ -116,6 +131,64 @@ export function getModelCapabilityProfile(modelId: string): ModelCapabilityProfi
     filesPerGeneration: 1,
     supportsAllTaskKinds: true,
     hostAssistance: 'standard',
+    maxContextFiles: 6,
+    maxContextChars: 28000,
+    temperature: 0.15,
+    topP: 0.8,
+  };
+}
+
+/**
+ * Classify whether a request should stay single-file under enhanced host assistance.
+ * Demanding work still runs, but the host narrows scope and surfaces escalate guidance.
+ */
+export function assessSmallModelRequest(
+  request: string,
+  modelId: string,
+): SmallModelRequestAssessment {
+  const profile = getModelCapabilityProfile(modelId);
+  if (profile.hostAssistance !== 'enhanced') {
+    return {
+      complexity: 'simple',
+      forceSingleFile: false,
+      preferEscalate: false,
+      guidance: null,
+    };
+  }
+
+  const text = request.trim();
+  const demanding = DEMANDING_REQUEST.test(text);
+  const moderate = !demanding && MODERATE_REQUEST.test(text);
+  const complexity = demanding ? 'demanding' : moderate ? 'moderate' : 'simple';
+  const recovery = profile.tier === 'recovery';
+
+  if (demanding) {
+    return {
+      complexity,
+      forceSingleFile: true,
+      preferEscalate: true,
+      guidance: recovery
+        ? 'Host assistance: this recovery-tier model will edit one target file only. For multi-file architecture, migration, or codebase-wide refactors, switch to a larger cached model or narrow the request to a single component.'
+        : 'Host assistance: this compact model will edit one target file only. Prefer a larger cached model for multi-file architecture or codebase-wide refactors.',
+    };
+  }
+
+  if (moderate || recovery) {
+    return {
+      complexity,
+      forceSingleFile: true,
+      preferEscalate: false,
+      guidance:
+        'Host assistance: write one complete component file. The host owns CSS Modules, entry wiring, validation, and finish.',
+    };
+  }
+
+  return {
+    complexity,
+    forceSingleFile: true,
+    preferEscalate: false,
+    guidance:
+      'Host assistance: reply with one labelled source fence for the target file. The host generates missing CSS and finishes after validation.',
   };
 }
 

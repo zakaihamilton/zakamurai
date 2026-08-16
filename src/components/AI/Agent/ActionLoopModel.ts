@@ -79,8 +79,12 @@ export async function requestNextAction({
     visualMode || failedWritePath || forcedWriteRecoveryPending
       ? profile.recoveryTokens
       : profile.generationTokens;
-  const temperature = lightweightModel ? 0.05 : visualMode ? 0.12 : 0.15;
-  const topP = lightweightModel ? 0.85 : 0.8;
+  const temperature = lightweightModel
+    ? profile.temperature
+    : visualMode
+      ? 0.12
+      : profile.temperature;
+  const topP = profile.topP;
   const taskKind = failedWritePath || forcedWriteRecoveryPending ? 'repair-file' : 'write-file';
   const attemptSeed = seed === undefined ? undefined : seed + turn - 1;
   let finishReason: string | null | undefined;

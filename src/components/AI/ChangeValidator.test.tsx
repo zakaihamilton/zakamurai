@@ -431,6 +431,36 @@ export default function App() { return <main />; }`;
     );
   });
 
+  it('rejects common small-model boundary mistakes beyond bootstrap and style objects', () => {
+    expect(
+      validateGeneratedSourceShape('src/App.jsx', '<!DOCTYPE html><html><body>hi</body></html>'),
+    ).toContain('HTML document');
+    expect(
+      validateGeneratedSourceShape(
+        'src/App.jsx',
+        'export default function App() { return <main><style>.x{}</style></main>; }',
+      ),
+    ).toContain('<style>');
+    expect(
+      validateGeneratedSourceShape(
+        'src/App.jsx',
+        'export default function A() { return null; }\nexport default function B() { return null; }',
+      ),
+    ).toContain('multiple default exports');
+    expect(
+      validateGeneratedSourceShape(
+        'src/App.jsx',
+        'export default function App() { document.getElementById("root"); return null; }',
+      ),
+    ).toContain('document DOM');
+    expect(
+      validateGeneratedSourceShape(
+        'src/App.jsx',
+        'export default function App() { return <main />; }\n...',
+      ),
+    ).toContain('truncated');
+  });
+
   it('rejects an interactive stylesheet that collapses referenced controls', () => {
     const source = `${`
       import { useState } from 'react';

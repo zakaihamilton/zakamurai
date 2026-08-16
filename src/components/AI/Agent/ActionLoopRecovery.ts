@@ -235,24 +235,15 @@ After a successful write, use exactly one of:
 `.trim();
 
 export const LIGHTWEIGHT_AGENT_SYSTEM_PROMPT = `
-You are a small local coding model. Reply once with no explanation. When workspace context is
-supplied, write the complete target component immediately. Do not list, search, or read again.
+You are a small local coding model. Reply once with no explanation.
 
-Reply with only one labelled source-code fence containing the complete file. Do not return JSON.
-The host saves the source and generates missing CSS Module rules.
+Output ONLY one labelled source fence with the complete target component file.
+Do not return JSON, prose, CSS, a second file, or ReactDOM bootstrap code.
+Default-import the co-located CSS Module as styles. The host generates missing CSS rules,
+validates the build, and finishes after a successful write.
 
-Default-import the co-located CSS Module as styles. Use only semantic roles from the supplied
-project style contract. For interactive work, include React state, handlers, primary controls,
-and visible empty, success, and error states. Never leave starter placeholder text.
-
-The output is one component file, not an application bootstrap. Never emit ReactDOM.createRoot,
-ReactDOM.render, ReactDOM imports, a second source file, a CSS-style object such as
-const styles = { display: ..., background: ..., or CSS declarations outside a CSS Module.
-Never put a stylesheet, JSON metadata, prose, or another code fence in the component response.
-The source fence must be closed and the file must end with complete JSX and JavaScript.
-
-Compute derived values before state setters and keep state-dependent callbacks in the component.
-After a successful write, the host saves the source, validates the build, and finishes automatically.
+For interactive UI include React state, handlers, and visible empty/success/error states.
+Never leave starter placeholder text. Compute derived values before setState.
 `.trim();
 
 export const CONTEXT_READY_AGENT_INSTRUCTIONS = `
@@ -265,15 +256,9 @@ then finish. Never return a plan or prose.
 `.trim();
 
 export const LIGHTWEIGHT_CONTEXT_READY_INSTRUCTIONS = `
-IMPORTANT: The manager has already inspected the workspace and supplied the relevant file
-contents below. For an edit request, reply with ONLY a labelled code fence containing the
-complete source for the target file. Include state and event handlers when the UI is
-interactive, and prefer a co-located CSS Module. Do not return JSON write_file metadata,
-list files, search, read files, or explain. Do not leave starter-template placeholder text.
-Return one closed source fence only. The target is a component file: never include
-ReactDOM.createRoot, ReactDOM.render, ReactDOM imports, CSS declarations, a JavaScript
-styles object, another source file, or an unfinished response.
-After a successful write, the host validates and finishes automatically.
+IMPORTANT: Workspace context is already supplied. Reply with ONLY one labelled source fence
+for the target component. No JSON, tool calls, CSS, ReactDOM, or prose.
+Include state and handlers when the UI is interactive. The host saves, generates CSS, validates, and finishes.
 `.trim();
 
 export const isScratchEntry = (content: string | undefined): boolean =>
@@ -426,6 +411,7 @@ export const buildContextReadyUserRequest = ({
   lightweight = false,
   styleProfile,
   responsiveGeneration = false,
+  hostGuidance = null,
 }: {
   request: string;
   targetPath: string;
@@ -434,13 +420,19 @@ export const buildContextReadyUserRequest = ({
   lightweight?: boolean;
   styleProfile?: ProjectStyleProfile;
   responsiveGeneration?: boolean;
+  hostGuidance?: string | null;
 }): string => {
   const stylesheetPath = targetPath.replace(/\.(jsx|tsx)$/i, '.module.css');
   const contextPaths = [targetPath, stylesheetPath, 'package.json'].filter(
     (path, index, paths) => Object.hasOwn(files, path) && paths.indexOf(path) === index,
   );
+  const maxFileChars = lightweight ? 2400 : 8000;
+  const clipFile = (content: string) =>
+    content.length <= maxFileChars
+      ? content
+      : `${content.slice(0, maxFileChars)}\n…[context truncated]`;
   const fileContext = contextPaths.length
-    ? contextPaths.map((path) => `--- ${path} ---\n${files[path]}`).join('\n\n')
+    ? contextPaths.map((path) => `--- ${path} ---\n${clipFile(files[path])}`).join('\n\n')
     : 'No relevant source file exists yet.';
   const targetDirectory = targetPath.split('/').slice(0, -1).join('/');
   const reference = Object.keys(files)
@@ -463,13 +455,18 @@ export const buildContextReadyUserRequest = ({
       : null;
   const conversation = extractConversationalPrior(priorContext);
   const managerContext = extractManagerSelectedPrior(priorContext, contextPaths);
+  const clippedManagerContext =
+    managerContext && lightweight && managerContext.length > 1800
+      ? `${managerContext.slice(0, 1800)}\n…[context truncated]`
+      : managerContext;
   const nextStep = lightweight
     ? `Your next response must be ONLY a labelled code fence with the complete source for ${targetPath}. Do not return JSON.`
     : `Your next response must be exactly one write_file action for ${targetPath}.`;
   return [
     `Request: ${request}`,
+    ...(hostGuidance ? [hostGuidance] : []),
     ...(conversation ? [`Prior conversation:\n${conversation}`] : []),
-    ...(managerContext ? [`Manager-selected context:\n${managerContext}`] : []),
+    ...(clippedManagerContext ? [`Manager-selected context:\n${clippedManagerContext}`] : []),
     'The workspace has already been inspected. Do not list, search, or read files.',
     nextStep,
     `Project code contract: ${formatProjectCodeContract(files, targetPath)}.`,

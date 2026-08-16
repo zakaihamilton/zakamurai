@@ -13,6 +13,7 @@ import {
 import {
   MAX_RELIABILITY_MODEL_CALLS,
   assertTaskPathAllowed,
+  assessSmallModelRequest,
   buildTaskContract,
   isTaskPathAllowed,
 } from '../ReliabilityContracts';
@@ -117,6 +118,7 @@ export async function runActionLoop({
   const taskContract = buildTaskContract({ request, scope, activeFile, files });
   const context = new AgentContextManager({ request, priorContext });
   const lightweightModel = isLightweightAgentModel(model);
+  const smallModelAssessment = assessSmallModelRequest(request, model);
   const resolvedStyleProfile = lightweightModel
     ? resolveProjectStyleProfile(files, styleProfile)
     : undefined;
@@ -141,6 +143,7 @@ export async function runActionLoop({
         lightweight: lightweightModel,
         styleProfile: resolvedStyleProfile,
         responsiveGeneration: isNewAppGenerationRequest(request),
+        hostGuidance: smallModelAssessment.guidance,
       })
     : buildUserRequest({
         request,

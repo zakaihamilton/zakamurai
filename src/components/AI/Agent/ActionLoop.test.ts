@@ -417,7 +417,7 @@ describe('runActionLoop', () => {
     expect(modelClient.mock.calls[0][0].messages[0].content).toContain(
       'You are a small local coding model',
     );
-    expect(modelClient.mock.calls[0][0].messages[0].content).toContain('labelled code fence');
+    expect(modelClient.mock.calls[0][0].messages[0].content).toContain('labelled source fence');
     expect(modelClient.mock.calls[0][0].messages[1].content).toContain(
       'Your next response must be ONLY a labelled code fence with the complete source for src/App.jsx',
     );

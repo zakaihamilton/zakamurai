@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { COMPLETION_RESPONSE_GRAMMAR } from './CompletionResponseFormat';
 import {
+  assessSmallModelRequest,
   buildTaskContract,
   formatTaskContract,
   getModelCapabilityProfile,
@@ -34,21 +35,53 @@ describe('AI reliability contracts', () => {
   });
 
   it.each([
-    ['Qwen2.5-Coder-3B-Instruct-q4f16_1-MLC', 'compact', 'standard'],
-    ['Qwen3.5-2B-q4f16_1-MLC', 'compact', 'enhanced'],
-    ['Qwen2.5-Coder-1.5B-Instruct-q4f16_1-MLC', 'recovery', 'enhanced'],
-    ['Qwen3.5-0.8B-q4f16_1-MLC', 'recovery', 'enhanced'],
+    ['Qwen2.5-Coder-3B-Instruct-q4f16_1-MLC', 'compact', 'standard', 4],
+    ['Qwen3.5-2B-q4f16_1-MLC', 'compact', 'enhanced', 3],
+    ['Qwen2.5-Coder-1.5B-Instruct-q4f16_1-MLC', 'recovery', 'enhanced', 2],
+    ['Qwen3.5-0.8B-q4f16_1-MLC', 'recovery', 'enhanced', 2],
   ] as const)(
     'gives %s full task parity with tier-specific assistance',
-    (model, tier, assistance) => {
+    (model, tier, assistance, maxContextFiles) => {
       expect(getModelCapabilityProfile(model)).toMatchObject({
         tier,
         hostAssistance: assistance,
         filesPerGeneration: 1,
         supportsAllTaskKinds: true,
+        maxContextFiles,
       });
+      expect(getModelCapabilityProfile(model).temperature).toBeLessThanOrEqual(0.15);
     },
   );
+
+  it('classifies demanding requests for enhanced host assistance', () => {
+    expect(
+      assessSmallModelRequest(
+        'rewrite the entire codebase architecture across all files',
+        'Qwen3.5-0.8B-q4f16_1-MLC',
+      ),
+    ).toMatchObject({
+      complexity: 'demanding',
+      forceSingleFile: true,
+      preferEscalate: true,
+    });
+    expect(
+      assessSmallModelRequest('create a notes app', 'Qwen2.5-Coder-1.5B-Instruct-q4f16_1-MLC'),
+    ).toMatchObject({
+      complexity: 'simple',
+      forceSingleFile: true,
+      preferEscalate: false,
+    });
+    expect(
+      assessSmallModelRequest(
+        'rewrite the entire codebase architecture',
+        'Qwen2.5-Coder-7B-Instruct-q4f16_1-MLC',
+      ),
+    ).toMatchObject({
+      forceSingleFile: false,
+      preferEscalate: false,
+      guidance: null,
+    });
+  });
 
   it('selects JSON and completion grammar formats without wrapping file bodies', () => {
     expect(responseFormatForTask('answer')).toEqual({ type: 'json_object' });
