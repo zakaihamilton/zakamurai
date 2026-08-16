@@ -188,7 +188,7 @@ export const createAutoFinishSummary =
   };
 
 export const isLightweightAgentModel = (model: string): boolean =>
-  /(?:0\.8|1\.5|1\.7|2)B(?:-|$)/i.test(model);
+  /(?:0\.5|0\.8|1\.5|1\.7|2)B(?:-|$)/i.test(model);
 
 export const LEGACY_LIGHTWEIGHT_AGENT_SYSTEM_PROMPT = `
 You are a small local coding model. Reply with exactly one response and no explanation.

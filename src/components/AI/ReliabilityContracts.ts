@@ -92,7 +92,7 @@ export function assertTaskPathAllowed(contract: TaskContract, path: string): voi
 }
 
 export function getModelCapabilityProfile(modelId: string): ModelCapabilityProfile {
-  if (/(?:0\.8|1\.5)B(?:-|$)/i.test(modelId)) {
+  if (/(?:0\.5|0\.8|1\.5)B(?:-|$)/i.test(modelId)) {
     return {
       tier: 'recovery',
       contextWindowSize: 4096,

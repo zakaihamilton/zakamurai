@@ -38,6 +38,7 @@ describe('AI reliability contracts', () => {
     ['Qwen2.5-Coder-3B-Instruct-q4f16_1-MLC', 'compact', 'standard', 4],
     ['Qwen3.5-2B-q4f16_1-MLC', 'compact', 'enhanced', 3],
     ['Qwen2.5-Coder-1.5B-Instruct-q4f16_1-MLC', 'recovery', 'enhanced', 2],
+    ['Qwen2.5-Coder-0.5B-Instruct-q4f16_1-MLC', 'recovery', 'enhanced', 2],
     ['Qwen3.5-0.8B-q4f16_1-MLC', 'recovery', 'enhanced', 2],
   ] as const)(
     'gives %s full task parity with tier-specific assistance',
