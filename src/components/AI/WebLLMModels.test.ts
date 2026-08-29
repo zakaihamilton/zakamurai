@@ -57,13 +57,13 @@ describe('WebLLMModels', () => {
     });
   });
 
-  it('uses the smallest recovery tier only on very low-memory devices', () => {
+  it('uses the smallest recovery coding tier only on very low-memory devices', () => {
     const originalNavigator = globalThis.navigator;
     Object.defineProperty(globalThis, 'navigator', {
       configurable: true,
       value: { deviceMemory: 2 },
     });
-    expect(getDeviceAppropriateDefaultModelId()).toBe('Qwen3.5-0.8B-q4f16_1-MLC');
+    expect(getDeviceAppropriateDefaultModelId()).toBe('Qwen2.5-Coder-0.5B-Instruct-q4f16_1-MLC');
     Object.defineProperty(globalThis, 'navigator', {
       configurable: true,
       value: originalNavigator,
@@ -74,7 +74,16 @@ describe('WebLLMModels', () => {
     expect(RECOMMENDED_VISUAL_REVIEW_MODEL.id).toBe('Qwen3.5-9B-q4f16_1-MLC');
   });
 
-  it('offers Qwen3.5 0.8B as the low-resource recovery tier', () => {
+  it('offers Qwen2.5 Coder 0.5B as the low-resource coding recovery tier', () => {
+    expect(WEB_LLM_MODELS).toContainEqual(
+      expect.objectContaining({
+        id: 'Qwen2.5-Coder-0.5B-Instruct-q4f16_1-MLC',
+        ramMB: 944.62,
+      }),
+    );
+  });
+
+  it('offers Qwen3.5 0.8B as the low-resource general recovery tier', () => {
     expect(WEB_LLM_MODELS).toContainEqual(
       expect.objectContaining({
         id: 'Qwen3.5-0.8B-q4f16_1-MLC',

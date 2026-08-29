@@ -53,7 +53,7 @@ describe('AI Manager replay fixtures', () => {
     const replay = await replayManagerFixture(qwenFixture as ManagerReplayFixture);
     const firstCall = replay.modelCalls[0];
     const prompt = firstCall.messages.map((message) => message.content).join('\n');
-    expect(firstCall).toMatchObject({ temperature: 0.05, contextWindowSize: 4096 });
+    expect(firstCall).toMatchObject({ temperature: 0.02, contextWindowSize: 4096 });
     expect(prompt).toContain('Project generation contract');
     expect(prompt).not.toContain('Make deliberate design decisions');
     expect(replay.result?.files['src/App.module.css']).toContain('--color-accent');

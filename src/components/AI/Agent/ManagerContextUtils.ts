@@ -3,6 +3,7 @@ import type { createManagerPlan } from './ManagerRouter';
 import { type ManagerToolResult, formatContextResults } from './ManagerTools';
 
 const MAX_INITIAL_CONTEXT_FILES = 6;
+const MAX_CONTEXT_CHARS = 28000;
 const STARTER_FILE_NAMES = new Set([
   'package.json',
   'src/App.js',
@@ -59,20 +60,26 @@ export const extractPath = (request: string, activeFile?: string | null): string
   return path || activeFile || null;
 };
 
-export const contextText = (results: ManagerToolResult[]): string =>
-  formatContextResults(results).slice(0, 28000);
+export const contextText = (
+  results: ManagerToolResult[],
+  maxChars: number = MAX_CONTEXT_CHARS,
+): string => formatContextResults(results).slice(0, Math.max(500, maxChars));
 
 export const selectInitialContextFiles = (
   paths: string[],
   activeFile?: string | null,
+  maxFiles: number = MAX_INITIAL_CONTEXT_FILES,
 ): string[] => {
   const uniquePaths = [...new Set(paths)];
+  const limit = Math.max(1, Math.min(maxFiles, MAX_INITIAL_CONTEXT_FILES));
   const prioritized = [
     activeFile || '',
     ...uniquePaths.filter((path) => STARTER_FILE_NAMES.has(path)),
-    ...uniquePaths.filter((path) => SOURCE_FILE_PATTERN.test(path)),
+    ...uniquePaths.filter(
+      (path) => SOURCE_FILE_PATTERN.test(path) && !STARTER_FILE_NAMES.has(path),
+    ),
   ];
-  return [...new Set(prioritized.filter(Boolean))].slice(0, MAX_INITIAL_CONTEXT_FILES);
+  return [...new Set(prioritized.filter(Boolean))].slice(0, limit);
 };
 
 export const normalizeModelChanges = (

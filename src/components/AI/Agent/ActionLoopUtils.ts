@@ -1178,7 +1178,8 @@ const annotateInteractiveClassNames = (content: string): string => {
 /**
  * Generated interactive JSX can arrive without a stylesheet or with literal class names.
  * Attach a co-located CSS Module and generic layout class names so the preview is usable
- * without requiring another model turn.
+ * without requiring another model turn. Static layouts that already bind `styles.*` only
+ * need the missing stylesheet — do not rewrite their className expressions.
  */
 export const ensureCoLocatedCssModule = (
   path: string,
@@ -1186,13 +1187,19 @@ export const ensureCoLocatedCssModule = (
   profile?: ProjectStyleProfile,
 ): { content: string; stylesheetPath: string; stylesheet: string } | null => {
   if (!/\.(jsx|tsx)$/i.test(path) || typeof content !== 'string') return null;
-  if (!/\bon(?:Click|Change|Submit|KeyDown)\b/.test(content)) return null;
+  const isInteractive = /\bon(?:Click|Change|Submit|KeyDown)\b/.test(content);
+  const usesCssModule =
+    /\bstyles(?:\.[A-Za-z_]|\[)/.test(content) ||
+    /\bimport\s+\w+\s+from\s+['"][^"']+\.module\.css['"]/.test(content);
+  if (!isInteractive && !usesCssModule) return null;
 
   const stylesheetPath = path.replace(/\.(jsx|tsx)$/i, '.module.css');
   const importSpecifier = `./${stylesheetPath.split('/').pop()}`;
-  const rewritten = normalizeClassNameExpressions(
-    annotateInteractiveClassNames(insertCssModuleImport(content, importSpecifier)),
-  );
+  const rewritten = isInteractive
+    ? normalizeClassNameExpressions(
+        annotateInteractiveClassNames(insertCssModuleImport(content, importSpecifier)),
+      )
+    : insertCssModuleImport(content, importSpecifier);
   return {
     content: rewritten,
     stylesheetPath,

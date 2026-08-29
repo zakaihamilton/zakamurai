@@ -2,7 +2,7 @@ import { useFileSystem } from '@/components/Storage';
 import Settings from '@/components/Storage/Settings';
 import { makeFileSystemApi } from '@/test-utils/fsMocks';
 import { makeAppState } from '@/test-utils/stateMocks';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import App from './App';
@@ -230,7 +230,9 @@ describe('App', () => {
 
     render(<App />);
     expect(await screen.findByTestId('sidebar')).toBeDefined();
-    expect(appStateMock).toHaveBeenCalledWith(expect.any(Function));
+    await waitFor(() => {
+      expect(appStateMock).toHaveBeenCalledWith(expect.any(Function));
+    });
     expect(appStateMock.projectName).toBe('MountedFolder');
   });
 

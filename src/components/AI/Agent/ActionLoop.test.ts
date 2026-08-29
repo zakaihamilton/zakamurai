@@ -417,7 +417,7 @@ describe('runActionLoop', () => {
     expect(modelClient.mock.calls[0][0].messages[0].content).toContain(
       'You are a small local coding model',
     );
-    expect(modelClient.mock.calls[0][0].messages[0].content).toContain('labelled code fence');
+    expect(modelClient.mock.calls[0][0].messages[0].content).toContain('labelled source fence');
     expect(modelClient.mock.calls[0][0].messages[1].content).toContain(
       'Your next response must be ONLY a labelled code fence with the complete source for src/App.jsx',
     );
@@ -2226,17 +2226,12 @@ export const title = "Today";
     expect(result.summary).toContain('Wired src/App.jsx');
   });
 
-  it('queues a component until its referenced CSS Module is written', async () => {
+  it('host-generates a missing CSS Module when the component already binds styles', async () => {
     askWebLLM
       .mockResolvedValueOnce(
         '{"action":"write_file","path":"src/App.jsx","content":"import styles from \\"./App.module.css\\"; export default function App() { return <main className={styles.app} />; }"}',
       )
-      .mockResolvedValueOnce(
-        '{"action":"write_file","path":"src/App.module.css","content":".app { display: block; }"}',
-      )
-      .mockResolvedValueOnce(
-        '{"action":"write_file","path":"src/App.jsx","content":"import styles from \\"./App.module.css\\"; export default function App() { return <main className={styles.app} />; }"}',
-      )
+      .mockResolvedValueOnce('{"action":"validate"}')
       .mockResolvedValueOnce('{"action":"finish","summary":"done"}');
     const events: AgentEvent[] = [];
 
@@ -2244,21 +2239,14 @@ export const title = "Today";
       request: 'style the app',
       files: { 'src/App.jsx': 'export default function App() { return null; }' },
       model: 'test',
+      validate: vi.fn().mockResolvedValue('Checks passed.'),
       onEvent: (event) => events.push(event),
     });
 
-    expect(result.files['src/App.module.css']).toContain('display: block');
-    expect(events).toContainEqual(
-      expect.objectContaining({
-        error: true,
-        message: expect.stringContaining('Queued src/App.jsx'),
-      }),
+    expect(result.files['src/App.module.css']).toMatch(/\.app\s*\{/);
+    expect(events.some((event) => String(event.message || '').includes('Queued src/App.jsx'))).toBe(
+      false,
     );
-    expect(
-      askWebLLM.mock.calls[1]?.[3]?.messages?.some((message: { content: string }) =>
-        message.content.includes('must write src/App.module.css with the complete CSS Module'),
-      ),
-    ).toBe(true);
   });
 
   it('stages a safe stylesheet after repeated malformed CSS writes', async () => {

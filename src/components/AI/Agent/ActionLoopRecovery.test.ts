@@ -66,6 +66,25 @@ describe('responsive generation scope', () => {
     });
 
     expect(messages[1].content).toContain('<button type="button">');
+    expect(messages[1].content).toContain('mapped root element itself has onClick');
+    expect(messages[1].content).toContain('Nested controls inside a <li>');
     expect(messages[1].content).toContain('do not repeat the failed JSX unchanged');
+  });
+
+  it('injects host guidance and truncates oversized lightweight context', () => {
+    const prompt = buildContextReadyUserRequest({
+      request: 'create a notes app',
+      targetPath: 'src/App.jsx',
+      files: {
+        'src/App.jsx': `export default function App() { return <main>${'x'.repeat(3000)}</main>; }`,
+      },
+      lightweight: true,
+      hostGuidance: 'Host assistance: write one complete component file.',
+      priorContext: `[read_file {"path":"src/Other.jsx"}]\n${'y'.repeat(2200)}`,
+    });
+
+    expect(prompt).toContain('Host assistance: write one complete component file.');
+    expect(prompt).toContain('…[context truncated]');
+    expect(prompt).toContain('labelled code fence');
   });
 });
