@@ -17,6 +17,13 @@ import { applyFileUpdate, computeDiff } from './utils/Applier';
 import { parseAIResponse } from './utils/Parser';
 import { resolveFilePath } from './utils/PathResolver';
 
+/**
+ * Legacy SEARCH/REPLACE parser used by tests and offline fixtures.
+ * Production prompt runs go through `runManager` → `applyAgentChanges`.
+ *
+ * @deprecated Use the manager action loop. Kept as a parser for golden fixtures
+ * and repair experiments.
+ */
 export const processAIResponse = async (
   webLLMResult: string,
   fs: FileSystemLike | null,

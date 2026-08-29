@@ -20,7 +20,6 @@ import useAgentRunner, { formatAgentEvent } from './useAgentRunner';
 const {
   runAgent,
   runManager,
-  runCollaborativeAgent,
   applyAgentChanges,
   collectWorkspaceFiles,
   ensureFileInTree,
@@ -31,7 +30,6 @@ const {
   return {
     runAgent,
     runManager: runAgent,
-    runCollaborativeAgent: vi.fn(),
     applyAgentChanges: vi.fn(() => ({ applied: 0, deletions: [], changeSet: null })),
     collectWorkspaceFiles: vi.fn(async (_fs: unknown, files: unknown) => files),
     ensureFileInTree: vi.fn(),
@@ -53,7 +51,6 @@ vi.mock('@/components/AI/Agent', () => ({
   collectWorkspaceFiles,
   runAgent,
   runManager,
-  runCollaborativeAgent,
   applyAgentChanges,
   ensureFileInTree,
   removeFileFromTree,
@@ -256,10 +253,6 @@ describe('useAgentRunner', () => {
     applyAgentChanges.mockReturnValue({ applied: 0, deletions: [], changeSet: null });
     runAgent.mockResolvedValue({
       summary: 'single done',
-      changes: [{ path: 'app.js', before: 'a', after: 'b' }],
-    });
-    runCollaborativeAgent.mockResolvedValue({
-      summary: 'team done',
       changes: [{ path: 'app.js', before: 'a', after: 'b' }],
     });
   });
@@ -554,7 +547,6 @@ describe('useAgentRunner', () => {
     });
 
     expect(runAgent).not.toHaveBeenCalled();
-    expect(runCollaborativeAgent).not.toHaveBeenCalled();
   });
 
   it('keeps generated changes transactional until the manager completes', async () => {

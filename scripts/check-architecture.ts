@@ -2,7 +2,7 @@ import { readFile, readdir } from 'node:fs/promises';
 import path from 'node:path';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
-const COMPONENTS_DIR = path.join(ROOT, 'src/components');
+const SCAN_DIRS = [path.join(ROOT, 'src/components'), path.join(ROOT, 'src/utils')];
 
 const FORBIDDEN_IMPORTS = [
   { pattern: /from\s+['"]redux['"]/, reason: 'Redux is forbidden; use proxy state.' },
@@ -17,11 +17,10 @@ const COLOCATION_EXEMPT =
 type ArchitectureViolation = { file: string; reason: string };
 
 const LINE_BUDGETS: Record<string, number> = {
-  'src/components/AI/Agent/ActionLoop.ts': 1820,
+  'src/components/AI/Agent/ActionLoop.ts': 1700,
   'src/components/AI/WebLLMAPI.tsx': 1150,
   'src/components/Storage/Settings.ts': 850,
   'src/components/App/Views/EditorArea/highlighter.tsx': 800,
-  'src/components/App/Panes/Prompt/useAgentRunner.tsx': 750,
   'src/components/AI/Agent/ManagerRunner.ts': 700,
 };
 
@@ -124,13 +123,10 @@ function checkGlobalClassNames(content: string): boolean {
 function checkFile(filePath: string, content: string): ArchitectureViolation[] {
   const violations: ArchitectureViolation[] = [];
   const rel = relativePath(filePath);
+  const isUiComponent = rel.startsWith('src/components/');
 
   for (const { pattern, reason } of FORBIDDEN_IMPORTS) {
     if (pattern.test(content)) violations.push({ file: rel, reason });
-  }
-
-  if (/className=['"].*(?:bg-|text-|p-|m-|flex|grid).*['"]/.test(content)) {
-    violations.push({ file: rel, reason: 'Tailwind-style utility classes are forbidden.' });
   }
 
   const forbiddenDomainUseState =
@@ -144,22 +140,28 @@ function checkFile(filePath: string, content: string): ArchitectureViolation[] {
     });
   }
 
-  violations.push(...checkCssModuleColocation(filePath, content));
+  if (isUiComponent) {
+    if (/className=['"].*(?:bg-|text-|p-|m-|flex|grid).*['"]/.test(content)) {
+      violations.push({ file: rel, reason: 'Tailwind-style utility classes are forbidden.' });
+    }
 
-  const importsCssModule = /from\s+['"].*\.module\.css['"]/.test(content);
-  if (importsCssModule && /style=\{\{/.test(content) && !inlineStyleKeysAreCssVarsOnly(content)) {
-    violations.push({
-      file: rel,
-      reason:
-        'Inline styles are forbidden in components that use CSS Modules (CSS custom properties only).',
-    });
-  }
+    violations.push(...checkCssModuleColocation(filePath, content));
 
-  if (importsCssModule && checkGlobalClassNames(content)) {
-    violations.push({
-      file: rel,
-      reason: 'Global className strings are forbidden; use CSS module classes only.',
-    });
+    const importsCssModule = /from\s+['"].*\.module\.css['"]/.test(content);
+    if (importsCssModule && /style=\{\{/.test(content) && !inlineStyleKeysAreCssVarsOnly(content)) {
+      violations.push({
+        file: rel,
+        reason:
+          'Inline styles are forbidden in components that use CSS Modules (CSS custom properties only).',
+      });
+    }
+
+    if (importsCssModule && checkGlobalClassNames(content)) {
+      violations.push({
+        file: rel,
+        reason: 'Global className strings are forbidden; use CSS module classes only.',
+      });
+    }
   }
 
   const lineBudget = LINE_BUDGETS[rel];
@@ -174,7 +176,9 @@ function checkFile(filePath: string, content: string): ArchitectureViolation[] {
 }
 
 async function main(): Promise<void> {
-  const files = await collectSourceFiles(COMPONENTS_DIR);
+  const files = (
+    await Promise.all(SCAN_DIRS.map((directory) => collectSourceFiles(directory)))
+  ).flat();
   const violations: ArchitectureViolation[] = [];
 
   for (const filePath of files) {
@@ -187,7 +191,7 @@ async function main(): Promise<void> {
     throw new Error(`Architecture check failed:\n${details}`);
   }
 
-  console.log(`Architecture check passed (${files.length} component files).`);
+  console.log(`Architecture check passed (${files.length} source files).`);
 }
 
 main().catch((error) => {
@@ -196,7 +200,7 @@ main().catch((error) => {
     'code' in error &&
     (error as NodeJS.ErrnoException).code === 'ENOENT'
   ) {
-    throw new Error(`Components directory not found: ${COMPONENTS_DIR}`);
+    throw new Error(`Scan directory not found: ${SCAN_DIRS.join(', ')}`);
   }
   console.error(error instanceof Error ? error.message : String(error));
   process.exit(1);

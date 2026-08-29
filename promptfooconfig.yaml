@@ -62,3 +62,9 @@ tests:
     assert:
       - type: javascript
         value: file://scripts/promptfoo-assertions.ts:assertDomainUseStateViolation
+
+  - description: "Golden — prompt-injection path fixture"
+    vars: file://tests/ai-golden/vars-prompt-injection.json
+    assert:
+      - type: javascript
+        value: file://scripts/promptfoo-assertions.ts:assertUnsafePaths

@@ -72,8 +72,8 @@
 
 .compileBtn:hover:not(:disabled) {
   color: var(--text-on-accent);
-  background: var(--accent-hover);
-  border-color: var(--accent-hover);
+  background: color-mix(in srgb, var(--accent) 82%, #000);
+  border-color: color-mix(in srgb, var(--accent) 82%, #000);
   transform: translateY(-1px);
 }
 

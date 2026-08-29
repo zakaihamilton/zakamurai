@@ -109,7 +109,6 @@ vi.mock('@/components/AI/Processor', () => ({
 const {
   runAgent,
   runManager,
-  runCollaborativeAgent,
   applyAgentChanges,
   collectWorkspaceFiles,
   ensureFileInTree,
@@ -118,7 +117,6 @@ const {
   collectWorkspaceFiles: vi.fn().mockResolvedValue({}),
   runAgent: vi.fn().mockResolvedValue({ summary: 'done', changes: [] }),
   runManager: vi.fn().mockResolvedValue({ summary: 'done', changes: [] }),
-  runCollaborativeAgent: vi.fn().mockResolvedValue({ summary: 'done', changes: [] }),
   applyAgentChanges: vi.fn(() => ({ deletions: [], changeSet: null })),
   ensureFileInTree: vi.fn(),
   removeFileFromTree: vi.fn(),
@@ -128,7 +126,6 @@ vi.mock('@/components/AI/Agent', () => ({
   collectWorkspaceFiles,
   runAgent,
   runManager,
-  runCollaborativeAgent,
   applyAgentChanges,
   ensureFileInTree,
   removeFileFromTree,

@@ -132,6 +132,7 @@ export default function useProjectCompiler() {
         });
         const compiler = new Compiler(onLog, onPhase);
         const localFs = toCompilerFs(fs);
+        // Build/Preview compile proposed editor buffers, including unapproved AI diffs.
         await compiler.compile(localFs, folderTree, editorState.fileContents);
         problemsState((draft) => {
           draft.items = [];

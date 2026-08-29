@@ -1,4 +1,6 @@
 :root {
+  color-scheme: dark;
+
   /* Zakamurai semantic design system */
   --bg-base: #0b0e12;
   --bg-panel: #11161c;
@@ -17,11 +19,11 @@
   --text-muted: #a0abb7;
   --text-secondary: var(--text-muted);
   --text-subtle: #74808d;
-  --accent: #8b5cf6;
+  --accent: #7c3aed;
   --accent-hover: #a78bfa;
-  --accent-rgb: 139, 92, 246;
-  --accent-glow: rgb(139 92 246 / 20%);
-  --accent-light: rgb(139 92 246 / 13%);
+  --accent-rgb: 124, 58, 237;
+  --accent-glow: rgb(124 58 237 / 20%);
+  --accent-light: rgb(124 58 237 / 13%);
   --text-on-accent: #fff;
   --success: #58c29a;
   --success-color: var(--success);
@@ -39,7 +41,7 @@
   --border-color: var(--border);
   --border-light: #374454;
   --border-focus: var(--accent);
-  --border-glow: linear-gradient(180deg, rgb(139 92 246 / 26%) 0%, rgb(139 92 246 / 0%) 100%);
+  --border-glow: linear-gradient(180deg, rgb(124 58 237 / 26%) 0%, rgb(124 58 237 / 0%) 100%);
   --shadow-sm: 0 1px 2px rgb(0 0 0 / 24%);
   --shadow-md: 0 10px 28px -18px rgb(0 0 0 / 80%);
   --shadow-lg: 0 22px 52px -26px rgb(0 0 0 / 88%);
@@ -66,6 +68,8 @@
 }
 
 .light {
+  color-scheme: light;
+
   --bg-base: #f5f7fb;
   --bg-panel: #fff;
   --bg-surface: #edf1f7;
@@ -127,6 +131,7 @@
 
 html {
   height: 100%;
+  color-scheme: dark;
 }
 
 @media (width <= 768px) {
@@ -198,10 +203,8 @@ a {
   text-decoration: none;
 }
 
-@media (prefers-color-scheme: dark) {
-  html {
-    color-scheme: dark;
-  }
+body.light {
+  color-scheme: light;
 }
 
 ::-webkit-scrollbar {

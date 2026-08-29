@@ -12,6 +12,7 @@ export default function WelcomeFooter() {
           target="_blank"
           rel="noopener noreferrer"
           className={styles.githubLink}
+          aria-label="GitHub repository"
         >
           <Icons.Github size={18} />
         </a>
@@ -22,6 +23,7 @@ export default function WelcomeFooter() {
           target="_blank"
           rel="noopener noreferrer"
           className={styles.linkedinLink}
+          aria-label="LinkedIn profile"
         >
           <Icons.Linkedin size={18} />
         </a>

@@ -18,8 +18,11 @@ describe('WelcomeFooter', () => {
   it('renders footer links', () => {
     render(<WelcomeFooter />);
     expect(screen.getByText('Zakai Hamilton')).toBeDefined();
-    const links = screen.getAllByRole('link');
-    expect(links[0].getAttribute('href')).toBe('https://github.com/zakaihamilton/zakamurai');
-    expect(links[1].getAttribute('href')).toBe('https://www.linkedin.com/in/zakai-hamilton');
+    expect(screen.getByRole('link', { name: 'GitHub repository' }).getAttribute('href')).toBe(
+      'https://github.com/zakaihamilton/zakamurai',
+    );
+    expect(screen.getByRole('link', { name: 'LinkedIn profile' }).getAttribute('href')).toBe(
+      'https://www.linkedin.com/in/zakai-hamilton',
+    );
   });
 });
