@@ -198,6 +198,16 @@ export const createAutoFinishSummary =
 export const isLightweightAgentModel = (model: string): boolean =>
   /(?:0\.5|0\.8|1\.5|1\.7|2)B(?:-|$)/i.test(model);
 
+export const isTodoAppRequest = (request: string): boolean => /\b(?:todo|to-do)\b/i.test(request);
+
+export const TODO_APP_GENERATION_GUIDANCE = `
+For todo and task-list requests, build a polished task planner rather than a starter shell:
+- Keep tasks in React state with stable ids and a controlled form. Trim empty submissions, then support add, toggle complete, delete, and clear completed.
+- Show a remaining-task count, All/Active/Completed filter tabs, and a helpful empty state. Derive visible tasks and counts from the current state.
+- Use semantic CSS Module roles such as app, shell/card, title, subtitle, form/row, control, primaryAction, secondaryAction, dangerAction, list, item, checkbox, and completed.
+- Give it a warm paper-and-ink palette with one terracotta accent, clear type hierarchy, a composed list surface, compact rows, responsive layout, and visible hover/focus states.
+`.trim();
+
 export const LIGHTWEIGHT_AGENT_SYSTEM_PROMPT = `
 You are a small local coding model. Reply once with no explanation.
 
@@ -208,6 +218,8 @@ validates the build, and finishes after a successful write.
 
 For interactive UI include React state, handlers, and visible empty/success/error states.
 Never leave starter placeholder text. Compute derived values before setState.
+
+${TODO_APP_GENERATION_GUIDANCE}
 `.trim();
 
 export const CONTEXT_READY_AGENT_INSTRUCTIONS = `
@@ -428,6 +440,7 @@ export const buildContextReadyUserRequest = ({
     : `Your next response must be exactly one write_file action for ${targetPath}.`;
   return [
     `Request: ${request}`,
+    ...(isTodoAppRequest(request) ? [TODO_APP_GENERATION_GUIDANCE] : []),
     ...(hostGuidance ? [hostGuidance] : []),
     ...(conversation ? [`Prior conversation:\n${conversation}`] : []),
     ...(clippedManagerContext ? [`Manager-selected context:\n${clippedManagerContext}`] : []),
@@ -482,6 +495,7 @@ const buildFenceOnlyRecoveryMessages = ({
       role: 'user',
       content: [
         `Original request: ${request}`,
+        ...(isTodoAppRequest(request) ? [TODO_APP_GENERATION_GUIDANCE] : []),
         ...(incompleteWriteHint ? [incompleteWriteHint] : []),
         `Required destination: ${recoveryPath}`,
         context,
@@ -541,6 +555,7 @@ export const buildForcedWriteRecoveryMessages = ({
       role: 'user',
       content: [
         `Original request: ${request}`,
+        ...(isTodoAppRequest(request) ? [TODO_APP_GENERATION_GUIDANCE] : []),
         ...(incompleteWriteHint ? [incompleteWriteHint] : []),
         recoveryInstruction,
         targetPath
@@ -611,6 +626,7 @@ export const buildRepairFileMessages = ({
         `Original request: ${request}`,
         `Repair target: ${repairPath}`,
         `Validation or syntax diagnostic:\n${diagnostic}`,
+        ...(isTodoAppRequest(request) ? [TODO_APP_GENERATION_GUIDANCE] : []),
         ...(legacyGuidance ? [`Targeted recovery guidance:${legacyGuidance}`] : []),
         ...(mappedClickableRepairGuidance ? [mappedClickableRepairGuidance] : []),
         interactiveRepairGuidance,
@@ -658,6 +674,7 @@ export const buildDirectChangesRecoveryMessages = ({
       role: 'user',
       content: [
         `Original request: ${request}`,
+        ...(isTodoAppRequest(request) ? [TODO_APP_GENERATION_GUIDANCE] : []),
         targetPath
           ? `Primary file: ${targetPath}`
           : 'Primary file: choose the application entry file.',

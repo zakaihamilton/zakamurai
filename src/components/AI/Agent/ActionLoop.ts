@@ -27,12 +27,14 @@ import {
   CONTEXT_READY_AGENT_INSTRUCTIONS,
   LIGHTWEIGHT_AGENT_SYSTEM_PROMPT,
   LIGHTWEIGHT_CONTEXT_READY_INSTRUCTIONS,
+  TODO_APP_GENERATION_GUIDANCE,
   buildActionLoopModelMessages,
   buildContextReadyUserRequest,
   buildUserRequest,
   createAutoFinishSummary,
   isIncompleteWriteError,
   isLightweightAgentModel,
+  isTodoAppRequest,
   isNewAppGenerationRequest,
   loadAskWebLLM,
   newlyCreatedComponentsNeedEntryWiring,
@@ -151,10 +153,11 @@ export async function runActionLoop({
     { role: 'system', content: agentSystemPrompt },
     {
       role: 'user',
-      content:
-        visualMode && !lightweightModel
-          ? `${userRequest}\n\n${VISUAL_QUALITY_INSTRUCTION}`
-          : userRequest,
+      content: [
+        userRequest,
+        ...(visualMode ? [VISUAL_QUALITY_INSTRUCTION] : []),
+        ...(isTodoAppRequest(request) && !contextReady ? [TODO_APP_GENERATION_GUIDANCE] : []),
+      ].join('\n\n'),
     },
   ];
   let protocolFailures = 0;

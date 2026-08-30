@@ -226,6 +226,22 @@ describe('AI change validation', () => {
     ).toBeNull();
   });
 
+  it('rejects the untouched starter screen through every AI change path', () => {
+    const starter = `export default function App() {
+  return (
+    <div>
+      <h1>New Project</h1>
+      <p>No items yet. Start adding some!</p>
+    </div>
+  );
+}`;
+
+    expect(validateGeneratedPlaceholder('src/App.jsx', starter)).toContain('starter template');
+    expect(validateAIChanges([{ path: 'src/App.jsx', content: starter }]).rejected[0]).toContain(
+      'starter template',
+    );
+  });
+
   it('rejects prose paraphrases written to JSX paths', () => {
     expect(validateGeneratedPlaceholder('src/App.jsx', 'Create the tic tac toe game')).toContain(
       'not valid source code',

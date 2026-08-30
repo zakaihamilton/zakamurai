@@ -115,4 +115,17 @@ describe('responsive generation scope', () => {
     expect(prompt).toContain('…[context truncated]');
     expect(prompt).toContain('labelled code fence');
   });
+
+  it('carries todo behavior and visual guidance into context-ready generation', () => {
+    const prompt = buildContextReadyUserRequest({
+      request: 'build a todo app',
+      targetPath: 'src/App.jsx',
+      files: { 'src/App.jsx': 'export default function App() { return null; }' },
+      lightweight: true,
+    });
+
+    expect(prompt).toContain('stable ids');
+    expect(prompt).toContain('All/Active/Completed filter tabs');
+    expect(prompt).toContain('terracotta accent');
+  });
 });

@@ -58,11 +58,20 @@ export function validateComponentStyling(path: string, content: string): string 
   return null;
 }
 
+const isAppEntryPath = (path: string): boolean =>
+  /(?:^|\/)(?:App|main|index)\.(?:jsx|tsx)$/i.test(path);
+
 /** Rejects comment-only scaffolding and non-code prose that claims to be an implementation. */
 export function validateGeneratedPlaceholder(path: string, content: string): string | null {
   if (typeof content !== 'string') return null;
   const sourceShapeError = validateGeneratedSourceShape(path, content);
   if (sourceShapeError) return sourceShapeError;
+  if (
+    isAppEntryPath(path) &&
+    (/<h1>\s*New Project\s*<\/h1>/i.test(content) || /Start coding here\.\.\./i.test(content))
+  ) {
+    return `Generated content for ${path} still looks like the starter template. Replace the starter screen with the requested implementation.`;
+  }
   const stripped = stripComments(content).trim();
   if (!stripped) {
     if (
@@ -98,9 +107,6 @@ export function validateGeneratedPlaceholder(path: string, content: string): str
   }
   return null;
 }
-
-const isAppEntryPath = (path: string): boolean =>
-  /(?:^|\/)(?:App|main|index)\.(?:jsx|tsx)$/i.test(path);
 
 /** Reject common small-model payloads that are balanced but target the wrong source boundary. */
 export function validateGeneratedSourceShape(path: string, content: string): string | null {
