@@ -3,7 +3,7 @@
   grid-template-columns: 52px 76px minmax(0, 1fr);
   animation: fade-in 0.1s ease;
   align-items: flex-start;
-  border-bottom: 1px solid rgb(255 255 255 / 3%);
+  border-bottom: 1px solid var(--border-subtle);
 }
 
 .logItem:last-child {
@@ -11,7 +11,7 @@
 }
 
 .logItem:hover {
-  background: rgb(129 140 248 / 5%);
+  background: var(--accent-light);
 }
 
 .lineNumber {
@@ -21,7 +21,7 @@
   user-select: none;
   padding: 6px 14px 6px 0;
   border-right: 1px solid var(--border);
-  background: var(--bg-surface);
+  background: var(--surface-inset);
   line-height: 1.5;
   align-self: stretch;
 }
@@ -57,20 +57,20 @@
 }
 
 .userRow .logContent {
-  color: #fbbf24;
+  color: var(--warning);
 }
 
 .errorRow {
-  background: rgb(239 68 68 / 10%) !important;
-  border-left: 3px solid #ef4444;
+  background: var(--danger-light) !important;
+  border-left: 3px solid var(--danger);
 }
 
 .errorRow .logContent {
-  color: #f87171 !important;
+  color: var(--danger) !important;
 }
 
 .errorRow .prompt {
-  color: #ef4444 !important;
+  color: var(--danger) !important;
 }
 
 @keyframes fade-in {

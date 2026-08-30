@@ -71,4 +71,25 @@ describe('summarizeVisualPreviewEvidence', () => {
       }),
     ).toContain('horizontal overflow');
   });
+
+  it('does not reject a preview for advisory layout evidence alone', () => {
+    expect(
+      visualPreviewInspectionFailure({
+        status: 'passed',
+        elements: ['h1: Settings', 'input: Name', 'button: Save'],
+        screenshotCaptured: true,
+        styleAudit: {
+          horizontalOverflow: false,
+          collapsedControls: [],
+          controlLayoutIssues: ['controls wrap unexpectedly in a wide row'],
+          advisoryIssues: ['controls wrap unexpectedly'],
+          missingExplicitColors: [],
+          contrastFailures: [],
+          unnamedControls: [],
+          missingFocusVisible: false,
+          issues: [],
+        },
+      }),
+    ).toBeNull();
+  });
 });

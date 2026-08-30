@@ -558,6 +558,41 @@ describe('runActionLoop', () => {
     expect(repairPrompt).toContain('reset, clear, or restart control');
   });
 
+  it('rejects an empty collection draft that only renders item controls', async () => {
+    const incompleteCollection = `import React, { useState } from 'react';
+export default function App() {
+  const [todos, setTodos] = useState([]);
+  const addTodo = (text) => setTodos([...todos, { text, completed: false }]);
+  const toggleTodo = (index) => setTodos(todos.map((todo, itemIndex) => itemIndex === index ? { ...todo, completed: !todo.completed } : todo));
+  const deleteTodo = (index) => setTodos(todos.filter((_, itemIndex) => itemIndex !== index));
+  return <main><h1>Todo App</h1><ul>{todos.map((todo, index) => <li key={index}><input type="checkbox" checked={todo.completed} onChange={() => toggleTodo(index)} /><span>{todo.text}</span><button onClick={() => deleteTodo(index)}>Delete</button></li>)}</ul></main>;
+}`;
+    const incompleteFence = `\`\`\`jsx\n${incompleteCollection}\n\`\`\``;
+    const completeFence = `\`\`\`jsx\n${PLAYABLE_INTERACTIVE_APP}\n\`\`\``;
+    askWebLLM
+      .mockResolvedValueOnce(incompleteFence)
+      .mockResolvedValueOnce(completeFence)
+      .mockResolvedValueOnce('{"action":"validate"}')
+      .mockResolvedValueOnce('{"action":"finish","summary":"Created todo app"}');
+    const validate = vi.fn().mockResolvedValue({ status: 'passed', check: 'build' });
+
+    const result = await runActionLoop({
+      request: 'build a todo app',
+      activeFile: 'src/App.jsx',
+      files: { 'src/App.jsx': 'export default function App() { return null; }' },
+      model: 'Qwen2.5-Coder-1.5B-Instruct-q4f16_1-MLC',
+      validate,
+    });
+
+    expect(result.files['src/App.jsx']).toContain('<input');
+    expect(result.files['src/App.jsx']).toContain('>\n        Add\n      </button>');
+    expect(
+      askWebLLM.mock.calls[1]?.[3]?.messages?.some((message: { content?: string }) =>
+        message.content?.includes('visible input or textarea'),
+      ),
+    ).toBe(true);
+  });
+
   it('repairs generic turn guards and stale derived state before staging a lightweight app', async () => {
     const brokenInteractiveSource = `import { useState } from 'react';
 export default function App() {

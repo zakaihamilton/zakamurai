@@ -27,6 +27,7 @@ import {
   CONTEXT_READY_AGENT_INSTRUCTIONS,
   LIGHTWEIGHT_AGENT_SYSTEM_PROMPT,
   LIGHTWEIGHT_CONTEXT_READY_INSTRUCTIONS,
+  TODO_APP_GENERATION_GUIDANCE,
   buildActionLoopModelMessages,
   buildContextReadyUserRequest,
   buildUserRequest,
@@ -34,6 +35,7 @@ import {
   isIncompleteWriteError,
   isLightweightAgentModel,
   isNewAppGenerationRequest,
+  isTodoAppRequest,
   loadAskWebLLM,
   newlyCreatedComponentsNeedEntryWiring,
   normalizeFinishSummary,
@@ -77,7 +79,7 @@ import { visualPreviewInspectionFailure } from './VisualPreviewEvidence';
 import { AgentWorkspace } from './Workspace';
 
 const VISUAL_QUALITY_INSTRUCTION =
-  'Visual quality is a hard requirement for UI requests: cohesive palette, clear typography, proper spacing, flex/grid layouts, responsive hover/focus states. For list/todo apps: inputs and submit buttons in horizontal flex rows; todo items as compact flex rows with styled checkboxes on the left and compact delete buttons on the right; strike through completed items with reduced opacity. Correct runtime errors, unreadable contrast, or broken layout before finishing.';
+  'Visual quality is a hard requirement for UI requests: use a coherent palette with explicit page and surface colors, a readable type scale, bounded content widths, consistent spacing, and semantic CSS Module roles. Prefer fluid flex/grid layouts with min-width: 0, avoid accidental full-width controls and giant fixed dimensions, keep interactive controls usable at narrow widths, and include visible hover, disabled, and focus-visible states. Correct runtime errors, unreadable contrast, horizontal overflow, collapsed controls, or broken layout before finishing.';
 
 export async function runActionLoop({
   request,
@@ -151,10 +153,11 @@ export async function runActionLoop({
     { role: 'system', content: agentSystemPrompt },
     {
       role: 'user',
-      content:
-        visualMode && !lightweightModel
-          ? `${userRequest}\n\n${VISUAL_QUALITY_INSTRUCTION}`
-          : userRequest,
+      content: [
+        userRequest,
+        ...(visualMode ? [VISUAL_QUALITY_INSTRUCTION] : []),
+        ...(isTodoAppRequest(request) && !contextReady ? [TODO_APP_GENERATION_GUIDANCE] : []),
+      ].join('\n\n'),
     },
   ];
   let protocolFailures = 0;
@@ -164,6 +167,7 @@ export async function runActionLoop({
   const validationState: ActionLoopValidationState = {
     wroteSinceVerification: false,
     lastValidationFailed: false,
+    lastValidationStatus: 'unavailable',
     repairAttempts: 0,
   };
   const previewInspectState: PreviewInspectLoopState = {
@@ -261,7 +265,11 @@ export async function runActionLoop({
     return recovered.map((entry) => entry.path);
   };
 
-  const autoFinishSummary = createAutoFinishSummary(request);
+  const autoFinishSummary = (
+    reason: 'validate' | 'fulfillment' | 'identical-write' | 'unchanged-reads' | 'safety-limit',
+    wiredEntry: string | null,
+  ): string =>
+    createAutoFinishSummary(request)(reason, wiredEntry, validationState.lastValidationStatus);
 
   const runValidation = createValidationRunner({
     workspace,
@@ -628,7 +636,7 @@ export async function runActionLoop({
           if (!validate || !isFailedValidationResult(validationResult)) {
             const wiredEntry = wireNewComponentIntoScratchEntry(workspace);
             const changes = workspace.changes();
-            const summary = autoFinishSummary('validate', wiredEntry);
+            const summary = autoFinishSummary(validate ? 'validate' : 'fulfillment', wiredEntry);
             onEvent({ type: 'finished', turn, changes, message: summary, agentRole });
             context.record(validate ? 'validation' : 'fulfillment', validationResult);
             return { changes, files: workspace.files, summary, events: turn, workspace };
@@ -1433,6 +1441,7 @@ export async function runActionLoop({
           request,
           changeCount: changes.length,
           wiredEntry,
+          validationStatus: validationState.lastValidationStatus,
         });
         onEvent({ type: 'finished', turn, changes, message: summary, agentRole });
         return {

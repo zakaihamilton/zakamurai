@@ -58,11 +58,20 @@ export function validateComponentStyling(path: string, content: string): string 
   return null;
 }
 
+const isAppEntryPath = (path: string): boolean =>
+  /(?:^|\/)(?:App|main|index)\.(?:jsx|tsx)$/i.test(path);
+
 /** Rejects comment-only scaffolding and non-code prose that claims to be an implementation. */
 export function validateGeneratedPlaceholder(path: string, content: string): string | null {
   if (typeof content !== 'string') return null;
   const sourceShapeError = validateGeneratedSourceShape(path, content);
   if (sourceShapeError) return sourceShapeError;
+  if (
+    isAppEntryPath(path) &&
+    (/<h1>\s*New Project\s*<\/h1>/i.test(content) || /Start coding here\.\.\./i.test(content))
+  ) {
+    return `Generated content for ${path} still looks like the starter template. Replace the starter screen with the requested implementation.`;
+  }
   const stripped = stripComments(content).trim();
   if (!stripped) {
     if (
@@ -98,9 +107,6 @@ export function validateGeneratedPlaceholder(path: string, content: string): str
   }
   return null;
 }
-
-const isAppEntryPath = (path: string): boolean =>
-  /(?:^|\/)(?:App|main|index)\.(?:jsx|tsx)$/i.test(path);
 
 /** Reject common small-model payloads that are balanced but target the wrong source boundary. */
 export function validateGeneratedSourceShape(path: string, content: string): string | null {
@@ -156,6 +162,27 @@ export function validateGeneratedSourceShape(path: string, content: string): str
 }
 
 const clipRequest = (request: string): string => request.trim().replace(/\s+/g, ' ').slice(0, 80);
+
+const hasCollectionTextEntry = (content: string): boolean =>
+  /<(?:input|textarea)\b(?=[^>]*\bon(?:Change|Input)\s*=)(?![^>]*\btype\s*=\s*["'](?:checkbox|radio|hidden)["'])[^>]*>/i.test(
+    content,
+  );
+
+const hasCollectionAddControl = (content: string): boolean =>
+  /<button\b[^>]*\bonClick\s*=\s*\{[^}]*\b[A-Za-z_$]*(?:add|create|save|submit|new)[A-Za-z0-9_$]*\b[^}]*\}[^>]*>[\s\S]{0,160}?\b(?:add|new|create|save|submit)\b[\s\S]{0,160}?<\/button>/i.test(
+    content,
+  ) ||
+  /<button\b[^>]*\btype\s*=\s*["']submit["'][^>]*>[\s\S]{0,160}?\b(?:add|new|create|save|submit)\b[\s\S]{0,160}?<\/button>/i.test(
+    content,
+  ) ||
+  /<form\b[^>]*\bonSubmit\s*=\s*\{[^}]+\}[^>]*>[\s\S]{0,600}?<button\b[^>]*>[\s\S]{0,160}?\b(?:add|new|create|save|submit)\b[\s\S]{0,160}?<\/button>[\s\S]*?<\/form>/i.test(
+    content,
+  );
+
+const hasVisibleEmptyState = (content: string): boolean =>
+  /<(?:p|div|span|output|section)\b[^>]*>[\s\S]{0,180}?\b(?:no\s+\w+|nothing|empty|none|start|add\s+(?:your|a|the)\s+first|get\s+started)\b[\s\S]{0,180}?<\/(?:p|div|span|output|section)>/i.test(
+    content,
+  );
 
 const isThinComponentShell = (path: string, content: string): boolean =>
   isAppEntryPath(path) &&
@@ -255,6 +282,16 @@ export function validateRequestFulfillment(
     );
   if (hasHeading && !hasMeaningfulSurface) {
     return `Generated content for ${path} only renders a heading. Add the requested app's visible content, controls, or primary interaction before finishing.`;
+  }
+
+  const isEmptyMappedCollection =
+    /\buseState\s*\(\s*\[\s*\]\s*\)/.test(content) && /\.map\s*\(/.test(content);
+  if (
+    isEmptyMappedCollection &&
+    !(hasCollectionTextEntry(content) && hasCollectionAddControl(content)) &&
+    !hasVisibleEmptyState(content)
+  ) {
+    return `Generated content for ${path} renders an empty collection without an entry flow or clear empty state. Add a visible input or textarea plus a create/add/submit control, or tell the user what to do next when the collection has no items.`;
   }
 
   const hasIndexedInteraction =

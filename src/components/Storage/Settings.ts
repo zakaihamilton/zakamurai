@@ -56,20 +56,21 @@ const KEYS = {
   CHANGE_SETS: 'zakamurai_change_sets',
 };
 
-const getStorage = () => {
-  if (typeof localStorage === 'undefined') {
+const getStorage = (): Storage | null => {
+  try {
+    const storage = globalThis.localStorage;
+    if (
+      typeof storage?.getItem !== 'function' ||
+      typeof storage.setItem !== 'function' ||
+      typeof storage.removeItem !== 'function'
+    ) {
+      return null;
+    }
+    return storage;
+  } catch {
+    // Privacy modes can expose localStorage while throwing on property access.
     return null;
   }
-
-  if (
-    typeof localStorage.getItem !== 'function' ||
-    typeof localStorage.setItem !== 'function' ||
-    typeof localStorage.removeItem !== 'function'
-  ) {
-    return null;
-  }
-
-  return localStorage;
 };
 
 /** Keys stored primarily in IndexedDB (too large for reliable localStorage). */
@@ -164,15 +165,23 @@ const largeWriteGen = {
 function readLegacyLocal<T>(key: string, fallback: T, { raw = false } = {}): T {
   const storage = getStorage();
   if (!storage) return fallback;
-  const val = storage.getItem(key);
-  if (val == null) return fallback;
-  if (raw) return val as T;
-  return parseStoredJson(val, fallback);
+  try {
+    const val = storage.getItem(key);
+    if (val == null) return fallback;
+    if (raw) return val as T;
+    return parseStoredJson(val, fallback);
+  } catch {
+    return fallback;
+  }
 }
 
 const clearLegacyLocal = (key: string) => {
   const storage = getStorage();
-  if (storage) storage.removeItem(key);
+  try {
+    storage?.removeItem(key);
+  } catch {
+    // Fallback cleanup is best effort when browser storage is unavailable.
+  }
 };
 
 const writeLocalFallback = (key: string, value: string | null) => {
@@ -211,8 +220,10 @@ const Settings = {
   },
   get(key: string, defaultValue: string | null = null) {
     const storage = getStorage();
-    if (storage) {
-      return storage.getItem(key) || defaultValue;
+    try {
+      if (storage) return storage.getItem(key) || defaultValue;
+    } catch {
+      return defaultValue;
     }
     return defaultValue;
   },
@@ -704,11 +715,8 @@ const Settings = {
     // IndexedDB clear waits for those writes, while the generation fence keeps
     // their localStorage fallback from repopulating the reset workspace.
     largePersistence.invalidateWrites();
-    const storage = getStorage();
-    if (storage) {
-      for (const key of Object.values(KEYS)) {
-        storage.removeItem(key);
-      }
+    for (const key of Object.values(KEYS)) {
+      clearLegacyLocal(key);
     }
     await idbClear();
     largeCache.fileContents = null;

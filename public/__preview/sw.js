@@ -177,7 +177,10 @@ function applyPreviewEmbedHeaders(headers, ideOrigin) {
   headers.set('Cross-Origin-Embedder-Policy', 'credentialless');
   headers.set('Cross-Origin-Resource-Policy', 'cross-origin');
   const ancestors = new Set(["'self'"]);
-  if (typeof ideOrigin === 'string' && /^https?:\/\/(localhost|127\.0\.0\.1)(:|$)/.test(ideOrigin)) {
+  if (
+    typeof ideOrigin === 'string' &&
+    /^https?:\/\/(localhost|127\.0\.0\.1)(:|$)/.test(ideOrigin)
+  ) {
     ancestors.add('http://localhost:3000');
   }
   for (const origin of expandOriginAliases(ideOrigin)) ancestors.add(origin);

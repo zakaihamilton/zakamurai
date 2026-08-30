@@ -248,6 +248,19 @@ import('${scriptPath}').catch(err => console.error('[Runner Error]', err));
     };
     const command = packageJson.scripts?.[check];
     if (!command) throw new Error(`Unknown package script: ${check}`);
+
+    this.onPhase('installing');
+    this.onLog('Installing dependencies for project check...');
+    await withTimeout(
+      container.npm.installFromPackageJson({
+        // Checks such as lint and test normally live in devDependencies.
+        includeDev: true,
+        onProgress: (msg: string) => this.onLog(`[NPM] ${msg}`),
+      }),
+      60000,
+      'NPM install timed out after 60s',
+    );
+
     const output: string[] = [];
     for (const argv of parseBuildCommand(command)) {
       const commandText = argv.join(' ');

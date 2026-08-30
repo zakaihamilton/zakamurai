@@ -74,6 +74,8 @@ describe('previewSandbox', () => {
       styleAudit: {
         horizontalOverflow: true,
         collapsedControls: ['Save'],
+        controlLayoutIssues: ['controls wrap unexpectedly in a wide row'],
+        advisoryIssues: ['controls wrap unexpectedly'],
         missingExplicitColors: ['body background'],
         contrastFailures: ['button 1.2:1'],
         unnamedControls: ['input'],
@@ -84,6 +86,8 @@ describe('previewSandbox', () => {
     expect(parsed?.styleAudit).toMatchObject({
       horizontalOverflow: true,
       collapsedControls: ['Save'],
+      controlLayoutIssues: ['controls wrap unexpectedly in a wide row'],
+      advisoryIssues: ['controls wrap unexpectedly'],
       missingFocusVisible: true,
       issues: ['horizontal overflow'],
     });
@@ -103,6 +107,31 @@ describe('previewSandbox', () => {
         missingExplicitColors: [],
         missingFocusVisible: false,
       });
+    } finally {
+      HTMLElement.prototype.getBoundingClientRect = originalRect;
+      document.body.innerHTML = '';
+    }
+  });
+
+  it('flags wide form controls that wrap beside an action', () => {
+    const originalRect = HTMLElement.prototype.getBoundingClientRect;
+    document.body.innerHTML = `<style>
+      .form_hash { display: flex; flex-wrap: wrap; gap: 1rem; }
+      .form_hash input { width: 100%; }
+    </style><div id="root"><main><h1>Settings</h1><form class="form_hash"><input aria-label="Name" /><button type="submit">Save</button></form></main></div>`;
+    HTMLElement.prototype.getBoundingClientRect = function () {
+      if (this.matches('.form_hash')) return { width: 800, height: 120, top: 0 } as DOMRect;
+      if (this.matches('input')) return { width: 700, height: 44, top: 0 } as DOMRect;
+      if (this.matches('button')) return { width: 80, height: 44, top: 70 } as DOMRect;
+      return { width: 800, height: 44, top: 0 } as DOMRect;
+    };
+    try {
+      const evidence = collectPreviewStyleEvidence(document, window);
+      expect(evidence.styleAudit.controlLayoutIssues).toContain(
+        'controls wrap unexpectedly in a wide row',
+      );
+      expect(evidence.styleAudit.advisoryIssues).toContain('controls wrap unexpectedly');
+      expect(evidence.styleAudit.issues).not.toContain('controls wrap unexpectedly');
     } finally {
       HTMLElement.prototype.getBoundingClientRect = originalRect;
       document.body.innerHTML = '';

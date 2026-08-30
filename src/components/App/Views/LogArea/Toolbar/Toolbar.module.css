@@ -19,8 +19,8 @@
   gap: 8px;
   padding: 0 8px 0 10px;
   border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: var(--bg-surface);
+  border-radius: var(--radius-md);
+  background: var(--surface-inset);
   color: var(--text-muted);
 }
 
@@ -79,10 +79,10 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
-  border-radius: 6px;
-  background: var(--bg-surface);
+  width: 30px;
+  height: 30px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-elevated);
   border: 1px solid var(--border);
   color: var(--text-muted);
   cursor: pointer;

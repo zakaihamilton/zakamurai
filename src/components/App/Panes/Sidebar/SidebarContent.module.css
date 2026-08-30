@@ -7,7 +7,7 @@
     cubic-bezier(0.4, 0, 0.2, 1);
   background: var(--bg-panel);
   backdrop-filter: var(--glass-blur);
-  border-right: 1px solid var(--border);
+  border-right: 1px solid var(--border-subtle);
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -31,26 +31,26 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  min-height: 36px;
-  padding: 0 14px;
-  border-bottom: 1px solid var(--border);
+  min-height: 38px;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--border-subtle);
   color: var(--text-subtle);
   font-size: 11px;
-  font-weight: 750;
-  letter-spacing: 0.1em;
+  font-weight: 700;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
 }
 
 @media (width <= 768px) {
   .sidebar {
     position: fixed;
-    top: 52px;
+    top: 54px;
     bottom: 0;
     left: 0;
     z-index: 900;
     width: min(280px, 88vw) !important;
     max-width: calc(100vw - 24px);
-    box-shadow: 20px 0 50px rgb(0 0 0 / 50%);
+    box-shadow: 20px 0 50px rgb(0 0 0 / 52%);
     background: var(--bg-panel);
     backdrop-filter: blur(20px);
     transform: translateX(0);
@@ -60,7 +60,7 @@
 
   @media (width <= 380px) {
     .sidebar {
-      top: 44px;
+      top: 46px;
     }
   }
 

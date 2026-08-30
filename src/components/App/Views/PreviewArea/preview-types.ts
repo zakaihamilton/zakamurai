@@ -97,6 +97,8 @@ export type PreviewMessage = {
 export type PreviewStyleAudit = {
   horizontalOverflow: boolean;
   collapsedControls: string[];
+  controlLayoutIssues?: string[];
+  advisoryIssues?: string[];
   missingExplicitColors: string[];
   contrastFailures: string[];
   unnamedControls: string[];

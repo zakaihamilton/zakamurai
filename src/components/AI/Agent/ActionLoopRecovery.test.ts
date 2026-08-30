@@ -2,11 +2,39 @@ import { describe, expect, it } from 'vitest';
 import {
   buildContextReadyUserRequest,
   buildRepairFileMessages,
+  createAutoFinishSummary,
   isNewAppGenerationRequest,
+  normalizeFinishSummary,
 } from './ActionLoopRecovery';
 import { createProjectStyleProfile } from './ProjectStyleProfile';
 
 describe('responsive generation scope', () => {
+  it('does not call a safety-limited draft completed', () => {
+    const summary = createAutoFinishSummary('create a todo app')('safety-limit', null);
+
+    expect(summary).toContain('partial draft');
+    expect(summary).not.toContain('Completed the requested changes');
+  });
+
+  it('does not claim automatic validation when the validator is unavailable', () => {
+    const summary = createAutoFinishSummary('create a notes app')('validate', null, 'unavailable');
+
+    expect(summary).toContain('validation was unavailable');
+    expect(summary).not.toContain('validated the build');
+  });
+
+  it('does not claim build validation when validation is unavailable', () => {
+    const summary = normalizeFinishSummary({
+      summary: 'Completed the requested changes and validated the build.',
+      request: 'create a todo app',
+      changeCount: 2,
+      validationStatus: 'unavailable',
+    });
+
+    expect(summary).toContain('validation was unavailable');
+    expect(summary).not.toContain('validated the build');
+  });
+
   it('recognizes new app-generation requests without treating existing edits as generation', () => {
     expect(isNewAppGenerationRequest('Create a responsive dashboard')).toBe(true);
     expect(isNewAppGenerationRequest('Build a new dashboard')).toBe(true);
@@ -71,6 +99,22 @@ describe('responsive generation scope', () => {
     expect(messages[1].content).toContain('do not repeat the failed JSX unchanged');
   });
 
+  it('does not feed starter markup back into a repair loop', () => {
+    const messages = buildRepairFileMessages({
+      request: 'build a todo app',
+      targetPath: 'src/App.jsx',
+      files: {},
+      failedContent:
+        'export default function App() { return <><h1>New Project</h1><p>Start coding here...</p></>; }',
+      diagnostic: 'Generated content for src/App.jsx still looks like the starter template.',
+      lightweight: true,
+    });
+
+    expect(messages[1].content).toContain('generate the requested application from scratch');
+    expect(messages[1].content).not.toContain('<h1>New Project</h1>');
+    expect(messages[1].content).toContain('All/Active/Completed filter tabs');
+  });
+
   it('injects host guidance and truncates oversized lightweight context', () => {
     const prompt = buildContextReadyUserRequest({
       request: 'create a notes app',
@@ -86,5 +130,18 @@ describe('responsive generation scope', () => {
     expect(prompt).toContain('Host assistance: write one complete component file.');
     expect(prompt).toContain('…[context truncated]');
     expect(prompt).toContain('labelled code fence');
+  });
+
+  it('carries todo behavior and visual guidance into context-ready generation', () => {
+    const prompt = buildContextReadyUserRequest({
+      request: 'build a todo app',
+      targetPath: 'src/App.jsx',
+      files: { 'src/App.jsx': 'export default function App() { return null; }' },
+      lightweight: true,
+    });
+
+    expect(prompt).toContain('stable ids');
+    expect(prompt).toContain('All/Active/Completed filter tabs');
+    expect(prompt).toContain('terracotta accent');
   });
 });

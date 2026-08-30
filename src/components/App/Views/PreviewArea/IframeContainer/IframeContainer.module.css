@@ -2,7 +2,7 @@
   position: relative;
   flex: 1;
   overflow: auto;
-  background: var(--bg-base);
+  background: var(--surface-inset);
 }
 
 .scaleWrapper {

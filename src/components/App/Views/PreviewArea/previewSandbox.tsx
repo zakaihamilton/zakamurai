@@ -80,6 +80,7 @@ export function collectPreviewStyleEvidence(
   ).slice(0, 80);
   const collapsedControls: string[] = [];
   const unnamedControls: string[] = [];
+  const controlLayoutIssues: string[] = [];
   for (const element of controls) {
     const rect = element.getBoundingClientRect();
     const style = previewWindow.getComputedStyle(element);
@@ -95,6 +96,39 @@ export function collectPreviewStyleEvidence(
       collapsedControls.push(name);
     }
     if (!accessible) unnamedControls.push(element.tagName.toLowerCase());
+  }
+  for (const container of Array.from(previewDocument.querySelectorAll('form,[class]')).slice(
+    0,
+    80,
+  )) {
+    const containerStyle = previewWindow.getComputedStyle(container);
+    if (
+      containerStyle.display !== 'flex' ||
+      (containerStyle.flexDirection && containerStyle.flexDirection !== 'row') ||
+      !['wrap', 'wrap-reverse'].includes(containerStyle.flexWrap)
+    ) {
+      continue;
+    }
+    const directControls = Array.from(container.children).filter((child) =>
+      child.matches('button,a,input,select,textarea,[role="button"]'),
+    );
+    const hasTextControl = directControls.some((child) =>
+      child.matches('input:not([type="checkbox"]):not([type="radio"]),select'),
+    );
+    const hasAction = directControls.some((child) => child.matches('button,a,[role="button"]'));
+    if (!hasTextControl || !hasAction) continue;
+    const containerRect = container.getBoundingClientRect();
+    if (containerRect.width < 480) continue;
+    const rows = new Set(
+      directControls.map((child) => Math.round(child.getBoundingClientRect().top || 0)),
+    );
+    const wideControl = directControls.some((child) => {
+      if (!child.matches('input:not([type="checkbox"]):not([type="radio"]),select')) return false;
+      return child.getBoundingClientRect().width >= containerRect.width * 0.78;
+    });
+    if (rows.size > 1 && wideControl) {
+      controlLayoutIssues.push('controls wrap unexpectedly in a wide row');
+    }
   }
   const rgb = (value: string): number[] | null => {
     const parts = String(value || '').match(/[\d.]+/g);
@@ -198,6 +232,7 @@ export function collectPreviewStyleEvidence(
   const horizontalOverflow =
     previewDocument.documentElement.scrollWidth > previewWindow.innerWidth + 1 ||
     previewDocument.body.scrollWidth > previewWindow.innerWidth + 1;
+  const advisoryIssues = [...(controlLayoutIssues.length ? ['controls wrap unexpectedly'] : [])];
   const issues = [
     ...(horizontalOverflow ? ['horizontal overflow'] : []),
     ...(collapsedControls.length ? ['collapsed controls'] : []),
@@ -211,6 +246,8 @@ export function collectPreviewStyleEvidence(
     styleAudit: {
       horizontalOverflow,
       collapsedControls: collapsedControls.slice(0, 20),
+      controlLayoutIssues: controlLayoutIssues.slice(0, 20),
+      advisoryIssues,
       missingExplicitColors,
       contrastFailures: contrastFailures.slice(0, 20),
       unnamedControls: unnamedControls.slice(0, 20),
@@ -323,6 +360,12 @@ export function parsePreviewMessage(data: unknown): PreviewMessage | null {
         horizontalOverflow: audit.horizontalOverflow === true,
         collapsedControls: Array.isArray(audit.collapsedControls)
           ? audit.collapsedControls.slice(0, 20).map(String)
+          : [],
+        controlLayoutIssues: Array.isArray(audit.controlLayoutIssues)
+          ? audit.controlLayoutIssues.slice(0, 20).map(String)
+          : [],
+        advisoryIssues: Array.isArray(audit.advisoryIssues)
+          ? audit.advisoryIssues.slice(0, 20).map(String)
           : [],
         missingExplicitColors: Array.isArray(audit.missingExplicitColors)
           ? audit.missingExplicitColors.slice(0, 20).map(String)

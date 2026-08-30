@@ -106,11 +106,16 @@ Useful focused commands:
 | `npm run test` | Run the unit test suite |
 | `npm run test:coverage` | Run unit tests with coverage thresholds |
 | `npm run test:e2e` | Run Chromium smoke tests |
+| `npm run test:visual` | Run Chromium/WebKit visual regression and accessibility tests |
+| `npm run test:visual:update` | Regenerate visual baselines for the current platform |
 | `npm run test:visual:chromium` | Run Chromium visual regression tests |
+| `npm run test:visual:webkit` | Run WebKit visual regression tests |
 | `npm run test:promptfoo` | Run static AI compliance checks without API keys |
 | `npm run check:architecture` | Enforce project architecture rules |
 | `npm run check:runtime-assets` | Verify generated browser runtime assets |
 | `npm run verify:ai` | Run optional extended AI regression checks |
+
+Visual snapshots are platform-specific. Run `npm run test:visual:update` on the target CI platform to regenerate its baselines, then run `npm run test:visual` without the update flag to verify them.
 
 For AI reliability and browser memory profiling, see the [AI memory profiling workflow](./docs/ai-memory-profiling.md). The static AI checks use the local echo provider and golden fixtures in [`tests/ai-golden/`](./tests/ai-golden/); they do not require API keys.
 

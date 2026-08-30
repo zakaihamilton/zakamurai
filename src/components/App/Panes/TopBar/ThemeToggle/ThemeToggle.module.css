@@ -1,6 +1,6 @@
 .themeToggle {
-  background: var(--bg-surface);
-  border: 1px solid var(--border);
+  background: var(--surface-elevated);
+  border: 1px solid var(--border-strong);
   color: var(--text-muted);
   cursor: pointer;
   border-radius: var(--topbar-control-radius);
@@ -19,7 +19,7 @@
 
 .themeToggle:hover {
   background: var(--bg-hover);
-  border-color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--border));
   color: var(--text-main);
   box-shadow: none;
   transform: scale(1.05);

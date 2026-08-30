@@ -1,7 +1,7 @@
 .breadcrumb {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   font-size: 14px;
   color: var(--text-muted);
   font-weight: 500;
@@ -34,7 +34,7 @@
   font-weight: inherit;
   cursor: pointer;
   user-select: none;
-  padding: 4px 8px;
+  padding: 5px 8px;
   border-radius: 6px;
   transition: all 0.2s var(--ease-premium);
   white-space: nowrap;
@@ -61,7 +61,7 @@
 
 .active {
   color: var(--text-main);
-  font-weight: 600;
+  font-weight: 650;
 }
 
 .aiHighlight {

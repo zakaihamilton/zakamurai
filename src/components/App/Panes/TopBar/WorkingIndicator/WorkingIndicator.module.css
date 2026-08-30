@@ -4,9 +4,9 @@
   gap: 10px;
   margin-right: 8px;
   background: var(--accent-light);
-  padding: 6px 14px;
-  border-radius: 6px;
-  border: 1px solid var(--accent);
+  padding: 6px 12px;
+  border-radius: var(--radius-md);
+  border: 1px solid rgb(var(--accent-rgb) / 35%);
   color: var(--accent);
   box-shadow: none;
 }

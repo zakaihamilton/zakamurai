@@ -357,6 +357,7 @@ export const incompleteCssModuleImports = (
   path: string,
   content: string,
   files: Record<string, string>,
+  options: { forceLayoutRecovery?: boolean } = {},
 ): string[] => {
   if (!/\.(jsx|tsx)$/i.test(path)) return [];
   const required = cssModuleClassNames(content);
@@ -377,7 +378,8 @@ export const incompleteCssModuleImports = (
     return (
       [...required].some((className) => !defined.has(className)) ||
       (hasInteractiveElements(content) && !hasInteractiveBase(normalized)) ||
-      LEGACY_RECOVERY_SIGNATURE.test(files[stylesheetPath])
+      LEGACY_RECOVERY_SIGNATURE.test(files[stylesheetPath]) ||
+      (options.forceLayoutRecovery && hasInteractiveElements(content))
     );
   });
 };
@@ -388,6 +390,7 @@ export const appendMissingCssModuleRules = (
   sourceContent: string,
   profile?: ProjectStyleProfile,
   stylesheetPath = 'src/App.module.css',
+  options: { forceLayoutRecovery?: boolean } = {},
 ): string | null => {
   const required = cssModuleClassNames(sourceContent);
   const normalizedExistingCss = normalizeLegacyRecoveryStylesheet(existingCss);
@@ -396,7 +399,9 @@ export const appendMissingCssModuleRules = (
   const needsInteractiveBase =
     hasInteractiveElements(sourceContent) && !hasInteractiveBase(normalizedExistingCss);
   const wasNormalized = normalizedExistingCss !== existingCss;
-  if (!missing.length && !needsInteractiveBase && !wasNormalized) return null;
+  if (!missing.length && !needsInteractiveBase && !wasNormalized && !options.forceLayoutRecovery) {
+    return null;
+  }
 
   if (profile) {
     let generated = generateProjectCssModule({
@@ -447,14 +452,17 @@ export const recoverWorkspaceCssModules = (
 
   for (const [path, content] of Object.entries(files)) {
     if (!/\.(jsx|tsx)$/i.test(path)) continue;
-    for (const stylesheet of incompleteCssModuleImports(path, content, next)) {
+    for (const stylesheet of incompleteCssModuleImports(path, content, next, {
+      forceLayoutRecovery: Boolean(profile),
+    })) {
       const merged = appendMissingCssModuleRules(
         next[stylesheet] || '',
         content,
         profile,
         stylesheet,
+        { forceLayoutRecovery: Boolean(profile) },
       );
-      if (!merged) continue;
+      if (!merged || merged === next[stylesheet]) continue;
       next[stylesheet] = merged;
       updated.add(stylesheet);
     }

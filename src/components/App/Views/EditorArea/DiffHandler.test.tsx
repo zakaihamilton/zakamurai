@@ -182,6 +182,32 @@ describe('DiffHandler', () => {
     expect(fs.writeFileAtPath).toHaveBeenCalledWith('a.js', 'old');
   });
 
+  it('keeps a pending diff when the filesystem rejects an undo write', async () => {
+    state.pendingDiffs = {
+      'a.js': { originalContent: 'old', modifiedContent: 'next', diffs: [] },
+    };
+    fs.writeFileAtPath.mockResolvedValue(false);
+
+    render(
+      <DiffHandler
+        filePath="a.js"
+        localContent="next"
+        setLocalContent={setLocalContent}
+        state={state}
+        fs={fs}
+        onStateChange={onStateChange}
+      />,
+    );
+
+    const { handleUndo } = publishedActions();
+    await act(async () => {
+      await handleUndo?.();
+    });
+
+    expect(state.pendingDiffs['a.js']).toBeDefined();
+    expect(setLocalContent).not.toHaveBeenCalled();
+  });
+
   it('toggles selected lines and updates cursor position', () => {
     render(
       <DiffHandler

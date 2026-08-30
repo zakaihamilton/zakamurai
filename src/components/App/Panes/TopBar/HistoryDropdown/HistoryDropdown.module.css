@@ -142,7 +142,7 @@
 
 .dropdownOverlay {
   position: fixed;
-  inset: 52px 0 0;
+  inset: var(--topbar-height, 54px) 0 0;
   background: transparent;
   z-index: 1505;
   animation: overlay-fade-in 0.18s var(--ease-premium);

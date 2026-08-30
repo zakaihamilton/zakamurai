@@ -4,6 +4,7 @@
   flex: 1;
   overflow: hidden;
   background: var(--bg-base);
+  min-width: 0;
 }
 
 .wrapper.maximized {

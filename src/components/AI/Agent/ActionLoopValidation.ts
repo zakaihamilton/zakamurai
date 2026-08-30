@@ -19,6 +19,7 @@ export const isInfrastructureValidationFailure = (verification: VerificationResu
 export type ActionLoopValidationState = {
   wroteSinceVerification: boolean;
   lastValidationFailed: boolean;
+  lastValidationStatus: 'passed' | 'failed' | 'unavailable';
   repairAttempts: number;
 };
 
@@ -91,6 +92,12 @@ export const createValidationRunner = ({
       : verification;
     const result = formatVerificationResult(effectiveVerification);
     context.record('verification', effectiveVerification);
+    state.lastValidationStatus =
+      effectiveVerification.status === 'passed'
+        ? 'passed'
+        : effectiveVerification.status === 'unavailable'
+          ? 'unavailable'
+          : 'failed';
     if (
       effectiveVerification.status === 'passed' ||
       effectiveVerification.status === 'unavailable'

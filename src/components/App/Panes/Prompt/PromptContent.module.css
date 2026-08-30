@@ -3,14 +3,14 @@
   height: 100%;
   width: var(--panel-width, auto);
   flex-basis: var(--panel-width, auto);
-  padding: 12px;
+  padding: 14px;
   background: var(--bg-panel);
-  border-left: 1px solid var(--border);
+  border-left: 1px solid var(--border-subtle);
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 14px;
   position: relative;
-  box-shadow: -12px 0 30px -28px rgb(0 0 0 / 80%);
+  box-shadow: -18px 0 34px -28px rgb(0 0 0 / 82%);
   z-index: 10;
   overflow: hidden;
   min-width: 0;
@@ -77,8 +77,8 @@
     max-width: calc(100vw - 24px);
     height: 100vh;
     height: 100dvh;
-    box-shadow: -10px 0 30px rgb(0 0 0 / 40%);
-    background: var(--bg-surface);
+    box-shadow: -16px 0 40px rgb(0 0 0 / 46%);
+    background: var(--bg-panel);
     transform: translateX(0);
     transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
@@ -95,7 +95,7 @@
     width: calc(100vw - 20px) !important;
     max-width: calc(100vw - 20px);
     padding: 14px;
-    gap: 12px;
+    gap: 14px;
   }
 
   .prompt.closed {
@@ -103,6 +103,6 @@
   }
 
   .content {
-    gap: 10px;
+    gap: 12px;
   }
 }

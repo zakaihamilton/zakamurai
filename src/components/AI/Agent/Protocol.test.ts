@@ -6,6 +6,10 @@ import {
   normalizeAgentPath,
   parseAgentAction,
 } from './Protocol';
+import {
+  LIGHTWEIGHT_AGENT_SYSTEM_PROMPT,
+  TODO_APP_GENERATION_GUIDANCE,
+} from './ActionLoopRecovery';
 
 describe('agent protocol', () => {
   it('documents every supported action in the system prompt catalog', () => {
@@ -23,6 +27,12 @@ describe('agent protocol', () => {
     expect(AGENT_SYSTEM_PROMPT).not.toContain('warm editorial task planner');
     expect(AGENT_SYSTEM_PROMPT).toContain('CSS custom properties');
     expect(AGENT_SYSTEM_PROMPT).toContain('generic white card, system font, blue primary button');
+  });
+
+  it('gives lightweight models concrete todo behavior and visual direction', () => {
+    expect(LIGHTWEIGHT_AGENT_SYSTEM_PROMPT).toContain('For interactive UI include React state');
+    expect(TODO_APP_GENERATION_GUIDANCE).toContain('All/Active/Completed filter tabs');
+    expect(TODO_APP_GENERATION_GUIDANCE).toContain('terracotta accent');
   });
 
   it('isolates generated preview colors from the host theme', () => {

@@ -168,20 +168,28 @@ export const isNewAppGenerationRequest = (request: string): boolean =>
 export const createAutoFinishSummary =
   (request: string) =>
   (
-    reason: 'validate' | 'identical-write' | 'unchanged-reads' | 'safety-limit',
+    reason: 'validate' | 'fulfillment' | 'identical-write' | 'unchanged-reads' | 'safety-limit',
     wiredEntry: string | null,
+    validationStatus: 'passed' | 'failed' | 'unavailable' = 'passed',
   ): string => {
-    const base = CHANGE_REQUEST_PATTERN.test(request)
-      ? reason === 'safety-limit'
-        ? 'Completed the requested changes after the agent reached its step safety limit and validated the build.'
-        : 'Completed the requested changes and validated the build.'
-      : reason === 'validate'
-        ? 'Validated the staged changes after the local model repeated validation.'
-        : reason === 'identical-write'
-          ? 'Validated the staged changes after the local model repeated an identical write action.'
-          : reason === 'unchanged-reads'
-            ? 'Validated the staged changes after the local model repeatedly read unchanged files.'
-            : 'Validated the staged changes after the agent reached its step safety limit.';
+    const base =
+      reason === 'safety-limit'
+        ? 'Prepared a partial draft after the agent reached its step safety limit; it was not reported as a completed request.'
+        : validationStatus === 'unavailable'
+          ? CHANGE_REQUEST_PATTERN.test(request)
+            ? 'Prepared the requested changes for review; build validation was unavailable.'
+            : 'Prepared the staged changes for review; build validation was unavailable.'
+          : CHANGE_REQUEST_PATTERN.test(request)
+            ? reason === 'fulfillment'
+              ? 'Prepared the requested changes for review; deterministic request checks passed, but build validation was unavailable.'
+              : 'Completed the requested changes and validated the build.'
+            : reason === 'validate'
+              ? 'Validated the staged changes after the local model repeated validation.'
+              : reason === 'fulfillment'
+                ? 'Prepared the staged changes for review; build validation was unavailable.'
+                : reason === 'identical-write'
+                  ? 'Validated the staged changes after the local model repeated an identical write action.'
+                  : 'Validated the staged changes after the local model repeatedly read unchanged files.';
     return wiredEntry
       ? `${base} wired ${wiredEntry} to the new component so it renders in the app.`
       : base;
@@ -189,6 +197,17 @@ export const createAutoFinishSummary =
 
 export const isLightweightAgentModel = (model: string): boolean =>
   /(?:0\.5|0\.8|1\.5|1\.7|2)B(?:-|$)/i.test(model);
+
+export const isTodoAppRequest = (request: string): boolean =>
+  /\b(?:todo|to-do|task[-\s]+(?:list|manager|management|planner))\b/i.test(request);
+
+export const TODO_APP_GENERATION_GUIDANCE = `
+For todo and task-list requests, build a polished task planner rather than a starter shell:
+- Keep tasks in React state with stable ids and a controlled form. Trim empty submissions, then support add, toggle complete, delete, and clear completed.
+- Show a remaining-task count, All/Active/Completed filter tabs, and a helpful empty state. Derive visible tasks and counts from the current state.
+- Use semantic CSS Module roles such as app, shell/card, title, subtitle, form/row, control, primaryAction, secondaryAction, dangerAction, list, item, checkbox, and completed.
+- Give it a warm paper-and-ink palette with one terracotta accent, clear type hierarchy, a composed list surface, compact rows, responsive layout, and visible hover/focus states.
+`.trim();
 
 export const LIGHTWEIGHT_AGENT_SYSTEM_PROMPT = `
 You are a small local coding model. Reply once with no explanation.
@@ -420,6 +439,7 @@ export const buildContextReadyUserRequest = ({
     : `Your next response must be exactly one write_file action for ${targetPath}.`;
   return [
     `Request: ${request}`,
+    ...(isTodoAppRequest(request) ? [TODO_APP_GENERATION_GUIDANCE] : []),
     ...(hostGuidance ? [hostGuidance] : []),
     ...(conversation ? [`Prior conversation:\n${conversation}`] : []),
     ...(clippedManagerContext ? [`Manager-selected context:\n${clippedManagerContext}`] : []),
@@ -474,6 +494,7 @@ const buildFenceOnlyRecoveryMessages = ({
       role: 'user',
       content: [
         `Original request: ${request}`,
+        ...(isTodoAppRequest(request) ? [TODO_APP_GENERATION_GUIDANCE] : []),
         ...(incompleteWriteHint ? [incompleteWriteHint] : []),
         `Required destination: ${recoveryPath}`,
         context,
@@ -533,6 +554,7 @@ export const buildForcedWriteRecoveryMessages = ({
       role: 'user',
       content: [
         `Original request: ${request}`,
+        ...(isTodoAppRequest(request) ? [TODO_APP_GENERATION_GUIDANCE] : []),
         ...(incompleteWriteHint ? [incompleteWriteHint] : []),
         recoveryInstruction,
         targetPath
@@ -567,15 +589,25 @@ export const buildRepairFileMessages = ({
     .replace(/\n(?:Return only|Your next response|The corrected source)[\s\S]*$/i, '')
     .replace(/\n```[\s\S]*$/i, '')
     .trim();
-  const currentContent = cleanedFailedContent || files[repairPath] || '(file does not exist yet)';
+  const starterLike =
+    /starter (?:template|screen)|placeholder copy/i.test(diagnostic) ||
+    /<h1>\s*New Project\s*<\/h1>|Start coding here\.\.\./i.test(cleanedFailedContent);
+  const currentContent = starterLike
+    ? 'The failed source was the starter screen. Do not preserve or repeat its placeholder markup; generate the requested application from scratch.'
+    : cleanedFailedContent || files[repairPath] || '(file does not exist yet)';
   const context = currentContent.slice(0, 16000);
   const fence = [`\`\`\`${language}`, 'complete corrected source here', '```'].join('\n');
   const sourceOnly = lightweight;
   const legacyGuidance = writeRecovery(repairPath, diagnostic, files);
+  const emptyCollectionGuidance =
+    /\buseState\s*\(\s*\[\s*\]\s*\)/.test(currentContent) && /\.map\s*\(/.test(currentContent)
+      ? 'The failed source renders an empty collection. Add a visible input or textarea plus a Create/Add/Submit control wired to the insertion handler, or render a clear empty state that tells the user what to do next; item toggle/delete controls alone are incomplete.'
+      : null;
   const interactiveRepairGuidance = [
     'This is an interactive app repair, not a copy-edit.',
     'Render the requested content visibly, including its primary controls and current status.',
     'Keep React state and event handlers inside the component and make the controls change that state.',
+    ...(emptyCollectionGuidance ? [emptyCollectionGuidance] : []),
     'For grids, lists, and games, update the targeted item or cell by index instead of appending a new item; compute derived status from the next state before calling setters.',
     'For turn-based interactions, do not guard the handler against one hard-coded player or value; allow each active turn to act unless an explicit opponent rule is implemented.',
     'Include an accessible reset, clear, or restart control whenever the interaction has a restartable state.',
@@ -598,6 +630,7 @@ export const buildRepairFileMessages = ({
         `Original request: ${request}`,
         `Repair target: ${repairPath}`,
         `Validation or syntax diagnostic:\n${diagnostic}`,
+        ...(isTodoAppRequest(request) ? [TODO_APP_GENERATION_GUIDANCE] : []),
         ...(legacyGuidance ? [`Targeted recovery guidance:${legacyGuidance}`] : []),
         ...(mappedClickableRepairGuidance ? [mappedClickableRepairGuidance] : []),
         interactiveRepairGuidance,
@@ -645,6 +678,7 @@ export const buildDirectChangesRecoveryMessages = ({
       role: 'user',
       content: [
         `Original request: ${request}`,
+        ...(isTodoAppRequest(request) ? [TODO_APP_GENERATION_GUIDANCE] : []),
         targetPath
           ? `Primary file: ${targetPath}`
           : 'Primary file: choose the application entry file.',
@@ -719,21 +753,30 @@ export const normalizeFinishSummary = ({
   request,
   changeCount,
   wiredEntry = null,
+  validationStatus = 'passed',
 }: {
   summary?: string | null;
   request: string;
   changeCount: number;
   wiredEntry?: string | null;
+  validationStatus?: 'passed' | 'failed' | 'unavailable';
 }): string => {
   const trimmed = typeof summary === 'string' ? summary.trim() : '';
   const clipped = request.trim().replace(/\s+/g, ' ').slice(0, 80);
+  const validationUnavailable =
+    validationStatus === 'unavailable' &&
+    /\b(?:build|built|complete|completed|finish(?:ed)?|implement(?:ed)?|validat(?:e|ed|ion)|ready)\b/i.test(
+      trimmed,
+    );
   const useRequestSummary =
     CHANGE_REQUEST_PATTERN.test(request) &&
     changeCount > 0 &&
     (!trimmed || GENERIC_FINISH_SUMMARY.test(trimmed));
-  const base = useRequestSummary
-    ? `Implemented “${clipped}” and validated the build.`
-    : trimmed || (changeCount > 0 ? `Prepared ${changeCount} file(s) for review.` : 'Done.');
+  const base = validationUnavailable
+    ? 'Prepared the requested changes for review; build validation was unavailable.'
+    : useRequestSummary
+      ? `Implemented “${clipped}” and validated the build.`
+      : trimmed || (changeCount > 0 ? `Prepared ${changeCount} file(s) for review.` : 'Done.');
   return wiredEntry
     ? `${base} Wired ${wiredEntry} to the new component so it renders in the app.`
     : base;

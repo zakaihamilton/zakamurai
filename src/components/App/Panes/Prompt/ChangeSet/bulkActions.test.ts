@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { approveAllChangeSetChanges, undoAllChangeSetChanges } from './bulkActions';
 
 function store<T extends object>(initial: T) {
@@ -59,5 +59,38 @@ describe('bulk AI change-set actions', () => {
     expect(editorState.pendingDeletions).toEqual({});
     expect(editorState.fileContents).toEqual({ 'a.js': 'old', 'old.js': 'old' });
     expect(changeSetState.items[0].status).toBe('reviewed');
+  });
+
+  it('keeps a pending edit when the mounted filesystem rejects the undo write', async () => {
+    const editorState = store({
+      fileContents: { 'a.js': 'new' },
+      pendingDiffs: {
+        'a.js': { originalContent: 'old', modifiedContent: 'new', changeSetId: 'cs-1' },
+      },
+      pendingDeletions: {},
+    });
+    const changeSetState = store({
+      items: [
+        {
+          id: 'cs-1',
+          status: 'pending-review',
+          files: [{ path: 'a.js', status: 'pending-review' }],
+        },
+      ],
+    });
+    const writeFileAtPath = vi.fn().mockResolvedValue(false);
+
+    await expect(
+      undoAllChangeSetChanges({
+        changeSetId: 'cs-1',
+        editorState,
+        changeSetState,
+        fs: { rootHandle: {} as FileSystemDirectoryHandle, writeFileAtPath },
+      }),
+    ).resolves.toEqual({ applied: 0, rejected: 0, conflicted: 0 });
+
+    expect(editorState.pendingDiffs['a.js']).toBeDefined();
+    expect(editorState.fileContents['a.js']).toBe('new');
+    expect(changeSetState.items[0].files[0].status).toBe('pending-review');
   });
 });

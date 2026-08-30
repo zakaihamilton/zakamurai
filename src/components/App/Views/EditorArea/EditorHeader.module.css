@@ -1,13 +1,13 @@
 .editorHeader {
-  padding: 10px 20px;
-  border-bottom: 1px solid var(--border);
+  padding: 10px 18px;
+  border-bottom: 1px solid var(--border-subtle);
   color: var(--text-muted);
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
   flex-shrink: 0;
-  background: var(--bg-card);
+  background: var(--bg-panel);
   min-height: 52px;
   box-shadow: var(--shadow-sm);
 }
@@ -23,7 +23,9 @@
   border: none;
   color: var(--text-muted);
   cursor: pointer;
-  padding: 6px;
+  min-width: 30px;
+  min-height: 30px;
+  padding: 6px 7px;
   border-radius: var(--radius-sm);
   display: flex;
   align-items: center;
@@ -63,8 +65,8 @@
   align-items: center;
   gap: 12px;
   background: var(--success-light);
-  padding: 4px 12px;
-  border-radius: var(--radius-md);
+  padding: 5px 12px;
+  border-radius: var(--radius-lg);
   border: 1px solid color-mix(in srgb, var(--success) 28%, transparent);
   animation: fade-in 0.3s ease-out;
 }
