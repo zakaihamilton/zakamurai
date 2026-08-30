@@ -1,24 +1,31 @@
 .header {
+  --topbar-height: 54px;
   --topbar-control-height: 34px;
   --topbar-control-radius: var(--radius-sm);
   --topbar-control-padding-x: 11px;
 
-  height: 52px;
-  border-bottom: 1px solid var(--border);
+  height: 54px;
+  border-bottom: 1px solid var(--border-subtle);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 14px;
+  padding: 0 16px;
   background: var(--glass-bg);
   backdrop-filter: var(--glass-blur);
   position: sticky;
   top: 0;
   z-index: 2000;
-  box-shadow: 0 1px 0 rgb(255 255 255 / 2%);
+  box-shadow: 0 1px 0 var(--border-subtle), 0 8px 24px -24px rgb(0 0 0 / 70%);
 }
 
 .header::after {
-  content: none;
+  content: "";
+  position: absolute;
+  inset: auto 16px 0;
+  height: 1px;
+  background: var(--border-glow);
+  opacity: 0.55;
+  pointer-events: none;
 }
 
 .aiHighlight {
@@ -34,7 +41,7 @@
 .actions {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   min-width: 0;
 }
 
@@ -48,13 +55,13 @@
   .header {
     --topbar-control-height: 40px;
 
-    height: 52px;
+    height: 54px;
     display: grid;
     grid-template-columns: auto minmax(0, 1fr) auto;
     grid-template-rows: 1fr;
     align-content: center;
     gap: 4px;
-    padding: 6px 8px;
+    padding: 6px 10px;
     min-width: 0;
   }
 
@@ -102,9 +109,9 @@
   justify-content: center;
   background: transparent;
   border: 1px solid transparent;
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-sm);
   color: var(--text-main);
-  padding: 3px 7px 3px 3px;
+  padding: 3px 9px 3px 3px;
   cursor: pointer;
   margin-right: 18px;
   flex-shrink: 0;
@@ -117,6 +124,7 @@
   border-color: var(--border-light);
   color: var(--text-main);
   transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
 }
 
 .menuToggle:active {
@@ -137,7 +145,7 @@
 
 .brandTitle {
   color: var(--text-main);
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -147,7 +155,7 @@
 @media (width <= 768px) {
   .menuToggle {
     margin-right: 8px;
-    padding: 8px;
+    padding: 7px;
   }
 }
 
@@ -162,9 +170,10 @@
 
 @media (width <= 380px) {
   .header {
+    --topbar-height: 46px;
     --topbar-control-height: 36px;
 
-    height: 44px;
+    height: 46px;
     padding: 0 6px;
     gap: 4px;
   }

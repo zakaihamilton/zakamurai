@@ -71,8 +71,13 @@ export async function approveAllChangeSetChanges(params: Params): Promise<Result
       continue;
     }
     if (params.fs?.rootHandle && params.fs.writeFileAtPath) {
-      const written = await params.fs.writeFileAtPath(path, diff.modifiedContent);
-      if (written === false) continue;
+      try {
+        const written = await params.fs.writeFileAtPath(path, diff.modifiedContent);
+        if (written === false) continue;
+      } catch (error) {
+        console.error('Failed to approve change in filesystem:', path, error);
+        continue;
+      }
     }
     acceptedDiffs.push(path);
     updateChangeSetFile(params.changeSetState as never, params.changeSetId, path, 'accepted');
@@ -85,8 +90,13 @@ export async function approveAllChangeSetChanges(params: Params): Promise<Result
       continue;
     }
     if (params.fs?.rootHandle && params.fs.deleteFileAtPath) {
-      const deleted = await params.fs.deleteFileAtPath(path);
-      if (deleted === false) continue;
+      try {
+        const deleted = await params.fs.deleteFileAtPath(path);
+        if (deleted === false) continue;
+      } catch (error) {
+        console.error('Failed to approve deletion in filesystem:', path, error);
+        continue;
+      }
     }
     acceptedDeletions.push(path);
     updateChangeSetFile(params.changeSetState as never, params.changeSetId, path, 'accepted');
@@ -95,6 +105,7 @@ export async function approveAllChangeSetChanges(params: Params): Promise<Result
   if (acceptedDiffs.length || acceptedDeletions.length) {
     let contents: Record<string, string> = {};
     let pendingDiffs: Record<string, PendingDiff> = {};
+    let pendingDeletions: Record<string, PendingDeletion> = {};
     params.editorState((draft) => {
       const nextDiffs = { ...(draft.pendingDiffs || {}) };
       const nextDeletions = { ...(draft.pendingDeletions || {}) };
@@ -109,9 +120,11 @@ export async function approveAllChangeSetChanges(params: Params): Promise<Result
       draft.fileContents = nextContents;
       contents = nextContents;
       pendingDiffs = nextDiffs;
+      pendingDeletions = nextDeletions;
     });
     void Settings.setFileContents?.(contents);
     void Settings.setPendingDiffs?.(pendingDiffs as never);
+    void Settings.setPendingDeletions?.(pendingDeletions);
   }
   if (acceptedDeletions.length) {
     params.tabState?.((draft) => {
@@ -136,10 +149,18 @@ export async function approveAllChangeSetChanges(params: Params): Promise<Result
 
 export async function undoAllChangeSetChanges(params: Params): Promise<Result> {
   const { diffs, deletions } = targetsFor(params.editorState, params.changeSetId);
+  const revertedDiffs: string[] = [];
   for (const [path, diff] of diffs) {
     if (params.fs?.rootHandle && params.fs.writeFileAtPath) {
-      await params.fs.writeFileAtPath(path, diff.originalContent);
+      try {
+        const written = await params.fs.writeFileAtPath(path, diff.originalContent);
+        if (written === false) continue;
+      } catch (error) {
+        console.error('Failed to undo change in filesystem:', path, error);
+        continue;
+      }
     }
+    revertedDiffs.push(path);
     updateChangeSetFile(params.changeSetState as never, params.changeSetId, path, 'rejected');
   }
   for (const [path] of deletions) {
@@ -147,11 +168,13 @@ export async function undoAllChangeSetChanges(params: Params): Promise<Result> {
   }
   let contents: Record<string, string> = {};
   let pendingDiffs: Record<string, PendingDiff> = {};
+  let pendingDeletions: Record<string, PendingDeletion> = {};
   params.editorState((draft) => {
     const nextDiffs = { ...(draft.pendingDiffs || {}) };
     const nextDeletions = { ...(draft.pendingDeletions || {}) };
     const nextContents = { ...(draft.fileContents || {}) };
     for (const [path, diff] of diffs) {
+      if (!revertedDiffs.includes(path)) continue;
       nextContents[path] = diff.originalContent;
       delete nextDiffs[path];
     }
@@ -161,8 +184,14 @@ export async function undoAllChangeSetChanges(params: Params): Promise<Result> {
     draft.pendingDeletions = nextDeletions;
     contents = nextContents;
     pendingDiffs = nextDiffs;
+    pendingDeletions = nextDeletions;
   });
   void Settings.setFileContents?.(contents);
   void Settings.setPendingDiffs?.(pendingDiffs as never);
-  return { applied: 0, rejected: diffs.length + deletions.length, conflicted: 0 };
+  void Settings.setPendingDeletions?.(pendingDeletions);
+  return {
+    applied: 0,
+    rejected: revertedDiffs.length + deletions.length,
+    conflicted: 0,
+  };
 }

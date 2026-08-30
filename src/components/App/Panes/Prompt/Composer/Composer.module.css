@@ -7,25 +7,25 @@
 .composer {
   overflow: visible;
   background: var(--bg-input);
-  border: 1px solid var(--border-light);
-  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
   transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
-  box-shadow: var(--shadow-sm);
+  box-shadow: var(--shadow-md), inset 0 1px 0 rgb(255 255 255 / 3%);
 }
 
 .composer:focus-within {
   border-color: var(--accent);
-  box-shadow: 0 0 0 2px var(--accent-glow);
+  box-shadow: var(--focus-ring), var(--shadow-md);
 }
 
 .input {
   width: 100%;
-  min-height: 120px;
-  height: 120px;
+  min-height: 128px;
+  height: 128px;
   resize: none;
   background: transparent;
   border: 0;
-  padding: 12px 12px 4px;
+  padding: 14px 14px 6px;
   color: var(--text-main);
   outline: none;
   font-size: 14px;
@@ -45,7 +45,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  padding: 6px;
+  padding: 8px;
 }
 
 .modelControl {
@@ -54,7 +54,7 @@
   flex-wrap: wrap;
   align-items: center;
   min-width: 0;
-  gap: 8px;
+  gap: 10px;
 }
 
 .modelSelect {
@@ -85,7 +85,7 @@
   width: 30px;
   height: 36px;
   border: 0;
-  border-radius: 5px;
+  border-radius: var(--radius-sm);
   background: transparent;
   color: var(--text-muted);
   display: flex;
@@ -109,7 +109,7 @@
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 8px;
+  gap: 10px;
   flex-shrink: 0;
   height: 36px;
 }
@@ -129,15 +129,15 @@
 }
 
 .buttonActive {
-  background: var(--accent);
+  background: linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 78%, #4b2aa7));
   color: var(--text-on-accent);
   cursor: pointer;
   box-shadow: none;
 }
 
 .buttonActive:hover {
-  transform: scale(1.05);
-  filter: brightness(1.1);
+  transform: translateY(-1px);
+  filter: brightness(1.08);
   box-shadow: none;
 }
 
@@ -160,8 +160,8 @@
 
 @media (width <= 380px) {
   .input {
-    min-height: 96px;
-    height: 96px;
+    min-height: 104px;
+    height: 104px;
   }
 
   .modelSelect {

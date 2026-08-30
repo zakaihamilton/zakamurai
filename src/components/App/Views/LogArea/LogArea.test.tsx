@@ -1,5 +1,5 @@
 import { makeLogAreaUiState, makeLogState } from '@/test-utils/stateMocks';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { LogAreaUiState, LogState } from './LogArea';
 import LogArea from './LogArea';
@@ -111,11 +111,14 @@ describe('LogArea', () => {
 
     vi.useFakeTimers();
     render(<LogArea />);
-    fireEvent.click(screen.getByRole('button', { name: 'Copy all logs' }));
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Copy all logs' }));
+      await Promise.resolve();
+      vi.advanceTimersByTime(2100);
+    });
 
     expect(navigator.clipboard.writeText).toHaveBeenCalledWith('[ai] Hello\n\n[user] World');
     expect(uiState).toHaveBeenCalled();
-    vi.advanceTimersByTime(2100);
     expect(uiState).toHaveBeenCalledTimes(2);
     vi.useRealTimers();
 

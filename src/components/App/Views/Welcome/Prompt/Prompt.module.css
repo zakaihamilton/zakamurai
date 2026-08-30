@@ -10,16 +10,16 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
-  padding: 10px;
-  background: var(--bg-panel);
-  border: 1px solid var(--border-light);
+  padding: 11px;
+  background: var(--surface-elevated);
+  border: 1px solid var(--border-strong);
   border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-md);
+  box-shadow: var(--shadow-md), inset 0 1px 0 rgb(255 255 255 / 4%);
 }
 
 .composer:focus-within {
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px var(--accent-glow), var(--shadow-md);
+  box-shadow: var(--focus-ring), var(--shadow-md);
 }
 
 .input {
@@ -92,7 +92,7 @@
   color: #fff;
   font: inherit;
   font-weight: 700;
-  background: var(--accent);
+  background: linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 78%, #4b2aa7));
   border: 0;
   border-radius: var(--radius-sm);
   cursor: pointer;
@@ -126,7 +126,8 @@
 }
 
 .sendButton:not(:disabled):hover {
-  background: var(--accent-hover);
+  background: color-mix(in srgb, var(--accent) 86%, #000);
+  transform: translateY(-1px);
 }
 
 @keyframes rise-in {

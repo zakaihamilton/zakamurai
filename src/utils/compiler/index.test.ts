@@ -184,6 +184,7 @@ describe('Compiler', () => {
 
   it('runs project check script successfully', async () => {
     const container = getContainer();
+    vi.mocked(container.npm.installFromPackageJson).mockClear();
     container.vfs.readFileSync.mockReturnValue(JSON.stringify({ scripts: { lint: 'eslint' } }));
     container.run.mockImplementation(async (_cmd, opts) => {
       opts.onStdout?.({ toString: () => 'all clean' });
@@ -192,5 +193,8 @@ describe('Compiler', () => {
 
     const res = await compiler.runProjectCheck({ mode: 'opfs' }, [], {}, 'lint');
     expect(res).toBe('all clean');
+    expect(container.npm.installFromPackageJson).toHaveBeenCalledWith(
+      expect.objectContaining({ includeDev: true }),
+    );
   });
 });

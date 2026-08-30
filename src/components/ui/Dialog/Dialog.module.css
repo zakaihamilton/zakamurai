@@ -24,7 +24,7 @@
   background: var(--bg-panel);
   color: var(--text-main);
   color-scheme: dark;
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-strong);
   border-radius: var(--radius-lg);
   width: 90%;
   max-width: 400px;
@@ -32,7 +32,7 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  box-shadow: var(--shadow-lg);
+  box-shadow: var(--shadow-lg), 0 0 0 1px rgb(255 255 255 / 3%);
   animation: modal-in 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
@@ -87,7 +87,7 @@
 }
 
 .closeBtn:hover {
-  background: var(--bg-surface);
+  background: var(--surface-inset);
   color: var(--text-main);
 }
 
@@ -114,7 +114,7 @@
   padding: 9px 10px;
   color: var(--text-main);
   font: inherit;
-  background: var(--bg-surface);
+  background: var(--surface-inset);
   border: 1px solid var(--border);
   border-radius: 6px;
 }
@@ -156,7 +156,7 @@
 }
 
 .confirmBtn {
-  background: var(--accent);
+  background: linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 78%, #4b2aa7));
   color: white;
 }
 
@@ -166,9 +166,9 @@
 }
 
 .confirmBtn.danger {
-  background: #ff4d4d;
+  background: var(--danger);
 }
 
 .confirmBtn.danger:hover {
-  background: #f33;
+  background: color-mix(in srgb, var(--danger) 86%, #000);
 }

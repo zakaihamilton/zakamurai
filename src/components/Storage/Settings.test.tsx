@@ -538,6 +538,19 @@ describe('Settings', () => {
     expect(Settings.set('zakamurai-theme', 'light')).toBe(false);
   });
 
+  it('returns defaults when localStorage reads throw', () => {
+    vi.stubGlobal('localStorage', {
+      getItem: () => {
+        throw new Error('storage access denied');
+      },
+      setItem: vi.fn(),
+      removeItem: vi.fn(),
+    });
+
+    expect(Settings.get('zakamurai-theme', 'dark')).toBe('dark');
+    expect(Settings.getWorkspaceProfile()).toEqual({});
+  });
+
   it('returns false from set when removeItem throws for null values', () => {
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     vi.stubGlobal('localStorage', {

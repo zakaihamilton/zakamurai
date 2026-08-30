@@ -1,8 +1,8 @@
 .navigationControls {
   display: flex;
   align-items: center;
-  gap: 6px;
-  margin-right: 18px;
+  gap: 4px;
+  margin-right: 20px;
   flex-shrink: 0;
 }
 
@@ -11,7 +11,7 @@
   height: 28px;
   border-radius: 6px;
   border: 1px solid var(--border);
-  background: var(--bg-surface);
+  background: transparent;
   color: var(--text-muted);
   display: flex;
   align-items: center;
@@ -23,7 +23,7 @@
 
 .navButton:hover:not(.disabled) {
   background: var(--bg-hover);
-  border-color: var(--accent);
+  border-color: var(--border-light);
   color: var(--text-main);
   transform: translateY(-1px);
 }
@@ -36,7 +36,7 @@
   opacity: 0.4;
   cursor: not-allowed;
   background: transparent;
-  border-color: var(--border-light);
+  border-color: transparent;
   color: var(--text-muted);
 }
 
@@ -46,8 +46,8 @@
 }
 
 .activeNav {
-  background: var(--bg-hover) !important;
-  border-color: var(--accent) !important;
+  background: var(--accent-light) !important;
+  border-color: rgb(var(--accent-rgb) / 35%) !important;
   color: var(--text-main) !important;
 }
 

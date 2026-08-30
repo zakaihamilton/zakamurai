@@ -5,9 +5,9 @@
   border: none;
   width: calc(100% - 16px);
   margin: 0 8px;
-  min-height: 34px;
+  min-height: 36px;
   box-sizing: border-box;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   position: relative;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   -webkit-touch-callout: none;
@@ -20,7 +20,7 @@
   gap: 8px;
   flex: 1;
   min-width: 0;
-  min-height: 34px;
+  min-height: 36px;
   cursor: pointer;
   font-size: 13px;
   user-select: none;
@@ -29,15 +29,15 @@
   color: var(--text-muted);
   font-family: inherit;
   text-align: left;
-  border-radius: 6px;
-  padding: 8px 16px 8px var(--tree-indent, 16px);
+  border-radius: var(--radius-sm);
+  padding: 8px 14px 8px var(--tree-indent, 16px);
 }
 
 .active .itemButton {
-  background-color: var(--accent-glow);
+  background-color: var(--accent-light);
   color: var(--accent);
   font-weight: 600;
-  box-shadow: inset 0 0 0 1px var(--accent-light);
+  box-shadow: inset 0 0 0 1px rgb(var(--accent-rgb) / 26%);
 }
 
 .item:hover:not(.active) .itemButton {
@@ -51,10 +51,10 @@
   left: -4px;
   top: 6px;
   bottom: 6px;
-  width: 3px;
+  width: 2px;
   background: var(--accent);
   border-radius: 4px;
-  box-shadow: 0 0 8px var(--accent);
+  box-shadow: 0 0 8px rgb(var(--accent-rgb) / 60%);
 }
 
 .iconContainer {

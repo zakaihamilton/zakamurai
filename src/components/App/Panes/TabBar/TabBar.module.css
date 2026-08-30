@@ -1,8 +1,8 @@
 .tabBarContainer {
   display: flex;
-  background: var(--bg-base);
-  border-bottom: 1px solid var(--border);
-  min-height: 38px;
+  background: var(--bg-panel);
+  border-bottom: 1px solid var(--border-subtle);
+  min-height: 40px;
   position: sticky;
   top: 0;
   z-index: 500;
@@ -12,8 +12,8 @@
   display: flex;
   flex: 1;
   overflow-x: auto;
-  padding: 4px 5px 0;
-  gap: 3px;
+  padding: 5px 6px 0;
+  gap: 4px;
 }
 
 .tabBar::-webkit-scrollbar {
@@ -42,7 +42,7 @@
   display: flex;
   align-items: center;
   padding: 0 8px;
-  border-left: 1px solid var(--border);
+  border-left: 1px solid var(--border-subtle);
   background: transparent;
   z-index: 10;
 }

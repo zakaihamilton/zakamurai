@@ -29,8 +29,8 @@
   width: 100%;
   min-height: 36px;
   background: var(--bg-input);
-  border: 1px solid var(--border-light);
-  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
   color: var(--text-main);
   cursor: pointer;
   display: flex;
@@ -43,7 +43,9 @@
   outline: none;
   padding: 8px 10px;
   text-align: left;
-  transition: all var(--transition-fast);
+  transition: background var(--transition-fast), border-color var(--transition-fast), box-shadow
+    var(--transition-fast);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 3%);
   min-width: 0;
 }
 
@@ -61,7 +63,7 @@
 
 .trigger:focus {
   border-color: var(--accent);
-  box-shadow: 0 0 0 2px var(--accent-glow);
+  box-shadow: var(--focus-ring);
 }
 
 .trigger:disabled {
@@ -87,9 +89,9 @@
   max-height: min(320px, 60vh);
   overflow: hidden auto;
   background: var(--bg-panel);
-  border: 1px solid var(--border-light);
+  border: 1px solid var(--border-strong);
   border-radius: var(--radius-md);
-  box-shadow: var(--shadow-lg);
+  box-shadow: var(--shadow-lg), 0 0 0 1px rgb(255 255 255 / 3%);
   padding: 4px;
 }
 
@@ -103,7 +105,7 @@
   min-width: 0;
   background: transparent;
   border: 1px solid transparent;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   color: var(--text-main);
   cursor: pointer;
   display: flex;

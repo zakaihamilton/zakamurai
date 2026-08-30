@@ -5,8 +5,9 @@
   align-items: stretch;
   justify-content: safe center;
   width: 100%;
-  padding: 28px 32px;
-  background: var(--bg-base);
+  padding: 32px;
+  background: radial-gradient(circle at 50% 18%, var(--accent-light), transparent 34%),
+    var(--bg-base);
   overflow-y: auto;
   animation: page-in 0.35s ease both;
 }
@@ -20,6 +21,7 @@
   align-items: center;
   justify-content: center;
   text-align: center;
+  padding: 12px 0 24px;
 }
 
 @keyframes page-in {
@@ -35,11 +37,12 @@
 @media (width <= 760px) {
   .welcome {
     align-items: flex-start;
-    padding: 34px 18px 44px;
+    padding: 30px 18px 44px;
   }
 
   .hero {
     justify-content: flex-start;
+    padding-top: 12px;
   }
 }
 

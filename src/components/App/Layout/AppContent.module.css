@@ -10,6 +10,7 @@
   width: 100vw;
   background: var(--bg-base);
   position: relative;
+  isolation: isolate;
 }
 
 .appBody {
@@ -39,6 +40,7 @@
   flex-direction: column;
   min-width: 0;
   overflow: hidden;
+  background: var(--bg-base);
 }
 
 .mobileOverlay {
@@ -64,10 +66,10 @@
   .mobileOverlay {
     display: block;
     position: fixed;
-    inset: 52px 0 0;
-    background: rgb(0 0 0 / 40%);
+    inset: 54px 0 0;
+    background: rgb(7 10 15 / 46%);
     z-index: 800;
-    backdrop-filter: blur(4px);
+    backdrop-filter: blur(5px);
     animation: fade-in-overlay 0.4s var(--ease-premium);
   }
 
@@ -85,7 +87,7 @@
 
   @media (width <= 380px) {
     .mobileOverlay {
-      inset: 44px 0 0;
+      inset: 46px 0 0;
     }
   }
 }

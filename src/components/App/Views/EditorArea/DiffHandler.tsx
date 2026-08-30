@@ -161,6 +161,16 @@ export default function DiffHandler({
       const prevContent = diff.originalContent;
       const prevCursor = diff.originalCursorPos;
 
+      try {
+        if (fs?.rootHandle && fs?.writeFileAtPath) {
+          const written = await fs.writeFileAtPath(filePath, prevContent);
+          if (written === false) return;
+        }
+      } catch (err) {
+        console.error('Failed to undo in FS:', err);
+        return;
+      }
+
       state((draft) => {
         draft.fileContents = { ...draft.fileContents, [filePath]: prevContent };
         if (prevCursor) {
@@ -174,14 +184,6 @@ export default function DiffHandler({
       });
       setLocalContent(prevContent);
       updateChangeSetFile(changeSetState, diff.changeSetId ?? '', filePath, 'rejected');
-
-      try {
-        if (fs?.rootHandle && fs?.writeFileAtPath) {
-          await fs.writeFileAtPath(filePath, prevContent);
-        }
-      } catch (err) {
-        console.error('Failed to undo in FS:', err);
-      }
     }
   }, [changeSetState, filePath, state, fs, setLocalContent]);
 
