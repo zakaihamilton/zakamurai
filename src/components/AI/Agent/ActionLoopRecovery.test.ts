@@ -2,11 +2,39 @@ import { describe, expect, it } from 'vitest';
 import {
   buildContextReadyUserRequest,
   buildRepairFileMessages,
+  createAutoFinishSummary,
   isNewAppGenerationRequest,
+  normalizeFinishSummary,
 } from './ActionLoopRecovery';
 import { createProjectStyleProfile } from './ProjectStyleProfile';
 
 describe('responsive generation scope', () => {
+  it('does not call a safety-limited draft completed', () => {
+    const summary = createAutoFinishSummary('create a todo app')('safety-limit', null);
+
+    expect(summary).toContain('partial draft');
+    expect(summary).not.toContain('Completed the requested changes');
+  });
+
+  it('does not claim automatic validation when the validator is unavailable', () => {
+    const summary = createAutoFinishSummary('create a notes app')('validate', null, 'unavailable');
+
+    expect(summary).toContain('validation was unavailable');
+    expect(summary).not.toContain('validated the build');
+  });
+
+  it('does not claim build validation when validation is unavailable', () => {
+    const summary = normalizeFinishSummary({
+      summary: 'Completed the requested changes and validated the build.',
+      request: 'create a todo app',
+      changeCount: 2,
+      validationStatus: 'unavailable',
+    });
+
+    expect(summary).toContain('validation was unavailable');
+    expect(summary).not.toContain('validated the build');
+  });
+
   it('recognizes new app-generation requests without treating existing edits as generation', () => {
     expect(isNewAppGenerationRequest('Create a responsive dashboard')).toBe(true);
     expect(isNewAppGenerationRequest('Build a new dashboard')).toBe(true);

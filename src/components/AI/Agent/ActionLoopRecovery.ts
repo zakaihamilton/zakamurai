@@ -168,20 +168,28 @@ export const isNewAppGenerationRequest = (request: string): boolean =>
 export const createAutoFinishSummary =
   (request: string) =>
   (
-    reason: 'validate' | 'identical-write' | 'unchanged-reads' | 'safety-limit',
+    reason: 'validate' | 'fulfillment' | 'identical-write' | 'unchanged-reads' | 'safety-limit',
     wiredEntry: string | null,
+    validationStatus: 'passed' | 'failed' | 'unavailable' = 'passed',
   ): string => {
-    const base = CHANGE_REQUEST_PATTERN.test(request)
-      ? reason === 'safety-limit'
-        ? 'Completed the requested changes after the agent reached its step safety limit and validated the build.'
-        : 'Completed the requested changes and validated the build.'
-      : reason === 'validate'
-        ? 'Validated the staged changes after the local model repeated validation.'
-        : reason === 'identical-write'
-          ? 'Validated the staged changes after the local model repeated an identical write action.'
-          : reason === 'unchanged-reads'
-            ? 'Validated the staged changes after the local model repeatedly read unchanged files.'
-            : 'Validated the staged changes after the agent reached its step safety limit.';
+    const base =
+      reason === 'safety-limit'
+        ? 'Prepared a partial draft after the agent reached its step safety limit; it was not reported as a completed request.'
+        : validationStatus === 'unavailable'
+          ? CHANGE_REQUEST_PATTERN.test(request)
+            ? 'Prepared the requested changes for review; build validation was unavailable.'
+            : 'Prepared the staged changes for review; build validation was unavailable.'
+          : CHANGE_REQUEST_PATTERN.test(request)
+            ? reason === 'fulfillment'
+              ? 'Prepared the requested changes for review; deterministic request checks passed, but build validation was unavailable.'
+              : 'Completed the requested changes and validated the build.'
+            : reason === 'validate'
+              ? 'Validated the staged changes after the local model repeated validation.'
+              : reason === 'fulfillment'
+                ? 'Prepared the staged changes for review; build validation was unavailable.'
+                : reason === 'identical-write'
+                  ? 'Validated the staged changes after the local model repeated an identical write action.'
+                  : 'Validated the staged changes after the local model repeatedly read unchanged files.';
     return wiredEntry
       ? `${base} wired ${wiredEntry} to the new component so it renders in the app.`
       : base;
@@ -572,10 +580,15 @@ export const buildRepairFileMessages = ({
   const fence = [`\`\`\`${language}`, 'complete corrected source here', '```'].join('\n');
   const sourceOnly = lightweight;
   const legacyGuidance = writeRecovery(repairPath, diagnostic, files);
+  const emptyCollectionGuidance =
+    /\buseState\s*\(\s*\[\s*\]\s*\)/.test(currentContent) && /\.map\s*\(/.test(currentContent)
+      ? 'The failed source renders an empty collection. Add a visible input or textarea plus a Create/Add/Submit control wired to the insertion handler, or render a clear empty state that tells the user what to do next; item toggle/delete controls alone are incomplete.'
+      : null;
   const interactiveRepairGuidance = [
     'This is an interactive app repair, not a copy-edit.',
     'Render the requested content visibly, including its primary controls and current status.',
     'Keep React state and event handlers inside the component and make the controls change that state.',
+    ...(emptyCollectionGuidance ? [emptyCollectionGuidance] : []),
     'For grids, lists, and games, update the targeted item or cell by index instead of appending a new item; compute derived status from the next state before calling setters.',
     'For turn-based interactions, do not guard the handler against one hard-coded player or value; allow each active turn to act unless an explicit opponent rule is implemented.',
     'Include an accessible reset, clear, or restart control whenever the interaction has a restartable state.',
@@ -719,21 +732,30 @@ export const normalizeFinishSummary = ({
   request,
   changeCount,
   wiredEntry = null,
+  validationStatus = 'passed',
 }: {
   summary?: string | null;
   request: string;
   changeCount: number;
   wiredEntry?: string | null;
+  validationStatus?: 'passed' | 'failed' | 'unavailable';
 }): string => {
   const trimmed = typeof summary === 'string' ? summary.trim() : '';
   const clipped = request.trim().replace(/\s+/g, ' ').slice(0, 80);
+  const validationUnavailable =
+    validationStatus === 'unavailable' &&
+    /\b(?:build|built|complete|completed|finish(?:ed)?|implement(?:ed)?|validat(?:e|ed|ion)|ready)\b/i.test(
+      trimmed,
+    );
   const useRequestSummary =
     CHANGE_REQUEST_PATTERN.test(request) &&
     changeCount > 0 &&
     (!trimmed || GENERIC_FINISH_SUMMARY.test(trimmed));
-  const base = useRequestSummary
-    ? `Implemented “${clipped}” and validated the build.`
-    : trimmed || (changeCount > 0 ? `Prepared ${changeCount} file(s) for review.` : 'Done.');
+  const base = validationUnavailable
+    ? 'Prepared the requested changes for review; build validation was unavailable.'
+    : useRequestSummary
+      ? `Implemented “${clipped}” and validated the build.`
+      : trimmed || (changeCount > 0 ? `Prepared ${changeCount} file(s) for review.` : 'Done.');
   return wiredEntry
     ? `${base} Wired ${wiredEntry} to the new component so it renders in the app.`
     : base;

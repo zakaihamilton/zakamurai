@@ -164,6 +164,7 @@ export async function runActionLoop({
   const validationState: ActionLoopValidationState = {
     wroteSinceVerification: false,
     lastValidationFailed: false,
+    lastValidationStatus: 'unavailable',
     repairAttempts: 0,
   };
   const previewInspectState: PreviewInspectLoopState = {
@@ -261,7 +262,11 @@ export async function runActionLoop({
     return recovered.map((entry) => entry.path);
   };
 
-  const autoFinishSummary = createAutoFinishSummary(request);
+  const autoFinishSummary = (
+    reason: 'validate' | 'fulfillment' | 'identical-write' | 'unchanged-reads' | 'safety-limit',
+    wiredEntry: string | null,
+  ): string =>
+    createAutoFinishSummary(request)(reason, wiredEntry, validationState.lastValidationStatus);
 
   const runValidation = createValidationRunner({
     workspace,
@@ -628,7 +633,7 @@ export async function runActionLoop({
           if (!validate || !isFailedValidationResult(validationResult)) {
             const wiredEntry = wireNewComponentIntoScratchEntry(workspace);
             const changes = workspace.changes();
-            const summary = autoFinishSummary('validate', wiredEntry);
+            const summary = autoFinishSummary(validate ? 'validate' : 'fulfillment', wiredEntry);
             onEvent({ type: 'finished', turn, changes, message: summary, agentRole });
             context.record(validate ? 'validation' : 'fulfillment', validationResult);
             return { changes, files: workspace.files, summary, events: turn, workspace };
@@ -1433,6 +1438,7 @@ export async function runActionLoop({
           request,
           changeCount: changes.length,
           wiredEntry,
+          validationStatus: validationState.lastValidationStatus,
         });
         onEvent({ type: 'finished', turn, changes, message: summary, agentRole });
         return {

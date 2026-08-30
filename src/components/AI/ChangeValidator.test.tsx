@@ -308,6 +308,27 @@ describe('AI change validation', () => {
         'create a turn-based board app',
       ),
     ).toContain('hard-coded player or turn');
+    const incompleteCollection = `import { useState } from 'react';
+export default function App() {
+  const [todos, setTodos] = useState([]);
+  const addTodo = (text) => setTodos([...todos, { text, completed: false }]);
+  const toggleTodo = (index) => setTodos(todos.map((todo, itemIndex) => itemIndex === index ? { ...todo, completed: !todo.completed } : todo));
+  const deleteTodo = (index) => setTodos(todos.filter((_, itemIndex) => itemIndex !== index));
+  return (
+    <main>
+      <h1>Todo App</h1>
+      <ul>{todos.map((todo, index) => <li key={index}><input type="checkbox" checked={todo.completed} onChange={() => toggleTodo(index)} /><span>{todo.text}</span><button onClick={() => deleteTodo(index)}>Delete</button></li>)}</ul>
+    </main>
+  );
+}`;
+    for (const request of ['build a todo app', 'create a notes app']) {
+      expect(validateRequestFulfillment('src/App.jsx', incompleteCollection, request)).toContain(
+        'entry flow',
+      );
+      expect(
+        workspaceFulfillsInteractiveRequest({ 'src/App.jsx': incompleteCollection }, request),
+      ).toContain('entry flow');
+    }
     const playable = `import { useState } from "react";
 import styles from "./App.module.css";
 export default function App() {

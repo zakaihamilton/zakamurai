@@ -157,6 +157,27 @@ export function validateGeneratedSourceShape(path: string, content: string): str
 
 const clipRequest = (request: string): string => request.trim().replace(/\s+/g, ' ').slice(0, 80);
 
+const hasCollectionTextEntry = (content: string): boolean =>
+  /<(?:input|textarea)\b(?=[^>]*\bon(?:Change|Input)\s*=)(?![^>]*\btype\s*=\s*["'](?:checkbox|radio|hidden)["'])[^>]*>/i.test(
+    content,
+  );
+
+const hasCollectionAddControl = (content: string): boolean =>
+  /<button\b[^>]*\bonClick\s*=\s*\{[^}]*\b[A-Za-z_$]*(?:add|create|save|submit|new)[A-Za-z0-9_$]*\b[^}]*\}[^>]*>[\s\S]{0,160}?\b(?:add|new|create|save|submit)\b[\s\S]{0,160}?<\/button>/i.test(
+    content,
+  ) ||
+  /<button\b[^>]*\btype\s*=\s*["']submit["'][^>]*>[\s\S]{0,160}?\b(?:add|new|create|save|submit)\b[\s\S]{0,160}?<\/button>/i.test(
+    content,
+  ) ||
+  /<form\b[^>]*\bonSubmit\s*=\s*\{[^}]+\}[^>]*>[\s\S]{0,600}?<button\b[^>]*>[\s\S]{0,160}?\b(?:add|new|create|save|submit)\b[\s\S]{0,160}?<\/button>[\s\S]*?<\/form>/i.test(
+    content,
+  );
+
+const hasVisibleEmptyState = (content: string): boolean =>
+  /<(?:p|div|span|output|section)\b[^>]*>[\s\S]{0,180}?\b(?:no\s+\w+|nothing|empty|none|start|add\s+(?:your|a|the)\s+first|get\s+started)\b[\s\S]{0,180}?<\/(?:p|div|span|output|section)>/i.test(
+    content,
+  );
+
 const isThinComponentShell = (path: string, content: string): boolean =>
   isAppEntryPath(path) &&
   /import\s+[A-Za-z_$][\w$]*\s+from\s+["']\.\/(?:components\/)?[^"']+["']/.test(content) &&
@@ -255,6 +276,16 @@ export function validateRequestFulfillment(
     );
   if (hasHeading && !hasMeaningfulSurface) {
     return `Generated content for ${path} only renders a heading. Add the requested app's visible content, controls, or primary interaction before finishing.`;
+  }
+
+  const isEmptyMappedCollection =
+    /\buseState\s*\(\s*\[\s*\]\s*\)/.test(content) && /\.map\s*\(/.test(content);
+  if (
+    isEmptyMappedCollection &&
+    !(hasCollectionTextEntry(content) && hasCollectionAddControl(content)) &&
+    !hasVisibleEmptyState(content)
+  ) {
+    return `Generated content for ${path} renders an empty collection without an entry flow or clear empty state. Add a visible input or textarea plus a create/add/submit control, or tell the user what to do next when the collection has no items.`;
   }
 
   const hasIndexedInteraction =
