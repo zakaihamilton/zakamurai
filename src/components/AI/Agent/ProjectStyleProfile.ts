@@ -328,7 +328,7 @@ export const repairProjectStyleRelationships = ({
 
 const ruleForRole = (role: string): string => {
   const rules: Record<string, string> = {
-    app: 'min-height: 100vh; padding: clamp(1rem, 4vw, 3rem); color: var(--color-text); background: var(--color-bg);',
+    app: 'width: min(100%, 72rem); min-height: 100vh; margin: 0 auto; padding: clamp(1rem, 4vw, 3rem); color: var(--color-text); background: var(--color-bg);',
     shell:
       'width: min(100%, 64rem); min-width: 0; margin: 0 auto; display: grid; gap: clamp(1rem, 3vw, calc(var(--space) * 1.5));',
     section: 'display: grid; min-width: 0; gap: var(--space);',
@@ -348,13 +348,13 @@ const ruleForRole = (role: string): string => {
       'padding: calc(var(--space) * 0.65) calc(var(--space) * 0.8); color: var(--color-text); background: var(--color-surface-alt); border-radius: var(--radius);',
     field: 'display: grid; gap: calc(var(--space) * 0.4);',
     control:
-      'width: 100%; min-height: 2.75rem; padding: calc(var(--space) * 0.7) calc(var(--space) * 0.85); color: var(--color-text); background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius);',
+      'flex: 1 1 18rem; min-width: 0; width: 100%; min-height: 2.75rem; padding: calc(var(--space) * 0.7) calc(var(--space) * 0.85); color: var(--color-text); background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius);',
     primaryAction:
-      'min-height: 2.75rem; padding: calc(var(--space) * 0.7) var(--space); color: var(--color-on-accent); background: var(--color-accent); border: 1px solid transparent; border-radius: var(--radius); cursor: pointer; font-weight: 600;',
+      'min-height: 2.75rem; padding: calc(var(--space) * 0.7) var(--space); color: var(--color-on-accent); background: var(--color-accent); border: 1px solid transparent; border-radius: var(--radius); cursor: pointer; font-weight: 600; white-space: nowrap;',
     secondaryAction:
-      'min-height: 2.75rem; padding: calc(var(--space) * 0.7) var(--space); color: var(--color-text); background: var(--color-surface-alt); border: 1px solid var(--color-border); border-radius: var(--radius); cursor: pointer; font-weight: 500;',
+      'min-height: 2.75rem; padding: calc(var(--space) * 0.7) var(--space); color: var(--color-text); background: var(--color-surface-alt); border: 1px solid var(--color-border); border-radius: var(--radius); cursor: pointer; font-weight: 500; white-space: nowrap;',
     dangerAction:
-      'min-height: 2.75rem; padding: calc(var(--space) * 0.7) var(--space); color: var(--color-on-danger); background: var(--color-danger); border: 1px solid transparent; border-radius: var(--radius); cursor: pointer; font-weight: 600;',
+      'min-height: 2.75rem; padding: calc(var(--space) * 0.7) var(--space); color: var(--color-on-danger); background: var(--color-danger); border: 1px solid transparent; border-radius: var(--radius); cursor: pointer; font-weight: 600; white-space: nowrap;',
     list: 'display: flex; flex-direction: column; gap: calc(var(--space) * 0.6); margin: 0; padding: 0; list-style: none;',
     item: 'display: flex; min-width: 0; align-items: center; justify-content: space-between; gap: var(--space); padding: calc(var(--space) * 0.75) var(--space); color: var(--color-text); background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius); transition: all var(--duration) var(--easing);',
     checkbox:
@@ -495,6 +495,54 @@ const interactionRules = (roles: string[], existingCss: string): string => {
   return output.join('\n\n');
 };
 
+const compositionRules = (roles: string[], existingCss: string, source: string): string => {
+  const output: string[] = [];
+  if (
+    roles.includes('control') &&
+    roles.includes('form') &&
+    !existingCss.includes('.form .control')
+  ) {
+    output.push('.form .control { flex: 1 1 18rem; min-width: 0; }');
+  }
+  if (
+    roles.includes('control') &&
+    roles.includes('row') &&
+    !existingCss.includes('.row .control')
+  ) {
+    output.push('.row .control { flex: 1 1 18rem; min-width: 0; }');
+  }
+  const actionRoles = roles.filter((role) => /(?:Action$|button|btn)/i.test(role));
+  if (roles.includes('shell') && actionRoles.length && !existingCss.includes(':has(>')) {
+    const actionReferenceCounts = new Map(
+      actionRoles.map((role) => [
+        role,
+        (
+          source.match(
+            new RegExp(
+              `\\bstyles(?:\\.${escapeRegExp(role)}|\\[\\s*["']${escapeRegExp(role)}["']\\s*\\])`,
+              'g',
+            ),
+          ) || []
+        ).length,
+      ]),
+    );
+    const directActionPairs = actionRoles.flatMap((left) =>
+      actionRoles
+        .filter((right) => left !== right || (actionReferenceCounts.get(left) || 0) > 1)
+        .map((right) => `> .${left} + .${right}`),
+    );
+    const directActions = directActionPairs.join(', ');
+    const actionChildren = actionRoles.map((role) => `.shell > .${role}`).join(', ');
+    if (directActions) {
+      output.push(
+        `.shell:has(${directActions}) { display: flex; flex-wrap: wrap; align-items: center; }`,
+        `${actionChildren} { flex: 0 1 auto; }`,
+      );
+    }
+  }
+  return output.join('\n\n');
+};
+
 const atRuleBlocks = (css: string, name: string): string => {
   const blocks: string[] = [];
   const expression = new RegExp(`@${name}\\b[^\\{]*\\{`, 'g');
@@ -572,6 +620,8 @@ export const generateProjectCssModule = ({
   additions.push(...missing.map((role) => `.${role} {\n  ${ruleForRole(role)}\n}`));
   const interactions = interactionRules(roles, existingCss);
   if (interactions) additions.push(interactions);
+  const compositions = compositionRules(roles, existingCss, source);
+  if (compositions) additions.push(compositions);
   const responsive = responsiveRules(roles, existingCss);
   if (responsive) additions.push(responsive);
   if (!existingCss.trim() && !additions.length)

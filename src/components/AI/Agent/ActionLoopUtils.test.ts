@@ -83,6 +83,40 @@ export default () => <main className={styles.app}><form><input placeholder="Add 
     expect(recovered[0].content).toContain('.button');
   });
 
+  it('repairs generic layout relationships in an existing interactive stylesheet', () => {
+    const source =
+      "import styles from './App.module.css'; export default () => <main className={styles.app}><form className={styles.form}><input className={styles.control} /><button className={styles.primaryAction}>Save</button></form><footer className={styles.shell}><button className={styles.secondaryAction}>Cancel</button><button className={styles.dangerAction}>Delete</button></footer></main>;";
+    const files = {
+      'src/App.jsx': source,
+      'src/App.module.css':
+        '.app { min-height: 100vh; }\n.control { width: 100%; }\n.shell { display: grid; }',
+    };
+    const profile = resolveProjectStyleProfile(files);
+    const recovered = recoverWorkspaceCssModules(files, profile);
+
+    expect(recovered).toHaveLength(1);
+    expect(recovered[0].content).toContain('flex: 1 1 18rem');
+    expect(recovered[0].content).toContain('.shell:has(> .dangerAction + .primaryAction');
+  });
+
+  it('does not report an unchanged stylesheet as a recovery', () => {
+    const source =
+      "import styles from './App.module.css'; export default () => <main className={styles.app}><form className={styles.form}><input className={styles.control} /><button className={styles.primaryAction}>Save</button></form></main>;";
+    const files = {
+      'src/App.jsx': source,
+      'src/App.module.css': '.app { min-height: 100vh; }',
+    };
+    const profile = resolveProjectStyleProfile(files);
+    const first = recoverWorkspaceCssModules(files, profile);
+    const second = recoverWorkspaceCssModules(
+      { ...files, [first[0].path]: first[0].content },
+      profile,
+    );
+
+    expect(first).toHaveLength(1);
+    expect(second).toEqual([]);
+  });
+
   it('falls back to safe module classes for dynamic inline style objects', () => {
     const rewritten = rewriteInlineStylesToCssModule(
       'src/App.jsx',

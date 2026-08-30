@@ -34,8 +34,8 @@ import {
   createAutoFinishSummary,
   isIncompleteWriteError,
   isLightweightAgentModel,
-  isTodoAppRequest,
   isNewAppGenerationRequest,
+  isTodoAppRequest,
   loadAskWebLLM,
   newlyCreatedComponentsNeedEntryWiring,
   normalizeFinishSummary,
@@ -79,7 +79,7 @@ import { visualPreviewInspectionFailure } from './VisualPreviewEvidence';
 import { AgentWorkspace } from './Workspace';
 
 const VISUAL_QUALITY_INSTRUCTION =
-  'Visual quality is a hard requirement for UI requests: cohesive palette, clear typography, proper spacing, flex/grid layouts, responsive hover/focus states. For list/todo apps: inputs and submit buttons in horizontal flex rows; todo items as compact flex rows with styled checkboxes on the left and compact delete buttons on the right; strike through completed items with reduced opacity. Correct runtime errors, unreadable contrast, or broken layout before finishing.';
+  'Visual quality is a hard requirement for UI requests: use a coherent palette with explicit page and surface colors, a readable type scale, bounded content widths, consistent spacing, and semantic CSS Module roles. Prefer fluid flex/grid layouts with min-width: 0, avoid accidental full-width controls and giant fixed dimensions, keep interactive controls usable at narrow widths, and include visible hover, disabled, and focus-visible states. Correct runtime errors, unreadable contrast, horizontal overflow, collapsed controls, or broken layout before finishing.';
 
 export async function runActionLoop({
   request,

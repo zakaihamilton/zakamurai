@@ -189,6 +189,31 @@ describe('ProjectStyleProfile', () => {
     expect(css).not.toMatch(/\.card\s*\{[^}]*\bheight\s*:/s);
   });
 
+  it('keeps generated pages bounded and controls fluid across generic layouts', () => {
+    const css = generateProjectCssModule({
+      source:
+        "import styles from './App.module.css'; export default () => <main className={styles.app}><form className={styles.form}><input className={styles.control} /><button className={styles.primaryAction}>Save</button></form><footer className={styles.shell}><button className={styles.secondaryAction}>Cancel</button><button className={styles.dangerAction}>Delete</button></footer></main>;",
+      stylesheetPath: 'src/App.module.css',
+      profile: createProjectStyleProfile({}),
+    });
+    expect(css).toContain('width: min(100%, 72rem)');
+    expect(css).toContain('flex: 1 1 18rem');
+    expect(css).toContain('.shell:has(> .dangerAction + .primaryAction');
+    expect(css).toContain(
+      '.shell > .dangerAction, .shell > .primaryAction, .shell > .secondaryAction',
+    );
+  });
+
+  it('does not flatten a shell that contains only one action', () => {
+    const css = generateProjectCssModule({
+      source:
+        "import styles from './App.module.css'; export default () => <main className={styles.shell}><h1 className={styles.title}>Title</h1><section className={styles.section}>Content</section><button className={styles.primaryAction}>Save</button></main>;",
+      stylesheetPath: 'src/App.module.css',
+      profile: createProjectStyleProfile({}),
+    });
+    expect(css).not.toContain(':has(> .primaryAction + .primaryAction)');
+  });
+
   it.each([
     {
       name: 'form',
