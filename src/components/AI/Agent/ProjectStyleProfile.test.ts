@@ -34,14 +34,12 @@ describe('ProjectStyleProfile', () => {
     });
   });
 
-  it('preserves the existing dark-purple starter direction', () => {
+  it('uses the neutral default profile for the basic starter', () => {
     const profile = createProjectStyleProfile(DEFAULT_CONTENTS);
-    expect(profile).toMatchObject({ source: 'inferred' });
+    expect(profile).toMatchObject({ source: 'default' });
     expect(profile.tokens).toMatchObject({
-      background: '#050505',
-      text: '#ffffff',
-      accent: '#1f143a',
-      radius: '12px',
+      background: '#f5f1ea',
+      accent: '#a4472f',
     });
   });
 
