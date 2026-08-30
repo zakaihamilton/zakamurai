@@ -5,6 +5,54 @@ import {
   groupReasoningEntries,
   keyReasoningEntries,
 } from './AISection';
+import {
+  extractReasoningLabel,
+  getReasoningEntryStatus,
+  getReasoningGroupStatus,
+  getRunStatus,
+  normalizeReasoningViewType,
+  stripReasoningLabel,
+} from './AISectionReasoning';
+
+describe('reasoning visual helpers', () => {
+  it('defaults missing and unsupported reasoning views to the visual timeline', () => {
+    expect(normalizeReasoningViewType(undefined)).toBe('visual');
+    expect(normalizeReasoningViewType('unknown')).toBe('visual');
+    expect(normalizeReasoningViewType('text')).toBe('text');
+  });
+
+  it('extracts phase labels and leaves the Markdown body intact', () => {
+    expect(extractReasoningLabel('**Routing:** choosing a path')).toBe('Routing');
+    expect(stripReasoningLabel('**Routing:** choosing a path')).toBe('choosing a path');
+    expect(extractReasoningLabel('No phase label')).toBeNull();
+    expect(stripReasoningLabel('No phase label')).toBe('No phase label');
+  });
+
+  it('assigns timeline statuses from event content and run state', () => {
+    expect(getReasoningEntryStatus({ text: 'Tool failed', isLast: false, isRunning: true })).toBe(
+      'error',
+    );
+    expect(getReasoningEntryStatus({ text: 'Reading files', isLast: true, isRunning: true })).toBe(
+      'active',
+    );
+    expect(
+      getReasoningEntryStatus({ text: 'Validation passed', isLast: false, isRunning: false }),
+    ).toBe('success');
+
+    const group = {
+      step: 1,
+      entries: [
+        { text: 'Started', timestamp: '' },
+        { text: 'Tool completed', timestamp: '' },
+      ],
+    };
+    expect(getReasoningGroupStatus(group, true, true)).toBe('active');
+    expect(getRunStatus(null, '', false)).toBe('waiting');
+    expect(getRunStatus({ status: 'running' } as never, '', true)).toBe('running');
+    expect(getRunStatus(null, '', true)).toBe('ready');
+    expect(getRunStatus(null, 'The model failed', true)).toBe('error');
+  });
+});
 
 describe('groupReasoningEntries', () => {
   it('groups consecutive step events beneath one step header and removes their repeated prefix', () => {

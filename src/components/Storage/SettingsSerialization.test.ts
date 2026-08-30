@@ -13,8 +13,14 @@ describe('settings serialization', () => {
   });
 
   it('serializes only durable tab fields and normalizes prompt history', () => {
-    expect(serializeOpenTabs([{ id: 'a', type: 'file', label: 'App', transient: true }])).toEqual([
+    expect(
+      serializeOpenTabs([
+        { id: 'a', type: 'file', label: 'App', transient: true },
+        { id: 'ai-section:reasoning', type: 'ai-section', label: 'Progress', viewType: 'text' },
+      ]),
+    ).toEqual([
       { id: 'a', type: 'file', label: 'App' },
+      { id: 'ai-section:reasoning', type: 'ai-section', label: 'Progress', viewType: 'text' },
     ]);
     expect(normalizePromptHistory([' first ', 'first', '', 1, 'second'])).toEqual([
       'first',

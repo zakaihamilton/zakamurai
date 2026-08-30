@@ -8,6 +8,7 @@ import {
   withoutManagerErrorMessages,
 } from '@/components/App/Panes/Prompt/AgentSessions';
 import { PromptUiState } from '@/components/App/Panes/Prompt/PromptState';
+import { TabState } from '@/components/App/Panes/TabBar';
 import { requireStore } from '@/components/App/types';
 import { ChangeSetState } from '@/components/Workspace';
 import type { AgentReasoningEntry, AgentRunUsage, Tab } from '@/types/domain-types';
@@ -15,7 +16,11 @@ import { useEffect, useRef, useState } from 'react';
 import styles from './AISection.module.css';
 import AISectionChanges from './AISectionChanges';
 import AISectionHeader from './AISectionHeader';
-import AISectionReasoning, { type ReasoningGroup } from './AISectionReasoning';
+import AISectionReasoning, {
+  normalizeReasoningViewType,
+  type ReasoningGroup,
+  type ReasoningViewType,
+} from './AISectionReasoning';
 
 const titleBySection = {
   changes: 'Change Set',
@@ -123,6 +128,7 @@ export default function AISectionView({ tab }: { tab: Tab }) {
     AgentSessionState.useState(['sessions', 'activeSessionId']),
   );
   const changeSetState = requireStore(ChangeSetState.useState(['activeId', 'items']));
+  const tabState = requireStore(TabState.useState(['openTabs']));
   const webLLMState = requireStore(WebLLMState.useState(['engines']));
   const promptUiState = requireStore(PromptUiState.useState(['selectedModel']));
   const [copied, setCopied] = useState(false);
@@ -160,11 +166,17 @@ export default function AISectionView({ tab }: { tab: Tab }) {
         .join('\n\n')
     : '';
   const reasoningGroups = groupReasoningEntries(reasoningContent);
+  const visualReasoningGroups = groupReasoningEntries([
+    ...(modelProgress ? [{ text: modelProgress, timestamp: '' }] : []),
+    ...reasoningEntries,
+  ]);
   const runUsageSummary = getCompletedRunUsageSummary(
     activeSession?.status,
     activeSession?.runUsage,
   );
   const latestError = getLatestManagerError(activeSession);
+  const currentTab = tabState.openTabs.find((openTab) => openTab.id === tab.id) || tab;
+  const reasoningView = normalizeReasoningViewType(currentTab.viewType);
 
   useEffect(() => {
     setShowStepIO(activeSession?.showStepIO === true);
@@ -176,6 +188,15 @@ export default function AISectionView({ tab }: { tab: Tab }) {
     agentSessionState((draft) => {
       const sessionId = draft.activeSessionId;
       if (sessionId && draft.sessions[sessionId]) draft.sessions[sessionId].showStepIO = next;
+    });
+  };
+
+  const selectReasoningView = (viewType: ReasoningViewType) => {
+    if (section !== 'reasoning') return;
+    tabState((draft) => {
+      draft.openTabs = draft.openTabs.map((openTab) =>
+        openTab.id === tab.id ? { ...openTab, viewType } : openTab,
+      );
     });
   };
 
@@ -215,10 +236,13 @@ export default function AISectionView({ tab }: { tab: Tab }) {
         title={titleBySection[section]}
         showStepIOToggle={section === 'reasoning'}
         showStepIO={section === 'reasoning' && showStepIO}
+        showViewToggle={section === 'reasoning'}
+        viewType={reasoningView}
         showAutoScrollToggle={section === 'reasoning'}
         autoScroll={section === 'reasoning' && autoScroll}
         copied={copied}
         onToggleStepIO={toggleStepIO}
+        onSelectView={selectReasoningView}
         onToggleAutoScroll={() => setAutoScroll((enabled) => !enabled)}
         onCopy={copy}
       />
@@ -226,6 +250,9 @@ export default function AISectionView({ tab }: { tab: Tab }) {
         <AISectionReasoning
           activeSession={activeSession}
           reasoningGroups={reasoningGroups}
+          visualReasoningGroups={visualReasoningGroups}
+          viewType={reasoningView}
+          showStepIO={showStepIO}
           runUsageSummary={runUsageSummary}
           latestError={latestError}
           fallbackContent={content}

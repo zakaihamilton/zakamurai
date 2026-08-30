@@ -203,7 +203,7 @@ export default function Prompt() {
       if (!draft.openTabs.some((tab) => tab.id === id)) {
         draft.openTabs = [
           ...draft.openTabs,
-          { id, type: 'ai-section', label: 'Progress & Reasoning' },
+          { id, type: 'ai-section', label: 'Progress & Reasoning', viewType: 'visual' },
         ];
       }
       draft.activeTabId = id;
@@ -228,7 +228,15 @@ export default function Prompt() {
       tabState((draft) => {
         const existingTab = draft.openTabs.find((tab) => tab.id === id);
         if (!existingTab) {
-          draft.openTabs = [...draft.openTabs, { id, type: 'ai-section', label }];
+          draft.openTabs = [
+            ...draft.openTabs,
+            {
+              id,
+              type: 'ai-section',
+              label,
+              ...(section === 'reasoning' ? { viewType: 'visual' } : {}),
+            },
+          ];
         }
         draft.activeTabId = id;
       });

@@ -41,6 +41,403 @@
   white-space: normal;
 }
 
+.visualContent {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.runOverview {
+  display: grid;
+  grid-template-columns: minmax(150px, 0.7fr) minmax(0, 1.3fr);
+  gap: 12px;
+  align-items: stretch;
+  padding: 12px;
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  background: var(--bg-input);
+}
+
+.runStatus {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding: 4px;
+}
+
+.statusMarker,
+.timelineMarker {
+  display: block;
+  flex: 0 0 auto;
+  border: 2px solid var(--border-light);
+  border-radius: 50%;
+  background: var(--bg-surface);
+}
+
+.statusMarker {
+  width: 12px;
+  height: 12px;
+}
+
+.timelineMarker {
+  position: absolute;
+  top: 13px;
+  left: 0;
+  z-index: 1;
+  width: 10px;
+  height: 10px;
+}
+
+.statusMarkerrunning,
+.timelineItemactive .timelineMarker {
+  border-color: var(--accent);
+  background: var(--accent);
+  box-shadow: 0 0 0 4px var(--accent-light);
+}
+
+.statusMarkerready,
+.timelineItemsuccess .timelineMarker {
+  border-color: var(--success, #4ade80);
+  background: var(--success, #4ade80);
+}
+
+.statusMarkererror,
+.timelineItemerror .timelineMarker {
+  border-color: var(--error, var(--error-color, #f87171));
+  background: var(--error, var(--error-color, #f87171));
+}
+
+.runStatus > div {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.runStatusLabel {
+  color: var(--text-muted);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.runStatus strong {
+  color: var(--text-main);
+  font-size: 15px;
+}
+
+.metricGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+}
+
+.metricGrid > div {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--border-light);
+  border-radius: 6px;
+  background: var(--bg-surface);
+}
+
+.metricGrid dt {
+  overflow: hidden;
+  color: var(--text-muted);
+  font-size: 10px;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.metricGrid dd {
+  margin: 0;
+  overflow: hidden;
+  color: var(--text-main);
+  font-family: var(--font-mono, monospace);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.visualSectionHeading {
+  margin: 0;
+  color: var(--text-main);
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.visualTranscript {
+  margin: 0;
+  border: 1px solid var(--border-light);
+  border-bottom: 1px solid var(--border-light);
+  border-radius: 8px;
+  padding: 12px;
+  background: var(--bg-input);
+  box-shadow: none;
+}
+
+.visualTranscript .visualSectionHeading {
+  margin-bottom: 12px;
+}
+
+.timelineSection {
+  display: grid;
+  gap: 12px;
+}
+
+.timeline {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding: 0 0 0 12px;
+  list-style: none;
+}
+
+.timelineItem {
+  position: relative;
+  min-width: 0;
+  padding-left: 20px;
+}
+
+.timelineItem::before {
+  position: absolute;
+  top: 16px;
+  bottom: -16px;
+  left: 5px;
+  width: 2px;
+  background: var(--border-light);
+  content: "";
+}
+
+.timelineItem:last-child::before {
+  display: none;
+}
+
+.timelineCard {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  background: var(--bg-input);
+}
+
+.timelineItemactive .timelineCard {
+  border-color: color-mix(in srgb, var(--accent) 60%, var(--border-light));
+}
+
+.timelineItemerror .timelineCard {
+  border-color: color-mix(in srgb, var(--error, #f87171) 60%, var(--border-light));
+}
+
+.timelineHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border-light);
+  background: var(--bg-surface);
+}
+
+.timelineTitleGroup {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 7px;
+  min-width: 0;
+}
+
+.timelineTitle {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: var(--text-main);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.timelineStep,
+.timelinePhase,
+.timelineStatus {
+  color: var(--text-muted);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.timelineStep {
+  font-family: var(--font-mono, monospace);
+}
+
+.timelineStatus {
+  flex: 0 0 auto;
+  border-radius: 999px;
+  padding: 2px 6px;
+  background: var(--bg-hover);
+  font-weight: 700;
+}
+
+.timelineItemactive .timelineStatus {
+  color: var(--accent);
+}
+
+.timelineItemsuccess .timelineStatus {
+  color: var(--success, #4ade80);
+}
+
+.timelineItemerror .timelineStatus {
+  color: var(--error, var(--error-color, #f87171));
+}
+
+.timelineEntries {
+  display: grid;
+  min-width: 0;
+  padding: 4px 12px;
+}
+
+.timelineEntry {
+  display: grid;
+  min-width: 0;
+  gap: 5px;
+  padding: 8px 0;
+}
+
+.timelineEntry + .timelineEntry {
+  position: relative;
+}
+
+.timelineEntryDivider {
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  height: 1px;
+  background: var(--border-light);
+}
+
+.timelineEntryMeta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  min-width: 0;
+}
+
+.timelinePhase {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.timelineTimestamp {
+  color: var(--text-muted);
+  font-family: var(--font-mono, monospace);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.timelineText {
+  min-width: 0;
+  color: var(--text-main);
+}
+
+.timelineText > *:last-child {
+  margin-bottom: 0;
+}
+
+.ioDetails {
+  min-width: 0;
+  margin-top: 3px;
+  border: 1px solid var(--border-light);
+  border-radius: 6px;
+  background: var(--bg-surface);
+}
+
+.ioDetails summary {
+  padding: 6px 8px;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.ioDetails > div {
+  padding: 0 8px 8px;
+}
+
+.ioLabel {
+  display: block;
+  margin: 4px 0;
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.ioBlock {
+  max-height: 180px;
+  margin: 0;
+  overflow: auto;
+  border: 1px solid var(--border-light);
+  border-radius: 4px;
+  padding: 8px;
+  background: var(--bg-input);
+  color: var(--text-main);
+  font-family: var(--font-mono, monospace);
+  font-size: 11px;
+  line-height: 1.4;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.visualRunDetails {
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  background: var(--bg-input);
+}
+
+.visualRunDetails summary {
+  padding: 10px 12px;
+  color: var(--text-main);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.visualRunDetails > :not(summary) {
+  padding: 0 12px 12px;
+}
+
+.emptyVisualState {
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  padding: 32px 16px;
+  border: 1px dashed var(--border-light);
+  border-radius: 8px;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.emptyVisualState p {
+  margin: 0;
+}
+
+.emptyVisualIcon {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border: 1px solid var(--border-light);
+  border-radius: 50%;
+  color: var(--accent);
+  font-size: 20px;
+  line-height: 1;
+}
+
 .reasoningGroup + .reasoningGroup {
   margin-top: 16px;
   border-top: 1px solid var(--border-light);
@@ -185,4 +582,28 @@
   border-bottom: 3px solid var(--accent);
   padding-bottom: 16px;
   box-shadow: 0 2px 0 var(--accent-glow);
+}
+
+@media (width <= 600px) {
+  .runOverview {
+    grid-template-columns: 1fr;
+  }
+
+  .metricGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .timeline {
+    padding-left: 6px;
+  }
+
+  .timelineItem {
+    padding-left: 16px;
+  }
+
+  .timelineHeader {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 7px;
+  }
 }

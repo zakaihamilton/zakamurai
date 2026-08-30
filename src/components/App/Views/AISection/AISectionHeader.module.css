@@ -3,6 +3,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 16px;
+  min-width: 0;
 }
 
 .eyebrow {
@@ -21,7 +22,40 @@
 .actions {
   display: flex;
   align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
   gap: 8px;
+}
+
+.viewSwitch {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-surface);
+}
+
+.viewButton {
+  width: 30px;
+  height: 30px;
+  min-width: 30px;
+  min-height: 30px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+}
+
+.viewButton:hover,
+.viewButtonActive {
+  color: var(--accent);
+  background: var(--accent-light);
+}
+
+.viewButtonActive:hover {
+  color: var(--accent);
+  background: var(--accent-light);
 }
 
 .copyButton,
