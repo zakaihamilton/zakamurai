@@ -99,6 +99,22 @@ describe('responsive generation scope', () => {
     expect(messages[1].content).toContain('do not repeat the failed JSX unchanged');
   });
 
+  it('does not feed starter markup back into a repair loop', () => {
+    const messages = buildRepairFileMessages({
+      request: 'build a todo app',
+      targetPath: 'src/App.jsx',
+      files: {},
+      failedContent:
+        'export default function App() { return <><h1>New Project</h1><p>Start coding here...</p></>; }',
+      diagnostic: 'Generated content for src/App.jsx still looks like the starter template.',
+      lightweight: true,
+    });
+
+    expect(messages[1].content).toContain('generate the requested application from scratch');
+    expect(messages[1].content).not.toContain('<h1>New Project</h1>');
+    expect(messages[1].content).toContain('All/Active/Completed filter tabs');
+  });
+
   it('injects host guidance and truncates oversized lightweight context', () => {
     const prompt = buildContextReadyUserRequest({
       request: 'create a notes app',

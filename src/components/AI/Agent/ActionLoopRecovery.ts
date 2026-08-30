@@ -198,7 +198,8 @@ export const createAutoFinishSummary =
 export const isLightweightAgentModel = (model: string): boolean =>
   /(?:0\.5|0\.8|1\.5|1\.7|2)B(?:-|$)/i.test(model);
 
-export const isTodoAppRequest = (request: string): boolean => /\b(?:todo|to-do)\b/i.test(request);
+export const isTodoAppRequest = (request: string): boolean =>
+  /\b(?:todo|to-do|task[-\s]+(?:list|manager|management|planner))\b/i.test(request);
 
 export const TODO_APP_GENERATION_GUIDANCE = `
 For todo and task-list requests, build a polished task planner rather than a starter shell:
@@ -218,8 +219,6 @@ validates the build, and finishes after a successful write.
 
 For interactive UI include React state, handlers, and visible empty/success/error states.
 Never leave starter placeholder text. Compute derived values before setState.
-
-${TODO_APP_GENERATION_GUIDANCE}
 `.trim();
 
 export const CONTEXT_READY_AGENT_INSTRUCTIONS = `
@@ -590,7 +589,12 @@ export const buildRepairFileMessages = ({
     .replace(/\n(?:Return only|Your next response|The corrected source)[\s\S]*$/i, '')
     .replace(/\n```[\s\S]*$/i, '')
     .trim();
-  const currentContent = cleanedFailedContent || files[repairPath] || '(file does not exist yet)';
+  const starterLike =
+    /starter (?:template|screen)|placeholder copy/i.test(diagnostic) ||
+    /<h1>\s*New Project\s*<\/h1>|Start coding here\.\.\./i.test(cleanedFailedContent);
+  const currentContent = starterLike
+    ? 'The failed source was the starter screen. Do not preserve or repeat its placeholder markup; generate the requested application from scratch.'
+    : cleanedFailedContent || files[repairPath] || '(file does not exist yet)';
   const context = currentContent.slice(0, 16000);
   const fence = [`\`\`\`${language}`, 'complete corrected source here', '```'].join('\n');
   const sourceOnly = lightweight;

@@ -30,9 +30,9 @@ describe('agent protocol', () => {
   });
 
   it('gives lightweight models concrete todo behavior and visual direction', () => {
-    expect(LIGHTWEIGHT_AGENT_SYSTEM_PROMPT).toContain(TODO_APP_GENERATION_GUIDANCE);
-    expect(LIGHTWEIGHT_AGENT_SYSTEM_PROMPT).toContain('All/Active/Completed filter tabs');
-    expect(LIGHTWEIGHT_AGENT_SYSTEM_PROMPT).toContain('terracotta accent');
+    expect(LIGHTWEIGHT_AGENT_SYSTEM_PROMPT).toContain('For interactive UI include React state');
+    expect(TODO_APP_GENERATION_GUIDANCE).toContain('All/Active/Completed filter tabs');
+    expect(TODO_APP_GENERATION_GUIDANCE).toContain('terracotta accent');
   });
 
   it('isolates generated preview colors from the host theme', () => {
