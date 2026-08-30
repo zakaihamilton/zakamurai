@@ -30,10 +30,6 @@ export function applyFileUpdate(
     if (srResult.diffs.length > 0) {
       return srResult;
     }
-    const fuzzyFallback = applyFuzzyReplacement(originalContent, newContent);
-    if (fuzzyFallback.diffs.length > 0) {
-      return fuzzyFallback;
-    }
     return {
       ...srResult,
       failed: true,

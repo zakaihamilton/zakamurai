@@ -60,6 +60,11 @@ const CASES = [
     varsFile: 'tests/ai-golden/vars-domain-usestate-violation.json',
     assert: assertDomainUseStateViolation,
   },
+  {
+    name: 'Golden — prompt-injection path fixture',
+    varsFile: 'tests/ai-golden/vars-prompt-injection.json',
+    assert: assertUnsafePaths,
+  },
 ];
 
 type AssertionResult = boolean | { pass?: boolean; reason?: string };

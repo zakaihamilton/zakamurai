@@ -8,11 +8,13 @@ import {
 
 describe('Applier', () => {
   describe('applyFileUpdate', () => {
-    test('uses search/replace if marker present', () => {
-      const original = 'line1\nline2';
-      const update = '<<<<<<< SEARCH\nline1\n=======\nnew1\n>>>>>>> REPLACE';
+    test('fails SEARCH/REPLACE when the search block does not match exactly', () => {
+      const original = 'line1\nline2\nline3';
+      const update = '<<<<<<< SEARCH\nline-missing\n=======\nnew1\n>>>>>>> REPLACE';
       const result = applyFileUpdate(original, update);
-      expect(result.content).toBe('new1\nline2');
+      expect(result.content).toBe(original);
+      expect(result.failed).toBe(true);
+      expect(result.reason).toMatch(/did not match/i);
     });
 
     test('uses targeted replacement for snippets', () => {

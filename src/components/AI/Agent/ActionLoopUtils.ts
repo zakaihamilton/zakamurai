@@ -90,32 +90,10 @@ export const NON_PRODUCTIVE_ACTIONS = new Set([
 ]);
 
 export function applySearchReplaceBlock(existing: string, search: string, replace: string): string {
-  if (existing.includes(search)) {
-    return existing.replace(search, replace);
+  if (!search || !existing.includes(search)) {
+    throw new Error('Target search block not found in file content.');
   }
-
-  const existingLines = existing.split('\n');
-  const searchLines = search.trim().split('\n');
-
-  if (searchLines.length > 0) {
-    for (let i = 0; i <= existingLines.length - searchLines.length; i++) {
-      let match = true;
-      for (let j = 0; j < searchLines.length; j++) {
-        if (existingLines[i + j].trim() !== searchLines[j].trim()) {
-          match = false;
-          break;
-        }
-      }
-      if (match) {
-        const before = existingLines.slice(0, i);
-        const after = existingLines.slice(i + searchLines.length);
-        const replacementLines = replace.split('\n');
-        return [...before, ...replacementLines, ...after].join('\n');
-      }
-    }
-  }
-
-  throw new Error('Target search block not found in file content.');
+  return existing.replace(search, replace);
 }
 
 export const resolveRelativePath = (fromPath: string, specifier: string): string => {

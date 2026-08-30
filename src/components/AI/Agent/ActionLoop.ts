@@ -1,13 +1,8 @@
 import type { RunAgentOptions, RunAgentResult, WebLLMMessage } from '@/components/AI/types';
 import {
   validateAIChanges,
-  validateComponentStyling,
   validateContentSyntax,
-  validateCssContentSafety,
-  validateCssModuleUsage,
   validateFileContentType,
-  validateGeneratedPlaceholder,
-  validateRequestFulfillment,
   workspaceFulfillsInteractiveRequest,
 } from '../ChangeValidator';
 import {
@@ -45,24 +40,21 @@ import {
   NON_PRODUCTIVE_ACTIONS,
   READ_ONLY_ACTIONS,
   appendMissingCssModuleRules,
-  applySearchReplaceBlock,
-  cssModuleImporters,
   cssModuleRecovery,
-  ensureCoLocatedCssModule,
   formatReasoningResult,
   formatValidationSummary,
   incompleteCssModuleImports,
   isFailedValidationResult,
   missingCssModuleImports,
-  missingCssModuleRules,
-  normalizeGeneratedInteractiveSource,
-  normalizeSideEffectCssSource,
   observation,
   recoverWorkspaceCssModules,
-  repairCssModuleStylesheet,
-  rewriteInlineStylesToCssModule,
 } from './ActionLoopUtils';
 import { type ActionLoopValidationState, createValidationRunner } from './ActionLoopValidation';
+import {
+  applyReplaceFileContent,
+  assertDeletableFile,
+  prepareWriteFileAction,
+} from './ActionLoopWrites';
 import type { ConsoleLogEntry } from './ConsoleLogInspector';
 import { filterConsoleLogs, formatConsoleLogs } from './ConsoleLogInspector';
 import { AgentContextManager, formatVerificationResult } from './ContextManager';
@@ -1079,95 +1071,15 @@ export async function runActionLoop({
       }
       if (action.action === 'write_file') {
         assertTaskPathAllowed(taskContract, action.path || '');
-        const normalizedSideEffectCss = /\.(jsx|tsx)$/i.test(action.path || '')
-          ? normalizeSideEffectCssSource(action.path || '', action.content || '')
-          : null;
-        if (normalizedSideEffectCss) {
-          action = { ...action, content: normalizedSideEffectCss.content };
-        }
-        const rewrittenInlineStyles = /\.(jsx|tsx)$/i.test(action.path || '')
-          ? rewriteInlineStylesToCssModule(action.path || '', action.content || '')
-          : null;
-        if (rewrittenInlineStyles) {
-          action = { ...action, content: rewrittenInlineStyles.content };
-        }
-        const ensuredCssModule =
-          !rewrittenInlineStyles && /\.(jsx|tsx)$/i.test(action.path || '')
-            ? ensureCoLocatedCssModule(
-                action.path || '',
-                action.content || '',
-                resolvedStyleProfile,
-              )
-            : null;
-        if (ensuredCssModule) {
-          action = { ...action, content: ensuredCssModule.content };
-        }
-        if (isNewAppGenerationRequest(request) && /\.(?:jsx|tsx)$/i.test(action.path || '')) {
-          action = {
-            ...action,
-            content: normalizeGeneratedInteractiveSource(action.content || ''),
-          };
-        }
-        const stylingError = validateComponentStyling(action.path || '', action.content || '');
-        if (stylingError) throw new Error(stylingError);
-        const contentTypeError = validateFileContentType(action.path || '', action.content || '');
-        if (contentTypeError) throw new Error(contentTypeError);
-        const placeholderError = validateGeneratedPlaceholder(
-          action.path || '',
-          action.content || '',
-        );
-        if (placeholderError) throw new Error(placeholderError);
-        if (lightweightModel) {
-          const fulfillmentError = validateRequestFulfillment(
-            action.path || '',
-            action.content || '',
-            request,
-          );
-          if (fulfillmentError) throw new Error(fulfillmentError);
-        }
-        const cssModuleError = validateCssModuleUsage(action.path || '', action.content || '');
-        if (cssModuleError) throw new Error(cssModuleError);
-        const missingStylesheets = missingCssModuleImports(
-          action.path || '',
-          action.content || '',
-          workspace.files,
-        );
-        if (
-          missingStylesheets.length &&
-          !normalizedSideEffectCss &&
-          !rewrittenInlineStyles &&
-          !ensuredCssModule
-        ) {
-          throw new Error(
-            `Missing CSS Module import${missingStylesheets.length > 1 ? 's' : ''}: ${missingStylesheets.join(', ')}.`,
-          );
-        }
-        const cssSafetyError = validateCssContentSafety(action.path || '', action.content || '');
-        if (cssSafetyError) throw new Error(cssSafetyError);
-        const syntaxError = validateContentSyntax(action.path || '', action.content || '');
-        if (syntaxError) throw new Error(syntaxError);
-        if (/\.module\.css$/i.test(action.path || '')) {
-          action = {
-            ...action,
-            content: repairCssModuleStylesheet(
-              action.path || '',
-              action.content || '',
-              workspace.files,
-              resolvedStyleProfile,
-              { responsive: isNewAppGenerationRequest(request) },
-            ),
-          };
-        }
-        const remainingMissingRules = missingCssModuleRules(
-          action.path || '',
-          action.content || '',
-          workspace.files,
-        );
-        if (remainingMissingRules.length) {
-          throw new Error(
-            `CSS Module ${action.path} is missing rules required by its importing component: ${remainingMissingRules.join(', ')}.`,
-          );
-        }
+        const prepared = prepareWriteFileAction({
+          action,
+          files: workspace.files,
+          request,
+          styleProfile: resolvedStyleProfile,
+          lightweightModel,
+        });
+        action = prepared.action;
+        const { normalizedSideEffectCss, rewrittenInlineStyles, ensuredCssModule } = prepared;
         workspace.write(action.path || '', action.content || '');
         inspectedPreview = false;
         previewInspectionAccepted = false;
@@ -1260,31 +1172,13 @@ export async function runActionLoop({
         onEvent({ type: 'tool', turn, action, agentRole });
       }
       if (action.action === 'replace_file_content') {
-        const path = action.path || '';
-        assertTaskPathAllowed(taskContract, path);
-        const existingContent = workspace.read(path);
-        if (!existingContent && existingContent !== '') {
-          throw new Error(`File not found: ${path}. Cannot perform replace_file_content.`);
-        }
-        let search = action.search || '';
-        let replace = action.replace || '';
-        if (!search && action.content) {
-          const match = action.content.match(
-            /<<<<<<< SEARCH\n([\s\S]*?)\n=======\n([\s\S]*?)\n>>>>>>> REPLACE/,
-          );
-          if (match) {
-            search = match[1];
-            replace = match[2];
-          }
-        }
-
-        if (!search) {
-          throw new Error(
-            'replace_file_content action requires search block or SEARCH/REPLACE pattern.',
-          );
-        }
-
-        const newContent = applySearchReplaceBlock(existingContent, search, replace);
+        const { path, content: newContent } = applyReplaceFileContent({
+          action,
+          files: workspace.files,
+          request,
+          lightweightModel,
+          taskContract,
+        });
         workspace.write(path, newContent);
         inspectedPreview = false;
         previewInspectionAccepted = false;
@@ -1301,12 +1195,7 @@ export async function runActionLoop({
       if (action.action === 'delete_file') {
         const path = action.path || '';
         assertTaskPathAllowed(taskContract, path);
-        const importers = cssModuleImporters(path, workspace.files);
-        if (importers.length) {
-          throw new Error(
-            `Cannot delete CSS Module ${path} because it is imported by ${importers.join(', ')}. Update or delete the importing component files first.`,
-          );
-        }
+        assertDeletableFile(path, workspace.files);
         workspace.delete(path);
         inspectedPreview = false;
         previewInspectionAccepted = false;

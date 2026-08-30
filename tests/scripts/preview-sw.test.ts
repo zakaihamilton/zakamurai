@@ -16,4 +16,11 @@ describe('preview service worker session routing', () => {
     expect(distRouting).toContain('if (!sessionId) return;');
     expect(distRouting).not.toContain('[...bridges.values()].at(-1)');
   });
+
+  it('pins reconnect postMessage to the stored IDE origin', () => {
+    expect(previewWorker).not.toMatch(
+      /postMessage\(\{source:'zakamurai-preview',type:'reconnect'[^)]*,'\*'\)/,
+    );
+    expect(previewWorker).toContain('JSON.stringify(ideOrigin)');
+  });
 });

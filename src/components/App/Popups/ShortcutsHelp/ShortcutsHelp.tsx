@@ -79,7 +79,12 @@ export default function ShortcutsHelp({ isOpen, onClose }: ShortcutsHelpProps) {
             </button>
           </Tooltip>
         </div>
-        <div className={styles.content}>
+        <section
+          className={styles.content}
+          // biome-ignore lint/a11y/noNoninteractiveTabindex: overflow region must be keyboard-scrollable
+          tabIndex={0}
+          aria-label="Shortcut list"
+        >
           {SHORTCUTS.map((group) => (
             <div key={group.group} className={styles.group}>
               <h3 className={styles.groupTitle}>{group.group}</h3>
@@ -105,7 +110,7 @@ export default function ShortcutsHelp({ isOpen, onClose }: ShortcutsHelpProps) {
               </div>
             </div>
           ))}
-        </div>
+        </section>
         <div className={styles.footer}>
           <span>
             Press{' '}

@@ -1,0 +1,3 @@
+{
+  "paths_json": "{\"unsafePaths\":[\"../secrets.env\",\"src/../../etc/passwd\",\"/tmp/exfil.js\"],\"safePaths\":[\"src/App.jsx\"]}"
+}

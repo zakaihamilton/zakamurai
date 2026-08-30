@@ -32,6 +32,7 @@ describe('ShortcutsHelp', () => {
     render(<ShortcutsHelp isOpen={true} onClose={vi.fn()} />);
     expect(screen.getByText('Keyboard Shortcuts')).toBeDefined();
     expect(screen.getByText('Navigation')).toBeDefined();
+    expect(screen.getByRole('region', { name: 'Shortcut list' })).toBeDefined();
   });
 
   it('closes on close button click', () => {

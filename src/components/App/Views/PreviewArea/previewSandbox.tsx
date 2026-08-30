@@ -230,7 +230,9 @@ export const PREVIEW_ERROR_BRIDGE_SCRIPT = `(function(){
   var SRC = ${JSON.stringify(PREVIEW_MESSAGE_SOURCE)};
   function post(type, message, extra) {
     try {
-      parent.postMessage(Object.assign({ source: SRC, type: type, message: message || '' }, extra || {}), '*');
+      var targetOrigin = window.__zakamuraiPreviewParentOrigin;
+      if (!targetOrigin) return;
+      parent.postMessage(Object.assign({ source: SRC, type: type, message: message || '' }, extra || {}), targetOrigin);
     } catch (_e) {}
   }
   window.addEventListener('error', function (event) {
@@ -270,10 +272,13 @@ export const PREVIEW_ERROR_BRIDGE_SCRIPT = `(function(){
   } catch (_e) {}
 })();`;
 
-export function injectPreviewErrorBridge(html: string) {
+export function injectPreviewErrorBridge(html: string, parentOrigin?: string | null) {
   if (typeof html !== 'string' || !html) return html;
   if (html.includes('__zakamuraiPreviewBridge')) return html;
-  const scriptTag = `<script>${PREVIEW_ERROR_BRIDGE_SCRIPT}</script>`;
+  const originAssignment = parentOrigin
+    ? `window.__zakamuraiPreviewParentOrigin=${JSON.stringify(parentOrigin)};`
+    : '';
+  const scriptTag = `<script>${originAssignment}${PREVIEW_ERROR_BRIDGE_SCRIPT}</script>`;
   if (/<\/head>/i.test(html)) {
     return html.replace(/<\/head>/i, `${scriptTag}</head>`);
   }

@@ -53,4 +53,14 @@ describe('AI golden fixtures', () => {
       expect(validateProjectPath(pathValue)).toBeNull();
     }
   });
+
+  it('rejects prompt-injection payloads that try to write outside the project', async () => {
+    const raw = await readGolden('prompt-injection.json');
+    const fixture = JSON.parse(raw) as {
+      proposedChanges: Array<{ path: string; after: string }>;
+    };
+    const result = validateAIChanges(fixture.proposedChanges);
+    expect(result.rejected.length).toBeGreaterThanOrEqual(3);
+    expect(result.accepted.map((change) => change.path)).toEqual(['src/App.jsx']);
+  });
 });

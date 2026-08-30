@@ -125,8 +125,9 @@ Before changing the application, read:
 - [Architecture and state-management rules](./ARCHITECTURE.md)
 - [Contributor guide](./CONTRIBUTING.md)
 - [AI assistant instructions](./AGENTS.md)
+- [Security policy](./SECURITY.md)
 
-The project uses the `triactor` hierarchical proxy-state package, CSS Modules, and browser-first persistence. Shared state should use `triactor` rather than Redux, Zustand, Recoil, or a second global store.
+The project is MIT-licensed. It uses the `triactor` hierarchical proxy-state package, CSS Modules, and browser-first persistence. Shared state should use `triactor` rather than Redux, Zustand, Recoil, or a second global store. Install with **npm** (`package-lock.json`); do not add a Yarn lockfile.
 
 ```text
 src/
@@ -149,6 +150,10 @@ src/
 | Browser build | [almostnode](https://www.npmjs.com/package/almostnode), [esbuild-wasm](https://www.npmjs.com/package/esbuild-wasm) |
 | Local AI | [WebLLM](https://webllm.mlc.ai/), WebGPU, WebAssembly |
 | Testing | [Vitest](https://vitest.dev/), [Playwright](https://playwright.dev/), Biome, Stylelint |
+
+## License
+
+[MIT](./LICENSE) © Zakai Hamilton
 
 ## Author
 

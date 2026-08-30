@@ -11,6 +11,7 @@
 .backdrop {
   position: absolute;
   inset: 0;
+  z-index: 0;
   border: 0;
   background: rgb(0 0 0 / 68%);
   backdrop-filter: blur(4px);
@@ -19,15 +20,22 @@
 
 .modal {
   position: relative;
+  z-index: 1;
   width: min(920px, 100%);
   max-height: 90vh;
   display: flex;
   flex-direction: column;
   overflow: hidden;
   background: var(--bg-surface);
+  color: var(--text-main);
+  color-scheme: dark;
   border: 1px solid var(--border);
   border-radius: 12px;
   box-shadow: 0 20px 50px rgb(0 0 0 / 50%);
+}
+
+:global(.light) .modal {
+  color-scheme: light;
 }
 
 .header {

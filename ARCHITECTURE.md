@@ -58,11 +58,11 @@ editorState((draft) => {
 
 | Layer | Store | Role |
 | --- | --- | --- |
-| Canonical buffers | `EditorState.fileContents` | Persistence, AI, compiler |
+| Canonical buffers | `EditorState.fileContents` | Persistence, AI, compiler, and preview input |
 | Typing surface | `EditorAreaUiState.localContent` | Per-file Node; synced via FileLoader |
-| AI review | `EditorState.pendingDiffs` / `pendingDeletions` | Approve/undo before disk flush |
+| AI review | `EditorState.pendingDiffs` / `pendingDeletions` | Side-by-side review and undo; blocks LocalFS auto-save |
 
-Manual edits clear `pendingDiffs[path]`. Pending review blocks FS auto-save.
+`applyAgentChanges` writes proposed text into `fileContents` immediately and records `pendingDiffs` for review. **Build and Preview compile from `fileContents`**, so unapproved AI buffers are what the bundler and preview run. Approve/undo restores or confirms those buffers and unblocks disk flush. Manual edits clear `pendingDiffs[path]`.
 
 ## 5. Reliability Boundaries
 
@@ -71,7 +71,8 @@ Manual edits clear `pendingDiffs[path]`. Pending review blocks FS auto-save.
 - Storage uses IndexedDB first and localStorage second. `StorageHealthState` is transient UI state:
   it records `healthy`, `fallback`, or `write-failed` without changing persisted settings formats.
 - Preview bridge handshakes validate configured origin, active iframe window, protocol version, and
-  session ID before accepting a `MessagePort`. Do not use wildcard target origins for this bridge.
+  session ID before accepting a `MessagePort`. Handshake, error, and reconnect `postMessage` calls
+  must use an exact IDE origin — never `*`.
 
 ## 6. Component Generation Strategy
 
@@ -85,14 +86,14 @@ Manual edits clear `pendingDiffs[path]`. Pending review blocks FS auto-save.
 | Module | Path | Role |
 | --- | --- | --- |
 | **Prompts** | `src/components/AI/Prompts.ts` | System prompts and output format instructions |
-| **Processor** | `src/components/AI/Processor/` | Parses AI responses, SEARCH/REPLACE application |
+| **Processor** | `src/components/AI/Processor/` | Legacy SEARCH/REPLACE parser (tests/fixtures only) |
 | **ChangeValidator** | `src/components/AI/ChangeValidator.ts` | Path safety, syntax checks before staging |
-| **Agent** | `src/components/AI/Agent/` | `runAgent`, collaborative runner, applier |
+| **Agent** | `src/components/AI/Agent/` | `runManager`, action loop, applier |
 | **WebLLM** | `src/components/AI/WebLLMAPI.tsx` | In-browser model inference |
 
-Flow: user prompt → agent collects workspace context → model output → parser → validator → `EditorState.pendingDiffs` → user approves → applier updates `fileContents` and triggers build.
+Flow: user prompt → `runManager` collects workspace context → model output → validator → `applyAgentChanges` writes `fileContents` and `pendingDiffs` → user reviews in the editor. Build/Preview already see the proposed buffers. LocalFS flush waits for approve.
 
-AI changes must use project-relative paths. `validateAIChanges` rejects absolute paths, traversal, duplicates, and malformed content before staging.
+AI changes must use project-relative paths. `validateAIChanges` rejects absolute paths, traversal, duplicates, and malformed content before staging. `replace_file_content` runs the same content suite after an exact SEARCH match; SEARCH/REPLACE never falls back to fuzzy matching.
 
 ## 8. Preview Security Model
 
@@ -101,6 +102,7 @@ AI changes must use project-relative paths. `validateAIChanges` rejects absolute
   deployments use an explicit same-origin `/__preview/` compatibility surface with weaker
   isolation.
 - `PreviewBridge` (IDE side) and `PreviewHost` (preview origin) exchange a one-time `zakamurai-preview-connect` handshake with protocol version and session ID before transferring a `MessagePort`.
+- Preview error and reconnect messages pin `postMessage` to the IDE origin (`window.__zakamuraiPreviewParentOrigin`). Do not use wildcard target origins.
 - `isValidPreviewHandshake` in `previewOrigins.ts` is shared — do not relax checks on one side only.
 - In isolated mode, user project code never receives same-origin access to IDE storage, cookies,
   or the parent DOM. The unconfigured Vercel compatibility surface intentionally has weaker
@@ -109,7 +111,7 @@ AI changes must use project-relative paths. `validateAIChanges` rejects absolute
 ## 9. Testing Expectations
 
 - Unit tests: Vitest (`npm run test`, `npm run test:coverage`). Global coverage thresholds: 80%. AI modules target 85%.
-- Architecture: `npm run check:architecture` enforces styling and state patterns in `src/components/`.
+- Architecture: `npm run check:architecture` enforces styling and state patterns in `src/components/`, `src/utils/`, and `src/contracts/`.
 - AI golden fixtures: `tests/ai-golden/` + `npm run test:promptfoo`.
 - E2E: Playwright smoke (`test:e2e`), isolated preview security (`test:e2e:isolated`), visual regression (`test:visual:chromium` in CI).
 - Pre-commit: lint-staged runs Biome and `vitest related` on changed files.

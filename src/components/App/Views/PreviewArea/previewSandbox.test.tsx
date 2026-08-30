@@ -22,10 +22,19 @@ describe('previewSandbox', () => {
     const html = '<html><head><title>t</title></head><body></body></html>';
     const next = injectPreviewErrorBridge(html);
     expect(next).toContain('__zakamuraiPreviewBridge');
+    expect(next).toContain('__zakamuraiPreviewParentOrigin');
+    expect(next).not.toMatch(/postMessage\([^)]*,\s*['"]\*['"]/);
     expect(next.indexOf('__zakamuraiPreviewBridge')).toBeLessThan(next.indexOf('</head>'));
     expect(next).toContain('control.labels');
     expect(next).toContain('matchesSurface');
     expect(next).toContain('firstElementChild');
+  });
+
+  it('pins the injected bridge to an explicit parent origin', () => {
+    const html = '<html><head></head><body></body></html>';
+    const next = injectPreviewErrorBridge(html, 'https://www.zakamurai.com');
+    expect(next).toContain('window.__zakamuraiPreviewParentOrigin="https://www.zakamurai.com"');
+    expect(next).not.toMatch(/postMessage\([^)]*,\s*['"]\*['"]/);
   });
 
   it('is idempotent', () => {
