@@ -3,6 +3,7 @@ const PREVIEW_HOST_PREFIX = 'preview.';
 export const PREVIEW_SURFACE_PARAM = 'zakamurai-surface';
 export const PREVIEW_SURFACE_VALUE = 'preview';
 export const PREVIEW_SERVICE_WORKER_SCOPE = '/__preview/';
+export const PREVIEW_SERVICE_WORKER_PATH = '/__preview/sw.js';
 export const PREVIEW_HOST_PATH = '/__preview/host';
 
 export type PreviewOrigins = {
@@ -251,6 +252,19 @@ export function getPreviewOrigins({
   return { ideOrigin: null, previewOrigin: null, isIsolated: false };
 }
 
+export function getPreviewServiceWorkerAllowedHeader(
+  isPreviewHost: boolean,
+): '/' | typeof PREVIEW_SERVICE_WORKER_SCOPE {
+  return isPreviewHost ? '/' : PREVIEW_SERVICE_WORKER_SCOPE;
+}
+
+export function getSameOriginPreviewWarning(
+  origins: PreviewOrigins | null | undefined,
+): string | null {
+  if (!origins?.previewOrigin || origins.isIsolated) return null;
+  return 'Preview is running on the same origin as the IDE. Compiled project JavaScript can read this tab’s storage. Use a separate preview origin (npm run dev starts one at http://localhost:3001) or set NEXT_PUBLIC_IDE_ORIGIN and NEXT_PUBLIC_PREVIEW_ORIGIN.';
+}
+
 export function getPreviewConfigurationError(
   origins: PreviewOrigins | null | undefined,
 ): string | null {
@@ -266,9 +280,14 @@ export function getPreviewConfigurationError(
 export function getPreviewFrameAncestors({
   ideOrigin,
 }: { ideOrigin?: string | null } = {}): string {
-  const ancestors = new Set([LOCAL_IDE_ORIGIN]);
+  const ancestors = new Set<string>();
   const configuredIdeOrigin = trimOrigin(process.env.NEXT_PUBLIC_IDE_ORIGIN);
   const vercelBranchOrigin = toHostOrigin(process.env.NEXT_PUBLIC_VERCEL_BRANCH_URL);
+  const includeLocal =
+    process.env.NODE_ENV !== 'production' ||
+    isLocalOrigin(ideOrigin || undefined) ||
+    isLocalOrigin(configuredIdeOrigin || undefined);
+  if (includeLocal) ancestors.add(LOCAL_IDE_ORIGIN);
   for (const origin of [
     configuredIdeOrigin,
     vercelBranchOrigin,
@@ -279,6 +298,7 @@ export function getPreviewFrameAncestors({
   ]) {
     if (origin) ancestors.add(origin);
   }
+  if (ancestors.size === 0) ancestors.add("'self'");
   return [...ancestors].join(' ');
 }
 

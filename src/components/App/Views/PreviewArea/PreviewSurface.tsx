@@ -1,4 +1,5 @@
 import PreviewIframeContainer from './IframeContainer';
+import IsolationBanner from './IsolationBanner';
 import PreviewBridge from './PreviewBridge';
 import styles from './PreviewSurface.module.css';
 import PreviewToolbar from './Toolbar';
@@ -32,9 +33,11 @@ export default function PreviewSurface({
   externalPreviewNonce,
   previewOrigin,
   onError,
+  isolationWarning = null,
 }: PreviewSurfaceProps) {
   return (
     <div ref={containerRef} className={`${styles.wrapper} ${isMaximized ? styles.maximized : ''}`}>
+      {isolationWarning ? <IsolationBanner message={isolationWarning} /> : null}
       <PreviewToolbar
         previewHostLabel={previewHostLabel}
         isLoading={isLoading}

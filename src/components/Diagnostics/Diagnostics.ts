@@ -11,6 +11,7 @@ const MAX_DIAGNOSTICS = 200;
 
 export const DiagnosticsState = createState<DiagnosticsStateShape>('DiagnosticsState');
 
+/** Report paths outside React. Bind on mount and pass null on unmount. */
 let diagnosticState: StateStore<DiagnosticsStateShape> | null = null;
 
 export function bindDiagnosticsState(state: StateStore<DiagnosticsStateShape> | null) {

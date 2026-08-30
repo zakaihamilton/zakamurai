@@ -6,7 +6,11 @@ const SCAN_DIRS = [
   path.join(ROOT, 'src/components'),
   path.join(ROOT, 'src/utils'),
   path.join(ROOT, 'src/contracts'),
+  path.join(ROOT, 'src/app'),
+  path.join(ROOT, 'src/hooks'),
+  path.join(ROOT, 'src/types'),
 ];
+const SCAN_FILES = [path.join(ROOT, 'src/proxy.ts')];
 
 const FORBIDDEN_IMPORTS = [
   { pattern: /from\s+['"]redux['"]/, reason: 'Redux is forbidden; use proxy state.' },
@@ -21,8 +25,11 @@ const COLOCATION_EXEMPT =
 type ArchitectureViolation = { file: string; reason: string };
 
 const LINE_BUDGETS: Record<string, number> = {
-  'src/components/AI/Agent/ActionLoop.ts': 1700,
-  'src/components/AI/WebLLMAPI.tsx': 1150,
+  'src/components/AI/Agent/ActionLoop.ts': 1660,
+  'src/components/AI/Agent/ActionLoopUtils.ts': 1250,
+  'src/components/AI/Agent/ActionLoopRecovery.ts': 800,
+  'src/components/AI/WebLLMAPI.tsx': 1100,
+  'src/components/AI/ChangeValidator.tsx': 900,
   'src/components/Storage/Settings.ts': 850,
   'src/components/App/Views/EditorArea/highlighter.tsx': 800,
   'src/components/AI/Agent/ManagerRunner.ts': 700,
@@ -180,9 +187,10 @@ function checkFile(filePath: string, content: string): ArchitectureViolation[] {
 }
 
 async function main(): Promise<void> {
-  const files = (
-    await Promise.all(SCAN_DIRS.map((directory) => collectSourceFiles(directory)))
-  ).flat();
+  const files = [
+    ...(await Promise.all(SCAN_DIRS.map((directory) => collectSourceFiles(directory)))).flat(),
+    ...SCAN_FILES,
+  ];
   const violations: ArchitectureViolation[] = [];
 
   for (const filePath of files) {

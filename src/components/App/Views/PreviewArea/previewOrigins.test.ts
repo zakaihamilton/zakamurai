@@ -8,7 +8,9 @@ import {
   getPreviewConfigurationError,
   getPreviewFrameAncestors,
   getPreviewOrigins,
+  getPreviewServiceWorkerAllowedHeader,
   getPreviewServiceWorkerScope,
+  getSameOriginPreviewWarning,
   isPreviewHost,
   isValidPreviewHandshake,
   originMatches,
@@ -142,6 +144,37 @@ describe('isolated preview configuration', () => {
     expect(ancestors).toContain('http://localhost:3000');
     expect(ancestors).toContain('https://www.zakamurai.com');
     expect(ancestors).toContain('https://zakamurai-git-feature-team.vercel.app');
+  });
+
+  it('widens Service-Worker-Allowed only on the isolated preview host', () => {
+    expect(getPreviewServiceWorkerAllowedHeader(true)).toBe('/');
+    expect(getPreviewServiceWorkerAllowedHeader(false)).toBe('/__preview/');
+  });
+
+  it('omits localhost from production frame-ancestors unless the IDE is local', () => {
+    vi.stubEnv('NODE_ENV', 'production');
+    vi.stubEnv('NEXT_PUBLIC_IDE_ORIGIN', 'https://www.zakamurai.com');
+    expect(getPreviewFrameAncestors({ ideOrigin: 'https://www.zakamurai.com' })).not.toContain(
+      'http://localhost:3000',
+    );
+    expect(getPreviewFrameAncestors({ ideOrigin: 'https://www.zakamurai.com' })).toContain(
+      'https://www.zakamurai.com',
+    );
+  });
+
+  it('warns when preview shares the IDE origin', () => {
+    vi.stubEnv('NEXT_PUBLIC_IDE_ORIGIN', '');
+    vi.stubEnv('NEXT_PUBLIC_PREVIEW_ORIGIN', '');
+    const origins = getPreviewOrigins({ windowOrigin: 'http://localhost:3000' });
+    expect(origins.isIsolated).toBe(false);
+    expect(getSameOriginPreviewWarning(origins)).toMatch(/same origin/);
+    expect(
+      getSameOriginPreviewWarning({
+        ideOrigin: 'http://localhost:3000',
+        previewOrigin: 'http://localhost:3001',
+        isIsolated: true,
+      }),
+    ).toBeNull();
   });
 });
 

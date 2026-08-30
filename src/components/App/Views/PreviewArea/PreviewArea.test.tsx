@@ -36,6 +36,7 @@ function createPreviewMocks(
 describe('PreviewArea', () => {
   afterEach(() => {
     vi.restoreAllMocks();
+    vi.unstubAllEnvs();
     vi.useRealTimers();
   });
 
@@ -76,6 +77,25 @@ describe('PreviewArea', () => {
 
     expect(screen.getByRole('alert')).toBeDefined();
     expect(screen.getByText('Failed to sync preview files')).toBeDefined();
+  });
+
+  it('warns when preview shares the IDE origin', () => {
+    vi.stubEnv('NEXT_PUBLIC_IDE_ORIGIN', '');
+    vi.stubEnv('NEXT_PUBLIC_PREVIEW_ORIGIN', '');
+    const { preview, ui } = createPreviewMocks(
+      {
+        htmlContent: '<html><body>Hello</body></html>',
+        isCompilerReady: true,
+        restoreError: null,
+      },
+      { error: null },
+    );
+
+    vi.mocked(PreviewState.useState).mockReturnValue(preview);
+    vi.spyOn(PreviewAreaUiState, 'useState').mockReturnValue(ui);
+
+    render(<PreviewArea />);
+    expect(screen.getByRole('status').textContent).toMatch(/same origin/);
   });
 
   it('shows compile errors when no preview html is available', () => {

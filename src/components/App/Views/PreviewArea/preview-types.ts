@@ -68,6 +68,7 @@ export type PreviewSurfaceProps = {
   externalPreviewNonce: number;
   previewOrigin: string;
   onError: (message: string) => void;
+  isolationWarning?: string | null;
 };
 
 export type EsbuildTransformError = {

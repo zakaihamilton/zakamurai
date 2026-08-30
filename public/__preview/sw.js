@@ -107,6 +107,8 @@ self.addEventListener('message', (event) => {
     return;
 
   const sessionId = event.data.sessionId;
+  const clientUrl = event.source && 'url' in event.source ? event.source.url : '';
+  if (!isTrustedPreviewInitClient(clientUrl, sessionId)) return;
   const port = event.ports[0];
   rememberPort(sessionId, port, event.data.ideOrigin);
   bindPortMessages(port, sessionId);
@@ -144,12 +146,40 @@ function expandOriginAliases(origin) {
   }
 }
 
+function isRootScopedPreviewWorker() {
+  try {
+    const scopePath = new URL(self.registration.scope).pathname;
+    return scopePath === '/' || scopePath === '';
+  } catch {
+    return false;
+  }
+}
+
+function isTrustedPreviewInitClient(clientUrl, sessionId) {
+  if (isRootScopedPreviewWorker()) return true;
+  if (!clientUrl || !sessionId) return false;
+  try {
+    const path = new URL(clientUrl, 'https://preview.invalid').pathname;
+    return (
+      path === '/__preview/host' ||
+      path.startsWith('/__preview/host/') ||
+      path === `/__preview/${sessionId}` ||
+      path.startsWith(`/__preview/${sessionId}/`)
+    );
+  } catch {
+    return false;
+  }
+}
+
 function applyPreviewEmbedHeaders(headers, ideOrigin) {
   // Parent IDE uses COEP require-corp. Cross-origin iframe documents must send
   // their own COEP header or Chrome blocks with coep-frame-resource-needs-coep-header.
   headers.set('Cross-Origin-Embedder-Policy', 'credentialless');
   headers.set('Cross-Origin-Resource-Policy', 'cross-origin');
-  const ancestors = new Set(["'self'", 'http://localhost:3000']);
+  const ancestors = new Set(["'self'"]);
+  if (typeof ideOrigin === 'string' && /^https?:\/\/(localhost|127\.0\.0\.1)(:|$)/.test(ideOrigin)) {
+    ancestors.add('http://localhost:3000');
+  }
   for (const origin of expandOriginAliases(ideOrigin)) ancestors.add(origin);
   headers.set('Content-Security-Policy', `frame-ancestors ${[...ancestors].join(' ')}`);
   headers.delete('X-Frame-Options');

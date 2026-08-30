@@ -8,7 +8,9 @@
     "npm": ">=10"
   },
   "scripts": {
-    "dev": "next dev --webpack",
+    "dev": "tsx scripts/dev-isolated.ts",
+    "dev:ide": "next dev --webpack",
+    "dev:same-origin": "next dev --webpack",
     "dev:isolated": "tsx scripts/dev-isolated.ts",
     "build": "next build --webpack",
     "start": "next start",
@@ -27,7 +29,7 @@
     "test:ai-manager:smoke": "ZAKAMURAI_AI_SMOKE=1 vitest run tests/ai-manager/smoke.test.ts",
     "test:coverage": "vitest run --coverage",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "test:e2e": "npx playwright test --project=chromium tests/visual/basic.spec.ts tests/visual/advanced.spec.ts",
+    "test:e2e": "npx playwright test --project=chromium tests/visual/basic.spec.ts tests/visual/advanced.spec.ts tests/visual/small-model-preview-smoke.spec.ts",
     "test:e2e:webkit": "npx playwright test --project=webkit tests/visual/basic.spec.ts tests/visual/advanced.spec.ts",
     "test:e2e:isolated": "npx playwright test --config=playwright.isolated.config.ts",
     "test:e2e:isolated:webkit": "npx playwright test --config=playwright.isolated.config.ts --project=webkit",

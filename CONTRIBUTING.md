@@ -23,7 +23,7 @@ Run locally before opening a PR:
 npm run verify
 ```
 
-This runs formatting, linting, architecture checks, static promptfoo eval, unit coverage, production build, application and generated-runtime performance budgets, e2e smoke, isolated preview security tests, preview header checks, visual regression (Chromium), and dependency audit.
+This runs formatting, linting, typecheck, knip, architecture checks, static promptfoo eval, AI evals, unit coverage, production build, application and generated-runtime performance budgets, Chromium and WebKit e2e smoke, isolated preview security tests, preview header checks, visual regression (Chromium), and dependency audit.
 
 Optional extended AI checks:
 
@@ -38,6 +38,7 @@ Requires promptfoo (installed via `npm ci`). lucidshark/lucid architectural scan
 | Command | Purpose |
 | --- | --- |
 | `npm run test` | Unit tests |
+| `npm run typecheck` | TypeScript `--noEmit` |
 | `npm run test:coverage` | Coverage with thresholds |
 | `npm run test:promptfoo` | Static AI compliance (no API keys) |
 | `npm run check:architecture` | Architecture rule scan |

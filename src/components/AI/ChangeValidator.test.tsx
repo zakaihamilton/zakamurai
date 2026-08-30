@@ -59,10 +59,14 @@ describe('AI change validation', () => {
     expect(result.accepted).toHaveLength(2);
   });
 
-  it.each(['/etc/passwd', '../secret.js', 'src/../secret.js', 'C:\\secret.js'])(
-    'rejects unsafe path %s',
-    (path) => expect(validateProjectPath(path)).toBeTruthy(),
-  );
+  it.each([
+    '/etc/passwd',
+    '../secret.js',
+    'src/../secret.js',
+    'src/./App.jsx',
+    './App.jsx',
+    'C:\\secret.js',
+  ])('rejects unsafe path %s', (path) => expect(validateProjectPath(path)).toBeTruthy());
 
   it('rejects duplicate targets and malformed content', () => {
     const result = validateAIChanges([

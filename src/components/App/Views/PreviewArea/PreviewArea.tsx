@@ -8,7 +8,11 @@ import { requireStore } from '../../types';
 import { PreviewErrorState, PreviewUnavailableState } from './PreviewEmptyState';
 import PreviewSurface from './PreviewSurface';
 import { isOpaqueScriptError } from './previewErrorUtils';
-import { getPreviewConfigurationError, getPreviewOrigins } from './previewOrigins';
+import {
+  getPreviewConfigurationError,
+  getPreviewOrigins,
+  getSameOriginPreviewWarning,
+} from './previewOrigins';
 import usePreviewRuntimeBridge from './usePreviewRuntimeBridge';
 import usePreviewSessionLifecycle from './usePreviewSessionLifecycle';
 
@@ -69,6 +73,7 @@ export default function PreviewArea() {
     windowOrigin: typeof window === 'undefined' ? '' : window.location.origin,
   });
   const previewConfigurationError = getPreviewConfigurationError(origins);
+  const isolationWarning = getSameOriginPreviewWarning(origins);
 
   const setPreviewError = useCallback(
     (message: string) => {
@@ -224,6 +229,7 @@ export default function PreviewArea() {
       externalPreviewNonce={externalPreviewNonce}
       previewOrigin={origins.previewOrigin || ''}
       onError={setPreviewError}
+      isolationWarning={isolationWarning}
     />
   );
 }

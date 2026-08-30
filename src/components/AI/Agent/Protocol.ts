@@ -23,7 +23,7 @@ export const ALL_AGENT_ACTIONS = [...ACTIONS];
 export function normalizeAgentPath(value: unknown): string {
   if (typeof value !== 'string') throw new Error('path must be a string');
   const path = value.replaceAll('\\', '/').replace(/^\/+/, '');
-  if (!path || path.split('/').includes('..'))
+  if (!path || path.split('/').some((part) => part === '..' || part === '.' || !part))
     throw new Error('path must stay inside the workspace');
   return path;
 }
@@ -314,11 +314,15 @@ Actions:
 {"action":"search_semantic","query":"natural language concept","k":5}
 {"action":"read_file","path":"relative/path"}
 {"action":"write_file","path":"relative/path","content":"complete new file content","reason":"brief reason"}
+{"action":"replace_file_content","path":"relative/path","search":"exact existing text","replace":"replacement text"}
 {"action":"delete_file","path":"relative/path","reason":"brief reason"}
 {"action":"validate"}
 {"action":"list_project_checks"}
 {"action":"run_project_check","check":"test"}
 {"action":"inspect_preview"}
+{"action":"inspect_console_logs","query":"optional text","level":"log|warn|error"}
+{"action":"get_file_symbols","path":"relative/path"}
+{"action":"manage_packages","query":"list|add|remove","packageName":"optional-package","version":"optional","isDev":false}
 {"action":"finish","summary":"brief result"}
 `.trim();
 

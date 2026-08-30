@@ -18,7 +18,7 @@ import {
 } from '../Views/PreviewArea/previewProtocol';
 import styles from './PreviewHost.module.css';
 
-const SW_URL = '/__preview_sw__.js?v=27';
+const SW_URL = '/__preview/sw.js?v=28';
 const SESSION_WINDOW_NAME_PREFIXES = ['zakamurai-preview-tab-', 'zakamurai-preview-'];
 const CONNECT_TIMEOUT_MS = 15000;
 

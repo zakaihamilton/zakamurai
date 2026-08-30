@@ -1,5 +1,5 @@
-import { expect, test } from '@playwright/test';
 import { mkdirSync } from 'node:fs';
+import { expect, test } from '@playwright/test';
 
 const NOTES_APP = `import { useState } from 'react';
 import styles from './App.module.css';
@@ -108,9 +108,9 @@ test.describe('small-model IDE preview smoke', () => {
     await page.getByTestId('preview-tab').filter({ visible: true }).click();
     await page.waitForTimeout(2500);
 
-    mkdirSync('/opt/cursor/artifacts', { recursive: true });
+    mkdirSync('test-results/small-model-preview', { recursive: true });
     await page.screenshot({
-      path: '/opt/cursor/artifacts/ide_preview_seeded_notes.png',
+      path: 'test-results/small-model-preview/ide_preview_seeded_notes.png',
       fullPage: true,
     });
 
@@ -120,7 +120,7 @@ test.describe('small-model IDE preview smoke', () => {
     await frame.getByRole('button', { name: 'Add note' }).click();
     await expect(frame.getByText('seeded from small-model path')).toBeVisible();
     await page.screenshot({
-      path: '/opt/cursor/artifacts/ide_preview_seeded_notes_interactive.png',
+      path: 'test-results/small-model-preview/ide_preview_seeded_notes_interactive.png',
       fullPage: true,
     });
   });

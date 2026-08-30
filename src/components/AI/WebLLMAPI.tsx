@@ -3,11 +3,20 @@ import type {
   WebLLMMessage,
   WebLLMOptions,
   WebLLMRecoveryEvent,
-  WebLLMRecoveryReason,
 } from '@/components/AI/types';
 import { reportDiagnostic } from '@/components/Diagnostics/Diagnostics';
 import { releaseWebLLMGpuMemory, reserveWebLLMGpuMemory } from '@/utils/ai-memory-governor';
 import { DEFAULT_SYSTEM_PROMPT } from './Prompts';
+import type {
+  ActiveGeneration,
+  AttemptResult,
+  CompletionResponse,
+  CompletionUsage,
+  EngineRecord,
+  PendingRequest,
+  SessionFallback,
+  WebLLMEngine,
+} from './WebLLMEngineTypes';
 import { ensureSystemMessageFirst, pruneWebLLMMessages } from './WebLLMMessageUtils';
 import {
   WEB_LLM_MODELS,
@@ -42,79 +51,6 @@ const DEFAULT_CONTEXT_WINDOW_SIZE = 4096;
 const WEB_LLM_IDLE_UNLOAD_MS = 60_000;
 const RAG_RELEASE_TIMEOUT_MS = 12_000;
 const FALLBACK_TTL_MS = 10 * 60_000;
-
-type CompletionUsage = {
-  prompt_tokens?: number;
-  completion_tokens?: number;
-  extra?: {
-    decode_tokens_per_s?: number;
-    time_to_first_token_s?: number;
-  };
-};
-
-type CompletionChoice = {
-  message?: { content?: string };
-  delta?: { content?: string };
-  finish_reason?: string | null;
-};
-
-type CompletionResponse = {
-  choices?: CompletionChoice[];
-  usage?: CompletionUsage | null;
-};
-
-type WebLLMEngine = {
-  interruptSignal?: boolean;
-  resetChat: (keepStats?: boolean, modelId?: string) => Promise<void>;
-  interruptGenerate: () => void | Promise<void>;
-  unload?: () => Promise<void>;
-  worker?: { terminate?: () => void };
-  asyncGenerate?: (selectedModelId: string) => AsyncGenerator<CompletionResponse, void, void>;
-  getPromise?: (message: unknown) => Promise<unknown>;
-  chat: {
-    completions: {
-      create: (options: Record<string, unknown>) => Promise<CompletionResponse>;
-    };
-  };
-};
-
-type EngineRecord = {
-  modelId: string;
-  contextWindowSize: number;
-  promise: Promise<WebLLMEngine>;
-};
-
-type ActiveGeneration = {
-  requestId: number;
-  modelId: string;
-  engine: WebLLMEngine;
-  done: Promise<void>;
-  resolveDone: () => void;
-};
-
-type PendingRequest = {
-  requestedModelId: string;
-  controller: AbortController;
-};
-
-type SessionFallback = {
-  modelId: string;
-  reason: WebLLMRecoveryReason;
-  expiresAt: number;
-};
-
-type AttemptResult = {
-  text: string;
-  modelId: string;
-  initializationMs?: number;
-  localTimeToFirstTokenMs?: number;
-  usage?: CompletionUsage | null;
-  finishReason?: string | null;
-  sessionState?: WebLLMGenerationMetrics['sessionState'];
-  submittedDeltaBytes?: number;
-  submittedDeltaTokens?: number;
-  reusedContextTokens?: number;
-};
 
 let engineRecord: EngineRecord | null = null;
 let generationQueue: Promise<void> = Promise.resolve();

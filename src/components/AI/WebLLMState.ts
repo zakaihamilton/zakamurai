@@ -5,6 +5,7 @@ import { createState } from 'triactor';
 
 export const WebLLMState = createState<WebLLMStateShape>('WebLLMState');
 
+/** Worker callbacks cannot use React hooks. Bind on mount and pass null on unmount. */
 let webLLMStore: StateHandle<WebLLMStateDraft> | null = null;
 
 export function bindWebLLMStore(store: StateHandle<WebLLMStateDraft> | null): void {

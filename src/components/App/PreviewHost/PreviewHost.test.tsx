@@ -119,7 +119,7 @@ describe('PreviewHost', () => {
     let controller: ServiceWorker | null = null;
     const worker = {
       state: 'activated' as ServiceWorkerState,
-      scriptURL: 'http://localhost:3001/__preview_sw__.js?v=27',
+      scriptURL: 'http://localhost:3001/__preview/sw.js?v=28',
       postMessage: vi.fn((message: { type?: string }) => {
         if (message.type !== 'claim') return;
         controller = worker as unknown as ServiceWorker;

@@ -102,10 +102,6 @@ vi.mock('./PromptState', async (importOriginal) => {
   };
 });
 
-vi.mock('@/components/AI/Processor', () => ({
-  processAIResponse: vi.fn().mockResolvedValue(undefined),
-}));
-
 const {
   runAgent,
   runManager,

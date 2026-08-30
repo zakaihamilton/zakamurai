@@ -13,6 +13,13 @@ import {
   isTaskPathAllowed,
 } from '../ReliabilityContracts';
 import { AgentExecutionError, AgentRecoveryValidationError } from './ActionLoopErrors';
+import {
+  type PreviewInspectLoopState,
+  createInspectPreviewForLoop,
+  inspectConsoleLogs,
+  inspectFileSymbols,
+  manageWorkspacePackages,
+} from './ActionLoopInspect';
 import { requestNextAction } from './ActionLoopModel';
 import {
   APP_ENTRY_PATHS,
@@ -55,11 +62,8 @@ import {
   assertDeletableFile,
   prepareWriteFileAction,
 } from './ActionLoopWrites';
-import type { ConsoleLogEntry } from './ConsoleLogInspector';
-import { filterConsoleLogs, formatConsoleLogs } from './ConsoleLogInspector';
 import { AgentContextManager, formatVerificationResult } from './ContextManager';
 import { parseModelResult } from './ManagerProtocol';
-import { type PackageAction, handlePackageOperation } from './PackageManager';
 import { listProjectChecks, runProjectCheck } from './ProjectChecks';
 import {
   ensureProjectRootTokens,
@@ -69,7 +73,6 @@ import {
   resolveProjectStyleProfile,
 } from './ProjectStyleProfile';
 import { AGENT_SYSTEM_PROMPT, ALL_AGENT_ACTIONS, parseAgentAction } from './Protocol';
-import { extractFileSymbols, formatSymbolOutline } from './SymbolInspector';
 import { visualPreviewInspectionFailure } from './VisualPreviewEvidence';
 import { AgentWorkspace } from './Workspace';
 
@@ -163,9 +166,11 @@ export async function runActionLoop({
     lastValidationFailed: false,
     repairAttempts: 0,
   };
-  let inspectedPreview = false;
-  let previewInspectionAccepted = false;
-  let lastPreviewResult = '';
+  const previewInspectState: PreviewInspectLoopState = {
+    inspectedPreview: false,
+    previewInspectionAccepted: false,
+    lastPreviewResult: '',
+  };
   let recoveredNoOpWrite = '';
   let finishAfterAutomaticValidation = false;
   let automaticValidationResult = '';
@@ -268,39 +273,17 @@ export async function runActionLoop({
     validationRepairLimit,
   });
 
-  const inspectPreviewForLoop = async (turn: number): Promise<string> => {
-    if (inspectedPreview && previewInspectionAccepted && lastPreviewResult) {
-      return lastPreviewResult;
-    }
-    onEvent({ type: 'tool', turn, action: { action: 'inspect_preview' }, agentRole });
-    let preview = inspectPreview
-      ? await inspectPreview(workspace.files)
-      : { status: 'unavailable', diagnostics: 'Preview inspection is unavailable.' };
-    inspectedPreview = true;
-    let previewFailure = previewInspectionRequired ? visualPreviewInspectionFailure(preview) : null;
-    if (previewFailure && resolvedStyleProfile && /style audit/i.test(previewFailure)) {
-      const recovered = applyCssModuleRecovery(turn);
-      if (recovered.length && inspectPreview) {
-        preview = await inspectPreview(workspace.files);
-        previewFailure = visualPreviewInspectionFailure(preview);
-        context.record('style_audit_repair', {
-          recovered,
-          remaining: previewFailure || 'passed',
-        });
-      }
-    }
-    previewInspectionAccepted = !previewFailure;
-    const evidence = previewFailure
-      ? {
-          ...(typeof preview === 'object' && preview ? preview : {}),
-          visualReview: 'insufficient',
-          diagnostics: previewFailure,
-        }
-      : preview;
-    lastPreviewResult = JSON.stringify(evidence);
-    context.record('preview', preview);
-    return lastPreviewResult;
-  };
+  const inspectPreviewForLoop = createInspectPreviewForLoop({
+    state: previewInspectState,
+    files: workspace.files,
+    inspectPreview,
+    previewInspectionRequired,
+    resolvedStyleProfile,
+    applyCssModuleRecovery,
+    context,
+    onEvent,
+    agentRole,
+  });
 
   for (let turn = 1; turn <= maxTurns; turn++) {
     if (signal?.aborted) throw new DOMException('Agent stopped', 'AbortError');
@@ -455,14 +438,14 @@ export async function runActionLoop({
             continue;
           }
           let previewSummary = '';
-          if (previewInspectionRequired && !inspectedPreview) {
+          if (previewInspectionRequired && !previewInspectState.inspectedPreview) {
             onEvent({ type: 'tool', turn, action: { action: 'inspect_preview' }, agentRole });
             const preview = inspectPreview
               ? await inspectPreview(workspace.files)
               : { status: 'unavailable', diagnostics: 'Preview inspection is unavailable.' };
-            inspectedPreview = true;
+            previewInspectState.inspectedPreview = true;
             const previewFailure = visualPreviewInspectionFailure(preview);
-            previewInspectionAccepted = !previewFailure;
+            previewInspectState.previewInspectionAccepted = !previewFailure;
             if (inspectPreview) {
               previewSummary = `\n\nPreview inspection:\n${JSON.stringify(
                 previewFailure
@@ -897,10 +880,10 @@ export async function runActionLoop({
       if (
         finishAfterAutomaticValidation &&
         previewInspectionRequired &&
-        (!inspectedPreview || !previewInspectionAccepted)
+        (!previewInspectState.inspectedPreview || !previewInspectState.previewInspectionAccepted)
       ) {
         const previewResult = await inspectPreviewForLoop(turn);
-        if (!previewInspectionAccepted) {
+        if (!previewInspectState.previewInspectionAccepted) {
           finishAfterAutomaticValidation = false;
           messages.push({
             role: 'user',
@@ -1081,9 +1064,9 @@ export async function runActionLoop({
         action = prepared.action;
         const { normalizedSideEffectCss, rewrittenInlineStyles, ensuredCssModule } = prepared;
         workspace.write(action.path || '', action.content || '');
-        inspectedPreview = false;
-        previewInspectionAccepted = false;
-        lastPreviewResult = '';
+        previewInspectState.inspectedPreview = false;
+        previewInspectState.previewInspectionAccepted = false;
+        previewInspectState.lastPreviewResult = '';
         finishAfterAutomaticValidation = false;
         automaticValidationResult = '';
         nonProductiveActionsWithoutWrite = 0;
@@ -1180,9 +1163,9 @@ export async function runActionLoop({
           taskContract,
         });
         workspace.write(path, newContent);
-        inspectedPreview = false;
-        previewInspectionAccepted = false;
-        lastPreviewResult = '';
+        previewInspectState.inspectedPreview = false;
+        previewInspectState.previewInspectionAccepted = false;
+        previewInspectState.lastPreviewResult = '';
         finishAfterAutomaticValidation = false;
         automaticValidationResult = '';
         validationState.wroteSinceVerification = true;
@@ -1197,9 +1180,9 @@ export async function runActionLoop({
         assertTaskPathAllowed(taskContract, path);
         assertDeletableFile(path, workspace.files);
         workspace.delete(path);
-        inspectedPreview = false;
-        previewInspectionAccepted = false;
-        lastPreviewResult = '';
+        previewInspectState.inspectedPreview = false;
+        previewInspectState.previewInspectionAccepted = false;
+        previewInspectState.lastPreviewResult = '';
         finishAfterAutomaticValidation = false;
         automaticValidationResult = '';
         validationState.wroteSinceVerification = true;
@@ -1245,52 +1228,19 @@ export async function runActionLoop({
       }
       if (action.action === 'inspect_console_logs') {
         onEvent({ type: 'tool', turn, action, agentRole });
-        const query = action.query;
-        const level = action.level;
-        const rawLogs = (workspace.files['.console.log'] || '').split('\n').filter(Boolean);
-        const parsedLogs: ConsoleLogEntry[] = rawLogs.map((line) => {
-          const isErr = line.includes('[ERROR]');
-          const isWarn = line.includes('[WARN]');
-          return {
-            level: isErr ? 'error' : isWarn ? 'warn' : 'log',
-            message: line,
-          };
-        });
-        const filtered = filterConsoleLogs(parsedLogs, { query, level });
-        result = formatConsoleLogs(filtered);
+        result = inspectConsoleLogs(action, workspace.files);
       }
       if (action.action === 'get_file_symbols') {
         onEvent({ type: 'tool', turn, action, agentRole });
-        const path = action.path || '';
-        const fileContent = workspace.read(path);
-        if (!fileContent) {
-          result = `File not found: ${path}`;
-        } else {
-          const outline = extractFileSymbols(fileContent, path);
-          result = formatSymbolOutline(outline);
-        }
+        result = inspectFileSymbols(action, workspace.files);
       }
       if (action.action === 'manage_packages') {
         onEvent({ type: 'tool', turn, action, agentRole });
-        const rawAction = action.query || 'list';
-        const pkgAction: PackageAction =
-          rawAction === 'add' || rawAction === 'remove' ? rawAction : 'list';
-        const packageName = action.packageName;
-        const version = action.version;
-        const isDev = Boolean(action.isDev);
-
-        const opResult = handlePackageOperation(workspace.files, {
-          action: pkgAction,
-          packageName,
-          version,
-          isDev,
-        });
-
-        if (opResult.updatedPackageJson) {
-          workspace.write('package.json', opResult.updatedPackageJson);
+        const packageResult = manageWorkspacePackages(action, workspace.files);
+        if (packageResult.updatedPackageJson) {
+          workspace.write('package.json', packageResult.updatedPackageJson);
         }
-
-        result = JSON.stringify(opResult);
+        result = packageResult.result;
       }
       if (action.action === 'finish') {
         onEvent({ type: 'tool', turn, action, agentRole });
@@ -1366,25 +1316,28 @@ export async function runActionLoop({
           });
           continue;
         }
-        if (previewInspectionRequired && (!inspectedPreview || !previewInspectionAccepted)) {
-          if (!inspectedPreview && inspectPreview) {
+        if (
+          previewInspectionRequired &&
+          (!previewInspectState.inspectedPreview || !previewInspectState.previewInspectionAccepted)
+        ) {
+          if (!previewInspectState.inspectedPreview && inspectPreview) {
             const previewResult = await inspectPreviewForLoop(turn);
             onEvent({
               type: 'observation',
               turn,
               action: { action: 'inspect_preview' },
-              error: !previewInspectionAccepted,
+              error: !previewInspectState.previewInspectionAccepted,
               message: previewResult,
               agentRole,
             });
             // Lightweight: host-owned inspect — fall through to validate/finish.
-            if (!(lightweightModel && previewInspectionAccepted)) {
+            if (!(lightweightModel && previewInspectState.previewInspectionAccepted)) {
               messages.push({
                 role: 'user',
                 content: observation(
                   'inspect_preview',
-                  previewInspectionAccepted,
-                  previewInspectionAccepted
+                  previewInspectState.previewInspectionAccepted,
+                  previewInspectState.previewInspectionAccepted
                     ? `${previewResult}\nReview this preview evidence before choosing the next action.`
                     : `${previewResult}\nThe preview is not ready for completion. Fix the rendered app or inspect it again before finishing.`,
                 ),
@@ -1397,7 +1350,7 @@ export async function runActionLoop({
               content: observation(
                 'finish',
                 false,
-                previewInspectionAccepted
+                previewInspectState.previewInspectionAccepted
                   ? 'Visual UI review requires action "inspect_preview" before finishing. Use its structured evidence to assess landmarks, named controls, runtime errors, and the visual brief.'
                   : 'The previous preview inspection was insufficient. Do not finish. Wait for rendered DOM evidence and a captured screenshot, then inspect_preview again. If the preview remains empty or unstyled, write the necessary JSX/CSS fixes first.',
               ),

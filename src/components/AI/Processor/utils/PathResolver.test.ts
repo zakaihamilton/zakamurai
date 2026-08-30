@@ -19,7 +19,6 @@ describe('PathResolver', () => {
 
     test('longest suffix match with multiple candidates', () => {
       const candidates = ['other/components/Button.js', 'new-path/components/Button.js'];
-      // Query is not in candidates, matches 'new-path/components/Button.js' (3 segments) over 'other/components/Button.js' (2 segments)
       expect(resolveFilePath('parent/new-path/components/Button.js', candidates)).toBe(
         'new-path/components/Button.js',
       );
@@ -27,6 +26,11 @@ describe('PathResolver', () => {
 
     test('fallback to provided path', () => {
       expect(resolveFilePath('new/file.js', existing)).toBe('new/file.js');
+    });
+
+    test('does not remap traversal or remaining dot-segment paths onto existing files', () => {
+      expect(resolveFilePath('../App.js', existing)).toBe('../App.js');
+      expect(resolveFilePath('src/./App.js', existing)).toBe('src/./App.js');
     });
 
     test('resolves new component paths into src directory when src exists', () => {

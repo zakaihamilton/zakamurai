@@ -15,6 +15,8 @@
 
 The application is wrapped in `<StateRoot>`. Domain stores (`AppState`, `EditorState`, …) are **bootstrapped in `App.tsx` on the root node** via `XState.useState(null, initial)`. Per-file UI stores pass `initial` under `<Node id={filePath}>` so they are scoped to that node.
 
+Worker and diagnostic callbacks that cannot subscribe through React bind a store handle with `bindWebLLMStore` / `bindDiagnosticsState` and must clear it on unmount. Do not add other module-level stores.
+
 ## 2. Reading State
 
 ```javascript
@@ -85,9 +87,9 @@ editorState((draft) => {
 
 | Module | Path | Role |
 | --- | --- | --- |
-| **Prompts** | `src/components/AI/Prompts.ts` | System prompts and output format instructions |
-| **Processor** | `src/components/AI/Processor/` | Legacy SEARCH/REPLACE parser (tests/fixtures only) |
-| **ChangeValidator** | `src/components/AI/ChangeValidator.ts` | Path safety, syntax checks before staging |
+| **Prompts** | `src/components/AI/Prompts.tsx` | System prompts and output format instructions |
+| **Processor** | `src/components/AI/Processor/` | Legacy SEARCH/REPLACE parser (tests/fixtures). `DiffEngine` and `PathResolver` are still used when staging agent changes. |
+| **ChangeValidator** | `src/components/AI/ChangeValidator.tsx` | Path safety, syntax checks before staging |
 | **Agent** | `src/components/AI/Agent/` | `runManager`, action loop, applier |
 | **WebLLM** | `src/components/AI/WebLLMAPI.tsx` | In-browser model inference |
 
@@ -110,7 +112,7 @@ AI changes must use project-relative paths. `validateAIChanges` rejects absolute
 
 ## 9. Testing Expectations
 
-- Unit tests: Vitest (`npm run test`, `npm run test:coverage`). Global coverage thresholds: 80%. AI modules target 85%.
+- Unit tests: Vitest (`npm run test`, `npm run test:coverage`). Global coverage thresholds: 80%. AI modules (`src/components/AI/**`) target 85% in `vitest.config.ts`.
 - Architecture: `npm run check:architecture` enforces styling and state patterns in `src/components/`, `src/utils/`, and `src/contracts/`.
 - AI golden fixtures: `tests/ai-golden/` + `npm run test:promptfoo`.
 - E2E: Playwright smoke (`test:e2e`), isolated preview security (`test:e2e:isolated`), visual regression (`test:visual:chromium` in CI).

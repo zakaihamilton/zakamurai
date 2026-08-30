@@ -1,12 +1,19 @@
 import { describe, expect, it } from 'vitest';
 import {
   AGENT_SYSTEM_PROMPT,
+  ALL_AGENT_ACTIONS,
   RESPONSIVE_GENERATION_CONTRACT,
   normalizeAgentPath,
   parseAgentAction,
 } from './Protocol';
 
 describe('agent protocol', () => {
+  it('documents every supported action in the system prompt catalog', () => {
+    for (const action of ALL_AGENT_ACTIONS) {
+      expect(AGENT_SYSTEM_PROMPT).toContain(`"action":"${action}"`);
+    }
+  });
+
   it('requires generated CSS Modules to use their exported class maps', () => {
     expect(AGENT_SYSTEM_PROMPT).toContain('className={styles.container}');
     expect(AGENT_SYSTEM_PROMPT).toContain('Never side-effect import *.module.css');
@@ -62,6 +69,7 @@ describe('agent protocol', () => {
 
   it('rejects paths outside the workspace', () => {
     expect(() => normalizeAgentPath('../secret')).toThrow(/workspace/);
+    expect(() => normalizeAgentPath('src/./App.jsx')).toThrow(/workspace/);
   });
 
   it('recovers unfenced source that follows write_file metadata', () => {

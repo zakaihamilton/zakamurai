@@ -3,5 +3,3 @@ export {
   RECOMMENDED_WEB_LLM_MODEL,
   WEB_LLM_MODELS,
 } from './WebLLMModels';
-/** @deprecated Legacy SEARCH/REPLACE parser. Production AI edits use `runManager`. */
-export { processAIResponse } from './Processor';

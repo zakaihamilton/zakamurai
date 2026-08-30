@@ -84,7 +84,7 @@ void isPortInUse(3000).then((inUse) => {
     return;
   }
 
-  ide = spawn(command, ['run', 'dev', '--', '--port', '3000'], {
+  ide = spawn(command, ['run', 'dev:ide', '--', '--port', '3000'], {
     stdio: 'inherit',
     env: {
       ...process.env,

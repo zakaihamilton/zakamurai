@@ -242,8 +242,24 @@ describe('proxy', () => {
     expect(res.type).toBe('next');
   });
 
-  it('bypasses rewrite for internal preview assets like /__preview_sw__.js', () => {
-    const req = createMockProxyRequest('https://preview.zakamurai.com/__preview_sw__.js', {
+  it('only widens preview SW scope on the isolated preview host', () => {
+    const previewReq = createMockProxyRequest('https://preview.zakamurai.com/__preview/sw.js', {
+      host: 'preview.zakamurai.com',
+    });
+    const previewRes = proxy(previewReq as unknown as NextRequest) as unknown as MockNextResponse;
+    expect(previewRes.type).toBe('next');
+    expect(previewRes.headers.get('Service-Worker-Allowed')).toBe('/');
+
+    const ideReq = createMockProxyRequest('https://www.zakamurai.com/__preview/sw.js', {
+      host: 'www.zakamurai.com',
+    });
+    const ideRes = proxy(ideReq as unknown as NextRequest) as unknown as MockNextResponse;
+    expect(ideRes.type).toBe('next');
+    expect(ideRes.headers.get('Service-Worker-Allowed')).toBe('/__preview/');
+  });
+
+  it('bypasses rewrite for internal preview assets like /preview-error-bridge.js', () => {
+    const req = createMockProxyRequest('https://preview.zakamurai.com/preview-error-bridge.js', {
       host: 'preview.zakamurai.com',
     });
     const res = proxy(req as unknown as NextRequest) as unknown as MockNextResponse;

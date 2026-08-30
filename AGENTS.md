@@ -24,7 +24,7 @@ Zakamurai is a single Next.js 16 / React 19 app (no backend, no database). Persi
 User prompt → runManager → validateAIChanges → fileContents + pendingDiffs → user review (Build/Preview already use proposed buffers)
 ```
 
-Key modules: `src/components/AI/Agent/` (`runManager`, action loop), `src/components/AI/ChangeValidator.ts`. The Processor SEARCH/REPLACE parser is legacy (tests/fixtures).
+Key modules: `src/components/AI/Agent/` (`runManager`, action loop), `src/components/AI/ChangeValidator.tsx`. The Processor SEARCH/REPLACE parser is legacy (tests/fixtures). DiffEngine and PathResolver from Processor remain in the production apply path.
 
 ## Quality gates
 
@@ -33,7 +33,7 @@ Key modules: `src/components/AI/Agent/` (`runManager`, action loop), `src/compon
 | `npm run verify` | mirrors CI | Full non-mutating local gate |
 | `npm run check:architecture` | yes | Codified architecture rules |
 | `npm run test:promptfoo` | yes | Static AI compliance (no API keys) |
-| `npm run test:coverage` | yes | Vitest with 80% global thresholds |
+| `npm run test:coverage` | yes | Vitest with 80% global thresholds and 85% AI statements/lines/functions |
 | `npm run verify:ai` | no | Optional extended AI regression |
 
 `verify` never rewrites source files. Use `npm run format` and `npm run stylelint:fix` to apply fixes.
@@ -57,7 +57,7 @@ Install lucidshark and add it to PATH to enable the architectural scan. See luci
 
 ### Running
 
-- Dev server: `npm run dev` serves the IDE on `http://localhost:3000`.
+- Dev server: `npm run dev` starts the IDE at `http://localhost:3000` and an isolated preview proxy at `http://localhost:3001`. Use `npm run dev:same-origin` only when you need the weaker same-origin `/__preview/` surface.
 - `predev`/`prebuild`/`postinstall` copy `almostnode` + ONNX/esbuild WASM assets into `public/` (`setup:almostnode`, `setup:wasm`). If `public/lib/almostnode`, `public/wasm`, or `public/esbuild` look empty, re-run `npm install` (or `npm run setup:almostnode && npm run setup:wasm`) rather than debugging Next.
 
 ### Known pre-existing caveats (not environment issues)

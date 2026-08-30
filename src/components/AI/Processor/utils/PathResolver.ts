@@ -9,6 +9,10 @@ export function resolveFilePath(providedPath: string, existingPaths: string[]): 
   const normalized = providedPath.replace(/^\.\//, '').replace(/\/+/g, '/');
   if (existingPaths.includes(normalized)) return normalized;
 
+  if (normalized.split('/').some((part) => part === '..' || part === '.' || !part)) {
+    return providedPath;
+  }
+
   const providedSegments = normalized.split('/').filter(Boolean);
   const fileName = providedSegments[providedSegments.length - 1];
 

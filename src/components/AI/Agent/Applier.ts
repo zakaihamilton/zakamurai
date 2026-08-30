@@ -10,6 +10,7 @@ import type {
   StateHandle,
 } from '@/components/AI/types';
 import { addChangeSet, createChangeSet } from '@/components/Workspace/ChangeSets';
+import { isProjectRelativePath } from '@/contracts/ai';
 import { setInDraft, updateInDraft } from '@/utils/StateUtils';
 import { formatCode } from '@/utils/formatter';
 import { validateAIChanges } from '../ChangeValidator';
@@ -113,6 +114,9 @@ export function applyAgentChanges(
 
   const resolvedChanges = changes.map((change) => {
     const rawPath = change.path ?? change.filePath ?? '';
+    if (typeof rawPath !== 'string' || !isProjectRelativePath(rawPath)) {
+      return { ...change, path: rawPath };
+    }
     const resolvedPath = resolveFilePath(rawPath, existingPaths);
     return { ...change, path: resolvedPath };
   });

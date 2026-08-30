@@ -82,6 +82,22 @@ describe('applyAgentChanges', () => {
     expect(changeSetState).not.toHaveBeenCalled();
   });
 
+  it('does not remap traversal paths onto an existing project file', () => {
+    const editorState = createEditorStateMock({
+      fileContents: { 'src/App.js': 'const a = 1;\n' },
+      pendingDiffs: {},
+    });
+    const logState = createLogStateMock({ logs: [] });
+
+    const { applied } = applyAgentChanges(
+      [{ path: '../App.js', before: 'const a = 1;\n', after: 'const a = 2;\n' }],
+      { editorState, logState },
+    );
+
+    expect(applied).toBe(0);
+    expect(editorState.fileContents?.['src/App.js']).toBe('const a = 1;\n');
+  });
+
   it('creates new files in the sidebar tree', () => {
     const editorState = createEditorStateMock({
       fileContents: {},

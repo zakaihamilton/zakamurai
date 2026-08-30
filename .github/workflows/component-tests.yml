@@ -36,8 +36,8 @@ jobs:
       - name: Install Chromium and WebKit
         run: npx playwright install --with-deps chromium webkit
 
-      - name: Check formatting, linting, and styles
-        run: npm run format:check && npm run lint && npm run stylelint
+      - name: Check formatting, linting, types, and styles
+        run: npm run format:check && npm run lint && npm run stylelint && npm run typecheck
 
       - name: Check unused dependencies and files
         run: npm run deadcode
@@ -46,7 +46,7 @@ jobs:
         run: npm run check:architecture
 
       - name: Run static AI compliance eval
-        run: npm run test:promptfoo
+        run: npm run test:promptfoo && npm run test:ai-evals
 
       - name: Run unit tests with coverage
         run: npm run test:coverage

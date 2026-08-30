@@ -2,9 +2,11 @@ import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import {
   PREVIEW_HOST_PATH,
+  PREVIEW_SERVICE_WORKER_PATH,
   PREVIEW_SURFACE_PARAM,
   PREVIEW_SURFACE_VALUE,
   getPreviewFrameAncestors,
+  getPreviewServiceWorkerAllowedHeader,
   isPreviewHost,
   isVercelAppHost,
 } from './components/App/Views/PreviewArea/previewOrigins';
@@ -128,12 +130,24 @@ function isPreviewVirtualPath(pathname: string): boolean {
   return pathname.startsWith('/__preview/') && !isPreviewBootstrapPath(pathname);
 }
 
+function isPreviewServiceWorkerPath(pathname: string): boolean {
+  return pathname === PREVIEW_SERVICE_WORKER_PATH;
+}
+
 export function proxy(request: NextRequest): NextResponse {
   const { pathname } = request.nextUrl;
+  if (isPreviewServiceWorkerPath(pathname)) {
+    const response = NextResponse.next();
+    response.headers.set('Cross-Origin-Resource-Policy', 'cross-origin');
+    response.headers.set(
+      'Service-Worker-Allowed',
+      getPreviewServiceWorkerAllowedHeader(isPreviewHostRequest(request)),
+    );
+    return response;
+  }
   const isPreviewSurface = isPreviewSurfaceRequest(request);
   if (!isPreviewSurface) return withIdeHeaders(NextResponse.next());
   if (
-    pathname === '/__preview_sw__.js' ||
     pathname === '/preview-error-bridge.js' ||
     pathname === '/isolated-preview-test.html' ||
     pathname.startsWith('/_next/')
@@ -173,7 +187,5 @@ export function proxy(request: NextRequest): NextResponse {
 }
 
 export const config = {
-  matcher: [
-    '/((?!api|__preview_sw\\.js|preview-error-bridge\\.js|_next/static|_next/image|favicon.ico).*)',
-  ],
+  matcher: ['/((?!api|preview-error-bridge\\.js|_next/static|_next/image|favicon.ico).*)'],
 };

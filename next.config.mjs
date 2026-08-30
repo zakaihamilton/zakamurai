@@ -48,6 +48,10 @@ const nextConfig = {
     return config;
   },
   async headers() {
+    const isProduction = process.env.NODE_ENV === 'production';
+    const frameAncestors = isProduction
+      ? "frame-ancestors https://www.zakamurai.com https://zakamurai.com; object-src 'none'; base-uri 'self'"
+      : "frame-ancestors https://www.zakamurai.com https://zakamurai.com http://localhost:3000; object-src 'none'; base-uri 'self'";
     return [
       {
         source: '/(.*)',
@@ -62,8 +66,7 @@ const nextConfig = {
           { key: 'Cross-Origin-Resource-Policy', value: 'cross-origin' },
           {
             key: 'Content-Security-Policy',
-            value:
-              'frame-ancestors https://www.zakamurai.com https://zakamurai.com http://localhost:3000',
+            value: frameAncestors,
           },
         ],
       },
@@ -75,11 +78,8 @@ const nextConfig = {
         ],
       },
       {
-        source: '/__preview_sw__.js',
-        headers: [
-          { key: 'Service-Worker-Allowed', value: '/' },
-          { key: 'Cache-Control', value: 'no-cache, no-store, must-revalidate' },
-        ],
+        source: '/__preview/sw.js',
+        headers: [{ key: 'Cache-Control', value: 'no-cache, no-store, must-revalidate' }],
       },
     ];
   },

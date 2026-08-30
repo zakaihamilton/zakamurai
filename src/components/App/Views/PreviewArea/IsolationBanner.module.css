@@ -1,0 +1,11 @@
+.banner {
+  display: block;
+  margin: 0;
+  padding: 8px 12px;
+  background: var(--warning-light);
+  color: var(--warning);
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+  line-height: 1.4;
+  flex-shrink: 0;
+}

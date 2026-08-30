@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
-const previewWorker = readFileSync(resolve(process.cwd(), 'public/__preview_sw__.js'), 'utf8');
+const previewWorker = readFileSync(resolve(process.cwd(), 'public/__preview/sw.js'), 'utf8');
 
 describe('preview service worker session routing', () => {
   it('does not fall back to another session for referrer-less dist assets', () => {
@@ -22,5 +22,13 @@ describe('preview service worker session routing', () => {
       /postMessage\(\{source:'zakamurai-preview',type:'reconnect'[^)]*,'\*'\)/,
     );
     expect(previewWorker).toContain('JSON.stringify(ideOrigin)');
+  });
+
+  it('rejects untrusted same-origin init clients when the worker is not root-scoped', () => {
+    expect(previewWorker).toContain('function isTrustedPreviewInitClient');
+    expect(previewWorker).toContain("path === '/__preview/host'");
+    expect(previewWorker).toContain(
+      'if (!isTrustedPreviewInitClient(clientUrl, sessionId)) return',
+    );
   });
 });

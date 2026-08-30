@@ -54,7 +54,6 @@ function isCacheableAppRequest(request, url) {
 
   if (
     url.pathname === '/__sw__.js' ||
-    url.pathname === '/__preview_sw__.js' ||
     url.pathname.startsWith('/__virtual__') ||
     url.pathname.startsWith('/__preview/')
   ) {
@@ -376,7 +375,7 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
   // Isolated preview uses its own scoped worker under /__preview/.
-  if (url.pathname.startsWith('/__preview/') || url.pathname === '/__preview_sw__.js') {
+  if (url.pathname.startsWith('/__preview/') || url.pathname === '/__preview/sw.js') {
     return;
   }
 

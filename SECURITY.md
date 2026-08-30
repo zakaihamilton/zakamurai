@@ -8,7 +8,7 @@ Zakamurai is a browser-local IDE. Report issues against the current `main` branc
 
 - **IDE origin** holds project files, IndexedDB/localStorage, settings, and AI session state.
 - **Preview origin** runs user project JavaScript. Configured production deployments isolate this on a separate origin (`NEXT_PUBLIC_IDE_ORIGIN` / `NEXT_PUBLIC_PREVIEW_ORIGIN`).
-- **Unconfigured `*.vercel.app` deployments** use a same-origin `/__preview/` compatibility surface. That fallback shares cookies, storage, and DOM with the IDE and is **not** origin isolation. Set both origin env vars for production.
+- **Unconfigured `*.vercel.app` deployments** and **`npm run dev:same-origin`** use a same-origin `/__preview/` compatibility surface. That fallback shares cookies, storage, and DOM with the IDE and is **not** origin isolation. `npm run dev` starts an isolated preview proxy on port 3001. Set both origin env vars for production.
 
 Preview MessagePort handshakes require a matching origin, session ID, and protocol version. Error and reconnect `postMessage` calls target the IDE origin only (never `*`).
 

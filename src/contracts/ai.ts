@@ -14,7 +14,7 @@ export function isProjectRelativePath(path: unknown): path is string {
     !path.startsWith('\\') &&
     !/^[A-Za-z]:[\\/]/.test(path) &&
     !path.includes('\\') &&
-    !path.split('/').some((part) => part === '..' || !part)
+    !path.split('/').some((part) => part === '..' || part === '.' || !part)
   );
 }
 

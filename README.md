@@ -19,7 +19,7 @@ Zakamurai is a browser-based IDE for building and iterating on web projects. It 
 ## Why Zakamurai?
 
 - **A complete browser workspace** — Explore files, edit code, format documents, navigate between CSS and JavaScript references, and switch between code, logs, and preview.
-- **AI that works beside you** — Ask questions or request changes with project context. Review structured side-by-side diffs before anything is applied.
+- **AI that works beside you** — Ask questions or request changes with project context. Review structured side-by-side diffs. Proposed buffers are already what Build and Preview compile; approving confirms them and unblocks disk flush.
 - **Build without leaving the browser** — Compile supported projects with browser-based runtime and bundling tools, then inspect build output and runtime logs.
 - **A focused idea-to-preview loop** — Move from a change to a working result without setting up a separate editor, build process, and preview server.
 - **Built around browser storage** — Projects persist locally in IndexedDB, with a localStorage fallback when IndexedDB is unavailable. Export a project as a ZIP whenever you need a portable copy.
@@ -28,7 +28,7 @@ Zakamurai is a browser-based IDE for building and iterating on web projects. It 
 
 1. **Edit** your project in the file explorer and editor.
 2. **Prompt** the local AI assistant for an explanation, suggestion, or code change.
-3. **Review** the generated diff and approve only the changes you want.
+3. **Review** the generated diff. Build and Preview already compile the proposed buffers; approve to confirm them (and to allow LocalFS auto-save) or undo to restore.
 4. **Build** with `Cmd+Enter` on macOS or the **Build** button.
 5. **Preview** the result and inspect logs when something needs attention.
 
@@ -57,19 +57,15 @@ npm install
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000).
+Open [http://localhost:3000](http://localhost:3000). Isolated preview runs at [http://localhost:3001](http://localhost:3001).
+
+Same-origin preview (weaker isolation, IDE and preview share storage) is available with `npm run dev:same-origin` when you are not using the two-port workflow.
 
 The `postinstall`, `predev`, and `prebuild` scripts prepare the browser runtime assets used by the in-browser compiler, preview, and AI features.
 
 ### Isolated preview development
 
-To run the IDE and preview runtime on separate local origins:
-
-```bash
-npm run dev:isolated
-```
-
-The IDE runs at `http://localhost:3000` and the preview runtime at `http://localhost:3001`.
+`npm run dev` already starts the two-origin local workflow. The IDE runs at `http://localhost:3000` and the preview runtime at `http://localhost:3001`. `npm run dev:isolated` is an alias for the same command.
 
 ### Production build
 
