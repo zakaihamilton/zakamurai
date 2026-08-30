@@ -29,6 +29,26 @@ describe('ActionLoopWrites', () => {
     expect(result.content).toBe('export default function App() { return <div>New</div>; }');
   });
 
+  it('rejects a SEARCH block that only matches after trimming whitespace', () => {
+    const files = {
+      'src/App.jsx': 'export default function App() {\n\treturn <div>Old</div>;\n}',
+    };
+    expect(() =>
+      applyReplaceFileContent({
+        action: {
+          action: 'replace_file_content',
+          path: 'src/App.jsx',
+          search: '  return <div>Old</div>;',
+          replace: '  return <div>New</div>;',
+        },
+        files,
+        request: 'update text in App',
+        lightweightModel: false,
+        taskContract: contract(files),
+      }),
+    ).toThrow(/Target search block not found/);
+  });
+
   it('rejects a replace that introduces inline styles', () => {
     const files = {
       'src/App.jsx': 'export default function App() { return <div>Old</div>; }',

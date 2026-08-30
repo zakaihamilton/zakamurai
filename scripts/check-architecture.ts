@@ -2,7 +2,11 @@ import { readFile, readdir } from 'node:fs/promises';
 import path from 'node:path';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
-const SCAN_DIRS = [path.join(ROOT, 'src/components'), path.join(ROOT, 'src/utils')];
+const SCAN_DIRS = [
+  path.join(ROOT, 'src/components'),
+  path.join(ROOT, 'src/utils'),
+  path.join(ROOT, 'src/contracts'),
+];
 
 const FORBIDDEN_IMPORTS = [
   { pattern: /from\s+['"]redux['"]/, reason: 'Redux is forbidden; use proxy state.' },

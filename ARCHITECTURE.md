@@ -111,7 +111,7 @@ AI changes must use project-relative paths. `validateAIChanges` rejects absolute
 ## 9. Testing Expectations
 
 - Unit tests: Vitest (`npm run test`, `npm run test:coverage`). Global coverage thresholds: 80%. AI modules target 85%.
-- Architecture: `npm run check:architecture` enforces styling and state patterns in `src/components/` and `src/utils/`.
+- Architecture: `npm run check:architecture` enforces styling and state patterns in `src/components/`, `src/utils/`, and `src/contracts/`.
 - AI golden fixtures: `tests/ai-golden/` + `npm run test:promptfoo`.
 - E2E: Playwright smoke (`test:e2e`), isolated preview security (`test:e2e:isolated`), visual regression (`test:visual:chromium` in CI).
 - Pre-commit: lint-staged runs Biome and `vitest related` on changed files.
