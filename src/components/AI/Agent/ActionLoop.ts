@@ -13,6 +13,7 @@ import {
   isTaskPathAllowed,
 } from '../ReliabilityContracts';
 import { AgentExecutionError, AgentRecoveryValidationError } from './ActionLoopErrors';
+import { createAutoFinishContextReadyWrite } from './ActionLoopFastPath';
 import {
   type PreviewInspectLoopState,
   createInspectPreviewForLoop,
@@ -194,12 +195,12 @@ export async function runActionLoop({
   let failedWriteAttempts = 0;
   let malformedSourceAttempts = 0;
   const failedStylesheetWrites = new Map<string, number>();
-  // Manager already collected workspace context; one redundant inspection is enough to force a write.
+  // Manager context permits only one redundant inspection before forcing a write.
   const nonProductiveActionLimit = contextReady ? 1 : lightweightModel ? 2 : 4;
-  // Lightweight models stay on fence-only recovery longer instead of escalating to kind=changes.
+  // Lightweight models stay on fence-only recovery longer.
   const forcedRecoveryViolationLimit = lightweightModel ? 4 : 2;
   const incompleteWriteRetryLimit = lightweightModel ? 3 : 2;
-  // Incomplete metadata ↔ prose oscillation must not burn the full step budget.
+  // Incomplete metadata ↔ prose oscillation has a bounded retry budget.
   const failedWriteAttemptLimit = lightweightModel ? 5 : 6;
   const malformedSourceAttemptLimit = lightweightModel ? 3 : 4;
   const validationRepairLimit = taskContract.maxRepairRounds;
@@ -270,7 +271,6 @@ export async function runActionLoop({
     wiredEntry: string | null,
   ): string =>
     createAutoFinishSummary(request)(reason, wiredEntry, validationState.lastValidationStatus);
-
   const runValidation = createValidationRunner({
     workspace,
     validate,
@@ -280,7 +280,6 @@ export async function runActionLoop({
     state: validationState,
     validationRepairLimit,
   });
-
   const inspectPreviewForLoop = createInspectPreviewForLoop({
     state: previewInspectState,
     files: workspace.files,
@@ -292,7 +291,22 @@ export async function runActionLoop({
     onEvent,
     agentRole,
   });
-
+  const finishContextReadyWrite = createAutoFinishContextReadyWrite({
+    request,
+    workspace,
+    lightweightTargetPath,
+    visualMode,
+    previewInspectionRequired,
+    previewInspectState,
+    applyCssModuleRecovery,
+    inspectPreviewForLoop,
+    hasValidation: Boolean(validate),
+    runValidation,
+    validationState,
+    onEvent,
+    agentRole,
+    context,
+  });
   for (let turn = 1; turn <= maxTurns; turn++) {
     if (signal?.aborted) throw new DOMException('Agent stopped', 'AbortError');
     onEvent({
@@ -372,8 +386,7 @@ export async function runActionLoop({
     try {
       action = parseAgentAction(reply, {
         allowedActions,
-        // Source-only / fence-only replies are common for small local models; bind them to the
-        // known entry path whenever we can identify one.
+        // Bind common source-only replies to the known entry path.
         defaultWritePath:
           forcedRecoveryTargetPath || recoveryWritePath(workspace.files, activeFile),
       });
@@ -506,9 +519,7 @@ export async function runActionLoop({
                 context.record('validation', validationResult);
                 return { changes, files: workspace.files, summary, events: turn, workspace };
               }
-            } catch {
-              // If validation fails, fall through to observation below
-            }
+            } catch {}
           }
           messages.push({
             role: 'user',
@@ -533,8 +544,7 @@ export async function runActionLoop({
         forcedWriteRecoveryPending = true;
         forcedRecoveryTargetPath = target;
         if (incompleteWriteRetries <= incompleteWriteRetryLimit) {
-          // Give the first metadata-only reply a free retry; later incompletes still
-          // count so oscillation cannot exhaust the step budget unnoticed.
+          // Give the first metadata-only reply a free retry; later incompletes count.
           if (incompleteWriteRetries > 1) {
             recordFailedWriteAttempt(target);
           }
@@ -641,9 +651,7 @@ export async function runActionLoop({
             context.record(validate ? 'validation' : 'fulfillment', validationResult);
             return { changes, files: workspace.files, summary, events: turn, workspace };
           }
-        } catch {
-          // If validation fails, fall through to protocol recovery below
-        }
+        } catch {}
       }
       if (protocolFailures >= 4)
         throw new Error(
@@ -776,7 +784,7 @@ export async function runActionLoop({
       messages.push({ role: 'user', content: observation('css_recovery', true, message) });
       context.record('css_recovery', message);
       onEvent({ type: 'observation', turn, action, message, agentRole });
-      // Lightweight finish can proceed on the recovered workspace without another model turn.
+      // Lightweight finish can proceed on the recovered workspace.
       if (!(lightweightModel && action.action === 'finish')) continue;
     }
     if (
@@ -810,8 +818,7 @@ export async function runActionLoop({
         context.record('read_file', message);
         onEvent({ type: 'observation', turn, action, message, agentRole });
         unchangedReadSkips++;
-        // Small local models often stop generating after their first repeated read.
-        // Prompt for a productive write immediately, while the workspace context is fresh.
+        // Prompt small models for a productive write while context is fresh.
         if (unchangedReadSkips === 1 && workspace.changes().length === 0) {
           const target = forcedRecoveryTargetPath || recoveryWritePath(workspace.files, activeFile);
           forcedWriteRecoveryPending = true;
@@ -874,12 +881,9 @@ export async function runActionLoop({
       action.action === 'write_file' &&
       ((Object.hasOwn(workspace.files, writePath) &&
         workspace.files[writePath] === (action.content || '')) ||
-        // A successful write may be normalized before it is staged (for example, inline
-        // styles are moved into a CSS Module). In that case the raw model payload differs
-        // from the staged file even though repeating the action cannot add any new work.
+        // Normalization can make a repeated raw write differ from the staged file.
         (fingerprint === lastSuccessfulFingerprint && workspace.changes().length > 0));
-    // Finish on the second consecutive validate when staged work already exists —
-    // small models often loop validate instead of emitting finish.
+    // Finish on the second consecutive validate when staged work already exists.
     if (
       action.action === 'validate' &&
       workspace.changes().length > 0 &&
@@ -1338,7 +1342,6 @@ export async function runActionLoop({
               message: previewResult,
               agentRole,
             });
-            // Lightweight: host-owned inspect — fall through to validate/finish.
             if (!(lightweightModel && previewInspectState.previewInspectionAccepted)) {
               messages.push({
                 role: 'user',
@@ -1453,7 +1456,6 @@ export async function runActionLoop({
         };
       }
       messages.push({ role: 'user', content: observation(action.action, true, result) });
-      lastSuccessfulFingerprint = fingerprint;
       context.record(action.action, result);
       onEvent({
         type: 'observation',
@@ -1462,6 +1464,11 @@ export async function runActionLoop({
         message: formatReasoningResult(action, result),
         agentRole,
       });
+      if (action.action === 'write_file' && lightweightModel && contextReady) {
+        const autoFinishResult = await finishContextReadyWrite(turn);
+        if (autoFinishResult) return autoFinishResult;
+      }
+      lastSuccessfulFingerprint = fingerprint;
     } catch (error) {
       if (error instanceof AgentExecutionError) throw error;
       const err = error as Error;
@@ -1606,9 +1613,7 @@ export async function runActionLoop({
       });
     }
   }
-  // A local model can keep polishing a valid multi-file draft instead of emitting finish.
-  // Do one last validation so useful, reviewable changes are returned rather than hidden behind
-  // a safety-limit error. Failed validation still remains an error, because the draft needs repair.
+  // Validate a useful draft at the safety limit instead of hiding it behind an error.
   if (workspace.changes().length > 0) {
     try {
       applyCssModuleRecovery(maxTurns);

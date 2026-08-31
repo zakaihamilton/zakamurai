@@ -66,6 +66,22 @@ const activity: AgentActivityState = {
   ),
 };
 
+const streamedGenerationDetail =
+  'Local model is responding — streaming its next action (2,718 character(s) received). Waiting for complete source code before validation…';
+
+const generationActivity: AgentActivityState = {
+  ...activity,
+  currentPhase: 'work',
+  currentNodeId: 'plan-1',
+  nodes: activity.nodes.map((item) =>
+    item.id === 'plan-0'
+      ? { ...item, status: 'completed' as const, detail: 'Workspace source loaded.' }
+      : item.id === 'plan-1'
+        ? { ...item, status: 'active' as const, detail: streamedGenerationDetail }
+        : item,
+  ),
+};
+
 const createProps = (overrides: Partial<React.ComponentProps<typeof AISectionReasoning>> = {}) => ({
   activeSession: makeAgentSession({
     status: 'running',
@@ -190,6 +206,118 @@ describe('AISectionReasoning', () => {
       screen.getByRole('progressbar', { name: 'Loading Qwen local model' }),
     ).not.toHaveAttribute('aria-valuenow');
     expect(screen.getByText('Initializing…')).toBeDefined();
+  });
+
+  it('renders active change generation as a live streaming card', () => {
+    const { rerender } = render(
+      <AISectionReasoning {...createProps({ activity: generationActivity })} />,
+    );
+
+    const executionRegion = screen.getByRole('region', { name: 'Execution timeline' });
+    const generationNode = executionRegion.querySelector('[data-card-id="plan-1"]');
+
+    expect(generationNode).toHaveAttribute('data-card-variant', 'live-generation');
+    expect(generationNode).toHaveAttribute('data-card-working', 'true');
+    expect(generationNode).toHaveTextContent('Generate changes');
+    expect(generationNode).toHaveTextContent('Generating changes');
+    expect(generationNode).toHaveTextContent('2,718');
+    expect(generationNode).toHaveTextContent('characters received');
+    expect(generationNode).toHaveTextContent('Waiting for complete source');
+    expect(generationNode).toHaveTextContent('Live model output');
+    const generationSummary = generationNode?.querySelector('output[aria-live="polite"]');
+    expect(generationSummary).toHaveAttribute('aria-live', 'polite');
+    expect(generationSummary).toHaveAttribute('aria-atomic', 'true');
+    expect(generationSummary).not.toHaveTextContent(streamedGenerationDetail);
+    const generationDetails = generationNode?.querySelector('details');
+    expect(generationDetails).not.toHaveAttribute('open');
+    expect(generationDetails).toHaveTextContent(streamedGenerationDetail);
+    expect(generationNode?.querySelector('[class*="executionCardArtGeneration"]')).toBeTruthy();
+    expect(generationNode?.querySelector('[role="progressbar"]')).toBeNull();
+    expect(
+      generationNode?.querySelector('[class*="executionGenerationDetailsIcon"] svg'),
+    ).toBeTruthy();
+
+    if (!generationDetails) throw new Error('Expected generation details disclosure.');
+    const generationDetailsSummary = generationDetails.querySelector('summary');
+    if (!generationDetailsSummary) throw new Error('Expected generation details summary.');
+    fireEvent.click(generationDetailsSummary);
+    expect(generationDetails).toHaveAttribute('open');
+    expect(generationDetails.querySelector('p')).toHaveTextContent(streamedGenerationDetail);
+
+    rerender(
+      <AISectionReasoning
+        {...createProps({ activity: generationActivity, timelineExpanded: true })}
+      />,
+    );
+    expect(
+      screen
+        .getByRole('region', { name: 'Execution timeline' })
+        .querySelector('[data-card-id="plan-1"]'),
+    ).toHaveAttribute('data-card-variant', 'live-generation');
+  });
+
+  it('uses safe visual fallbacks when generation detail has no character count', () => {
+    const fallbackDetail =
+      'Local model is still working (3s elapsed; the model has not started streaming yet; keeping the workspace context ready)…';
+    const fallbackActivity: AgentActivityState = {
+      ...generationActivity,
+      nodes: generationActivity.nodes.map((item) =>
+        item.id === 'plan-1' ? { ...item, detail: fallbackDetail } : item,
+      ),
+    };
+
+    render(<AISectionReasoning {...createProps({ activity: fallbackActivity })} />);
+
+    const generationNode = screen
+      .getByRole('region', { name: 'Execution timeline' })
+      .querySelector('[data-card-id="plan-1"]');
+    const generationSummary = generationNode?.querySelector('output[aria-live="polite"]');
+
+    expect(generationSummary).toHaveTextContent('…');
+    expect(generationSummary).toHaveTextContent('receiving output');
+    expect(generationSummary).toHaveTextContent('Waiting for output to finish');
+    expect(generationNode?.querySelector('details')).toHaveTextContent(fallbackDetail);
+  });
+
+  it('keeps non-active and terminal model cards on the generic treatment', () => {
+    const { rerender } = render(
+      <AISectionReasoning {...createProps({ timelineExpanded: true })} />,
+    );
+    const executionRegion = screen.getByRole('region', { name: 'Execution timeline' });
+
+    expect(executionRegion.querySelector('[data-card-id="plan-1"]')).not.toHaveAttribute(
+      'data-card-variant',
+    );
+
+    const completedGeneration = finishAgentActivity(
+      generationActivity,
+      'success',
+      'Changes are ready for review.',
+      2_000,
+    );
+    rerender(
+      <AISectionReasoning
+        {...createProps({ activity: completedGeneration, timelineExpanded: true })}
+      />,
+    );
+    expect(executionRegion.querySelector('[data-card-id="plan-1"]')).not.toHaveAttribute(
+      'data-card-variant',
+    );
+
+    const failedGeneration = finishAgentActivity(
+      generationActivity,
+      'error',
+      'Generation failed.',
+      2_000,
+    );
+    rerender(
+      <AISectionReasoning
+        {...createProps({ activity: failedGeneration, timelineExpanded: true })}
+      />,
+    );
+    expect(executionRegion.querySelector('[data-card-id="plan-1"]')).not.toHaveAttribute(
+      'data-card-variant',
+    );
   });
 
   it('switches between the layered deck and horizontal card rail', () => {

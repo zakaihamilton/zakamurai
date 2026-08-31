@@ -1,15 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import {
+  LIGHTWEIGHT_AGENT_SYSTEM_PROMPT,
+  TODO_APP_GENERATION_GUIDANCE,
+} from './ActionLoopRecovery';
+import {
   AGENT_SYSTEM_PROMPT,
   ALL_AGENT_ACTIONS,
   RESPONSIVE_GENERATION_CONTRACT,
   normalizeAgentPath,
   parseAgentAction,
 } from './Protocol';
-import {
-  LIGHTWEIGHT_AGENT_SYSTEM_PROMPT,
-  TODO_APP_GENERATION_GUIDANCE,
-} from './ActionLoopRecovery';
 
 describe('agent protocol', () => {
   it('documents every supported action in the system prompt catalog', () => {
@@ -167,6 +167,24 @@ export default function App() {
       action: 'write_file',
       path: 'src/App.jsx',
       content: expect.stringContaining('export default function App'),
+    });
+  });
+
+  it('does not mistake JSX action-named class values for loose protocol metadata', () => {
+    const source = `import { useState } from 'react';
+export default function App() {
+  const [filter] = useState('all');
+  return <button className={\`control \${filter === 'all' ? 'primaryAction' : 'secondaryAction'}\`}>Add</button>;
+}`;
+
+    expect(
+      parseAgentAction(`\`\`\`jsx\n${source}\n\`\`\``, {
+        defaultWritePath: 'src/App.jsx',
+      }),
+    ).toEqual({
+      action: 'write_file',
+      path: 'src/App.jsx',
+      content: source,
     });
   });
 

@@ -668,6 +668,7 @@ export default function App() {
     expect(result.files['src/App.jsx']).toContain('styles.button');
     expect(result.files['src/App.module.css']).toContain('.button');
     expect(result.files['src/App.module.css']).toContain('.list');
+    expect(askWebLLM).toHaveBeenCalledOnce();
   });
 
   it('normalizes literal classes and generates complete generic recovery styles', async () => {

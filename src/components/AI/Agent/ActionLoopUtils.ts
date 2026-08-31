@@ -772,6 +772,25 @@ const normalizeHardCodedTurnGuards = (content: string): string => {
   return normalized;
 };
 
+/** Wires a generated form's no-op submit handler to the component's add/create handler. */
+const normalizeNoOpCollectionSubmit = (content: string): string => {
+  const handlerMatch =
+    /\b(?:const|let|function)\s+((?:handle|on)?(?:add|create|save|submit|new)[A-Za-z0-9_$]*)\s*(?:=|\()/i.exec(
+      content,
+    );
+  if (!handlerMatch) return content;
+
+  const noOpSubmit =
+    /onSubmit\s*=\s*\{\s*(?:\(([A-Za-z_$][\w$]*)\)|([A-Za-z_$][\w$]*))\s*=>\s*(?:\{\s*)?\2?\1?\.preventDefault\(\)\s*;?\s*\}?\s*\}/i;
+  if (!noOpSubmit.test(content)) return content;
+
+  const eventName = 'event';
+  return content.replace(
+    noOpSubmit,
+    `onSubmit={(${eventName}) => { ${eventName}.preventDefault(); ${handlerMatch[1]}(); }}`,
+  );
+};
+
 /**
  * Repairs a common stale-derived-state shape from small local models: a next
  * collection is prepared, its setter is called, and a zero-argument calculator
@@ -896,7 +915,7 @@ const normalizeStaleDerivedState = (content: string): string => {
 };
 
 export const normalizeGeneratedInteractiveSource = (content: string): string =>
-  normalizeStaleDerivedState(normalizeHardCodedTurnGuards(content));
+  normalizeStaleDerivedState(normalizeNoOpCollectionSubmit(normalizeHardCodedTurnGuards(content)));
 
 const staticTemplateClassNames = (template: string): string[] => {
   const body = template.slice(1, -1);

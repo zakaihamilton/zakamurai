@@ -210,6 +210,27 @@ export default App;`,
     expect(repaired).not.toContain('height: 100px');
   });
 
+  it('repairs a no-op form submit when the component already has an add handler', () => {
+    const source = `import { useState } from 'react';
+export default function App() {
+  const [draft, setDraft] = useState('');
+  const [items, setItems] = useState([]);
+  const handleAddTask = () => {
+    if (!draft.trim()) return;
+    setItems([...items, draft.trim()]);
+    setDraft('');
+  };
+  return <form onSubmit={e => e.preventDefault()}><input value={draft} onChange={e => setDraft(e.target.value)} /><button type="submit">Add</button></form>;
+}`;
+
+    const normalized = normalizeGeneratedInteractiveSource(source);
+
+    expect(normalized).toContain(
+      'onSubmit={(event) => { event.preventDefault(); handleAddTask(); }}',
+    );
+    expect(normalized).not.toContain('onSubmit={e => e.preventDefault()}');
+  });
+
   it('repairs hard-coded turn guards and stale derived-state reads generically', () => {
     const source = `import { useState } from 'react';
 export default function App() {

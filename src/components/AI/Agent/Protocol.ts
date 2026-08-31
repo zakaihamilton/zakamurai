@@ -116,11 +116,14 @@ const parseJsonAction = (text: string): AgentAction => {
 // unquoted property names) next to an otherwise valid source fence. Keep this deliberately
 // narrow: it only recovers the action fields the runner accepts, never evaluates model output.
 const parseLooseActionMetadata = (text: string): AgentAction | null => {
-  const action = text.match(/(?:["']?action["']?)\s*:\s*["']([a-z_]+)["']/i)?.[1];
+  // Only accept `action` when it is an object key. Without the delimiter guard,
+  // JSX such as `primaryAction' : 'secondaryAction'` is parsed as metadata for
+  // an unsupported action named `secondaryAction`.
+  const action = text.match(/(?:^|[{,])\s*["']?action["']?\s*:\s*["']([a-z_]+)["']/im)?.[1];
   if (!action) return null;
 
   const field = (name: string): string | undefined =>
-    text.match(new RegExp(`(?:["']?${name}["']?)\\s*:\\s*["']([^"']*)["']`, 'i'))?.[1];
+    text.match(new RegExp(`(?:^|[{,])\\s*["']?${name}["']?\\s*:\\s*["']([^"']*)["']`, 'im'))?.[1];
   const path = field('path');
   const query = field('query');
   const check = field('check');
@@ -273,12 +276,15 @@ export function parseAgentAction(
     const metadata = parseLooseActionMetadata(text);
     const fencedWrite = parseFencedWrite(text, metadata || undefined);
     const sourceOnly =
-      !fencedWrite && !metadata && defaultWritePath ? extractSourcePayload(text) : null;
+      !fencedWrite && (!metadata || !ACTIONS.has(metadata.action)) && defaultWritePath
+        ? extractSourcePayload(text)
+        : null;
     if (fencedWrite) value = fencedWrite;
-    else if (metadata) value = metadata;
+    else if (metadata && ACTIONS.has(metadata.action)) value = metadata;
     else if (sourceOnly && defaultWritePath) {
       value = { action: 'write_file', path: defaultWritePath, content: sourceOnly };
-    } else throw error;
+    } else if (metadata) value = metadata;
+    else throw error;
   }
   value = attachWriteFileContent(text, value);
   if (!value || typeof value !== 'object' || !ACTIONS.has(value.action)) {

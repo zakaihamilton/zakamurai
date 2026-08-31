@@ -310,6 +310,36 @@ const outcomeBadgeLabels: Record<AgentActivityOutcome, string> = {
 const nodeDetail = (item: AgentActivityNode): string =>
   item.detail || item.reason || statusLabels[item.status];
 
+const isLiveGenerationNode = (item: AgentActivityNode): boolean =>
+  item.kind === 'model' && item.task === 'generate-changes' && item.status === 'active';
+
+type GenerationProgressSummary = {
+  characterCount: number | null;
+  waitingLabel: string;
+};
+
+const formatGenerationWaitTarget = (target: string): string =>
+  target
+    .replace(/\bsource code\b/i, 'source')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+const parseGenerationProgress = (detail: string): GenerationProgressSummary => {
+  const characterMatch = detail.match(/(?:^|[;(]\s*)([\d,]+)\s+character\(s\)\s+received\b/i);
+  const waitingMatch = detail.match(/waiting for\s+(.+?)\s+before validation/i);
+  const characterCount = characterMatch?.[1]
+    ? Number.parseInt(characterMatch[1].replaceAll(',', ''), 10)
+    : null;
+  const waitingTarget = waitingMatch?.[1]
+    ? formatGenerationWaitTarget(waitingMatch[1].replace(/[.…]+$/, ''))
+    : '';
+
+  return {
+    characterCount: Number.isFinite(characterCount) ? characterCount : null,
+    waitingLabel: waitingTarget ? `Waiting for ${waitingTarget}` : 'Waiting for output to finish',
+  };
+};
+
 export type LiveExecutionInfo = {
   title: string;
   detail: string;
@@ -351,6 +381,8 @@ function ActivityNode({
   showStepIO: boolean;
 }) {
   const ActivityIcon = activityIcons[item.kind];
+  const isLiveGeneration = isLiveGenerationNode(item);
+  const generationProgress = isLiveGeneration ? parseGenerationProgress(item.detail) : null;
   const metadata = [
     item.tool ? item.tool : item.task ? item.task : '',
     item.turn !== undefined ? `turn ${item.turn}` : '',
@@ -359,24 +391,61 @@ function ActivityNode({
 
   return (
     <li
-      className={`${styles.executionNode} ${styles[`executionNode${item.status}`]} ${styles[`executionNode${item.kind}`]} ${isWorking ? styles.executionNodeWorking : ''} ${isSelected ? styles.executionNodeSelected : ''}`}
+      className={`${styles.executionNode} ${styles[`executionNode${item.status}`]} ${styles[`executionNode${item.kind}`]} ${isLiveGeneration ? styles.executionNodeLiveGeneration : ''} ${isWorking ? styles.executionNodeWorking : ''} ${isSelected ? styles.executionNodeSelected : ''}`}
       data-card-id={item.id}
       data-card-selected={isSelected ? 'true' : undefined}
       data-card-working={isWorking ? 'true' : undefined}
+      data-card-variant={isLiveGeneration ? 'live-generation' : undefined}
       aria-current={isCurrent ? 'step' : undefined}
     >
       <span className={styles.executionMarker} aria-hidden="true">
         {item.status === 'completed' ? <Icons.Check size={13} /> : <ActivityIcon size={14} />}
       </span>
-      <article className={styles.executionCard}>
-        <div className={`${styles.executionCardArt} ${styles[`executionCardArt${item.kind}`]}`}>
-          <span className={styles.executionCardIndex}>{String(index + 1).padStart(2, '0')}</span>
-          <span className={styles.executionCardArtIcon} aria-hidden="true">
-            <ActivityIcon size={38} />
-          </span>
-          <span className={styles.executionCardArtLabel}>{item.kind}</span>
-        </div>
-        <div className={styles.executionCardBody}>
+      <article
+        className={`${styles.executionCard} ${isLiveGeneration ? styles.executionGenerationCard : ''}`}
+      >
+        {isLiveGeneration ? (
+          <div
+            className={`${styles.executionCardArt} ${styles.executionCardArtGeneration}`}
+            aria-hidden="true"
+          >
+            <span className={styles.executionCardIndex}>{String(index + 1).padStart(2, '0')}</span>
+            <span className={styles.generationArtBadge}>
+              <span className={styles.generationArtLiveDot} />
+              Live model output
+            </span>
+            <span className={styles.generationArtIcon}>
+              <Icons.Code size={32} />
+              <span className={styles.generationArtSparkle}>
+                <Icons.Sparkles size={14} />
+              </span>
+            </span>
+            <span className={styles.generationArtStream}>
+              <span
+                className={`${styles.generationArtStreamLine} ${styles.generationArtStreamLineShort}`}
+              />
+              <span className={styles.generationArtStreamLine} />
+              <span
+                className={`${styles.generationArtStreamLine} ${styles.generationArtStreamLineMedium}`}
+              />
+              <span
+                className={`${styles.generationArtStreamLine} ${styles.generationArtStreamLineShort}`}
+              />
+            </span>
+            <span className={styles.executionCardArtLabel}>streaming</span>
+          </div>
+        ) : (
+          <div className={`${styles.executionCardArt} ${styles[`executionCardArt${item.kind}`]}`}>
+            <span className={styles.executionCardIndex}>{String(index + 1).padStart(2, '0')}</span>
+            <span className={styles.executionCardArtIcon} aria-hidden="true">
+              <ActivityIcon size={38} />
+            </span>
+            <span className={styles.executionCardArtLabel}>{item.kind}</span>
+          </div>
+        )}
+        <div
+          className={`${styles.executionCardBody} ${isLiveGeneration ? styles.executionGenerationBody : ''}`}
+        >
           <header className={styles.executionCardHeader}>
             <div className={styles.executionTitleGroup}>
               <span className={styles.executionTitle}>{item.label}</span>
@@ -392,7 +461,54 @@ function ActivityNode({
             </div>
             <span className={styles.executionStatus}>{statusLabels[item.status]}</span>
           </header>
-          <p className={styles.executionDetail}>{nodeDetail(item)}</p>
+          {isLiveGeneration ? (
+            <>
+              <output
+                className={styles.executionGenerationSummary}
+                aria-live="polite"
+                aria-atomic="true"
+              >
+                <div className={styles.executionGenerationSummaryHeading}>
+                  <strong>Generating changes</strong>
+                  <span>Streaming</span>
+                </div>
+                <div className={styles.executionGenerationProgress}>
+                  <div className={styles.executionGenerationMeter} aria-hidden="true">
+                    <span className={styles.executionGenerationMeterFill} />
+                  </div>
+                  <div className={styles.executionGenerationMetric}>
+                    <strong>
+                      {generationProgress?.characterCount === null
+                        ? '…'
+                        : generationProgress?.characterCount.toLocaleString()}
+                    </strong>
+                    <span>
+                      {generationProgress?.characterCount === null
+                        ? 'receiving output'
+                        : 'characters received'}
+                    </span>
+                  </div>
+                </div>
+                <div className={styles.executionGenerationWait}>
+                  <span className={styles.executionGenerationWaitDot} aria-hidden="true" />
+                  <span className={styles.executionGenerationWaitText}>
+                    {generationProgress?.waitingLabel}
+                  </span>
+                </div>
+              </output>
+              <details className={styles.executionGenerationDetails}>
+                <summary>
+                  <span>Generation details</span>
+                  <span className={styles.executionGenerationDetailsIcon} aria-hidden="true">
+                    <Icons.ChevronDown />
+                  </span>
+                </summary>
+                <p className={styles.executionGenerationRawDetail}>{item.detail}</p>
+              </details>
+            </>
+          ) : (
+            <p className={styles.executionDetail}>{nodeDetail(item)}</p>
+          )}
           {item.status === 'queued' && item.reason && item.reason !== item.detail ? (
             <p className={styles.executionReason}>{item.reason}</p>
           ) : null}
