@@ -102,8 +102,14 @@ describe('AISectionReasoning', () => {
     expect(executionRegion).toBeDefined();
 
     const collapsedNodes = [...executionRegion.querySelectorAll('li')];
-    expect(collapsedNodes).toHaveLength(activity.nodes.length);
+    expect(collapsedNodes).toHaveLength(3);
     expect(collapsedNodes.at(-1)).toHaveTextContent('Read source');
+    expect(collapsedNodes.some((node) => node.textContent?.includes('Generate changes'))).toBe(
+      false,
+    );
+    expect(collapsedNodes.some((node) => node.textContent?.includes('Validate changes'))).toBe(
+      false,
+    );
 
     rerender(<AISectionReasoning {...createProps({ timelineExpanded: true })} />);
     const nodes = [...executionRegion.querySelectorAll('li')];
@@ -214,19 +220,28 @@ describe('AISectionReasoning', () => {
 
     expect(selectedCardId()).toBe('plan-0');
     expect(previous).not.toBeDisabled();
-    expect(next).not.toBeDisabled();
-
-    fireEvent.click(next);
-    expect(selectedCardId()).toBe('plan-1');
-
-    fireEvent.click(previous);
-    expect(selectedCardId()).toBe('plan-0');
+    expect(next).toBeDisabled();
 
     fireEvent.click(previous);
     fireEvent.click(previous);
     fireEvent.click(previous);
     expect(selectedCardId()).toBe('request');
     expect(previous).toBeDisabled();
+
+    const completedActivity = finishAgentActivity(
+      activity,
+      'success',
+      'Everything is ready.',
+      2_000,
+    );
+    rerender(<AISectionReasoning {...createProps({ activity: completedActivity })} />);
+    expect(selectedCardId()).toBe('result');
+    expect(next).toBeDisabled();
+
+    fireEvent.click(previous);
+    expect(selectedCardId()).toBe('plan-2');
+    fireEvent.click(next);
+    expect(selectedCardId()).toBe('result');
 
     const lastNode = activity.nodes.at(-1);
     if (!lastNode) throw new Error('Expected the fixture activity to have a result node.');
@@ -264,6 +279,7 @@ describe('AISectionReasoning', () => {
       'data-card-working',
       'true',
     );
+    expect(executionRegion.querySelector('[data-card-id="result"]')).toBeNull();
     expect(executionRegion.querySelector('li:last-child')).toHaveAttribute(
       'data-card-id',
       'plan-2',
@@ -282,6 +298,10 @@ describe('AISectionReasoning', () => {
     };
     rerender(<AISectionReasoning {...createProps({ activity: fallbackActivity })} />);
     expect(selectedCardId()).toBe('plan-1');
+    const fallbackCollapsedIds = [...executionRegion.querySelectorAll('li')].map((node) =>
+      node.getAttribute('data-card-id'),
+    );
+    expect(fallbackCollapsedIds.at(-2)).toBe('plan-2');
     expect(executionRegion.querySelector('li:last-child')).toHaveAttribute(
       'data-card-id',
       'plan-1',
