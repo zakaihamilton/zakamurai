@@ -16,6 +16,7 @@ import { WorkspaceProfileState } from '@/components/Workspace';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { requireStore } from '../../types';
 import { AgentSessionState, createAgentRunUsage, createSessionMessage } from './AgentSessions';
+import { createIdleAgentActivity } from '@/components/AI/Agent/AgentActivity';
 import FileScopeDialog from './FileScopeDialog';
 import PromptContent from './PromptContent';
 import usePromptHistory from './PromptHistory';
@@ -160,6 +161,7 @@ export default function Prompt() {
       messages: [],
       reasoning: '',
       reasoningEvents: [],
+      activity: createIdleAgentActivity(),
       runUsage: createAgentRunUsage(),
       ...(activeSession.status === 'error' ? { status: 'idle' } : {}),
     });

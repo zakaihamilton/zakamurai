@@ -15,7 +15,8 @@ import {
   pruneWebLLMMessages,
   unloadAllWebLLMEngines,
 } from './WebLLMAPI';
-import type { WebLLMMessage } from './types';
+import { bindWebLLMStore } from './WebLLMState';
+import type { WebLLMEngineState, WebLLMMessage } from './types';
 
 const { mockRagForceUnloadModel, mockRagUnloadModel } = vi.hoisted(() => ({
   mockRagForceUnloadModel: vi.fn(),
@@ -65,6 +66,7 @@ describe('WebLLMAPI', () => {
 
   beforeEach(async () => {
     await unloadAllWebLLMEngines();
+    bindWebLLMStore(null);
     vi.clearAllMocks();
     mockRagUnloadModel.mockResolvedValue(undefined);
     vi.stubGlobal(
@@ -88,6 +90,7 @@ describe('WebLLMAPI', () => {
   });
 
   afterEach(() => {
+    bindWebLLMStore(null);
     Reflect.deleteProperty(performance, 'memory');
     vi.useRealTimers();
   });
@@ -401,6 +404,40 @@ describe('WebLLMAPI', () => {
       mockedCreateWebWorkerMLCEngine.mock.calls.at(-1)?.[2]?.initProgressCallback;
     progressCallback?.({ text: '50%' } as never);
     expect(onProgress).toHaveBeenCalledWith('50%');
+  });
+
+  it('stores numeric model initialization progress and marks the engine complete when ready', async () => {
+    const draft: {
+      engines: Record<string, WebLLMEngineState>;
+      activeModelId: string;
+    } = { engines: {}, activeModelId: '' };
+    const snapshots: WebLLMEngineState[] = [];
+    const store = vi.fn((producer: (value: typeof draft) => void) => {
+      producer(draft);
+      const engine = draft.engines['numeric-progress-model'];
+      if (engine) snapshots.push({ ...engine });
+    });
+    bindWebLLMStore(store as never);
+
+    await cacheWebLLMModel('numeric-progress-model');
+
+    expect(snapshots).toContainEqual(
+      expect.objectContaining({ status: 'downloading', progress: 0 }),
+    );
+    expect(draft.engines['numeric-progress-model']).toMatchObject({
+      status: 'ready',
+      progress: 1,
+    });
+
+    const progressCallback =
+      mockedCreateWebWorkerMLCEngine.mock.calls.at(-1)?.[2]?.initProgressCallback;
+    progressCallback?.({ progress: 0.5, text: '50%' } as never);
+
+    expect(draft.engines['numeric-progress-model']).toMatchObject({
+      status: 'downloading',
+      progress: 0.5,
+      progressText: '50%',
+    });
   });
 
   it('rejects initialization when Web Workers are unavailable instead of blocking the UI thread', async () => {

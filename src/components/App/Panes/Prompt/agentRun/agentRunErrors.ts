@@ -6,6 +6,7 @@ import type {
 } from '@/components/AI/types';
 import type { ExtendedEditorState } from '@/components/App/Views/EditorArea/types';
 import type {
+  AgentActivityOutcome,
   ChangeSetStateShape,
   PromptUiStateShape,
   WebLLMEngineState,
@@ -37,6 +38,10 @@ type ErrorContext = {
   patchSession: (sessionId: string, patch: Partial<AgentSession>) => void;
   pushSessionMessage: (sessionId: string, message: AgentSessionMessage) => void;
   createSessionMessage: SessionMessageFactory;
+  completeActivity: (
+    outcome: Exclude<AgentActivityOutcome, 'idle' | 'running'>,
+    detail: string,
+  ) => void;
 };
 
 export const isCancelledError = (error: unknown): boolean =>
@@ -80,8 +85,10 @@ export async function handleAgentRunError({
   patchSession,
   pushSessionMessage,
   createSessionMessage,
+  completeActivity,
 }: ErrorContext): Promise<'cancelled' | 'failed'> {
   if (isCancelledError(error)) {
+    completeActivity('aborted', 'The run was stopped before it finished.');
     patchSession(sessionId, { status: 'idle' });
     promptUiState((draft) => {
       draft.runningSessionId = null;
@@ -143,6 +150,7 @@ export async function handleAgentRunError({
   }
 
   const message = `AI Manager error: ${error instanceof Error ? error.message : String(error)}`;
+  completeActivity('error', message.replace(/^AI Manager error:\s*/i, ''));
   logState((draft) => {
     if (!draft.isAIProcessing) return;
     draft.logs = [

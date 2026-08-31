@@ -1,5 +1,13 @@
 import type { WebLLMGenerationMetrics, WebLLMRecoveryEvent } from '@/components/AI/types';
+import {
+  applyManagerTrace,
+  applyRecovery,
+  createRunningAgentActivity,
+  finishAgentActivity,
+} from '@/components/AI/Agent/AgentActivity';
+import type { ManagerTrace } from '@/components/AI/Agent/ManagerTrace';
 import type {
+  AgentActivityOutcome,
   AgentReasoningEntry,
   AgentRunUsage,
   AgentSession,
@@ -12,10 +20,12 @@ type PatchSession = (sessionId: string, patch: Partial<AgentSession>) => void;
 
 export function createAgentRunState({
   sessionId,
+  request = '',
   patchSession,
   logState,
 }: {
   sessionId: string;
+  request?: string;
   patchSession: PatchSession;
   logState: StateStore<LogStateShape>;
 }) {
@@ -24,8 +34,12 @@ export function createAgentRunState({
   const events: AgentReasoningEntry[] = [];
   let progressEventIndex: number | null = null;
   let runUsage: AgentRunUsage = createAgentRunUsage();
+  let activity = createRunningAgentActivity(request);
 
   const publishRunUsage = () => patchSession(sessionId, { runUsage });
+  const publishActivity = () => patchSession(sessionId, { activity });
+
+  publishActivity();
 
   const recordMetrics = (metrics: WebLLMGenerationMetrics) => {
     runMetrics.push(metrics);
@@ -72,6 +86,21 @@ export function createAgentRunState({
       recoveryReasons: [...new Set([...(runUsage.recoveryReasons || []), event.reason])],
     };
     publishRunUsage();
+    activity = applyRecovery(activity, event);
+    publishActivity();
+  };
+
+  const recordTrace = (trace: ManagerTrace) => {
+    activity = applyManagerTrace(activity, trace);
+    publishActivity();
+  };
+
+  const completeActivity = (
+    outcome: Exclude<AgentActivityOutcome, 'idle' | 'running'>,
+    detail: string,
+  ) => {
+    activity = finishAgentActivity(activity, outcome, detail);
+    publishActivity();
   };
 
   const recordValidation = (status: 'passed' | 'failed' | 'unavailable') => {
@@ -132,6 +161,8 @@ export function createAgentRunState({
     runRecoveries,
     recordMetrics,
     recordRecovery,
+    recordTrace,
+    completeActivity,
     recordValidation,
     recordTool,
     appendReasoning,

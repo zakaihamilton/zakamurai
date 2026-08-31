@@ -59,7 +59,8 @@
 }
 
 .copyButton,
-.stepIOToggle {
+.stepIOToggle,
+.timelineToggle {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -75,11 +76,17 @@
 
 .copyButton:hover,
 .stepIOToggle:hover,
-.stepIOToggleActive {
+.stepIOToggleActive,
+.timelineToggle:hover,
+.timelineToggleActive {
   border-color: var(--accent);
   color: var(--accent);
 }
 
 .stepIOToggleActive {
   background: var(--bg-hover);
+}
+
+.timelineToggleActive {
+  background: var(--accent-light);
 }

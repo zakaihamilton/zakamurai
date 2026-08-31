@@ -288,6 +288,7 @@ const createEngine = async (
   ensureLifecycleListeners();
   updateWebLLMEngine(selectedModel, {
     status: 'downloading',
+    progress: 0,
     progressText: 'Initializing…',
     error: null,
     generating: false,
@@ -300,6 +301,7 @@ const createEngine = async (
     releaseWebLLMGpuMemory();
     updateWebLLMEngine(selectedModel, {
       status: 'error',
+      progress: 0,
       progressText: '',
       error: errorMessage(error),
       generating: false,
@@ -323,11 +325,15 @@ const createEngine = async (
   resetStallTimer();
 
   const engineConfig = {
-    initProgressCallback: (progress: { text?: string }) => {
+    initProgressCallback: (progress: { progress?: number; text?: string }) => {
       resetStallTimer();
       const text = progress.text || '';
       updateWebLLMEngine(selectedModel, {
         status: 'downloading',
+        progress:
+          typeof progress.progress === 'number' && Number.isFinite(progress.progress)
+            ? Math.min(Math.max(progress.progress, 0), 1)
+            : undefined,
         progressText: text,
         error: null,
       });
@@ -355,6 +361,7 @@ const createEngine = async (
     releaseWebLLMGpuMemory();
     updateWebLLMEngine(selectedModel, {
       status: 'error',
+      progress: 0,
       progressText: '',
       error: errorMessage(error),
       generating: false,
@@ -365,6 +372,7 @@ const createEngine = async (
     const engine = await raceWithAbort(Promise.race([rawEnginePromise, stall]), options.signal);
     updateWebLLMEngine(selectedModel, {
       status: 'ready',
+      progress: 1,
       progressText: '',
       error: null,
       generating: false,
@@ -376,6 +384,7 @@ const createEngine = async (
     void rawEnginePromise.then((engine) => unloadEngine(engine)).catch(() => undefined);
     updateWebLLMEngine(selectedModel, {
       status: 'error',
+      progress: 0,
       progressText: '',
       error: errorMessage(error),
       generating: false,

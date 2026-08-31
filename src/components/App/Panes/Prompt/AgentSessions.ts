@@ -1,4 +1,8 @@
 import type { AgentSessionTreeRow, CreateAgentSessionOptions } from '@/components/App/types';
+import {
+  createIdleAgentActivity,
+  normalizeAgentActivity,
+} from '@/components/AI/Agent/AgentActivity';
 import type {
   AgentReasoningEntry,
   AgentRunUsage,
@@ -178,6 +182,7 @@ export function createAgentSession({
     messages: capSessionMessages(messages),
     reasoning: '',
     reasoningEvents: [],
+    activity: createIdleAgentActivity(),
     showStepIO: false,
     runUsage: createAgentRunUsage(),
     status: 'idle',
@@ -347,6 +352,7 @@ export function normalizeAgentSessions(
       messages,
       reasoning: typeof session.reasoning === 'string' ? session.reasoning : '',
       reasoningEvents: normalizeReasoningEvents(session.reasoningEvents),
+      activity: normalizeAgentActivity(session.activity) || createIdleAgentActivity(),
       showStepIO: session.showStepIO === true,
       runUsage: normalizeAgentRunUsage(session.runUsage),
       status: 'idle',
@@ -389,6 +395,7 @@ export function serializeAgentSessions(state: AgentSessionStateShape | null | un
           messages: capSessionMessages(session.messages),
           reasoning: session.reasoning || '',
           reasoningEvents: normalizeReasoningEvents(session.reasoningEvents),
+          activity: normalizeAgentActivity(session.activity) || createIdleAgentActivity(),
           showStepIO: session.showStepIO === true,
           runUsage: normalizeAgentRunUsage(session.runUsage),
         },

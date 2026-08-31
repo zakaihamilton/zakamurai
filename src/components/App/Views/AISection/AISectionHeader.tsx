@@ -1,8 +1,8 @@
 import { Icons } from '@/components/ui/Icons';
 import ToolbarButton from '@/components/ui/ToolbarButton';
 import Tooltip from '@/components/ui/Tooltip';
-import type { ReasoningViewType } from './AISectionReasoning';
 import styles from './AISectionHeader.module.css';
+import type { ReasoningViewType } from './AISectionReasoning';
 
 const reasoningViewOptions: Array<{
   type: ReasoningViewType;
@@ -19,11 +19,14 @@ type AISectionHeaderProps = {
   showStepIO: boolean;
   showViewToggle?: boolean;
   viewType?: ReasoningViewType;
+  showTimelineToggle?: boolean;
+  timelineExpanded?: boolean;
   showAutoScrollToggle?: boolean;
   autoScroll?: boolean;
   copied: boolean;
   onToggleStepIO: () => void;
   onSelectView?: (viewType: ReasoningViewType) => void;
+  onToggleTimeline?: () => void;
   onToggleAutoScroll?: () => void;
   onCopy: () => void;
 };
@@ -34,11 +37,14 @@ export default function AISectionHeader({
   showStepIO,
   showViewToggle = false,
   viewType = 'visual',
+  showTimelineToggle = false,
+  timelineExpanded = false,
   showAutoScrollToggle = false,
   autoScroll = true,
   copied,
   onToggleStepIO,
   onSelectView,
+  onToggleTimeline,
   onToggleAutoScroll,
   onCopy,
 }: AISectionHeaderProps) {
@@ -64,6 +70,19 @@ export default function AISectionHeader({
               </ToolbarButton>
             ))}
           </div>
+        ) : null}
+        {showTimelineToggle && onToggleTimeline ? (
+          <Tooltip content={timelineExpanded ? 'Collapse timeline cards' : 'Expand timeline cards'}>
+            <button
+              type="button"
+              className={`${styles.timelineToggle} ${timelineExpanded ? styles.timelineToggleActive : ''}`}
+              onClick={onToggleTimeline}
+              aria-label={timelineExpanded ? 'Collapse timeline cards' : 'Expand timeline cards'}
+              aria-pressed={timelineExpanded}
+            >
+              {timelineExpanded ? <Icons.Columns size={16} /> : <Icons.Grid size={16} />}
+            </button>
+          </Tooltip>
         ) : null}
         {showAutoScrollToggle ? (
           <Tooltip content={autoScroll ? 'Turn auto-scroll off' : 'Turn auto-scroll on'}>

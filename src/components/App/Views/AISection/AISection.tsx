@@ -1,3 +1,4 @@
+import { applyReasoningFallback } from '@/components/AI/Agent/AgentActivity';
 import { WEB_LLM_MODELS } from '@/components/AI/WebLLMModels';
 import { WebLLMState } from '@/components/AI/WebLLMState';
 import {
@@ -18,6 +19,7 @@ import AISectionChanges from './AISectionChanges';
 import AISectionHeader from './AISectionHeader';
 import AISectionReasoning, {
   normalizeReasoningViewType,
+  type ModelProgress,
   type ReasoningGroup,
   type ReasoningViewType,
 } from './AISectionReasoning';
@@ -133,6 +135,7 @@ export default function AISectionView({ tab }: { tab: Tab }) {
   const promptUiState = requireStore(PromptUiState.useState(['selectedModel']));
   const [copied, setCopied] = useState(false);
   const [autoScroll, setAutoScroll] = useState(true);
+  const [timelineExpanded, setTimelineExpanded] = useState(false);
   const contentRef = useRef<HTMLDivElement | null>(null);
   const activeSession = getActiveAgentSession(agentSessionState);
   const [showStepIO, setShowStepIO] = useState(activeSession?.showStepIO === true);
@@ -151,12 +154,22 @@ export default function AISectionView({ tab }: { tab: Tab }) {
       text: showStepIO ? formatReasoningEvents([entry], true) : entry.text,
     }))
     .filter((entry) => entry.text);
-  const modelProgress =
+  const modelProgress: ModelProgress | undefined =
     engine?.status === 'downloading'
-      ? `Downloading ${selectedModel?.name || 'AI model'}${engine.progressText ? ` — ${engine.progressText}` : '…'}`
-      : '';
+      ? {
+          modelName: selectedModel?.name || 'AI model',
+          progress:
+            typeof engine.progress === 'number' && Number.isFinite(engine.progress)
+              ? Math.min(Math.max(engine.progress, 0), 1)
+              : null,
+          detail: engine.progressText || 'Preparing model…',
+        }
+      : undefined;
+  const modelProgressText = modelProgress
+    ? `Downloading ${modelProgress.modelName} — ${modelProgress.detail}`
+    : '';
   const reasoningContent = [
-    ...(modelProgress ? [{ text: modelProgress, timestamp: '' }] : []),
+    ...(modelProgressText ? [{ text: modelProgressText, timestamp: '' }] : []),
     ...displayedReasoningEntries,
   ];
   const transcriptMessages = withoutManagerErrorMessages(activeSession?.messages || []);
@@ -166,15 +179,18 @@ export default function AISectionView({ tab }: { tab: Tab }) {
         .join('\n\n')
     : '';
   const reasoningGroups = groupReasoningEntries(reasoningContent);
-  const visualReasoningGroups = groupReasoningEntries([
-    ...(modelProgress ? [{ text: modelProgress, timestamp: '' }] : []),
-    ...reasoningEntries,
-  ]);
   const runUsageSummary = getCompletedRunUsageSummary(
     activeSession?.status,
     activeSession?.runUsage,
   );
   const latestError = getLatestManagerError(activeSession);
+  const activity = activeSession?.activity?.nodes.length
+    ? activeSession.activity
+    : applyReasoningFallback(
+        transcriptMessages.find((message) => message.role === 'user')?.text || '',
+        reasoningEntries,
+        activeSession?.status || 'idle',
+      );
   const currentTab = tabState.openTabs.find((openTab) => openTab.id === tab.id) || tab;
   const reasoningView = normalizeReasoningViewType(currentTab.viewType);
 
@@ -238,6 +254,9 @@ export default function AISectionView({ tab }: { tab: Tab }) {
         showStepIO={section === 'reasoning' && showStepIO}
         showViewToggle={section === 'reasoning'}
         viewType={reasoningView}
+        showTimelineToggle={section === 'reasoning' && reasoningView === 'visual'}
+        timelineExpanded={timelineExpanded}
+        onToggleTimeline={() => setTimelineExpanded((expanded) => !expanded)}
         showAutoScrollToggle={section === 'reasoning'}
         autoScroll={section === 'reasoning' && autoScroll}
         copied={copied}
@@ -250,7 +269,9 @@ export default function AISectionView({ tab }: { tab: Tab }) {
         <AISectionReasoning
           activeSession={activeSession}
           reasoningGroups={reasoningGroups}
-          visualReasoningGroups={visualReasoningGroups}
+          activity={activity}
+          modelProgress={modelProgress}
+          timelineExpanded={timelineExpanded}
           viewType={reasoningView}
           showStepIO={showStepIO}
           runUsageSummary={runUsageSummary}

@@ -107,7 +107,7 @@ describe('AISectionView', () => {
       'aria-pressed',
       'true',
     );
-    expect(screen.getByRole('region', { name: 'Reasoning timeline' })).toBeDefined();
+    expect(screen.getByRole('region', { name: 'Live execution' })).toBeDefined();
 
     fireEvent.click(screen.getByRole('button', { name: 'Show text log' }));
 

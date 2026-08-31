@@ -496,6 +496,7 @@ export type WebLLMModel = {
 
 export type WebLLMEngineState = {
   status?: string;
+  progress?: number;
   progressText?: string;
   error?: string | null;
   generating?: boolean;

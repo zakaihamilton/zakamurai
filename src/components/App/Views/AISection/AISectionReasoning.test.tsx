@@ -1,9 +1,16 @@
+import {
+  applyManagerPlan,
+  createRunningAgentActivity,
+  finishAgentActivity,
+} from '@/components/AI/Agent/AgentActivity';
+import type { ManagerPlan } from '@/components/AI/types';
 import { createAgentRunUsage } from '@/components/App/Panes/Prompt/AgentSessions';
 import { makeAgentSession } from '@/test-utils/agentSessionMocks';
-import { render, screen } from '@testing-library/react';
+import type { AgentActivityState } from '@/types/domain-types';
+import { render, screen, within } from '@testing-library/react';
 import { createRef } from 'react';
 import { describe, expect, it, vi } from 'vitest';
-import AISectionReasoning from './AISectionReasoning';
+import AISectionReasoning, { getLiveExecutionInfo } from './AISectionReasoning';
 import type { ReasoningGroup } from './AISectionReasoning';
 
 Object.defineProperty(HTMLElement.prototype, 'scrollTo', {
@@ -30,6 +37,35 @@ const groups: ReasoningGroup[] = [
   },
 ];
 
+const plan: ManagerPlan = {
+  intent: 'edit',
+  modelRequired: true,
+  confidence: 'high',
+  steps: [
+    { kind: 'tool', tool: 'read_file', reason: 'Inspect the existing implementation.' },
+    { kind: 'model', task: 'generate-changes', reason: 'Produce the requested update.' },
+    { kind: 'tool', tool: 'validate', reason: 'Check the result before presenting it.' },
+  ],
+};
+
+const activityBase = applyManagerPlan(createRunningAgentActivity('Build the app'), plan);
+const activity: AgentActivityState = {
+  ...activityBase,
+  currentPhase: 'work',
+  currentNodeId: 'plan-0',
+  nodes: activityBase.nodes.map((item) =>
+    item.id === 'plan-0'
+      ? {
+          ...item,
+          status: 'active' as const,
+          detail: 'Reading the workspace source now.',
+          input: 'list_files input',
+          output: 'list_files output',
+        }
+      : item,
+  ),
+};
+
 const createProps = (overrides: Partial<React.ComponentProps<typeof AISectionReasoning>> = {}) => ({
   activeSession: makeAgentSession({
     status: 'running',
@@ -43,6 +79,7 @@ const createProps = (overrides: Partial<React.ComponentProps<typeof AISectionRea
   }),
   reasoningGroups: groups,
   visualReasoningGroups: groups,
+  activity,
   viewType: 'visual' as const,
   showStepIO: false,
   runUsageSummary: '',
@@ -55,19 +92,105 @@ const createProps = (overrides: Partial<React.ComponentProps<typeof AISectionRea
 });
 
 describe('AISectionReasoning', () => {
-  it('renders the visual overview and chronological timeline', () => {
+  it('renders the live execution map with planned future work', () => {
     render(<AISectionReasoning {...createProps()} />);
 
+    const executionRegion = screen.getByRole('region', { name: 'Execution timeline' });
+    const nodes = [...executionRegion.querySelectorAll('li')];
+
     expect(screen.getByRole('region', { name: 'Run overview' })).toBeDefined();
-    expect(screen.getByText('Working')).toBeDefined();
+    expect(screen.getByRole('region', { name: 'Live execution' })).toHaveTextContent('Read source');
+    expect(executionRegion).toBeDefined();
+    expect(nodes).toHaveLength(activity.nodes.length);
+    expect(nodes[0]).toHaveTextContent('Request');
+    expect(nodes[1]).toHaveTextContent('Route');
+    expect(nodes[2]).toHaveTextContent('Gather context');
+    expect(
+      nodes.map((node) => node.querySelector('span[class*="executionTitle"]')?.textContent),
+    ).toEqual([
+      'Request',
+      'Route',
+      'Gather context',
+      'Read source',
+      'Generate changes',
+      'Validate changes',
+      'Ready',
+    ]);
+    expect(nodes.every((node) => !node.hasAttribute('data-depth'))).toBe(true);
+    expect(nodes.every((node) => !node.hasAttribute('data-rotation'))).toBe(true);
+    expect(nodes.every((node) => node.querySelector('[class*="executionCardArt"]'))).toBe(true);
+    expect(nodes.every((node) => node.querySelector('[class*="executionCardArtIcon"]'))).toBe(true);
+    expect(nodes.find((node) => node.getAttribute('aria-current') === 'step')).toHaveTextContent(
+      'Read source',
+    );
+    expect(nodes.find((node) => node.getAttribute('aria-current') === 'step')?.className).toContain(
+      'executionNodeactive',
+    );
+    expect(nodes.every((node) => node.querySelector('[class*="executionDetail"]'))).toBe(true);
+    expect(screen.getAllByText('Working').length).toBeGreaterThan(0);
     expect(screen.getByText('Model calls')).toBeDefined();
-    expect(screen.getByText('Agent timeline')).toBeDefined();
-    expect(screen.getByText('Routing')).toBeDefined();
-    expect(screen.getByText('deciding what to do')).toBeDefined();
-    expect(screen.getByText('Progress')).toBeDefined();
-    expect(screen.getAllByText('Step 1')).toHaveLength(1);
-    expect(screen.getByText('Reading the workspace')).toBeDefined();
-    expect(screen.getByText('Build the app')).toBeDefined();
+    expect(screen.getAllByText('Read source').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Generate changes').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Validate changes').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Up next').length).toBeGreaterThan(0);
+    expect(screen.queryByRole('region', { name: 'Session transcript' })).toBeNull();
+    expect(screen.getAllByText('Build the app').length).toBeGreaterThan(0);
+  });
+
+  it('renders model loading as a progress card with determinate and fallback rings', () => {
+    const { rerender } = render(
+      <AISectionReasoning
+        {...createProps({
+          modelProgress: {
+            modelName: 'Qwen local model',
+            progress: 0.5,
+            detail: 'Fetching model weights…',
+          },
+        })}
+      />,
+    );
+
+    const progressbar = screen.getByRole('progressbar', { name: 'Loading Qwen local model' });
+    expect(progressbar).toHaveAttribute('aria-valuenow', '50');
+    expect(progressbar).toHaveAttribute('aria-valuetext', '50%');
+    expect(screen.getByText('Fetching model weights…')).toBeDefined();
+    expect(progressbar.closest('li')).toBe(
+      screen.getByRole('region', { name: 'Execution timeline' }).querySelector('li'),
+    );
+
+    rerender(
+      <AISectionReasoning
+        {...createProps({
+          modelProgress: {
+            modelName: 'Qwen local model',
+            progress: null,
+            detail: 'Initializing…',
+          },
+        })}
+      />,
+    );
+
+    expect(
+      screen.getByRole('progressbar', { name: 'Loading Qwen local model' }),
+    ).not.toHaveAttribute('aria-valuenow');
+    expect(screen.getByText('Initializing…')).toBeDefined();
+  });
+
+  it('switches between the layered deck and horizontal card rail', () => {
+    const { rerender } = render(<AISectionReasoning {...createProps()} />);
+    const executionRegion = screen.getByRole('region', { name: 'Execution timeline' });
+    const cardMap = executionRegion.querySelector('ol');
+
+    expect(cardMap?.className).toContain('executionMapCollapsed');
+    expect(cardMap?.getAttribute('aria-label')).toBe('Collapsed execution card deck');
+
+    rerender(<AISectionReasoning {...createProps({ timelineExpanded: true })} />);
+
+    const expandedMap = screen
+      .getByRole('region', { name: 'Execution timeline' })
+      .querySelector('ol');
+    expect(expandedMap?.className).toContain('executionMapExpanded');
+    expect(expandedMap?.getAttribute('aria-label')).toBe('Expanded execution cards');
   });
 
   it('reveals stored step input/output only when enabled', () => {
@@ -80,12 +203,68 @@ describe('AISectionReasoning', () => {
     expect(screen.getByText('list_files output')).toBeDefined();
   });
 
+  it('moves the live focus as the activity state changes', () => {
+    const { rerender } = render(<AISectionReasoning {...createProps()} />);
+    expect(screen.getAllByText('Read source').length).toBeGreaterThan(0);
+
+    const nextActivity: AgentActivityState = {
+      ...activity,
+      currentPhase: 'work',
+      currentNodeId: 'plan-1',
+      nodes: activity.nodes.map((item) =>
+        item.id === 'plan-0'
+          ? { ...item, status: 'completed' as const, detail: 'Source loaded.' }
+          : item.id === 'plan-1'
+            ? { ...item, status: 'active' as const, detail: 'Generating the requested changes.' }
+            : item,
+      ),
+    };
+    rerender(<AISectionReasoning {...createProps({ activity: nextActivity })} />);
+
+    expect(screen.getAllByText('Generate changes').length).toBeGreaterThan(0);
+    expect(screen.getByText('Source loaded.')).toBeDefined();
+
+    const executionRegion = screen.getByRole('region', { name: 'Execution timeline' });
+    const nodes = [...executionRegion.querySelectorAll('li')];
+    expect(nodes[0]).toHaveTextContent('Request');
+    expect(nodes[1]).toHaveTextContent('Route');
+    expect(nodes.find((node) => node.getAttribute('aria-current') === 'step')).toHaveTextContent(
+      'Generate changes',
+    );
+    expect(nodes.find((node) => node.getAttribute('aria-current') === 'step')).not.toHaveAttribute(
+      'data-rotation',
+    );
+    expect(nodes.find((node) => node.getAttribute('aria-current') === 'step')?.className).toContain(
+      'executionNodeactive',
+    );
+    expect(
+      nodes.find((node) => node.getAttribute('aria-current') === 'step'),
+    ).not.toHaveTextContent('Read source');
+  });
+
+  it('renders completed and blocked map outcomes', () => {
+    const completed = finishAgentActivity(activity, 'success', 'Everything is ready.', 2_000);
+    const { rerender } = render(<AISectionReasoning {...createProps({ activity: completed })} />);
+    expect(getLiveExecutionInfo(completed).outcome).toBe('Route complete');
+    expect(screen.getByText('Everything is ready.')).toBeDefined();
+    const liveExecution = screen.getByRole('region', { name: 'Live execution' });
+    expect(within(liveExecution).getAllByText('Route complete')).toHaveLength(1);
+    expect(within(liveExecution).getByText('Complete')).toBeDefined();
+
+    const failed = finishAgentActivity(activity, 'error', 'Validation failed.', 2_000);
+    rerender(<AISectionReasoning {...createProps({ activity: failed })} />);
+    expect(getLiveExecutionInfo(failed).outcome).toBe('Route stopped');
+    expect(screen.getAllByText('Blocked').length).toBeGreaterThan(0);
+  });
+
   it('keeps the existing text log available as the alternate view', () => {
     render(<AISectionReasoning {...createProps({ viewType: 'text' })} />);
 
     expect(screen.getByText('Step 1')).toBeDefined();
+    expect(screen.getByRole('region', { name: 'Session transcript' })).toBeDefined();
+    expect(screen.getByText('Build the app')).toBeDefined();
     expect(screen.queryByRole('region', { name: 'Run overview' })).toBeNull();
-    expect(screen.queryByText('Agent timeline')).toBeNull();
+    expect(screen.queryByRole('region', { name: 'Live execution' })).toBeNull();
   });
 
   it('renders errors at the end of the visual timeline', () => {

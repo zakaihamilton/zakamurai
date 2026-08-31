@@ -1,12 +1,29 @@
+import { applyReasoningFallback } from '@/components/AI/Agent/AgentActivity';
 import { withoutManagerErrorMessages } from '@/components/App/Panes/Prompt/AgentSessions';
-import type { AgentReasoningEntry, AgentSession, AgentSessionMessage } from '@/types/domain-types';
-import { useEffect, useRef } from 'react';
+import { Icons } from '@/components/ui/Icons';
+import type {
+  AgentActivityNode,
+  AgentActivityNodeKind,
+  AgentActivityNodeStatus,
+  AgentActivityOutcome,
+  AgentActivityState,
+  AgentReasoningEntry,
+  AgentSession,
+  AgentSessionMessage,
+} from '@/types/domain-types';
+import { useEffect, useLayoutEffect, useRef } from 'react';
 import type { RefObject } from 'react';
 import ReactMarkdown, { type Components } from 'react-markdown';
 import styles from './AISectionReasoning.module.css';
 
 export type ReasoningGroup = { step: number | null; entries: AgentReasoningEntry[] };
 export type ReasoningViewType = 'visual' | 'text';
+
+export type ModelProgress = {
+  modelName: string;
+  progress: number | null;
+  detail: string;
+};
 
 export const normalizeReasoningViewType = (value: string | undefined): ReasoningViewType =>
   value === 'text' ? 'text' : 'visual';
@@ -15,6 +32,9 @@ type AISectionReasoningProps = {
   activeSession: AgentSession | null;
   reasoningGroups: ReasoningGroup[];
   visualReasoningGroups?: ReasoningGroup[];
+  activity?: AgentActivityState;
+  modelProgress?: ModelProgress;
+  timelineExpanded?: boolean;
   viewType?: ReasoningViewType;
   showStepIO?: boolean;
   runUsageSummary: string;
@@ -51,19 +71,9 @@ const summaryMarkdownComponents: Components = {
   ul: ({ node, ...props }) => <ul className={styles.list} {...props} />,
 };
 
-function Transcript({
-  messages,
-  visual = false,
-}: {
-  messages: AgentSessionMessage[];
-  visual?: boolean;
-}) {
+function Transcript({ messages }: { messages: AgentSessionMessage[] }) {
   return (
-    <section
-      className={`${styles.transcriptSection} ${visual ? styles.visualTranscript : ''}`}
-      aria-label="Session transcript"
-    >
-      {visual ? <h2 className={styles.visualSectionHeading}>Conversation</h2> : null}
+    <section className={styles.transcriptSection} aria-label="Session transcript">
       {messages.map((message) => {
         const label =
           message.role === 'user'
@@ -163,12 +173,30 @@ const formatDuration = (milliseconds: number): string => {
   return `${(milliseconds / 1000).toFixed(1)} s`;
 };
 
+type DisplayRunStatus = 'waiting' | 'running' | 'ready' | 'error' | 'stopped';
+
+const getActivityRunStatus = (
+  activity: AgentActivityState | undefined,
+  activeSession: AgentSession | null,
+  latestError: string,
+  hasContent: boolean,
+): DisplayRunStatus => {
+  if (activity?.outcome === 'error' || latestError || activeSession?.status === 'error')
+    return 'error';
+  if (activity?.outcome === 'aborted') return 'stopped';
+  if (activity?.outcome === 'running' || activeSession?.status === 'running') return 'running';
+  if (activity?.outcome === 'success' || hasContent) return 'ready';
+  return 'waiting';
+};
+
 function RunOverview({
   activeSession,
+  activity,
   latestError,
   hasContent,
 }: {
   activeSession: AgentSession | null;
+  activity: AgentActivityState;
   latestError: string;
   hasContent: boolean;
 }) {
@@ -180,13 +208,15 @@ function RunOverview({
   const hasUsage = Boolean(
     runUsage && (runUsage.modelCalls > 0 || toolCount > 0 || runUsage.totalMs > 0),
   );
-  const status = getRunStatus(activeSession, latestError, hasContent);
-  const statusLabels = {
+  const status = getActivityRunStatus(activity, activeSession, latestError, hasContent);
+  const statusLabels: Record<DisplayRunStatus, string> = {
     waiting: 'Waiting',
     running: 'Working',
     ready: 'Ready',
     error: 'Error',
-  } as const;
+    stopped: 'Stopped',
+  };
+  const liveExecution = getLiveExecutionInfo(activity);
 
   return (
     <section className={styles.runOverview} aria-label="Run overview">
@@ -198,8 +228,26 @@ function RunOverview({
         <div>
           <span className={styles.runStatusLabel}>Run status</span>
           <strong>{statusLabels[status]}</strong>
+          {activity?.request ? <span className={styles.runRequest}>{activity.request}</span> : null}
         </div>
       </div>
+      <section className={styles.runExecution} aria-label="Live execution">
+        <span
+          className={`${styles.runExecutionIndicator} ${styles[`runExecutionIndicator${liveExecution.tone}`]}`}
+          aria-hidden="true"
+        />
+        <div className={styles.runExecutionCopy}>
+          <strong className={styles.runExecutionTitle}>{liveExecution.title}</strong>
+          {liveExecution.detail ? (
+            <span className={styles.runExecutionDetail}>{liveExecution.detail}</span>
+          ) : null}
+        </div>
+        <span
+          className={`${styles.runExecutionOutcome} ${styles[`runExecutionOutcome${liveExecution.tone}`]}`}
+        >
+          {liveExecution.badge}
+        </span>
+      </section>
       {hasUsage ? (
         <dl className={styles.metricGrid}>
           <div>
@@ -212,7 +260,7 @@ function RunOverview({
           </div>
           <div>
             <dt>Duration</dt>
-            <dd>{formatDuration(runUsage?.totalMs || 0)}</dd>
+            <dd>{formatDuration(activity?.durationMs || runUsage?.totalMs || 0)}</dd>
           </div>
           <div>
             <dt>Validation</dt>
@@ -224,88 +272,314 @@ function RunOverview({
   );
 }
 
-function ReasoningTimeline({
-  groups,
+const activityIcons: Record<AgentActivityNodeKind, typeof Icons.AIPrompt> = {
+  request: Icons.AIPrompt,
+  milestone: Icons.Brain,
+  tool: Icons.Terminal,
+  model: Icons.Sparkles,
+  validation: Icons.Check,
+  recovery: Icons.Refresh,
+  result: Icons.Check,
+};
+
+const statusLabels: Record<AgentActivityNodeStatus, string> = {
+  queued: 'Up next',
+  active: 'Working',
+  completed: 'Done',
+  failed: 'Blocked',
+  skipped: 'Skipped',
+};
+
+const outcomeLabels: Record<AgentActivityOutcome, string> = {
+  idle: 'Waiting to start',
+  running: 'Executing route',
+  success: 'Route complete',
+  error: 'Route stopped',
+  aborted: 'Run stopped',
+};
+
+const outcomeBadgeLabels: Record<AgentActivityOutcome, string> = {
+  idle: 'Waiting',
+  running: 'In progress',
+  success: 'Complete',
+  error: 'Stopped',
+  aborted: 'Stopped',
+};
+
+const nodeDetail = (item: AgentActivityNode): string =>
+  item.detail || item.reason || statusLabels[item.status];
+
+export type LiveExecutionInfo = {
+  title: string;
+  detail: string;
+  outcome: string;
+  badge: string;
+  tone: AgentActivityOutcome;
+};
+
+export const getLiveExecutionInfo = (activity: AgentActivityState): LiveExecutionInfo => {
+  const currentNode = activity.nodes.find((item) => item.id === activity.currentNodeId);
+  const fallbackOutcome = outcomeLabels[activity.outcome];
+  const title = currentNode?.label || fallbackOutcome;
+  const detailCandidate = currentNode ? nodeDetail(currentNode) : '';
+  return {
+    title,
+    detail:
+      detailCandidate && detailCandidate !== title && detailCandidate !== fallbackOutcome
+        ? detailCandidate
+        : '',
+    outcome: fallbackOutcome,
+    badge: outcomeBadgeLabels[activity.outcome],
+    tone: activity.outcome,
+  };
+};
+
+function ActivityNode({
+  item,
+  index,
+  isCurrent,
   showStepIO,
-  isRunning,
 }: {
-  groups: ReasoningGroup[];
+  item: AgentActivityNode;
+  index: number;
+  isCurrent: boolean;
   showStepIO: boolean;
-  isRunning: boolean;
 }) {
-  if (!groups.length) return null;
+  const ActivityIcon = activityIcons[item.kind];
+  const metadata = [
+    item.tool ? item.tool : item.task ? item.task : '',
+    item.turn !== undefined ? `turn ${item.turn}` : '',
+    item.elapsedMs !== undefined ? formatDuration(item.elapsedMs) : '',
+  ].filter(Boolean);
 
-  const lastGroupIndex = groups.length - 1;
   return (
-    <section className={styles.timelineSection} aria-label="Reasoning timeline">
-      <h2 className={styles.visualSectionHeading}>Agent timeline</h2>
-      <ol className={styles.timeline}>
-        {groups.map((group, groupIndex) => {
-          const status = getReasoningGroupStatus(group, groupIndex === lastGroupIndex, isRunning);
-          const firstEntry = group.entries[0];
-          const groupTitle = (firstEntry && extractReasoningLabel(firstEntry.text)) || 'Progress';
-
-          return (
-            <li
-              key={`${group.step}-${groupIndex}`}
-              className={`${styles.timelineItem} ${styles[`timelineItem${status}`]}`}
-            >
-              <span className={styles.timelineMarker} aria-hidden="true" />
-              <article className={styles.timelineCard}>
-                <header className={styles.timelineHeader}>
-                  <div className={styles.timelineTitleGroup}>
-                    <span className={styles.timelineTitle}>{groupTitle}</span>
-                    {group.step !== null ? (
-                      <span className={styles.timelineStep}>Step {group.step}</span>
-                    ) : null}
-                  </div>
-                  <span className={styles.timelineStatus}>{status}</span>
-                </header>
-                <div className={styles.timelineEntries}>
-                  {keyReasoningEntries(group.entries).map((entry, entryIndex) => {
-                    const phase = extractReasoningLabel(entry.text);
-                    const body = stripReasoningLabel(entry.text) || entry.text;
-                    return (
-                      <div className={styles.timelineEntry} key={entry.renderKey}>
-                        <div className={styles.timelineEntryMeta}>
-                          {phase && phase !== groupTitle ? (
-                            <span className={styles.timelinePhase}>{phase}</span>
-                          ) : null}
-                          {entry.timestamp ? (
-                            <time className={styles.timelineTimestamp}>{entry.timestamp}</time>
-                          ) : null}
-                        </div>
-                        <div className={styles.timelineText}>
-                          <ReactMarkdown components={markdownComponents}>{body}</ReactMarkdown>
-                        </div>
-                        {showStepIO && (entry.input || entry.output) ? (
-                          <details className={styles.ioDetails}>
-                            <summary>Input / output</summary>
-                            {entry.input ? (
-                              <div>
-                                <span className={styles.ioLabel}>Input</span>
-                                <pre className={styles.ioBlock}>{entry.input}</pre>
-                              </div>
-                            ) : null}
-                            {entry.output ? (
-                              <div>
-                                <span className={styles.ioLabel}>Output</span>
-                                <pre className={styles.ioBlock}>{entry.output}</pre>
-                              </div>
-                            ) : null}
-                          </details>
-                        ) : null}
-                        {entryIndex < group.entries.length - 1 ? (
-                          <span className={styles.timelineEntryDivider} aria-hidden="true" />
-                        ) : null}
-                      </div>
-                    );
-                  })}
+    <li
+      className={`${styles.executionNode} ${styles[`executionNode${item.status}`]} ${styles[`executionNode${item.kind}`]}`}
+      data-card-id={item.id}
+      aria-current={isCurrent ? 'step' : undefined}
+    >
+      <span className={styles.executionMarker} aria-hidden="true">
+        {item.status === 'completed' ? <Icons.Check size={13} /> : <ActivityIcon size={14} />}
+      </span>
+      <article className={styles.executionCard}>
+        <div className={`${styles.executionCardArt} ${styles[`executionCardArt${item.kind}`]}`}>
+          <span className={styles.executionCardIndex}>{String(index + 1).padStart(2, '0')}</span>
+          <span className={styles.executionCardArtIcon} aria-hidden="true">
+            <ActivityIcon size={38} />
+          </span>
+          <span className={styles.executionCardArtLabel}>{item.kind}</span>
+        </div>
+        <div className={styles.executionCardBody}>
+          <header className={styles.executionCardHeader}>
+            <div className={styles.executionTitleGroup}>
+              <span className={styles.executionTitle}>{item.label}</span>
+              {metadata.length ? (
+                <span className={styles.executionMeta}>
+                  {metadata.map((value) => (
+                    <span className={styles.executionMetaItem} key={value}>
+                      {value}
+                    </span>
+                  ))}
+                </span>
+              ) : null}
+            </div>
+            <span className={styles.executionStatus}>{statusLabels[item.status]}</span>
+          </header>
+          <p className={styles.executionDetail}>{nodeDetail(item)}</p>
+          {item.status === 'queued' && item.reason && item.reason !== item.detail ? (
+            <p className={styles.executionReason}>{item.reason}</p>
+          ) : null}
+          {showStepIO && (item.input || item.output) ? (
+            <details className={styles.executionIO}>
+              <summary>Input / output</summary>
+              {item.input ? (
+                <div>
+                  <span>Input</span>
+                  <pre>{item.input}</pre>
                 </div>
-              </article>
-            </li>
-          );
-        })}
+              ) : null}
+              {item.output ? (
+                <div>
+                  <span>Output</span>
+                  <pre>{item.output}</pre>
+                </div>
+              ) : null}
+            </details>
+          ) : null}
+        </div>
+      </article>
+    </li>
+  );
+}
+
+const MODEL_PROGRESS_RING_RADIUS = 23;
+const MODEL_PROGRESS_RING_CIRCUMFERENCE = 2 * Math.PI * MODEL_PROGRESS_RING_RADIUS;
+
+function ModelProgressCard({ progress }: { progress: ModelProgress }) {
+  const normalizedProgress =
+    progress.progress === null
+      ? null
+      : Math.min(Math.max(Number.isFinite(progress.progress) ? progress.progress : 0, 0), 1);
+  const percentage = normalizedProgress === null ? null : Math.round(normalizedProgress * 100);
+  const dashOffset =
+    normalizedProgress === null
+      ? MODEL_PROGRESS_RING_CIRCUMFERENCE * 0.72
+      : MODEL_PROGRESS_RING_CIRCUMFERENCE * (1 - normalizedProgress);
+
+  return (
+    <li
+      className={`${styles.executionNode} ${styles.executionNodeModelProgress}`}
+      data-card-id="model-progress"
+    >
+      <span className={styles.executionMarker} aria-hidden="true">
+        <Icons.Download size={14} />
+      </span>
+      <article className={`${styles.executionCard} ${styles.modelProgressCard}`} aria-live="polite">
+        <div className={styles.modelProgressRingWrap}>
+          <div
+            className={styles.modelProgressMeter}
+            role="progressbar"
+            aria-label={`Loading ${progress.modelName}`}
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={percentage ?? undefined}
+            aria-valuetext={percentage === null ? progress.detail : `${percentage}%`}
+            tabIndex={0}
+          >
+            <svg
+              className={`${styles.modelProgressRing} ${percentage === null ? styles.modelProgressRingIndeterminate : ''}`}
+              viewBox="0 0 58 58"
+              aria-hidden="true"
+            >
+              <circle
+                className={styles.modelProgressRingTrack}
+                cx="29"
+                cy="29"
+                r={MODEL_PROGRESS_RING_RADIUS}
+              />
+              <circle
+                className={styles.modelProgressRingValue}
+                cx="29"
+                cy="29"
+                r={MODEL_PROGRESS_RING_RADIUS}
+                strokeDasharray={MODEL_PROGRESS_RING_CIRCUMFERENCE}
+                strokeDashoffset={dashOffset}
+              />
+              <text className={styles.modelProgressRingText} x="29" y="33" textAnchor="middle">
+                {percentage === null ? '···' : `${percentage}%`}
+              </text>
+            </svg>
+          </div>
+        </div>
+        <div className={styles.modelProgressCopy}>
+          <span className={styles.modelProgressEyebrow}>Preparing local model</span>
+          <strong>{progress.modelName}</strong>
+          <span>{progress.detail}</span>
+        </div>
+      </article>
+    </li>
+  );
+}
+
+function AgentExecutionMap({
+  activity,
+  modelProgress,
+  timelineExpanded,
+  showStepIO,
+}: {
+  activity: AgentActivityState;
+  modelProgress?: ModelProgress;
+  timelineExpanded: boolean;
+  showStepIO: boolean;
+}) {
+  const executionMapRef = useRef<HTMLOListElement | null>(null);
+  const previousCardRects = useRef(new Map<string, DOMRect>());
+  const lastTimelineMode = useRef<boolean | null>(null);
+  const cardAnimations = useRef<Animation[]>([]);
+
+  useLayoutEffect(() => {
+    const executionMap = executionMapRef.current;
+    if (!executionMap) return;
+
+    const cards = Array.from(executionMap.querySelectorAll<HTMLElement>(':scope > [data-card-id]'));
+    const nextCardRects = new Map(
+      cards.map((card) => [card.dataset.cardId || '', card.getBoundingClientRect()]),
+    );
+    const shouldAnimate =
+      lastTimelineMode.current !== null && lastTimelineMode.current !== timelineExpanded;
+    const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches ?? false;
+
+    for (const animation of cardAnimations.current) animation.cancel();
+    cardAnimations.current = [];
+
+    if (shouldAnimate && !reducedMotion && typeof HTMLElement.prototype.animate === 'function') {
+      cards.forEach((card, index) => {
+        const cardId = card.dataset.cardId;
+        const previousRect = cardId ? previousCardRects.current.get(cardId) : undefined;
+        const nextRect = cardId ? nextCardRects.get(cardId) : undefined;
+        if (!previousRect || !nextRect) return;
+
+        const deltaX = previousRect.left - nextRect.left;
+        const deltaY = previousRect.top - nextRect.top;
+        const scaleX = previousRect.width / Math.max(nextRect.width, 1);
+        const scaleY = previousRect.height / Math.max(nextRect.height, 1);
+        if (
+          Math.abs(deltaX) < 1 &&
+          Math.abs(deltaY) < 1 &&
+          Math.abs(scaleX - 1) < 0.01 &&
+          Math.abs(scaleY - 1) < 0.01
+        ) {
+          return;
+        }
+
+        const finalTransform = getComputedStyle(card).transform;
+        const animation = card.animate(
+          [
+            {
+              transform: `translate(${deltaX}px, ${deltaY}px) scale(${scaleX}, ${scaleY}) ${finalTransform === 'none' ? '' : finalTransform}`,
+            },
+            { transform: finalTransform },
+          ],
+          {
+            duration: 460,
+            delay: Math.min(index * 24, 168),
+            easing: 'cubic-bezier(0.22, 1, 0.36, 1)',
+            fill: 'both',
+          },
+        );
+        cardAnimations.current.push(animation);
+        animation.finished.then(() => animation.cancel()).catch(() => undefined);
+      });
+    }
+
+    previousCardRects.current = nextCardRects;
+    lastTimelineMode.current = timelineExpanded;
+  }, [timelineExpanded]);
+
+  useEffect(
+    () => () => {
+      for (const animation of cardAnimations.current) animation.cancel();
+    },
+    [],
+  );
+
+  return (
+    <section className={styles.executionSection} aria-label="Execution timeline">
+      <ol
+        ref={executionMapRef}
+        className={`${styles.executionMap} ${timelineExpanded ? styles.executionMapExpanded : styles.executionMapCollapsed}`}
+        aria-label={timelineExpanded ? 'Expanded execution cards' : 'Collapsed execution card deck'}
+      >
+        {modelProgress ? <ModelProgressCard progress={modelProgress} /> : null}
+        {activity.nodes.map((item, index) => (
+          <ActivityNode
+            key={item.id}
+            item={item}
+            index={index}
+            isCurrent={item.id === activity.currentNodeId}
+            showStepIO={showStepIO}
+          />
+        ))}
       </ol>
     </section>
   );
@@ -313,40 +587,48 @@ function ReasoningTimeline({
 
 function VisualReasoning({
   activeSession,
-  reasoningGroups,
+  activity,
+  modelProgress,
+  timelineExpanded,
   runUsageSummary,
   latestError,
   fallbackContent,
   showStepIO,
 }: {
   activeSession: AgentSession | null;
-  reasoningGroups: ReasoningGroup[];
+  activity: AgentActivityState;
+  modelProgress?: ModelProgress;
+  timelineExpanded: boolean;
   runUsageSummary: string;
   latestError: string;
   fallbackContent: string;
   showStepIO: boolean;
 }) {
-  const transcriptMessages = withoutManagerErrorMessages(activeSession?.messages || []);
-  const hasTranscript = transcriptMessages.length > 0;
-  const hasContent = reasoningGroups.length > 0 || hasTranscript || Boolean(runUsageSummary);
+  const hasMap = activity.nodes.length > 0;
+  const hasContent = hasMap || Boolean(runUsageSummary) || Boolean(modelProgress);
 
   return (
     <>
       <RunOverview
         activeSession={activeSession}
+        activity={activity}
         latestError={latestError}
         hasContent={hasContent}
       />
-      {hasTranscript ? <Transcript messages={transcriptMessages} visual /> : null}
-      <ReasoningTimeline
-        groups={reasoningGroups}
-        showStepIO={showStepIO}
-        isRunning={activeSession?.status === 'running'}
-      />
+      {hasMap || modelProgress ? (
+        <AgentExecutionMap
+          activity={activity}
+          modelProgress={modelProgress}
+          timelineExpanded={timelineExpanded}
+          showStepIO={showStepIO}
+        />
+      ) : null}
       {runUsageSummary ? (
         <details className={styles.visualRunDetails}>
           <summary>Run details</summary>
-          <ReactMarkdown components={summaryMarkdownComponents}>{runUsageSummary}</ReactMarkdown>
+          <div className={styles.visualRunDetailsContent}>
+            <ReactMarkdown components={summaryMarkdownComponents}>{runUsageSummary}</ReactMarkdown>
+          </div>
         </details>
       ) : null}
       {latestError ? (
@@ -355,7 +637,7 @@ function VisualReasoning({
           <span>{latestError}</span>
         </aside>
       ) : null}
-      {!reasoningGroups.length && !runUsageSummary && !hasTranscript ? (
+      {!hasContent && !latestError ? (
         <section className={styles.emptyVisualState}>
           <span className={styles.emptyVisualIcon} aria-hidden="true">
             ·
@@ -391,7 +673,10 @@ export default function AISectionReasoning({
   activeSession,
   reasoningGroups,
   visualReasoningGroups = reasoningGroups,
-  viewType = 'text',
+  activity,
+  modelProgress,
+  timelineExpanded = false,
+  viewType = 'visual',
   showStepIO = false,
   runUsageSummary,
   latestError = '',
@@ -404,6 +689,13 @@ export default function AISectionReasoning({
   const transcriptMessages = withoutManagerErrorMessages(activeSession?.messages || []);
   const hasTranscript = transcriptMessages.length > 0;
   const lastScrollTop = useRef(0);
+  const visualActivity =
+    activity ||
+    applyReasoningFallback(
+      transcriptMessages.find((message) => message.role === 'user')?.text || '',
+      visualReasoningGroups.flatMap((group) => group.entries),
+      activeSession?.status || 'idle',
+    );
 
   const handleScroll = () => {
     const contentElement = contentRef.current;
@@ -439,7 +731,9 @@ export default function AISectionReasoning({
       {visual ? (
         <VisualReasoning
           activeSession={activeSession}
-          reasoningGroups={visualReasoningGroups}
+          activity={visualActivity}
+          modelProgress={modelProgress}
+          timelineExpanded={timelineExpanded}
           runUsageSummary={runUsageSummary}
           latestError={latestError}
           fallbackContent={fallbackContent}

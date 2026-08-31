@@ -143,6 +143,58 @@ export interface AgentReasoningEntry {
   output?: string;
 }
 
+export type AgentActivityPhase =
+  | 'request'
+  | 'routing'
+  | 'context'
+  | 'work'
+  | 'validation'
+  | 'recovery'
+  | 'result';
+
+export type AgentActivityNodeKind =
+  | 'request'
+  | 'milestone'
+  | 'tool'
+  | 'model'
+  | 'validation'
+  | 'recovery'
+  | 'result';
+
+export type AgentActivityNodeStatus = 'queued' | 'active' | 'completed' | 'failed' | 'skipped';
+
+export type AgentActivityOutcome = 'idle' | 'running' | 'success' | 'error' | 'aborted';
+
+export interface AgentActivityNode {
+  id: string;
+  phase: AgentActivityPhase;
+  kind: AgentActivityNodeKind;
+  status: AgentActivityNodeStatus;
+  label: string;
+  detail: string;
+  reason?: string;
+  tool?: string;
+  task?: string;
+  turn?: number;
+  timestamp: string;
+  elapsedMs?: number;
+  input?: string;
+  output?: string;
+  provenance?: 'model' | 'recovery';
+}
+
+export interface AgentActivityState {
+  runId: string | null;
+  request: string;
+  outcome: AgentActivityOutcome;
+  currentPhase: AgentActivityPhase | null;
+  currentNodeId: string | null;
+  startedAt: number;
+  durationMs: number;
+  lastTraceSequence: number;
+  nodes: AgentActivityNode[];
+}
+
 export interface AgentRunUsage {
   modelIds: string[];
   requestedModelIds?: string[];
@@ -176,6 +228,7 @@ export interface AgentSession {
   messages: AgentSessionMessage[];
   reasoning: string;
   reasoningEvents?: AgentReasoningEntry[];
+  activity?: AgentActivityState;
   showStepIO?: boolean;
   runUsage?: AgentRunUsage;
   status: string;

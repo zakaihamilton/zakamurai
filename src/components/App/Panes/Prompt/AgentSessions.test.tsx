@@ -1,3 +1,4 @@
+import { applyManagerPlan, createRunningAgentActivity } from '@/components/AI/Agent/AgentActivity';
 import type { CreateAgentSessionOptions } from '@/components/App/types';
 import {
   expectAgentSession,
@@ -77,6 +78,29 @@ describe('AgentSessions', () => {
       toolCalls: { read_file: 2 },
     });
     expect(serializeAgentSessions(normalized).sessions[session.id]?.runUsage).toBeDefined();
+  });
+
+  it('persists activity and gives legacy sessions an idle activity state', () => {
+    const session = createAgentSession();
+    const activity = applyManagerPlan(createRunningAgentActivity('Build it'), {
+      intent: 'edit',
+      modelRequired: true,
+      confidence: 'high',
+      steps: [{ kind: 'tool', tool: 'read_file', reason: 'Inspect the source.' }],
+    });
+    const normalized = normalizeAgentSessions({
+      activeSessionId: session.id,
+      sessions: { [session.id]: { ...session, activity } },
+    });
+    const serialized = serializeAgentSessions(normalized);
+    const legacy = normalizeAgentSessions({
+      activeSessionId: session.id,
+      sessions: { [session.id]: { ...session, activity: undefined } },
+    });
+
+    expect(normalized.sessions[session.id]?.activity).toEqual(activity);
+    expect(serialized.sessions[session.id]?.activity).toEqual(activity);
+    expect(legacy.sessions[session.id]?.activity).toMatchObject({ outcome: 'idle', nodes: [] });
   });
 
   it('retains the configured amount of persisted reasoning history', () => {

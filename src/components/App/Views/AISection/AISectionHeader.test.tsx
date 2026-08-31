@@ -8,7 +8,9 @@ vi.mock('@/components/ui/Icons', () => ({
     ArrowDownToLine: () => <span data-testid="icon-auto-scroll" />,
     Brain: () => <span data-testid="icon-brain" />,
     Check: () => <span data-testid="icon-check" />,
+    Columns: () => <span data-testid="icon-columns" />,
     Copy: () => <span data-testid="icon-copy" />,
+    Grid: () => <span data-testid="icon-grid" />,
     Terminal: () => <span data-testid="icon-terminal" />,
   },
 }));
@@ -27,6 +29,9 @@ describe('AISectionHeader', () => {
     copied: false,
     onToggleStepIO: vi.fn(),
     onSelectView: vi.fn(),
+    showTimelineToggle: true,
+    timelineExpanded: false,
+    onToggleTimeline: vi.fn(),
     onToggleAutoScroll: vi.fn(),
     onCopy: vi.fn(),
   };
@@ -50,6 +55,16 @@ describe('AISectionHeader', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Show text log' }));
     expect(onSelectView).toHaveBeenCalledWith('text');
+  });
+
+  it('toggles the horizontal timeline card deck', () => {
+    const onToggleTimeline = vi.fn();
+    render(<AISectionHeader {...defaultProps} onToggleTimeline={onToggleTimeline} />);
+
+    const toggle = screen.getByRole('button', { name: 'Expand timeline cards' });
+    expect(toggle).toHaveAttribute('aria-pressed', 'false');
+    fireEvent.click(toggle);
+    expect(onToggleTimeline).toHaveBeenCalledTimes(1);
   });
 
   it('does not render the view switch for non-reasoning sections', () => {

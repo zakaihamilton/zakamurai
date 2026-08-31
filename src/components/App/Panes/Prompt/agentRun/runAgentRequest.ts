@@ -79,7 +79,12 @@ export async function runAgentRequest({
   pushSessionMessage,
   createSessionMessage,
 }: RunAgentRequestParams): Promise<void> {
-  const runState = createAgentRunState({ sessionId, patchSession, logState });
+  const runState = createAgentRunState({
+    sessionId,
+    request: userMsg,
+    patchSession,
+    logState,
+  });
   const controller = new AbortController();
   promptUiState((draft) => {
     draft.abortController = controller;
@@ -118,6 +123,7 @@ export async function runAgentRequest({
       onMetrics: runState.recordMetrics,
       onRecovery: runState.recordRecovery,
       onTrace: (trace) => {
+        runState.recordTrace(trace);
         promptUiState((draft) => {
           draft.latestManagerTrace = trace;
         });
@@ -163,6 +169,7 @@ export async function runAgentRequest({
     });
     if (!stillProcessing) return;
     const summaryText = `[AI Manager]: ${result.summary || `Prepared ${result.changes.length} file(s) for review.`}`;
+    runState.completeActivity('success', result.summary || 'The manager finished successfully.');
     patchSession(sessionId, { status: 'idle' });
     pushSessionMessage(sessionId, createSessionMessage({ role: 'ai', text: summaryText }));
     promptUiState((draft) => {
@@ -239,6 +246,7 @@ export async function runAgentRequest({
       patchSession,
       pushSessionMessage,
       createSessionMessage,
+      completeActivity: runState.completeActivity,
     });
   }
 }
