@@ -1,6 +1,7 @@
 import { applyReasoningFallback } from '@/components/AI/Agent/AgentActivity';
 import { withoutManagerErrorMessages } from '@/components/App/Panes/Prompt/AgentSessions';
 import { Icons } from '@/components/ui/Icons';
+import Tooltip from '@/components/ui/Tooltip';
 import type {
   AgentActivityNode,
   AgentActivityNodeKind,
@@ -11,7 +12,7 @@ import type {
   AgentSession,
   AgentSessionMessage,
 } from '@/types/domain-types';
-import { useEffect, useLayoutEffect, useRef } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { RefObject } from 'react';
 import ReactMarkdown, { type Components } from 'react-markdown';
 import styles from './AISectionReasoning.module.css';
@@ -338,11 +339,15 @@ function ActivityNode({
   item,
   index,
   isCurrent,
+  isWorking,
+  isSelected,
   showStepIO,
 }: {
   item: AgentActivityNode;
   index: number;
   isCurrent: boolean;
+  isWorking: boolean;
+  isSelected: boolean;
   showStepIO: boolean;
 }) {
   const ActivityIcon = activityIcons[item.kind];
@@ -354,8 +359,10 @@ function ActivityNode({
 
   return (
     <li
-      className={`${styles.executionNode} ${styles[`executionNode${item.status}`]} ${styles[`executionNode${item.kind}`]}`}
+      className={`${styles.executionNode} ${styles[`executionNode${item.status}`]} ${styles[`executionNode${item.kind}`]} ${isWorking ? styles.executionNodeWorking : ''} ${isSelected ? styles.executionNodeSelected : ''}`}
       data-card-id={item.id}
+      data-card-selected={isSelected ? 'true' : undefined}
+      data-card-working={isWorking ? 'true' : undefined}
       aria-current={isCurrent ? 'step' : undefined}
     >
       <span className={styles.executionMarker} aria-hidden="true">
@@ -415,7 +422,15 @@ function ActivityNode({
 const MODEL_PROGRESS_RING_RADIUS = 23;
 const MODEL_PROGRESS_RING_CIRCUMFERENCE = 2 * Math.PI * MODEL_PROGRESS_RING_RADIUS;
 
-function ModelProgressCard({ progress }: { progress: ModelProgress }) {
+function ModelProgressCard({
+  progress,
+  isWorking,
+  isSelected,
+}: {
+  progress: ModelProgress;
+  isWorking: boolean;
+  isSelected: boolean;
+}) {
   const normalizedProgress =
     progress.progress === null
       ? null
@@ -428,8 +443,10 @@ function ModelProgressCard({ progress }: { progress: ModelProgress }) {
 
   return (
     <li
-      className={`${styles.executionNode} ${styles.executionNodeModelProgress}`}
+      className={`${styles.executionNode} ${styles.executionNodeModelProgress} ${isWorking ? styles.executionNodeWorking : ''}`}
       data-card-id="model-progress"
+      data-card-selected={isSelected ? 'true' : undefined}
+      data-card-working={isWorking ? 'true' : undefined}
     >
       <span className={styles.executionMarker} aria-hidden="true">
         <Icons.Download size={14} />
@@ -496,6 +513,127 @@ function AgentExecutionMap({
   const previousCardRects = useRef(new Map<string, DOMRect>());
   const lastTimelineMode = useRef<boolean | null>(null);
   const cardAnimations = useRef<Animation[]>([]);
+  const previousCardListKey = useRef<string | null>(null);
+  const previousWorkingCardId = useRef<string | null>(null);
+  const previousNavigatedCardId = useRef<string | null>(null);
+  const cardIds = useMemo(
+    () => [...(modelProgress ? ['model-progress'] : []), ...activity.nodes.map((item) => item.id)],
+    [activity.nodes, modelProgress],
+  );
+  const cardIdKey = cardIds.join('|');
+  const currentNode = activity.nodes.find((item) => item.id === activity.currentNodeId);
+  const activeNode = [...activity.nodes].reverse().find((item) => item.status === 'active');
+  const workingCardId =
+    (currentNode?.status === 'active' ? currentNode.id : undefined) ??
+    activeNode?.id ??
+    (modelProgress ? 'model-progress' : null);
+  const defaultCardId =
+    (workingCardId && cardIds.includes(workingCardId) ? workingCardId : cardIds.at(-1)) || null;
+  const [selectedCardId, setSelectedCardId] = useState<string | null>(defaultCardId);
+  const displayedSelectedCardId =
+    previousWorkingCardId.current !== workingCardId ||
+    previousCardListKey.current !== cardIdKey ||
+    !selectedCardId ||
+    !cardIds.includes(selectedCardId)
+      ? defaultCardId
+      : selectedCardId;
+  const selectedCardIndex = displayedSelectedCardId ? cardIds.indexOf(displayedSelectedCardId) : -1;
+  const previousCardDisabled = selectedCardIndex <= 0;
+  const nextCardDisabled = selectedCardIndex < 0 || selectedCardIndex >= cardIds.length - 1;
+  const topCardId =
+    displayedSelectedCardId && cardIds.includes(displayedSelectedCardId)
+      ? displayedSelectedCardId
+      : cardIds.at(-1);
+  const cardRenderOrder =
+    !timelineExpanded && topCardId
+      ? [...cardIds.filter((cardId) => cardId !== topCardId), topCardId]
+      : cardIds;
+
+  useLayoutEffect(() => {
+    setSelectedCardId((currentSelectedCardId) => {
+      const cardListChanged = previousCardListKey.current !== cardIdKey;
+      const workingCardChanged = previousWorkingCardId.current !== workingCardId;
+      if (
+        cardListChanged ||
+        workingCardChanged ||
+        !currentSelectedCardId ||
+        !cardIds.includes(currentSelectedCardId)
+      ) {
+        return defaultCardId;
+      }
+      return currentSelectedCardId;
+    });
+    previousCardListKey.current = cardIdKey;
+    previousWorkingCardId.current = workingCardId ?? null;
+  }, [cardIdKey, cardIds, defaultCardId, workingCardId]);
+
+  const moveSelectedCard = (offset: number) => {
+    setSelectedCardId((currentSelectedCardId) => {
+      const currentIndex = currentSelectedCardId ? cardIds.indexOf(currentSelectedCardId) : -1;
+      const nextIndex = Math.min(Math.max(currentIndex + offset, 0), cardIds.length - 1);
+      return cardIds[nextIndex] || currentSelectedCardId;
+    });
+  };
+
+  useEffect(() => {
+    const previousCardId = previousNavigatedCardId.current;
+    previousNavigatedCardId.current = displayedSelectedCardId;
+    if (
+      timelineExpanded ||
+      !previousCardId ||
+      !displayedSelectedCardId ||
+      previousCardId === displayedSelectedCardId ||
+      typeof HTMLElement.prototype.animate !== 'function'
+    ) {
+      return;
+    }
+
+    const executionMap = executionMapRef.current;
+    if (!executionMap) return;
+
+    const cards = Array.from(executionMap.querySelectorAll<HTMLElement>(':scope > [data-card-id]'));
+    const previousIndex = cardIds.indexOf(previousCardId);
+    const selectedIndex = cardIds.indexOf(displayedSelectedCardId);
+    const incomingCard = cards.find((card) => card.dataset.cardId === displayedSelectedCardId);
+    const outgoingCard = cards.find((card) => card.dataset.cardId === previousCardId);
+    if (!incomingCard || !outgoingCard || previousIndex < 0 || selectedIndex < 0) return;
+
+    const direction = selectedIndex > previousIndex ? 1 : -1;
+    const incomingAnimation = incomingCard.animate(
+      [
+        { transform: `translateX(${direction * 42}px) rotate(${direction * 1.4}deg)` },
+        { transform: 'translateX(0) rotate(0deg)' },
+      ],
+      {
+        duration: 360,
+        easing: 'cubic-bezier(0.22, 1, 0.36, 1)',
+        fill: 'both',
+      },
+    );
+    const outgoingAnimation = outgoingCard.animate(
+      [
+        { transform: 'translateX(0) rotate(0deg)' },
+        { transform: `translateX(${direction * -18}px) rotate(${direction * -0.8}deg)` },
+      ],
+      {
+        duration: 300,
+        easing: 'cubic-bezier(0.4, 0, 1, 1)',
+        fill: 'both',
+      },
+    );
+
+    const animations = [incomingAnimation, outgoingAnimation];
+    cardAnimations.current.push(...animations);
+    Promise.all(animations.map((animation) => animation.finished))
+      .then(() => {
+        for (const animation of animations) animation.cancel();
+      })
+      .catch(() => undefined);
+
+    return () => {
+      for (const animation of animations) animation.cancel();
+    };
+  }, [cardIds, displayedSelectedCardId, timelineExpanded]);
 
   useLayoutEffect(() => {
     const executionMap = executionMapRef.current;
@@ -563,24 +701,76 @@ function AgentExecutionMap({
     [],
   );
 
+  const renderCard = (cardId: string) => {
+    if (cardId === 'model-progress' && modelProgress) {
+      return (
+        <ModelProgressCard
+          key={cardId}
+          progress={modelProgress}
+          isWorking={workingCardId === cardId}
+          isSelected={displayedSelectedCardId === cardId}
+        />
+      );
+    }
+
+    const itemIndex = activity.nodes.findIndex((item) => item.id === cardId);
+    const item = itemIndex >= 0 ? activity.nodes[itemIndex] : undefined;
+    if (!item) return null;
+
+    return (
+      <ActivityNode
+        key={item.id}
+        item={item}
+        index={itemIndex}
+        isCurrent={item.id === workingCardId}
+        isWorking={item.id === workingCardId}
+        isSelected={item.id === displayedSelectedCardId}
+        showStepIO={showStepIO}
+      />
+    );
+  };
+
   return (
     <section className={styles.executionSection} aria-label="Execution timeline">
-      <ol
-        ref={executionMapRef}
-        className={`${styles.executionMap} ${timelineExpanded ? styles.executionMapExpanded : styles.executionMapCollapsed}`}
-        aria-label={timelineExpanded ? 'Expanded execution cards' : 'Collapsed execution card deck'}
+      <div
+        className={`${styles.executionDeck} ${timelineExpanded ? styles.executionDeckExpanded : styles.executionDeckCollapsed}`}
       >
-        {modelProgress ? <ModelProgressCard progress={modelProgress} /> : null}
-        {activity.nodes.map((item, index) => (
-          <ActivityNode
-            key={item.id}
-            item={item}
-            index={index}
-            isCurrent={item.id === activity.currentNodeId}
-            showStepIO={showStepIO}
-          />
-        ))}
-      </ol>
+        {!timelineExpanded ? (
+          <Tooltip content="Previous card" className={styles.deckNavTooltip}>
+            <button
+              type="button"
+              className={styles.deckNavButton}
+              aria-label="Previous timeline card"
+              disabled={previousCardDisabled}
+              onClick={() => moveSelectedCard(-1)}
+            >
+              <Icons.ChevronLeft size={18} />
+            </button>
+          </Tooltip>
+        ) : null}
+        <ol
+          ref={executionMapRef}
+          className={`${styles.executionMap} ${timelineExpanded ? styles.executionMapExpanded : styles.executionMapCollapsed}`}
+          aria-label={
+            timelineExpanded ? 'Expanded execution cards' : 'Collapsed execution card deck'
+          }
+        >
+          {cardRenderOrder.map(renderCard)}
+        </ol>
+        {!timelineExpanded ? (
+          <Tooltip content="Next card" className={styles.deckNavTooltip}>
+            <button
+              type="button"
+              className={styles.deckNavButton}
+              aria-label="Next timeline card"
+              disabled={nextCardDisabled}
+              onClick={() => moveSelectedCard(1)}
+            >
+              <Icons.ChevronRight size={18} />
+            </button>
+          </Tooltip>
+        ) : null}
+      </div>
     </section>
   );
 }

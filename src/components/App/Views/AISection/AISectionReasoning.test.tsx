@@ -7,7 +7,7 @@ import type { ManagerPlan } from '@/components/AI/types';
 import { createAgentRunUsage } from '@/components/App/Panes/Prompt/AgentSessions';
 import { makeAgentSession } from '@/test-utils/agentSessionMocks';
 import type { AgentActivityState } from '@/types/domain-types';
-import { render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { createRef } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import AISectionReasoning, { getLiveExecutionInfo } from './AISectionReasoning';
@@ -93,15 +93,20 @@ const createProps = (overrides: Partial<React.ComponentProps<typeof AISectionRea
 
 describe('AISectionReasoning', () => {
   it('renders the live execution map with planned future work', () => {
-    render(<AISectionReasoning {...createProps()} />);
+    const { rerender } = render(<AISectionReasoning {...createProps()} />);
 
     const executionRegion = screen.getByRole('region', { name: 'Execution timeline' });
-    const nodes = [...executionRegion.querySelectorAll('li')];
 
     expect(screen.getByRole('region', { name: 'Run overview' })).toBeDefined();
     expect(screen.getByRole('region', { name: 'Live execution' })).toHaveTextContent('Read source');
     expect(executionRegion).toBeDefined();
-    expect(nodes).toHaveLength(activity.nodes.length);
+
+    const collapsedNodes = [...executionRegion.querySelectorAll('li')];
+    expect(collapsedNodes).toHaveLength(activity.nodes.length);
+    expect(collapsedNodes.at(-1)).toHaveTextContent('Read source');
+
+    rerender(<AISectionReasoning {...createProps({ timelineExpanded: true })} />);
+    const nodes = [...executionRegion.querySelectorAll('li')];
     expect(nodes[0]).toHaveTextContent('Request');
     expect(nodes[1]).toHaveTextContent('Route');
     expect(nodes[2]).toHaveTextContent('Gather context');
@@ -125,6 +130,9 @@ describe('AISectionReasoning', () => {
     );
     expect(nodes.find((node) => node.getAttribute('aria-current') === 'step')?.className).toContain(
       'executionNodeactive',
+    );
+    expect(nodes.find((node) => node.getAttribute('aria-current') === 'step')?.className).toContain(
+      'executionNodeWorking',
     );
     expect(nodes.every((node) => node.querySelector('[class*="executionDetail"]'))).toBe(true);
     expect(screen.getAllByText('Working').length).toBeGreaterThan(0);
@@ -155,7 +163,9 @@ describe('AISectionReasoning', () => {
     expect(progressbar).toHaveAttribute('aria-valuetext', '50%');
     expect(screen.getByText('Fetching model weights…')).toBeDefined();
     expect(progressbar.closest('li')).toBe(
-      screen.getByRole('region', { name: 'Execution timeline' }).querySelector('li'),
+      screen
+        .getByRole('region', { name: 'Execution timeline' })
+        .querySelector('[data-card-id="model-progress"]'),
     );
 
     rerender(
@@ -191,6 +201,91 @@ describe('AISectionReasoning', () => {
       .querySelector('ol');
     expect(expandedMap?.className).toContain('executionMapExpanded');
     expect(expandedMap?.getAttribute('aria-label')).toBe('Expanded execution cards');
+  });
+
+  it('navigates the collapsed deck with previous and next controls', () => {
+    const { rerender } = render(<AISectionReasoning {...createProps()} />);
+
+    const executionRegion = screen.getByRole('region', { name: 'Execution timeline' });
+    const previous = screen.getByRole('button', { name: 'Previous timeline card' });
+    const next = screen.getByRole('button', { name: 'Next timeline card' });
+    const selectedCardId = () =>
+      executionRegion.querySelector('[data-card-selected="true"]')?.getAttribute('data-card-id');
+
+    expect(selectedCardId()).toBe('plan-0');
+    expect(previous).not.toBeDisabled();
+    expect(next).not.toBeDisabled();
+
+    fireEvent.click(next);
+    expect(selectedCardId()).toBe('plan-1');
+
+    fireEvent.click(previous);
+    expect(selectedCardId()).toBe('plan-0');
+
+    fireEvent.click(previous);
+    fireEvent.click(previous);
+    fireEvent.click(previous);
+    expect(selectedCardId()).toBe('request');
+    expect(previous).toBeDisabled();
+
+    const lastNode = activity.nodes.at(-1);
+    if (!lastNode) throw new Error('Expected the fixture activity to have a result node.');
+    const latestActivity: AgentActivityState = {
+      ...activity,
+      nodes: [
+        ...activity.nodes,
+        {
+          ...lastNode,
+          id: 'latest',
+          label: 'Latest result',
+          status: 'active',
+          detail: 'The newest card is ready.',
+        },
+      ],
+      currentNodeId: 'latest',
+    };
+    rerender(<AISectionReasoning {...createProps({ activity: latestActivity })} />);
+    expect(selectedCardId()).toBe('latest');
+
+    const middleActivity: AgentActivityState = {
+      ...activity,
+      currentNodeId: 'plan-2',
+      nodes: activity.nodes.map((item) =>
+        item.id === 'plan-2'
+          ? { ...item, status: 'active' as const, detail: 'Validating the generated changes.' }
+          : item.id === 'plan-0'
+            ? { ...item, status: 'completed' as const }
+            : item,
+      ),
+    };
+    rerender(<AISectionReasoning {...createProps({ activity: middleActivity })} />);
+    expect(selectedCardId()).toBe('plan-2');
+    expect(executionRegion.querySelector('[data-card-id="plan-2"]')).toHaveAttribute(
+      'data-card-working',
+      'true',
+    );
+    expect(executionRegion.querySelector('li:last-child')).toHaveAttribute(
+      'data-card-id',
+      'plan-2',
+    );
+
+    const fallbackActivity: AgentActivityState = {
+      ...middleActivity,
+      currentNodeId: 'plan-2',
+      nodes: middleActivity.nodes.map((item) =>
+        item.id === 'plan-2'
+          ? { ...item, status: 'completed' as const }
+          : item.id === 'plan-1'
+            ? { ...item, status: 'active' as const }
+            : item,
+      ),
+    };
+    rerender(<AISectionReasoning {...createProps({ activity: fallbackActivity })} />);
+    expect(selectedCardId()).toBe('plan-1');
+    expect(executionRegion.querySelector('li:last-child')).toHaveAttribute(
+      'data-card-id',
+      'plan-1',
+    );
   });
 
   it('reveals stored step input/output only when enabled', () => {
@@ -240,6 +335,14 @@ describe('AISectionReasoning', () => {
     expect(
       nodes.find((node) => node.getAttribute('aria-current') === 'step'),
     ).not.toHaveTextContent('Read source');
+    expect(
+      executionRegion.querySelector('[data-card-selected="true"]')?.getAttribute('data-card-id'),
+    ).toBe('plan-1');
+    expect(
+      executionRegion
+        .querySelector('[data-card-id="plan-1"]')
+        ?.className.includes('executionNodeWorking'),
+    ).toBe(true);
   });
 
   it('renders completed and blocked map outcomes', () => {

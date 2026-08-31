@@ -466,12 +466,12 @@
 @supports (height: 1cqh) {
   .executionMapExpanded {
     --execution-card-width: max(140px, calc((100cqh - 93px) * 0.6667));
-    --execution-card-height: max(210px, calc(100cqh - 93px));
+    --execution-card-height: calc(var(--execution-card-width) * 1.5);
   }
 
   .executionMapCollapsed {
-    --execution-card-width: max(140px, calc((100cqh - 47px) * 0.6667));
-    --execution-card-height: max(210px, calc(100cqh - 47px));
+    --execution-card-width: max(140px, min(calc((100cqh - 47px) * 0.6667), calc(100cqw - 128px)));
+    --execution-card-height: calc(var(--execution-card-width) * 1.5);
   }
 }
 
@@ -544,8 +544,8 @@
   padding: 8px;
   background: linear-gradient(
       135deg,
-      color-mix(in srgb, var(--bg-surface) 55%, transparent),
-      transparent 58%
+      color-mix(in srgb, var(--bg-surface) 55%, var(--bg-input)),
+      var(--bg-input) 58%
     ), var(--bg-input);
   box-shadow: 0 9px 20px color-mix(in srgb, var(--text-main) 6%, transparent), var(--shadow-sm);
   transition: border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
@@ -762,7 +762,7 @@
 }
 
 .executionNodequeued {
-  opacity: 0.72;
+  opacity: 1;
 }
 
 .executionNodequeued .executionMarker {
@@ -998,6 +998,58 @@
   line-height: 1.4;
 }
 
+.executionDeck {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: stretch;
+  justify-content: center;
+  gap: 12px;
+  min-height: 0;
+  min-width: 0;
+}
+
+.executionDeckCollapsed {
+  align-items: stretch;
+}
+
+.deckNavButton {
+  display: grid;
+  align-self: center;
+  width: 36px;
+  height: 36px;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 1px solid var(--border-light);
+  border-radius: 50%;
+  color: var(--text-muted);
+  background: var(--bg-surface);
+  cursor: pointer;
+  transition: border-color 180ms ease, color 180ms ease, background 180ms ease, transform 180ms ease;
+}
+
+.deckNavTooltip {
+  display: flex;
+  align-self: center;
+  align-items: center;
+}
+
+.deckNavButton:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+.deckNavButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.36;
+}
+
+.deckNavButton:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-light);
+  transform: scale(1.06);
+}
+
 .executionMapCollapsed {
   display: grid;
   place-items: start center;
@@ -1018,10 +1070,16 @@
 
 .executionMapCollapsed :where(.executionNode) {
   grid-area: 1 / 1;
+  order: 0;
   display: block;
   width: var(--execution-card-width);
   margin: 0;
   transform: none;
+}
+
+.executionDeckCollapsed .executionMapCollapsed {
+  flex: 0 1 auto;
+  margin-inline: 0;
 }
 
 .executionMapCollapsed :where(.executionMarker) {
@@ -1039,6 +1097,16 @@
 
 .executionMapCollapsed :where(.executionNodeactive .executionCard) {
   transform: none;
+}
+
+.executionMapCollapsed :where(.executionNodeWorking) {
+  order: 10;
+  z-index: 40;
+}
+
+.executionMapCollapsed :where(.executionNodeSelected) {
+  order: 20;
+  z-index: 50;
 }
 
 .executionMapExpanded {
@@ -1183,6 +1251,15 @@
     width: var(--execution-card-width);
   }
 
+  .executionDeck {
+    gap: 8px;
+  }
+
+  .deckNavButton {
+    width: 32px;
+    height: 32px;
+  }
+
   .executionMapExpanded {
     --execution-card-width: clamp(120px, 34cqh, 180px);
     --execution-card-height: clamp(180px, 51cqh, 270px);
@@ -1211,12 +1288,12 @@
   @supports (height: 1cqh) {
     .executionMapExpanded {
       --execution-card-width: max(120px, calc((100cqh - 93px) * 0.6667));
-      --execution-card-height: max(180px, calc(100cqh - 93px));
+      --execution-card-height: calc(var(--execution-card-width) * 1.5);
     }
 
     .executionMapCollapsed {
-      --execution-card-width: max(120px, calc((100cqh - 47px) * 0.6667));
-      --execution-card-height: max(180px, calc(100cqh - 47px));
+      --execution-card-width: max(120px, min(calc((100cqh - 47px) * 0.6667), calc(100cqw - 128px)));
+      --execution-card-height: calc(var(--execution-card-width) * 1.5);
 
       height: auto;
       min-height: 0;
