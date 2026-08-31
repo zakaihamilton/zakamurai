@@ -829,6 +829,36 @@ function AgentExecutionMap({
     lastTimelineMode.current = timelineExpanded;
   }, [timelineExpanded]);
 
+  useLayoutEffect(() => {
+    if (!timelineExpanded || !workingCardId) return;
+
+    const executionMap = executionMapRef.current;
+    if (!executionMap) return;
+
+    const cards = Array.from(executionMap.querySelectorAll<HTMLElement>(':scope > [data-card-id]'));
+    const workingCard = cards.find((card) => card.dataset.cardId === workingCardId);
+    if (
+      !workingCard ||
+      executionMap.clientWidth <= 0 ||
+      executionMap.scrollWidth <= executionMap.clientWidth
+    ) {
+      return;
+    }
+
+    const mapRect = executionMap.getBoundingClientRect();
+    const cardRect = workingCard.getBoundingClientRect();
+    const maxScrollLeft = executionMap.scrollWidth - executionMap.clientWidth;
+    const centeredScrollLeft =
+      executionMap.scrollLeft +
+      (cardRect.left - mapRect.left) -
+      (executionMap.clientWidth - cardRect.width) / 2;
+    const nextScrollLeft = Math.min(Math.max(centeredScrollLeft, 0), maxScrollLeft);
+    if (Math.abs(nextScrollLeft - executionMap.scrollLeft) < 1) return;
+
+    const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches ?? false;
+    executionMap.scrollTo({ left: nextScrollLeft, behavior: reducedMotion ? 'auto' : 'smooth' });
+  }, [timelineExpanded, workingCardId]);
+
   useEffect(
     () => () => {
       for (const animation of cardAnimations.current) animation.cancel();

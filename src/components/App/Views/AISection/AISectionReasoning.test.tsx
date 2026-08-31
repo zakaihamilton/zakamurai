@@ -13,9 +13,11 @@ import { describe, expect, it, vi } from 'vitest';
 import AISectionReasoning, { getLiveExecutionInfo } from './AISectionReasoning';
 import type { ReasoningGroup } from './AISectionReasoning';
 
+const executionMapScrollTo = vi.fn();
+
 Object.defineProperty(HTMLElement.prototype, 'scrollTo', {
   configurable: true,
-  value: vi.fn(),
+  value: executionMapScrollTo,
 });
 
 const groups: ReasoningGroup[] = [
@@ -335,6 +337,31 @@ describe('AISectionReasoning', () => {
       .querySelector('ol');
     expect(expandedMap?.className).toContain('executionMapExpanded');
     expect(expandedMap?.getAttribute('aria-label')).toBe('Expanded execution cards');
+  });
+
+  it('scrolls the expanded timeline to the working card', () => {
+    executionMapScrollTo.mockClear();
+    const { rerender } = render(<AISectionReasoning {...createProps()} />);
+    const executionRegion = screen.getByRole('region', { name: 'Execution timeline' });
+    const executionMap = executionRegion.querySelector('ol');
+    const workingCard = executionRegion.querySelector('[data-card-id="plan-0"]');
+
+    if (!executionMap || !workingCard)
+      throw new Error('Expected the execution map and working card.');
+
+    Object.defineProperties(executionMap, {
+      clientWidth: { configurable: true, value: 320 },
+      scrollLeft: { configurable: true, value: 0, writable: true },
+      scrollWidth: { configurable: true, value: 1_000 },
+    });
+    Object.defineProperty(workingCard, 'getBoundingClientRect', {
+      configurable: true,
+      value: () => ({ left: 620, width: 280 }),
+    });
+
+    rerender(<AISectionReasoning {...createProps({ timelineExpanded: true })} />);
+
+    expect(executionMapScrollTo).toHaveBeenCalledWith({ left: 600, behavior: 'smooth' });
   });
 
   it('navigates the collapsed deck with previous and next controls', () => {

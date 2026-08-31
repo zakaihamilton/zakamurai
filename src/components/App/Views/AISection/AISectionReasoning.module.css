@@ -446,8 +446,8 @@
   min-height: 0;
   min-width: 0;
 
-  --execution-card-width: 280px;
-  --execution-card-height: 320px;
+  --execution-card-width: 340px;
+  --execution-card-height: 280px;
 
   margin: 0;
   border: 1px solid color-mix(in srgb, var(--accent) 18%, var(--border-light));
@@ -465,13 +465,13 @@
 
 @supports (height: 1cqh) {
   .executionMapExpanded {
-    --execution-card-width: max(190px, calc((100cqh - 93px) * 0.875));
-    --execution-card-height: calc(var(--execution-card-width) * 1.1429);
+    --execution-card-width: 340px;
+    --execution-card-height: calc(100cqh - 93px);
   }
 
   .executionMapCollapsed {
-    --execution-card-width: max(190px, min(calc((100cqh - 47px) * 0.875), calc(100cqw - 128px)));
-    --execution-card-height: calc(var(--execution-card-width) * 1.1429);
+    --execution-card-width: max(220px, min(340px, calc(100cqw - 128px)));
+    --execution-card-height: calc(100cqh - 47px);
   }
 }
 
@@ -536,7 +536,6 @@
   width: 100%;
   height: var(--execution-card-height);
   min-height: 0;
-  aspect-ratio: 7 / 8;
   min-width: 0;
   overflow: hidden;
   border: 1px solid color-mix(in srgb, var(--border-light) 92%, var(--accent));
@@ -1643,8 +1642,8 @@
   }
 
   .executionMapExpanded {
-    --execution-card-width: clamp(144px, 46.667cqh, 252px);
-    --execution-card-height: clamp(168px, 53.333cqh, 288px);
+    --execution-card-width: 300px;
+    --execution-card-height: calc(100cqh - 93px);
   }
 
   .executionMapExpanded .executionCard,
@@ -1683,8 +1682,8 @@
   }
 
   .executionMapCollapsed {
-    --execution-card-width: clamp(144px, 46.667cqh, 252px);
-    --execution-card-height: clamp(168px, 53.333cqh, 288px);
+    --execution-card-width: max(168px, min(300px, calc(100cqw - 112px)));
+    --execution-card-height: calc(100cqh - 47px);
 
     width: min(100%, calc(var(--execution-card-width) + 32px));
     height: calc(var(--execution-card-height) + 45px);
@@ -1693,13 +1692,13 @@
 
   @supports (height: 1cqh) {
     .executionMapExpanded {
-      --execution-card-width: max(144px, calc((100cqh - 93px) * 0.875));
-      --execution-card-height: calc(var(--execution-card-width) * 1.1429);
+      --execution-card-width: 300px;
+      --execution-card-height: calc(100cqh - 93px);
     }
 
     .executionMapCollapsed {
-      --execution-card-width: max(144px, min(calc((100cqh - 47px) * 0.875), calc(100cqw - 112px)));
-      --execution-card-height: calc(var(--execution-card-width) * 1.1429);
+      --execution-card-width: max(168px, min(300px, calc(100cqw - 112px)));
+      --execution-card-height: calc(100cqh - 47px);
 
       height: auto;
       min-height: 0;
