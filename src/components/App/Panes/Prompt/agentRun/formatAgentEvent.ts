@@ -15,10 +15,31 @@ const changedPaths = (changes: AgentChange[] = []): string[] => [
   ),
 ];
 
+const formatFinishedLine = (
+  message: string | undefined,
+  changes: AgentChange[] | undefined,
+  rolePrefix = '',
+): string => {
+  const paths = changedPaths(changes);
+  return `${rolePrefix}**Ready for review:** ${message || 'Agent finished.'}${
+    paths.length
+      ? `\n\n**Changed files (${paths.length}):** ${paths.map(quoteDetail).join(', ')}`
+      : ''
+  }`;
+};
+
 export const formatAgentEvent: AgentEventFormatter = (event) => {
   const managerEvent = event as ManagerEvent;
   const legacy = event as AgentEvent;
-  if ('agentRole' in legacy || 'action' in legacy) {
+  if (legacy.type === 'finished' || managerEvent.type === 'finished') {
+    const role = legacy.agentRole ? `**${legacy.agentRole}** · ` : '';
+    return formatFinishedLine(
+      legacy.message || managerEvent.message,
+      legacy.changes ?? managerEvent.changes,
+      role,
+    );
+  }
+  if (legacy.agentRole || legacy.action != null) {
     const role = legacy.agentRole ? `**${legacy.agentRole}** · ` : '';
     if (legacy.type === 'thinking')
       return `${role}**Step ${legacy.turn}:** ${legacy.message || 'thinking…'}`;
@@ -31,14 +52,6 @@ export const formatAgentEvent: AgentEventFormatter = (event) => {
       const action =
         typeof legacy.action === 'string' ? legacy.action : legacy.action?.action || '';
       return `${role}\`${action}\` ${legacy.error ? 'failed' : 'completed'}${legacy.message ? ` — ${legacy.message}` : ''}`;
-    }
-    if (legacy.type === 'finished') {
-      const paths = changedPaths(legacy.changes);
-      return `${role}**Ready for review:** ${legacy.message || 'Agent finished.'}${
-        paths.length
-          ? `\n\n**Changed files (${paths.length}):** ${paths.map(quoteDetail).join(', ')}`
-          : ''
-      }`;
     }
   }
   if (managerEvent.type === 'routing') {
@@ -55,17 +68,6 @@ export const formatAgentEvent: AgentEventFormatter = (event) => {
   }
   if (managerEvent.type === 'validation') {
     return `**Validation:** ${managerEvent.message || 'Checking the proposed changes.'}`;
-  }
-  if (managerEvent.type === 'finished') {
-    return `**Ready:** ${managerEvent.message || 'The manager finished.'}`;
-  }
-  if (legacy.type === 'finished') {
-    const paths = changedPaths(legacy.changes);
-    return `**Ready for review:** ${legacy.message || 'Agent finished.'}${
-      paths.length
-        ? `\n\n**Changed files (${paths.length}):** ${paths.map(quoteDetail).join(', ')}`
-        : ''
-    }`;
   }
   return legacy.message || '';
 };

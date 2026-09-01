@@ -5,6 +5,7 @@ import {
   validateContentSyntax,
   validateCssContentSafety,
   validateCssModuleUsage,
+  validateDeclaredStateVariables,
   validateFileContentType,
   validateGeneratedPlaceholder,
   validateRequestFulfillment,
@@ -68,6 +69,8 @@ export function assertStagedFileContent({
   }
   const cssSafetyError = validateCssContentSafety(path, content);
   if (cssSafetyError) throw new Error(cssSafetyError);
+  const stateVarError = validateDeclaredStateVariables(path, content);
+  if (stateVarError) throw new Error(stateVarError);
   const syntaxError = validateContentSyntax(path, content);
   if (syntaxError) throw new Error(syntaxError);
 }

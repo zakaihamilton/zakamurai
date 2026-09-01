@@ -89,12 +89,13 @@ describe('applyAgentChanges', () => {
     });
     const logState = createLogStateMock({ logs: [] });
 
-    const { applied } = applyAgentChanges(
+    const { applied, rejected } = applyAgentChanges(
       [{ path: '../App.js', before: 'const a = 1;\n', after: 'const a = 2;\n' }],
       { editorState, logState },
     );
 
     expect(applied).toBe(0);
+    expect(rejected.length).toBeGreaterThan(0);
     expect(editorState.fileContents?.['src/App.js']).toBe('const a = 1;\n');
   });
 
@@ -140,6 +141,137 @@ describe('applyAgentChanges', () => {
     expect(changeSetState).not.toHaveBeenCalled();
     expect(editorState.fileContents?.['src/App.js']).toContain('function App');
     expect(editorState.pendingDiffs).toEqual({});
+  });
+
+  it('auto-approves welcome writes into fileContents including new CSS Modules', () => {
+    const starter = `export default function App() {
+  return (
+    <div>
+      <h1>New Project</h1>
+      <p>Start coding here...</p>
+    </div>
+  );
+}`;
+    const clock = `import { useState } from "react";
+import styles from "./App.module.css";
+export default function App() {
+  const [time, setTime] = useState("00:00");
+  const start = () => {
+    setInterval(() => setTime("01:00"), 1000);
+  };
+  return (
+    <main className={styles.app}>
+      <h1 className={styles.title}>Round Clock</h1>
+      <button className={styles.primaryAction} type="button" onClick={start}>Start</button>
+    </main>
+  );
+}`;
+    const editorState = createEditorStateMock({
+      fileContents: { 'src/App.jsx': starter, 'src/main.jsx': 'import App from "./App";' },
+      pendingDiffs: {},
+      cursorPos: {},
+    });
+    const tree: SidebarStateDraft = {
+      folderTree: [
+        {
+          name: 'src',
+          type: 'folder',
+          children: [
+            { name: 'App.jsx', type: 'file' },
+            { name: 'main.jsx', type: 'file' },
+          ],
+        },
+      ],
+    };
+    const sidebarState = createSidebarStateMock(tree);
+
+    const { applied } = applyAgentChanges(
+      [
+        { path: 'src/App.jsx', before: starter, after: clock },
+        { path: 'src/App.module.css', before: undefined, after: '.app { display: grid; }\n' },
+      ],
+      { editorState, sidebarState, autoApprove: true },
+    );
+
+    expect(applied).toBe(2);
+    expect(editorState.fileContents?.['src/App.jsx']).toContain('Round Clock');
+    expect(editorState.fileContents?.['src/App.module.css']).toContain('.app');
+    expect(editorState.pendingDiffs).toEqual({});
+    const srcNode = tree.folderTree?.find((node) => node.name === 'src');
+    expect(srcNode?.children?.some((child) => child.name === 'App.module.css')).toBe(true);
+  });
+
+  it('does not auto-approve any files when a sibling write is rejected', () => {
+    const starter = `export default function App() {
+  return (
+    <div>
+      <h1>New Project</h1>
+    </div>
+  );
+}`;
+    const invalidApp = `import { useState } from "react";
+import styles from "./App.module.css";
+export default function App() {
+  const [todos, setTodos] = useState([]);
+  return <button className={styles.primaryAction} type="button" onClick={() => setNewTodo('')}>Add</button>;
+}`;
+    const editorState = createEditorStateMock({
+      fileContents: { 'src/App.jsx': starter },
+      pendingDiffs: {},
+      cursorPos: {},
+    });
+    const sidebarState = createSidebarStateMock({
+      folderTree: [{ name: 'src', type: 'folder', children: [{ name: 'App.jsx', type: 'file' }] }],
+    });
+
+    const { applied, rejected } = applyAgentChanges(
+      [
+        { path: 'src/App.jsx', before: starter, after: invalidApp },
+        {
+          path: 'src/App.module.css',
+          before: undefined,
+          after: '.primaryAction { color: black; }\n',
+        },
+      ],
+      { editorState, sidebarState, autoApprove: true },
+    );
+
+    expect(applied).toBe(0);
+    expect(rejected.some((text) => /setNewTodo/.test(text))).toBe(true);
+    expect(editorState.fileContents?.['src/App.jsx']).toBe(starter);
+    expect(editorState.fileContents?.['src/App.module.css']).toBeUndefined();
+  });
+
+  it('stages accepted review writes when a sibling change is rejected', () => {
+    const starter = 'export default function App() { return null; }\n';
+    const validApp = `import styles from "./App.module.css";
+export default function App() { return <main className={styles.app} />; }
+`;
+    const invalidHelper = `import { useState } from "react";
+export default function Form() {
+  const [todos, setTodos] = useState([]);
+  return <button type="button" onClick={() => setNewTodo('')}>Add</button>;
+}`;
+    const editorState = createEditorStateMock({
+      fileContents: { 'src/App.jsx': starter },
+      pendingDiffs: {},
+      cursorPos: {},
+    });
+    const changeSetState = makeChangeSetState({ items: [], activeId: null });
+
+    const { applied, rejected, changeSet } = applyAgentChanges(
+      [
+        { path: 'src/App.jsx', before: starter, after: validApp },
+        { path: 'src/Form.jsx', before: undefined, after: invalidHelper },
+      ],
+      { editorState, changeSetState },
+    );
+
+    expect(rejected.some((text) => /setNewTodo/.test(text))).toBe(true);
+    expect(applied).toBe(1);
+    expect(changeSet?.files.some((file) => file.path === 'src/App.jsx')).toBe(true);
+    expect(editorState.fileContents?.['src/App.jsx']).toContain('styles.app');
+    expect(editorState.fileContents?.['src/Form.jsx']).toBeUndefined();
   });
 
   it('ensureFileInTree immutably updates folderTree and auto-expands parent directories', () => {

@@ -8,9 +8,7 @@
     "src/App.jsx": "export default function App() { return null; }"
   },
   "modelResponses": [
-    "```jsx\nimport { useState } from 'react';\nimport styles from './App.module.css';\n\nexport default function App() {\n  const [notes, setNotes] = useState([]);\n  const [draft, setDraft] = useState('');\n  const addNote = (event) => {\n    event.preventDefault();\n    const value = draft.trim();\n    if (!value) return;\n    setNotes((current) => [...current, value]);\n    setDraft('');\n  };\n  return <main className={styles.app}><section className={styles.shell}><h1 className={styles.title}>Notes</h1><form className={styles.field} onSubmit={addNote}><label className={styles.label} htmlFor=\"note\">New note</label><input id=\"note\" className={styles.control} value={draft} onChange={(event) => setDraft(event.target.value)} /><button className={styles.primaryAction} type=\"submit\">Add note</button></form>{notes.length ? <ul className={styles.list}>{notes.map((note) => <li className={styles.item} key={note}>{note}</li>)}</ul> : <p className={styles.muted}>No notes yet.</p>}</section></main>;\n}\n```",
-    "{\"action\":\"validate\"}",
-    "{\"action\":\"finish\",\"summary\":\"Created and visually verified an interactive notes app\"}"
+    "```jsx\nimport { useState } from 'react';\nimport styles from './App.module.css';\n\nexport default function App() {\n  const [notes, setNotes] = useState([]);\n  const [draft, setDraft] = useState('');\n  const addNote = (event) => {\n    event.preventDefault();\n    const value = draft.trim();\n    if (!value) return;\n    setNotes((current) => [...current, value]);\n    setDraft('');\n  };\n  return <main className={styles.app}><section className={styles.shell}><h1 className={styles.title}>Notes</h1><form className={styles.field} onSubmit={addNote}><label className={styles.label} htmlFor=\"note\">New note</label><input id=\"note\" className={styles.control} value={draft} onChange={(event) => setDraft(event.target.value)} /><button className={styles.primaryAction} type=\"submit\">Add note</button></form>{notes.length ? <ul className={styles.list}>{notes.map((note) => <li className={styles.item} key={note}>{note}</li>)}</ul> : <p className={styles.muted}>No notes yet.</p>}</section></main>;\n}\n```"
   ],
   "validationResponses": [{ "status": "passed", "check": "build" }],
   "previewResponse": {
@@ -31,7 +29,7 @@
   "expected": {
     "intent": "edit",
     "outcome": "success",
-    "modelCalls": 3,
-    "toolOrder": ["read_file", "validate", "inspect_preview"]
+    "modelCalls": 1,
+    "toolOrder": ["read_file", "inspect_preview", "validate"]
   }
 }

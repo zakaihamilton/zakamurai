@@ -193,6 +193,7 @@ export type ManagerEvent = {
   provenance?: 'model' | 'recovery';
   plan?: ManagerPlan;
   protocolStatus?: 'request-sent' | 'response-received' | 'valid' | 'invalid';
+  changes?: AgentChange[];
 };
 
 export type ManagerEventHandler = (event: ManagerEvent) => void;
@@ -576,6 +577,7 @@ export type ApplyAgentChangesStates = {
 export type ApplyAgentChangesResult = {
   applied: number;
   deletions: Array<{ path: string; before: string }>;
+  rejected: string[];
   changeSet?: ReturnType<typeof import('@/components/Workspace/ChangeSets').createChangeSet> | null;
 };
 

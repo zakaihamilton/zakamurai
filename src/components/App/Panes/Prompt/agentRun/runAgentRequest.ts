@@ -168,9 +168,39 @@ export async function runAgentRequest({
       stillProcessing = draft.isAIProcessing;
     });
     if (!stillProcessing) return;
-    const summaryText = `[AI Manager]: ${result.summary || `Prepared ${result.changes.length} file(s) for review.`}`;
-    runState.completeActivity('success', result.summary || 'The manager finished successfully.');
-    patchSession(sessionId, { status: 'idle' });
+    const {
+      applied,
+      deletions,
+      changeSet,
+      rejected = [],
+    } = applyAgentChanges(result.changes, {
+      editorState: editorState as never,
+      sidebarState: sidebarState as never,
+      logState: logState as never,
+      changeSetState: changeSetState as never,
+      request: userMsg,
+      autoApprove: shouldAutoApprove,
+    });
+    const stagedAnything = applied > 0 || Boolean(changeSet) || deletions.length > 0;
+    const applyFailed = rejected.length > 0 && (shouldAutoApprove || !stagedAnything);
+    if (rejected.length) {
+      runState.appendReasoning(
+        applyFailed
+          ? `**Apply rejected:** staged files were not written to the editor. ${rejected.join(' ')}`
+          : `**Apply rejected:** omitted from the change set. ${rejected.join(' ')}`,
+      );
+    }
+
+    const summaryText = applyFailed
+      ? `[AI Manager]: Staged changes were not written to the editor. ${rejected.join(' ')}`
+      : `[AI Manager]: ${result.summary || `Prepared ${result.changes.length} file(s) for review.`}`;
+    runState.completeActivity(
+      applyFailed ? 'error' : 'success',
+      applyFailed
+        ? `Staged changes were not written to the editor. ${rejected.join(' ')}`
+        : result.summary || 'The manager finished successfully.',
+    );
+    patchSession(sessionId, { status: applyFailed ? 'error' : 'idle' });
     pushSessionMessage(sessionId, createSessionMessage({ role: 'ai', text: summaryText }));
     promptUiState((draft) => {
       draft.runningSessionId = null;
@@ -189,15 +219,7 @@ export async function runAgentRequest({
       draft.isAIProcessing = false;
     });
 
-    const { applied, deletions, changeSet } = applyAgentChanges(result.changes, {
-      editorState: editorState as never,
-      sidebarState: sidebarState as never,
-      logState: logState as never,
-      changeSetState: changeSetState as never,
-      request: userMsg,
-      autoApprove: shouldAutoApprove,
-    });
-    if (isWelcomePrompt || (autoApproveInitialProject && applied > 0)) {
+    if (!applyFailed && (isWelcomePrompt || (autoApproveInitialProject && applied > 0))) {
       runState.appendReasoning(
         isWelcomePrompt
           ? '**Welcome project ready:** starting the first build now…'

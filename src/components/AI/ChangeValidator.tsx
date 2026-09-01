@@ -354,6 +354,13 @@ export function validateRequestFulfillment(
   return validateStatefulCallbackScope(content);
 }
 
+const PLATFORM_SCHEDULE_APIS = new Set(['setInterval', 'setTimeout', 'setImmediate']);
+
+function isMemberCall(source: string, index: number): boolean {
+  const prefix = source.slice(Math.max(0, index - 2), index);
+  return prefix.endsWith('.') || prefix.endsWith('?.');
+}
+
 /** Ensures referenced React state setters have a co-located useState declaration. */
 export function validateDeclaredStateVariables(path: string, content: string): string | null {
   if (!/\.(jsx|tsx)$/i.test(path) || typeof content !== 'string') return null;
@@ -373,11 +380,17 @@ export function validateDeclaredStateVariables(path: string, content: string): s
   const setterUsages = clean.matchAll(/\b(set[A-Z][A-Za-z0-9_$]*)\s*\(/g);
   for (const match of setterUsages) {
     const setterName = match[1];
-    if (!declaredSetters.has(setterName)) {
-      const stateVarName = setterName.slice(3, 4).toLowerCase() + setterName.slice(4);
-      if (!declaredStateVars.has(stateVarName)) {
-        return `Undeclared state setter '${setterName}' in ${path}. Declare const [${stateVarName}, ${setterName}] = useState(...) inside the component.`;
-      }
+    const index = match.index ?? 0;
+    if (
+      PLATFORM_SCHEDULE_APIS.has(setterName) ||
+      declaredSetters.has(setterName) ||
+      isMemberCall(clean, index)
+    ) {
+      continue;
+    }
+    const stateVarName = setterName.slice(3, 4).toLowerCase() + setterName.slice(4);
+    if (!declaredStateVars.has(stateVarName)) {
+      return `Undeclared state setter '${setterName}' in ${path}. Declare const [${stateVarName}, ${setterName}] = useState(...) inside the component.`;
     }
   }
 

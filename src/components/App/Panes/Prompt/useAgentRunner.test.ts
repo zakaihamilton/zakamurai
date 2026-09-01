@@ -221,7 +221,18 @@ describe('formatAgentEvent', () => {
           { path: 'src/App.module.css', after: 'next' },
         ],
       }),
-    ).toContain('**Ready:** Updated the page.');
+    ).toContain('**Changed files (2):**');
+    expect(
+      formatAgentEvent({
+        type: 'finished',
+        turn: 3,
+        message: 'Updated the page.',
+        changes: [
+          { path: 'src/App.jsx', after: 'next' },
+          { path: 'src/App.module.css', after: 'next' },
+        ],
+      }),
+    ).toContain('**Ready for review:** Updated the page.');
   });
 
   it('uses the finished fallback message when summary is missing', () => {
@@ -313,6 +324,168 @@ describe('useAgentRunner', () => {
       'session-1',
       expect.objectContaining({
         reasoning: expect.stringContaining('Welcome project ready'),
+      }),
+    );
+  });
+
+  it('does not compile a welcome project when apply rejects staged files', async () => {
+    const appState = makeAppState({ compileRequest: 0 });
+    vi.mocked(AppState.usePassiveState).mockReturnValue(appState);
+    applyAgentChanges.mockReturnValue({
+      applied: 0,
+      deletions: [],
+      changeSet: null,
+      rejected: ["Undeclared state setter 'setInterval' in src/App.jsx."],
+    });
+    const props = createRunnerProps({
+      editorState: createMockEditorState({
+        fileContents: { 'src/App.jsx': 'starter app' },
+        selectedLines: {},
+      }),
+      sidebarState: makeSidebarState({
+        folderTree: [{ name: 'src', type: 'folder', path: ['src'], children: [] }],
+      }),
+    });
+    const { result } = renderHook(() => useAgentRunner(props));
+
+    act(() => {
+      result.current.send(null, 'welcome build', 'project', true);
+    });
+
+    await waitFor(() => expect(applyAgentChanges).toHaveBeenCalled());
+    expect(appState.compileRequest).toBe(0);
+    expect(props.patchSession).toHaveBeenCalledWith(
+      'session-1',
+      expect.objectContaining({
+        reasoning: expect.stringContaining('Apply rejected'),
+      }),
+    );
+    expect(props.pushSessionMessage).toHaveBeenCalledWith(
+      'session-1',
+      expect.objectContaining({
+        text: expect.stringContaining('not written to the editor'),
+      }),
+    );
+    expect(props.patchSession).toHaveBeenCalledWith('session-1', { status: 'error' });
+  });
+
+  it('starts the welcome build when apply has no files and no rejections', async () => {
+    const appState = makeAppState({ compileRequest: 0 });
+    vi.mocked(AppState.usePassiveState).mockReturnValue(appState);
+    applyAgentChanges.mockReturnValue({ applied: 0, deletions: [], changeSet: null, rejected: [] });
+    const props = createRunnerProps({
+      editorState: createMockEditorState({
+        fileContents: { 'src/App.jsx': 'starter app' },
+        selectedLines: {},
+      }),
+    });
+    const { result } = renderHook(() => useAgentRunner(props));
+
+    act(() => {
+      result.current.send(null, 'welcome build', 'project', true);
+    });
+
+    await waitFor(() => expect(appState.compileRequest).toBe(1));
+    expect(props.patchSession).toHaveBeenCalledWith(
+      'session-1',
+      expect.objectContaining({
+        reasoning: expect.stringContaining('Welcome project ready'),
+      }),
+    );
+  });
+
+  it('keeps review success when some staged files are omitted', async () => {
+    applyAgentChanges.mockReturnValue({
+      applied: 1,
+      deletions: [],
+      changeSet: { id: 'cs-1' },
+      rejected: ["Undeclared state setter 'setNewTodo' in src/Form.jsx."],
+    });
+    const props = createRunnerProps({
+      editorState: createMockEditorState({
+        fileContents: { 'app.js': 'existing' },
+        selectedLines: {},
+      }),
+    });
+    const { result } = renderHook(() => useAgentRunner(props));
+
+    act(() => {
+      result.current.send(mockFormEvent());
+    });
+
+    await waitFor(() => expect(applyAgentChanges).toHaveBeenCalled());
+    expect(
+      (
+        applyAgentChanges as unknown as {
+          mock: { calls: Array<[unknown, Record<string, unknown>]> };
+        }
+      ).mock.calls[0][1],
+    ).toMatchObject({ autoApprove: false });
+    expect(props.patchSession).toHaveBeenCalledWith(
+      'session-1',
+      expect.objectContaining({
+        reasoning: expect.stringContaining('omitted from the change set'),
+      }),
+    );
+    expect(props.pushSessionMessage).toHaveBeenCalledWith(
+      'session-1',
+      expect.objectContaining({
+        text: '[AI Manager]: single done',
+      }),
+    );
+    expect(props.pushSessionMessage).toHaveBeenCalledWith(
+      'session-1',
+      expect.objectContaining({
+        text: 'Change set cs-1 is ready for review.',
+      }),
+    );
+    expect(props.pushSessionMessage).not.toHaveBeenCalledWith(
+      'session-1',
+      expect.objectContaining({
+        text: expect.stringContaining('not written to the editor'),
+      }),
+    );
+    expect(props.patchSession).toHaveBeenCalledWith('session-1', { status: 'idle' });
+  });
+
+  it('fails review apply when every staged file is rejected', async () => {
+    applyAgentChanges.mockReturnValue({
+      applied: 0,
+      deletions: [],
+      changeSet: null,
+      rejected: ["Undeclared state setter 'setNewTodo' in src/Form.jsx."],
+    });
+    const props = createRunnerProps({
+      editorState: createMockEditorState({
+        fileContents: { 'app.js': 'existing' },
+        selectedLines: {},
+      }),
+    });
+    const { result } = renderHook(() => useAgentRunner(props));
+
+    act(() => {
+      result.current.send(mockFormEvent());
+    });
+
+    await waitFor(() => expect(applyAgentChanges).toHaveBeenCalled());
+    expect(
+      (
+        applyAgentChanges as unknown as {
+          mock: { calls: Array<[unknown, Record<string, unknown>]> };
+        }
+      ).mock.calls[0][1],
+    ).toMatchObject({ autoApprove: false });
+    expect(props.patchSession).toHaveBeenCalledWith('session-1', { status: 'error' });
+    expect(props.pushSessionMessage).toHaveBeenCalledWith(
+      'session-1',
+      expect.objectContaining({
+        text: expect.stringContaining('not written to the editor'),
+      }),
+    );
+    expect(props.pushSessionMessage).not.toHaveBeenCalledWith(
+      'session-1',
+      expect.objectContaining({
+        text: expect.stringContaining('Change set'),
       }),
     );
   });

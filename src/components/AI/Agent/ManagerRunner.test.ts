@@ -793,4 +793,53 @@ describe('runManager', () => {
       { path: 'src/old.js', before: 'export const old = true;', after: undefined },
     ]);
   });
+
+  it('forwards staged file changes on the finished event for welcome fence writes', async () => {
+    const clockSource = `import { useState } from 'react';
+import './App.css';
+
+export default function App() {
+  const [time, setTime] = useState('00:00');
+  const [isRunning, setIsRunning] = useState(false);
+  const startClock = () => {
+    setIsRunning(true);
+    setTime('12:00');
+  };
+  return (
+    <div className="app">
+      <h1>Round Clock</h1>
+      <p>{time}</p>
+      <button className="primaryAction" type="button" onClick={startClock} disabled={isRunning}>
+        Start
+      </button>
+    </div>
+  );
+}`;
+    const modelClient = vi.fn().mockResolvedValueOnce(`\`\`\`jsx\n${clockSource}\n\`\`\``);
+    const events: Array<{ type?: string; changes?: Array<{ path?: string }> }> = [];
+    const result = await runManager({
+      request: 'create a analog round clock app',
+      files: {
+        'src/App.jsx':
+          'export default function App() {\n  return (\n    <div>\n      <h1>New Project</h1>\n      <p>Start coding here...</p>\n    </div>\n  );\n}',
+        'src/main.jsx': 'import App from "./App";',
+        'package.json': '{"name":"new-project"}',
+      },
+      model: 'Qwen2.5-Coder-1.5B-Instruct-q4f16_1-MLC',
+      modelClient,
+      validate: vi.fn().mockResolvedValue({ status: 'unavailable', check: 'build' }),
+      inspectPreview: vi.fn().mockResolvedValue({
+        status: 'passed',
+        elements: ['h1: Round Clock', 'button: Start'],
+        screenshotCaptured: true,
+      }),
+      onEvent: (event) => events.push(event),
+    });
+
+    expect(result.files['src/App.jsx']).toContain('Round Clock');
+    expect(result.files['src/App.jsx']).not.toContain('New Project');
+    expect(result.changes.some((change) => change.path === 'src/App.jsx')).toBe(true);
+    const finished = events.find((event) => event.type === 'finished');
+    expect(finished?.changes?.some((change) => change.path === 'src/App.jsx')).toBe(true);
+  });
 });

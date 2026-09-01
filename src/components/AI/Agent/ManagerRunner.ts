@@ -312,6 +312,7 @@ async function executeManager({
           actionName && managerTools.has(actionName as ManagerToolName)
             ? (actionName as ManagerToolName)
             : undefined;
+        const optionalAction = action == null ? {} : { action };
         if (event.type === 'model_io') {
           onEvent({
             type: 'model',
@@ -320,7 +321,7 @@ async function executeManager({
             input: event.input,
             output: event.output,
             message: 'Local model action exchange completed.',
-            action,
+            ...optionalAction,
             provenance: event.provenance,
           });
         } else if (event.type === 'tool') {
@@ -328,7 +329,7 @@ async function executeManager({
             type: 'tool',
             turn: event.turn,
             tool,
-            action,
+            ...optionalAction,
             message: actionName ? `Running ${actionName}…` : event.message,
             provenance: event.provenance,
             error: event.error,
@@ -338,7 +339,7 @@ async function executeManager({
             type: 'context',
             turn: event.turn,
             tool,
-            action,
+            ...optionalAction,
             message: event.message,
             output: event.output,
             provenance: event.provenance,
@@ -348,7 +349,8 @@ async function executeManager({
           onEvent({
             type: 'finished',
             turn: event.turn,
-            action,
+            ...optionalAction,
+            changes: event.changes,
             message: event.message,
             provenance: event.provenance,
           });
@@ -357,7 +359,7 @@ async function executeManager({
             type: 'model',
             turn: event.turn,
             task: 'generate-changes',
-            action,
+            ...optionalAction,
             message: event.message,
             replaceProgress: event.replaceProgress,
             provenance: event.provenance,

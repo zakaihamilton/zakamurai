@@ -105,7 +105,7 @@ export function applyAgentChanges(
   }: ApplyAgentChangesStates,
 ): ApplyAgentChangesResult {
   if (!Array.isArray(changes) || !editorState) {
-    return { applied: 0, deletions: [] };
+    return { applied: 0, deletions: [], rejected: [] };
   }
 
   const existingPaths = Object.keys(
@@ -135,6 +135,9 @@ export function applyAgentChanges(
         })),
       ]);
     });
+  }
+  if (autoApprove && validation.rejected.length > 0) {
+    return { applied: 0, deletions: [], changeSet: null, rejected: validation.rejected };
   }
   const writes = validChanges
     .filter((change) => change.after !== undefined)
@@ -223,5 +226,5 @@ export function applyAgentChanges(
     });
   }
 
-  return { applied, deletions, changeSet };
+  return { applied, deletions, changeSet, rejected: validation.rejected };
 }

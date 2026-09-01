@@ -693,4 +693,23 @@ export default function App() {
 }`;
     expect(validateDeclaredStateVariables('src/App.jsx', valid)).toBeNull();
   });
+
+  it('does not treat timer APIs or object methods as React state setters', () => {
+    const withTimers = `import { useState } from 'react';
+export default function App() {
+  const [time, setTime] = useState('00:00');
+  const [isRunning, setIsRunning] = useState(false);
+  const startClock = () => {
+    setIsRunning(true);
+    const intervalId = setInterval(() => {
+      const now = new Date();
+      now.setHours(0);
+      window.setTimeout(() => setTime('01:00'), 0);
+    }, 1000);
+    return () => clearInterval(intervalId);
+  };
+  return <button onClick={startClock}>{time}</button>;
+}`;
+    expect(validateDeclaredStateVariables('src/App.jsx', withTimers)).toBeNull();
+  });
 });

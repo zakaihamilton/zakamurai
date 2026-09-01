@@ -1,7 +1,10 @@
+import { createEditorStateMock, createSidebarStateMock } from '@/test-utils/agentMocks';
 import { type Mock, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { validateAIChanges } from '../ChangeValidator';
 import { bindWebLLMStore } from '../WebLLMState';
 import type { AgentEvent, AskWebLLM } from '../types';
 import { runActionLoop } from './ActionLoop';
+import { applyAgentChanges } from './Applier';
 
 vi.mock('../WebLLMAPI', () => ({ askWebLLM: vi.fn() }));
 
@@ -2975,5 +2978,107 @@ export default function App() {
     expect(result.files['src/App.jsx']).toContain('Todo App');
     expect(result.files['src/App.jsx']).toContain('styles.button');
     expect(validate).toHaveBeenCalledOnce();
+  });
+
+  it('stages a 1.5B fence-only clock write into App.jsx and a host CSS Module', async () => {
+    const clockSource = `import React, { useState } from 'react';
+import './App.css';
+
+function App() {
+  const [time, setTime] = useState('00:00');
+  const [isRunning, setIsRunning] = useState(false);
+
+  const startClock = () => {
+    setIsRunning(true);
+    const intervalId = setInterval(() => {
+      const now = new Date();
+      const hours = String(now.getHours()).padStart(2, '0');
+      const minutes = String(now.getMinutes()).padStart(2, '0');
+      setTime(\`\${hours}:\${minutes}\`);
+    }, 1000);
+    return () => clearInterval(intervalId);
+  };
+
+  const stopClock = () => {
+    setIsRunning(false);
+  };
+
+  return (
+    <div className="app">
+      <h1>Round Clock</h1>
+      <div className="clock">
+        <div className="hours">{time.split(':')[0]}</div>
+        <div className="separator">:</div>
+        <div className="minutes">{time.split(':')[1]}</div>
+      </div>
+      <button onClick={startClock} className="primaryAction" disabled={isRunning}>
+        Start
+      </button>
+      <button onClick={stopClock} className="secondaryAction" disabled={!isRunning}>
+        Stop
+      </button>
+    </div>
+  );
+}
+
+export default App;`;
+    askWebLLM.mockResolvedValueOnce(`\`\`\`jsx\n${clockSource}\n\`\`\``);
+    const validate = vi.fn().mockResolvedValue({ status: 'unavailable', check: 'build' });
+
+    const result = await runActionLoop({
+      request: 'create a analog round clock app',
+      files: {
+        'src/main.jsx':
+          'import React from "react";\nimport ReactDOM from "react-dom/client";\nimport App from "./App";\n',
+        'src/App.jsx':
+          'export default function App() {\n  return (\n    <div>\n      <h1>New Project</h1>\n      <p>Start coding here...</p>\n    </div>\n  );\n}',
+        'package.json': '{"name":"new-project","dependencies":{"react":"^19.0.0"}}',
+      },
+      model: 'Qwen2.5-Coder-1.5B-Instruct-q4f16_1-MLC',
+      validate,
+      priorContext: '[list_files]\nsrc/App.jsx\n[read_file]\nexisting starter',
+    });
+
+    expect(result.changes.map((change) => change.path).sort()).toEqual(
+      expect.arrayContaining(['src/App.jsx', 'src/App.module.css']),
+    );
+    expect(result.files['src/App.jsx']).toContain('Round Clock');
+    expect(result.files['src/App.jsx']).not.toContain('New Project');
+    expect(result.files['src/App.jsx']).toContain('App.module.css');
+    expect(result.files['src/App.module.css']).toMatch(/\.app\s*\{/);
+
+    const appChange = result.changes.find((change) => change.path === 'src/App.jsx');
+    expect(validateAIChanges(result.changes).rejected).toEqual([]);
+    const starterApp = appChange?.before;
+    const editorState = createEditorStateMock({
+      fileContents: {
+        'src/App.jsx': starterApp || '',
+        'src/main.jsx': 'import App from "./App";',
+        'package.json': '{"name":"new-project"}',
+      },
+      pendingDiffs: {},
+      cursorPos: {},
+    });
+    const sidebarState = createSidebarStateMock({
+      folderTree: [
+        {
+          name: 'src',
+          type: 'folder',
+          children: [
+            { name: 'App.jsx', type: 'file' },
+            { name: 'main.jsx', type: 'file' },
+          ],
+        },
+      ],
+    });
+    const { applied, rejected } = applyAgentChanges(result.changes, {
+      editorState,
+      sidebarState,
+      autoApprove: true,
+    });
+    expect(rejected).toEqual([]);
+    expect(applied).toBeGreaterThanOrEqual(2);
+    expect(editorState.fileContents?.['src/App.jsx']).toContain('Round Clock');
+    expect(editorState.fileContents?.['src/App.module.css']).toMatch(/\.app\s*\{/);
   });
 });

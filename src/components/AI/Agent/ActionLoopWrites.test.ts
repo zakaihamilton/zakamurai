@@ -107,4 +107,41 @@ describe('ActionLoopWrites', () => {
       }),
     ).toThrow(/not valid source code|placeholder|Unsafe/i);
   });
+
+  it('rejects undeclared React state setters when staging a write', () => {
+    expect(() =>
+      assertStagedFileContent({
+        path: 'src/App.jsx',
+        content: `import { useState } from 'react';
+import styles from './App.module.css';
+export default function App() {
+  const [todos, setTodos] = useState([]);
+  return <button className={styles.primaryAction} type="button" onClick={() => setNewTodo('')}>Add</button>;
+}`,
+        files: { 'src/App.module.css': '.primaryAction { color: black; }' },
+        request: 'build app',
+        lightweightModel: false,
+      }),
+    ).toThrow(/Undeclared state setter 'setNewTodo'/);
+  });
+
+  it('allows timer APIs when staging a component write', () => {
+    expect(() =>
+      assertStagedFileContent({
+        path: 'src/App.jsx',
+        content: `import { useState } from 'react';
+import styles from './App.module.css';
+export default function App() {
+  const [time, setTime] = useState('00:00');
+  const start = () => {
+    setInterval(() => setTime('01:00'), 1000);
+  };
+  return <button className={styles.primaryAction} type="button" onClick={start}>{time}</button>;
+}`,
+        files: { 'src/App.module.css': '.primaryAction { color: black; }' },
+        request: 'build app',
+        lightweightModel: false,
+      }),
+    ).not.toThrow();
+  });
 });
