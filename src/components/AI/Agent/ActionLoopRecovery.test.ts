@@ -4,12 +4,15 @@ import {
   buildContextReadyUserRequest,
   buildRepairFileMessages,
   createAutoFinishSummary,
-  isNewAppGenerationRequest,
   normalizeFinishSummary,
+} from './ActionLoopRecovery';
+import {
+  isNewAppGenerationRequest,
+  resolveActionLoopSessionPolicy,
   restrictLowerModelActions,
   restrictMidTierContextReadyActions,
   shouldSalvageGeneratedInteractiveSource,
-} from './ActionLoopRecovery';
+} from './ActionLoopSmallModel';
 import { createProjectStyleProfile } from './ProjectStyleProfile';
 import { ALL_AGENT_ACTIONS } from './Protocol';
 
@@ -201,6 +204,21 @@ describe('responsive generation scope', () => {
       'delete_file',
       'finish',
     ]);
+  });
+
+  it('keeps 3B on the mid-tier write path even without manager context', () => {
+    const policy = resolveActionLoopSessionPolicy({
+      model: 'Qwen2.5-Coder-3B-Instruct-q4f16_1-MLC',
+      priorContext: '',
+      agentRole: null,
+      allowedActions: ALL_AGENT_ACTIONS,
+      systemPrompt: 'default system prompt',
+    });
+
+    expect(policy.midTierAssisted).toBe(true);
+    expect(policy.useContextReadyPrompt).toBe(true);
+    expect(policy.enforceFulfillment).toBe(true);
+    expect(policy.effectiveAllowedActions).toEqual(['write_file', 'delete_file', 'finish']);
   });
 
   it('salvages interactive source for new apps and known app types, not unrelated edits', () => {

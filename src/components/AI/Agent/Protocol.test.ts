@@ -4,7 +4,7 @@ import {
   LIGHTWEIGHT_AGENT_SYSTEM_PROMPT,
   TODO_APP_GENERATION_GUIDANCE,
   generationGuidanceForRequest,
-} from './ActionLoopRecovery';
+} from './ActionLoopSmallModel';
 import {
   AGENT_SYSTEM_PROMPT,
   ALL_AGENT_ACTIONS,

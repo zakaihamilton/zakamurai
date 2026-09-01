@@ -14,7 +14,7 @@ import { assertTaskPathAllowed } from '../ReliabilityContracts';
 import {
   isNewAppGenerationRequest,
   shouldSalvageGeneratedInteractiveSource,
-} from './ActionLoopRecovery';
+} from './ActionLoopSmallModel';
 import {
   applySearchReplaceBlock,
   cssModuleImporters,
