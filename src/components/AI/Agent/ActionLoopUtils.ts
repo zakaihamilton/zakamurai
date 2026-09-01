@@ -168,7 +168,7 @@ export const normalizeSideEffectCssSource = (
 };
 
 const CSS_MODULE_RECOVERY_RULES: Record<string, string> = {
-  app: 'min-height: 100vh; max-width: 48rem; margin: 2rem auto; padding: 2.5rem; color: #0f172a; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 1rem; box-shadow: 0 10px 25px -5px rgb(0 0 0 / 0.05), 0 8px 10px -6px rgb(0 0 0 / 0.05);',
+  app: 'display: grid; gap: 1.25rem; width: min(100%, 48rem); min-height: 100vh; margin: 0 auto; padding: clamp(1rem, 4vw, 2.5rem); color: #0f172a; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 1rem; box-shadow: 0 10px 25px -5px rgb(0 0 0 / 0.05), 0 8px 10px -6px rgb(0 0 0 / 0.05);',
   container:
     'max-width: 42rem; margin: 0 auto; padding: 2rem; border-radius: 1rem; color: #0f172a; background: #ffffff; border: 1px solid #e2e8f0; box-shadow: 0 10px 25px -5px rgb(0 0 0 / 0.05);',
   header:
@@ -197,9 +197,9 @@ const CSS_MODULE_RECOVERY_RULES: Record<string, string> = {
     'padding: 0.7rem 1.25rem; color: #ffffff; font-family: inherit; font-weight: 600; background: #4f46e5; border: 0; border-radius: 0.5rem; cursor: pointer; transition: background 150ms ease;',
   footer: 'margin-top: 1.5rem; color: #64748b; text-align: center;',
   button:
-    'min-height: 2.75rem; padding: 0.7rem 1.25rem; color: #ffffff; font-family: inherit; font-size: 0.95rem; font-weight: 600; background: #4f46e5; border: none; border-radius: 0.5rem; cursor: pointer; transition: background 150ms ease, transform 150ms ease; box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);',
+    'display: inline-flex; width: fit-content; max-width: 100%; min-height: 2.75rem; align-items: center; justify-content: center; padding: 0.7rem 1.25rem; color: #ffffff; font-family: inherit; font-size: 0.95rem; font-weight: 600; background: #4f46e5; border: none; border-radius: 0.5rem; cursor: pointer; transition: background 150ms ease, transform 150ms ease; box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);',
   control:
-    'flex: 1 1 18rem; min-width: 0; min-height: 2.75rem; padding: 0.7rem 0.85rem; color: #0f172a; font-family: inherit; font-size: 0.95rem; background: #ffffff; border: 1px solid #cbd5e1; border-radius: 0.5rem; transition: border-color 150ms ease;',
+    'display: block; box-sizing: border-box; flex: 1 1 18rem; min-width: 0; width: 100%; max-width: 100%; min-height: 2.75rem; padding: 0.7rem 0.85rem; color: #0f172a; font-family: inherit; font-size: 0.95rem; background: #ffffff; border: 1px solid #cbd5e1; border-radius: 0.5rem; transition: border-color 150ms ease;',
   list: 'display: flex; flex-direction: column; gap: 0.75rem; margin-top: 1rem;',
   todoItem:
     'display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; padding: 0.75rem 1rem; color: #0f172a; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 0.5rem; transition: all 150ms ease;',
@@ -273,28 +273,51 @@ const normalizeOversizedInteractiveRules = (stylesheet: string, source: string):
 const definedCssModuleClassNames = (content: string): Set<string> =>
   new Set([...content.matchAll(/\.([A-Za-z_-][\w-]*)\s*\{/g)].map((match) => match[1]));
 
-const recoveryRuleForClassName = (className: string): string => {
+const recoveryRuleForClassName = (className: string, source = ''): string => {
   if (CSS_MODULE_RECOVERY_RULES[className]) return CSS_MODULE_RECOVERY_RULES[className];
-  const normalized = className.toLowerCase();
-  if (/(?:app|root|page|screen|shell|layout|wrapper|container|card|panel)/.test(normalized)) {
+  const normalized = className.replace(/([a-z\d])([A-Z])/g, '$1-$2').toLowerCase();
+  const token = (names: string) => new RegExp(`(?:^|-)(${names})(?:-|$)`).test(normalized);
+  const isButton =
+    token('button|btn|action') ||
+    new RegExp(
+      `<button\\b[^>]*\\bstyles(?:\\.${className}\\b|\\[\\s*["']${className}["']\\s*\\])`,
+      'i',
+    ).test(source);
+  if (isButton && token('danger|delete|remove|destroy|clear'))
+    return CSS_MODULE_RECOVERY_RULES.deleteBtn;
+  if (isButton && token('secondary|cancel|reset|ghost')) return CSS_MODULE_RECOVERY_RULES.control;
+  if (isButton) return CSS_MODULE_RECOVERY_RULES.button;
+  if (token('header')) {
+    return 'display: flex; min-width: 0; flex-direction: column; gap: 0.75rem; margin-bottom: 1rem;';
+  }
+  if (token('footer')) {
+    return 'display: flex; min-width: 0; flex-wrap: wrap; align-items: center; gap: 0.75rem;';
+  }
+  if (token('main|section')) {
+    return 'display: grid; min-width: 0; gap: 1rem;';
+  }
+  if (token('app|root|page|screen')) {
+    return CSS_MODULE_RECOVERY_RULES.app;
+  }
+  if (token('shell|layout|wrapper|container|card|panel')) {
     return 'display: grid; gap: 1.25rem; width: min(100%, 52rem); margin: 0 auto; padding: clamp(1rem, 4vw, 2.5rem); color: #0f172a; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 1rem; box-shadow: 0 10px 25px -5px rgb(0 0 0 / 0.05);';
   }
-  if (/(?:list|grid|items|content|body|section|stack|columns)/.test(normalized)) {
+  if (token('list|grid|items|content|body|stack|columns')) {
     return 'display: grid; gap: 0.85rem;';
   }
-  if (/(?:title|heading|header|label|status|message|text|caption)/.test(normalized)) {
+  if (token('title|heading|label|status|message|text|caption')) {
     return 'color: #0f172a;';
   }
-  if (/(?:form|field|group|row|toolbar|actions)/.test(normalized)) {
+  if (token('form|field|group|row|toolbar|actions|controls|add|create|save|edit|new')) {
     return 'display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center;';
   }
-  if (/(?:item|entry|option|row)/.test(normalized)) {
+  if (token('item|entry|option|row|note|task|todo')) {
     return 'padding: 0.8rem 0.9rem; color: #0f172a; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 0.5rem;';
   }
-  if (/(?:button|btn|control|input|select|textarea|action)/.test(normalized)) {
+  if (token('control|input|select|textarea')) {
     return 'min-height: 2.75rem; padding: 0.65rem 0.9rem; color: #0f172a; background: #ffffff; border: 1px solid #cbd5e1; border-radius: 0.5rem;';
   }
-  if (/(?:muted|hint|meta|footer|secondary)/.test(normalized)) {
+  if (token('muted|hint|meta|secondary')) {
     return 'color: #475569;';
   }
   return 'display: block; box-sizing: border-box; color: #0f172a;';
@@ -312,9 +335,13 @@ const LEGACY_RECOVERY_BASE = `:global(:root), :global(body) {
   box-sizing: border-box;
 }`;
 
-const legacyCssModuleRules = (classNames: Iterable<string>, includeBase: boolean): string => {
+const legacyCssModuleRules = (
+  classNames: Iterable<string>,
+  includeBase: boolean,
+  source = '',
+): string => {
   const rules = [...classNames]
-    .map((className) => `.${className} {\n  ${recoveryRuleForClassName(className)}\n}`)
+    .map((className) => `.${className} {\n  ${recoveryRuleForClassName(className, source)}\n}`)
     .join('\n\n');
   return [includeBase ? LEGACY_RECOVERY_BASE : '', rules || '.component {\n  display: block;\n}']
     .filter(Boolean)
@@ -346,7 +373,7 @@ export const cssModuleRecovery = (
 ): string =>
   profile
     ? generateProjectCssModule({ source: content, stylesheetPath, profile })
-    : `${legacyCssModuleRules(cssModuleClassNames(content), true)}\n`;
+    : `${legacyCssModuleRules(cssModuleClassNames(content), true, content)}\n`;
 
 /**
  * When a JSX/TSX write imports an existing CSS Module that does not define the
@@ -419,7 +446,7 @@ export const appendMissingCssModuleRules = (
     }
     return generated;
   }
-  const additions = [legacyCssModuleRules(missing, false)];
+  const additions = [legacyCssModuleRules(missing, false, sourceContent)];
   if (
     defined.has('container') &&
     missing.some((className) => className === 'cell' || className === 'square')

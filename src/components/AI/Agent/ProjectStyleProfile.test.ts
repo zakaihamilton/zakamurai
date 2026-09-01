@@ -189,6 +189,40 @@ describe('ProjectStyleProfile', () => {
     expect(css).not.toMatch(/\.card\s*\{[^}]*\bheight\s*:/s);
   });
 
+  it('uses JSX context before substrings when recovering arbitrary model class names', () => {
+    const source = `import styles from './App.module.css';
+export default function App() {
+  return <div className={styles.App}>
+    <header className={styles['App-header']}><h1 className={styles.title}>Notes</h1></header>
+    <main className={styles['App-main']}>
+      <div className={styles['note-add']}>
+        <input className={styles.control} />
+        <textarea className={styles.control} />
+        <button className={styles.button}>Add</button>
+      </div>
+    </main>
+    <footer className={styles['App-footer']}><button className={styles.button}>Add Note</button></footer>
+  </div>;
+}`;
+    const css = generateProjectCssModule({
+      source,
+      stylesheetPath: 'src/App.module.css',
+      profile: createProjectStyleProfile({}),
+    });
+
+    expect(css).toMatch(/\.App \{[^}]*width: min\(100%, 72rem\)/s);
+    expect(css).toMatch(/\.App-header \{[^}]*display: flex/s);
+    expect(css).toMatch(/\.App-main \{[^}]*display: grid/s);
+    expect(css).toMatch(/\.App-footer \{[^}]*display: flex/s);
+    expect(css).toMatch(/\.note-add \{[^}]*display: flex/s);
+    expect(css).not.toMatch(/\.note-add \{[^}]*background: var\(--color-accent\)/s);
+    expect(css).toMatch(/\.control \{[^}]*display: block;[^}]*max-width: 100%/s);
+    expect(css).toMatch(/\.button \{[^}]*width: fit-content/s);
+    expect(css).toMatch(
+      /@media \(width <= 640px\)[\s\S]*\.note-add[^{]*\{[^}]*flex-direction: column/s,
+    );
+  });
+
   it('keeps generated pages bounded and controls fluid across generic layouts', () => {
     const css = generateProjectCssModule({
       source:

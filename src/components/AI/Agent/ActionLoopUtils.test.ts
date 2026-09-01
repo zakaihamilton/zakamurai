@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   appendMissingCssModuleRules,
+  cssModuleRecovery,
   ensureCoLocatedCssModule,
   missingCssModuleRules,
   normalizeGeneratedInteractiveSource,
@@ -12,6 +13,25 @@ import {
 import { resolveProjectStyleProfile } from './ProjectStyleProfile';
 
 describe('generic CSS Module recovery', () => {
+  it('keeps action roles as buttons while treating action-named wrappers as layout', () => {
+    const source = `import styles from './App.module.css';
+export default function App() {
+  return <div className={styles['note-add']}>
+    <button className={styles.primaryAction}>Add</button>
+    <button className={styles['add']}>Add another</button>
+    <button className={styles.secondaryAction}>Cancel</button>
+    <button className={styles.dangerAction}>Delete</button>
+  </div>;
+}`;
+    const recovered = cssModuleRecovery(source);
+
+    expect(recovered).toMatch(/\.note-add \{[^}]*display: flex/s);
+    expect(recovered).toMatch(/\.primaryAction \{[^}]*background: #4f46e5/s);
+    expect(recovered).toMatch(/\.add \{[^}]*background: #4f46e5/s);
+    expect(recovered).toMatch(/\.secondaryAction \{[^}]*background: #ffffff/s);
+    expect(recovered).toMatch(/\.dangerAction \{[^}]*background: #fef2f2/s);
+  });
+
   it('completes a stylesheet rewrite with every class used by its importer', () => {
     const files = {
       'src/TodoApp.jsx':

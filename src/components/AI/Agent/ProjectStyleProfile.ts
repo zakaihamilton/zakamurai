@@ -326,11 +326,117 @@ export const repairProjectStyleRelationships = ({
   return { recovered, remaining: validateCssModuleRelationships(files, options) };
 };
 
-const ruleForRole = (role: string): string => {
+const roleTokens = (role: string): Set<string> =>
+  new Set(
+    role
+      .replace(/([a-z\d])([A-Z])/g, '$1 $2')
+      .toLowerCase()
+      .split(/[^a-z\d]+/)
+      .filter(Boolean),
+  );
+
+const elementTagsForRole = (source: string, role: string): Set<string> => {
+  const escapedRole = escapeRegExp(role);
+  const reference = `\\bstyles(?:\\.${escapedRole}\\b|\\[\\s*["']${escapedRole}["']\\s*\\])`;
+  return new Set(
+    [...source.matchAll(new RegExp(`<([A-Za-z][\\w.]*)\\b[^>]*${reference}`, 'gi'))].map((match) =>
+      match[1].toLowerCase(),
+    ),
+  );
+};
+
+const hasRoleToken = (tokens: Set<string>, ...values: string[]): boolean =>
+  values.some((value) => tokens.has(value));
+
+/**
+ * Small models frequently return reasonable class names without using the
+ * semantic role vocabulary in the generation prompt. Infer a safe recipe from
+ * the element that owns the class, but never let a substring such as "add" or
+ * "app" turn an arbitrary wrapper into a button or a page shell.
+ */
+const inferredRecipeForRole = (role: string, source: string): string => {
+  const tokens = roleTokens(role);
+  const tags = elementTagsForRole(source, role);
+  const hasButton = tags.has('button');
+  const hasControl = [...tags].some((tag) => ['input', 'select', 'textarea'].includes(tag));
+
+  if (hasButton) {
+    if (hasRoleToken(tokens, 'danger', 'delete', 'remove', 'destroy', 'clear'))
+      return 'dangerAction';
+    if (hasRoleToken(tokens, 'secondary', 'cancel', 'reset', 'ghost')) return 'secondaryAction';
+    return 'primaryAction';
+  }
+  if (hasControl) {
+    if (hasRoleToken(tokens, 'checkbox', 'toggle')) return 'checkbox';
+    return 'control';
+  }
+  if (
+    tags.has('form') ||
+    hasRoleToken(
+      tokens,
+      'form',
+      'field',
+      'group',
+      'row',
+      'toolbar',
+      'actions',
+      'controls',
+      'add',
+      'create',
+      'save',
+      'edit',
+      'new',
+    )
+  )
+    return 'form';
+  if (tags.has('ul') || tags.has('ol') || hasRoleToken(tokens, 'list', 'lists', 'items'))
+    return 'list';
+  if (
+    tokens.has('app') &&
+    !hasRoleToken(
+      tokens,
+      'header',
+      'footer',
+      'main',
+      'section',
+      'list',
+      'grid',
+      'card',
+      'item',
+      'form',
+      'row',
+    )
+  )
+    return 'app';
+  if (
+    tags.has('li') ||
+    tags.has('article') ||
+    hasRoleToken(tokens, 'item', 'entry', 'option', 'card', 'note', 'task', 'todo')
+  )
+    return 'item';
+  if (tags.has('header') || tokens.has('header')) return 'header';
+  if (tags.has('footer') || tokens.has('footer')) return 'footer';
+  if (tags.has('main') || tags.has('section') || hasRoleToken(tokens, 'main', 'section'))
+    return 'section';
+  if (hasRoleToken(tokens, 'grid', 'board')) return 'grid';
+  if (hasRoleToken(tokens, 'stack', 'content', 'body', 'columns')) return 'stack';
+  if (hasRoleToken(tokens, 'title', 'heading')) return 'title';
+  if (tokens.has('subtitle')) return 'subtitle';
+  if (tokens.has('label')) return 'label';
+  if (tokens.has('status')) return 'status';
+  if (hasRoleToken(tokens, 'shell', 'wrapper', 'container', 'layout', 'panel')) return 'shell';
+  if (hasRoleToken(tokens, 'app', 'root', 'page', 'screen')) return 'app';
+  return 'generic';
+};
+
+const ruleForRole = (role: string, source: string): string => {
   const rules: Record<string, string> = {
-    app: 'width: min(100%, 72rem); min-height: 100vh; margin: 0 auto; padding: clamp(1rem, 4vw, 3rem); color: var(--color-text); background: var(--color-bg);',
+    app: 'display: grid; gap: clamp(1rem, 3vw, calc(var(--space) * 1.5)); width: min(100%, 72rem); min-height: 100vh; margin: 0 auto; padding: clamp(1rem, 4vw, 3rem); color: var(--color-text); background: var(--color-bg);',
     shell:
       'width: min(100%, 64rem); min-width: 0; margin: 0 auto; display: grid; gap: clamp(1rem, 3vw, calc(var(--space) * 1.5));',
+    header:
+      'display: flex; min-width: 0; flex-direction: column; gap: calc(var(--space) * 0.75); margin-bottom: var(--space);',
+    footer: 'display: flex; min-width: 0; flex-wrap: wrap; align-items: center; gap: var(--space);',
     section: 'display: grid; min-width: 0; gap: var(--space);',
     stack: 'display: flex; min-width: 0; flex-direction: column; gap: var(--space);',
     row: 'display: flex; min-width: 0; flex-wrap: wrap; align-items: center; gap: var(--space);',
@@ -348,13 +454,13 @@ const ruleForRole = (role: string): string => {
       'padding: calc(var(--space) * 0.65) calc(var(--space) * 0.8); color: var(--color-text); background: var(--color-surface-alt); border-radius: var(--radius);',
     field: 'display: grid; gap: calc(var(--space) * 0.4);',
     control:
-      'flex: 1 1 18rem; min-width: 0; width: 100%; min-height: 2.75rem; padding: calc(var(--space) * 0.7) calc(var(--space) * 0.85); color: var(--color-text); background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius);',
+      'display: block; box-sizing: border-box; flex: 1 1 18rem; min-width: 0; width: 100%; max-width: 100%; min-height: 2.75rem; padding: calc(var(--space) * 0.7) calc(var(--space) * 0.85); color: var(--color-text); background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius);',
     primaryAction:
-      'min-height: 2.75rem; padding: calc(var(--space) * 0.7) var(--space); color: var(--color-on-accent); background: var(--color-accent); border: 1px solid transparent; border-radius: var(--radius); cursor: pointer; font-weight: 600; white-space: nowrap;',
+      'display: inline-flex; width: fit-content; max-width: 100%; min-height: 2.75rem; justify-self: start; align-items: center; justify-content: center; padding: calc(var(--space) * 0.7) var(--space); color: var(--color-on-accent); background: var(--color-accent); border: 1px solid transparent; border-radius: var(--radius); cursor: pointer; font-weight: 600; white-space: nowrap;',
     secondaryAction:
-      'min-height: 2.75rem; padding: calc(var(--space) * 0.7) var(--space); color: var(--color-text); background: var(--color-surface-alt); border: 1px solid var(--color-border); border-radius: var(--radius); cursor: pointer; font-weight: 500; white-space: nowrap;',
+      'display: inline-flex; width: fit-content; max-width: 100%; min-height: 2.75rem; justify-self: start; align-items: center; justify-content: center; padding: calc(var(--space) * 0.7) var(--space); color: var(--color-text); background: var(--color-surface-alt); border: 1px solid var(--color-border); border-radius: var(--radius); cursor: pointer; font-weight: 500; white-space: nowrap;',
     dangerAction:
-      'min-height: 2.75rem; padding: calc(var(--space) * 0.7) var(--space); color: var(--color-on-danger); background: var(--color-danger); border: 1px solid transparent; border-radius: var(--radius); cursor: pointer; font-weight: 600; white-space: nowrap;',
+      'display: inline-flex; width: fit-content; max-width: 100%; min-height: 2.75rem; justify-self: start; align-items: center; justify-content: center; padding: calc(var(--space) * 0.7) var(--space); color: var(--color-on-danger); background: var(--color-danger); border: 1px solid transparent; border-radius: var(--radius); cursor: pointer; font-weight: 600; white-space: nowrap;',
     list: 'display: flex; flex-direction: column; gap: calc(var(--space) * 0.6); margin: 0; padding: 0; list-style: none;',
     item: 'display: flex; min-width: 0; align-items: center; justify-content: space-between; gap: var(--space); padding: calc(var(--space) * 0.75) var(--space); color: var(--color-text); background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius); transition: all var(--duration) var(--easing);',
     checkbox:
@@ -372,21 +478,13 @@ const ruleForRole = (role: string): string => {
     success: 'color: var(--color-success);',
   };
   if (rules[role]) return rules[role];
-  const normalized = role.toLowerCase();
-  if (/(?:primary|submit|add|create|save|confirm|new)/.test(normalized)) return rules.primaryAction;
-  if (/(?:danger|delete|remove|destroy|clear)/.test(normalized)) return rules.dangerAction;
-  if (/(?:secondary|cancel|reset|ghost)/.test(normalized)) return rules.secondaryAction;
-  if (/(?:checkbox|toggle|check)/.test(normalized)) return rules.checkbox;
-  if (/(?:button|action)/.test(normalized)) return rules.primaryAction;
-  if (/(?:input|control|select|textarea)/.test(normalized)) return rules.control;
-  if (/(?:form)/.test(normalized)) return rules.form;
-  if (/(?:grid|board)/.test(normalized)) return rules.grid;
-  if (/(?:item|card)/.test(normalized)) return rules.item;
-  if (/(?:cell|square)/.test(normalized)) return rules.square;
-  if (/(?:title|heading)/.test(normalized)) return rules.title;
-  if (/(?:list|items)/.test(normalized)) return rules.list;
-  if (/(?:app|container|wrapper|page|layout)/.test(normalized)) return rules.shell;
-  return 'display: block; box-sizing: border-box; color: var(--color-text);';
+  const recipe = inferredRecipeForRole(role, source);
+  if (recipe === 'generic')
+    return 'display: block; box-sizing: border-box; min-width: 0; max-width: 100%; color: var(--color-text);';
+  return (
+    rules[recipe] ||
+    'display: block; box-sizing: border-box; min-width: 0; max-width: 100%; color: var(--color-text);'
+  );
 };
 
 const profileTokenEntries = (profile: ProjectStyleProfile): Array<[string, string]> => {
@@ -469,10 +567,17 @@ const escapeRegExp = (value: string): string => value.replace(/[.*+?^${}()|[\]\\
 const hasSelector = (css: string, role: string, pseudo: string): boolean =>
   new RegExp(`\\.${escapeRegExp(role)}${escapeRegExp(pseudo)}(?:\\b|\\s|:)[^{]*\\{`).test(css);
 
-const interactionRules = (roles: string[], existingCss: string): string => {
-  const actionRoles = roles.filter((role) => /Action$|button|btn/i.test(role));
+const interactionRules = (roles: string[], existingCss: string, source: string): string => {
+  const actionRoles = roles.filter(
+    (role) => /Action$|button|btn/i.test(role) || elementTagsForRole(source, role).has('button'),
+  );
   const controlRoles = roles.filter(
-    (role) => role === 'control' || /input|select|textarea/i.test(role),
+    (role) =>
+      role === 'control' ||
+      /input|select|textarea/i.test(role) ||
+      [...elementTagsForRole(source, role)].some((tag) =>
+        ['input', 'select', 'textarea'].includes(tag),
+      ),
   );
   const output: string[] = [];
   for (const role of actionRoles) {
@@ -567,11 +672,14 @@ const selectorDeclares = (css: string, role: string, property: string): boolean 
   return false;
 };
 
-const responsiveRules = (roles: string[], existingCss: string): string => {
+const responsiveRules = (roles: string[], existingCss: string, source: string): string => {
   const mediaCss = atRuleBlocks(existingCss, 'media');
   const declarations: string[] = [];
   const stackRoles = roles.filter(
-    (role) => ['row', 'form'].includes(role) && !selectorDeclares(mediaCss, role, 'flex-direction'),
+    (role) =>
+      (['row', 'form'].includes(role) ||
+        ['row', 'form'].includes(inferredRecipeForRole(role, source))) &&
+      !selectorDeclares(mediaCss, role, 'flex-direction'),
   );
   if (stackRoles.length) {
     declarations.push(
@@ -583,7 +691,9 @@ const responsiveRules = (roles: string[], existingCss: string): string => {
   }
   const responsiveActions = roles.filter(
     (role) =>
-      ['primaryAction', 'secondaryAction', 'dangerAction'].includes(role) &&
+      (['primaryAction', 'secondaryAction', 'dangerAction'].includes(role) ||
+        /button|btn|action/i.test(role) ||
+        elementTagsForRole(source, role).has('button')) &&
       !selectorDeclares(mediaCss, role, 'width'),
   );
   if (responsiveActions.length) {
@@ -617,12 +727,12 @@ export const generateProjectCssModule = ({
     ? rootFoundationPatch(existingCss, profile)
     : null;
   if (foundation) additions.push(foundation);
-  additions.push(...missing.map((role) => `.${role} {\n  ${ruleForRole(role)}\n}`));
-  const interactions = interactionRules(roles, existingCss);
+  additions.push(...missing.map((role) => `.${role} {\n  ${ruleForRole(role, source)}\n}`));
+  const interactions = interactionRules(roles, existingCss, source);
   if (interactions) additions.push(interactions);
   const compositions = compositionRules(roles, existingCss, source);
   if (compositions) additions.push(compositions);
-  const responsive = responsiveRules(roles, existingCss);
+  const responsive = responsiveRules(roles, existingCss, source);
   if (responsive) additions.push(responsive);
   if (!existingCss.trim() && !additions.length)
     additions.push('.component {\n  display: block;\n}');
