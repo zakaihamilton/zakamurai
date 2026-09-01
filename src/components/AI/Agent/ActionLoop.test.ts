@@ -601,6 +601,83 @@ export default function App() {
     ).toBe(true);
   });
 
+  it('feeds the latest rejected todo source through a blank repair response', async () => {
+    const firstFailedSource = `import React, { useState } from 'react';
+import styles from './App.module.css';
+export default function App() {
+  const [tasks, setTasks] = useState([]);
+  const [newTask, setNewTask] = useState('');
+  const [filter, setFilter] = useState('all');
+  return <div className={styles.container}>
+    <h1>First rejected Todo App</h1>
+    <select value={filter} onChange={(event) => setFilter(event.target.value)}><option>All</option></select>
+    <ul>{tasks.map((task) => <li key={task.id}>{task.text}</li>)}</ul>
+  </div>;
+}`;
+    const secondFailedSource = `import React, { useState } from 'react';
+import './App.css';
+export default function App() {
+  const [tasks, setTasks] = useState([]);
+  const [newTask, setNewTask] = useState('');
+  const [filter, setFilter] = useState('all');
+  return <div className="container">
+    <h1>Second rejected Todo App</h1>
+    <select className="filter" value={filter} onChange={(event) => setFilter(event.target.value)}><option>All</option></select>
+    <ul className="tasks">{tasks.map((task) => <li key={task.id}>{task.text}</li>)}</ul>
+  </div>;
+}`;
+    const repairedSource = `import { useState } from 'react';
+import styles from './App.module.css';
+export default function App() {
+  const [tasks, setTasks] = useState([]);
+  const [draft, setDraft] = useState('');
+  const addTask = (event) => {
+    event.preventDefault();
+    const value = draft.trim();
+    if (!value) return;
+    setTasks((current) => [...current, { id: crypto.randomUUID(), text: value, completed: false }]);
+    setDraft('');
+  };
+  const toggleTask = (id) => setTasks((current) => current.map((task) => task.id === id ? { ...task, completed: !task.completed } : task));
+  const deleteTask = (id) => setTasks((current) => current.filter((task) => task.id !== id));
+  const clearCompleted = () => setTasks((current) => current.filter((task) => !task.completed));
+  return <main className={styles.app}>
+    <h1>Todo App</h1>
+    <form onSubmit={addTask}><input value={draft} onChange={(event) => setDraft(event.target.value)} /><button type="submit">Add</button></form>
+    <p>{tasks.length ? 'Tasks' : 'No tasks yet. Add your first task.'}</p>
+    <ul>{tasks.map((task) => <li key={task.id}><input type="checkbox" checked={task.completed} onChange={() => toggleTask(task.id)} /><span>{task.text}</span><button type="button" onClick={() => deleteTask(task.id)}>Delete</button></li>)}</ul>
+    <button type="button" onClick={clearCompleted}>Clear Completed</button>
+  </main>;
+}`;
+    const modelClient = vi
+      .fn()
+      .mockResolvedValueOnce(`\`\`\`jsx\n${firstFailedSource}\n\`\`\``)
+      .mockResolvedValueOnce(`\`\`\`jsx\n${secondFailedSource}\n\`\`\``)
+      .mockResolvedValueOnce('')
+      .mockResolvedValueOnce(`\`\`\`jsx\n${repairedSource}\n\`\`\``);
+    const validate = vi.fn().mockResolvedValue({ status: 'passed', check: 'build' });
+
+    const result = await runActionLoop({
+      request: 'create a todo app',
+      activeFile: 'src/App.jsx',
+      files: {
+        'src/App.jsx': 'export default function App() { return null; }',
+        'src/App.module.css': '.container { display: block; }',
+      },
+      model: 'Qwen2.5-Coder-1.5B-Instruct-q4f16_1-MLC',
+      modelClient,
+      validate,
+      priorContext: '[list_files]\nsrc/App.jsx',
+    });
+
+    expect(result.files['src/App.jsx']).toContain('No tasks yet');
+    expect(result.files['src/App.jsx']).toContain('Add');
+    expect(modelClient.mock.calls[3][0].messages[1].content).toContain('Second rejected Todo App');
+    expect(modelClient.mock.calls[3][0].messages[1].content).not.toContain(
+      'First rejected Todo App',
+    );
+  });
+
   it('repairs generic turn guards and stale derived state before staging a lightweight app', async () => {
     const brokenInteractiveSource = `import { useState } from 'react';
 export default function App() {

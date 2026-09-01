@@ -75,6 +75,7 @@ For todo and task-list requests, build a polished task planner rather than a sta
 - Show a remaining-task count, All/Active/Completed filter tabs, and a helpful empty state. Derive visible tasks and counts from the current state.
 - Use semantic CSS Module roles such as app, shell/card, title, subtitle, form/row, control, primaryAction, secondaryAction, dangerAction, list, item, checkbox, and completed.
 - Give it a warm paper-and-ink palette with one terracotta accent, clear type hierarchy, a composed list surface, compact rows, responsive layout, and visible hover/focus states.
+- MANDATORY todo repair checklist: when tasks start as an empty mapped collection, include a controlled text input or textarea, a visible Add/Create submit control wired to the insertion handler, an explicit empty state, and working add/toggle/delete/clear/filter/count behavior; preserve the CSS Module import as styles and use styles.* for local classes, and do not import App.css or define a JavaScript styles object.
 `.trim();
 
 export const CLOCK_APP_GENERATION_GUIDANCE = `

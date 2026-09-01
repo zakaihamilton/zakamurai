@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   SMALL_MODEL_CONTEXT_READY_CHAR_BUDGET,
+  buildActionLoopModelMessages,
   buildContextReadyUserRequest,
   buildRepairFileMessages,
   createAutoFinishSummary,
@@ -157,6 +158,46 @@ describe('responsive generation scope', () => {
     expect(prompt).toContain('terracotta accent');
     expect(prompt).toContain('primary controls and current status');
     expect(prompt).toContain('targeted item or cell by index');
+  });
+
+  it('makes the missing todo entry flow a mandatory repair requirement', () => {
+    const prompt = buildRepairFileMessages({
+      request: 'create a todo app',
+      targetPath: 'src/App.jsx',
+      files: {},
+      failedContent: `import { useState } from 'react';
+export default function App() {
+  const [tasks, setTasks] = useState([]);
+  return <ul>{tasks.map((task) => <li key={task.id}>{task.text}</li>)}</ul>;
+}`,
+      diagnostic:
+        'Generated content for src/App.jsx renders an empty collection without an entry flow or clear empty state.',
+      lightweight: true,
+    });
+
+    expect(prompt[1].content).toContain('MANDATORY todo repair checklist');
+    expect(prompt[1].content).toContain('controlled text input or textarea');
+    expect(prompt[1].content).toContain('visible Add/Create submit control');
+    expect(prompt[1].content).toContain('do not import App.css');
+  });
+
+  it('prioritizes direct recovery after repeated invalid repair responses', () => {
+    const prompt = buildActionLoopModelMessages({
+      request: 'create a todo app',
+      targetPath: 'src/App.jsx',
+      files: { 'src/App.jsx': 'export default function App() { return null; }' },
+      failedWritePath: 'src/App.jsx',
+      failedWriteContent: 'export default function App() { return null; }',
+      failedWriteDiagnostic: 'The repair response was empty.',
+      directChangesRecoveryPending: true,
+      forcedWriteRecoveryPending: true,
+      incompleteWriteRetries: 0,
+      lightweight: true,
+      messages: [],
+    });
+
+    expect(prompt[0].content).toContain('emergency write mode');
+    expect(prompt[0].content).not.toContain('repairing one failed source file');
   });
 
   it('adds clock and board briefs for those request types', () => {

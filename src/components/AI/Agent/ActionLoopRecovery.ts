@@ -731,6 +731,9 @@ export const buildActionLoopModelMessages = ({
   lightweight: boolean;
   messages: WebLLMMessage[];
 }): WebLLMMessage[] => {
+  if (directChangesRecoveryPending) {
+    return buildDirectChangesRecoveryMessages({ request, targetPath, files, lightweight });
+  }
   if (failedWritePath) {
     return buildRepairFileMessages({
       request,
@@ -740,9 +743,6 @@ export const buildActionLoopModelMessages = ({
       diagnostic: failedWriteDiagnostic,
       lightweight,
     });
-  }
-  if (directChangesRecoveryPending) {
-    return buildDirectChangesRecoveryMessages({ request, targetPath, files, lightweight });
   }
   if (forcedWriteRecoveryPending) {
     return buildForcedWriteRecoveryMessages({

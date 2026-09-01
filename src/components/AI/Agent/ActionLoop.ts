@@ -1467,7 +1467,14 @@ export async function runActionLoop({
         const targetPath = action.path || '';
         failedWritePath = targetPath || failedWritePath;
         const hasStagedTarget = workspace.changes().some((change) => change.path === targetPath);
-        failedWriteContent = hasStagedTarget ? '' : failedWriteContent || action.content || '';
+        // Keep the latest rejected candidate in the next repair prompt. Preserving the first
+        // failed source made repeated repairs solve an obsolete version of the file and could
+        // trap small models in the same validation loop.
+        failedWriteContent = hasStagedTarget
+          ? ''
+          : action.content?.trim()
+            ? action.content
+            : failedWriteContent;
         failedWriteDiagnostic = err.message;
         forcedWriteRecoveryPending = true;
         forcedRecoveryTargetPath = action.path || forcedRecoveryTargetPath;
