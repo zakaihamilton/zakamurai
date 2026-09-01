@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
+  INTERACTIVE_GENERATION_GUIDANCE,
   LIGHTWEIGHT_AGENT_SYSTEM_PROMPT,
   TODO_APP_GENERATION_GUIDANCE,
+  generationGuidanceForRequest,
 } from './ActionLoopRecovery';
 import {
   AGENT_SYSTEM_PROMPT,
@@ -33,6 +35,21 @@ describe('agent protocol', () => {
     expect(LIGHTWEIGHT_AGENT_SYSTEM_PROMPT).toContain('For interactive UI include React state');
     expect(TODO_APP_GENERATION_GUIDANCE).toContain('All/Active/Completed filter tabs');
     expect(TODO_APP_GENERATION_GUIDANCE).toContain('terracotta accent');
+    expect(
+      generationGuidanceForRequest('create a notes app', { interactiveContract: true }),
+    ).toEqual(expect.arrayContaining([INTERACTIVE_GENERATION_GUIDANCE]));
+    expect(generationGuidanceForRequest('create a timer clock')).toEqual(
+      expect.arrayContaining([expect.stringContaining('setInterval')]),
+    );
+    expect(generationGuidanceForRequest('build tic tac toe')).toEqual(
+      expect.arrayContaining([expect.stringContaining('indexed collection')]),
+    );
+    expect(generationGuidanceForRequest('create a list app')).toEqual(
+      expect.arrayContaining([expect.stringContaining('controlled title or body field')]),
+    );
+    expect(generationGuidanceForRequest('list files in src')).not.toEqual(
+      expect.arrayContaining([expect.stringContaining('controlled title or body field')]),
+    );
   });
 
   it('isolates generated preview colors from the host theme', () => {

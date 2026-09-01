@@ -425,7 +425,11 @@ describe('runActionLoop', () => {
       'Your next response must be ONLY a labelled code fence with the complete source for src/App.jsx',
     );
     expect(modelClient.mock.calls[0][0].messages[1].content).toContain('--- src/App.jsx ---');
+    expect(modelClient.mock.calls[0][0].messages[1].content).toContain(
+      'primary controls and current status',
+    );
     expect(modelClient.mock.calls[0][0].messages[1].content).not.toContain('[list_files]');
+    expect(modelClient.mock.calls[0][0]).toMatchObject({ temperature: 0.1 });
     expect(modelClient.mock.calls[1][0].messages[0].content).toContain('emergency write mode');
     expect(modelClient.mock.calls[1][0].messages[0].content).toContain(
       'Reply with ONLY this labelled code fence',
@@ -433,6 +437,7 @@ describe('runActionLoop', () => {
     expect(modelClient.mock.calls[1][0].messages[0].content).not.toContain(
       '{"action":"write_file"',
     );
+    expect(modelClient.mock.calls[1][0]).toMatchObject({ temperature: 0.02 });
   });
 
   it('uses a compact prompt when forced write recovery is activated', async () => {
@@ -1798,20 +1803,17 @@ ReactDOM.createRoot(document.getElementById("root")).render(<App />);`;
     expect(askWebLLM.mock.calls[1]?.[3]?.messages?.[0]?.content).toContain('one closed component');
   });
 
-  it('forces a write after one redundant inspection when manager context is already ready', async () => {
-    askWebLLM
-      .mockResolvedValueOnce('{"action":"list_files"}')
-      .mockResolvedValueOnce(
-        '{"action":"write_file","path":"src/App.jsx","content":"export default function App() { return <main>Tic tac toe</main>; }"}',
-      )
-      .mockResolvedValueOnce('{"action":"validate"}')
-      .mockResolvedValueOnce('{"action":"finish","summary":"Created tic tac toe"}');
+  it('uses a mid-tier fenced write path for 3B models when manager context is ready', async () => {
+    askWebLLM.mockResolvedValueOnce(
+      `{"action":"write_file","path":"src/App.jsx","reason":"implement the game"}\n\`\`\`jsx\n${TIC_TAC_TOE_APP}\n\`\`\``,
+    );
     const validate = vi.fn().mockResolvedValue('Checks passed.');
 
     const result = await runActionLoop({
       request: 'create a tic tac toe game',
       files: {
         'src/App.jsx': 'export default function App() { return null; }',
+        'src/App.module.css': '.app {} .title {} .status {} .board {} .cell {} .reset {}',
         'package.json': '{"name":"app"}',
       },
       model: 'Qwen2.5-Coder-3B-Instruct-q4f16_1-MLC',
@@ -1819,15 +1821,80 @@ ReactDOM.createRoot(document.getElementById("root")).render(<App />);`;
       priorContext: '[list_files]\nsrc/App.jsx\n[read_file]\nexisting animated card source',
     });
 
-    expect(result.files['src/App.jsx']).toContain('Tic tac toe');
-    expect(askWebLLM.mock.calls[0]?.[3]?.messages?.[1]?.content).toContain(
+    expect(result.files['src/App.jsx']).toContain('WINNING_LINES');
+    const firstMessages = askWebLLM.mock.calls[0]?.[3]?.messages;
+    expect(firstMessages?.[0]?.content).toContain('compact local coding model');
+    expect(firstMessages?.[0]?.content).toContain('exactly one write_file action');
+    expect(firstMessages?.[0]?.content).not.toContain('"action":"replace_file_content"');
+    expect(firstMessages?.[0]?.content).not.toContain('"action":"list_files"');
+    expect(firstMessages?.[1]?.content).toContain(
       'Your next response must be exactly one write_file action for src/App.jsx',
     );
-    expect(askWebLLM.mock.calls[1]?.[3]?.messages?.[0]?.content).toContain('emergency write mode');
+    expect(firstMessages?.[1]?.content).toContain('indexed collection');
     expect(askWebLLM.mock.calls[0]?.[3]).toMatchObject({
       max_tokens: 2000,
       contextWindowSize: 4096,
     });
+  });
+
+  it('uses the mid-tier write path for 3B models even without manager prior context', async () => {
+    askWebLLM.mockResolvedValueOnce(
+      `{"action":"write_file","path":"src/App.jsx","reason":"implement the game"}\n\`\`\`jsx\n${TIC_TAC_TOE_APP}\n\`\`\``,
+    );
+    const validate = vi.fn().mockResolvedValue('Checks passed.');
+
+    const result = await runActionLoop({
+      request: 'create a tic tac toe game',
+      files: {
+        'src/App.jsx': 'export default function App() { return null; }',
+        'src/App.module.css': '.app {} .title {} .status {} .board {} .cell {} .reset {}',
+      },
+      model: 'Qwen2.5-Coder-3B-Instruct-q4f16_1-MLC',
+      validate,
+    });
+
+    expect(result.files['src/App.jsx']).toContain('WINNING_LINES');
+    const firstMessages = askWebLLM.mock.calls[0]?.[3]?.messages;
+    expect(firstMessages?.[0]?.content).toContain('compact local coding model');
+    expect(firstMessages?.[0]?.content).not.toContain('"action":"replace_file_content"');
+    expect(firstMessages?.[0]?.content).not.toContain('"action":"list_files"');
+    expect(firstMessages?.[1]?.content).toContain('--- src/App.jsx ---');
+    expect(firstMessages?.[1]?.content).toContain(
+      'Your next response must be exactly one write_file action for src/App.jsx',
+    );
+  });
+
+  it('does not apply replace_file_content from lightweight or 3B models', async () => {
+    const replaceReply = JSON.stringify({
+      action: 'replace_file_content',
+      path: 'src/App.jsx',
+      search: 'return <div>Old</div>;',
+      replace: 'return <div>Hacked</div>;',
+    });
+    const files = {
+      'src/App.jsx': 'export default function App() { return <div>Old</div>; }',
+    };
+
+    for (const model of [
+      'Qwen2.5-Coder-1.5B-Instruct-q4f16_1-MLC',
+      'Qwen2.5-Coder-3B-Instruct-q4f16_1-MLC',
+    ]) {
+      const writeReply = model.includes('3B')
+        ? '{"action":"write_file","path":"src/App.jsx","reason":"update"}\n```jsx\nexport default function App() { return <div>New</div>; }\n```'
+        : '```jsx\nexport default function App() { return <div>New</div>; }\n```';
+      askWebLLM.mockReset();
+      askWebLLM.mockResolvedValueOnce(replaceReply).mockResolvedValueOnce(writeReply);
+
+      const result = await runActionLoop({
+        request: 'update text in App',
+        files: { ...files },
+        model,
+        maxTurns: 4,
+      });
+
+      expect(result.files['src/App.jsx']).toContain('New');
+      expect(result.files['src/App.jsx']).not.toContain('Hacked');
+    }
   });
 
   it('requires preview inspection before a visual review can finish', async () => {

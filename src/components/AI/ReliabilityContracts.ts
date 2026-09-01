@@ -92,7 +92,7 @@ export function assertTaskPathAllowed(contract: TaskContract, path: string): voi
 }
 
 export function getModelCapabilityProfile(modelId: string): ModelCapabilityProfile {
-  if (/(?:0\.5|0\.8|1\.5)B(?:-|$)/i.test(modelId)) {
+  if (/(?:0\.5|0\.8|1\.5|1\.7)B(?:-|$)/i.test(modelId)) {
     return {
       tier: 'recovery',
       contextWindowSize: 4096,
@@ -140,7 +140,7 @@ export function getModelCapabilityProfile(modelId: string): ModelCapabilityProfi
 
 /**
  * Classify whether a request should stay single-file under enhanced host assistance.
- * Demanding work still runs, but the host narrows scope and surfaces escalate guidance.
+ * Demanding work still runs on the selected model; the host narrows scope to one file.
  */
 export function assessSmallModelRequest(
   request: string,
@@ -151,7 +151,6 @@ export function assessSmallModelRequest(
     return {
       complexity: 'simple',
       forceSingleFile: false,
-      preferEscalate: false,
       guidance: null,
     };
   }
@@ -166,10 +165,9 @@ export function assessSmallModelRequest(
     return {
       complexity,
       forceSingleFile: true,
-      preferEscalate: true,
       guidance: recovery
-        ? 'Host assistance: this recovery-tier model will edit one target file only. For multi-file architecture, migration, or codebase-wide refactors, switch to a larger cached model or narrow the request to a single component.'
-        : 'Host assistance: this compact model will edit one target file only. Prefer a larger cached model for multi-file architecture or codebase-wide refactors.',
+        ? 'Host assistance: this recovery-tier model will edit one target file only. Narrow multi-file architecture, migration, or codebase-wide refactors to a single component.'
+        : 'Host assistance: this compact model will edit one target file only. Narrow multi-file architecture or codebase-wide refactors to a single component.',
     };
   }
 
@@ -177,7 +175,6 @@ export function assessSmallModelRequest(
     return {
       complexity,
       forceSingleFile: true,
-      preferEscalate: false,
       guidance:
         'Host assistance: write one complete component file. The host owns CSS Modules, entry wiring, validation, and finish.',
     };
@@ -186,7 +183,6 @@ export function assessSmallModelRequest(
   return {
     complexity,
     forceSingleFile: true,
-    preferEscalate: false,
     guidance:
       'Host assistance: reply with one labelled source fence for the target file. The host generates missing CSS and finishes after validation.',
   };

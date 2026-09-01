@@ -401,8 +401,6 @@ export type SmallModelRequestAssessment = {
   complexity: SmallModelRequestComplexity;
   /** When true, host should keep edits on a single target file. */
   forceSingleFile: boolean;
-  /** Soft signal that a larger cached model would be more reliable. */
-  preferEscalate: boolean;
   /** Host-facing guidance injected into prompts / UI events. */
   guidance: string | null;
 };

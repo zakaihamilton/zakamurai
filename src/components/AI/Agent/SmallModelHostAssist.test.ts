@@ -6,14 +6,15 @@ import {
 } from './SmallModelHostAssist';
 
 describe('SmallModelHostAssist', () => {
-  it('narrows project scope and surfaces escalate guidance for recovery models', () => {
+  it('narrows project scope and surfaces host guidance for recovery models', () => {
     const assist = resolveSmallModelHostAssist(
       'rewrite the entire codebase architecture across all files',
       'Qwen3.5-0.8B-q4f16_1-MLC',
       'project',
     );
     expect(assist.effectiveScope).toBe('file');
-    expect(assist.assessment.preferEscalate).toBe(true);
+    expect(assist.assessment.forceSingleFile).toBe(true);
+    expect(assist.assessment.guidance).toContain('one target file only');
     expect(assist.profile.maxContextFiles).toBe(2);
   });
 
@@ -22,7 +23,6 @@ describe('SmallModelHostAssist', () => {
     emitSmallModelHostGuidance(onEvent, {
       complexity: 'simple',
       forceSingleFile: true,
-      preferEscalate: false,
       guidance: 'Host assistance: write one file.',
     });
     expect(onEvent).toHaveBeenCalledWith(

@@ -198,8 +198,67 @@ export const createAutoFinishSummary =
 export const isLightweightAgentModel = (model: string): boolean =>
   /(?:0\.5|0\.8|1\.5|1\.7|2)B(?:-|$)/i.test(model);
 
+export const isMidTierAgentModel = (model: string): boolean => /(?:3)B(?:-|$)/i.test(model);
+
+export const MIDTIER_CONTEXT_READY_ACTIONS = ['write_file', 'delete_file', 'finish'] as const;
+
+export function restrictLowerModelActions(actions: string[]): string[] {
+  const next = actions.filter((action) => action !== 'replace_file_content');
+  return next.length ? next : ['write_file', 'finish'];
+}
+
+export function restrictMidTierContextReadyActions(actions: string[]): string[] {
+  const allowed = new Set<string>(MIDTIER_CONTEXT_READY_ACTIONS);
+  const next = actions.filter((action) => allowed.has(action));
+  return next.includes('write_file') ? next : [...MIDTIER_CONTEXT_READY_ACTIONS];
+}
+
 export const isTodoAppRequest = (request: string): boolean =>
   /\b(?:todo|to-do|task[-\s]+(?:list|manager|management|planner))\b/i.test(request);
+
+export const isClockAppRequest = (request: string): boolean =>
+  /\b(?:clock|timer|stopwatch|countdown)\b/i.test(request);
+
+export const isNotesAppRequest = (request: string): boolean => {
+  if (isTodoAppRequest(request)) return false;
+  if (/\b(?:notes?|memo(?:s|pad)?|notebook)\b/i.test(request)) return true;
+  if (/\b(?:list_files|list\s+(?:the\s+)?files|project\s+checks?)\b/i.test(request)) return false;
+  return (
+    /\b(?:item\s+list|simple\s+list)\b/i.test(request) ||
+    (/\b(?:create|build|make|add|implement)\b/i.test(request) &&
+      /\blist\b/i.test(request) &&
+      !/\b(?:file|files|check|checks)\b/i.test(request))
+  );
+};
+
+export const isBoardGameRequest = (request: string): boolean =>
+  /\b(?:tic[\s-]?tac[\s-]?toe|board\s*game|game\s*board|checkers?|chess|connect\s*four)\b/i.test(
+    request,
+  );
+
+export const isKnownInteractiveAppRequest = (request: string): boolean =>
+  isTodoAppRequest(request) ||
+  isClockAppRequest(request) ||
+  isNotesAppRequest(request) ||
+  isBoardGameRequest(request);
+
+/** Host patches for known small-model UI failures, not every fulfillment write. */
+export const shouldSalvageGeneratedInteractiveSource = (
+  request: string,
+  fulfillmentModel: boolean,
+): boolean =>
+  isNewAppGenerationRequest(request) || (fulfillmentModel && isKnownInteractiveAppRequest(request));
+
+export const INTERACTIVE_GENERATION_GUIDANCE = `
+For interactive UI include React state, handlers, and visible empty/success/error states.
+Render the requested content visibly, including its primary controls and current status.
+Keep React state and event handlers inside the component and make the controls change that state.
+Never leave starter placeholder text. Compute derived values before setState.
+For grids, lists, and games, update the targeted item or cell by index instead of appending a new item; compute derived status from the next state before calling setters.
+For turn-based interactions, do not guard the handler against one hard-coded player or value; allow each active turn to act unless an explicit opponent rule is implemented.
+Include an accessible reset, clear, or restart control whenever the interaction has a restartable state.
+If a mapped root element itself has onClick (for example a board cell), make that element a <button type="button">. Nested controls inside a list item are already fine.
+`.trim();
 
 export const TODO_APP_GENERATION_GUIDANCE = `
 For todo and task-list requests, build a polished task planner rather than a starter shell:
@@ -208,6 +267,36 @@ For todo and task-list requests, build a polished task planner rather than a sta
 - Use semantic CSS Module roles such as app, shell/card, title, subtitle, form/row, control, primaryAction, secondaryAction, dangerAction, list, item, checkbox, and completed.
 - Give it a warm paper-and-ink palette with one terracotta accent, clear type hierarchy, a composed list surface, compact rows, responsive layout, and visible hover/focus states.
 `.trim();
+
+export const CLOCK_APP_GENERATION_GUIDANCE = `
+For clock, timer, or stopwatch requests:
+- Keep the displayed time in React state and drive it with setInterval or setTimeout from start/stop controls.
+- Show the current or remaining time visibly. Include start or pause and reset. Clear the interval on stop and unmount.
+- Do not hard-code a frozen time display with no ticking behavior.
+`.trim();
+
+export const NOTES_APP_GENERATION_GUIDANCE = `
+For notes, memo, or list requests:
+- Keep items in React state with a controlled title or body field, add, select/edit, and delete.
+- Show a helpful empty state when there are no notes. Do not finish with a heading-only shell.
+`.trim();
+
+export const BOARD_GAME_GENERATION_GUIDANCE = `
+For board or turn-based game requests:
+- Model the board as an indexed collection and update the targeted cell by index; do not append a new cell.
+- Allow each active turn to act. Include reset or restart. Mapped clickable cells must be <button type="button">.
+`.trim();
+
+export const generationGuidanceForRequest = (
+  request: string,
+  { interactiveContract = false }: { interactiveContract?: boolean } = {},
+): string[] => [
+  ...(interactiveContract ? [INTERACTIVE_GENERATION_GUIDANCE] : []),
+  ...(isTodoAppRequest(request) ? [TODO_APP_GENERATION_GUIDANCE] : []),
+  ...(isClockAppRequest(request) ? [CLOCK_APP_GENERATION_GUIDANCE] : []),
+  ...(isNotesAppRequest(request) ? [NOTES_APP_GENERATION_GUIDANCE] : []),
+  ...(isBoardGameRequest(request) ? [BOARD_GAME_GENERATION_GUIDANCE] : []),
+];
 
 export const LIGHTWEIGHT_AGENT_SYSTEM_PROMPT = `
 You are a small local coding model. Reply once with no explanation.
@@ -219,6 +308,21 @@ validates the build, and finishes after a successful write.
 
 For interactive UI include React state, handlers, and visible empty/success/error states.
 Never leave starter placeholder text. Compute derived values before setState.
+`.trim();
+
+export const MIDTIER_AGENT_SYSTEM_PROMPT = `
+You are a compact local coding model. Reply once with no explanation.
+
+For source code, return exactly one write_file action using this format:
+{"action":"write_file","path":"src/App.jsx","reason":"brief reason"}
+\`\`\`jsx
+complete file content here
+\`\`\`
+
+Do not call list_files, search_workspace, search_semantic, read_file, or replace_file_content.
+Do not return CSS, a second file, ReactDOM bootstrap code, or SEARCH/REPLACE blocks.
+Default-import the co-located CSS Module as styles. The host generates missing CSS rules,
+validates the build, and finishes after a successful write.
 `.trim();
 
 export const CONTEXT_READY_AGENT_INSTRUCTIONS = `
@@ -234,6 +338,12 @@ export const LIGHTWEIGHT_CONTEXT_READY_INSTRUCTIONS = `
 IMPORTANT: Workspace context is already supplied. Reply with ONLY one labelled source fence
 for the target component. No JSON, tool calls, CSS, ReactDOM, or prose.
 Include state and handlers when the UI is interactive. The host saves, generates CSS, validates, and finishes.
+`.trim();
+
+export const MIDTIER_CONTEXT_READY_INSTRUCTIONS = `
+IMPORTANT: Workspace context is already supplied. Return exactly one fenced write_file action
+for the target component (JSON metadata line, then one labelled source fence). No exploration
+tools, SEARCH/REPLACE, CSS, ReactDOM, or prose. The host validates and finishes after a successful write.
 `.trim();
 
 export const isScratchEntry = (content: string | undefined): boolean =>
@@ -378,6 +488,11 @@ const formatProjectCodeContract = (files: Record<string, string>, targetPath: st
   ].join('; ');
 };
 
+export const SMALL_MODEL_CONTEXT_READY_CHAR_BUDGET = 4100;
+
+const joinPromptSections = (sections: Array<string | null | undefined>): string =>
+  sections.filter((section): section is string => Boolean(section)).join('\n\n');
+
 export const buildContextReadyUserRequest = ({
   request,
   targetPath,
@@ -387,6 +502,7 @@ export const buildContextReadyUserRequest = ({
   styleProfile,
   responsiveGeneration = false,
   hostGuidance = null,
+  includeProductContract = false,
 }: {
   request: string;
   targetPath: string;
@@ -396,19 +512,25 @@ export const buildContextReadyUserRequest = ({
   styleProfile?: ProjectStyleProfile;
   responsiveGeneration?: boolean;
   hostGuidance?: string | null;
+  includeProductContract?: boolean;
 }): string => {
   const stylesheetPath = targetPath.replace(/\.(jsx|tsx)$/i, '.module.css');
   const contextPaths = [targetPath, stylesheetPath, 'package.json'].filter(
     (path, index, paths) => Object.hasOwn(files, path) && paths.indexOf(path) === index,
   );
-  const maxFileChars = lightweight ? 2400 : 8000;
-  const clipFile = (content: string) =>
-    content.length <= maxFileChars
-      ? content
-      : `${content.slice(0, maxFileChars)}\n…[context truncated]`;
-  const fileContext = contextPaths.length
-    ? contextPaths.map((path) => `--- ${path} ---\n${clipFile(files[path])}`).join('\n\n')
-    : 'No relevant source file exists yet.';
+  const siblingFileChars = lightweight ? 2400 : 8000;
+  const clipText = (content: string, maxChars: number) =>
+    content.length <= maxChars ? content : `${content.slice(0, maxChars)}\n…[context truncated]`;
+  const targetFileBlock = Object.hasOwn(files, targetPath)
+    ? `--- ${targetPath} ---\n${files[targetPath]}`
+    : null;
+  const siblingPaths = contextPaths.filter((path) => path !== targetPath);
+  const formatSiblings = (maxChars: number) =>
+    siblingPaths.length
+      ? siblingPaths
+          .map((path) => `--- ${path} ---\n${clipText(files[path], maxChars)}`)
+          .join('\n\n')
+      : null;
   const targetDirectory = targetPath.split('/').slice(0, -1).join('/');
   const reference = Object.keys(files)
     .filter(
@@ -422,39 +544,89 @@ export const buildContextReadyUserRequest = ({
       const rightNearby = right.startsWith(`${targetDirectory}/`) ? 1 : 0;
       return rightNearby - leftNearby || left.localeCompare(right);
     })[0];
-  const referenceContext =
+  const formatReference = (maxChars: number) =>
     reference && !lightweight
       ? [reference, reference.replace(/\.(jsx|tsx)$/i, '.module.css')]
-          .map((path) => `--- Style reference: ${path} ---\n${files[path].slice(0, 1400)}`)
+          .map((path) => `--- Style reference: ${path} ---\n${clipText(files[path], maxChars)}`)
           .join('\n\n')
       : null;
-  const conversation = extractConversationalPrior(priorContext);
+  let conversation = extractConversationalPrior(priorContext);
   const managerContext = extractManagerSelectedPrior(priorContext, contextPaths);
-  const clippedManagerContext =
-    managerContext && lightweight && managerContext.length > 1800
-      ? `${managerContext.slice(0, 1800)}\n…[context truncated]`
+  let manager =
+    managerContext && lightweight && managerContext.length > 900
+      ? clipText(managerContext, 900)
       : managerContext;
+  let siblingContext = formatSiblings(siblingFileChars);
+  let referenceContext = formatReference(1400);
+  let guidance = generationGuidanceForRequest(request, {
+    interactiveContract: lightweight || includeProductContract,
+  });
+  let styleContract = styleProfile
+    ? `Project generation contract:\n${formatProjectStyleContract(styleProfile, { responsive: responsiveGeneration })}`
+    : null;
   const nextStep = lightweight
     ? `Your next response must be ONLY a labelled code fence with the complete source for ${targetPath}. Do not return JSON.`
     : `Your next response must be exactly one write_file action for ${targetPath}.`;
-  return [
-    `Request: ${request}`,
-    ...(isTodoAppRequest(request) ? [TODO_APP_GENERATION_GUIDANCE] : []),
-    ...(hostGuidance ? [hostGuidance] : []),
-    ...(conversation ? [`Prior conversation:\n${conversation}`] : []),
-    ...(clippedManagerContext ? [`Manager-selected context:\n${clippedManagerContext}`] : []),
-    'The workspace has already been inspected. Do not list, search, or read files.',
-    nextStep,
-    `Project code contract: ${formatProjectCodeContract(files, targetPath)}.`,
-    ...(styleProfile
-      ? [
-          `Project generation contract:\n${formatProjectStyleContract(styleProfile, { responsive: responsiveGeneration })}`,
-        ]
-      : []),
-    'Use the supplied files as context and return the complete implementation now.',
-    fileContext,
-    ...(referenceContext ? [referenceContext] : []),
-  ].join('\n\n');
+  const assemble = () =>
+    joinPromptSections([
+      `Request: ${request}`,
+      ...guidance,
+      hostGuidance,
+      conversation ? `Prior conversation:\n${conversation}` : null,
+      manager ? `Manager-selected context:\n${manager}` : null,
+      'The workspace has already been inspected. Do not list, search, or read files.',
+      nextStep,
+      `Project code contract: ${formatProjectCodeContract(files, targetPath)}.`,
+      styleContract,
+      'Use the supplied files as context and return the complete implementation now.',
+      targetFileBlock || (siblingContext ? null : 'No relevant source file exists yet.'),
+      siblingContext,
+      referenceContext,
+    ]);
+  if (lightweight || includeProductContract) {
+    const shrinkSteps = [
+      () => {
+        manager = manager ? clipText(manager, 280) : null;
+      },
+      () => {
+        manager = null;
+      },
+      () => {
+        referenceContext = referenceContext ? clipText(referenceContext, 400) : null;
+      },
+      () => {
+        referenceContext = null;
+      },
+      () => {
+        siblingContext = formatSiblings(600);
+      },
+      () => {
+        siblingContext = null;
+      },
+      () => {
+        conversation = null;
+      },
+      () => {
+        styleContract = styleProfile
+          ? `Project generation contract:\n${formatProjectStyleContract(styleProfile, { responsive: false })}`
+          : null;
+      },
+      () => {
+        styleContract = null;
+      },
+      () => {
+        if (guidance.length > 1) guidance = guidance.slice(0, 1);
+      },
+      () => {
+        if (guidance[0]) guidance = [clipText(guidance[0], 480)];
+      },
+    ];
+    for (const shrink of shrinkSteps) {
+      if (assemble().length <= SMALL_MODEL_CONTEXT_READY_CHAR_BUDGET) break;
+      shrink();
+    }
+  }
+  return assemble();
 };
 
 const buildFenceOnlyRecoveryMessages = ({
@@ -494,7 +666,7 @@ const buildFenceOnlyRecoveryMessages = ({
       role: 'user',
       content: [
         `Original request: ${request}`,
-        ...(isTodoAppRequest(request) ? [TODO_APP_GENERATION_GUIDANCE] : []),
+        ...generationGuidanceForRequest(request, { interactiveContract: true }),
         ...(incompleteWriteHint ? [incompleteWriteHint] : []),
         `Required destination: ${recoveryPath}`,
         context,
@@ -554,7 +726,7 @@ export const buildForcedWriteRecoveryMessages = ({
       role: 'user',
       content: [
         `Original request: ${request}`,
-        ...(isTodoAppRequest(request) ? [TODO_APP_GENERATION_GUIDANCE] : []),
+        ...generationGuidanceForRequest(request),
         ...(incompleteWriteHint ? [incompleteWriteHint] : []),
         recoveryInstruction,
         targetPath
@@ -605,12 +777,8 @@ export const buildRepairFileMessages = ({
       : null;
   const interactiveRepairGuidance = [
     'This is an interactive app repair, not a copy-edit.',
-    'Render the requested content visibly, including its primary controls and current status.',
-    'Keep React state and event handlers inside the component and make the controls change that state.',
+    INTERACTIVE_GENERATION_GUIDANCE,
     ...(emptyCollectionGuidance ? [emptyCollectionGuidance] : []),
-    'For grids, lists, and games, update the targeted item or cell by index instead of appending a new item; compute derived status from the next state before calling setters.',
-    'For turn-based interactions, do not guard the handler against one hard-coded player or value; allow each active turn to act unless an explicit opponent rule is implemented.',
-    'Include an accessible reset, clear, or restart control whenever the interaction has a restartable state.',
     'If the failed response is truncated or contains repair instructions, ignore that wrapper and regenerate the complete source from scratch; never echo the repair prompt into the file.',
   ].join('\n');
   const mappedClickableRepairGuidance =
@@ -630,7 +798,7 @@ export const buildRepairFileMessages = ({
         `Original request: ${request}`,
         `Repair target: ${repairPath}`,
         `Validation or syntax diagnostic:\n${diagnostic}`,
-        ...(isTodoAppRequest(request) ? [TODO_APP_GENERATION_GUIDANCE] : []),
+        ...generationGuidanceForRequest(request),
         ...(legacyGuidance ? [`Targeted recovery guidance:${legacyGuidance}`] : []),
         ...(mappedClickableRepairGuidance ? [mappedClickableRepairGuidance] : []),
         interactiveRepairGuidance,
@@ -678,7 +846,7 @@ export const buildDirectChangesRecoveryMessages = ({
       role: 'user',
       content: [
         `Original request: ${request}`,
-        ...(isTodoAppRequest(request) ? [TODO_APP_GENERATION_GUIDANCE] : []),
+        ...generationGuidanceForRequest(request),
         targetPath
           ? `Primary file: ${targetPath}`
           : 'Primary file: choose the application entry file.',

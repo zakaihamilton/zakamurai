@@ -7,6 +7,8 @@ const quoteDetail = (value: string): string => `\`${value.replaceAll('`', '\\`')
 const summarizeDetail = (value: string, maxCharacters = 240): string =>
   value.length > maxCharacters ? `${value.slice(0, maxCharacters)}…` : value;
 
+const isHostAssistContext = (message: string): boolean => /^Host assistance:/.test(message);
+
 const changedPaths = (changes: AgentChange[] = []): string[] => [
   ...new Set(
     changes
@@ -61,7 +63,8 @@ export const formatAgentEvent: AgentEventFormatter = (event) => {
     return `**Tool:** \`${managerEvent.tool || 'workspace'}\` — ${managerEvent.message || 'completed'}`;
   }
   if (managerEvent.type === 'context') {
-    return `**Context:** ${summarizeDetail(managerEvent.message || 'Workspace context updated.')}`;
+    const message = managerEvent.message || 'Workspace context updated.';
+    return `**Context:** ${isHostAssistContext(message) ? message : summarizeDetail(message)}`;
   }
   if (managerEvent.type === 'model') {
     return `**Model:** ${managerEvent.message || 'The model is working.'}`;

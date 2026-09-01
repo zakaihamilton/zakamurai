@@ -79,8 +79,11 @@ export async function requestNextAction({
     visualMode || failedWritePath || forcedWriteRecoveryPending
       ? profile.recoveryTokens
       : profile.generationTokens;
+  const isRepair = Boolean(failedWritePath || forcedWriteRecoveryPending);
   const temperature = lightweightModel
-    ? profile.temperature
+    ? isRepair
+      ? Math.min(profile.temperature, 0.02)
+      : Math.max(profile.temperature, 0.1)
     : visualMode
       ? 0.12
       : profile.temperature;

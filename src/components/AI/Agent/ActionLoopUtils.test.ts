@@ -277,6 +277,19 @@ export default function App() {
     expect(normalized).toContain('const checkForWin = (newBoard = board)');
     expect(normalized).toContain('checkForWin(newBoard);');
   });
+
+  it('converts mapped collection click targets into typed buttons', () => {
+    const normalized = normalizeGeneratedInteractiveSource(`export default function App({ items }) {
+  return <section>{items.map((item) => (
+    <div onClick={() => select(item)}>{item.label}</div>
+  ))}</section>;
+}`);
+
+    expect(normalized).toContain('<button type="button"');
+    expect(normalized).toContain('onClick={() => select(item)}');
+    expect(normalized).toContain('{item.label}');
+    expect(normalized).not.toContain('<div onClick');
+  });
 });
 
 describe('ensureCoLocatedCssModule', () => {

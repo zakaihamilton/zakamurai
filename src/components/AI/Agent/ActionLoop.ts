@@ -28,21 +28,25 @@ import {
   CONTEXT_READY_AGENT_INSTRUCTIONS,
   LIGHTWEIGHT_AGENT_SYSTEM_PROMPT,
   LIGHTWEIGHT_CONTEXT_READY_INSTRUCTIONS,
-  TODO_APP_GENERATION_GUIDANCE,
+  MIDTIER_AGENT_SYSTEM_PROMPT,
+  MIDTIER_CONTEXT_READY_INSTRUCTIONS,
   buildActionLoopModelMessages,
   buildContextReadyUserRequest,
   buildUserRequest,
   createAutoFinishSummary,
+  generationGuidanceForRequest,
   isIncompleteWriteError,
   isLightweightAgentModel,
+  isMidTierAgentModel,
   isNewAppGenerationRequest,
-  isTodoAppRequest,
   loadAskWebLLM,
   newlyCreatedComponentsNeedEntryWiring,
   normalizeFinishSummary,
   recordTruncatedModelOutput,
   recoverDeferredSource,
   recoveryWritePath,
+  restrictLowerModelActions,
+  restrictMidTierContextReadyActions,
   wireNewComponentIntoScratchEntry,
   writeRecovery,
 } from './ActionLoopRecovery';
@@ -116,23 +120,40 @@ export async function runActionLoop({
   const taskContract = buildTaskContract({ request, scope, activeFile, files });
   const context = new AgentContextManager({ request, priorContext });
   const lightweightModel = isLightweightAgentModel(model);
+  const midTierModel = isMidTierAgentModel(model);
   const smallModelAssessment = assessSmallModelRequest(request, model);
-  const resolvedStyleProfile = lightweightModel
+  const contextReady = Boolean(priorContext) && !agentRole;
+  const midTierAssisted = midTierModel && !agentRole;
+  const hostAssistedWrite = (lightweightModel && contextReady) || midTierAssisted;
+  const useContextReadyPrompt = contextReady || midTierAssisted;
+  const enforceFulfillment = lightweightModel || midTierModel;
+  const hostAssistedSession = lightweightModel || hostAssistedWrite;
+  const effectiveAllowedActions = midTierAssisted
+    ? restrictMidTierContextReadyActions(allowedActions)
+    : lightweightModel || midTierModel
+      ? restrictLowerModelActions(allowedActions)
+      : allowedActions;
+  const resolvedStyleProfile = hostAssistedSession
     ? resolveProjectStyleProfile(files, styleProfile)
     : undefined;
-  const baseSystemPrompt =
-    lightweightModel && !agentRole ? LIGHTWEIGHT_AGENT_SYSTEM_PROMPT : systemPrompt;
+  const baseSystemPrompt = agentRole
+    ? systemPrompt
+    : lightweightModel
+      ? LIGHTWEIGHT_AGENT_SYSTEM_PROMPT
+      : midTierAssisted
+        ? MIDTIER_AGENT_SYSTEM_PROMPT
+        : systemPrompt;
   const contextReadyInstructions = lightweightModel
     ? LIGHTWEIGHT_CONTEXT_READY_INSTRUCTIONS
-    : CONTEXT_READY_AGENT_INSTRUCTIONS;
-  const agentSystemPrompt =
-    priorContext && !agentRole
-      ? `${contextReadyInstructions}\n\n${baseSystemPrompt}`
-      : baseSystemPrompt;
+    : midTierAssisted
+      ? MIDTIER_CONTEXT_READY_INSTRUCTIONS
+      : CONTEXT_READY_AGENT_INSTRUCTIONS;
+  const agentSystemPrompt = useContextReadyPrompt
+    ? `${contextReadyInstructions}\n\n${baseSystemPrompt}`
+    : baseSystemPrompt;
   const lightweightTargetPath = recoveryWritePath(workspace.files, activeFile) || 'src/App.jsx';
-  const contextReady = Boolean(priorContext) && !agentRole;
   const previewInspectionRequired = requirePreviewInspection && Boolean(inspectPreview);
-  const userRequest = contextReady
+  const userRequest = useContextReadyPrompt
     ? buildContextReadyUserRequest({
         request,
         targetPath: lightweightTargetPath,
@@ -142,6 +163,7 @@ export async function runActionLoop({
         styleProfile: resolvedStyleProfile,
         responsiveGeneration: isNewAppGenerationRequest(request),
         hostGuidance: smallModelAssessment.guidance,
+        includeProductContract: hostAssistedWrite,
       })
     : buildUserRequest({
         request,
@@ -156,8 +178,10 @@ export async function runActionLoop({
       role: 'user',
       content: [
         userRequest,
-        ...(visualMode ? [VISUAL_QUALITY_INSTRUCTION] : []),
-        ...(isTodoAppRequest(request) && !contextReady ? [TODO_APP_GENERATION_GUIDANCE] : []),
+        ...(visualMode || hostAssistedSession ? [VISUAL_QUALITY_INSTRUCTION] : []),
+        ...(!useContextReadyPrompt
+          ? generationGuidanceForRequest(request, { interactiveContract: lightweightModel })
+          : []),
       ].join('\n\n'),
     },
   ];
@@ -385,7 +409,7 @@ export async function runActionLoop({
     let action: ReturnType<typeof parseAgentAction> | undefined;
     try {
       action = parseAgentAction(reply, {
-        allowedActions,
+        allowedActions: effectiveAllowedActions,
         // Bind common source-only replies to the known entry path.
         defaultWritePath:
           forcedRecoveryTargetPath || recoveryWritePath(workspace.files, activeFile),
@@ -507,7 +531,7 @@ export async function runActionLoop({
           };
         }
         if (directResult.kind === 'answer') {
-          if (lightweightModel && workspace.changes().length > 0 && validate) {
+          if (hostAssistedSession && workspace.changes().length > 0 && validate) {
             try {
               applyCssModuleRecovery(turn);
               const validationResult = await runValidation(turn);
@@ -630,7 +654,7 @@ export async function runActionLoop({
         return { changes, files: workspace.files, summary, events: turn, workspace };
       }
       if (
-        lightweightModel &&
+        hostAssistedSession &&
         workspace.changes().length > 0 &&
         (validate || isNewAppGenerationRequest(request))
       ) {
@@ -785,7 +809,7 @@ export async function runActionLoop({
       context.record('css_recovery', message);
       onEvent({ type: 'observation', turn, action, message, agentRole });
       // Lightweight finish can proceed on the recovered workspace.
-      if (!(lightweightModel && action.action === 'finish')) continue;
+      if (!(hostAssistedSession && action.action === 'finish')) continue;
     }
     if (
       CHANGE_REQUEST_PATTERN.test(request) &&
@@ -980,7 +1004,7 @@ export async function runActionLoop({
             failedWriteDiagnostic = summaryText;
             continue;
           }
-          if (lightweightModel) {
+          if (hostAssistedSession) {
             const wiredEntry = wireNewComponentIntoScratchEntry(workspace);
             const changes = workspace.changes();
             const summary = autoFinishSummary('identical-write', wiredEntry);
@@ -1071,7 +1095,7 @@ export async function runActionLoop({
           files: workspace.files,
           request,
           styleProfile: resolvedStyleProfile,
-          lightweightModel,
+          lightweightModel: enforceFulfillment,
         });
         action = prepared.action;
         const { normalizedSideEffectCss, rewrittenInlineStyles, ensuredCssModule } = prepared;
@@ -1171,7 +1195,7 @@ export async function runActionLoop({
           action,
           files: workspace.files,
           request,
-          lightweightModel,
+          lightweightModel: enforceFulfillment,
           taskContract,
         });
         workspace.write(path, newContent);
@@ -1267,7 +1291,7 @@ export async function runActionLoop({
           context.record('finish_recovery', message);
           continue;
         }
-        if (lightweightModel && CHANGE_REQUEST_PATTERN.test(request)) {
+        if (enforceFulfillment && CHANGE_REQUEST_PATTERN.test(request)) {
           const fulfillmentError = workspaceFulfillsInteractiveRequest(workspace.files, request);
           if (fulfillmentError) {
             const target =
@@ -1291,7 +1315,7 @@ export async function runActionLoop({
             continue;
           }
         }
-        if (lightweightModel) {
+        if (hostAssistedSession) {
           const styleRepair = repairProjectStyleRelationships({
             files: workspace.files,
             targetPath: lightweightTargetPath,
@@ -1342,7 +1366,7 @@ export async function runActionLoop({
               message: previewResult,
               agentRole,
             });
-            if (!(lightweightModel && previewInspectState.previewInspectionAccepted)) {
+            if (!(hostAssistedSession && previewInspectState.previewInspectionAccepted)) {
               messages.push({
                 role: 'user',
                 content: observation(
@@ -1370,7 +1394,7 @@ export async function runActionLoop({
           }
         }
         if (validationState.wroteSinceVerification && validate) {
-          if (lightweightModel) {
+          if (hostAssistedSession) {
             // Host assistance: omit validate between write and finish for small models.
             const validationResult = await runValidation(turn);
             if (isFailedValidationResult(validationResult)) {
@@ -1464,7 +1488,7 @@ export async function runActionLoop({
         message: formatReasoningResult(action, result),
         agentRole,
       });
-      if (action.action === 'write_file' && lightweightModel && contextReady) {
+      if (action.action === 'write_file' && hostAssistedWrite) {
         const autoFinishResult = await finishContextReadyWrite(turn);
         if (autoFinishResult) return autoFinishResult;
       }
