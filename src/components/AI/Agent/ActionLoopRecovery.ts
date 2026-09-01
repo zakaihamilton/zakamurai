@@ -621,7 +621,7 @@ export const buildRepairFileMessages = ({
   const legacyGuidance = writeRecovery(repairPath, diagnostic, files);
   const emptyCollectionGuidance =
     /\buseState\s*\(\s*\[\s*\]\s*\)/.test(currentContent) && /\.map\s*\(/.test(currentContent)
-      ? 'The failed source renders an empty collection. Add a visible input or textarea plus a Create/Add/Submit control wired to the insertion handler, or render a clear empty state that tells the user what to do next; item toggle/delete controls alone are incomplete.'
+      ? 'The failed source renders an empty collection. Keep a visible input or textarea with a controlled value and a Create/Add/Submit control reachable from the initial empty state, wired to the insertion handler; an input hidden behind an initially false edit mode with an Add button that does not open that mode is not a working entry flow. Item toggle/delete controls alone are incomplete.'
       : null;
   const interactiveRepairGuidance = [
     'This is an interactive app repair, not a copy-edit.',

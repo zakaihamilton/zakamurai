@@ -192,12 +192,12 @@ const CSS_MODULE_RECOVERY_RULES: Record<string, string> = {
   resultText: 'margin: 0; color: #4f46e5; font-size: clamp(1.5rem, 6vw, 2.5rem); font-weight: 800;',
   winnerText: 'margin: 0; color: #4f46e5; font-size: clamp(2rem, 9vw, 4rem); font-weight: 800;',
   resetBtn:
-    'justify-self: center; padding: 0.7rem 1.25rem; color: #ffffff; font-family: inherit; font-weight: 600; background: #4f46e5; border: 0; border-radius: 0.5rem; cursor: pointer; transition: background 150ms ease;',
+    'justify-self: center; align-self: start; padding: 0.7rem 1.25rem; color: #ffffff; font-family: inherit; font-weight: 600; background: #4f46e5; border: 0; border-radius: 0.5rem; cursor: pointer; transition: background 150ms ease;',
   newGameBtn:
-    'padding: 0.7rem 1.25rem; color: #ffffff; font-family: inherit; font-weight: 600; background: #4f46e5; border: 0; border-radius: 0.5rem; cursor: pointer; transition: background 150ms ease;',
+    'align-self: start; padding: 0.7rem 1.25rem; color: #ffffff; font-family: inherit; font-weight: 600; background: #4f46e5; border: 0; border-radius: 0.5rem; cursor: pointer; transition: background 150ms ease;',
   footer: 'margin-top: 1.5rem; color: #64748b; text-align: center;',
   button:
-    'display: inline-flex; width: fit-content; max-width: 100%; min-height: 2.75rem; align-items: center; justify-content: center; padding: 0.7rem 1.25rem; color: #ffffff; font-family: inherit; font-size: 0.95rem; font-weight: 600; background: #4f46e5; border: none; border-radius: 0.5rem; cursor: pointer; transition: background 150ms ease, transform 150ms ease; box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);',
+    'display: inline-flex; width: fit-content; max-width: 100%; min-height: 2.75rem; align-self: start; align-items: center; justify-content: center; padding: 0.7rem 1.25rem; color: #ffffff; font-family: inherit; font-size: 0.95rem; font-weight: 600; background: #4f46e5; border: none; border-radius: 0.5rem; cursor: pointer; transition: background 150ms ease, transform 150ms ease; box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);',
   control:
     'display: block; box-sizing: border-box; flex: 1 1 18rem; min-width: 0; width: 100%; max-width: 100%; min-height: 2.75rem; padding: 0.7rem 0.85rem; color: #0f172a; font-family: inherit; font-size: 0.95rem; background: #ffffff; border: 1px solid #cbd5e1; border-radius: 0.5rem; transition: border-color 150ms ease;',
   list: 'display: flex; flex-direction: column; gap: 0.75rem; margin-top: 1rem;',
@@ -212,12 +212,12 @@ const CSS_MODULE_RECOVERY_RULES: Record<string, string> = {
   checkbox:
     'width: 1.25rem; height: 1.25rem; accent-color: #4f46e5; cursor: pointer; flex-shrink: 0;',
   deleteBtn:
-    'padding: 0.4rem 0.75rem; color: #ef4444; font-family: inherit; font-size: 0.85rem; font-weight: 600; background: #fef2f2; border: 1px solid #fecaca; border-radius: 0.375rem; cursor: pointer; transition: all 150ms ease;',
+    'align-self: start; padding: 0.4rem 0.75rem; color: #ef4444; font-family: inherit; font-size: 0.85rem; font-weight: 600; background: #fef2f2; border: 1px solid #fecaca; border-radius: 0.375rem; cursor: pointer; transition: all 150ms ease;',
   form: 'display: flex; gap: 0.75rem; align-items: center; margin-bottom: 1.25rem;',
   input:
     'flex: 1; min-width: 0; min-height: 2.75rem; padding: 0.7rem 0.85rem; color: #0f172a; font-family: inherit; font-size: 0.95rem; background: #ffffff; border: 1px solid #cbd5e1; border-radius: 0.5rem; transition: border-color 150ms ease;',
   addBtn:
-    'min-height: 2.75rem; padding: 0.7rem 1.25rem; color: #ffffff; font-family: inherit; font-size: 0.95rem; font-weight: 600; background: #4f46e5; border: none; border-radius: 0.5rem; cursor: pointer; transition: background 150ms ease, transform 150ms ease; box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);',
+    'align-self: start; min-height: 2.75rem; padding: 0.7rem 1.25rem; color: #ffffff; font-family: inherit; font-size: 0.95rem; font-weight: 600; background: #4f46e5; border: none; border-radius: 0.5rem; cursor: pointer; transition: background 150ms ease, transform 150ms ease; box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);',
 };
 
 const hasInteractiveElements = (content: string): boolean =>

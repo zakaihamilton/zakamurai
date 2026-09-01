@@ -217,7 +217,7 @@ export default function App() {
     expect(css).toMatch(/\.note-add \{[^}]*display: flex/s);
     expect(css).not.toMatch(/\.note-add \{[^}]*background: var\(--color-accent\)/s);
     expect(css).toMatch(/\.control \{[^}]*display: block;[^}]*max-width: 100%/s);
-    expect(css).toMatch(/\.button \{[^}]*width: fit-content/s);
+    expect(css).toMatch(/\.button \{[^}]*width: fit-content[^}]*align-self: start/s);
     expect(css).toMatch(
       /@media \(width <= 640px\)[\s\S]*\.note-add[^{]*\{[^}]*flex-direction: column/s,
     );

@@ -1,5 +1,6 @@
 import type { AgentChange, EsbuildTransform, ValidatedAIChanges } from '@/components/AI/types';
 import { hasValidAiChangeContent, isProjectRelativePath } from '@/contracts/ai';
+import { hasReachableCollectionEntryFlow } from './ChangeValidatorCollection';
 import { stripComments, validateContentSyntax } from './ChangeValidatorSyntax';
 import { validateDeclaredFunctionCalls } from './DeclaredFunctionValidator';
 
@@ -17,7 +18,6 @@ export function validateProjectPath(path: unknown): string | null {
   }
   return null;
 }
-
 /**
  * Reject CSS values that are syntactically balanced but cannot resolve at runtime.
  * This also bounds runaway local-model output such as deeply nested var() fallbacks.
@@ -46,7 +46,6 @@ export function validateCssContentSafety(path: string, content: string): string 
 
   return null;
 }
-
 /**
  * Enforces the generated-project styling contract before a JSX write is staged.
  * CSS custom properties are still expressed in CSS Modules; generated components
@@ -291,12 +290,13 @@ export function validateRequestFulfillment(
 
   const isEmptyMappedCollection =
     /\buseState\s*\(\s*\[\s*\]\s*\)/.test(content) && /\.map\s*\(/.test(content);
+  const hasEntryFlow = hasCollectionTextEntry(content) && hasCollectionAddControl(content);
   if (
     isEmptyMappedCollection &&
-    !(hasCollectionTextEntry(content) && hasCollectionAddControl(content)) &&
-    !hasVisibleEmptyState(content)
+    ((!hasEntryFlow && !hasVisibleEmptyState(content)) ||
+      (hasEntryFlow && !hasReachableCollectionEntryFlow(content)))
   ) {
-    return `Generated content for ${path} renders an empty collection without an entry flow or clear empty state. Add a visible input or textarea plus a create/add/submit control, or tell the user what to do next when the collection has no items.`;
+    return `Generated content for ${path} renders an empty collection without a reachable entry flow or clear empty state. Keep a visible input or textarea with a controlled value and a create/add/submit control reachable from the initial empty state, or tell the user what to do next when the collection has no items.`;
   }
 
   const hasIndexedInteraction =

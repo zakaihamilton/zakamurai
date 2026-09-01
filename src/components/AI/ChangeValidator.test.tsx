@@ -346,6 +346,58 @@ export default function App() {
         workspaceFulfillsInteractiveRequest({ 'src/App.jsx': incompleteCollection }, request),
       ).toContain('entry flow');
     }
+    const unreachableEntry = `import { useState } from 'react';
+export default function App() {
+  const [items, setItems] = useState([]);
+  const [draft, setDraft] = useState('');
+  const [isEditing, setIsEditing] = useState(false);
+  const addItem = () => {
+    if (draft.trim()) setItems((current) => [...current, draft.trim()]);
+  };
+  return <main>
+    {isEditing ? <input value={draft} onChange={(event) => setDraft(event.target.value)} /> : <p>No items yet.</p>}
+    <ul>{items.map((item) => <li key={item}>{item}</li>)}</ul>
+    <button onClick={addItem}>Add</button>
+  </main>;
+}`;
+    expect(
+      validateRequestFulfillment('src/App.jsx', unreachableEntry, 'create an item list'),
+    ).toContain('reachable entry flow');
+    const unrelatedConditional = `import { useState } from 'react';
+export default function App() {
+  const [items, setItems] = useState([]);
+  const [draft, setDraft] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const addItem = () => {
+    if (draft.trim()) setItems((current) => [...current, draft.trim()]);
+  };
+  return <main>
+    {isLoading && <p>Loading items...</p>}
+    <input value={draft} onChange={(event) => setDraft(event.target.value)} />
+    <button onClick={addItem}>Add</button>
+    <ul>{items.map((item) => <li key={item}>{item}</li>)}</ul>
+  </main>;
+}`;
+    expect(
+      validateRequestFulfillment('src/App.jsx', unrelatedConditional, 'create an item list'),
+    ).toBeNull();
+    const mappedOnlyOpener = `import { useState } from 'react';
+export default function App() {
+  const [items, setItems] = useState([]);
+  const [draft, setDraft] = useState('');
+  const [isEditing, setIsEditing] = useState(false);
+  const addItem = () => {
+    if (draft.trim()) setItems((current) => [...current, draft.trim()]);
+  };
+  return <main>
+    {isEditing ? <input value={draft} onChange={(event) => setDraft(event.target.value)} /> : <p>No items yet.</p>}
+    <ul>{items.map((item) => <li key={item}><span>{item}</span><button onClick={() => setIsEditing(true)}>Edit</button></li>)}</ul>
+    <button onClick={addItem}>Add</button>
+  </main>;
+}`;
+    expect(
+      validateRequestFulfillment('src/App.jsx', mappedOnlyOpener, 'create an item list'),
+    ).toContain('reachable entry flow');
     const playable = `import { useState } from "react";
 import styles from "./App.module.css";
 export default function App() {
