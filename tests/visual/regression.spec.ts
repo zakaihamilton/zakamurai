@@ -114,17 +114,18 @@ test.describe('Zakamurai Visual Regression', () => {
       timeout: 30000,
     });
 
-    // Keep Logs mounted while the build runs so the processing indicator and completion message
-    // provide reliable synchronization instead of a fixed delay or button label.
+    // Keep Logs selected while the build runs. Compile auto-opens Preview when
+    // it finishes, which unmounts the log pane, so re-select Logs before the
+    // completion-line assertion used for this snapshot.
     await page.getByTestId('logs-tab').filter({ visible: true }).click();
     await expect(page.locator('[role="tab"][aria-selected="true"]')).toContainText('Logs');
     await expect(page.locator('[class*="processing"]')).toHaveCount(0, { timeout: 120000 });
-    await expect(page.getByText(/Preview ready\./)).toBeVisible({ timeout: 30000 });
-
-    // Compile auto-opens Preview when done; Logs is selected explicitly for this snapshot.
     await expect(page.getByTestId('preview-tab').filter({ visible: true })).toBeVisible({
       timeout: 120000,
     });
+    await page.getByTestId('logs-tab').filter({ visible: true }).click();
+    await expect(page.locator('[role="tab"][aria-selected="true"]')).toContainText('Logs');
+    await expect(page.getByText(/Preview ready\./)).toBeVisible({ timeout: 30000 });
 
     // Inject style to stop any animations and hide dynamic bits
     await page.addStyleTag({
