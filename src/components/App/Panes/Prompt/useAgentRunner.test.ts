@@ -17,6 +17,13 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { UseAgentRunnerParams } from './prompt-types';
 import useAgentRunner, { formatAgentEvent } from './useAgentRunner';
 
+type ApplyAgentChangesMockResult = {
+  applied: number;
+  deletions: Array<{ path: string; before: string }>;
+  rejected?: string[];
+  changeSet: { id: string } | null;
+};
+
 const {
   runAgent,
   runManager,
@@ -30,7 +37,9 @@ const {
   return {
     runAgent,
     runManager: runAgent,
-    applyAgentChanges: vi.fn(() => ({ applied: 0, deletions: [], changeSet: null })),
+    applyAgentChanges: vi.fn(
+      (): ApplyAgentChangesMockResult => ({ applied: 0, deletions: [], changeSet: null }),
+    ),
     collectWorkspaceFiles: vi.fn(async (_fs: unknown, files: unknown) => files),
     ensureFileInTree: vi.fn(),
     removeFileFromTree: vi.fn(),
