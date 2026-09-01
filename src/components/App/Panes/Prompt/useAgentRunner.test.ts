@@ -17,6 +17,13 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { UseAgentRunnerParams } from './prompt-types';
 import useAgentRunner, { formatAgentEvent } from './useAgentRunner';
 
+type ApplyAgentChangesMockResult = {
+  applied: number;
+  deletions: Array<{ path: string; before: string }>;
+  rejected?: string[];
+  changeSet: { id: string } | null;
+};
+
 const {
   runAgent,
   runManager,
@@ -30,7 +37,9 @@ const {
   return {
     runAgent,
     runManager: runAgent,
-    applyAgentChanges: vi.fn(() => ({ applied: 0, deletions: [], changeSet: null })),
+    applyAgentChanges: vi.fn(
+      (): ApplyAgentChangesMockResult => ({ applied: 0, deletions: [], changeSet: null }),
+    ),
     collectWorkspaceFiles: vi.fn(async (_fs: unknown, files: unknown) => files),
     ensureFileInTree: vi.fn(),
     removeFileFromTree: vi.fn(),
@@ -254,6 +263,30 @@ describe('formatAgentEvent', () => {
         message: 'Reviewing the workspace…',
       }),
     ).toContain('Reviewing the workspace');
+  });
+
+  it('keeps host assistance untruncated in context events', () => {
+    const guidance =
+      'Host assistance: this recovery-tier model will edit one target file only. Narrow multi-file architecture, migration, or codebase-wide refactors to a single component.';
+    expect(
+      formatAgentEvent({
+        type: 'context',
+        turn: 0,
+        message: guidance,
+      } as unknown as AgentEvent),
+    ).toBe(`**Context:** ${guidance}`);
+  });
+
+  it('still truncates ordinary context events that are not host assistance', () => {
+    const dump = `Read src/App.jsx (${'x'.repeat(400)} characters).`;
+    const formatted = formatAgentEvent({
+      type: 'context',
+      turn: 1,
+      message: dump,
+    } as unknown as AgentEvent);
+    expect(formatted.startsWith('**Context:** Read src/App.jsx')).toBe(true);
+    expect(formatted.endsWith('…')).toBe(true);
+    expect(formatted.length).toBeLessThan(dump.length);
   });
 });
 

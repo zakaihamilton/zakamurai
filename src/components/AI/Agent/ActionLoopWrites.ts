@@ -11,7 +11,10 @@ import {
   validateRequestFulfillment,
 } from '../ChangeValidator';
 import { assertTaskPathAllowed } from '../ReliabilityContracts';
-import { isNewAppGenerationRequest } from './ActionLoopRecovery';
+import {
+  isNewAppGenerationRequest,
+  shouldSalvageGeneratedInteractiveSource,
+} from './ActionLoopSmallModel';
 import {
   applySearchReplaceBlock,
   cssModuleImporters,
@@ -108,7 +111,10 @@ export function prepareWriteFileAction({
   if (ensuredCssModule) {
     next = { ...next, content: ensuredCssModule.content };
   }
-  if (isNewAppGenerationRequest(request) && /\.(?:jsx|tsx)$/i.test(next.path || '')) {
+  if (
+    /\.(?:jsx|tsx)$/i.test(next.path || '') &&
+    shouldSalvageGeneratedInteractiveSource(request, lightweightModel)
+  ) {
     next = {
       ...next,
       content: normalizeGeneratedInteractiveSource(next.content || ''),
@@ -159,6 +165,11 @@ export function applyReplaceFileContent({
   taskContract: TaskContract;
 }): { path: string; content: string } {
   const path = action.path || '';
+  if (lightweightModel) {
+    throw new Error(
+      'replace_file_content is not available for this model. Use write_file with the complete file.',
+    );
+  }
   assertTaskPathAllowed(taskContract, path);
   if (!Object.hasOwn(files, path)) {
     throw new Error(`File not found: ${path}. Cannot perform replace_file_content.`);

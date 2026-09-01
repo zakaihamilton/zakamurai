@@ -915,7 +915,11 @@ const normalizeStaleDerivedState = (content: string): string => {
 };
 
 export const normalizeGeneratedInteractiveSource = (content: string): string =>
-  normalizeStaleDerivedState(normalizeNoOpCollectionSubmit(normalizeHardCodedTurnGuards(content)));
+  normalizeMappedInteractiveElements(
+    normalizeStaleDerivedState(
+      normalizeNoOpCollectionSubmit(normalizeHardCodedTurnGuards(content)),
+    ),
+  );
 
 const staticTemplateClassNames = (template: string): string[] => {
   const body = template.slice(1, -1);

@@ -1,4 +1,4 @@
-import type { RunAgentOptions, RunAgentResult, WebLLMMessage } from '@/components/AI/types';
+import type { RunAgentOptions, RunAgentResult } from '@/components/AI/types';
 import {
   validateAIChanges,
   validateContentSyntax,
@@ -8,7 +8,6 @@ import {
 import {
   MAX_RELIABILITY_MODEL_CALLS,
   assertTaskPathAllowed,
-  assessSmallModelRequest,
   buildTaskContract,
   isTaskPathAllowed,
 } from '../ReliabilityContracts';
@@ -25,18 +24,9 @@ import { requestNextAction } from './ActionLoopModel';
 import {
   APP_ENTRY_PATHS,
   CHANGE_REQUEST_PATTERN,
-  CONTEXT_READY_AGENT_INSTRUCTIONS,
-  LIGHTWEIGHT_AGENT_SYSTEM_PROMPT,
-  LIGHTWEIGHT_CONTEXT_READY_INSTRUCTIONS,
-  TODO_APP_GENERATION_GUIDANCE,
   buildActionLoopModelMessages,
-  buildContextReadyUserRequest,
-  buildUserRequest,
   createAutoFinishSummary,
   isIncompleteWriteError,
-  isLightweightAgentModel,
-  isNewAppGenerationRequest,
-  isTodoAppRequest,
   loadAskWebLLM,
   newlyCreatedComponentsNeedEntryWiring,
   normalizeFinishSummary,
@@ -46,6 +36,8 @@ import {
   wireNewComponentIntoScratchEntry,
   writeRecovery,
 } from './ActionLoopRecovery';
+import { createActionLoopOpening } from './ActionLoopSession';
+import { isNewAppGenerationRequest } from './ActionLoopSmallModel';
 import {
   NON_PRODUCTIVE_ACTIONS,
   READ_ONLY_ACTIONS,
@@ -73,14 +65,10 @@ import {
   projectStyleGenerationTrace,
   projectStyleRecoveryTrace,
   repairProjectStyleRelationships,
-  resolveProjectStyleProfile,
 } from './ProjectStyleProfile';
 import { AGENT_SYSTEM_PROMPT, ALL_AGENT_ACTIONS, parseAgentAction } from './Protocol';
 import { visualPreviewInspectionFailure } from './VisualPreviewEvidence';
 import { AgentWorkspace } from './Workspace';
-
-const VISUAL_QUALITY_INSTRUCTION =
-  'Visual quality is a hard requirement for UI requests: use a coherent palette with explicit page and surface colors, a readable type scale, bounded content widths, consistent spacing, and semantic CSS Module roles. Prefer fluid flex/grid layouts with min-width: 0, avoid accidental full-width controls and giant fixed dimensions, keep interactive controls usable at narrow widths, and include visible hover, disabled, and focus-visible states. Correct runtime errors, unreadable contrast, horizontal overflow, collapsed controls, or broken layout before finishing.';
 
 export async function runActionLoop({
   request,
@@ -115,52 +103,32 @@ export async function runActionLoop({
   const workspace = existingWorkspace || new AgentWorkspace(files, workspaceIndex);
   const taskContract = buildTaskContract({ request, scope, activeFile, files });
   const context = new AgentContextManager({ request, priorContext });
-  const lightweightModel = isLightweightAgentModel(model);
-  const smallModelAssessment = assessSmallModelRequest(request, model);
-  const resolvedStyleProfile = lightweightModel
-    ? resolveProjectStyleProfile(files, styleProfile)
-    : undefined;
-  const baseSystemPrompt =
-    lightweightModel && !agentRole ? LIGHTWEIGHT_AGENT_SYSTEM_PROMPT : systemPrompt;
-  const contextReadyInstructions = lightweightModel
-    ? LIGHTWEIGHT_CONTEXT_READY_INSTRUCTIONS
-    : CONTEXT_READY_AGENT_INSTRUCTIONS;
-  const agentSystemPrompt =
-    priorContext && !agentRole
-      ? `${contextReadyInstructions}\n\n${baseSystemPrompt}`
-      : baseSystemPrompt;
-  const lightweightTargetPath = recoveryWritePath(workspace.files, activeFile) || 'src/App.jsx';
-  const contextReady = Boolean(priorContext) && !agentRole;
+  const {
+    lightweightModel,
+    contextReady,
+    hostAssistedWrite,
+    enforceFulfillment,
+    hostAssistedSession,
+    effectiveAllowedActions,
+    lightweightTargetPath,
+    resolvedStyleProfile,
+    messages,
+  } = createActionLoopOpening({
+    request,
+    scope,
+    activeFile,
+    selectedLines,
+    files: workspace.files,
+    model,
+    priorContext,
+    agentRole,
+    systemPrompt,
+    allowedActions,
+    visualMode,
+    styleProfile,
+    conversationContext: context.toString(),
+  });
   const previewInspectionRequired = requirePreviewInspection && Boolean(inspectPreview);
-  const userRequest = contextReady
-    ? buildContextReadyUserRequest({
-        request,
-        targetPath: lightweightTargetPath,
-        files: workspace.files,
-        priorContext,
-        lightweight: lightweightModel,
-        styleProfile: resolvedStyleProfile,
-        responsiveGeneration: isNewAppGenerationRequest(request),
-        hostGuidance: smallModelAssessment.guidance,
-      })
-    : buildUserRequest({
-        request,
-        scope,
-        activeFile,
-        selectedLines,
-        priorContext: context.toString(),
-      });
-  const messages: WebLLMMessage[] = [
-    { role: 'system', content: agentSystemPrompt },
-    {
-      role: 'user',
-      content: [
-        userRequest,
-        ...(visualMode ? [VISUAL_QUALITY_INSTRUCTION] : []),
-        ...(isTodoAppRequest(request) && !contextReady ? [TODO_APP_GENERATION_GUIDANCE] : []),
-      ].join('\n\n'),
-    },
-  ];
   let protocolFailures = 0;
   let lastFingerprint = '';
   let repeatedActions = 0;
@@ -385,7 +353,7 @@ export async function runActionLoop({
     let action: ReturnType<typeof parseAgentAction> | undefined;
     try {
       action = parseAgentAction(reply, {
-        allowedActions,
+        allowedActions: effectiveAllowedActions,
         // Bind common source-only replies to the known entry path.
         defaultWritePath:
           forcedRecoveryTargetPath || recoveryWritePath(workspace.files, activeFile),
@@ -507,7 +475,7 @@ export async function runActionLoop({
           };
         }
         if (directResult.kind === 'answer') {
-          if (lightweightModel && workspace.changes().length > 0 && validate) {
+          if (hostAssistedSession && workspace.changes().length > 0 && validate) {
             try {
               applyCssModuleRecovery(turn);
               const validationResult = await runValidation(turn);
@@ -630,7 +598,7 @@ export async function runActionLoop({
         return { changes, files: workspace.files, summary, events: turn, workspace };
       }
       if (
-        lightweightModel &&
+        hostAssistedSession &&
         workspace.changes().length > 0 &&
         (validate || isNewAppGenerationRequest(request))
       ) {
@@ -785,7 +753,7 @@ export async function runActionLoop({
       context.record('css_recovery', message);
       onEvent({ type: 'observation', turn, action, message, agentRole });
       // Lightweight finish can proceed on the recovered workspace.
-      if (!(lightweightModel && action.action === 'finish')) continue;
+      if (!(hostAssistedSession && action.action === 'finish')) continue;
     }
     if (
       CHANGE_REQUEST_PATTERN.test(request) &&
@@ -980,7 +948,7 @@ export async function runActionLoop({
             failedWriteDiagnostic = summaryText;
             continue;
           }
-          if (lightweightModel) {
+          if (hostAssistedSession) {
             const wiredEntry = wireNewComponentIntoScratchEntry(workspace);
             const changes = workspace.changes();
             const summary = autoFinishSummary('identical-write', wiredEntry);
@@ -1071,7 +1039,7 @@ export async function runActionLoop({
           files: workspace.files,
           request,
           styleProfile: resolvedStyleProfile,
-          lightweightModel,
+          lightweightModel: enforceFulfillment,
         });
         action = prepared.action;
         const { normalizedSideEffectCss, rewrittenInlineStyles, ensuredCssModule } = prepared;
@@ -1171,7 +1139,7 @@ export async function runActionLoop({
           action,
           files: workspace.files,
           request,
-          lightweightModel,
+          lightweightModel: enforceFulfillment,
           taskContract,
         });
         workspace.write(path, newContent);
@@ -1267,7 +1235,7 @@ export async function runActionLoop({
           context.record('finish_recovery', message);
           continue;
         }
-        if (lightweightModel && CHANGE_REQUEST_PATTERN.test(request)) {
+        if (enforceFulfillment && CHANGE_REQUEST_PATTERN.test(request)) {
           const fulfillmentError = workspaceFulfillsInteractiveRequest(workspace.files, request);
           if (fulfillmentError) {
             const target =
@@ -1291,7 +1259,7 @@ export async function runActionLoop({
             continue;
           }
         }
-        if (lightweightModel) {
+        if (hostAssistedSession) {
           const styleRepair = repairProjectStyleRelationships({
             files: workspace.files,
             targetPath: lightweightTargetPath,
@@ -1342,7 +1310,7 @@ export async function runActionLoop({
               message: previewResult,
               agentRole,
             });
-            if (!(lightweightModel && previewInspectState.previewInspectionAccepted)) {
+            if (!(hostAssistedSession && previewInspectState.previewInspectionAccepted)) {
               messages.push({
                 role: 'user',
                 content: observation(
@@ -1370,7 +1338,7 @@ export async function runActionLoop({
           }
         }
         if (validationState.wroteSinceVerification && validate) {
-          if (lightweightModel) {
+          if (hostAssistedSession) {
             // Host assistance: omit validate between write and finish for small models.
             const validationResult = await runValidation(turn);
             if (isFailedValidationResult(validationResult)) {
@@ -1464,7 +1432,7 @@ export async function runActionLoop({
         message: formatReasoningResult(action, result),
         agentRole,
       });
-      if (action.action === 'write_file' && lightweightModel && contextReady) {
+      if (action.action === 'write_file' && hostAssistedWrite) {
         const autoFinishResult = await finishContextReadyWrite(turn);
         if (autoFinishResult) return autoFinishResult;
       }

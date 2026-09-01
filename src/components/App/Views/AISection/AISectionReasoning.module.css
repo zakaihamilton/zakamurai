@@ -719,9 +719,8 @@
   border-radius: 18px;
   color: var(--accent);
   background: color-mix(in srgb, var(--bg-surface) 70%, var(--accent-light));
-  box-shadow:
-    0 0 0 7px color-mix(in srgb, var(--accent) 8%, transparent),
-    0 0 24px color-mix(in srgb, var(--accent) 19%, transparent);
+  box-shadow: 0 0 0 7px color-mix(in srgb, var(--accent) 8%, transparent), 0 0 24px
+    color-mix(in srgb, var(--accent) 19%, transparent);
   transform: rotate(-3deg);
 }
 
@@ -927,8 +926,7 @@
       145deg,
       color-mix(in srgb, var(--accent) 8%, var(--bg-surface)),
       var(--bg-input) 62%
-    ),
-    var(--bg-input);
+    ), var(--bg-input);
 }
 
 .executionNodeLiveGeneration .executionCard::after {

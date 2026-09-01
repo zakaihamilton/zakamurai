@@ -4,6 +4,7 @@ import {
   applyReplaceFileContent,
   assertDeletableFile,
   assertStagedFileContent,
+  prepareWriteFileAction,
 } from './ActionLoopWrites';
 
 const contract = (files: Record<string, string>) =>
@@ -27,6 +28,26 @@ describe('ActionLoopWrites', () => {
       taskContract: contract(files),
     });
     expect(result.content).toBe('export default function App() { return <div>New</div>; }');
+  });
+
+  it('rejects replace_file_content when fulfillment is enforced for lower-tier models', () => {
+    const files = {
+      'src/App.jsx': 'export default function App() { return <div>Old</div>; }',
+    };
+    expect(() =>
+      applyReplaceFileContent({
+        action: {
+          action: 'replace_file_content',
+          path: 'src/App.jsx',
+          search: 'return <div>Old</div>;',
+          replace: 'return <div>New</div>;',
+        },
+        files,
+        request: 'update text in App',
+        lightweightModel: true,
+        taskContract: contract(files),
+      }),
+    ).toThrow(/not available for this model/);
   });
 
   it('rejects a SEARCH block that only matches after trimming whitespace', () => {
@@ -125,6 +146,18 @@ export default function App() {
     ).toThrow(/Undeclared state setter 'setNewTodo'/);
   });
 
+  it('rejects heading-only shells when fulfillment is enforced', () => {
+    expect(() =>
+      assertStagedFileContent({
+        path: 'src/App.jsx',
+        content: 'export default function App() { return <h1>Notes</h1>; }',
+        files: {},
+        request: 'create a notes app',
+        lightweightModel: true,
+      }),
+    ).toThrow(/only renders a heading/);
+  });
+
   it('allows timer APIs when staging a component write', () => {
     expect(() =>
       assertStagedFileContent({
@@ -143,5 +176,38 @@ export default function App() {
         lightweightModel: false,
       }),
     ).not.toThrow();
+  });
+
+  it('salvages interactive source on known app-type fulfillment writes that are not new-app generation', () => {
+    const source = `import { useState } from 'react';
+export default function App() {
+  const [draft, setDraft] = useState('');
+  const [items, setItems] = useState([]);
+  const handleAddTask = () => {
+    if (!draft.trim()) return;
+    setItems([...items, draft.trim()]);
+    setDraft('');
+  };
+  return <form onSubmit={e => e.preventDefault()}><input value={draft} onChange={e => setDraft(e.target.value)} /><button type="submit">Add</button></form>;
+}`;
+    const salvaged = prepareWriteFileAction({
+      action: { action: 'write_file', path: 'src/App.jsx', content: source },
+      files: {},
+      request: 'wire up the notes form on the existing page',
+      styleProfile: null,
+      lightweightModel: true,
+    });
+    const leftAlone = prepareWriteFileAction({
+      action: { action: 'write_file', path: 'src/App.jsx', content: source },
+      files: {},
+      request: 'change the heading color',
+      styleProfile: null,
+      lightweightModel: true,
+    });
+
+    expect(salvaged.action.content).toContain(
+      'onSubmit={(event) => { event.preventDefault(); handleAddTask(); }}',
+    );
+    expect(leftAlone.action.content).toContain('onSubmit={e => e.preventDefault()}');
   });
 });

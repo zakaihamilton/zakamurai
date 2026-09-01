@@ -3,11 +3,8 @@ import type { AgentEventHandler, RunAgentResult } from '@/components/AI/types';
 import { workspaceFulfillsInteractiveRequest } from '../ChangeValidator';
 import { AgentExecutionError } from './ActionLoopErrors';
 import type { PreviewInspectLoopState } from './ActionLoopInspect';
-import {
-  isNewAppGenerationRequest,
-  normalizeFinishSummary,
-  wireNewComponentIntoScratchEntry,
-} from './ActionLoopRecovery';
+import { normalizeFinishSummary, wireNewComponentIntoScratchEntry } from './ActionLoopRecovery';
+import { isNewAppGenerationRequest } from './ActionLoopSmallModel';
 import { isFailedValidationResult, missingCssModuleImports } from './ActionLoopUtils';
 import type { ActionLoopValidationState } from './ActionLoopValidation';
 import type { AgentContextManager } from './ContextManager';

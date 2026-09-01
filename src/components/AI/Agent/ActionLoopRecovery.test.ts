@@ -1,12 +1,20 @@
 import { describe, expect, it } from 'vitest';
 import {
+  SMALL_MODEL_CONTEXT_READY_CHAR_BUDGET,
   buildContextReadyUserRequest,
   buildRepairFileMessages,
   createAutoFinishSummary,
-  isNewAppGenerationRequest,
   normalizeFinishSummary,
 } from './ActionLoopRecovery';
+import {
+  isNewAppGenerationRequest,
+  resolveActionLoopSessionPolicy,
+  restrictLowerModelActions,
+  restrictMidTierContextReadyActions,
+  shouldSalvageGeneratedInteractiveSource,
+} from './ActionLoopSmallModel';
 import { createProjectStyleProfile } from './ProjectStyleProfile';
+import { ALL_AGENT_ACTIONS } from './Protocol';
 
 describe('responsive generation scope', () => {
   it('does not call a safety-limited draft completed', () => {
@@ -115,12 +123,14 @@ describe('responsive generation scope', () => {
     expect(messages[1].content).toContain('All/Active/Completed filter tabs');
   });
 
-  it('injects host guidance and truncates oversized lightweight context', () => {
+  it('injects host guidance, keeps the target file whole, and drops oversized sibling context', () => {
+    const targetBody = `export default function App() { return <main>${'x'.repeat(3000)}</main>; }`;
     const prompt = buildContextReadyUserRequest({
       request: 'create a notes app',
       targetPath: 'src/App.jsx',
       files: {
-        'src/App.jsx': `export default function App() { return <main>${'x'.repeat(3000)}</main>; }`,
+        'src/App.jsx': targetBody,
+        'src/App.module.css': `/* ${'z'.repeat(3000)} */\n.app { color: black; }\n`,
       },
       lightweight: true,
       hostGuidance: 'Host assistance: write one complete component file.',
@@ -128,11 +138,13 @@ describe('responsive generation scope', () => {
     });
 
     expect(prompt).toContain('Host assistance: write one complete component file.');
-    expect(prompt).toContain('…[context truncated]');
+    expect(prompt).toContain(targetBody);
+    expect(prompt).not.toContain('z'.repeat(3000));
     expect(prompt).toContain('labelled code fence');
+    expect(prompt.length).toBeLessThanOrEqual(SMALL_MODEL_CONTEXT_READY_CHAR_BUDGET + 80);
   });
 
-  it('carries todo behavior and visual guidance into context-ready generation', () => {
+  it('carries todo behavior, interactive contract, and visual guidance into context-ready generation', () => {
     const prompt = buildContextReadyUserRequest({
       request: 'build a todo app',
       targetPath: 'src/App.jsx',
@@ -143,5 +155,80 @@ describe('responsive generation scope', () => {
     expect(prompt).toContain('stable ids');
     expect(prompt).toContain('All/Active/Completed filter tabs');
     expect(prompt).toContain('terracotta accent');
+    expect(prompt).toContain('primary controls and current status');
+    expect(prompt).toContain('targeted item or cell by index');
+  });
+
+  it('adds clock and board briefs for those request types', () => {
+    const clock = buildContextReadyUserRequest({
+      request: 'create a stopwatch timer',
+      targetPath: 'src/App.jsx',
+      files: { 'src/App.jsx': 'export default function App() { return null; }' },
+      lightweight: true,
+    });
+    const board = buildContextReadyUserRequest({
+      request: 'create a tic tac toe game',
+      targetPath: 'src/App.jsx',
+      files: { 'src/App.jsx': 'export default function App() { return null; }' },
+      includeProductContract: true,
+    });
+
+    expect(clock).toContain('setInterval or setTimeout');
+    expect(board).toContain('indexed collection');
+    expect(board).toContain('<button type="button">');
+  });
+
+  it('treats list-app requests as notes-style apps without matching list-files queries', () => {
+    const listApp = buildContextReadyUserRequest({
+      request: 'create a list app',
+      targetPath: 'src/App.jsx',
+      files: { 'src/App.jsx': 'export default function App() { return null; }' },
+      lightweight: true,
+    });
+    const listFiles = buildContextReadyUserRequest({
+      request: 'list files in src',
+      targetPath: 'src/App.jsx',
+      files: { 'src/App.jsx': 'export default function App() { return null; }' },
+      lightweight: true,
+    });
+
+    expect(listApp).toContain('controlled title or body field');
+    expect(listFiles).not.toContain('controlled title or body field');
+  });
+
+  it('blocks replace_file_content for lower-tier models and keeps 3B on write/finish', () => {
+    expect(restrictLowerModelActions(ALL_AGENT_ACTIONS)).not.toContain('replace_file_content');
+    expect(restrictLowerModelActions(ALL_AGENT_ACTIONS)).toContain('write_file');
+    expect(restrictMidTierContextReadyActions(ALL_AGENT_ACTIONS)).toEqual([
+      'write_file',
+      'delete_file',
+      'finish',
+    ]);
+  });
+
+  it('keeps 3B on the mid-tier write path even without manager context', () => {
+    const policy = resolveActionLoopSessionPolicy({
+      model: 'Qwen2.5-Coder-3B-Instruct-q4f16_1-MLC',
+      priorContext: '',
+      agentRole: null,
+      allowedActions: ALL_AGENT_ACTIONS,
+      systemPrompt: 'default system prompt',
+    });
+
+    expect(policy.midTierAssisted).toBe(true);
+    expect(policy.useContextReadyPrompt).toBe(true);
+    expect(policy.enforceFulfillment).toBe(true);
+    expect(policy.effectiveAllowedActions).toEqual(['write_file', 'delete_file', 'finish']);
+  });
+
+  it('salvages interactive source for new apps and known app types, not unrelated edits', () => {
+    expect(shouldSalvageGeneratedInteractiveSource('create a notes app', false)).toBe(true);
+    expect(
+      shouldSalvageGeneratedInteractiveSource('wire up the notes form on the existing page', true),
+    ).toBe(true);
+    expect(shouldSalvageGeneratedInteractiveSource('change the heading color', true)).toBe(false);
+    expect(shouldSalvageGeneratedInteractiveSource('polish the existing interface', true)).toBe(
+      false,
+    );
   });
 });

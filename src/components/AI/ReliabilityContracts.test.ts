@@ -40,6 +40,7 @@ describe('AI reliability contracts', () => {
     ['Qwen2.5-Coder-1.5B-Instruct-q4f16_1-MLC', 'recovery', 'enhanced', 2],
     ['Qwen2.5-Coder-0.5B-Instruct-q4f16_1-MLC', 'recovery', 'enhanced', 2],
     ['Qwen3.5-0.8B-q4f16_1-MLC', 'recovery', 'enhanced', 2],
+    ['Qwen3-1.7B-q4f16_1-MLC', 'recovery', 'enhanced', 2],
   ] as const)(
     'gives %s full task parity with tier-specific assistance',
     (model, tier, assistance, maxContextFiles) => {
@@ -63,14 +64,12 @@ describe('AI reliability contracts', () => {
     ).toMatchObject({
       complexity: 'demanding',
       forceSingleFile: true,
-      preferEscalate: true,
     });
     expect(
       assessSmallModelRequest('create a notes app', 'Qwen2.5-Coder-1.5B-Instruct-q4f16_1-MLC'),
     ).toMatchObject({
       complexity: 'simple',
       forceSingleFile: true,
-      preferEscalate: false,
     });
     expect(
       assessSmallModelRequest(
@@ -79,7 +78,6 @@ describe('AI reliability contracts', () => {
       ),
     ).toMatchObject({
       forceSingleFile: false,
-      preferEscalate: false,
       guidance: null,
     });
   });
