@@ -8,6 +8,7 @@ import {
   validateCssContentSafety,
   validateCssModuleRelationships,
   validateCssModuleUsage,
+  validateDeclaredFunctionCalls,
   validateDeclaredStateVariables,
   validateFileContentType,
   validateForbiddenStateLibraryUsage,
@@ -422,6 +423,72 @@ export default function App() {
     expect(
       workspaceFulfillsInteractiveRequest({ 'src/App.jsx': playable }, 'create a notes app'),
     ).toContain('missing a co-located CSS Module');
+  });
+
+  it('rejects render helpers that are called but never declared', () => {
+    const brokenNotes = `import { useState } from 'react';
+import styles from './App.module.css';
+export default function App() {
+  const [notes, setNotes] = useState([]);
+  const [isEditing, setIsEditing] = useState(false);
+  const renderNotes = () => notes.map((note) => <button type="button" className={styles.note}>{note.title}</button>);
+  return <main className={styles.app}>{renderNotes()}{isEditing ? renderEditState() : renderNotes()}</main>;
+}`;
+
+    expect(validateDeclaredFunctionCalls('src/App.jsx', brokenNotes)).toContain(
+      "undeclared function 'renderEditState'",
+    );
+    expect(validateRequestFulfillment('src/App.jsx', brokenNotes, 'create a notes app')).toContain(
+      "undeclared function 'renderEditState'",
+    );
+    expect(
+      validateDeclaredFunctionCalls(
+        'src/App.jsx',
+        `import { useState } from 'react';
+export default function App() {
+  const [value, setValue] = useState('');
+  const renderValue = () => value;
+  return <button type="button" onClick={() => setValue('done')}>{renderValue()}</button>;
+}`,
+      ),
+    ).toBeNull();
+    expect(
+      validateDeclaredFunctionCalls(
+        'src/App.jsx',
+        `export default function App() {
+  const label = \`${'${missingHelper()}'}\`;
+  return <p>{label}</p>;
+}`,
+      ),
+    ).toContain("undeclared function 'missingHelper'");
+    expect(
+      validateDeclaredFunctionCalls(
+        'src/App.jsx',
+        `export default function App() {
+  if (ready) {
+    const renderEditState = () => null;
+  }
+  return <main>{renderEditState()}</main>;
+}`,
+      ),
+    ).toContain("undeclared function 'renderEditState'");
+    expect(
+      validateDeclaredFunctionCalls(
+        'src/App.jsx',
+        `export default function App() {
+  return <p>{atob(value)}</p>;
+}`,
+      ),
+    ).toBeNull();
+    expect(
+      validateDeclaredFunctionCalls(
+        'src/App.jsx',
+        `export default function App() {
+  const invoke = (callback) => callback();
+  return <button type="button" onClick={() => invoke(() => null)}>Run</button>;
+}`,
+      ),
+    ).toBeNull();
   });
 
   it('rejects stateful callbacks declared outside the component', () => {

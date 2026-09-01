@@ -440,6 +440,52 @@ describe('runActionLoop', () => {
     expect(modelClient.mock.calls[1][0]).toMatchObject({ temperature: 0.02 });
   });
 
+  it('repairs a notes component when a render helper is referenced before it exists', async () => {
+    const brokenSource = `import { useState } from 'react';
+import styles from './App.module.css';
+export default function App() {
+  const [notes, setNotes] = useState([{ id: 1, title: 'First note' }]);
+  const [draft, setDraft] = useState('');
+  const [isEditing, setIsEditing] = useState(false);
+  const renderNotes = () => notes.map((note) => <button key={note.id} type="button" className={styles.note}>{note.title}</button>);
+  return <main className={styles.app}><h1>Notes</h1><input value={draft} onChange={(event) => setDraft(event.target.value)} /><button type="button" onClick={() => setNotes([...notes, { id: Date.now(), title: draft }])}>Add</button>{isEditing ? renderEditState() : renderNotes()}</main>;
+}`;
+    const fixedSource = brokenSource.replace(
+      '  const renderNotes = () =>',
+      '  const renderEditState = () => <p className={styles.empty}>Editing note</p>;\n  const renderNotes = () =>',
+    );
+    const modelClient = vi
+      .fn()
+      .mockResolvedValueOnce(brokenSource)
+      .mockResolvedValueOnce(fixedSource);
+    const validate = vi.fn().mockResolvedValue({ status: 'passed', check: 'build' });
+
+    const result = await runActionLoop({
+      request: 'create a notes app',
+      files: {
+        'src/App.jsx': 'export default function App() { return null; }',
+        'src/App.module.css': '.app {}\n.note {}\n.empty {}',
+      },
+      model: 'Qwen3.5-0.8B-q4f16_1-MLC',
+      modelClient,
+      priorContext: 'Workspace files are already supplied.',
+      validate,
+    });
+
+    expect(result.files['src/App.jsx']).toContain(
+      'const renderEditState = () => <p className={styles.empty}>Editing note</p>;',
+    );
+    expect(result.files['src/App.jsx']).toContain(
+      '{isEditing ? renderEditState() : renderNotes()}',
+    );
+    expect(modelClient).toHaveBeenCalledTimes(2);
+    expect(
+      modelClient.mock.calls[1][0].messages.some((message: { content?: string }) =>
+        message.content?.includes("undeclared function 'renderEditState'"),
+      ),
+    ).toBe(true);
+  });
+
   it('uses a compact prompt when forced write recovery is activated', async () => {
     const modelClient = vi
       .fn()

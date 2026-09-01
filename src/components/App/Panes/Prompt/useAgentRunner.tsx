@@ -1,4 +1,5 @@
 import { AppState } from '@/components/App/AppState';
+import { PreviewState } from '@/components/App/PreviewState';
 import { ChangeSetState } from '@/components/Workspace';
 import type { FormEvent } from 'react';
 import { useCallback } from 'react';
@@ -36,6 +37,7 @@ export default function useAgentRunner({
 }: UseAgentRunnerParams) {
   const changeSetState = requireStore(ChangeSetState.usePassiveState());
   const appState = requireStore(AppState.usePassiveState());
+  const previewState = PreviewState.usePassiveState();
 
   const handleStop = useCallback(
     (e?: React.MouseEvent<HTMLButtonElement>) => {
@@ -147,6 +149,7 @@ export default function useAgentRunner({
         promptUiState,
         appState,
         changeSetState,
+        previewState,
         selectedModel,
         cachedModelIds,
         webLLMEngines,
@@ -166,6 +169,7 @@ export default function useAgentRunner({
       fs,
       isAIProcessing,
       logState,
+      previewState,
       cachedModelIds,
       webLLMEngines,
       styleProfile,

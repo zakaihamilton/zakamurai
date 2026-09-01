@@ -1,8 +1,10 @@
 import type { AgentChange, EsbuildTransform, ValidatedAIChanges } from '@/components/AI/types';
 import { hasValidAiChangeContent, isProjectRelativePath } from '@/contracts/ai';
 import { stripComments, validateContentSyntax } from './ChangeValidatorSyntax';
+import { validateDeclaredFunctionCalls } from './DeclaredFunctionValidator';
 
 export { validateContentSyntax } from './ChangeValidatorSyntax';
+export { validateDeclaredFunctionCalls } from './DeclaredFunctionValidator';
 
 /** Shared safety checks for AI-proposed workspace changes. */
 export function validateProjectPath(path: unknown): string | null {
@@ -265,6 +267,9 @@ export function validateRequestFulfillment(
   if (!/\.(?:jsx|tsx)$/i.test(path)) return null;
   if (!/\b(?:add|build|create|implement|make)\b/i.test(request)) return null;
 
+  const functionError = validateDeclaredFunctionCalls(path, content);
+  if (functionError) return functionError;
+
   const clipped = clipRequest(request);
   if (/<h1>\s*New Project\s*<\/h1>/i.test(content) || /Start coding here\.\.\./i.test(content)) {
     return `Generated content for ${path} still looks like the starter template. Implement the full request ("${clipped}") instead of leaving placeholder copy.`;
@@ -396,7 +401,6 @@ export function validateDeclaredStateVariables(path: string, content: string): s
 
   return null;
 }
-
 /** Rejects CSS Module rules that collapse referenced interactive controls. */
 export function validateInteractiveStyles(
   path: string,
@@ -426,7 +430,6 @@ export function validateInteractiveStyles(
   }
   return null;
 }
-
 /** True when staged JSX fulfills a create/build request (including required CSS Modules). */
 export function workspaceFulfillsInteractiveRequest(
   files: Record<string, string>,
@@ -472,7 +475,6 @@ export function workspaceFulfillsInteractiveRequest(
 
   return validateRequestFulfillment(implementors[0][0], implementors[0][1], request);
 }
-
 /** Keeps small generated apps on local state instead of adding unrequested state libraries. */
 export function validateForbiddenStateLibraryUsage(path: string, content: string): string | null {
   if (typeof content !== 'string') return null;
@@ -488,7 +490,6 @@ export function validateForbiddenStateLibraryUsage(path: string, content: string
     ? `Do not introduce Redux, Zustand, Recoil, or another unrequested state library in ${path}. Use React local state or plain browser state instead.`
     : null;
 }
-
 /** Ensures generated components use the scoped names exported by CSS Modules. */
 export function validateCssModuleUsage(path: string, content: string): string | null {
   if (!/\.(jsx|tsx)$/i.test(path) || typeof content !== 'string') return null;
@@ -538,7 +539,6 @@ const resolveModulePath = (fromPath: string, specifier: string): string => {
   }
   return parts.join('/');
 };
-
 /** Validates CSS Module imports and selector references against a complete workspace snapshot. */
 export function validateCssModuleRelationships(
   files: Record<string, string>,
@@ -773,6 +773,17 @@ export async function validateAIChangesAsync(
         });
         continue;
       }
+      const functionError = validateDeclaredFunctionCalls(path as string, content);
+      if (functionError) {
+        rejected.push(functionError);
+        details.push({
+          path: String(path),
+          error: functionError,
+          type: 'syntax',
+          failedContent: content,
+        });
+        continue;
+      }
       const syntaxError = await validateContentSyntaxAsync(
         path as string,
         content,
@@ -860,6 +871,11 @@ export function validateAIChanges(changes: AgentChange[]): ValidatedAIChanges {
         rejected.push(stateVarError);
         continue;
       }
+      const functionError = validateDeclaredFunctionCalls(path as string, content);
+      if (functionError) {
+        rejected.push(functionError);
+        continue;
+      }
       const syntaxError = validateContentSyntax(path as string, content);
       if (syntaxError) {
         rejected.push(syntaxError);
@@ -873,9 +889,7 @@ export function validateAIChanges(changes: AgentChange[]): ValidatedAIChanges {
   return { accepted, rejected };
 }
 
-/**
- * Validates component modularity and CSS module co-location across staged files.
- */
+/** Validates component modularity and CSS module co-location across staged files. */
 export function validateWorkspaceModularity(files: Record<string, string>): {
   passed: boolean;
   errors: string[];

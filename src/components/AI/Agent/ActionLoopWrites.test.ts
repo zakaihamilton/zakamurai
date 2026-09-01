@@ -146,6 +146,25 @@ export default function App() {
     ).toThrow(/Undeclared state setter 'setNewTodo'/);
   });
 
+  it('rejects render-time calls to missing helpers when staging a write', () => {
+    expect(() =>
+      assertStagedFileContent({
+        path: 'src/App.jsx',
+        content: `import { useState } from 'react';
+import styles from './App.module.css';
+export default function App() {
+  const [notes, setNotes] = useState([]);
+  const [isEditing, setIsEditing] = useState(false);
+  const renderNotes = () => notes.map((note) => <button type="button" className={styles.note}>{note.title}</button>);
+  return <main className={styles.app}>{renderNotes()}{isEditing ? renderEditState() : renderNotes()}</main>;
+}`,
+        files: { 'src/App.module.css': '.app {}\n.note {}' },
+        request: 'create a notes app',
+        lightweightModel: true,
+      }),
+    ).toThrow(/undeclared function 'renderEditState'/);
+  });
+
   it('rejects heading-only shells when fulfillment is enforced', () => {
     expect(() =>
       assertStagedFileContent({

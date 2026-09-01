@@ -5,7 +5,12 @@ import Settings from '@/components/Storage/Settings';
 import { getWorkspaceIndex } from '@/components/Workspace';
 import { analyzeProjectHealth } from '@/contracts/project';
 import { createWorkspaceSnapshot } from '@/contracts/workspace';
-import type { AppStateShape, SidebarStateShape, TabStateShape } from '@/types/domain-types';
+import type {
+  AppStateShape,
+  PreviewStateShape,
+  SidebarStateShape,
+  TabStateShape,
+} from '@/types/domain-types';
 import type { StateStore } from 'triactor';
 import { toCompilerFs } from '../../../types';
 
@@ -72,10 +77,14 @@ export function createManagerToolOptions({
   Compiler,
   fs,
   sidebarState,
+  tabState,
+  previewState,
 }: {
   Compiler: typeof import('@/utils/compiler').Compiler;
   fs: FileSystemApi;
   sidebarState: StateStore<SidebarStateShape>;
+  tabState: StateStore<TabStateShape>;
+  previewState?: StateStore<PreviewStateShape>;
 }): Pick<RunManagerOptions, 'validate' | 'runProjectCheck' | 'inspectPreview' | 'retrieveContext'> {
   return {
     retrieveContext: async (query, k) => {
@@ -121,12 +130,49 @@ export function createManagerToolOptions({
     inspectPreview: async (stagedFiles: FileMap) => {
       const logs: string[] = [];
       const compiler = new Compiler((line: string) => logs.push(line));
+      const evidenceBridge = await import(
+        '@/components/App/Views/PreviewArea/previewEvidenceBridge'
+      );
+      const evidenceRevision = previewState ? evidenceBridge.clearPreviewEvidence() : 0;
       try {
         await compiler.compile(toCompilerFs(fs), sidebarState.folderTree || [], stagedFiles);
-        const { getLatestPreviewEvidence } = await import(
-          '@/components/App/Views/PreviewArea/previewEvidenceBridge'
-        );
-        const evidence = getLatestPreviewEvidence();
+        let evidence = evidenceBridge.getLatestPreviewEvidence();
+        if (previewState) {
+          const container = compiler.container;
+          if (!container?.vfs?.existsSync('/dist/index.html')) {
+            throw new Error('Compiled preview did not produce /dist/index.html.');
+          }
+          const html = container.vfs.readFileSync('/dist/index.html', 'utf8');
+          if (!html) throw new Error('Compiled preview produced an empty HTML entrypoint.');
+          container.vfs.writeFileSync('/index.html', html);
+          tabState((draft) => {
+            const exists = draft.openTabs.some((tab) => tab.id === 'preview');
+            if (!exists) {
+              draft.openTabs = [
+                ...draft.openTabs,
+                { id: 'preview', type: 'preview', label: 'Preview' },
+              ];
+            }
+            draft.activeTabId = 'preview';
+          });
+          previewState((draft) => {
+            draft.htmlContent = `${html}\n<!-- zakamurai-ai-preview:${Date.now()} -->`;
+            draft.previewAddress = '/preview/dist/index.html';
+            draft.restoreError = null;
+            draft.compileError = null;
+            draft.serverError = null;
+            draft.isCompilerReady = true;
+          });
+          evidence = await evidenceBridge.waitForPreviewEvidence(evidenceRevision);
+          if (!evidence) {
+            return {
+              status: 'unavailable',
+              path: '/preview/dist/index.html',
+              screenshotCaptured: false,
+              diagnostics: `Preview did not emit fresh evidence for the staged build. ${logs.slice(-12).join('\n')}`,
+            };
+          }
+        }
         return {
           status: 'passed',
           path: evidence?.path || '/preview/',

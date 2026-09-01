@@ -108,6 +108,22 @@ describe('responsive generation scope', () => {
     expect(messages[1].content).toContain('do not repeat the failed JSX unchanged');
   });
 
+  it('gives missing render helpers a concrete source repair', () => {
+    const messages = buildRepairFileMessages({
+      request: 'create a notes app',
+      targetPath: 'src/App.jsx',
+      files: {},
+      failedContent: 'return isEditing ? renderEditState() : renderNotes();',
+      diagnostic:
+        "Generated source for src/App.jsx calls undeclared function 'renderEditState'. Define it inside the component or remove the call before finishing.",
+      lightweight: true,
+    });
+
+    expect(messages[1].content).toContain('Define the missing helper renderEditState');
+    expect(messages[1].content).toContain('complete src/App.jsx');
+    expect(messages[1].content).toContain('partial render branch');
+  });
+
   it('does not feed starter markup back into a repair loop', () => {
     const messages = buildRepairFileMessages({
       request: 'build a todo app',

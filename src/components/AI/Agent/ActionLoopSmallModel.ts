@@ -87,8 +87,12 @@ For clock, timer, or stopwatch requests:
 
 export const NOTES_APP_GENERATION_GUIDANCE = `
 For notes, memo, or list requests:
-- Keep items in React state with a controlled title or body field, add, select/edit, and delete.
-- Show a helpful empty state when there are no notes. Do not finish with a heading-only shell.
+- Keep notes in React state with a controlled title or body field, add, select/edit, and delete.
+- Include a visible empty state, a controlled input or textarea, and a working Add/Save control.
+- Define every render helper before calling it; never call a placeholder such as renderEditState unless its complete function exists.
+- Import the co-located CSS Module as styles, use styles.* for local classes, and never import App.css or define a JavaScript styles object.
+- Return the complete component file in the single required source fence. Do not stop after the first half of a render branch.
+- Do not finish with a heading-only shell.
 `.trim();
 
 export const BOARD_GAME_GENERATION_GUIDANCE = `

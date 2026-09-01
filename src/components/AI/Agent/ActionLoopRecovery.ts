@@ -197,7 +197,6 @@ export const isScratchEntry = (content: string | undefined): boolean =>
   Boolean(
     content && /<h1>New Project<\/h1>/.test(content) && /Start coding here\.\.\./.test(content),
   );
-
 const sourceFenceLanguage = (path: string): string => {
   const extension = path.split('.').pop()?.toLowerCase();
   if (extension === 'js') return 'js';
@@ -232,6 +231,9 @@ export const writeRecovery = (
     return ` The rejected component was not staged.${stylesheetContext} Write only ${path} in this turn, using one ${language} source fence and no style prop or <style> tag.`;
   }
 
+  const missingFunction = /calls undeclared function '([^']+)'/i.exec(message);
+  if (missingFunction)
+    return ` The rejected source was not staged. Define the missing helper ${missingFunction[1]} before it is called, or remove the call. Return the complete ${path} in one ${sourceFenceLanguage(path)} source fence; do not return a partial render branch or prose.`;
   if (!/(?:Unclosed|Unmatched|nesting exceeds|cannot reference itself)/.test(message)) {
     return '';
   }
@@ -243,7 +245,6 @@ export const writeRecovery = (
   const language = sourceFenceLanguage(path);
   return ` The rejected source file was not staged. Your next action must write only ${path}, using one ${language} fence. Return the complete source file, check that every bracket has a matching partner, and do not include a stylesheet or another source fence in this response.`;
 };
-
 export type BuildUserRequestOptions = {
   request: string;
   scope?: string;

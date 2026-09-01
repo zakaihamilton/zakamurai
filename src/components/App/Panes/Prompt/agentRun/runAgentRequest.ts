@@ -7,6 +7,7 @@ import type {
   AgentSession,
   AppStateShape,
   ChangeSetStateShape,
+  PreviewStateShape,
   PromptUiStateShape,
 } from '@/types/domain-types';
 import type {
@@ -45,6 +46,7 @@ export type RunAgentRequestParams = {
   promptUiState: StateStore<PromptUiStateShape>;
   appState: StateStore<AppStateShape>;
   changeSetState: StateStore<ChangeSetStateShape>;
+  previewState?: StateStore<PreviewStateShape> | null;
   selectedModel: string;
   cachedModelIds: string[];
   webLLMEngines: Record<string, WebLLMEngineState>;
@@ -71,6 +73,7 @@ export async function runAgentRequest({
   promptUiState,
   appState,
   changeSetState,
+  previewState,
   selectedModel,
   cachedModelIds,
   webLLMEngines,
@@ -128,7 +131,13 @@ export async function runAgentRequest({
           draft.latestManagerTrace = trace;
         });
       },
-      ...createManagerToolOptions({ Compiler, fs, sidebarState }),
+      ...createManagerToolOptions({
+        Compiler,
+        fs,
+        sidebarState,
+        tabState,
+        previewState: previewState || undefined,
+      }),
       onEvent: (managerEvent) => {
         if (managerEvent.type === 'validation') {
           const output = managerEvent.output || managerEvent.message || '';
