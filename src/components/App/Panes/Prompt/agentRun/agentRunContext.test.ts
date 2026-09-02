@@ -86,4 +86,58 @@ describe('createManagerToolOptions preview inspection', () => {
       '<html><body><div id="root"></div></body></html>',
     );
   });
+
+  it('restores the reasoning tab after welcome-run preview inspection', async () => {
+    const tabStateValue: TabStateShape = {
+      openTabs: [{ id: 'ai-section:reasoning', type: 'ai-section', label: 'Progress & Reasoning' }],
+      activeTabId: 'ai-section:reasoning',
+      lastCodeTabId: null,
+    };
+    const tabState = makeStore(tabStateValue);
+    const previewStateValue: PreviewStateShape = {
+      htmlContent: null,
+      isCompilerReady: false,
+      previewAddress: '/preview/dist/index.html',
+      previewSessionId: null,
+      containerStatus: 'idle',
+      compileStatus: 'idle',
+      compilePhase: null,
+      lastCompileAt: null,
+      containerError: null,
+    };
+    const previewState = makeStore(previewStateValue, (next) => {
+      if (next.htmlContent?.includes('zakamurai-ai-preview')) {
+        reportPreviewEvidence({
+          path: '/preview/dist/index.html',
+          title: 'Notes',
+          text: 'Notes app',
+          elements: ['main: Notes'],
+          screenshotCaptured: true,
+        });
+      }
+    });
+    const sidebarState = makeStore({ folderTree: [] } as unknown as SidebarStateShape);
+    const vfs = {
+      existsSync: vi.fn(() => true),
+      readFileSync: vi.fn(() => '<html><body><div id="root"></div></body></html>'),
+      writeFileSync: vi.fn(),
+    };
+    const compiler = {
+      compile: vi.fn().mockResolvedValue(undefined),
+      container: { vfs },
+    };
+    const Compiler = vi.fn(() => compiler) as unknown as typeof import('@/utils/compiler').Compiler;
+    const options = createManagerToolOptions({
+      Compiler,
+      fs: { mode: 'opfs', rootHandle: null } as unknown as FileSystemApi,
+      sidebarState,
+      tabState,
+      previewState,
+      deferPreviewNavigation: true,
+    });
+
+    await options.inspectPreview?.({ 'src/App.jsx': 'export default function App() {}' });
+
+    expect(tabStateValue.activeTabId).toBe('ai-section:reasoning');
+  });
 });

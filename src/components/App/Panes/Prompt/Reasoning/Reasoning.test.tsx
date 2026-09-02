@@ -201,7 +201,7 @@ describe('ReasoningPanel', () => {
 
     expect(screen.getByText('Run diagnostics')).toBeDefined();
     expect(screen.getByText('Qwen3.5-4B-q4f16_1-MLC')).toBeDefined();
-    expect(screen.getByText('1.3 s')).toBeDefined();
+    expect(screen.getByText('0m 01s')).toBeDefined();
     expect(screen.getByText('read_file ×2 · write_file ×1')).toBeDefined();
   });
 

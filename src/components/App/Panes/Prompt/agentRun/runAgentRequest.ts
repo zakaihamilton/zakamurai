@@ -137,6 +137,7 @@ export async function runAgentRequest({
         sidebarState,
         tabState,
         previewState: previewState || undefined,
+        deferPreviewNavigation: isWelcomePrompt,
       }),
       onEvent: (managerEvent) => {
         if (managerEvent.type === 'validation') {

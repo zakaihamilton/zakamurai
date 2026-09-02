@@ -1,4 +1,5 @@
 import type { ManagerTrace } from '@/components/AI/Agent/ManagerTrace';
+import { formatDuration } from '@/components/AI/Agent/formatDuration';
 import type { FileMap } from '@/components/AI/types';
 import Dialog from '@/components/ui/Dialog';
 import { Icons } from '@/components/ui/Icons';
@@ -89,7 +90,8 @@ export default function ManagerTraceInspector({
         <div className={styles.content}>
           <div className={styles.toolbar}>
             <p className={styles.meta}>
-              {trace.outcome} · {trace.events.length} events · {trace.durationMs ?? 0} ms
+              {trace.outcome} · {trace.events.length} events ·{' '}
+              {formatDuration(trace.durationMs ?? 0)}
             </p>
             <div className={styles.actions}>
               <Tooltip content="Export JSON">
@@ -146,7 +148,7 @@ export default function ManagerTraceInspector({
                 className={`${styles.event} ${event.status === 'failed' ? styles.eventError : ''}`}
               >
                 <span className={styles.eventLabel}>
-                  #{event.sequence} {event.phase} · {event.elapsedMs} ms
+                  #{event.sequence} {event.phase} · {formatDuration(event.elapsedMs)}
                 </span>
                 {event.status && <span className={styles.eventStatus}>{event.status}</span>}
                 <span className={styles.eventDetail}>

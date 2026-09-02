@@ -1,3 +1,4 @@
+import { createIdleAgentActivity } from '@/components/AI/Agent/AgentActivity';
 import {
   createProjectStyleProfile,
   resolveProjectStyleProfile,
@@ -16,7 +17,6 @@ import { WorkspaceProfileState } from '@/components/Workspace';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { requireStore } from '../../types';
 import { AgentSessionState, createAgentRunUsage, createSessionMessage } from './AgentSessions';
-import { createIdleAgentActivity } from '@/components/AI/Agent/AgentActivity';
 import FileScopeDialog from './FileScopeDialog';
 import PromptContent from './PromptContent';
 import usePromptHistory from './PromptHistory';
@@ -77,6 +77,7 @@ export default function Prompt() {
   const [filePromptRemainder, setFilePromptRemainder] = useState('');
   const [isFileScopeArmed, setIsFileScopeArmed] = useState(false);
   const lastStopRequestRef = useRef(0);
+  const handledWelcomeRequestRef = useRef<unknown>(null);
   const styleProfile = resolveProjectStyleProfile(
     editorState.fileContents || {},
     workspaceProfileState.styleProfile,
@@ -195,6 +196,10 @@ export default function Prompt() {
 
   useEffect(() => {
     if (!welcomeRequest || isAIProcessing || !activeSession) return;
+    // Effects can be replayed by React while the state update below is still pending.
+    // Claim this request by identity so a welcome handoff can only start one run.
+    if (handledWelcomeRequestRef.current === welcomeRequest) return;
+    handledWelcomeRequestRef.current = welcomeRequest;
 
     const request = welcomeRequest as WelcomeRequest;
     promptUiState((draft) => {

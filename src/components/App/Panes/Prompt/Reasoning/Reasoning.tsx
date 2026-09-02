@@ -1,3 +1,4 @@
+import { formatDuration } from '@/components/AI/Agent/formatDuration';
 import { Icons } from '@/components/ui/Icons';
 import ToolbarButton from '@/components/ui/ToolbarButton';
 import Tooltip from '@/components/ui/Tooltip';
@@ -15,12 +16,6 @@ import {
 } from '../AgentSessions';
 import SectionActions from '../SectionExpandButton';
 import styles from './Reasoning.module.css';
-
-const formatDuration = (milliseconds: number): string => {
-  if (!Number.isFinite(milliseconds) || milliseconds <= 0) return '—';
-  if (milliseconds < 1000) return `${Math.round(milliseconds)} ms`;
-  return `${(milliseconds / 1000).toFixed(1)} s`;
-};
 
 type ReasoningPanelProps = {
   modelDownloadStatus?: string;

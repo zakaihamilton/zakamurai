@@ -7,6 +7,7 @@ import type {
   WebLLMRecoveryEvent,
 } from '@/components/AI/types';
 import { getModelDownloadProgress } from './ActionLoopRecovery';
+import { formatDuration } from './formatDuration';
 
 type AskWebLLM = Awaited<ReturnType<typeof import('./ActionLoopRecovery').loadAskWebLLM>>;
 
@@ -58,7 +59,7 @@ export async function requestNextAction({
   let lastEmitCharCount = 0;
   const responseStartedAt = Date.now();
   const heartbeat = setInterval(() => {
-    const elapsedSeconds = Math.max(1, Math.floor((Date.now() - responseStartedAt) / 1000));
+    const elapsedMs = Date.now() - responseStartedAt;
     const downloadProgress = getModelDownloadProgress(model);
     const progress = downloadProgress
       ? downloadProgress
@@ -70,7 +71,7 @@ export async function requestNextAction({
       turn,
       agentRole,
       replaceProgress: true,
-      message: `Local model is still working (${elapsedSeconds}s elapsed; ${progress})…`,
+      message: `Local model is still working (${formatDuration(Math.max(1000, elapsedMs))} elapsed; ${progress})…`,
     });
   }, 3_000);
 

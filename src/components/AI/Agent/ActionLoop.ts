@@ -160,6 +160,7 @@ export async function runActionLoop({
   let nonProductiveActionsWithoutWrite = 0;
   let directRepairAttempts = 0;
   let incompleteWriteRetries = 0;
+  let declarationRepairAttempts = 0;
   let failedWriteAttempts = 0;
   let malformedSourceAttempts = 0;
   const failedStylesheetWrites = new Map<string, number>();
@@ -1056,6 +1057,7 @@ export async function runActionLoop({
         failedWriteDiagnostic = '';
         unchangedReadSkips = 0;
         clearFailedWriteAttempts();
+        declarationRepairAttempts = 0;
         malformedSourceAttempts = 0;
         forcedWriteRecoveryPending = false;
         forcedRecoveryTargetPath = null;
@@ -1478,6 +1480,20 @@ export async function runActionLoop({
         failedWriteDiagnostic = err.message;
         forcedWriteRecoveryPending = true;
         forcedRecoveryTargetPath = action.path || forcedRecoveryTargetPath;
+
+        if (
+          /undeclared (?:event handler|function|state setter)|references undeclared|calls undeclared/i.test(
+            err.message,
+          )
+        ) {
+          declarationRepairAttempts += 1;
+          if (declarationRepairAttempts >= validationRepairLimit) {
+            throw new AgentExecutionError(
+              `The local model could not produce valid source for ${targetPath || 'the target file'} after ${validationRepairLimit} declaration repairs. Staged changes were preserved for review; retry with a stronger model or a narrower request.`,
+              workspace.changes(),
+            );
+          }
+        }
       }
       if (
         action.action === 'write_file' &&

@@ -14,6 +14,7 @@ import type {
   AgentReasoningEntry,
 } from '@/types/domain-types';
 import type { ManagerTrace, ManagerTraceEvent } from './ManagerTrace';
+import { formatDuration } from './formatDuration';
 
 export const MAX_AGENT_ACTIVITY_NODES = 96;
 export const MAX_AGENT_ACTIVITY_DETAIL_CHARACTERS = 1200;
@@ -29,7 +30,7 @@ const timestamp = (): string => new Date().toTimeString().split(' ')[0];
 
 const elapsedLabel = (elapsedMs: number | undefined): string => {
   if (!Number.isFinite(elapsedMs) || !elapsedMs || elapsedMs < 0) return '';
-  return `+${(elapsedMs / 1000).toFixed(1)}s`;
+  return `+${formatDuration(elapsedMs)}`;
 };
 
 const capNodes = (nodes: AgentActivityNode[]): AgentActivityNode[] =>

@@ -72,7 +72,7 @@
   padding: 10px 12px;
   border: 1px solid var(--border-light);
   border-radius: 10px;
-  background: color-mix(in srgb, var(--bg-surface) 82%, transparent);
+  background: var(--bg-surface);
 }
 
 .statusMarker {
@@ -146,7 +146,7 @@
   padding: 10px 12px;
   border: 1px solid color-mix(in srgb, var(--accent) 34%, var(--border-light));
   border-radius: 10px;
-  background: color-mix(in srgb, var(--bg-surface) 82%, transparent);
+  background: var(--bg-surface);
 }
 
 .runExecutionIndicator {
@@ -253,7 +253,7 @@
   padding: 9px 10px;
   border: 1px solid var(--border-light);
   border-radius: 9px;
-  background: color-mix(in srgb, var(--bg-surface) 88%, transparent);
+  background: var(--bg-surface);
 }
 
 .metricGrid dt {
@@ -541,11 +541,7 @@
   border: 1px solid color-mix(in srgb, var(--border-light) 92%, var(--accent));
   border-radius: 18px;
   padding: 8px;
-  background: linear-gradient(
-      135deg,
-      color-mix(in srgb, var(--bg-surface) 55%, var(--bg-input)),
-      var(--bg-input) 58%
-    ), var(--bg-input);
+  background: var(--bg-input);
   box-shadow: 0 9px 20px color-mix(in srgb, var(--text-main) 6%, transparent), var(--shadow-sm);
   transition: border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
 }
@@ -592,6 +588,7 @@
       color-mix(in srgb, var(--accent) 13%, var(--bg-surface)),
       var(--bg-surface)
     );
+  background-color: var(--bg-surface);
 }
 
 .executionCardArt::before {
@@ -651,7 +648,7 @@
   place-items: center;
   border: 1px solid color-mix(in srgb, var(--accent) 46%, var(--border-light));
   border-radius: 50%;
-  background: color-mix(in srgb, var(--bg-surface) 68%, var(--accent-light));
+  background: var(--bg-surface);
   box-shadow: 0 0 0 7px color-mix(in srgb, var(--accent) 7%, transparent);
 }
 
@@ -670,6 +667,7 @@
       color-mix(in srgb, var(--accent) 17%, var(--bg-surface)),
       var(--bg-surface)
     );
+  background-color: var(--bg-surface);
 }
 
 .executionCardArtGeneration::before {
@@ -718,7 +716,7 @@
   border: 1px solid color-mix(in srgb, var(--accent) 52%, var(--border-light));
   border-radius: 18px;
   color: var(--accent);
-  background: color-mix(in srgb, var(--bg-surface) 70%, var(--accent-light));
+  background: var(--bg-surface);
   box-shadow: 0 0 0 7px color-mix(in srgb, var(--accent) 8%, transparent), 0 0 24px
     color-mix(in srgb, var(--accent) 19%, transparent);
   transform: rotate(-3deg);
@@ -800,7 +798,7 @@
 }
 
 .executionNodequeued .executionCardArt {
-  opacity: 0.72;
+  opacity: 1;
   filter: saturate(0.65);
 }
 
@@ -896,7 +894,7 @@
 }
 
 .executionNodequeued .executionCard {
-  background: color-mix(in srgb, var(--bg-input) 78%, var(--bg-surface));
+  background: var(--bg-input);
 }
 
 .executionNodeactive .executionMarker {
@@ -922,11 +920,7 @@
 }
 
 .executionNodeLiveGeneration .executionCard {
-  background: linear-gradient(
-      145deg,
-      color-mix(in srgb, var(--accent) 8%, var(--bg-surface)),
-      var(--bg-input) 62%
-    ), var(--bg-input);
+  background: var(--bg-input);
 }
 
 .executionNodeLiveGeneration .executionCard::after {
@@ -944,7 +938,7 @@
   border: 1px solid color-mix(in srgb, var(--accent) 22%, var(--border-light));
   border-radius: 8px;
   padding: 9px 10px;
-  background: color-mix(in srgb, var(--accent) 6%, var(--bg-surface));
+  background: var(--bg-surface);
 }
 
 .executionGenerationSummaryHeading {
@@ -1059,7 +1053,7 @@
   margin: 0;
   border: 1px solid var(--border-light);
   border-radius: 8px;
-  background: color-mix(in srgb, var(--bg-surface) 78%, transparent);
+  background: var(--bg-surface);
 }
 
 .executionGenerationDetails summary {

@@ -1,4 +1,5 @@
 import { applyReasoningFallback } from '@/components/AI/Agent/AgentActivity';
+import { formatDuration } from '@/components/AI/Agent/formatDuration';
 import { withoutManagerErrorMessages } from '@/components/App/Panes/Prompt/AgentSessions';
 import { Icons } from '@/components/ui/Icons';
 import Tooltip from '@/components/ui/Tooltip';
@@ -166,12 +167,6 @@ export const getRunStatus = (
   if (latestError || activeSession?.status === 'error') return 'error';
   if (activeSession?.status === 'running') return 'running';
   return hasContent ? 'ready' : 'waiting';
-};
-
-const formatDuration = (milliseconds: number): string => {
-  if (!Number.isFinite(milliseconds) || milliseconds <= 0) return '—';
-  if (milliseconds < 1000) return `${Math.round(milliseconds)} ms`;
-  return `${(milliseconds / 1000).toFixed(1)} s`;
 };
 
 type DisplayRunStatus = 'waiting' | 'running' | 'ready' | 'error' | 'stopped';

@@ -313,7 +313,7 @@ describe('useAgentRunner', () => {
     expect(props.addToHistory).not.toHaveBeenCalled();
   });
 
-  it('sends an explicit welcome request with optional event and scope', () => {
+  it('sends an explicit welcome request with optional event and scope', async () => {
     const props = createRunnerProps({ val: '', promptScope: 'file' });
     const { result } = renderHook(() => useAgentRunner(props));
 
@@ -324,6 +324,32 @@ describe('useAgentRunner', () => {
     expect(props.addToHistory).toHaveBeenCalledWith('welcome build');
     expect(props.patchSession).toHaveBeenCalled();
     expect(props.promptUiState).toHaveBeenCalled();
+    await waitFor(() => expect(runAgent).toHaveBeenCalledTimes(1));
+  });
+
+  it('does not start a second run while the first run is still settling', async () => {
+    let resolveRun: (() => void) | undefined;
+    runAgent.mockImplementationOnce(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveRun = resolve;
+        }),
+    );
+    const props = createRunnerProps({ val: 'first request' });
+    const { result } = renderHook(() => useAgentRunner(props));
+
+    act(() => {
+      result.current.send(mockFormEvent());
+      result.current.send(null, 'second request');
+    });
+
+    await waitFor(() => expect(runAgent).toHaveBeenCalledTimes(1));
+    expect(props.addToHistory).toHaveBeenCalledWith('first request');
+    expect(props.addToHistory).not.toHaveBeenCalledWith('second request');
+
+    await act(async () => {
+      resolveRun?.();
+    });
   });
 
   it('auto-approves and builds a successful welcome request over starter files', async () => {

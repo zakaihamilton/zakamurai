@@ -138,7 +138,7 @@ describe('formatRunUsageSummary', () => {
         decodeTokensPerSecondCalls: 1,
         toolCalls: {},
       }),
-    ).toContain('**Avg. first token:** 20 ms\n\n**Avg. generation speed:** 20 tokens/s');
+    ).toContain('**Avg. first token:** under 1s\n\n**Avg. generation speed:** 20 tokens/s');
     expect(
       formatRunUsageSummary({
         modelIds: [],

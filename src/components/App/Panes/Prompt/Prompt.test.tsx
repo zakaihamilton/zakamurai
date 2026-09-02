@@ -517,10 +517,15 @@ describe('Prompt', () => {
     });
     vi.mocked(PromptUiState.useState).mockReturnValue(promptUi);
     await act(async () => {
-      render(<Prompt />);
+      render(
+        <React.StrictMode>
+          <Prompt />
+        </React.StrictMode>,
+      );
     });
 
     await waitFor(() => expect(runManager).toHaveBeenCalled());
+    expect(runManager).toHaveBeenCalledTimes(1);
     expect(promptUi.welcomeRequest).toBeNull();
   });
 

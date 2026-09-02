@@ -79,12 +79,15 @@ export function createManagerToolOptions({
   sidebarState,
   tabState,
   previewState,
+  deferPreviewNavigation = false,
 }: {
   Compiler: typeof import('@/utils/compiler').Compiler;
   fs: FileSystemApi;
   sidebarState: StateStore<SidebarStateShape>;
   tabState: StateStore<TabStateShape>;
   previewState?: StateStore<PreviewStateShape>;
+  /** Keep the welcome run's reasoning tab visible until its final build opens preview. */
+  deferPreviewNavigation?: boolean;
 }): Pick<RunManagerOptions, 'validate' | 'runProjectCheck' | 'inspectPreview' | 'retrieveContext'> {
   return {
     retrieveContext: async (query, k) => {
@@ -129,6 +132,13 @@ export function createManagerToolOptions({
     },
     inspectPreview: async (stagedFiles: FileMap) => {
       const logs: string[] = [];
+      const previousActiveTabId = tabState.activeTabId;
+      const restoreDeferredPreviewNavigation = () => {
+        if (!deferPreviewNavigation || !previousActiveTabId) return;
+        tabState((draft) => {
+          if (draft.activeTabId === 'preview') draft.activeTabId = previousActiveTabId;
+        });
+      };
       const compiler = new Compiler((line: string) => logs.push(line));
       const evidenceBridge = await import(
         '@/components/App/Views/PreviewArea/previewEvidenceBridge'
@@ -164,6 +174,7 @@ export function createManagerToolOptions({
             draft.isCompilerReady = true;
           });
           evidence = await evidenceBridge.waitForPreviewEvidence(evidenceRevision);
+          restoreDeferredPreviewNavigation();
           if (!evidence) {
             return {
               status: 'unavailable',
@@ -185,6 +196,7 @@ export function createManagerToolOptions({
           diagnostics: logs.slice(-12).join('\n'),
         };
       } catch (error) {
+        restoreDeferredPreviewNavigation();
         return {
           status: 'failed',
           runtimeErrors: [error instanceof Error ? error.message : String(error)],

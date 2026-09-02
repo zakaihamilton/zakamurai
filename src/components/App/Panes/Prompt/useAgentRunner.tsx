@@ -2,7 +2,7 @@ import { AppState } from '@/components/App/AppState';
 import { PreviewState } from '@/components/App/PreviewState';
 import { ChangeSetState } from '@/components/Workspace';
 import type { FormEvent } from 'react';
-import { useCallback } from 'react';
+import { useCallback, useRef } from 'react';
 import { requireStore } from '../../types';
 import { createAgentRunUsage } from './AgentSessions';
 import { formatAgentEvent } from './agentRun/formatAgentEvent';
@@ -38,6 +38,7 @@ export default function useAgentRunner({
   const changeSetState = requireStore(ChangeSetState.usePassiveState());
   const appState = requireStore(AppState.usePassiveState());
   const previewState = PreviewState.usePassiveState();
+  const activeRunRef = useRef<symbol | null>(null);
 
   const handleStop = useCallback(
     (e?: React.MouseEvent<HTMLButtonElement>) => {
@@ -91,9 +92,11 @@ export default function useAgentRunner({
       e?.preventDefault?.();
       const userMsg = typeof request === 'string' ? request : val;
       const effectiveScope = scope || promptScope;
-      if (!userMsg.trim() || isAIProcessing || !activeSession) return;
+      if (!userMsg.trim() || isAIProcessing || !activeSession || activeRunRef.current) return;
 
       const sessionId = activeSession.id;
+      const runToken = Symbol('agent-run');
+      activeRunRef.current = runToken;
       addToHistory(userMsg);
       const currentActiveTabId = tabState.activeTabId;
       const currentActiveTab = tabState.openTabs.find((tab) => tab.id === currentActiveTabId);
@@ -157,6 +160,8 @@ export default function useAgentRunner({
         patchSession,
         pushSessionMessage,
         createSessionMessage,
+      }).finally(() => {
+        if (activeRunRef.current === runToken) activeRunRef.current = null;
       });
     },
     [

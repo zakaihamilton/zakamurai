@@ -486,6 +486,42 @@ export default function App() {
     ).toBe(true);
   });
 
+  it('stops a repeated undeclared-helper repair instead of replaying the prompt until the turn cap', async () => {
+    const brokenSource = `import { useState } from 'react';
+import styles from './App.module.css';
+export default function App() {
+  const [notes, setNotes] = useState([]);
+  const [draft, setDraft] = useState('');
+  const addNote = () => {
+    if (!draft.trim()) return;
+    setNotes((current) => [...current, { id: Date.now(), text: draft }]);
+    setDraft('');
+  };
+  return <main className={styles.app}>
+    <h1>Notes</h1>
+    <input value={draft} onChange={(event) => setDraft(event.target.value)} />
+    <button type="button" onClick={addNote}>Add</button>
+    {notes.length ? notes.map((note) => <p key={note.id}>{note.text}</p>) : renderEmptyState()}
+  </main>;
+}`;
+    const modelClient = vi.fn().mockResolvedValue(brokenSource);
+
+    await expect(
+      runActionLoop({
+        request: 'create a notes app',
+        activeFile: 'src/App.jsx',
+        files: {
+          'src/App.jsx': 'export default function App() { return null; }',
+          'src/App.module.css': '.app {}',
+        },
+        model: 'Qwen2.5-Coder-1.5B-Instruct-q4f16_1-MLC',
+        modelClient,
+        priorContext: 'Workspace files are already supplied.',
+      }),
+    ).rejects.toThrow(/after 2 declaration repairs/);
+    expect(modelClient).toHaveBeenCalledTimes(2);
+  });
+
   it('uses a compact prompt when forced write recovery is activated', async () => {
     const modelClient = vi
       .fn()

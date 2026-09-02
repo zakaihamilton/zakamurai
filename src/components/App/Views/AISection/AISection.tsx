@@ -1,4 +1,5 @@
 import { applyReasoningFallback } from '@/components/AI/Agent/AgentActivity';
+import { formatDuration, formatLatency } from '@/components/AI/Agent/formatDuration';
 import { WEB_LLM_MODELS } from '@/components/AI/WebLLMModels';
 import { WebLLMState } from '@/components/AI/WebLLMState';
 import {
@@ -79,8 +80,8 @@ export const formatRunUsageSummary = (usage: AgentRunUsage | undefined): string 
           `**Token reporting:** Input ${tokenCoverage(usage.promptTokenCalls)} · Output ${tokenCoverage(usage.completionTokenCalls)}`,
         ]
       : []),
-    `**Model time:** ${formatMetric(usage.totalMs / 1000, 2)} s`,
-    `**Avg. first token:** ${usage.timeToFirstTokenCalls ? `${formatMetric(usage.timeToFirstTokenMs / usage.timeToFirstTokenCalls, 0)} ms` : 'Unavailable'}`,
+    `**Model time:** ${formatDuration(usage.totalMs)}`,
+    `**Avg. first token:** ${usage.timeToFirstTokenCalls ? formatLatency(usage.timeToFirstTokenMs / usage.timeToFirstTokenCalls) : 'Unavailable'}`,
     `**Avg. generation speed:** ${usage.decodeTokensPerSecondCalls ? `${formatMetric(usage.decodeTokensPerSecond / usage.decodeTokensPerSecondCalls, 1)} tokens/s` : 'Unavailable'}`,
     ...(hasPartialPerformanceReporting
       ? [

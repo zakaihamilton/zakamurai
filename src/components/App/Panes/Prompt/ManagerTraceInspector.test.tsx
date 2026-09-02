@@ -9,7 +9,7 @@ const trace: ManagerTrace = {
   request: 'list files',
   startedAt: 100,
   endedAt: 125,
-  durationMs: 25,
+  durationMs: 61_000,
   outcome: 'success',
   events: [
     {
@@ -21,7 +21,7 @@ const trace: ManagerTrace = {
     },
     {
       sequence: 2,
-      elapsedMs: 5,
+      elapsedMs: 5_000,
       phase: 'tool',
       turn: 1,
       tool: 'list_files',
@@ -42,8 +42,8 @@ describe('ManagerTraceInspector', () => {
     expect(screen.getByRole('dialog', { name: 'Manager debug trace' })).toBeDefined();
     expect(screen.getByRole('button', { name: 'Export JSON' }).textContent).toBe('');
     expect(screen.getByRole('button', { name: 'Copy trace' }).textContent).toBe('');
-    expect(screen.getByText(/success · 2 events · 25 ms/)).toBeDefined();
-    expect(screen.getByText(/#2 tool · 5 ms/)).toBeDefined();
+    expect(screen.getByText(/success · 2 events · 1m 01s/)).toBeDefined();
+    expect(screen.getByText(/#2 tool · 0m 05s/)).toBeDefined();
     expect(screen.getByText(/source: model/)).toBeDefined();
     expect(screen.getByText('input: {}')).toBeDefined();
   });

@@ -260,7 +260,7 @@ describe('AISectionReasoning', () => {
 
   it('uses safe visual fallbacks when generation detail has no character count', () => {
     const fallbackDetail =
-      'Local model is still working (3s elapsed; the model has not started streaming yet; keeping the workspace context ready)…';
+      'Local model is still working (0m 03s elapsed; the model has not started streaming yet; keeping the workspace context ready)…';
     const fallbackActivity: AgentActivityState = {
       ...generationActivity,
       nodes: generationActivity.nodes.map((item) =>
