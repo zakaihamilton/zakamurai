@@ -1,9 +1,6 @@
 import type { AgentAction, AgentEventHandler, FileMap, WebLLMMessage } from '@/components/AI/types';
 import { getWebLLMStore } from '../WebLLMState';
-import {
-  INTERACTIVE_GENERATION_GUIDANCE,
-  generationGuidanceForRequest,
-} from './ActionLoopSmallModel';
+import * as smallModel from './ActionLoopSmallModel';
 import { observation } from './ActionLoopUtils';
 import type { AgentContextManager } from './ContextManager';
 import { type ProjectStyleProfile, formatProjectStyleContract } from './ProjectStyleProfile';
@@ -231,9 +228,8 @@ export const writeRecovery = (
     return ` The rejected component was not staged.${stylesheetContext} Write only ${path} in this turn, using one ${language} source fence and no style prop or <style> tag.`;
   }
 
-  const missingFunction = /calls undeclared function '([^']+)'/i.exec(message);
-  if (missingFunction)
-    return ` The rejected source was not staged. Define the missing helper ${missingFunction[1]} before it is called, or remove the call. Return the complete ${path} in one ${sourceFenceLanguage(path)} source fence; do not return a partial render branch or prose.`;
+  const declarationGuidance = smallModel.buildDeclarationRecoveryGuidance(path, message);
+  if (declarationGuidance) return declarationGuidance;
   if (!/(?:Unclosed|Unmatched|nesting exceeds|cannot reference itself)/.test(message)) {
     return '';
   }
@@ -406,7 +402,7 @@ export const buildContextReadyUserRequest = ({
       : managerContext;
   let siblingContext = formatSiblings(siblingFileChars);
   let referenceContext = formatReference(1400);
-  let guidance = generationGuidanceForRequest(request, {
+  let guidance = smallModel.generationGuidanceForRequest(request, {
     interactiveContract: lightweight || includeProductContract,
   });
   let styleContract = styleProfile
@@ -514,7 +510,7 @@ const buildFenceOnlyRecoveryMessages = ({
       role: 'user',
       content: [
         `Original request: ${request}`,
-        ...generationGuidanceForRequest(request, { interactiveContract: true }),
+        ...smallModel.generationGuidanceForRequest(request, { interactiveContract: true }),
         ...(incompleteWriteHint ? [incompleteWriteHint] : []),
         `Required destination: ${recoveryPath}`,
         context,
@@ -574,7 +570,7 @@ export const buildForcedWriteRecoveryMessages = ({
       role: 'user',
       content: [
         `Original request: ${request}`,
-        ...generationGuidanceForRequest(request),
+        ...smallModel.generationGuidanceForRequest(request),
         ...(incompleteWriteHint ? [incompleteWriteHint] : []),
         recoveryInstruction,
         targetPath
@@ -614,7 +610,9 @@ export const buildRepairFileMessages = ({
     /<h1>\s*New Project\s*<\/h1>|Start coding here\.\.\./i.test(cleanedFailedContent);
   const currentContent = starterLike
     ? 'The failed source was the starter screen. Do not preserve or repeat its placeholder markup; generate the requested application from scratch.'
-    : cleanedFailedContent || files[repairPath] || '(file does not exist yet)';
+    : smallModel.shouldRegenerateFailedInteractiveSource(request, lightweight, diagnostic)
+      ? 'The failed source contained undeclared references. Do not preserve it or patch it one symbol at a time; regenerate the requested application from scratch as one complete component.'
+      : cleanedFailedContent || files[repairPath] || '(file does not exist yet)';
   const context = currentContent.slice(0, 16000);
   const fence = [`\`\`\`${language}`, 'complete corrected source here', '```'].join('\n');
   const sourceOnly = lightweight;
@@ -625,7 +623,7 @@ export const buildRepairFileMessages = ({
       : null;
   const interactiveRepairGuidance = [
     'This is an interactive app repair, not a copy-edit.',
-    INTERACTIVE_GENERATION_GUIDANCE,
+    smallModel.INTERACTIVE_GENERATION_GUIDANCE,
     ...(emptyCollectionGuidance ? [emptyCollectionGuidance] : []),
     'If the failed response is truncated or contains repair instructions, ignore that wrapper and regenerate the complete source from scratch; never echo the repair prompt into the file.',
   ].join('\n');
@@ -646,7 +644,7 @@ export const buildRepairFileMessages = ({
         `Original request: ${request}`,
         `Repair target: ${repairPath}`,
         `Validation or syntax diagnostic:\n${diagnostic}`,
-        ...generationGuidanceForRequest(request),
+        ...smallModel.generationGuidanceForRequest(request),
         ...(legacyGuidance ? [`Targeted recovery guidance:${legacyGuidance}`] : []),
         ...(mappedClickableRepairGuidance ? [mappedClickableRepairGuidance] : []),
         interactiveRepairGuidance,
@@ -694,7 +692,7 @@ export const buildDirectChangesRecoveryMessages = ({
       role: 'user',
       content: [
         `Original request: ${request}`,
-        ...generationGuidanceForRequest(request),
+        ...smallModel.generationGuidanceForRequest(request),
         targetPath
           ? `Primary file: ${targetPath}`
           : 'Primary file: choose the application entry file.',

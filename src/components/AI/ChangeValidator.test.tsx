@@ -579,6 +579,26 @@ export default function App() {
     ).toBeNull();
   });
 
+  it('reports every undeclared handler and helper in one diagnostic', () => {
+    const cascading = `import { useState } from 'react';
+export default function App() {
+  const [items, setItems] = useState([]);
+  return <main>
+    <button type="button" onClick={handleAdd}>Add</button>
+    <button type="button" onClick={handleDelete}>Delete</button>
+    {renderItems()}
+    {renderEmptyState()}
+  </main>;
+}`;
+
+    const diagnostic = validateDeclaredFunctionCalls('src/App.jsx', cascading);
+    expect(diagnostic).toContain("undeclared event handler 'handleAdd'");
+    expect(diagnostic).toContain("'handleDelete'");
+    expect(diagnostic).toContain("undeclared function 'renderItems'");
+    expect(diagnostic).toContain("'renderEmptyState'");
+    expect(diagnostic).toContain('(also:');
+  });
+
   it('rejects stateful callbacks declared outside the component', () => {
     const source = `import { useState } from 'react';
 function App() {

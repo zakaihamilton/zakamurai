@@ -70,6 +70,28 @@ Include an accessible reset, clear, or restart control whenever the interaction 
 If a mapped root element itself has onClick (for example a board cell), make that element a <button type="button">. Nested controls inside a list item are already fine.
 `.trim();
 
+export const buildDeclarationRecoveryGuidance = (path: string, message: string): string => {
+  const language = path.split('.').pop()?.toLowerCase() || 'jsx';
+  if (/undeclared (?:event handlers|functions)\b|\(also:/.test(message))
+    return ` The rejected source was not staged. Do not patch one missing name at a time. Regenerate the complete ${path} from scratch in one ${language} source fence, preserve the requested behavior, and declare every referenced event handler, render helper, and state value before using it. Check all JSX handler references and function calls before responding; do not return a partial repair or prose.`;
+  const missingEventHandler = /references undeclared event handler '([^']+)'/i.exec(message);
+  if (missingEventHandler)
+    return ` The rejected source was not staged. Define the missing event handler ${missingEventHandler[1]} inside the component, or remove the handler. Return the complete ${path} in one ${language} source fence; do not return a partial render branch or prose.`;
+  const missingFunction = /calls undeclared function '([^']+)'/i.exec(message);
+  if (missingFunction)
+    return ` The rejected source was not staged. Define the missing helper ${missingFunction[1]} before it is called, or remove the call. Return the complete ${path} in one ${language} source fence; do not return a partial render branch or prose.`;
+  return '';
+};
+
+export const shouldRegenerateFailedInteractiveSource = (
+  request: string,
+  lightweight: boolean,
+  diagnostic: string,
+): boolean =>
+  lightweight &&
+  isNewAppGenerationRequest(request) &&
+  /undeclared (?:event handler|function|state setter)/i.test(diagnostic);
+
 export const TODO_APP_GENERATION_GUIDANCE = `
 For todo and task-list requests, build a polished task planner rather than a starter shell:
 - Keep tasks in React state with stable ids and a controlled form. Trim empty submissions, then support add, toggle complete, delete, and clear completed.

@@ -124,6 +124,24 @@ describe('responsive generation scope', () => {
     expect(messages[1].content).toContain('partial render branch');
   });
 
+  it('regenerates a new app from scratch after cascading missing references', () => {
+    const messages = buildRepairFileMessages({
+      request: 'create a notes app',
+      targetPath: 'src/App.jsx',
+      files: { 'src/App.jsx': 'export default function App() { return null; }' },
+      failedContent: `export default function App() {
+  return <main data-marker="cascading-source"><button onClick={handleAdd}>{renderNotes()}</button></main>;
+}`,
+      diagnostic:
+        "Generated source for src/App.jsx references undeclared event handler 'handleAdd' (also: 'handleDelete'). Define every listed handler inside the component or remove the handlers before finishing. Generated source for src/App.jsx calls undeclared function 'renderNotes' (also: 'renderEmptyState'). Define every listed function inside the component or remove the calls before finishing.",
+      lightweight: true,
+    });
+
+    expect(messages[1].content).toContain('regenerate the requested application from scratch');
+    expect(messages[1].content).not.toContain('data-marker="cascading-source"');
+    expect(messages[1].content).toContain('Every bare JSX event-handler reference');
+  });
+
   it('does not feed starter markup back into a repair loop', () => {
     const messages = buildRepairFileMessages({
       request: 'build a todo app',

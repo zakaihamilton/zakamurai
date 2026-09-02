@@ -59,6 +59,12 @@ export function assertStagedFileContent({
   if (contentTypeError) throw new Error(contentTypeError);
   const placeholderError = validateGeneratedPlaceholder(path, content);
   if (placeholderError) throw new Error(placeholderError);
+  const stateVarError = validateDeclaredStateVariables(path, content);
+  const functionError = validateDeclaredFunctionCalls(path, content);
+  const declarationErrors = [stateVarError, functionError].filter((error): error is string =>
+    Boolean(error),
+  );
+  if (declarationErrors.length) throw new Error(declarationErrors.join(' '));
   if (lightweightModel) {
     const fulfillmentError = validateRequestFulfillment(path, content, request);
     if (fulfillmentError) throw new Error(fulfillmentError);
@@ -73,10 +79,6 @@ export function assertStagedFileContent({
   }
   const cssSafetyError = validateCssContentSafety(path, content);
   if (cssSafetyError) throw new Error(cssSafetyError);
-  const stateVarError = validateDeclaredStateVariables(path, content);
-  if (stateVarError) throw new Error(stateVarError);
-  const functionError = validateDeclaredFunctionCalls(path, content);
-  if (functionError) throw new Error(functionError);
   const syntaxError = validateContentSyntax(path, content);
   if (syntaxError) throw new Error(syntaxError);
 }

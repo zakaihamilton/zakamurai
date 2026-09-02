@@ -165,6 +165,39 @@ export default function App() {
     ).toThrow(/undeclared function 'renderEditState'/);
   });
 
+  it('reports missing state, handlers, and helpers together', () => {
+    const content = `import { useState } from 'react';
+import styles from './App.module.css';
+export default function App() {
+  const [notes, setNotes] = useState([]);
+  const handleStart = () => setIsAdding(true);
+  return <main className={styles.app}>
+    <button type="button" onClick={handleAdd}>Add</button>
+    {renderNotes()}
+    {isAdding ? renderAddState() : null}
+  </main>;
+}`;
+
+    let caught: unknown;
+    try {
+      assertStagedFileContent({
+        path: 'src/App.jsx',
+        content,
+        files: { 'src/App.module.css': '.app {}' },
+        request: 'create a notes app',
+        lightweightModel: true,
+      });
+    } catch (error) {
+      caught = error;
+    }
+    expect(caught).toBeInstanceOf(Error);
+    const message = caught instanceof Error ? caught.message : String(caught);
+    expect(message).toContain("undeclared event handler 'handleAdd'");
+    expect(message).toContain("undeclared function 'renderNotes'");
+    expect(message).toContain("'renderAddState'");
+    expect(message).toContain("Undeclared state setter 'setIsAdding'");
+  });
+
   it('rejects heading-only shells when fulfillment is enforced', () => {
     expect(() =>
       assertStagedFileContent({

@@ -395,13 +395,12 @@ const isDeclaredInScope = (
   return false;
 };
 
-/** Rejects bare JSX event-handler references that would fail at render time. */
-const validateJsxEventHandlerReferences = (
-  path: string,
+const undeclaredJsxEventHandlerReferences = (
   source: string,
   declared: DeclaredBindings,
   graph: SourceScopeGraph,
-): string | null => {
+): string[] => {
+  const names: string[] = [];
   for (const match of source.matchAll(
     /\bon[A-Z][A-Za-z0-9]*\s*=\s*\{\s*([A-Za-z_$][\w$]*)\s*\}/g,
   )) {
@@ -414,10 +413,13 @@ const validateJsxEventHandlerReferences = (
     ) {
       continue;
     }
-    return `Generated source for ${path} references undeclared event handler '${name}'. Define it inside the component or remove the handler before finishing.`;
+    if (!names.includes(name)) names.push(name);
   }
-  return null;
+  return names;
 };
+
+const formatUndeclaredNames = (names: string[]): string =>
+  names.map((name) => `'${name}'`).join(', ');
 
 /** Rejects render-time ReferenceErrors that bundling alone cannot detect. */
 export function validateDeclaredFunctionCalls(path: string, content: string): string | null {
@@ -426,8 +428,8 @@ export function validateDeclaredFunctionCalls(path: string, content: string): st
   const source = maskSourceLiterals(content);
   const graph = createScopeGraph(source);
   const declared = declaredSourceBindings(content, source, graph);
-  const eventHandlerError = validateJsxEventHandlerReferences(path, source, declared, graph);
-  if (eventHandlerError) return eventHandlerError;
+  const undeclaredHandlers = undeclaredJsxEventHandlerReferences(source, declared, graph);
+  const undeclaredFunctions: string[] = [];
   for (const match of source.matchAll(/(?<![A-Za-z0-9_$?.])([A-Za-z_$][\w$]*)\s*\(/g)) {
     const name = match[1];
     if (
@@ -438,7 +440,27 @@ export function validateDeclaredFunctionCalls(path: string, content: string): st
     ) {
       continue;
     }
-    return `Generated source for ${path} calls undeclared function '${name}'. Define it inside the component or remove the call before finishing.`;
+    if (!undeclaredFunctions.includes(name)) undeclaredFunctions.push(name);
   }
-  return null;
+
+  if (!undeclaredHandlers.length && !undeclaredFunctions.length) return null;
+
+  const diagnostics: string[] = [];
+  if (undeclaredHandlers.length) {
+    const [first, ...rest] = undeclaredHandlers;
+    diagnostics.push(
+      rest.length
+        ? `Generated source for ${path} references undeclared event handler '${first}' (also: ${formatUndeclaredNames(rest)}). Define every listed handler inside the component or remove the handlers before finishing.`
+        : `Generated source for ${path} references undeclared event handler '${first}'. Define it inside the component or remove the handler before finishing.`,
+    );
+  }
+  if (undeclaredFunctions.length) {
+    const [first, ...rest] = undeclaredFunctions;
+    diagnostics.push(
+      rest.length
+        ? `Generated source for ${path} calls undeclared function '${first}' (also: ${formatUndeclaredNames(rest)}). Define every listed function inside the component or remove the calls before finishing.`
+        : `Generated source for ${path} calls undeclared function '${first}'. Define it inside the component or remove the call before finishing.`,
+    );
+  }
+  return diagnostics.join(' ');
 }
