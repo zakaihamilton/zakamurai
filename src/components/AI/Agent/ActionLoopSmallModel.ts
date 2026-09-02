@@ -62,6 +62,7 @@ export const INTERACTIVE_GENERATION_GUIDANCE = `
 For interactive UI include React state, handlers, and visible empty/success/error states.
 Render the requested content visibly, including its primary controls and current status.
 Keep React state and event handlers inside the component and make the controls change that state.
+Every bare JSX event-handler reference (such as onClick={handleSave}) must name a function declared in the same component scope or a supplied prop; never reference an undeclared handler.
 Never leave starter placeholder text. Compute derived values before setState.
 For grids, lists, and games, update the targeted item or cell by index instead of appending a new item; compute derived status from the next state before calling setters.
 For turn-based interactions, do not guard the handler against one hard-coded player or value; allow each active turn to act unless an explicit opponent rule is implemented.

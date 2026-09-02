@@ -543,6 +543,42 @@ export default function App() {
     ).toBeNull();
   });
 
+  it('rejects undeclared JSX event-handler references', () => {
+    const brokenNotes = `import { useState } from 'react';
+import styles from './App.module.css';
+export default function App() {
+  const [notes, setNotes] = useState([]);
+  const [currentNote, setCurrentNote] = useState('');
+  return <main className={styles.app}>
+    <textarea value={currentNote} onChange={(event) => setCurrentNote(event.target.value)} onKeyDown={handleKeyDown} />
+    <button type="button" onClick={() => setNotes([...notes, currentNote])}>Add note</button>
+  </main>;
+}`;
+
+    expect(validateDeclaredFunctionCalls('src/App.jsx', brokenNotes)).toContain(
+      "undeclared event handler 'handleKeyDown'",
+    );
+    expect(validateRequestFulfillment('src/App.jsx', brokenNotes, 'create a notes app')).toContain(
+      "undeclared event handler 'handleKeyDown'",
+    );
+    expect(
+      validateDeclaredFunctionCalls(
+        'src/App.jsx',
+        `export default function App({ onSave }) {
+  return <button type="button" onClick={onSave}>Save</button>;
+}`,
+      ),
+    ).toBeNull();
+    expect(
+      validateDeclaredFunctionCalls(
+        'src/App.jsx',
+        `export default function App() {
+  return <><button type="button" onClick={undefined}>Disabled</button><button type="button" onClick={null}>No handler</button></>;
+}`,
+      ),
+    ).toBeNull();
+  });
+
   it('rejects stateful callbacks declared outside the component', () => {
     const source = `import { useState } from 'react';
 function App() {

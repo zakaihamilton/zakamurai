@@ -36,6 +36,38 @@ describe('summarizeVisualPreviewEvidence', () => {
     );
   });
 
+  it('rejects passed preview evidence containing runtime errors', () => {
+    expect(
+      visualPreviewInspectionFailure({
+        status: 'passed',
+        elements: ['main: Notes', 'h1: Notes', 'textarea: Note body'],
+        screenshotCaptured: true,
+        runtimeErrors: ['ReferenceError: handleKeyDown is not defined'],
+      }),
+    ).toContain('handleKeyDown is not defined');
+  });
+
+  it('preserves runtime diagnostics for failed preview inspections', () => {
+    expect(
+      visualPreviewInspectionFailure({
+        status: 'failed',
+        diagnostics: 'Preview build failed',
+        runtimeErrors: ['ReferenceError: handleKeyDown is not defined'],
+      }),
+    ).toContain('handleKeyDown is not defined');
+  });
+
+  it('prioritizes a runtime diagnostic when the crashed preview has no landmarks', () => {
+    expect(
+      visualPreviewInspectionFailure({
+        status: 'passed',
+        elements: [],
+        screenshotCaptured: false,
+        runtimeErrors: ['ReferenceError: handleKeyDown is not defined'],
+      }),
+    ).toContain('handleKeyDown is not defined');
+  });
+
   it('rejects passed previews that contain no rendered evidence or screenshot', () => {
     expect(
       visualPreviewInspectionFailure({

@@ -8,7 +8,7 @@ import {
   formatUnhandledRejection,
   resolveMissingExportError,
 } from './previewErrorUtils';
-import { reportPreviewEvidence } from './previewEvidenceBridge';
+import { reportPreviewEvidence, reportPreviewRuntimeError } from './previewEvidenceBridge';
 import {
   PREVIEW_MESSAGE_TYPES,
   isTrustedPreviewMessage,
@@ -46,6 +46,7 @@ export default function usePreviewRuntimeBridge({
         const src = (script as HTMLScriptElement).src;
         const fetched = await fetchScriptErrorBody(src, previewFetch);
         if (fetched) {
+          reportPreviewRuntimeError(fetched);
           setPreviewError(fetched);
           return;
         }
@@ -59,7 +60,10 @@ export default function usePreviewRuntimeBridge({
     if (!iframeRef.current) return;
     try {
       const loadError = detectIframeLoadError(iframeRef.current.contentDocument);
-      if (loadError) setPreviewError(loadError);
+      if (loadError) {
+        reportPreviewRuntimeError(loadError);
+        setPreviewError(loadError);
+      }
     } catch (_e) {
       // Ignore cross-origin errors.
     }
@@ -75,7 +79,10 @@ export default function usePreviewRuntimeBridge({
         payload.type === PREVIEW_MESSAGE_TYPES.RUNTIME_ERROR ||
         payload.type === PREVIEW_MESSAGE_TYPES.UNHANDLED_REJECTION
       ) {
-        if (payload.message) setPreviewError(payload.message);
+        if (payload.message) {
+          reportPreviewRuntimeError(payload.message);
+          setPreviewError(payload.message);
+        }
       } else if (payload.type === PREVIEW_MESSAGE_TYPES.NAVIGATE && payload.path) {
         const safePath = sanitizePreviewPath(payload.path);
         if (!safePath) return;
@@ -115,9 +122,15 @@ export default function usePreviewRuntimeBridge({
       }
       const loadError = detectIframeLoadError(doc);
       if (loadError) {
+        reportPreviewRuntimeError(loadError);
         setPreviewError(loadError);
         return;
       }
+
+      const reportError = (message: string) => {
+        reportPreviewRuntimeError(message);
+        setPreviewError(message);
+      };
 
       const onError = (event: ErrorEvent) => {
         void (async () => {
@@ -131,7 +144,7 @@ export default function usePreviewRuntimeBridge({
             previewFetch,
           );
           if (missingExportError) {
-            setPreviewError(missingExportError);
+            reportError(missingExportError);
             return;
           }
           let message = formatRuntimeError({
@@ -146,7 +159,7 @@ export default function usePreviewRuntimeBridge({
             const fetched = await fetchScriptErrorBody(scriptUrl, previewFetch);
             if (fetched) message = fetched;
           }
-          setPreviewError(message);
+          reportError(message);
         })();
       };
       const onRejection = (event: PromiseRejectionEvent) => {
@@ -168,10 +181,10 @@ export default function usePreviewRuntimeBridge({
                   )
                 : null;
           if (missingExportError) {
-            setPreviewError(missingExportError);
+            reportError(missingExportError);
             return;
           }
-          setPreviewError(formatUnhandledRejection(event));
+          reportError(formatUnhandledRejection(event));
         })();
       };
       win.addEventListener('error', onError, true);

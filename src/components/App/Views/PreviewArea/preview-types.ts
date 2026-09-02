@@ -111,6 +111,7 @@ export type PreviewEvidence = {
   title?: string;
   text?: string;
   elements?: string[];
+  runtimeErrors?: string[];
   screenshotCaptured?: boolean;
   screenshot?: string;
   styleAudit?: PreviewStyleAudit;

@@ -370,6 +370,8 @@ const IGNORED_CALL_NAMES = new Set([
   'with',
 ]);
 
+const KNOWN_JSX_HANDLER_VALUES = new Set(['false', 'Infinity', 'NaN', 'null', 'true', 'undefined']);
+
 const isDeclaredInScope = (
   bindings: DeclaredBindings,
   graph: SourceScopeGraph,
@@ -393,6 +395,30 @@ const isDeclaredInScope = (
   return false;
 };
 
+/** Rejects bare JSX event-handler references that would fail at render time. */
+const validateJsxEventHandlerReferences = (
+  path: string,
+  source: string,
+  declared: DeclaredBindings,
+  graph: SourceScopeGraph,
+): string | null => {
+  for (const match of source.matchAll(
+    /\bon[A-Z][A-Za-z0-9]*\s*=\s*\{\s*([A-Za-z_$][\w$]*)\s*\}/g,
+  )) {
+    const name = match[1];
+    const referenceIndex = (match.index ?? 0) + match[0].lastIndexOf(name);
+    if (
+      isDeclaredInScope(declared, graph, name, referenceIndex) ||
+      KNOWN_CALLABLE_GLOBALS.has(name) ||
+      KNOWN_JSX_HANDLER_VALUES.has(name)
+    ) {
+      continue;
+    }
+    return `Generated source for ${path} references undeclared event handler '${name}'. Define it inside the component or remove the handler before finishing.`;
+  }
+  return null;
+};
+
 /** Rejects render-time ReferenceErrors that bundling alone cannot detect. */
 export function validateDeclaredFunctionCalls(path: string, content: string): string | null {
   if (!/\.(?:jsx|tsx)$/i.test(path) || typeof content !== 'string') return null;
@@ -400,6 +426,8 @@ export function validateDeclaredFunctionCalls(path: string, content: string): st
   const source = maskSourceLiterals(content);
   const graph = createScopeGraph(source);
   const declared = declaredSourceBindings(content, source, graph);
+  const eventHandlerError = validateJsxEventHandlerReferences(path, source, declared, graph);
+  if (eventHandlerError) return eventHandlerError;
   for (const match of source.matchAll(/(?<![A-Za-z0-9_$?.])([A-Za-z_$][\w$]*)\s*\(/g)) {
     const name = match[1];
     if (

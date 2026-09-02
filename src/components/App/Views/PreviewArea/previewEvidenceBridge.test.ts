@@ -3,7 +3,9 @@ import type { PreviewEvidence } from './preview-types';
 import {
   clearPreviewEvidence,
   getLatestPreviewEvidence,
+  PREVIEW_EVIDENCE_SETTLE_MS,
   reportPreviewEvidence,
+  reportPreviewRuntimeError,
   setPreviewEvidenceListener,
   waitForPreviewEvidence,
 } from './previewEvidenceBridge';
@@ -45,5 +47,39 @@ describe('previewEvidenceBridge', () => {
       text: 'fresh DOM',
       screenshotCaptured: false,
     });
+  });
+
+  it('attaches runtime errors to fresh evidence and clears them for the next rebuild', () => {
+    clearPreviewEvidence();
+    reportPreviewRuntimeError('ReferenceError: handleKeyDown is not defined');
+    reportPreviewEvidence({ text: 'Notes', screenshotCaptured: true });
+
+    expect(getLatestPreviewEvidence()).toMatchObject({
+      runtimeErrors: ['ReferenceError: handleKeyDown is not defined'],
+    });
+
+    clearPreviewEvidence();
+    reportPreviewEvidence({ text: 'Fixed notes', screenshotCaptured: true });
+    expect(getLatestPreviewEvidence()?.runtimeErrors).toBeUndefined();
+  });
+
+  it('waits for runtime errors that arrive after the screenshot report', async () => {
+    vi.useFakeTimers();
+    try {
+      const afterRevision = clearPreviewEvidence();
+      const pending = waitForPreviewEvidence(afterRevision);
+      reportPreviewEvidence({ text: 'Notes', screenshotCaptured: true });
+
+      await vi.advanceTimersByTimeAsync(PREVIEW_EVIDENCE_SETTLE_MS - 1);
+      reportPreviewRuntimeError('ReferenceError: handleKeyDown is not defined');
+      await vi.advanceTimersByTimeAsync(PREVIEW_EVIDENCE_SETTLE_MS);
+
+      await expect(pending).resolves.toMatchObject({
+        runtimeErrors: ['ReferenceError: handleKeyDown is not defined'],
+      });
+    } finally {
+      clearPreviewEvidence();
+      vi.useRealTimers();
+    }
   });
 });

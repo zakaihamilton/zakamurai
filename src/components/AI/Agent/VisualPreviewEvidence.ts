@@ -20,28 +20,38 @@ export function visualPreviewInspectionFailure(value: unknown): string | null {
     return 'Preview inspection returned no structured evidence.';
   }
   const record = value as Record<string, unknown>;
+  const runtimeErrors = Array.isArray(record.runtimeErrors)
+    ? record.runtimeErrors.map(String).filter(Boolean)
+    : [];
   if (record.status === 'failed' || record.status === 'unavailable') {
-    return `Preview inspection did not complete: ${String(record.diagnostics || record.status)}.`;
+    const diagnostics = String(record.diagnostics || record.status);
+    const runtimeDiagnostic = runtimeErrors.length
+      ? ` Runtime errors: ${runtimeErrors.join('; ')}`
+      : '';
+    return `Preview inspection did not complete: ${diagnostics}.${runtimeDiagnostic}`;
   }
   const elements = Array.isArray(record.elements) ? record.elements.map(String) : [];
-  const evidence = summarizeVisualPreviewEvidence({
-    title: typeof record.title === 'string' ? record.title : undefined,
-    text: typeof record.domSummary === 'string' ? record.domSummary : undefined,
-    elements,
-    styleAudit:
-      record.styleAudit && typeof record.styleAudit === 'object'
-        ? (record.styleAudit as PreviewStyleAudit)
-        : undefined,
-    screenshotCaptured: record.screenshotCaptured === true,
-  });
+  const evidence = summarizeVisualPreviewEvidence(
+    {
+      title: typeof record.title === 'string' ? record.title : undefined,
+      text: typeof record.domSummary === 'string' ? record.domSummary : undefined,
+      elements,
+      styleAudit:
+        record.styleAudit && typeof record.styleAudit === 'object'
+          ? (record.styleAudit as PreviewStyleAudit)
+          : undefined,
+      screenshotCaptured: record.screenshotCaptured === true,
+    },
+    runtimeErrors,
+  );
+  if (evidence.runtimeErrors.length) {
+    return `Preview inspection reported runtime errors: ${evidence.runtimeErrors.join('; ')}.`;
+  }
   if (!elements.length) {
     return 'Preview inspection produced no DOM landmarks or interactive elements. Wait for the rendered app and inspect the preview again.';
   }
   if (!evidence.screenshotCaptured) {
     return 'Preview inspection did not capture a screenshot. Wait for the rendered app and inspect the preview again before finishing.';
-  }
-  if (evidence.runtimeErrors.length) {
-    return `Preview inspection reported runtime errors: ${evidence.runtimeErrors.join('; ')}.`;
   }
   if (evidence.styleAuditIssues.length) {
     return `Preview style audit reported: ${evidence.styleAuditIssues.join('; ')}.`;

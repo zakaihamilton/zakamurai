@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { UsePreviewSessionLifecycleParams } from './preview-types';
+import { clearPreviewEvidence } from './previewEvidenceBridge';
 import { buildPreviewUrl, createPreviewSession, getPreviewOrigins } from './previewOrigins';
 
 /** Maintains the stable preview session and rebuild lifecycle, including an optional external tab. */
@@ -70,6 +71,13 @@ export default function usePreviewSessionLifecycle({
       if (!draft.previewSessionId) draft.previewSessionId = sessionId;
     });
   }, [previewSessionId, previewState]);
+
+  useEffect(() => {
+    clearPreviewEvidence();
+    void htmlContent;
+    void previewSessionId;
+    void refreshKey;
+  }, [htmlContent, previewSessionId, refreshKey]);
 
   useEffect(() => {
     if (!htmlContent) {

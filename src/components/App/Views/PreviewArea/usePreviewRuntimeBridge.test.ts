@@ -1,6 +1,11 @@
 import { makePreviewAreaUiState } from '@/test-utils/stateMocks';
 import { act, renderHook } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
+import {
+  clearPreviewEvidence,
+  getLatestPreviewEvidence,
+  reportPreviewEvidence,
+} from './previewEvidenceBridge';
 import { PREVIEW_MESSAGE_TYPES } from './previewSandbox';
 import usePreviewRuntimeBridge from './usePreviewRuntimeBridge';
 
@@ -11,6 +16,7 @@ describe('usePreviewRuntimeBridge', () => {
     const iframeRef = { current: iframe };
     const previewAreaUiState = makePreviewAreaUiState({ address: '/preview/' });
     const setPreviewError = vi.fn();
+    reportPreviewEvidence({ text: 'Notes', screenshotCaptured: false });
     const { unmount } = renderHook(() =>
       usePreviewRuntimeBridge({
         iframeRef,
@@ -35,8 +41,12 @@ describe('usePreviewRuntimeBridge', () => {
       window.dispatchEvent(event);
     });
     expect(setPreviewError).toHaveBeenCalledWith('ReferenceError: app is not defined');
+    expect(getLatestPreviewEvidence()?.runtimeErrors).toEqual([
+      'ReferenceError: app is not defined',
+    ]);
 
     unmount();
+    clearPreviewEvidence();
     iframe.remove();
   });
 });
