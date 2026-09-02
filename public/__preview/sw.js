@@ -437,7 +437,7 @@ self.addEventListener('fetch', (event) => {
       return;
     }
     const prefix = `/__preview/${sessionId}`;
-    const path = url.pathname.slice(prefix.length) || '/';
+    const path = `${url.pathname.slice(prefix.length) || '/'}${url.search}`;
     event.respondWith(
       handleVirtualRequest(sessionId, event.request, path).catch((error) =>
         previewResponse(

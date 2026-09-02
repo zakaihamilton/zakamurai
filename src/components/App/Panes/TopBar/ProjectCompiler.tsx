@@ -24,6 +24,7 @@ const PHASE_LABELS: Record<string, string> = {
   timeout: 'Build timed out',
   error: 'Build failed',
 };
+const AI_PREVIEW_MARKER = /\n<!-- zakamurai-ai-preview:\d+ -->$/;
 
 export default function useProjectCompiler() {
   const appState = requireStore(AppState.useState(['compileRequest', 'silentCompileRequest']));
@@ -153,7 +154,12 @@ export default function useProjectCompiler() {
             if (html) {
               container.vfs.writeFileSync('/index.html', html);
               previewState((draft) => {
-                draft.htmlContent = html;
+                const currentHtml = draft.htmlContent || '';
+                const canPreserveAIInspection =
+                  isSilent && currentHtml.replace(AI_PREVIEW_MARKER, '') === html;
+                if (!canPreserveAIInspection) {
+                  draft.htmlContent = html;
+                }
                 draft.previewAddress = '/preview/dist/index.html';
                 draft.restoreError = null;
                 draft.compileError = null;

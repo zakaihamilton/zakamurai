@@ -80,16 +80,22 @@ export function createManagerToolOptions({
   tabState,
   previewState,
   deferPreviewNavigation = false,
+  onPreviewInspection,
 }: {
   Compiler: typeof import('@/utils/compiler').Compiler;
   fs: FileSystemApi;
   sidebarState: StateStore<SidebarStateShape>;
   tabState: StateStore<TabStateShape>;
   previewState?: StateStore<PreviewStateShape>;
-  /** Keep the welcome run's reasoning tab visible until its final build opens preview. */
+  /** Restore the welcome run's previous tab when preview inspection cannot provide evidence. */
   deferPreviewNavigation?: boolean;
-}): Pick<RunManagerOptions, 'validate' | 'runProjectCheck' | 'inspectPreview' | 'retrieveContext'> {
+  onPreviewInspection?: (files: FileMap, result: unknown) => void;
+}): Pick<
+  RunManagerOptions,
+  'validate' | 'runProjectCheck' | 'inspectPreview' | 'retrieveContext' | 'onPreviewInspection'
+> {
   return {
+    onPreviewInspection,
     retrieveContext: async (query, k) => {
       const lexical = (await getWorkspaceIndex()
         .queryText(query, k)
@@ -133,11 +139,19 @@ export function createManagerToolOptions({
     inspectPreview: async (stagedFiles: FileMap) => {
       const logs: string[] = [];
       const previousActiveTabId = tabState.activeTabId;
+      let previewInspectionAccepted = false;
       const restoreDeferredPreviewNavigation = () => {
-        if (!deferPreviewNavigation || !previousActiveTabId) return;
+        if (!deferPreviewNavigation || previewInspectionAccepted || !previousActiveTabId) return;
         tabState((draft) => {
           if (draft.activeTabId === 'preview') draft.activeTabId = previousActiveTabId;
         });
+      };
+      const reportPreviewInspection = (result: unknown) => {
+        previewInspectionAccepted =
+          typeof result === 'object' &&
+          result !== null &&
+          (result as { status?: unknown }).status === 'passed';
+        onPreviewInspection?.({ ...stagedFiles }, result);
       };
       const compiler = new Compiler((line: string) => logs.push(line));
       const evidenceBridge = await import(
@@ -174,17 +188,19 @@ export function createManagerToolOptions({
             draft.isCompilerReady = true;
           });
           evidence = await evidenceBridge.waitForPreviewEvidence(evidenceRevision);
-          restoreDeferredPreviewNavigation();
           if (!evidence) {
-            return {
+            restoreDeferredPreviewNavigation();
+            const result = {
               status: 'unavailable',
               path: '/preview/dist/index.html',
               screenshotCaptured: false,
               diagnostics: `Preview did not emit fresh evidence for the staged build. ${logs.slice(-12).join('\n')}`,
             };
+            reportPreviewInspection(result);
+            return result;
           }
         }
-        return {
+        const result = {
           status: 'passed',
           path: evidence?.path || '/preview/',
           title: evidence?.title || 'Preview ready',
@@ -195,14 +211,18 @@ export function createManagerToolOptions({
           screenshotCaptured: Boolean(evidence?.screenshotCaptured),
           diagnostics: logs.slice(-12).join('\n'),
         };
+        reportPreviewInspection(result);
+        return result;
       } catch (error) {
         restoreDeferredPreviewNavigation();
-        return {
+        const result = {
           status: 'failed',
           runtimeErrors: [error instanceof Error ? error.message : String(error)],
           screenshotCaptured: false,
           diagnostics: logs.slice(-20).join('\n'),
         };
+        reportPreviewInspection(result);
+        return result;
       }
     },
   };

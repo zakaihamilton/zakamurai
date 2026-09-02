@@ -23,6 +23,13 @@ import useProjectCompiler from './ProjectCompiler';
 const addNotification = vi.fn();
 const compilerReset = vi.fn();
 const compilerCompile = vi.fn();
+let compilerContainer: {
+  vfs: {
+    existsSync: (path: string) => boolean;
+    readFileSync: (path: string, encoding: string) => string;
+    writeFileSync: (path: string, contents: string) => void;
+  };
+} | null = null;
 
 vi.mock('@/components/ui/Notification', () => ({
   useNotification: () => ({
@@ -83,7 +90,7 @@ vi.mock('@/utils/compiler', () => ({
       return compilerReset(...args);
     }
 
-    container = null;
+    container = compilerContainer;
 
     compile(...args: unknown[]) {
       return compilerCompile(...args);
@@ -112,6 +119,7 @@ function renderCompilerHook() {
 describe('useProjectCompiler', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    compilerContainer = null;
     compilerReset.mockResolvedValue(undefined);
     compilerCompile.mockResolvedValue(undefined);
   });
@@ -166,6 +174,58 @@ describe('useProjectCompiler', () => {
 
     expect(compilerReset).toHaveBeenCalledBefore(compilerCompile);
     expect(compilerCompile).toHaveBeenCalled();
+  });
+
+  it('preserves an AI preview while finalizing silent compile state', async () => {
+    const html = '<!doctype html><html><body>Preview</body></html>';
+    const existingHtml = `${html}\n<!-- zakamurai-ai-preview:123 -->`;
+    const readFileSync = vi.fn(() => html);
+    const writeFileSync = vi.fn();
+    compilerContainer = {
+      vfs: {
+        existsSync: vi.fn(() => true),
+        readFileSync,
+        writeFileSync,
+      },
+    };
+    const { result, mockPreviewState, mockTabState } = renderCompilerHook();
+    mockPreviewState((draft) => {
+      draft.htmlContent = existingHtml;
+    });
+
+    await act(async () => {
+      await result.current.handleCompile(true);
+    });
+
+    expect(mockPreviewState.htmlContent).toBe(existingHtml);
+    expect(mockPreviewState.compileStatus).toBe('success');
+    expect(mockPreviewState.compilePhase).toBeNull();
+    expect(mockPreviewState.lastCompileAt).toEqual(expect.any(Number));
+    expect(writeFileSync).toHaveBeenCalledWith('/index.html', html);
+    expect(mockTabState.activeTabId).toBeNull();
+    expect(addNotification).toHaveBeenCalledWith('Project compiled successfully', 'success');
+    expect(readFileSync).toHaveBeenCalledWith('/dist/index.html', 'utf8');
+  });
+
+  it('removes the AI preview marker on a normal compile', async () => {
+    const html = '<!doctype html><html><body>Preview</body></html>';
+    compilerContainer = {
+      vfs: {
+        existsSync: vi.fn(() => true),
+        readFileSync: vi.fn(() => html),
+        writeFileSync: vi.fn(),
+      },
+    };
+    const { result, mockPreviewState } = renderCompilerHook();
+    mockPreviewState((draft) => {
+      draft.htmlContent = `${html}\n<!-- zakamurai-ai-preview:123 -->`;
+    });
+
+    await act(async () => {
+      await result.current.handleCompile();
+    });
+
+    expect(mockPreviewState.htmlContent).toBe(html);
   });
 
   it('notifies and logs on clear filesystem failure without throwing', async () => {

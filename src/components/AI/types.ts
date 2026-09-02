@@ -271,6 +271,7 @@ export type ManagerToolOptions = {
   validate?: (files: FileMap) => Promise<VerificationResult | string> | VerificationResult | string;
   runProjectCheck?: (check: string, files: FileMap) => Promise<string>;
   inspectPreview?: (files: FileMap) => Promise<unknown>;
+  onPreviewInspection?: (files: FileMap, result: unknown) => void;
   retrieveContext?: (query: string, k: number) => Promise<SemanticSearchResult[]>;
   inspectConsoleLogs?: (
     query?: string,

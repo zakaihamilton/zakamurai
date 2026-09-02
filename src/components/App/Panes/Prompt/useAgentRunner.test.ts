@@ -56,6 +56,10 @@ vi.mock('@/components/App/AppState', () => ({
   AppState: { usePassiveState: vi.fn() },
 }));
 
+vi.mock('@/components/App/PreviewState', () => ({
+  PreviewState: { usePassiveState: vi.fn(() => ({})) },
+}));
+
 vi.mock('@/components/AI/Agent', () => ({
   collectWorkspaceFiles,
   runAgent,
@@ -383,6 +387,41 @@ describe('useAgentRunner', () => {
       'session-1',
       expect.objectContaining({
         reasoning: expect.stringContaining('Welcome project ready'),
+      }),
+    );
+  });
+
+  it('does not schedule a second build when the welcome preview already matches the staged result', async () => {
+    const appState = makeAppState({ compileRequest: 0, silentCompileRequest: 0 });
+    vi.mocked(AppState.usePassiveState).mockReturnValue(appState);
+    const files = { 'src/App.jsx': 'updated app' };
+    applyAgentChanges.mockReturnValue({ applied: 1, deletions: [], changeSet: null });
+    runAgent.mockImplementationOnce(async (options) => {
+      options.onPreviewInspection?.(files, { status: 'passed' });
+      return { summary: 'welcome done', changes: [{ path: 'src/App.jsx' }], files };
+    });
+    const props = createRunnerProps({
+      editorState: createMockEditorState({
+        fileContents: files,
+        selectedLines: {},
+      }),
+      sidebarState: makeSidebarState({
+        folderTree: [{ name: 'src', type: 'folder', path: ['src'], children: [] }],
+      }),
+    });
+    const { result } = renderHook(() => useAgentRunner(props));
+
+    act(() => {
+      result.current.send(null, 'welcome build', 'project', true);
+    });
+
+    await waitFor(() => expect(applyAgentChanges).toHaveBeenCalled());
+    expect(appState.compileRequest).toBe(0);
+    expect(appState.silentCompileRequest).toBe(1);
+    expect(props.patchSession).toHaveBeenCalledWith(
+      'session-1',
+      expect.objectContaining({
+        reasoning: expect.stringContaining('using the validated preview'),
       }),
     );
   });

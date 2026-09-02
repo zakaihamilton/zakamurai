@@ -87,7 +87,7 @@ describe('createManagerToolOptions preview inspection', () => {
     );
   });
 
-  it('restores the reasoning tab after welcome-run preview inspection', async () => {
+  it('keeps preview active after a successful welcome-run preview inspection', async () => {
     const tabStateValue: TabStateShape = {
       openTabs: [{ id: 'ai-section:reasoning', type: 'ai-section', label: 'Progress & Reasoning' }],
       activeTabId: 'ai-section:reasoning',
@@ -138,6 +138,6 @@ describe('createManagerToolOptions preview inspection', () => {
 
     await options.inspectPreview?.({ 'src/App.jsx': 'export default function App() {}' });
 
-    expect(tabStateValue.activeTabId).toBe('ai-section:reasoning');
+    expect(tabStateValue.activeTabId).toBe('preview');
   });
 });

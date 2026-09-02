@@ -1,5 +1,10 @@
 import { applyAgentChanges } from '@/components/AI/Agent/Applier';
-import type { AgentEvent, RunManagerOptions, RunManagerResult } from '@/components/AI/types';
+import type {
+  AgentEvent,
+  FileMap,
+  RunManagerOptions,
+  RunManagerResult,
+} from '@/components/AI/types';
 import type { ExtendedEditorState } from '@/components/App/Views/EditorArea/types';
 import type { FileSystemApi } from '@/components/App/types';
 import { getWorkspaceIndex } from '@/components/Workspace';
@@ -56,6 +61,16 @@ export type RunAgentRequestParams = {
   createSessionMessage: SessionMessageFactory;
 };
 
+const fileMapsMatch = (left: FileMap | null, right: FileMap): boolean => {
+  if (!left) return false;
+  const leftPaths = Object.keys(left);
+  const rightPaths = Object.keys(right);
+  return (
+    leftPaths.length === rightPaths.length &&
+    leftPaths.every((path) => Object.hasOwn(right, path) && left[path] === right[path])
+  );
+};
+
 export async function runAgentRequest({
   userMsg,
   sessionId,
@@ -94,6 +109,7 @@ export async function runAgentRequest({
   });
 
   try {
+    let previewInspectionFiles: FileMap | null = null;
     const selectedLines =
       (currentActiveTabId && editorState.selectedLines?.[currentActiveTabId]) || [];
     runState.appendReasoning(
@@ -138,6 +154,14 @@ export async function runAgentRequest({
         tabState,
         previewState: previewState || undefined,
         deferPreviewNavigation: isWelcomePrompt,
+        onPreviewInspection: (stagedFiles, inspection) => {
+          previewInspectionFiles =
+            typeof inspection === 'object' &&
+            inspection !== null &&
+            (inspection as { status?: unknown }).status === 'passed'
+              ? stagedFiles
+              : null;
+        },
       }),
       onEvent: (managerEvent) => {
         if (managerEvent.type === 'validation') {
@@ -193,6 +217,10 @@ export async function runAgentRequest({
     });
     const stagedAnything = applied > 0 || Boolean(changeSet) || deletions.length > 0;
     const applyFailed = rejected.length > 0 && (shouldAutoApprove || !stagedAnything);
+    const canReusePreview =
+      !applyFailed &&
+      Boolean(previewState) &&
+      fileMapsMatch(previewInspectionFiles, editorState.fileContents || {});
     if (rejected.length) {
       runState.appendReasoning(
         applyFailed
@@ -230,13 +258,16 @@ export async function runAgentRequest({
     });
 
     if (!applyFailed && (isWelcomePrompt || (autoApproveInitialProject && applied > 0))) {
+      const projectLabel = isWelcomePrompt ? 'Welcome project' : 'Initial project';
       runState.appendReasoning(
-        isWelcomePrompt
-          ? '**Welcome project ready:** starting the first build now…'
-          : '**Initial project ready:** starting the first build now…',
+        `**${projectLabel} ready:** ${canReusePreview ? 'using the validated preview as the first build…' : 'starting the first build now…'}`,
       );
       appState((draft) => {
-        draft.compileRequest = (draft.compileRequest || 0) + 1;
+        if (canReusePreview) {
+          draft.silentCompileRequest = (draft.silentCompileRequest || 0) + 1;
+        } else {
+          draft.compileRequest = (draft.compileRequest || 0) + 1;
+        }
       });
     }
     if (changeSet) {

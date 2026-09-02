@@ -174,16 +174,23 @@ export default function PreviewHost() {
 
     const connect = async (event: MessageEvent<PreviewConnectMessage>) => {
       if (!peerWindow) return;
-      const handshakeOk = isValidPreviewHandshake(event as PreviewHandshakeEvent, {
-        expectedOrigin: ideOrigin,
-        expectedSource: peerWindow,
-        sessionId,
-        type: PREVIEW_CONNECT,
-        version: PREVIEW_PROTOCOL_VERSION,
-      });
+      // Accept only the configured IDE origin or its explicit www/apex alias,
+      // then keep the exact origin that actually sent the handshake for all
+      // replies and runtime bridge messages.
+      const originAllowed = originMatches(event.origin, ideOrigin);
+      const handshakeOk =
+        originAllowed &&
+        isValidPreviewHandshake(event as PreviewHandshakeEvent, {
+          expectedOrigin: event.origin,
+          expectedSource: peerWindow,
+          sessionId,
+          type: PREVIEW_CONNECT,
+          version: PREVIEW_PROTOCOL_VERSION,
+        });
       if (!handshakeOk || !event.ports[0]) {
         return;
       }
+      const connectedIdeOrigin = event.origin;
       window.clearTimeout(connectTimeout);
       window.removeEventListener('message', connect);
       try {
@@ -193,10 +200,7 @@ export default function PreviewHost() {
           sessionId,
           surface: window.parent !== window ? ('iframe' as const) : ('external' as const),
         };
-        postMessageToOriginAliases(event.source as Window, ack, event.origin || ideOrigin);
-        if (event.origin && ideOrigin && !originMatches(event.origin, ideOrigin)) {
-          postMessageToOriginAliases(event.source as Window, ack, ideOrigin);
-        }
+        postMessageToOriginAliases(event.source as Window, ack, connectedIdeOrigin);
       } catch {
         // Opener may be gone; the transferred port is what matters.
       }
@@ -220,7 +224,9 @@ export default function PreviewHost() {
         if (!controlling) throw new Error('Preview service worker is not available.');
         const entryUrl = getPreviewEntryUrl(sessionId);
         const initAck = waitForInitAck(sessionId);
-        controlling.postMessage({ type: 'init', sessionId, ideOrigin }, [event.ports[0]]);
+        controlling.postMessage({ type: 'init', sessionId, ideOrigin: connectedIdeOrigin }, [
+          event.ports[0],
+        ]);
         await initAck;
         const response = await fetch(entryUrl, { credentials: 'same-origin' });
         const html = await response.text();

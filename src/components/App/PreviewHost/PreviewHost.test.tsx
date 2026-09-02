@@ -13,6 +13,7 @@ function setLocation(url: string) {
 describe('PreviewHost', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    vi.unstubAllEnvs();
     vi.useRealTimers();
     Object.defineProperty(window, 'location', {
       configurable: true,
@@ -260,6 +261,38 @@ describe('PreviewHost', () => {
     expect(postMessageSpy).toHaveBeenCalledWith(
       expect.objectContaining({ type: 'zakamurai-preview-connect', sessionId: 's123' }),
       'https://example.com',
+    );
+  });
+
+  it('accepts an apex IDE alias and keeps that exact origin for the bridge', () => {
+    vi.stubEnv('NEXT_PUBLIC_IDE_ORIGIN', 'https://www.zakamurai.com');
+    vi.stubEnv('NEXT_PUBLIC_PREVIEW_ORIGIN', 'https://preview.zakamurai.com');
+    setLocation('https://preview.zakamurai.com/?session=s123');
+    const ideWindow = { postMessage: vi.fn() };
+    window.opener = ideWindow;
+
+    render(<PreviewHost />);
+
+    act(() => {
+      const event = new MessageEvent('message', {
+        data: {
+          type: 'zakamurai-preview-connect',
+          version: 1,
+          sessionId: 's123',
+        },
+        origin: 'https://zakamurai.com',
+      });
+      Object.defineProperty(event, 'source', { value: ideWindow });
+      Object.defineProperty(event, 'ports', { value: [{}] });
+      window.dispatchEvent(event);
+    });
+
+    expect(ideWindow.postMessage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'zakamurai-preview-connect-ack',
+        sessionId: 's123',
+      }),
+      'https://zakamurai.com',
     );
   });
 });

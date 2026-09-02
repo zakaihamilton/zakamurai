@@ -17,6 +17,12 @@ describe('preview service worker session routing', () => {
     expect(distRouting).not.toContain('[...bridges.values()].at(-1)');
   });
 
+  it('preserves query parameters for session-scoped requests', () => {
+    expect(previewWorker).toContain(
+      "const path = `${url.pathname.slice(prefix.length) || '/'}${url.search}`;",
+    );
+  });
+
   it('pins reconnect postMessage to the stored IDE origin', () => {
     expect(previewWorker).not.toMatch(
       /postMessage\(\{source:'zakamurai-preview',type:'reconnect'[^)]*,'\*'\)/,
