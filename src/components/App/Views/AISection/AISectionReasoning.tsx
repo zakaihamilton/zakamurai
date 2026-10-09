@@ -49,15 +49,15 @@ type AISectionReasoningProps = {
 };
 
 const markdownComponents: Components = {
-  a: ({ node, ...props }) => <a className={styles.link} {...props} />,
+  a: ({ node, children, ...props }) => <a className={styles.link} {...props}>{children}</a>,
   blockquote: ({ node, ...props }) => <blockquote className={styles.blockquote} {...props} />,
   code: ({ node, ...props }) => <code className={styles.code} {...props} />,
-  h1: ({ node, ...props }) => <h1 className={styles.heading} {...props} />,
-  h2: ({ node, ...props }) => <h2 className={styles.heading} {...props} />,
-  h3: ({ node, ...props }) => <h3 className={styles.heading} {...props} />,
-  h4: ({ node, ...props }) => <h4 className={styles.heading} {...props} />,
-  h5: ({ node, ...props }) => <h5 className={styles.heading} {...props} />,
-  h6: ({ node, ...props }) => <h6 className={styles.heading} {...props} />,
+  h1: ({ node, children, ...props }) => <h1 className={styles.heading} {...props}>{children}</h1>,
+  h2: ({ node, children, ...props }) => <h2 className={styles.heading} {...props}>{children}</h2>,
+  h3: ({ node, children, ...props }) => <h3 className={styles.heading} {...props}>{children}</h3>,
+  h4: ({ node, children, ...props }) => <h4 className={styles.heading} {...props}>{children}</h4>,
+  h5: ({ node, children, ...props }) => <h5 className={styles.heading} {...props}>{children}</h5>,
+  h6: ({ node, children, ...props }) => <h6 className={styles.heading} {...props}>{children}</h6>,
   li: ({ node, ...props }) => <li className={styles.listItem} {...props} />,
   ol: ({ node, ...props }) => <ol className={styles.list} {...props} />,
   p: ({ node, ...props }) => <p className={styles.paragraph} {...props} />,
@@ -67,7 +67,7 @@ const markdownComponents: Components = {
 
 const summaryMarkdownComponents: Components = {
   code: ({ node, ...props }) => <code className={styles.code} {...props} />,
-  h2: ({ node, ...props }) => <h2 className={styles.stepHeading} {...props} />,
+  h2: ({ node, children, ...props }) => <h2 className={styles.stepHeading} {...props}>{children}</h2>,
   li: ({ node, ...props }) => <li className={styles.listItem} {...props} />,
   p: ({ node, ...props }) => <p className={styles.paragraph} {...props} />,
   ul: ({ node, ...props }) => <ul className={styles.list} {...props} />,

@@ -4,5 +4,22 @@
   "execution": {
     "jobs": 2,
     "timeoutSeconds": 300
+  },
+  "categories": {
+    "accessibility": {
+      "mode": "required"
+    },
+    "runtime-accessibility": {
+      "mode": "required"
+    },
+    "visual-regression": {
+      "mode": "required"
+    },
+    "interactions": {
+      "mode": "required"
+    },
+    "styles": {
+      "mode": "required"
+    }
   }
 }

@@ -1,5 +1,6 @@
 import { expectAgentSession } from '@/test-utils/agentSessionMocks';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { createAgentRunUsage, createDefaultAgentSessions } from '../AgentSessions';
 import ReasoningPanel from './Reasoning';
@@ -27,6 +28,7 @@ Object.defineProperty(navigator, 'clipboard', {
     writeText: vi.fn(),
   },
   writable: true,
+  configurable: true,
 });
 
 describe('ReasoningPanel', () => {
@@ -165,7 +167,7 @@ describe('ReasoningPanel', () => {
     expect(screen.queryByRole('alert')).toBeNull();
   });
 
-  it('provides a custom-tooltip clear-log button', () => {
+  it('provides a custom-tooltip clear-log button', async () => {
     const onClearLog = vi.fn();
     setSessionReasoning('Old reasoning');
 
@@ -173,7 +175,7 @@ describe('ReasoningPanel', () => {
 
     const clearButton = screen.getByRole('button', { name: 'Clear AI Model log' });
     expect(clearButton).toBeEnabled();
-    fireEvent.click(clearButton);
+    await userEvent.setup().click(clearButton);
 
     expect(onClearLog).toHaveBeenCalledOnce();
   });

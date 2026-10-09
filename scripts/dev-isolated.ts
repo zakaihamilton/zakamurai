@@ -3,6 +3,8 @@ import http from 'node:http';
 import net from 'node:net';
 
 const command = process.platform === 'win32' ? 'npm.cmd' : 'npm';
+const idePort = Number(process.env.PLAYWRIGHT_IDE_PORT || 3000);
+const previewPort = Number(process.env.PLAYWRIGHT_PREVIEW_PORT || 3001);
 
 function isPortInUse(port: number): Promise<boolean> {
   return new Promise((resolve) => {
@@ -24,12 +26,12 @@ const previewProxy = http.createServer((request, response) => {
   const upstream = http.request(
     {
       hostname: '127.0.0.1',
-      port: 3000,
+      port: idePort,
       path: request.url,
       method: request.method,
       // Keep Host as localhost:3001 so Next.js client hydration matches the
       // browser origin. Surface detection uses x-zakamurai-surface instead.
-      headers: { ...request.headers, host: 'localhost:3001', 'x-zakamurai-surface': 'preview' },
+      headers: { ...request.headers, host: `localhost:${previewPort}`, 'x-zakamurai-surface': 'preview' },
     },
     (upstreamResponse) => {
       response.writeHead(upstreamResponse.statusCode || 502, {
@@ -49,10 +51,10 @@ previewProxy.on('upgrade', (request, socket, head) => {
   socket.on('error', () => {});
   const upstream = http.request({
     hostname: '127.0.0.1',
-    port: 3000,
+    port: idePort,
     path: request.url,
     method: request.method,
-    headers: { ...request.headers, host: 'localhost:3001', 'x-zakamurai-surface': 'preview' },
+    headers: { ...request.headers, host: `localhost:${previewPort}`, 'x-zakamurai-surface': 'preview' },
   });
   upstream.on('upgrade', (upstreamResponse, upstreamSocket, upstreamHead) => {
     upstreamSocket.on('error', () => socket.destroy());
@@ -68,8 +70,8 @@ previewProxy.on('upgrade', (request, socket, head) => {
   upstream.on('error', () => socket.destroy());
   upstream.end(head);
 });
-previewProxy.listen(3001, '127.0.0.1', () => {
-  console.log('Isolated preview proxy ready at http://localhost:3001');
+previewProxy.listen(previewPort, '127.0.0.1', () => {
+  console.log(`Isolated preview proxy ready at http://localhost:${previewPort}`);
 });
 
 const stop = () => {
@@ -78,18 +80,18 @@ const stop = () => {
 };
 process.on('SIGINT', stop);
 process.on('SIGTERM', stop);
-void isPortInUse(3000).then((inUse) => {
+void isPortInUse(idePort).then((inUse) => {
   if (inUse) {
-    console.log('Using the existing IDE server at http://localhost:3000');
+    console.log(`Using the existing IDE server at http://localhost:${idePort}`);
     return;
   }
 
-  ide = spawn(command, ['run', 'dev:ide', '--', '--port', '3000'], {
+  ide = spawn(command, ['run', 'dev:ide', '--', '--port', String(idePort)], {
     stdio: 'inherit',
     env: {
       ...process.env,
-      NEXT_PUBLIC_IDE_ORIGIN: 'http://localhost:3000',
-      NEXT_PUBLIC_PREVIEW_ORIGIN: 'http://localhost:3001',
+      NEXT_PUBLIC_IDE_ORIGIN: `http://localhost:${idePort}`,
+      NEXT_PUBLIC_PREVIEW_ORIGIN: `http://localhost:${previewPort}`,
     },
   });
   ide.on('exit', (code) => {

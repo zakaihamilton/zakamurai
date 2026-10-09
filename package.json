@@ -14,7 +14,7 @@
     "dev:isolated": "tsx scripts/dev-isolated.ts",
     "build": "next build --webpack",
     "start": "next start",
-    "lint": "biome lint .",
+    "lint": "biome lint . && eslint .",
     "format": "biome format --write .",
     "format:check": "biome format .",
     "stylelint": "stylelint \"src/**/*.css\"",
@@ -65,7 +65,10 @@
     "health:coverage": "c8 --all --reporter=text npm test",
     "health:architecture": "depcruise --output-type json --config -- src",
     "health:licenses": "license-checker --json",
-    "health:documentation": "markdownlint-cli2 \"**/*.md\" \"#node_modules\" \"#test-results\" \"#.next\" \"#coverage\" \"#.repnix\""
+    "health:documentation": "markdownlint-cli2 \"**/*.md\" \"#node_modules\" \"#test-results\" \"#.next\" \"#coverage\" \"#.repnix\"",
+    "health:a11y": "npx playwright test --project=chromium tests/visual/accessibility.spec.ts",
+    "health:visual": "npx playwright test --project=chromium tests/visual/regression.spec.ts",
+    "health:interactions": "vitest run src/components/App/Panes/Prompt/Reasoning/Reasoning.test.tsx"
   },
   "dependencies": {
     "@huggingface/transformers": "4.2.0",
@@ -86,24 +89,28 @@
     "@testing-library/dom": "10.4.1",
     "@testing-library/jest-dom": "6.9.1",
     "@testing-library/react": "16.3.2",
+    "@testing-library/user-event": "^14.6.7",
     "@types/json-schema": "^7.0.15",
     "@types/node": "^22.20.1",
     "@types/react": "19.2.17",
     "@types/react-dom": "^19.2.3",
+    "@typescript-eslint/parser": "^8.71.0",
     "@vitejs/plugin-react": "4.7.0",
     "@vitest/coverage-v8": "3.2.7",
     "c8": "^12.0.0",
     "dependency-cruiser": "^18.2.0",
+    "eslint": "^9.39.5",
+    "eslint-plugin-jsx-a11y": "^6.10.2",
     "fast-check": "3.23.2",
     "husky": "9.1.7",
     "jscpd": "^5.0.14",
-    "jsdom": "26.1.0",
+    "jsdom": "^26.1.0",
     "knip": "6.27.0",
     "license-checker": "^25.0.1",
     "lint-staged": "15.5.2",
     "markdownlint-cli2": "^0.23.2",
     "promptfoo": "^0.121.19",
-    "repnix": "^1.0.4",
+    "repnix": "^1.1.0",
     "stylelint": "17.11.1",
     "stylelint-config-standard": "40.0.0",
     "tsx": "^4.23.1",
@@ -119,8 +126,13 @@
     "uuid": "11.1.1"
   },
   "lint-staged": {
-    "src/**/*.{js,jsx,ts,tsx}": ["biome check --write", "vitest related --run"],
-    "src/**/*.module.css": ["stylelint --fix"]
+    "src/**/*.{js,jsx,ts,tsx}": [
+      "biome check --write",
+      "vitest related --run"
+    ],
+    "src/**/*.module.css": [
+      "stylelint --fix"
+    ]
   },
   "packageManager": "npm@10.9.2"
 }

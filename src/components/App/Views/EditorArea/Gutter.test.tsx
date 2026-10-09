@@ -1,4 +1,3 @@
-import { requireElement } from '@/test-utils/domMocks';
 import { fireEvent, render, screen } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
@@ -36,9 +35,7 @@ describe('Gutter', () => {
     expect(screen.getByText('2')).toBeDefined();
     expect(screen.getByText('3')).toBeDefined();
 
-    const lineOne = screen.getByText('1').closest('[data-gutter-line]');
-    expect(lineOne).not.toBeNull();
-    fireEvent.click(requireElement(lineOne));
+    fireEvent.click(screen.getByRole('button', { name: 'Select line 1' }));
     expect(toggleLine).toHaveBeenCalledWith(1);
   });
 
