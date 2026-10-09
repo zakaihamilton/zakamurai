@@ -31,7 +31,11 @@ const previewProxy = http.createServer((request, response) => {
       method: request.method,
       // Keep Host as localhost:3001 so Next.js client hydration matches the
       // browser origin. Surface detection uses x-zakamurai-surface instead.
-      headers: { ...request.headers, host: `localhost:${previewPort}`, 'x-zakamurai-surface': 'preview' },
+      headers: {
+        ...request.headers,
+        host: `localhost:${previewPort}`,
+        'x-zakamurai-surface': 'preview',
+      },
     },
     (upstreamResponse) => {
       response.writeHead(upstreamResponse.statusCode || 502, {
@@ -54,7 +58,11 @@ previewProxy.on('upgrade', (request, socket, head) => {
     port: idePort,
     path: request.url,
     method: request.method,
-    headers: { ...request.headers, host: `localhost:${previewPort}`, 'x-zakamurai-surface': 'preview' },
+    headers: {
+      ...request.headers,
+      host: `localhost:${previewPort}`,
+      'x-zakamurai-surface': 'preview',
+    },
   });
   upstream.on('upgrade', (upstreamResponse, upstreamSocket, upstreamHead) => {
     upstreamSocket.on('error', () => socket.destroy());

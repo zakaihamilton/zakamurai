@@ -18,7 +18,10 @@ import type { RefObject } from 'react';
 import ReactMarkdown, { type Components } from 'react-markdown';
 import styles from './AISectionReasoning.module.css';
 
-export type ReasoningGroup = { step: number | null; entries: AgentReasoningEntry[] };
+export type ReasoningGroup = {
+  step: number | null;
+  entries: AgentReasoningEntry[];
+};
 export type ReasoningViewType = 'visual' | 'text';
 
 export type ModelProgress = {
@@ -49,15 +52,43 @@ type AISectionReasoningProps = {
 };
 
 const markdownComponents: Components = {
-  a: ({ node, children, ...props }) => <a className={styles.link} {...props}>{children}</a>,
+  a: ({ node, children, ...props }) => (
+    <a className={styles.link} {...props}>
+      {children}
+    </a>
+  ),
   blockquote: ({ node, ...props }) => <blockquote className={styles.blockquote} {...props} />,
   code: ({ node, ...props }) => <code className={styles.code} {...props} />,
-  h1: ({ node, children, ...props }) => <h1 className={styles.heading} {...props}>{children}</h1>,
-  h2: ({ node, children, ...props }) => <h2 className={styles.heading} {...props}>{children}</h2>,
-  h3: ({ node, children, ...props }) => <h3 className={styles.heading} {...props}>{children}</h3>,
-  h4: ({ node, children, ...props }) => <h4 className={styles.heading} {...props}>{children}</h4>,
-  h5: ({ node, children, ...props }) => <h5 className={styles.heading} {...props}>{children}</h5>,
-  h6: ({ node, children, ...props }) => <h6 className={styles.heading} {...props}>{children}</h6>,
+  h1: ({ node, children, ...props }) => (
+    <h1 className={styles.heading} {...props}>
+      {children}
+    </h1>
+  ),
+  h2: ({ node, children, ...props }) => (
+    <h2 className={styles.heading} {...props}>
+      {children}
+    </h2>
+  ),
+  h3: ({ node, children, ...props }) => (
+    <h3 className={styles.heading} {...props}>
+      {children}
+    </h3>
+  ),
+  h4: ({ node, children, ...props }) => (
+    <h4 className={styles.heading} {...props}>
+      {children}
+    </h4>
+  ),
+  h5: ({ node, children, ...props }) => (
+    <h5 className={styles.heading} {...props}>
+      {children}
+    </h5>
+  ),
+  h6: ({ node, children, ...props }) => (
+    <h6 className={styles.heading} {...props}>
+      {children}
+    </h6>
+  ),
   li: ({ node, ...props }) => <li className={styles.listItem} {...props} />,
   ol: ({ node, ...props }) => <ol className={styles.list} {...props} />,
   p: ({ node, ...props }) => <p className={styles.paragraph} {...props} />,
@@ -67,7 +98,11 @@ const markdownComponents: Components = {
 
 const summaryMarkdownComponents: Components = {
   code: ({ node, ...props }) => <code className={styles.code} {...props} />,
-  h2: ({ node, children, ...props }) => <h2 className={styles.stepHeading} {...props}>{children}</h2>,
+  h2: ({ node, children, ...props }) => (
+    <h2 className={styles.stepHeading} {...props}>
+      {children}
+    </h2>
+  ),
   li: ({ node, ...props }) => <li className={styles.listItem} {...props} />,
   p: ({ node, ...props }) => <p className={styles.paragraph} {...props} />,
   ul: ({ node, ...props }) => <ul className={styles.list} {...props} />,
@@ -727,7 +762,9 @@ function AgentExecutionMap({
     const direction = selectedIndex > previousIndex ? 1 : -1;
     const incomingAnimation = incomingCard.animate(
       [
-        { transform: `translateX(${direction * 42}px) rotate(${direction * 1.4}deg)` },
+        {
+          transform: `translateX(${direction * 42}px) rotate(${direction * 1.4}deg)`,
+        },
         { transform: 'translateX(0) rotate(0deg)' },
       ],
       {
@@ -740,7 +777,9 @@ function AgentExecutionMap({
       ? outgoingCard.animate(
           [
             { transform: 'translateX(0) rotate(0deg)' },
-            { transform: `translateX(${direction * -18}px) rotate(${direction * -0.8}deg)` },
+            {
+              transform: `translateX(${direction * -18}px) rotate(${direction * -0.8}deg)`,
+            },
           ],
           {
             duration: 300,
@@ -851,7 +890,10 @@ function AgentExecutionMap({
     if (Math.abs(nextScrollLeft - executionMap.scrollLeft) < 1) return;
 
     const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches ?? false;
-    executionMap.scrollTo({ left: nextScrollLeft, behavior: reducedMotion ? 'auto' : 'smooth' });
+    executionMap.scrollTo({
+      left: nextScrollLeft,
+      behavior: reducedMotion ? 'auto' : 'smooth',
+    });
   }, [timelineExpanded, workingCardId]);
 
   useEffect(

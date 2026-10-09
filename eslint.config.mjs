@@ -31,6 +31,8 @@ export default [
       'node_modules/**',
       'next-env.d.ts',
       'coverage/**',
+      'public/assets/**',
+      'public/lib/**',
       'playwright-report/**',
       'test-results/**',
       '**/*.test.{ts,tsx}',
