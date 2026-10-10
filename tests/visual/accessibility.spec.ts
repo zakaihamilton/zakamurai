@@ -5,7 +5,12 @@ test('workspace shell and keyboard shortcut dialog have no critical or serious a
   page,
 }) => {
   await page.goto('/');
-  await expect(page.getByTestId('sidebar-toggle')).toBeVisible();
+  await expect(page.getByText('Initializing workspace...')).not.toBeVisible({
+    timeout: 60_000,
+  });
+  await expect(page.getByTestId('sidebar-toggle')).toBeVisible({
+    timeout: 30_000,
+  });
 
   const shellResults = await new AxeBuilder({ page }).analyze();
   const blocking = ({ impact }: { impact?: string | null }) =>

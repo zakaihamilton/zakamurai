@@ -138,10 +138,10 @@ function GutterInner({
         style={
           totalLines > VIRTUALIZE_AFTER
             ? ({
-                '--gutter-digits': reservedDigits,
+                '--gutter-number-width': `${reservedDigits}ch`,
                 '--gutter-height': `${totalLines * LINE_HEIGHT}px`,
               } as React.CSSProperties)
-            : ({ '--gutter-digits': reservedDigits } as React.CSSProperties)
+            : ({ '--gutter-number-width': `${reservedDigits}ch` } as React.CSSProperties)
         }
       >
         {visibleLines.map(({ line, top, index }) => {
@@ -149,17 +149,12 @@ function GutterInner({
           const isCollapsed = fold && collapsedSet.has(fold.id);
 
           return (
-            // biome-ignore lint/a11y/useKeyWithClickEvents: gutter lines are clickable for selection
             <div
               key={`${line}:${index}`}
               data-gutter-line={line}
               style={
                 top == null ? undefined : ({ '--line-top': `${top}px` } as React.CSSProperties)
               }
-              onClick={(e) => {
-                e.stopPropagation();
-                if (toggleLine) toggleLine(line);
-              }}
               className={`${styles.gutterLine} ${
                 top == null ? '' : styles.gutterLineAbsolute
               } ${selectedSet.has(line) ? styles.selectedGutterLine : ''}`}
@@ -181,7 +176,15 @@ function GutterInner({
               ) : (
                 <span className={styles.foldSpacer} />
               )}
-              <span>{line}</span>
+              <button
+                type="button"
+                className={styles.gutterLineSelect}
+                aria-label={`Select line ${line}`}
+                aria-pressed={selectedSet.has(line)}
+                onClick={() => toggleLine?.(line)}
+              >
+                {line}
+              </button>
             </div>
           );
         })}

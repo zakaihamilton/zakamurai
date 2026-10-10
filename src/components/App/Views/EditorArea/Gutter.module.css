@@ -33,10 +33,9 @@
 
 .gutterLine {
   padding: 0 4px;
-  cursor: pointer;
   transition: all 0.1s;
   min-height: 1.6em;
-  min-width: calc((var(--gutter-digits, 1) * 1ch) + 24px);
+  min-width: calc(var(--gutter-number-width, 3ch) + 24px);
   left: 0;
   right: 0;
   display: flex;
@@ -50,13 +49,21 @@
   color: var(--text-main);
 }
 
-.gutterLine > span:last-child {
+.gutterLineSelect {
   display: inline-flex;
   align-items: center;
   justify-content: flex-end;
+  flex: 1;
   min-height: 16px;
-  min-width: calc(var(--gutter-digits, 3) * 1ch);
+  min-width: var(--gutter-number-width, 3ch);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
   line-height: 1;
+  text-align: right;
+  cursor: pointer;
 }
 
 .selectedGutterLine {

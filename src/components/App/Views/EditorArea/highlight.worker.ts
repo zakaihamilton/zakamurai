@@ -1,4 +1,3 @@
-/* eslint-disable no-restricted-globals */
 import { highlightCode } from './highlighter';
 import type { HighlightWorkerMessage, HighlightWorkerResponse } from './types';
 

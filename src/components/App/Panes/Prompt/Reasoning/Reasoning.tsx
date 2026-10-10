@@ -273,17 +273,45 @@ function ReasoningPanelInner({
             )}
             <ReactMarkdown
               components={{
-                a: ({ node, ...props }) => <a className={styles.reasoningLink} {...props} />,
+                a: ({ node, children, ...props }) => (
+                  <a className={styles.reasoningLink} {...props}>
+                    {children}
+                  </a>
+                ),
                 blockquote: ({ node, ...props }) => (
                   <blockquote className={styles.reasoningBlockquote} {...props} />
                 ),
                 code: ({ node, ...props }) => <code className={styles.reasoningCode} {...props} />,
-                h1: ({ node, ...props }) => <h1 className={styles.reasoningHeading} {...props} />,
-                h2: ({ node, ...props }) => <h2 className={styles.reasoningHeading} {...props} />,
-                h3: ({ node, ...props }) => <h3 className={styles.reasoningHeading} {...props} />,
-                h4: ({ node, ...props }) => <h4 className={styles.reasoningHeading} {...props} />,
-                h5: ({ node, ...props }) => <h5 className={styles.reasoningHeading} {...props} />,
-                h6: ({ node, ...props }) => <h6 className={styles.reasoningHeading} {...props} />,
+                h1: ({ node, children, ...props }) => (
+                  <h1 className={styles.reasoningHeading} {...props}>
+                    {children}
+                  </h1>
+                ),
+                h2: ({ node, children, ...props }) => (
+                  <h2 className={styles.reasoningHeading} {...props}>
+                    {children}
+                  </h2>
+                ),
+                h3: ({ node, children, ...props }) => (
+                  <h3 className={styles.reasoningHeading} {...props}>
+                    {children}
+                  </h3>
+                ),
+                h4: ({ node, children, ...props }) => (
+                  <h4 className={styles.reasoningHeading} {...props}>
+                    {children}
+                  </h4>
+                ),
+                h5: ({ node, children, ...props }) => (
+                  <h5 className={styles.reasoningHeading} {...props}>
+                    {children}
+                  </h5>
+                ),
+                h6: ({ node, children, ...props }) => (
+                  <h6 className={styles.reasoningHeading} {...props}>
+                    {children}
+                  </h6>
+                ),
                 li: ({ node, ...props }) => <li className={styles.reasoningListItem} {...props} />,
                 ol: ({ node, ...props }) => <ol className={styles.reasoningList} {...props} />,
                 p: ({ node, ...props }) => <p className={styles.reasoningParagraph} {...props} />,
