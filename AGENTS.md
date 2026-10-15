@@ -30,13 +30,13 @@ Key modules: `src/components/AI/Agent/` (`runManager`, action loop), `src/compon
 
 | Command | Runs in CI | Purpose |
 | --- | --- | --- |
-| `npm run verify` | mirrors CI | Full non-mutating local gate |
-| `npm run check:architecture` | yes | Codified architecture rules |
-| `npm run test:promptfoo` | yes | Static AI compliance (no API keys) |
-| `npm run test:coverage` | yes | Vitest with 80% global thresholds and 85% AI statements/lines/functions |
-| `npm run verify:ai` | no | Optional extended AI regression |
+| `pnpm run verify` | mirrors CI | Full non-mutating local gate |
+| `pnpm run check:architecture` | yes | Codified architecture rules |
+| `pnpm run test:promptfoo` | yes | Static AI compliance (no API keys) |
+| `pnpm run test:coverage` | yes | Vitest with 80% global thresholds and 85% AI statements/lines/functions |
+| `pnpm run verify:ai` | no | Optional extended AI regression |
 
-`verify` never rewrites source files. Use `npm run format` and `npm run stylelint:fix` to apply fixes.
+`verify` never rewrites source files. Use `pnpm run format` and `pnpm run stylelint:fix` to apply fixes.
 
 ### Static promptfoo (`test:promptfoo`)
 
@@ -57,17 +57,17 @@ Install lucidshark and add it to PATH to enable the architectural scan. See luci
 
 ### Running
 
-- Dev server: `npm run dev` starts the IDE at `http://localhost:3000` and an isolated preview proxy at `http://localhost:3001`. Use `npm run dev:same-origin` only when you need the weaker same-origin `/__preview/` surface.
-- `predev`/`prebuild`/`postinstall` copy `almostnode` + ONNX/esbuild WASM assets into `public/` (`setup:almostnode`, `setup:wasm`). If `public/lib/almostnode`, `public/wasm`, or `public/esbuild` look empty, re-run `npm install` (or `npm run setup:almostnode && npm run setup:wasm`) rather than debugging Next.
+- Dev server: `pnpm run dev` starts the IDE at `http://localhost:3000` and an isolated preview proxy at `http://localhost:3001`. Use `pnpm run dev:same-origin` only when you need the weaker same-origin `/__preview/` surface.
+- `predev`/`prebuild`/`postinstall` copy `almostnode` + ONNX/esbuild WASM assets into `public/` (`setup:almostnode`, `setup:wasm`). If `public/lib/almostnode`, `public/wasm`, or `public/esbuild` look empty, re-run `pnpm install` (or `pnpm run setup:almostnode && pnpm run setup:wasm`) rather than debugging Next.
 
 ### Known pre-existing caveats (not environment issues)
 
-- `npm run format:check` (Biome) may still report a few formatting diffs on a clean checkout. Prefer `npm run format` when touching those files.
+- `pnpm run format:check` (Biome) may still report a few formatting diffs on a clean checkout. Prefer `pnpm run format` when touching those files.
 - In-browser Build/Preview uses the custom esbuild-wasm resolver in `src/utils/compiler/browser-bundler.tsx`. Object-shaped package `browser` maps (e.g. react-dom) are applied via `applyBrowserRemap` and must not be treated as entry path strings.
 
 ### Playwright / visual tests
 
-- `postinstall` downloads Chromium + WebKit browsers, but Playwright prints a Linux host-requirements warning because some system libraries are missing. Browsers still download. Running `npm run test:visual` may require system browser deps (`npx playwright install-deps`, needs root/apt) before it works.
+- `postinstall` downloads Chromium + WebKit browsers, but Playwright prints a Linux host-requirements warning because some system libraries are missing. Browsers still download. Running `pnpm run test:visual` may require system browser deps (`pnpm exec playwright install-deps`, needs root/apt) before it works.
 
 ### LocalFS
 

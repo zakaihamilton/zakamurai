@@ -4,9 +4,9 @@
 
 ## Test plan
 
-- [ ] `npm run verify` passes locally
-- [ ] `npm run check:architecture` passes (if touching `src/components/`)
-- [ ] `npm run test:promptfoo` passes (if touching AI prompts, parsers, or golden fixtures)
+- [ ] `pnpm run verify` passes locally
+- [ ] `pnpm run check:architecture` passes (if touching `src/components/`)
+- [ ] `pnpm run test:promptfoo` passes (if touching AI prompts, parsers, or golden fixtures)
 - [ ] Added/updated unit tests for behavior changes
 - [ ] Read [ARCHITECTURE.md](../ARCHITECTURE.md) if changing state, preview, or AI pipeline
 

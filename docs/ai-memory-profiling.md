@@ -7,7 +7,7 @@ loss accurately.
 ## Automated lifecycle soak
 
 ```bash
-npm run test:ai-soak
+pnpm run test:ai-soak
 ```
 
 The soak alternates 200 completion and agent requests against the same mocked engine. It verifies
@@ -17,7 +17,7 @@ real GPU memory.
 
 ## Real-device run
 
-1. Start the app with `npm run dev`, open Chrome, and cache the prompt and completion models from
+1. Start the app with `pnpm run dev`, open Chrome, and cache the prompt and completion models from
    the model manager.
 2. Open Chrome Task Manager and DevTools **Performance monitor**. Record the tab's JavaScript
    memory and the browser GPU process memory after the workspace becomes idle.
@@ -30,7 +30,7 @@ real GPU memory.
 5. From the More actions menu, choose **Export Support Report**. Summarize its local AI metrics:
 
 ```bash
-npm run analyze:ai -- /path/to/zakamurai-support-report.json
+pnpm run analyze:ai -- /path/to/zakamurai-support-report.json
 ```
 
 Chromium exposes a non-standard JavaScript heap reading, so its support reports include heap start,

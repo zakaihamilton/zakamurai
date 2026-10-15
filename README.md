@@ -46,32 +46,32 @@ Zakamurai keeps the core workflow in the browser:
 ### Prerequisites
 
 - [Node.js](https://nodejs.org/) 24 (the supported range is `>=24 <26`; Node.js 25 is compatibility-tested in CI)
-- npm 10 or newer
+- pnpm 10.33.0 (pinned in `package.json`)
 
 ### Start the development server
 
 ```bash
 git clone https://github.com/zakaihamilton/zakamurai.git
 cd zakamurai
-npm install
-npm run dev
+pnpm install
+pnpm run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000). Isolated preview runs at [http://localhost:3001](http://localhost:3001).
 
-Same-origin preview (weaker isolation, IDE and preview share storage) is available with `npm run dev:same-origin` when you are not using the two-port workflow.
+Same-origin preview (weaker isolation, IDE and preview share storage) is available with `pnpm run dev:same-origin` when you are not using the two-port workflow.
 
 The `postinstall`, `predev`, and `prebuild` scripts prepare the browser runtime assets used by the in-browser compiler, preview, and AI features.
 
 ### Isolated preview development
 
-`npm run dev` already starts the two-origin local workflow. The IDE runs at `http://localhost:3000` and the preview runtime at `http://localhost:3001`. `npm run dev:isolated` is an alias for the same command.
+`pnpm run dev` already starts the two-origin local workflow. The IDE runs at `http://localhost:3000` and the preview runtime at `http://localhost:3001`. `pnpm run dev:isolated` is an alias for the same command.
 
 ### Production build
 
 ```bash
-npm run build
-npm start
+pnpm run build
+pnpm start
 ```
 
 ## Storage and recovery
@@ -96,26 +96,26 @@ If these variables are omitted on a `*.vercel.app` deployment, Zakamurai uses a 
 The main quality gate mirrors CI and checks formatting, linting, architecture, types, tests, builds, performance budgets, preview security, visual regressions, and dependency advisories:
 
 ```bash
-npm run verify
+pnpm run verify
 ```
 
 Useful focused commands:
 
 | Command | Purpose |
 | --- | --- |
-| `npm run test` | Run the unit test suite |
-| `npm run test:coverage` | Run unit tests with coverage thresholds |
-| `npm run test:e2e` | Run Chromium smoke tests |
-| `npm run test:visual` | Run Chromium/WebKit visual regression and accessibility tests |
-| `npm run test:visual:update` | Regenerate visual baselines for the current platform |
-| `npm run test:visual:chromium` | Run Chromium visual regression tests |
-| `npm run test:visual:webkit` | Run WebKit visual regression tests |
-| `npm run test:promptfoo` | Run static AI compliance checks without API keys |
-| `npm run check:architecture` | Enforce project architecture rules |
-| `npm run check:runtime-assets` | Verify generated browser runtime assets |
-| `npm run verify:ai` | Run optional extended AI regression checks |
+| `pnpm run test` | Run the unit test suite |
+| `pnpm run test:coverage` | Run unit tests with coverage thresholds |
+| `pnpm run test:e2e` | Run Chromium smoke tests |
+| `pnpm run test:visual` | Run Chromium/WebKit visual regression and accessibility tests |
+| `pnpm run test:visual:update` | Regenerate visual baselines for the current platform |
+| `pnpm run test:visual:chromium` | Run Chromium visual regression tests |
+| `pnpm run test:visual:webkit` | Run WebKit visual regression tests |
+| `pnpm run test:promptfoo` | Run static AI compliance checks without API keys |
+| `pnpm run check:architecture` | Enforce project architecture rules |
+| `pnpm run check:runtime-assets` | Verify generated browser runtime assets |
+| `pnpm run verify:ai` | Run optional extended AI regression checks |
 
-Visual snapshots are platform-specific. Run `npm run test:visual:update` on the target CI platform to regenerate its baselines, then run `npm run test:visual` without the update flag to verify them.
+Visual snapshots are platform-specific. Run `pnpm run test:visual:update` on the target CI platform to regenerate its baselines, then run `pnpm run test:visual` without the update flag to verify them.
 
 For AI reliability and browser memory profiling, see the [AI memory profiling workflow](./docs/ai-memory-profiling.md). The static AI checks use the local echo provider and golden fixtures in [`tests/ai-golden/`](./tests/ai-golden/); they do not require API keys.
 
@@ -128,7 +128,7 @@ Before changing the application, read:
 - [AI assistant instructions](./AGENTS.md)
 - [Security policy](./SECURITY.md)
 
-The project is MIT-licensed. It uses the `triactor` hierarchical proxy-state package, CSS Modules, and browser-first persistence. Shared state should use `triactor` rather than Redux, Zustand, Recoil, or a second global store. Install with **npm** (`package-lock.json`); do not add a Yarn lockfile.
+The project is MIT-licensed. It uses the `triactor` hierarchical proxy-state package, CSS Modules, and browser-first persistence. Shared state should use `triactor` rather than Redux, Zustand, Recoil, or a second global store. Install with **pnpm** (`pnpm-lock.yaml`); do not add npm or Yarn lockfiles.
 
 ```text
 src/

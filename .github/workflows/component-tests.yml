@@ -19,55 +19,58 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.0
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 24
-          cache: npm
+          cache: pnpm
 
       - name: Install dependencies
-        run: npm ci --ignore-scripts
+        run: pnpm install --frozen-lockfile --ignore-scripts
       - name: Repository health
-        run: npm run health
+        run: pnpm run health
 
       - name: Prepare browser build assets
-        run: npm run setup:almostnode && npm run setup:wasm
+        run: pnpm run setup:almostnode && pnpm run setup:wasm
 
       - name: Install Chromium and WebKit
-        run: npx playwright install --with-deps chromium webkit
+        run: pnpm exec playwright install --with-deps chromium webkit
 
       - name: Check formatting, linting, types, and styles
-        run: npm run format:check && npm run lint && npm run stylelint && npm run typecheck
+        run: pnpm run format:check && pnpm run lint && pnpm run stylelint && pnpm run typecheck
 
       - name: Check unused dependencies and files
-        run: npm run deadcode
+        run: pnpm run deadcode
 
       - name: Check architecture rules
-        run: npm run check:architecture
+        run: pnpm run check:architecture
 
       - name: Run static AI compliance eval
-        run: npm run test:promptfoo && npm run test:ai-evals
+        run: pnpm run test:promptfoo && pnpm run test:ai-evals
 
       - name: Run unit tests with coverage
-        run: npm run test:coverage
+        run: pnpm run test:coverage
 
       - name: Build production app and check performance budgets
-        run: npm run build && npm run perf && npm run check:runtime-assets && npm run test:performance
+        run: pnpm run build && pnpm run perf && pnpm run check:runtime-assets && pnpm run test:performance
 
       - name: Run Chromium and WebKit end-to-end tests
-        run: npm run test:e2e && npm run test:e2e:webkit
+        run: pnpm run test:e2e && pnpm run test:e2e:webkit
 
       - name: Run isolated preview security tests in Chromium and WebKit
-        run: npm run test:e2e:isolated && npm run test:e2e:isolated:webkit
+        run: pnpm run test:e2e:isolated && pnpm run test:e2e:isolated:webkit
 
       - name: Check production preview surface headers
-        run: npm run check:preview
+        run: pnpm run check:preview
 
       - name: Run Chromium and WebKit visual/accessibility regression tests
-        run: npm run test:visual
+        run: pnpm run test:visual
 
       - name: Audit production dependencies
-        run: npm run audit
+        run: pnpm run audit
 
       - name: Upload coverage and Playwright artifacts
         if: failure()
@@ -89,17 +92,20 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.0
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 25
-          cache: npm
+          cache: pnpm
 
       - name: Install dependencies
-        run: npm ci --ignore-scripts
+        run: pnpm install --frozen-lockfile --ignore-scripts
 
       - name: Prepare browser build assets
-        run: npm run setup:almostnode && npm run setup:wasm
+        run: pnpm run setup:almostnode && pnpm run setup:wasm
 
       - name: Run Node 25 compatibility smoke checks
-        run: npm run lint && npm run typecheck && npm run test:unit && npm run build && npm run perf && npm run check:runtime-assets
+        run: pnpm run lint && pnpm run typecheck && pnpm run test:unit && pnpm run build && pnpm run perf && pnpm run check:runtime-assets

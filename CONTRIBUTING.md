@@ -6,13 +6,13 @@ Thank you for contributing. This project is optimized for both human and AI-assi
 
 1. Read [ARCHITECTURE.md](./ARCHITECTURE.md) — especially proxy state and preview security.
 2. Read [AGENTS.md](./AGENTS.md) if you use Cursor or other coding agents.
-3. Use Node.js 24 as the baseline (see [.nvmrc](./.nvmrc)); the supported engine range is `>=24 <26`, and Node.js 25 is compatibility-tested in CI. Use npm 10+ (`package-lock.json`).
+3. Use Node.js 24 as the baseline (see [.nvmrc](./.nvmrc)); the supported engine range is `>=24 <26`, and Node.js 25 is compatibility-tested in CI. Use pnpm 10.33.0 (`pnpm-lock.yaml`, pinned in `package.json`).
 
 ## Development workflow
 
 ```bash
-npm install
-npm run dev
+pnpm install
+pnpm run dev
 ```
 
 ## Quality checklist (PRs)
@@ -20,7 +20,7 @@ npm run dev
 Run locally before opening a PR:
 
 ```bash
-npm run verify
+pnpm run verify
 ```
 
 This runs formatting, linting, typecheck, knip, architecture checks, static promptfoo eval, AI evals, unit coverage, production build, application and generated-runtime performance budgets, Chromium and WebKit e2e smoke, isolated preview security tests, preview header checks, visual regression (Chromium), and dependency audit.
@@ -28,30 +28,30 @@ This runs formatting, linting, typecheck, knip, architecture checks, static prom
 Optional extended AI checks:
 
 ```bash
-npm run verify:ai
+pnpm run verify:ai
 ```
 
-Requires promptfoo (installed via `npm ci`). lucidshark/lucid architectural scan runs when installed on PATH.
+Requires promptfoo (installed via `pnpm install --frozen-lockfile`). lucidshark/lucid architectural scan runs when installed on PATH.
 
 ## Tests
 
 | Command | Purpose |
 | --- | --- |
-| `npm run test` | Unit tests |
-| `npm run typecheck` | TypeScript `--noEmit` |
-| `npm run test:coverage` | Coverage with thresholds |
-| `npm run test:promptfoo` | Static AI compliance (no API keys) |
-| `npm run check:architecture` | Architecture rule scan |
-| `npm run check:runtime-assets` | Generated browser runtime manifest and size check |
-| `npm run test:e2e` | Playwright smoke |
-| `npm run test:e2e:isolated` | Cross-origin preview security |
+| `pnpm run test` | Unit tests |
+| `pnpm run typecheck` | TypeScript `--noEmit` |
+| `pnpm run test:coverage` | Coverage with thresholds |
+| `pnpm run test:promptfoo` | Static AI compliance (no API keys) |
+| `pnpm run check:architecture` | Architecture rule scan |
+| `pnpm run check:runtime-assets` | Generated browser runtime manifest and size check |
+| `pnpm run test:e2e` | Playwright smoke |
+| `pnpm run test:e2e:isolated` | Cross-origin preview security |
 
 Pre-commit hooks run Biome and related Vitest tests on staged files.
 
 ## Code style
 
-- Biome for JS/JSX formatting and lint (`npm run format`, `npm run lint`).
-- Stylelint for CSS Modules (`npm run stylelint`).
+- Biome for JS/JSX formatting and lint (`pnpm run format`, `pnpm run lint`).
+- Stylelint for CSS Modules (`pnpm run stylelint`).
 - No Tailwind; CSS Modules for UI components.
 - Proxy state for shared domain data — not Redux/Zustand/React Context stores.
 
