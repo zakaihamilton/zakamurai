@@ -60,11 +60,16 @@ editorState((draft) => {
 
 | Layer | Store | Role |
 | --- | --- | --- |
-| Canonical buffers | `EditorState.fileContents` | Persistence, AI, compiler, and preview input |
-| Typing surface | `EditorAreaUiState.localContent` | Per-file Node; synced via FileLoader |
+| Committed workspace | `EditorState.fileContents` | Existing serialized workspace shape used by browser storage |
+| Dirty buffers | `EditorState.dirtyBufferContents` | Path-keyed typing overlay; updated per keystroke and folded into the committed workspace after persistence succeeds |
+| Typing surface | `EditorAreaUiState.localContent` | Per-file Node; immediate editor rendering, synced with the effective buffer |
 | AI review | `EditorState.pendingDiffs` / `pendingDeletions` | Side-by-side review and undo; blocks LocalFS auto-save |
 
-`applyAgentChanges` writes proposed text into `fileContents` immediately and records `pendingDiffs` for review. **Build and Preview compile from `fileContents`**, so unapproved AI buffers are what the bundler and preview run. Approve/undo restores or confirms those buffers and unblocks disk flush. Manual edits clear `pendingDiffs[path]`.
+`readEffectiveFileContent` resolves one path from the dirty overlay before the committed map. `createEffectiveFileContentsSnapshot` materializes a workspace for explicit actions and persistence; render-time consumers can use the no-copy effective view. Build, AI context/validation, export, navigation, saves, and unload recovery must use the latest effective buffers. Background indexing and project-health work may wait for the idle snapshot. Typing must not rebuild the whole committed workspace map on each keystroke.
+
+Browser persistence keeps the existing `fileContents` record and IndexedDB/localStorage keys. Editor snapshots persist after 3 seconds idle, with a 10-second maximum wait during continuous edits. After a successful write, only dirty paths that still match that snapshot are committed and cleared. A failed write leaves dirty buffers available in memory and for the synchronous beforeunload flush.
+
+`applyAgentChanges` writes proposed text into `fileContents` immediately and records `pendingDiffs` for review. Build and Preview compile effective buffers, including unapproved AI diffs. Approve/undo restores or confirms those buffers and unblocks disk flush. Manual edits clear `pendingDiffs[path]`.
 
 ## 5. Reliability Boundaries
 
@@ -72,9 +77,11 @@ editorState((draft) => {
   `pendingDiffs`; absolute paths, traversal, duplicate targets, and malformed content are rejected.
 - Storage uses IndexedDB first and localStorage second. `StorageHealthState` is transient UI state:
   it records `healthy`, `fallback`, or `write-failed` without changing persisted settings formats.
-- Preview bridge handshakes validate configured origin, active iframe window, protocol version, and
-  session ID before accepting a `MessagePort`. Handshake, error, and reconnect `postMessage` calls
-  must use an exact IDE origin — never `*`.
+- Preview bridge handshakes validate configured origin, active iframe window, protocol version,
+  session ID, and an ephemeral per-session capability before accepting or reconnecting a
+  `MessagePort`. The service worker validates the capability and trusted source path even when its
+  scope is `/`. Handshake, error, and reconnect `postMessage` calls must use an exact IDE origin —
+  never `*`.
 
 ## 6. Component Generation Strategy
 
@@ -103,7 +110,7 @@ AI changes must use project-relative paths. `validateAIChanges` rejects absolute
   (`NEXT_PUBLIC_IDE_ORIGIN`, `NEXT_PUBLIC_PREVIEW_ORIGIN`). Unconfigured `*.vercel.app`
   deployments use an explicit same-origin `/__preview/` compatibility surface with weaker
   isolation.
-- `PreviewBridge` (IDE side) and `PreviewHost` (preview origin) exchange a one-time `zakamurai-preview-connect` handshake with protocol version and session ID before transferring a `MessagePort`.
+- `PreviewBridge` (IDE side) and `PreviewHost` (preview origin) exchange a one-time `zakamurai-preview-connect` handshake with protocol version, session ID, and an ephemeral random capability before transferring a `MessagePort` to the service worker.
 - Preview error and reconnect messages pin `postMessage` to the IDE origin (`window.__zakamuraiPreviewParentOrigin`). Do not use wildcard target origins.
 - `isValidPreviewHandshake` in `previewOrigins.ts` is shared — do not relax checks on one side only.
 - In isolated mode, user project code never receives same-origin access to IDE storage, cookies,

@@ -1,7 +1,27 @@
 import { describe, expect, it } from 'vitest';
-import { fromBase64, isPreviewRequest, isSafePreviewPath, toBase64 } from './previewProtocol';
+import {
+  createPreviewCapability,
+  fromBase64,
+  isPreviewRequest,
+  isSafePreviewPath,
+  isValidPreviewCapability,
+  toBase64,
+} from './previewProtocol';
 
 describe('previewProtocol', () => {
+  it('creates ephemeral cryptographic capabilities and rejects malformed values', () => {
+    const first = createPreviewCapability();
+    const second = createPreviewCapability();
+
+    expect(first).toMatch(/^[a-f\d]{64}$/i);
+    expect(second).toMatch(/^[a-f\d]{64}$/i);
+    expect(second).not.toBe(first);
+    expect(isValidPreviewCapability(first)).toBe(true);
+    expect(isValidPreviewCapability(undefined)).toBe(false);
+    expect(isValidPreviewCapability('short')).toBe(false);
+    expect(isValidPreviewCapability('g'.repeat(64))).toBe(false);
+  });
+
   it('validates safe preview paths', () => {
     expect(isSafePreviewPath('/index.html')).toBe(true);
     expect(isSafePreviewPath('/assets/app.js')).toBe(true);

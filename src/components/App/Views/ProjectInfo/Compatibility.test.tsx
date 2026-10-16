@@ -1,14 +1,18 @@
-import { render, screen } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { act, render, screen } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import ProjectCompatibility from './Compatibility';
 
-const editorStore = Object.assign(vi.fn(), { fileContents: {} });
+const editorStore = Object.assign(vi.fn(), { fileContents: {}, dirtyBufferContents: {} });
 
 vi.mock('@/components/App/Views/EditorArea', () => ({
   EditorState: { useState: vi.fn(() => editorStore) },
 }));
 
 describe('ProjectCompatibility', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it('shows a clear ready state for plain browser files', () => {
     editorStore.fileContents = { 'index.html': '<h1>Hello</h1>' };
     render(<ProjectCompatibility />);
@@ -35,5 +39,27 @@ describe('ProjectCompatibility', () => {
     render(<ProjectCompatibility />);
     expect(screen.getByText('Fix project errors first')).toBeDefined();
     expect(screen.getByText(/package.json cannot be parsed/)).toBeDefined();
+  });
+
+  it('refreshes project health from dirty buffers after the idle delay', () => {
+    vi.useFakeTimers();
+    editorStore.fileContents = {
+      'package.json': '{"name":"valid"}',
+      'index.html': '<h1>Hello</h1>',
+    };
+    editorStore.dirtyBufferContents = {};
+    const { rerender } = render(<ProjectCompatibility />);
+
+    expect(screen.getByText('Ready for browser build')).toBeDefined();
+    editorStore.dirtyBufferContents = { 'package.json': '{' };
+    rerender(<ProjectCompatibility />);
+    act(() => {
+      vi.advanceTimersByTime(2999);
+    });
+    expect(screen.getByText('Ready for browser build')).toBeDefined();
+    act(() => {
+      vi.advanceTimersByTime(1);
+    });
+    expect(screen.getByText('Fix project errors first')).toBeDefined();
   });
 });

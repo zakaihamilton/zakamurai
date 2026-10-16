@@ -10,7 +10,8 @@ import type {
   RunManagerResult,
   WebLLMGenerationMetrics,
 } from '../types';
-import { AgentContextLedger, fingerprintWorkspace } from './AgentContextLedger';
+import { fingerprintWorkspace } from './AgentContextLedger';
+import { getAgentContextLedger } from './AgentContextLedgerStore';
 import {
   contextText,
   extractPath,
@@ -39,20 +40,6 @@ import {
   resolveSmallModelHostAssist,
 } from './SmallModelHostAssist';
 
-const contextLedgers = new Map<string, AgentContextLedger>();
-
-const getContextLedger = (
-  sessionId: string | undefined,
-  modelId: string,
-): AgentContextLedger | null => {
-  if (!sessionId) return null;
-  const key = `${sessionId}:${modelId}`;
-  const existing = contextLedgers.get(key);
-  if (existing) return existing;
-  const ledger = new AgentContextLedger(sessionId, modelId);
-  contextLedgers.set(key, ledger);
-  return ledger;
-};
 type ManagerExecutionResult = Omit<RunManagerResult, 'trace'>;
 
 type ManagerExecutionOptions = RunManagerOptions & {
@@ -105,7 +92,7 @@ async function executeManager({
   });
   const workspace = tools.workspace;
   onWorkspace(workspace);
-  const ledger = getContextLedger(sessionId, model);
+  const ledger = getAgentContextLedger(sessionId, model);
   ledger?.begin(request, workspace.files, fingerprintWorkspace(workspace.files));
   const handoffContext = [ledger?.summary(), priorContext].filter(Boolean).join('\n\n');
   const toolResults: ManagerToolResult[] = [];
@@ -433,7 +420,7 @@ export async function runManager(options: RunManagerOptions): Promise<RunManager
         workspaceHolder.current = nextWorkspace;
       },
     });
-    const ledger = getContextLedger(options.sessionId, options.model);
+    const ledger = getAgentContextLedger(options.sessionId, options.model);
     if (ledger) {
       ledger.record(`Completed: ${result.summary}`);
       ledger.record(

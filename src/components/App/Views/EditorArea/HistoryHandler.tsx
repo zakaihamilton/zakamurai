@@ -1,5 +1,6 @@
 import type { CursorPosition } from '@/types/domain-types';
 import { useEffect, useRef } from 'react';
+import { readEffectiveFileContent } from './EditorBuffers';
 import type { HistoryHandlerProps } from './types';
 
 export default function HistoryHandler({ filePath, localContent, state }: HistoryHandlerProps) {
@@ -11,7 +12,7 @@ export default function HistoryHandler({ filePath, localContent, state }: Histor
   const lastFilePath = useRef(filePath);
 
   if (filePath !== lastFilePath.current) {
-    const globalContent = state.fileContents?.[filePath] || '';
+    const globalContent = readEffectiveFileContent(state, filePath) || '';
     const snapshotCursor = state.cursorPos?.[filePath] || { line: 1, col: 1, index: 0 };
     lastHistoryContent.current = globalContent;
     lastHistoryCursor.current = snapshotCursor;
@@ -52,7 +53,7 @@ export default function HistoryHandler({ filePath, localContent, state }: Histor
     const initialContent = localContent;
 
     const timer = setTimeout(() => {
-      if (localContent !== state.fileContents?.[filePath]) return;
+      if (localContent !== readEffectiveFileContent(state, filePath)) return;
 
       if (
         filePath === initialFilePath &&

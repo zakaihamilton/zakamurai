@@ -1,5 +1,9 @@
 import { TabState } from '@/components/App/Panes/TabBar';
 import { EditorState } from '@/components/App/Views/EditorArea';
+import {
+  createEffectiveFileContentsView,
+  readEffectiveFileContent,
+} from '@/components/App/Views/EditorArea/EditorBuffers';
 import { getHighlightBreakdown } from '@/components/App/Views/EditorArea/highlighter';
 import { shouldDeferEditorAnalysis } from '@/components/App/Views/EditorArea/largeFile';
 import type { HighlightEditorState } from '@/components/App/Views/EditorArea/types';
@@ -26,7 +30,9 @@ import {
 } from './tokenUtils';
 
 export default function TokenBreakdown({ tab }: TokenBreakdownProps) {
-  const editorState = requireStore(EditorState.useState(['fileContents', 'pendingDiffs']));
+  const editorState = requireStore(
+    EditorState.useState(['fileContents', 'dirtyBufferContents', 'pendingDiffs']),
+  );
   const tabState = requireStore(TabState.useState(['activeTabId', 'openTabs']));
   const [copied, setCopied] = useState(false);
   const [copiedCombined, setCopiedCombined] = useState(false);
@@ -39,7 +45,7 @@ export default function TokenBreakdown({ tab }: TokenBreakdownProps) {
 
   const filePath = tab?.sourceFilePath || tab?.filePath || tab?.file?.path?.join('/') || '';
   const fileName = tab?.file?.name || filePath.split('/').pop() || '';
-  const code = editorState.fileContents?.[filePath] ?? tab?.content ?? '';
+  const code = readEffectiveFileContent(editorState, filePath) ?? tab?.content ?? '';
   const collapsedFoldIds = tab?.collapsedFoldIds || [];
   const isFileView = tab?.type === 'file';
   const canSwitchFileViews = isFileView || !!filePath;
@@ -81,7 +87,7 @@ export default function TokenBreakdown({ tab }: TokenBreakdownProps) {
       filePath,
       state: {
         pendingDiffs: editorState.pendingDiffs as HighlightEditorState['pendingDiffs'],
-        fileContents: editorState.fileContents,
+        fileContents: createEffectiveFileContentsView(editorState),
       },
       styles,
       navigationLinksEnabled: true,

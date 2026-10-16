@@ -7,6 +7,7 @@ import { asMockUseFileSystem } from '@/test-utils/fsMocks';
 import { makeAppState, makeSidebarState } from '@/test-utils/stateMocks';
 import { makeTreeNode } from '@/test-utils/treeMocks';
 import { Compiler } from '@/utils/compiler';
+import { ZipWriter } from '@/utils/zip';
 import { act, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import useZipExporter from './ZipExporter';
@@ -75,6 +76,23 @@ describe('useZipExporter', () => {
     });
 
     expect(URL.createObjectURL).toHaveBeenCalled();
+  });
+
+  it('exports the latest dirty editor buffer', async () => {
+    vi.mocked(EditorState.usePassiveState).mockReturnValue(
+      createMockEditorState({
+        fileContents: { 'App.js': 'committed' },
+        dirtyBufferContents: { 'App.js': 'latest typed content' },
+      }) as ReturnType<typeof EditorState.usePassiveState>,
+    );
+    const addFile = vi.spyOn(ZipWriter.prototype, 'addFile');
+    const { result } = renderHook(() => useZipExporter());
+
+    await act(async () => {
+      await result.current.handleExportZip();
+    });
+
+    expect(addFile).toHaveBeenCalledWith('App.js', 'latest typed content');
   });
 
   it('reports and clears an error if compiled files are unavailable', async () => {

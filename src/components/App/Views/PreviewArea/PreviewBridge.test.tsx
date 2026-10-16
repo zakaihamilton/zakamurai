@@ -10,6 +10,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import PreviewBridge from './PreviewBridge';
 import { PREVIEW_CONNECT, PREVIEW_CONNECT_ACK, PREVIEW_PROTOCOL_VERSION } from './previewProtocol';
 
+const CAPABILITY_PATTERN = /^[a-f\d]{64}$/i;
+
 describe('PreviewBridge', () => {
   afterEach(() => {
     vi.restoreAllMocks();
@@ -46,14 +48,78 @@ describe('PreviewBridge', () => {
     });
 
     expect(externalWindow.postMessage).toHaveBeenCalledWith(
-      {
+      expect.objectContaining({
         type: PREVIEW_CONNECT,
         version: PREVIEW_PROTOCOL_VERSION,
         sessionId: 'test-session-123',
-      },
+        workerCapability: expect.stringMatching(CAPABILITY_PATTERN),
+      }),
       'http://localhost:3001',
       expect.any(Array),
     );
+  });
+
+  it('keeps the ephemeral capability stable when the preview surface remounts', () => {
+    const firstWindow = createMockPreviewWindow();
+    const firstRender = render(
+      <PreviewBridge
+        iframeRef={mockIframeRef(null)}
+        externalPreviewRef={mockExternalPreviewRef(firstWindow)}
+        externalPreviewNonce={1}
+        sessionId="stable-session"
+        previewOrigin="http://localhost:3001"
+        onError={vi.fn()}
+      />,
+    );
+    const firstMessage = firstWindow.postMessage.mock.calls[0]?.[0] as {
+      workerCapability?: string;
+    };
+    firstRender.unmount();
+
+    const secondWindow = createMockPreviewWindow();
+    const secondRender = render(
+      <PreviewBridge
+        iframeRef={mockIframeRef(null)}
+        externalPreviewRef={mockExternalPreviewRef(secondWindow)}
+        externalPreviewNonce={1}
+        sessionId="stable-session"
+        previewOrigin="http://localhost:3001"
+        onError={vi.fn()}
+      />,
+    );
+    const secondMessage = secondWindow.postMessage.mock.calls[0]?.[0] as {
+      workerCapability?: string;
+    };
+
+    expect(secondMessage.workerCapability).toBe(firstMessage.workerCapability);
+    secondRender.unmount();
+  });
+
+  it('restores the same capability after switching away from and back to a preview session', () => {
+    const renderSession = (sessionId: string) => {
+      const target = createMockPreviewWindow();
+      const result = render(
+        <PreviewBridge
+          iframeRef={mockIframeRef(null)}
+          externalPreviewRef={mockExternalPreviewRef(target)}
+          externalPreviewNonce={1}
+          sessionId={sessionId}
+          previewOrigin="http://localhost:3001"
+          onError={vi.fn()}
+        />,
+      );
+      const message = target.postMessage.mock.calls[0]?.[0] as {
+        workerCapability?: string;
+      };
+      result.unmount();
+      return message.workerCapability;
+    };
+
+    const firstCapability = renderSession('returning-session');
+    renderSession('intermediate-session');
+    const returnedCapability = renderSession('returning-session');
+
+    expect(returnedCapability).toBe(firstCapability);
   });
 
   it('ignores replayed connect messages after a surface is confirmed', () => {
@@ -332,12 +398,16 @@ describe('PreviewBridge', () => {
     expect(externalWindow.postMessage).toHaveBeenCalledTimes(2);
 
     const callsAfterRetry = externalWindow.postMessage.mock.calls.length;
+    const sentHandshake = externalWindow.postMessage.mock.calls[0]?.[0] as {
+      workerCapability?: string;
+    };
     act(() => {
       const ackEvent = new MessageEvent('message', {
         data: {
           type: PREVIEW_CONNECT_ACK,
           version: PREVIEW_PROTOCOL_VERSION,
           sessionId: 'test-session-123',
+          workerCapability: sentHandshake.workerCapability,
           surface: 'external',
         },
         origin: 'http://localhost:3001',
@@ -378,6 +448,7 @@ describe('PreviewBridge', () => {
         type: PREVIEW_CONNECT_ACK,
         version: PREVIEW_PROTOCOL_VERSION,
         sessionId: 'test-session-123',
+        workerCapability: 'a'.repeat(64),
         surface: 'external',
       },
       origin: 'http://localhost:3001',

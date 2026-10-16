@@ -11,7 +11,12 @@ import {
   getPreviewServiceWorkerScope,
   isValidPreviewHandshake,
 } from './previewOrigins';
-import { PREVIEW_CONNECT, PREVIEW_CONNECT_ACK, PREVIEW_PROTOCOL_VERSION } from './previewProtocol';
+import {
+  PREVIEW_CONNECT,
+  PREVIEW_CONNECT_ACK,
+  PREVIEW_PROTOCOL_VERSION,
+  createPreviewCapability,
+} from './previewProtocol';
 
 const EXTERNAL_HANDSHAKE_INTERVAL_MS = 400;
 const EXTERNAL_HANDSHAKE_TIMEOUT_MS = 12000;
@@ -19,6 +24,16 @@ const WORKER_BRIDGE_MAINTENANCE_MS = 8000;
 const WORKER_BRIDGE_KEY = Symbol('preview-worker-bridge');
 const SURFACE_IFRAME = 'iframe' as const;
 const SURFACE_EXTERNAL = 'external' as const;
+const sessionCapabilities = new Map<string, string>();
+
+function getSessionCapability(sessionId: string): string {
+  let capability = sessionCapabilities.get(sessionId);
+  if (!capability) {
+    capability = createPreviewCapability();
+    sessionCapabilities.set(sessionId, capability);
+  }
+  return capability;
+}
 
 type HandshakeContext = {
   portsRef: React.MutableRefObject<Map<unknown, MessagePort>>;
@@ -27,6 +42,7 @@ type HandshakeContext = {
   surface: PreviewSurfaceKind;
   sessionId: string;
   previewOrigin: string;
+  workerCapability: string;
   onError?: (message: string) => void;
 };
 
@@ -80,6 +96,7 @@ function pushHandshake(
     surface,
     sessionId,
     previewOrigin,
+    workerCapability,
     onError,
   }: HandshakeContext,
 ) {
@@ -100,7 +117,7 @@ function pushHandshake(
   });
   try {
     target.postMessage(
-      { type: PREVIEW_CONNECT, version: PREVIEW_PROTOCOL_VERSION, sessionId },
+      { type: PREVIEW_CONNECT, version: PREVIEW_PROTOCOL_VERSION, sessionId, workerCapability },
       previewOrigin,
       [channel.port2],
     );
@@ -125,12 +142,14 @@ async function attachWorkerBridge({
   portsRef,
   sessionId,
   ideOrigin,
+  workerCapability,
   previewScope,
   onError,
 }: {
   portsRef: React.MutableRefObject<Map<unknown, MessagePort>>;
   sessionId: string;
   ideOrigin: string;
+  workerCapability: string;
   previewScope: string;
   onError?: (message: string) => void;
 }): Promise<boolean> {
@@ -149,7 +168,7 @@ async function attachWorkerBridge({
       sessionId,
       onError,
     });
-    worker.postMessage({ type: 'init', sessionId, ideOrigin }, [channel.port2]);
+    worker.postMessage({ type: 'init', sessionId, ideOrigin, workerCapability }, [channel.port2]);
     return true;
   } catch {
     return false;
@@ -169,6 +188,7 @@ export default function PreviewBridge({
   const portsRef = useRef(new Map<unknown, MessagePort>());
   const surfacePortsRef = useRef(new Map<PreviewSurfaceKind, Set<MessagePort>>());
   const confirmedSurfacesRef = useRef(new Set<PreviewSurfaceKind>());
+  const workerCapability = getSessionCapability(sessionId);
 
   useEffect(() => {
     const onMessage = (event: MessageEvent<PreviewConnectMessage>) => {
@@ -191,6 +211,7 @@ export default function PreviewBridge({
 
       if (
         surface &&
+        event.data.workerCapability === workerCapability &&
         isValidPreviewHandshake(event as PreviewHandshakeEvent, {
           expectedOrigin: previewOrigin,
           expectedSource: (expectedSource ?? null) as MessageEventSource | null,
@@ -226,7 +247,7 @@ export default function PreviewBridge({
       try {
         const target = event.source as Window;
         target.postMessage(
-          { type: PREVIEW_CONNECT, version: PREVIEW_PROTOCOL_VERSION, sessionId },
+          { type: PREVIEW_CONNECT, version: PREVIEW_PROTOCOL_VERSION, sessionId, workerCapability },
           previewOrigin,
           [channel.port2],
         );
@@ -244,7 +265,7 @@ export default function PreviewBridge({
       surfacePortsRef.current.clear();
       confirmedSurfacesRef.current.clear();
     };
-  }, [externalPreviewRef, iframeRef, onError, previewOrigin, sessionId]);
+  }, [externalPreviewRef, iframeRef, onError, previewOrigin, sessionId, workerCapability]);
 
   useEffect(() => {
     const externalWindow = externalPreviewRef?.current;
@@ -260,6 +281,7 @@ export default function PreviewBridge({
         surface: SURFACE_EXTERNAL,
         sessionId,
         previewOrigin,
+        workerCapability,
         onError,
       });
     push();
@@ -272,7 +294,14 @@ export default function PreviewBridge({
       window.clearInterval(interval);
       window.clearTimeout(timeout);
     };
-  }, [externalPreviewNonce, externalPreviewRef, onError, previewOrigin, sessionId]);
+  }, [
+    externalPreviewNonce,
+    externalPreviewRef,
+    onError,
+    previewOrigin,
+    sessionId,
+    workerCapability,
+  ]);
 
   useEffect(() => {
     const iframeWindow = iframeRef.current?.contentWindow;
@@ -288,6 +317,7 @@ export default function PreviewBridge({
         surface: SURFACE_IFRAME,
         sessionId,
         previewOrigin,
+        workerCapability,
         onError,
       });
     push();
@@ -300,7 +330,7 @@ export default function PreviewBridge({
       window.clearInterval(interval);
       window.clearTimeout(timeout);
     };
-  }, [iframeHandshakeNonce, iframeRef, onError, previewOrigin, sessionId]);
+  }, [iframeHandshakeNonce, iframeRef, onError, previewOrigin, sessionId, workerCapability]);
 
   useEffect(() => {
     if (!sessionId || !previewOrigin) return undefined;
@@ -313,12 +343,19 @@ export default function PreviewBridge({
     const previewScope = getPreviewServiceWorkerScope(origins);
     const ideOrigin = origins.ideOrigin || window.location.origin;
     const maintain = () => {
-      void attachWorkerBridge({ portsRef, sessionId, ideOrigin, previewScope, onError });
+      void attachWorkerBridge({
+        portsRef,
+        sessionId,
+        ideOrigin,
+        workerCapability,
+        previewScope,
+        onError,
+      });
     };
     maintain();
     const interval = window.setInterval(maintain, WORKER_BRIDGE_MAINTENANCE_MS);
     return () => window.clearInterval(interval);
-  }, [onError, previewOrigin, sessionId]);
+  }, [onError, previewOrigin, sessionId, workerCapability]);
 
   return null;
 }

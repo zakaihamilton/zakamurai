@@ -1,3 +1,7 @@
+import {
+  createEffectiveFileContentsSnapshot,
+  readEffectiveFileContent,
+} from '@/components/App/Views/EditorArea/EditorBuffers';
 import type { EditorStateDraft } from '@/components/App/Views/EditorArea/types';
 import type { ShortcutActionContext } from '@/components/App/types';
 import type { CursorPosition, NavigationHistoryEntry } from '@/types/domain-types';
@@ -36,7 +40,8 @@ export const toggleCssJsAction = ({
     return;
   }
 
-  const code = editorState.fileContents?.[filePath] || '';
+  const fileContents = createEffectiveFileContentsSnapshot(editorState);
+  const code = fileContents[filePath] || '';
   const cursorPos = editorState.cursorPos?.[filePath] || { index: 0 };
   const index = cursorPos.index ?? 0;
 
@@ -50,9 +55,9 @@ export const toggleCssJsAction = ({
 
   let targetPath: string | null = null;
   if (isCss) {
-    targetPath = getAssociatedFilePath(filePath, editorState.fileContents || {});
+    targetPath = getAssociatedFilePath(filePath, fileContents);
   } else {
-    targetPath = getAssociatedFilePath(filePath, editorState.fileContents || {}, identifier);
+    targetPath = getAssociatedFilePath(filePath, fileContents, identifier);
   }
 
   if (!targetPath) {
@@ -62,7 +67,7 @@ export const toggleCssJsAction = ({
     return;
   }
 
-  const targetContent = editorState.fileContents?.[targetPath] ?? '';
+  const targetContent = fileContents[targetPath] ?? '';
   let targetLoc: CursorPosition = { line: 1, col: 1, index: 0 };
 
   if (className) {
@@ -126,7 +131,7 @@ export const navigateToHistoryItem = (
 
   const targetPath = item.filePath;
   const targetLoc = toCursorPosition(item.loc);
-  const targetContent = editorState.fileContents?.[targetPath] ?? '';
+  const targetContent = readEffectiveFileContent(editorState, targetPath) ?? '';
 
   const fileName = targetPath.substring(targetPath.lastIndexOf('/') + 1);
   const fileObj = {

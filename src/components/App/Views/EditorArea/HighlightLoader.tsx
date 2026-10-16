@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
+import { type EditorBufferSource, createEffectiveFileContentsView } from './EditorBuffers';
 import { highlightCodeAsync, highlightCodeSync } from './highlightClient';
 import type { HighlightEditorState, HighlightLoaderProps } from './types';
 
 const toHighlightState = (state: HighlightLoaderProps['state']): HighlightEditorState => ({
   pendingDiffs: state.pendingDiffs as HighlightEditorState['pendingDiffs'],
   selectedLines: state.selectedLines,
-  fileContents: state.fileContents,
+  fileContents: createEffectiveFileContentsView(state as EditorBufferSource),
   cursorPos: state.cursorPos,
 });
 
@@ -97,6 +98,7 @@ export default function useHighlightLoader({
     state.pendingDiffs?.[filePath],
     state.selectedLines?.[filePath],
     navigationLinksEnabled ? state.fileContents : null,
+    navigationLinksEnabled ? (state as EditorBufferSource).dirtyBufferContents : null,
   ]);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: intentional narrow deps for original pane

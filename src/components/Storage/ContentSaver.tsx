@@ -1,4 +1,5 @@
 import { EditorState } from '@/components/App/Views/EditorArea';
+import { createEffectiveFileContentsSnapshot } from '@/components/App/Views/EditorArea/EditorBuffers';
 import Settings from '@/components/Storage/Settings';
 import type { PendingDiff } from '@/types/domain-types';
 import { useEffect } from 'react';
@@ -27,7 +28,7 @@ export function useContentSaver() {
       }
       // Read directly from the Proxy to bypass React closure staleness
       // in the event of a synchronous beforeunload firing.
-      const currentContents = state.fileContents;
+      const currentContents = createEffectiveFileContentsSnapshot(state);
       const currentDiffs = state.pendingDiffs;
       const currentDeletions = state.pendingDeletions;
 
@@ -39,7 +40,7 @@ export function useContentSaver() {
           modifiedContent: currentContents?.[path] ?? diff.modifiedContent ?? '',
         };
       }
-      Settings.flushEditorBuffersSync({ ...currentContents }, diffsToSave, {
+      Settings.flushEditorBuffersSync(currentContents, diffsToSave, {
         ...(currentDeletions || {}),
       });
     };

@@ -321,6 +321,8 @@ export interface TabBarUiStateShape {
 
 export interface EditorStateShape {
   fileContents: Record<string, string>;
+  /** Per-path typing overlay; serialized into fileContents at persistence boundaries. */
+  dirtyBufferContents?: Record<string, string>;
   aiCompletionEnabled: boolean;
   isReadOnly: boolean;
   navigationHistory: NavigationHistory;

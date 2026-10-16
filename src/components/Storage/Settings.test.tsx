@@ -160,6 +160,132 @@ describe('Settings', () => {
     expect(['healthy', 'fallback']).toContain(Settings.getStorageHealth().status);
   });
 
+  it('persists and hydrates effective editor snapshots using the existing record shapes', async () => {
+    const saveCheckpoint = vi.spyOn(Settings, 'saveRecoveryCheckpoint').mockResolvedValue(true);
+    const fileContents = { 'src/App.jsx': 'latest source' };
+    const pendingDiffs = {
+      'src/App.jsx': {
+        originalContent: 'before AI',
+        modifiedContent: 'old proposal',
+        diffs: [{ start: 0, end: 1, origStart: 0, origEnd: 1 }],
+      },
+    };
+    const pendingDeletions = {
+      'src/Old.jsx': { originalContent: 'removed source', changeSetId: 'change-1' },
+    };
+
+    await expect(
+      Settings.persistEditorBuffersSnapshot({
+        fileContents,
+        pendingDiffs,
+        pendingDeletions,
+        recovery: {
+          reason: 'storage-recovery',
+          projectName: 'Snapshot project',
+          openTabs: [],
+          activeTabId: null,
+        },
+      }),
+    ).resolves.toBe(true);
+
+    expect(Settings.getFileContents()).toEqual(fileContents);
+    expect(Settings.getPendingDiffs()).toMatchObject({
+      'src/App.jsx': { modifiedContent: 'latest source' },
+    });
+    expect(Settings.getPendingDeletions()).toEqual(pendingDeletions);
+    expect(saveCheckpoint).toHaveBeenCalledWith(
+      expect.objectContaining({
+        reason: 'storage-recovery',
+        projectName: 'Snapshot project',
+        fileContents,
+        pendingDiffs: expect.objectContaining({
+          'src/App.jsx': expect.objectContaining({ modifiedContent: 'latest source' }),
+        }),
+        pendingDeletions,
+      }),
+    );
+
+    Settings._resetHydrationForTests();
+    await Settings.hydrate();
+    expect(Settings.getFileContents()).toEqual(fileContents);
+    expect(Settings.getPendingDiffs()).toMatchObject({
+      'src/App.jsx': { modifiedContent: 'latest source' },
+    });
+    expect(Settings.getPendingDeletions()).toEqual(pendingDeletions);
+  });
+
+  it('writes coordinated editor snapshots in submission order', async () => {
+    let releaseFirstWrite: ((saved: boolean) => void) | undefined;
+    const writeContents = vi
+      .spyOn(Settings, 'setFileContents')
+      .mockImplementationOnce(
+        () =>
+          new Promise<boolean>((resolve) => {
+            releaseFirstWrite = resolve;
+          }),
+      )
+      .mockResolvedValue(true);
+    vi.spyOn(Settings, 'setPendingDiffs').mockResolvedValue(true);
+    vi.spyOn(Settings, 'setPendingDeletions').mockResolvedValue(true);
+    vi.spyOn(Settings, 'saveRecoveryCheckpoint').mockResolvedValue(true);
+    const persist = (content: string) =>
+      Settings.persistEditorBuffersSnapshot({
+        fileContents: { 'src/App.jsx': content },
+        pendingDiffs: {},
+        pendingDeletions: {},
+        recovery: { reason: 'storage-recovery', projectName: content },
+      });
+
+    const first = persist('first');
+    await Promise.resolve();
+    await Promise.resolve();
+    const second = persist('second');
+    await Promise.resolve();
+    expect(writeContents).toHaveBeenCalledTimes(1);
+
+    releaseFirstWrite?.(true);
+    await expect(Promise.all([first, second])).resolves.toEqual([true, true]);
+    expect(writeContents.mock.calls.map(([contents]) => contents)).toEqual([
+      { 'src/App.jsx': 'first' },
+      { 'src/App.jsx': 'second' },
+    ]);
+  });
+
+  it('skips coordinated editor writes while a reset pauses autosaves', async () => {
+    const setFileContents = vi.spyOn(Settings, 'setFileContents').mockResolvedValue(true);
+    const setPendingDiffs = vi.spyOn(Settings, 'setPendingDiffs').mockResolvedValue(true);
+    const setPendingDeletions = vi.spyOn(Settings, 'setPendingDeletions').mockResolvedValue(true);
+    const saveRecoveryCheckpoint = vi
+      .spyOn(Settings, 'saveRecoveryCheckpoint')
+      .mockResolvedValue(true);
+    const snapshot = {
+      fileContents: { 'src/App.jsx': 'new project' },
+      pendingDiffs: {},
+      pendingDeletions: {},
+      recovery: { reason: 'storage-recovery' as const, projectName: 'New project' },
+    };
+
+    Settings.pauseEditorBufferWrites();
+    try {
+      await expect(Settings.persistEditorBuffersSnapshot(snapshot)).resolves.toBeUndefined();
+      expect(Settings.flushEditorBuffersSync(snapshot.fileContents, snapshot.pendingDiffs)).toBe(
+        false,
+      );
+      expect(setFileContents).not.toHaveBeenCalled();
+      expect(setPendingDiffs).not.toHaveBeenCalled();
+      expect(setPendingDeletions).not.toHaveBeenCalled();
+      expect(saveRecoveryCheckpoint).not.toHaveBeenCalled();
+    } finally {
+      Settings.resumeEditorBufferWrites();
+    }
+
+    await expect(Settings.persistEditorBuffersSnapshot(snapshot)).resolves.toBe(true);
+    expect(setFileContents).toHaveBeenCalledOnce();
+    expect(setPendingDiffs).toHaveBeenCalledOnce();
+    expect(setPendingDeletions).toHaveBeenCalledOnce();
+    expect(saveRecoveryCheckpoint).toHaveBeenCalledOnce();
+  });
+
   it('hydrate prefers unload localStorage over older IndexedDB', async () => {
     // Seed a stale IDB/memory blob, then a fresher beforeunload localStorage copy.
     await idbSet('zakamurai_file_contents', { fromIdb: true });

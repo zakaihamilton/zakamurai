@@ -4,7 +4,7 @@ import type {
   PreviewResponsePayload,
 } from './preview-types';
 
-export const PREVIEW_PROTOCOL_VERSION = 1;
+export const PREVIEW_PROTOCOL_VERSION = 2;
 export const PREVIEW_CONNECT = 'zakamurai-preview-connect';
 /** Preview host → IDE: MessagePort was accepted; stop replacing handshake ports. */
 export const PREVIEW_CONNECT_ACK = 'zakamurai-preview-connect-ack';
@@ -16,6 +16,17 @@ export const PREVIEW_STREAM_END = 'preview-stream-end';
 
 export const MAX_PREVIEW_BODY_BYTES = 2 * 1024 * 1024;
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS']);
+
+export function createPreviewCapability(): string {
+  const cryptoApi = globalThis.crypto;
+  if (!cryptoApi?.getRandomValues) throw new Error('Secure preview capabilities are unavailable.');
+  const bytes = cryptoApi.getRandomValues(new Uint8Array(32));
+  return [...bytes].map((byte) => byte.toString(16).padStart(2, '0')).join('');
+}
+
+export function isValidPreviewCapability(value: unknown): value is string {
+  return typeof value === 'string' && /^[a-f\d]{64}$/i.test(value);
+}
 
 function decodePreviewPath(path: string): string | null {
   let decoded = path;

@@ -121,6 +121,7 @@ export type PromptHeaderProps = {
   copyContent?: string;
   latestManagerTrace?: ManagerTrace | null;
   traceFiles?: FileMap;
+  getTraceFiles?: () => FileMap;
   onReplayRequest?: (request: string) => void;
 };
 

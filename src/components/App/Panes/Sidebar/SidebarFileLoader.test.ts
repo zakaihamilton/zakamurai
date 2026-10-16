@@ -624,6 +624,37 @@ describe('useSidebarFileLoader', () => {
   });
 
   describe('handleOpenFile', () => {
+    it('refreshes clean cached local files from disk when reopened', async () => {
+      const readFile = vi.fn().mockResolvedValue('fresh disk content');
+      const fileHandle = { name: 'App.js' } as FileSystemFileHandle;
+      const fs = makeFileSystemApi({ mode: 'local', readFile });
+      const editorState = createMockEditorState({
+        fileContents: { 'src/App.js': 'stale cached content' },
+      });
+      const tabState = createMockTabState({ openTabs: [] });
+
+      const { result } = renderHook(() =>
+        useSidebarFileLoader({ ...defaultArgs, fs, editorState, tabState }),
+      );
+
+      await result.current.handleOpenFile(
+        makeFlatTreeRow({
+          item: asNormalizedTreeNode({
+            name: 'App.js',
+            type: 'file',
+            path: ['src', 'App.js'],
+            handle: fileHandle,
+          }),
+          path: ['src', 'App.js'],
+          pathStr: 'src/App.js',
+        }),
+      );
+
+      expect(readFile).toHaveBeenCalledWith(fileHandle);
+      expect(editorState.fileContents['src/App.js']).toBe('fresh disk content');
+      expect(tabState.openTabs[0].file?.content).toBe('fresh disk content');
+    });
+
     it('loads media file text for token breakdown view', async () => {
       const readFile = vi.fn().mockResolvedValue('svg source');
       const fs = makeFileSystemApi({ mode: 'local', readFile });

@@ -1,3 +1,4 @@
+import { readEffectiveFileContent } from '@/components/App/Views/EditorArea/EditorBuffers';
 import type { SidebarFileLoaderParams } from '@/components/App/types';
 import type { FlatTreeRow, NormalizedTreeNode } from '@/components/App/types';
 import { deleteKeysWithPrefixInDraft, remapKeysInDraft } from '@/utils/StateUtils';
@@ -33,6 +34,7 @@ type OpenFileOptions = {
 
 const EDITOR_PATH_MAPS = [
   'fileContents',
+  'dirtyBufferContents',
   'pendingDiffs',
   'pendingDeletions',
   'history',
@@ -130,14 +132,29 @@ export default function useSidebarFileLoader({
         viewType === FILE_VIEW_TYPES.EDITOR ||
         viewType === FILE_VIEW_TYPES.TOKEN_BREAKDOWN;
 
+      const existingContent = readEffectiveFileContent(editorState, row.pathStr);
       const fileHandle = row.item.handle as FileSystemFileHandle | undefined;
-      if (fs.mode === 'local' && fileHandle && shouldLoadText) {
+      const hasDirtyBuffer = Object.hasOwn(editorState.dirtyBufferContents || {}, row.pathStr);
+      const hasPendingDiff = Object.hasOwn(editorState.pendingDiffs || {}, row.pathStr);
+      const hasPendingDeletion = Object.hasOwn(editorState.pendingDeletions || {}, row.pathStr);
+      const shouldPreferEffectiveContent =
+        existingContent !== undefined &&
+        (fs.mode !== 'local' ||
+          hasDirtyBuffer ||
+          hasPendingDiff ||
+          hasPendingDeletion ||
+          !fileHandle);
+
+      if (shouldPreferEffectiveContent && shouldLoadText) {
+        content = existingContent;
+      } else if (fs.mode === 'local' && fileHandle && shouldLoadText) {
         content = await fs.readFile(fileHandle);
+      } else if (existingContent !== undefined && shouldLoadText) {
+        content = existingContent;
       }
 
-      if (fs.mode !== 'local' && shouldLoadText) {
-        const fileContents = editorState.fileContents || {};
-        content = fileContents[row.pathStr] ?? getInitialFileContents()[row.pathStr] ?? '';
+      if (fs.mode !== 'local' && shouldLoadText && existingContent === undefined) {
+        content = getInitialFileContents()[row.pathStr] ?? '';
       }
 
       if (shouldLoadText) {

@@ -3,6 +3,7 @@ import { SidebarState } from '@/components/App/Panes/Sidebar';
 import { TabState } from '@/components/App/Panes/TabBar';
 import { PreviewState } from '@/components/App/PreviewState';
 import { EditorState } from '@/components/App/Views/EditorArea';
+import { createEffectiveFileContentsSnapshot } from '@/components/App/Views/EditorArea/EditorBuffers';
 import { LogState } from '@/components/App/Views/LogArea';
 import { reportDiagnostic } from '@/components/Diagnostics';
 import { markPerformance, measurePerformance } from '@/components/Performance';
@@ -134,7 +135,11 @@ export default function useProjectCompiler() {
         const compiler = new Compiler(onLog, onPhase);
         const localFs = toCompilerFs(fs);
         // Build/Preview compile proposed editor buffers, including unapproved AI diffs.
-        await compiler.compile(localFs, folderTree, editorState.fileContents);
+        await compiler.compile(
+          localFs,
+          folderTree,
+          createEffectiveFileContentsSnapshot(editorState),
+        );
         problemsState((draft) => {
           draft.items = [];
         });

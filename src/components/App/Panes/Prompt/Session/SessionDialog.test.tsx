@@ -1,6 +1,7 @@
+import { getAgentContextLedger } from '@/components/AI/Agent/AgentContextLedgerStore';
 import type { SessionDialogState } from '@/components/App/Panes/Prompt/prompt-types';
 import { makeAgentSessionState, makePromptUiState } from '@/test-utils/stateMocks';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import SessionDialog from './SessionDialog';
@@ -127,6 +128,91 @@ describe('SessionDialog', () => {
 
     fireEvent.click(screen.getByText('Delete'));
     expect(agentSessionState).toHaveBeenCalled();
+  });
+
+  it('clears deleted subtree ledgers across models while preserving other sessions', async () => {
+    const agentSessionState = makeAgentSessionState({
+      sessions: {
+        root: {
+          id: 'root',
+          name: 'Root',
+          createdAt: 1,
+          updatedAt: 1,
+          mode: 'single',
+          modelId: null,
+          messages: [],
+          reasoning: '',
+          status: 'idle',
+          parentId: null,
+          roleGraph: null,
+        } as never,
+        branch: {
+          id: 'branch',
+          name: 'Branch',
+          createdAt: 2,
+          updatedAt: 2,
+          mode: 'single',
+          modelId: null,
+          messages: [],
+          reasoning: '',
+          status: 'idle',
+          parentId: 'root',
+          roleGraph: null,
+        } as never,
+        retained: {
+          id: 'retained',
+          name: 'Retained',
+          createdAt: 3,
+          updatedAt: 3,
+          mode: 'single',
+          modelId: null,
+          messages: [],
+          reasoning: '',
+          status: 'idle',
+          parentId: null,
+          roleGraph: null,
+        } as never,
+      },
+      activeSessionId: 'root',
+    });
+    const rootFast = getAgentContextLedger('root', 'fast-model');
+    const rootAccurate = getAgentContextLedger('root', 'accurate-model');
+    const branchFast = getAgentContextLedger('branch', 'fast-model');
+    const retained = getAgentContextLedger('retained', 'fast-model');
+    rootFast?.record('root fast');
+    rootAccurate?.record('root accurate');
+    branchFast?.record('branch fast');
+    retained?.record('retained context');
+
+    render(
+      <SessionDialog
+        sessionDialog={{ type: 'delete', sessionId: 'root', name: 'Root', descendantCount: 1 }}
+        runningSessionId={null}
+        isAIProcessing={false}
+        agentSessionState={agentSessionState}
+        promptUiState={makePromptUiState()}
+      />,
+    );
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('Delete'));
+    });
+
+    expect(sessionStorage.getItem('zakamurai-agent-ledger:root:fast-model')).toBeNull();
+    expect(sessionStorage.getItem('zakamurai-agent-ledger:root:accurate-model')).toBeNull();
+    expect(sessionStorage.getItem('zakamurai-agent-ledger:branch:fast-model')).toBeNull();
+    expect(sessionStorage.getItem('zakamurai-agent-ledger:retained:fast-model')).not.toBeNull();
+    const clearedRoot = getAgentContextLedger('root', 'fast-model');
+    const clearedAccurate = getAgentContextLedger('root', 'accurate-model');
+    const clearedBranch = getAgentContextLedger('branch', 'fast-model');
+    expect(clearedRoot).not.toBe(rootFast);
+    expect(clearedRoot?.summary()).toBe('');
+    expect(clearedAccurate).not.toBe(rootAccurate);
+    expect(clearedAccurate?.summary()).toBe('');
+    expect(clearedBranch).not.toBe(branchFast);
+    expect(clearedBranch?.summary()).toBe('');
+    expect(getAgentContextLedger('retained', 'fast-model')).toBe(retained);
+    expect(retained?.summary()).toContain('retained context');
   });
 
   it('renders error dialog type', () => {

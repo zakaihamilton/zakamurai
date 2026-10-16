@@ -1,5 +1,5 @@
 const pending = new Map();
-/** @type {Map<string, { ports: MessagePort[], ideOrigin: string }>} */
+/** @type {Map<string, { ports: MessagePort[], ideOrigin: string, workerCapability: string }>} */
 const bridges = new Map();
 let nextId = 0;
 // Keep in sync with PREVIEW_HOST_PATH in previewOrigins.js
@@ -26,13 +26,14 @@ function pickPort(bridge) {
   return bridge?.ports?.length ? bridge.ports[bridge.ports.length - 1] : null;
 }
 
-function rememberPort(sessionId, port, ideOrigin) {
+function rememberPort(sessionId, port, ideOrigin, workerCapability) {
   let bridge = bridges.get(sessionId);
   if (!bridge) {
-    bridge = { ports: [], ideOrigin };
+    bridge = { ports: [], ideOrigin, workerCapability };
     bridges.set(sessionId, bridge);
   }
   bridge.ideOrigin = ideOrigin;
+  bridge.workerCapability = workerCapability;
   // Keep prior ports alive so an iframe re-handshake does not kill an open
   // external preview tab that still holds an older MessagePort for this session.
   if (!bridge.ports.includes(port)) {
@@ -102,15 +103,22 @@ self.addEventListener('message', (event) => {
     event.data?.type !== 'init' ||
     !event.ports[0] ||
     !event.data.sessionId ||
-    !event.data.ideOrigin
+    !event.data.ideOrigin ||
+    typeof event.data.workerCapability !== 'string' ||
+    !/^[a-f\d]{64}$/i.test(event.data.workerCapability)
   )
     return;
 
   const sessionId = event.data.sessionId;
+  const workerCapability = event.data.workerCapability;
   const clientUrl = event.source && 'url' in event.source ? event.source.url : '';
-  if (!isTrustedPreviewInitClient(clientUrl, sessionId)) return;
+  if (!isValidPreviewInitOrigin(event.data.ideOrigin)) return;
+  if (!isMessageSourceOrigin(clientUrl, event.origin)) return;
+  if (!isTrustedPreviewInitClient(clientUrl, sessionId, event.data.ideOrigin)) return;
+  const existingBridge = getBridge(sessionId);
+  if (existingBridge && existingBridge.workerCapability !== workerCapability) return;
   const port = event.ports[0];
-  rememberPort(sessionId, port, event.data.ideOrigin);
+  rememberPort(sessionId, port, event.data.ideOrigin, workerCapability);
   bindPortMessages(port, sessionId);
 
   event.waitUntil(
@@ -118,11 +126,11 @@ self.addEventListener('message', (event) => {
       await self.clients.claim();
       const client = event.source;
       if (client) {
-        client.postMessage({ type: 'init-ok', sessionId });
+        client.postMessage({ type: 'init-ok', sessionId, workerCapability });
       } else {
         const windows = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
         for (const windowClient of windows) {
-          windowClient.postMessage({ type: 'init-ok', sessionId });
+          windowClient.postMessage({ type: 'init-ok', sessionId, workerCapability });
         }
       }
     })(),
@@ -146,26 +154,52 @@ function expandOriginAliases(origin) {
   }
 }
 
-function isRootScopedPreviewWorker() {
+function isValidPreviewInitOrigin(origin) {
+  if (typeof origin !== 'string') return false;
   try {
-    const scopePath = new URL(self.registration.scope).pathname;
-    return scopePath === '/' || scopePath === '';
+    const url = new URL(origin);
+    return (url.protocol === 'http:' || url.protocol === 'https:') && url.origin === origin;
   } catch {
     return false;
   }
 }
 
-function isTrustedPreviewInitClient(clientUrl, sessionId) {
-  if (isRootScopedPreviewWorker()) return true;
-  if (!clientUrl || !sessionId) return false;
+function isMessageSourceOrigin(clientUrl, eventOrigin) {
+  if (!clientUrl || !eventOrigin) return false;
   try {
-    const path = new URL(clientUrl, 'https://preview.invalid').pathname;
-    return (
+    return new URL(clientUrl).origin === eventOrigin;
+  } catch {
+    return false;
+  }
+}
+
+function isTrustedPreviewInitClient(clientUrl, sessionId, ideOrigin) {
+  if (!clientUrl || !sessionId || !isValidPreviewInitOrigin(ideOrigin)) return false;
+  try {
+    const client = new URL(clientUrl);
+    const path = client.pathname;
+    const hasMatchingSession = client.searchParams.get('session') === sessionId;
+    const isPreviewHostPath =
       path === '/__preview/host' ||
       path.startsWith('/__preview/host/') ||
-      path === `/__preview/${sessionId}` ||
-      path.startsWith(`/__preview/${sessionId}/`)
-    );
+      path === '/preview-host' ||
+      path.startsWith('/preview-host/');
+
+    // Same-origin preview mode also initializes directly from the trusted IDE
+    // page. Project documents live below /__preview/<session>/ and cannot
+    // initialize or reconnect the worker themselves.
+    if (
+      client.origin === ideOrigin &&
+      path === '/' &&
+      (!client.searchParams.has('session') || hasMatchingSession)
+    ) {
+      return true;
+    }
+
+    // Cross-origin preview hosts use / or an explicit host route. Require the
+    // URL session as well as the message session so arbitrary root-scoped pages
+    // cannot claim an isolated worker.
+    return hasMatchingSession && (path === '/' || isPreviewHostPath);
   } catch {
     return false;
   }

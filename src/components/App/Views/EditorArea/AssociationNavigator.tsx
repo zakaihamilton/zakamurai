@@ -7,6 +7,10 @@ import {
 } from '@/utils/navigation';
 import type { SourceLocation } from '@/utils/navigation/types';
 import { useCallback, useMemo } from 'react';
+import {
+  createEffectiveFileContentsLookup,
+  createEffectiveFileContentsSnapshot,
+} from './EditorBuffers';
 import type {
   AssociationNavigatorProps,
   EditorStateDraft,
@@ -80,16 +84,25 @@ export default function useAssociationNavigator({
   tabState,
   shouldScrollRef,
 }: AssociationNavigatorProps) {
-  const associatedPath = useMemo(() => {
-    return getAssociatedFilePath(filePath, state.fileContents || {});
-  }, [filePath, state.fileContents]);
+  const isCss = filePath.endsWith('.css');
+  // CSS-to-JS fallback lookup scans the workspace contents, none of which are
+  // affected by edits to the currently open CSS file. Keep that lookup on the
+  // committed map; navigation itself resolves against a fresh action snapshot.
+  const associationContents = isCss
+    ? state.fileContents || {}
+    : createEffectiveFileContentsLookup(state);
+  const associatedPath = useMemo(
+    () => getAssociatedFilePath(filePath, associationContents),
+    [associationContents, filePath],
+  );
 
   const handleNavigateToAssociated = useCallback(() => {
     const code = localContentRef.current || '';
+    const currentContents = createEffectiveFileContentsSnapshot(state);
     const index = cursorPos?.index ?? 0;
-    const isCss = filePath.endsWith('.css');
+    const isCssFile = filePath.endsWith('.css');
 
-    const styleResult = getStyleAtCursor(code, index, isCss);
+    const styleResult = getStyleAtCursor(code, index, isCssFile);
     const className = styleResult
       ? typeof styleResult === 'string'
         ? styleResult
@@ -98,9 +111,9 @@ export default function useAssociationNavigator({
     const identifier =
       styleResult && typeof styleResult === 'object' ? styleResult.identifier : null;
 
-    let targetPath = associatedPath;
-    if (!isCss && identifier) {
-      const dynamicPath = getAssociatedFilePath(filePath, state.fileContents || {}, identifier);
+    let targetPath = getAssociatedFilePath(filePath, currentContents);
+    if (!isCssFile && identifier) {
+      const dynamicPath = getAssociatedFilePath(filePath, currentContents, identifier);
       if (dynamicPath) {
         targetPath = dynamicPath;
       }
@@ -108,11 +121,11 @@ export default function useAssociationNavigator({
 
     if (!targetPath) return;
 
-    const targetContent = state.fileContents?.[targetPath] ?? '';
+    const targetContent = currentContents[targetPath] ?? '';
     let targetLoc: SourceLocation | null = null;
 
     if (className) {
-      if (isCss) {
+      if (isCssFile) {
         targetLoc = findClassReferenceInJs(targetContent, className, targetPath, filePath);
       } else {
         targetLoc = findClassInCss(targetContent, className);
@@ -158,13 +171,13 @@ export default function useAssociationNavigator({
       filePath: targetPath,
       line: targetLoc.line,
     };
-  }, [associatedPath, filePath, cursorPos, state, tabState, localContentRef, shouldScrollRef]);
+  }, [filePath, cursorPos, state, tabState, localContentRef, shouldScrollRef]);
 
   const handleJumpToTarget = useCallback(
     (targetPath: string, targetLoc: SourceLocation) => {
       if (!targetPath || !targetLoc) return;
 
-      const targetContent = state.fileContents?.[targetPath] ?? '';
+      const targetContent = createEffectiveFileContentsSnapshot(state)[targetPath] ?? '';
       const fileName = targetPath.substring(targetPath.lastIndexOf('/') + 1);
       const fileObj = {
         name: fileName,

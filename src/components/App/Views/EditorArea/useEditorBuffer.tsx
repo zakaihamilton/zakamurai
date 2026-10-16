@@ -5,6 +5,7 @@ import { formatCode } from '@/utils/formatter';
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 import useCodeFolding from './CodeFolding';
 import { EditorAreaUiState } from './EditorAreaState';
+import { readEffectiveFileContent, setDirtyBufferInDraft } from './EditorBuffers';
 import useFileLoader from './FileLoader';
 import { applyFoldedContentEdit } from './Folding';
 import type {
@@ -28,8 +29,9 @@ export default function useEditorBuffer({
   state,
 }: EditorBufferProps) {
   const fallbackContent = getTemplateContents()[filePath] ?? file?.content ?? '';
+  const effectiveContent = readEffectiveFileContent(state, filePath) ?? fallbackContent;
   const editorAreaUiState = EditorAreaUiState.useState(null, {
-    localContent: state.fileContents?.[filePath] ?? fallbackContent,
+    localContent: effectiveContent,
     showFind: false,
     findQuery: '',
     replaceQuery: '',
@@ -40,7 +42,7 @@ export default function useEditorBuffer({
     collapsedFolds: {},
   });
   const {
-    localContent = state.fileContents?.[filePath] ?? fallbackContent,
+    localContent = effectiveContent,
     showFind = false,
     findQuery = '',
     replaceQuery = '',
@@ -145,7 +147,7 @@ export default function useEditorBuffer({
         : event.target.value;
       setLocalContent(nextContent);
       state((draft) => {
-        draft.fileContents = { ...draft.fileContents, [filePath]: nextContent };
+        setDirtyBufferInDraft(draft, filePath, nextContent);
         if (draft.history?.[filePath]) {
           const history = { ...draft.history };
           history[filePath] = { ...history[filePath], future: [] };

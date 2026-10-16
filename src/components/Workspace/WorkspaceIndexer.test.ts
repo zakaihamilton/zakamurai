@@ -90,7 +90,7 @@ describe('WorkspaceIndexer', () => {
 
   const flushIndex = async (ready?: () => void) => {
     await act(async () => {
-      await vi.advanceTimersByTimeAsync(1000);
+      await vi.advanceTimersByTimeAsync(3000);
     });
     if (ready) await vi.waitFor(ready, { timeout: 1000 });
   };
@@ -147,7 +147,8 @@ describe('WorkspaceIndexer', () => {
   it('debounces rerenders before indexing the latest snapshot', async () => {
     const { rerender } = renderHook(() => useWorkspaceIndexer());
     mockEditorState.mockReturnValue({
-      fileContents: { 'src/latest.js': 'export default true;' },
+      fileContents: { 'src/latest.js': 'committed source' },
+      dirtyBufferContents: { 'src/latest.js': 'export default true;' },
     } as never);
     collectWorkspaceFiles.mockResolvedValue({
       'src/latest.js': 'export default true;',

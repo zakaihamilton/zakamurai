@@ -1,5 +1,6 @@
 import Settings from '@/components/Storage/Settings';
 import { useNotification } from '@/components/ui/Notification';
+import { createMockEditorState } from '@/test-utils/editorMocks';
 import type { SidebarStateShape } from '@/types/domain-types';
 import { act, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -29,6 +30,7 @@ vi.mock('@/components/Storage/Settings', () => {
       setFileContents: vi.fn(async () => true),
       setPendingDiffs: vi.fn(async () => true),
       setPendingDeletions: vi.fn(async () => true),
+      persistEditorBuffersSnapshot: vi.fn(async () => true),
       setAgentSessions: vi.fn(async () => true),
       setActiveAgentSessionId: vi.fn(),
       saveRecoveryCheckpoint: vi.fn(async () => true),
@@ -154,7 +156,7 @@ describe('useSettingsSync', () => {
     expect(Settings.setAgentSessions).not.toHaveBeenCalled();
     expect(Settings.setPromptDraft).not.toHaveBeenCalled();
     expect(Settings.setWelcomePromptDraft).not.toHaveBeenCalled();
-    expect(Settings.setFileContents).not.toHaveBeenCalled();
+    expect(Settings.persistEditorBuffersSnapshot).not.toHaveBeenCalled();
     expect(Settings.setPendingDiffs).not.toHaveBeenCalled();
 
     act(() => {
@@ -179,11 +181,7 @@ describe('useSettingsSync', () => {
     act(() => {
       vi.advanceTimersByTime(500);
     });
-    expect(Settings.setFileContents).toHaveBeenCalledWith({ 'a.js': 'code' });
-    expect(Settings.setPendingDiffs).toHaveBeenCalledWith({
-      'a.js': { originalContent: 'old', diffs: [], modifiedContent: 'code' },
-      'bad.js': { originalContent: 'bad', diffs: [], modifiedContent: 'bad' },
-    });
+    expect(Settings.persistEditorBuffersSnapshot).not.toHaveBeenCalled();
 
     rerender({
       app: { theme: 'light', projectName: 'NewProj' },
@@ -223,17 +221,28 @@ describe('useSettingsSync', () => {
     expect(Settings.setAIPromptModel).toHaveBeenCalledWith('Qwen3.5-9B-q4f16_1-MLC');
     expect(Settings.setLastCodeTabId).toHaveBeenCalledWith(null);
 
-    act(() => {
-      vi.advanceTimersByTime(1000);
+    await act(async () => {
+      vi.advanceTimersByTime(3000);
+      await Promise.resolve();
+      await Promise.resolve();
     });
     expect(Settings.setPromptDraft).toHaveBeenCalledWith('');
     expect(Settings.setPromptHistory).toHaveBeenCalledWith(['hello', 'world']);
-    expect(Settings.setFileContents).toHaveBeenCalledWith({ 'a.js': 'updated' });
-    expect(Settings.setPendingDiffs).toHaveBeenCalledWith({});
+    expect(Settings.persistEditorBuffersSnapshot).toHaveBeenCalledWith(
+      expect.objectContaining({
+        fileContents: { 'a.js': 'updated' },
+        pendingDiffs: {},
+        pendingDeletions: {},
+        recovery: expect.objectContaining({
+          reason: 'storage-recovery',
+          projectName: 'NewProj',
+        }),
+      }),
+    );
   });
 
   it('deduplicates persistence failures and allows a later failure after recovery', async () => {
-    vi.mocked(Settings.setFileContents)
+    vi.mocked(Settings.persistEditorBuffersSnapshot)
       .mockResolvedValueOnce(false)
       .mockResolvedValueOnce(true)
       .mockResolvedValueOnce(false);
@@ -271,7 +280,7 @@ describe('useSettingsSync', () => {
     );
 
     await act(async () => {
-      vi.advanceTimersByTime(1000);
+      vi.advanceTimersByTime(3000);
       await Promise.resolve();
       await Promise.resolve();
     });
@@ -282,7 +291,7 @@ describe('useSettingsSync', () => {
 
     rerender({ contents: { 'a.js': 'recovered' } });
     await act(async () => {
-      vi.advanceTimersByTime(1000);
+      vi.advanceTimersByTime(3000);
       await Promise.resolve();
       await Promise.resolve();
     });
@@ -290,11 +299,167 @@ describe('useSettingsSync', () => {
 
     rerender({ contents: { 'a.js': 'second failure' } });
     await act(async () => {
-      vi.advanceTimersByTime(1000);
+      vi.advanceTimersByTime(3000);
       await Promise.resolve();
       await Promise.resolve();
     });
     expect(addNotification).toHaveBeenCalledTimes(2);
+  });
+
+  it('saves after 3 seconds of idle and enforces a 10-second maximum during typing', async () => {
+    const editorFor = (tick: number) => ({
+      aiCompletionEnabled: true,
+      isReadOnly: false,
+      fileContents: { 'a.js': `content-${tick}` },
+      pendingDiffs: {},
+    });
+    const args = [
+      { theme: 'dark', projectName: 'Test' },
+      { sidebarWidth: 250, isSidebarOpen: true, showAIInput: false, expandedFolders: {} },
+      { promptWidth: 400, promptHistory: [] },
+      null,
+      { openTabs: [], activeTabId: null, lastCodeTabId: null },
+      { logs: [] },
+      { htmlContent: null },
+      { val: '', selectedModel: 'model' },
+    ];
+    const { rerender } = renderHook(
+      ({ tick }) =>
+        useSettingsSync(
+          args[0] as never,
+          args[1] as never,
+          args[2] as never,
+          editorFor(tick) as never,
+          args[3] as never,
+          args[4] as never,
+          args[5] as never,
+          args[6] as never,
+          args[7] as never,
+        ),
+      { initialProps: { tick: 0 } },
+    );
+
+    await act(async () => {
+      vi.advanceTimersByTime(2999);
+      await Promise.resolve();
+    });
+    expect(Settings.persistEditorBuffersSnapshot).not.toHaveBeenCalled();
+
+    await act(async () => {
+      vi.advanceTimersByTime(1);
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(Settings.persistEditorBuffersSnapshot).toHaveBeenCalledOnce();
+
+    vi.mocked(Settings.persistEditorBuffersSnapshot).mockClear();
+    rerender({ tick: 0 });
+    for (let tick = 1; tick <= 9; tick += 1) {
+      await act(async () => {
+        vi.advanceTimersByTime(1000);
+      });
+      rerender({ tick });
+    }
+    expect(Settings.persistEditorBuffersSnapshot).not.toHaveBeenCalled();
+    await act(async () => {
+      vi.advanceTimersByTime(1000);
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(Settings.persistEditorBuffersSnapshot).toHaveBeenCalledOnce();
+    expect(Settings.persistEditorBuffersSnapshot).toHaveBeenLastCalledWith(
+      expect.objectContaining({ fileContents: { 'a.js': 'content-9' } }),
+    );
+  });
+
+  it('retains failed buffers and preserves edits made during an in-flight save', async () => {
+    const args = [
+      { theme: 'dark', projectName: 'Test' },
+      { sidebarWidth: 250, isSidebarOpen: true, showAIInput: false, expandedFolders: {} },
+      { promptWidth: 400, promptHistory: [] },
+      null,
+      { openTabs: [], activeTabId: null, lastCodeTabId: null },
+      { logs: [] },
+      { htmlContent: null },
+      { val: '', selectedModel: 'model' },
+    ];
+    const editorState = createMockEditorState({
+      fileContents: { 'a.js': 'committed' },
+      dirtyBufferContents: { 'a.js': 'saved snapshot' },
+    });
+    let resolveSave: ((saved: boolean) => void) | undefined;
+    vi.mocked(Settings.persistEditorBuffersSnapshot).mockImplementation(
+      () =>
+        new Promise<boolean>((resolve) => {
+          resolveSave = resolve;
+        }),
+    );
+    const { rerender, unmount } = renderHook(
+      ({ revision }) => {
+        void revision;
+        return useSettingsSync(
+          args[0] as never,
+          args[1] as never,
+          args[2] as never,
+          editorState,
+          args[3] as never,
+          args[4] as never,
+          args[5] as never,
+          args[6] as never,
+          args[7] as never,
+        );
+      },
+      { initialProps: { revision: 0 } },
+    );
+
+    await act(async () => {
+      vi.advanceTimersByTime(3000);
+    });
+    expect(Settings.persistEditorBuffersSnapshot).toHaveBeenCalledWith(
+      expect.objectContaining({ fileContents: { 'a.js': 'saved snapshot' } }),
+    );
+
+    act(() => {
+      editorState((draft) => {
+        draft.dirtyBufferContents = { 'a.js': 'concurrent edit' };
+      });
+    });
+    rerender({ revision: 1 });
+    await act(async () => {
+      resolveSave?.(true);
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(editorState.fileContents['a.js']).toBe('committed');
+    expect(editorState.dirtyBufferContents?.['a.js']).toBe('concurrent edit');
+
+    unmount();
+    vi.mocked(Settings.persistEditorBuffersSnapshot).mockReset().mockResolvedValue(false);
+    const failedState = createMockEditorState({
+      fileContents: { 'b.js': 'committed' },
+      dirtyBufferContents: { 'b.js': 'unsaved' },
+    });
+    const failedHook = renderHook(() =>
+      useSettingsSync(
+        args[0] as never,
+        args[1] as never,
+        args[2] as never,
+        failedState,
+        args[3] as never,
+        args[4] as never,
+        args[5] as never,
+        args[6] as never,
+        args[7] as never,
+      ),
+    );
+    await act(async () => {
+      vi.advanceTimersByTime(3000);
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(failedState.fileContents['b.js']).toBe('committed');
+    expect(failedState.dirtyBufferContents?.['b.js']).toBe('unsaved');
+    failedHook.unmount();
   });
 
   it('does not update active session id when session write fails', async () => {
@@ -401,7 +566,7 @@ describe('useSettingsSync', () => {
     );
 
     await act(async () => {
-      vi.advanceTimersByTime(2000);
+      vi.advanceTimersByTime(3000);
       await Promise.resolve();
       await Promise.resolve();
     });
@@ -416,13 +581,21 @@ describe('useSettingsSync', () => {
       activeId: 'cs-1',
       items: changeSetState.items,
     });
-    expect(Settings.saveRecoveryCheckpoint).toHaveBeenCalled();
-    expect(Settings.setPendingDiffs).toHaveBeenCalledWith({
-      'a.js': expect.objectContaining({ modifiedContent: 'code' }),
-    });
-    expect(Settings.setPendingDeletions).toHaveBeenCalledWith({
-      'old.js': { originalContent: 'gone', changeSetId: 'cs-1' },
-    });
+    expect(Settings.persistEditorBuffersSnapshot).toHaveBeenCalledWith(
+      expect.objectContaining({
+        fileContents: { 'a.js': 'code' },
+        pendingDiffs: {
+          'a.js': expect.objectContaining({ modifiedContent: 'saved' }),
+        },
+        pendingDeletions: {
+          'old.js': { originalContent: 'gone', changeSetId: 'cs-1' },
+        },
+        recovery: expect.objectContaining({
+          reason: 'storage-recovery',
+          projectName: 'Checkpoint',
+        }),
+      }),
+    );
   });
 
   it('warns once when storage quota is nearly full', async () => {
@@ -435,7 +608,7 @@ describe('useSettingsSync', () => {
       quota: null,
       lastSuccessfulPersistAt: null,
     });
-    vi.mocked(Settings.setFileContents).mockResolvedValue(true);
+    vi.mocked(Settings.persistEditorBuffersSnapshot).mockResolvedValue(true);
 
     const { rerender } = renderHook(
       ({ contents }) =>
@@ -459,7 +632,7 @@ describe('useSettingsSync', () => {
     );
 
     await act(async () => {
-      vi.advanceTimersByTime(1000);
+      vi.advanceTimersByTime(3000);
       await Promise.resolve();
       await Promise.resolve();
     });
@@ -473,7 +646,7 @@ describe('useSettingsSync', () => {
 
     rerender({ contents: { 'a.js': 'second' } });
     await act(async () => {
-      vi.advanceTimersByTime(1000);
+      vi.advanceTimersByTime(3000);
       await Promise.resolve();
       await Promise.resolve();
     });
@@ -501,14 +674,13 @@ describe('useSettingsSync', () => {
     );
 
     act(() => {
-      vi.advanceTimersByTime(2000);
+      vi.advanceTimersByTime(3000);
     });
 
     expect(Settings.setPromptHistory).not.toHaveBeenCalled();
     expect(Settings.setOpenTabs).not.toHaveBeenCalled();
     expect(Settings.setAILogs).not.toHaveBeenCalled();
-    expect(Settings.setFileContents).not.toHaveBeenCalled();
-    expect(Settings.setPendingDiffs).not.toHaveBeenCalled();
+    expect(Settings.persistEditorBuffersSnapshot).not.toHaveBeenCalled();
     expect(Settings.setPromptDraft).not.toHaveBeenCalled();
     expect(Settings.setPreviewHtml).not.toHaveBeenCalled();
     expect(Settings.setEditorReadOnly).not.toHaveBeenCalled();

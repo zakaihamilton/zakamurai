@@ -9,9 +9,10 @@ import type {
   SidebarStateDraft,
   StateHandle,
 } from '@/components/AI/types';
+import { createEffectiveFileContentsSnapshot } from '@/components/App/Views/EditorArea/EditorBuffers';
 import { addChangeSet, createChangeSet } from '@/components/Workspace/ChangeSets';
 import { isProjectRelativePath } from '@/contracts/ai';
-import { setInDraft, updateInDraft } from '@/utils/StateUtils';
+import { deleteInDraft, setInDraft, updateInDraft } from '@/utils/StateUtils';
 import { formatCode } from '@/utils/formatter';
 import { validateAIChanges } from '../ChangeValidator';
 
@@ -108,9 +109,7 @@ export function applyAgentChanges(
     return { applied: 0, deletions: [], rejected: [] };
   }
 
-  const existingPaths = Object.keys(
-    (editorState as unknown as { fileContents?: Record<string, string> }).fileContents || {},
-  );
+  const existingPaths = Object.keys(createEffectiveFileContentsSnapshot(editorState as never));
 
   const resolvedChanges = changes.map((change) => {
     const rawPath = change.path ?? change.filePath ?? '';
@@ -188,6 +187,7 @@ export function applyAgentChanges(
 
     editorState((draft) => {
       setInDraft(draft, ['fileContents', path], finalContent);
+      deleteInDraft(draft, ['dirtyBufferContents'], path);
       const existingDiffs = draft.pendingDiffs || {};
       if (autoApprove) {
         if (existingDiffs[path]) {

@@ -9,7 +9,8 @@ import type {
   StateHandle,
   TabState,
 } from '@/components/AI/types';
-import { setInDraft, updateInDraft } from '@/utils/StateUtils';
+import { createEffectiveFileContentsSnapshot } from '@/components/App/Views/EditorArea/EditorBuffers';
+import { deleteInDraft, setInDraft, updateInDraft } from '@/utils/StateUtils';
 import { formatCode } from '@/utils/formatter';
 import { ensureFileInTree } from '../Agent/Applier';
 import { validateAIChangesAsync } from '../ChangeValidator';
@@ -97,13 +98,13 @@ export const processAIResponse = async (
     editorState && typeof (editorState as { useState?: unknown }).useState === 'function'
       ? {}
       : editorState?.selectedLines || {};
+  const currentContents = editorState
+    ? createEffectiveFileContentsSnapshot(editorState as never)
+    : {};
 
   let filesUpdated = 0;
   const existingPaths = Array.from(
-    new Set([
-      ...Object.keys(originalContents || {}),
-      ...Object.keys(editorState?.fileContents || {}),
-    ]),
+    new Set([...Object.keys(originalContents || {}), ...Object.keys(currentContents)]),
   );
 
   for (const block of fileBlocks) {
@@ -127,7 +128,7 @@ export const processAIResponse = async (
         editorState &&
         typeof (editorState as { useState?: unknown }).useState !== 'function'
       ) {
-        originalContent = editorState.fileContents?.[filePath] || '';
+        originalContent = currentContents[filePath] || '';
       }
 
       const fileSelectedLines = selectedLines[filePath] || [];
@@ -163,6 +164,7 @@ export const processAIResponse = async (
       if (editorState) {
         editorState((draft) => {
           setInDraft(draft, ['fileContents', filePath], finalContent);
+          deleteInDraft(draft, ['dirtyBufferContents'], filePath);
 
           if (finalDiffs.length > 0) {
             const existingDiffs = draft.pendingDiffs || {};

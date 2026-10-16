@@ -234,6 +234,7 @@ const setupCommonMocks = ({ reasoning = '', isAIProcessing = false } = {}) => {
   vi.mocked(EditorState.useState).mockReturnValue(
     vi.fn() as unknown as ReturnType<typeof EditorState.useState>,
   );
+  vi.mocked(EditorState.usePassiveState).mockReturnValue(makeEditorState());
   vi.mocked(PromptState.useState).mockReturnValue(makePromptState());
   vi.mocked(PromptUiState.useState).mockReturnValue(
     makePromptUiState({ val: 'hello', selectedModel: 'Qwen3.5-4B-q4f16_1-MLC' }),

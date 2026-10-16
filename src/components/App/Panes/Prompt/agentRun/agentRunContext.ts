@@ -1,4 +1,5 @@
 import type { FileMap, RunManagerOptions } from '@/components/AI/types';
+import { createEffectiveFileContentsSnapshot } from '@/components/App/Views/EditorArea/EditorBuffers';
 import type { ExtendedEditorState } from '@/components/App/Views/EditorArea/types';
 import type { FileSystemApi } from '@/components/App/types';
 import Settings from '@/components/Storage/Settings';
@@ -31,10 +32,8 @@ export async function prepareAgentRunContext({
     import('@/components/AI/Agent/Snapshot'),
     import('@/utils/compiler'),
   ]);
-  const workspaceFiles = await collectWorkspaceFiles(
-    toCompilerFs(fs) as never,
-    editorState.fileContents || {},
-  );
+  const fileContents = createEffectiveFileContentsSnapshot(editorState);
+  const workspaceFiles = await collectWorkspaceFiles(toCompilerFs(fs) as never, fileContents);
   const projectHealth = analyzeProjectHealth(workspaceFiles);
   const preflightSummary = projectHealth.items.length
     ? projectHealth.items
@@ -50,7 +49,7 @@ export async function prepareAgentRunContext({
   const checkpoint = createWorkspaceSnapshot({
     reason: 'ai-change',
     projectName: appState.projectName,
-    fileContents: { ...(editorState.fileContents || {}) },
+    fileContents,
     pendingDiffs: { ...(editorState.pendingDiffs || {}) },
     pendingDeletions: { ...(editorState.pendingDeletions || {}) },
     openTabs: [...(tabState.openTabs || [])],

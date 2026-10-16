@@ -1,4 +1,8 @@
 import { serializeAgentSessions } from '@/components/App/Panes/Prompt/AgentSessions';
+import {
+  commitDirtyBufferContentsInDraft,
+  createEffectiveFileContentsSnapshot,
+} from '@/components/App/Views/EditorArea/EditorBuffers';
 import Settings from '@/components/Storage/Settings';
 import type {
   AgentSessionStateShape,
@@ -6,7 +10,6 @@ import type {
   ChangeSetStateShape,
   EditorStateShape,
   LogStateShape,
-  PendingDiff,
   PreviewStateShape,
   PromptStateShape,
   PromptUiStateShape,
@@ -14,7 +17,7 @@ import type {
   TabStateShape,
   WorkspaceProfileStateShape,
 } from '@/types/domain-types';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import type { StateStore } from 'triactor';
 import useStoragePersistenceStatus from './useStoragePersistenceStatus';
 
@@ -29,7 +32,7 @@ export function useSettingsSync(
     EditorStateShape,
     'aiCompletionEnabled' | 'isReadOnly' | 'fileContents' | 'pendingDiffs'
   > &
-    Partial<Pick<EditorStateShape, 'pendingDeletions'>>,
+    Partial<Pick<EditorStateShape, 'pendingDeletions' | 'dirtyBufferContents'>>,
   agentSessionState:
     | Pick<AgentSessionStateShape, 'sessions' | 'activeSessionId'>
     | null
@@ -46,12 +49,28 @@ export function useSettingsSync(
   changeSetState: StateStore<ChangeSetStateShape> | null = null,
 ) {
   const persist = useStoragePersistenceStatus();
+  const saveStartedAtRef = useRef<number | null>(null);
+  const lastPersistedRef = useRef<{
+    fileContents: EditorStateShape['fileContents'] | null;
+    dirtyBufferContents: EditorStateShape['dirtyBufferContents'];
+    pendingDiffs: EditorStateShape['pendingDiffs'] | null;
+    pendingDeletions: EditorStateShape['pendingDeletions'] | undefined;
+    openTabs: TabStateShape['openTabs'] | undefined;
+    activeTabId: TabStateShape['activeTabId'] | undefined;
+    projectName: string;
+  } | null>(null);
 
   const { theme, projectName } = appState;
   const { sidebarWidth, isSidebarOpen, showAIInput, expandedFolders } = sidebarState;
   const { promptWidth, promptHistory } = promptState;
-  const { aiCompletionEnabled, isReadOnly, fileContents, pendingDiffs, pendingDeletions } =
-    editorState;
+  const {
+    aiCompletionEnabled,
+    isReadOnly,
+    fileContents,
+    dirtyBufferContents,
+    pendingDiffs,
+    pendingDeletions,
+  } = editorState;
   const sessions = agentSessionState?.sessions;
   const activeSessionId = agentSessionState?.activeSessionId;
   const { openTabs, activeTabId, lastCodeTabId } = tabState || {};
@@ -171,53 +190,83 @@ export function useSettingsSync(
 
   useEffect(() => {
     if (!fileContents || typeof fileContents !== 'object') return undefined;
-    const timer = setTimeout(() => {
-      void Promise.resolve(Settings.setFileContents({ ...fileContents })).then((ok) => persist(ok));
-    }, 1000);
-    return () => clearTimeout(timer);
-  }, [fileContents, persist]);
+    const lastSaved = lastPersistedRef.current;
+    if (
+      lastSaved?.fileContents === fileContents &&
+      lastSaved.dirtyBufferContents === dirtyBufferContents &&
+      lastSaved.pendingDiffs === pendingDiffs &&
+      lastSaved.pendingDeletions === pendingDeletions &&
+      lastSaved.openTabs === openTabs &&
+      lastSaved.activeTabId === activeTabId &&
+      lastSaved.projectName === projectName
+    ) {
+      return undefined;
+    }
 
-  useEffect(() => {
-    if (!pendingDiffs || typeof pendingDiffs !== 'object') return undefined;
-    const timer = setTimeout(() => {
-      const diffsToSave: Record<string, PendingDiff> = {};
-      for (const [path, diff] of Object.entries(pendingDiffs)) {
-        if (typeof diff?.originalContent !== 'string' || !Array.isArray(diff?.diffs)) continue;
-        diffsToSave[path] = {
-          ...diff,
-          modifiedContent: fileContents?.[path] ?? diff.modifiedContent ?? '',
-        };
-      }
-      void Promise.resolve(Settings.setPendingDiffs(diffsToSave)).then((ok) => persist(ok));
-    }, 1000);
-    return () => clearTimeout(timer);
-  }, [fileContents, pendingDiffs, persist]);
-
-  useEffect(() => {
-    if (!pendingDeletions || typeof pendingDeletions !== 'object') return undefined;
-    const timer = setTimeout(() => {
-      void Promise.resolve(Settings.setPendingDeletions({ ...pendingDeletions })).then((ok) =>
-        persist(ok),
-      );
-    }, 1000);
-    return () => clearTimeout(timer);
-  }, [pendingDeletions, persist]);
-
-  useEffect(() => {
-    if (!fileContents || typeof fileContents !== 'object') return undefined;
-    const timer = setTimeout(() => {
-      void Settings.saveRecoveryCheckpoint({
-        reason: 'storage-recovery',
-        projectName,
-        fileContents: { ...fileContents },
-        pendingDiffs: pendingDiffs || {},
-        pendingDeletions: pendingDeletions || {},
-        openTabs: Array.isArray(openTabs) ? openTabs : [],
-        activeTabId: activeTabId || null,
+    const startedAt = saveStartedAtRef.current ?? Date.now();
+    saveStartedAtRef.current = startedAt;
+    const delay = Math.max(0, Math.min(3000, startedAt + 10000 - Date.now()));
+    const timer = setTimeout(async () => {
+      saveStartedAtRef.current = null;
+      const contentsAtStart = fileContents;
+      const dirtyAtStart = { ...(dirtyBufferContents || {}) };
+      const dirtyStateAtStart = dirtyBufferContents;
+      const diffsAtStart = pendingDiffs || {};
+      const deletionsAtStart = pendingDeletions || {};
+      const snapshot = createEffectiveFileContentsSnapshot({
+        fileContents: contentsAtStart,
+        dirtyBufferContents: dirtyAtStart,
       });
-    }, 1500);
+      const saved = await Settings.persistEditorBuffersSnapshot({
+        fileContents: snapshot,
+        pendingDiffs: diffsAtStart,
+        pendingDeletions: deletionsAtStart,
+        recovery: {
+          reason: 'storage-recovery',
+          projectName,
+          openTabs: Array.isArray(openTabs) ? openTabs : [],
+          activeTabId: activeTabId || null,
+        },
+      });
+      persist(saved);
+      if (!saved) return;
+
+      let committedContents = contentsAtStart;
+      let remainingDirty = dirtyStateAtStart;
+      const mutableState = editorState as unknown as StateStore<EditorStateShape>;
+      const contentStateUnchangedBeforeCommit = mutableState.fileContents === contentsAtStart;
+      const dirtyStateUnchangedBeforeCommit =
+        mutableState.dirtyBufferContents === dirtyStateAtStart;
+      if (typeof mutableState === 'function' && Object.keys(dirtyAtStart).length > 0) {
+        mutableState((draft) => {
+          commitDirtyBufferContentsInDraft(draft, dirtyAtStart);
+          committedContents = draft.fileContents;
+          remainingDirty = draft.dirtyBufferContents;
+        });
+      }
+
+      lastPersistedRef.current = {
+        fileContents: contentStateUnchangedBeforeCommit ? committedContents : contentsAtStart,
+        dirtyBufferContents: dirtyStateUnchangedBeforeCommit ? remainingDirty : dirtyStateAtStart,
+        pendingDiffs,
+        pendingDeletions,
+        openTabs,
+        activeTabId,
+        projectName,
+      };
+    }, delay);
     return () => clearTimeout(timer);
-  }, [activeTabId, fileContents, openTabs, pendingDeletions, pendingDiffs, projectName]);
+  }, [
+    activeTabId,
+    dirtyBufferContents,
+    editorState,
+    fileContents,
+    openTabs,
+    pendingDeletions,
+    pendingDiffs,
+    persist,
+    projectName,
+  ]);
 
   useEffect(() => {
     if (!sessions || !activeSessionId) return undefined;

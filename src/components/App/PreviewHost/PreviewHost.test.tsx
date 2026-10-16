@@ -1,6 +1,9 @@
 import { act, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { PREVIEW_PROTOCOL_VERSION } from '../Views/PreviewArea/previewProtocol';
 import PreviewHost from './PreviewHost';
+
+const WORKER_CAPABILITY = 'a'.repeat(64);
 
 function setLocation(url: string) {
   Object.defineProperty(window, 'location', {
@@ -92,8 +95,9 @@ describe('PreviewHost', () => {
       const event = new MessageEvent('message', {
         data: {
           type: 'zakamurai-preview-connect',
-          version: 1,
+          version: PREVIEW_PROTOCOL_VERSION,
           sessionId: 's123',
+          workerCapability: WORKER_CAPABILITY,
         },
         origin: 'http://localhost:3000',
       });
@@ -105,7 +109,9 @@ describe('PreviewHost', () => {
     expect(ideWindow.postMessage).toHaveBeenCalledWith(
       expect.objectContaining({
         type: 'zakamurai-preview-connect-ack',
+        version: PREVIEW_PROTOCOL_VERSION,
         sessionId: 's123',
+        workerCapability: WORKER_CAPABILITY,
         surface: 'external',
       }),
       expect.stringMatching(/localhost:300[01]/),
@@ -120,7 +126,7 @@ describe('PreviewHost', () => {
     let controller: ServiceWorker | null = null;
     const worker = {
       state: 'activated' as ServiceWorkerState,
-      scriptURL: 'http://localhost:3001/__preview/sw.js?v=28',
+      scriptURL: 'http://localhost:3001/__preview/sw.js?v=29',
       postMessage: vi.fn((message: { type?: string }) => {
         if (message.type !== 'claim') return;
         controller = worker as unknown as ServiceWorker;
@@ -159,8 +165,9 @@ describe('PreviewHost', () => {
       const event = new MessageEvent('message', {
         data: {
           type: 'zakamurai-preview-connect',
-          version: 1,
+          version: PREVIEW_PROTOCOL_VERSION,
           sessionId: 's123',
+          workerCapability: WORKER_CAPABILITY,
         },
         origin: 'http://localhost:3000',
       });
@@ -175,9 +182,19 @@ describe('PreviewHost', () => {
 
     const initCall = worker.postMessage.mock.calls.find(([message]) => message.type === 'init');
     expect(initCall).toBeDefined();
+    expect(initCall?.[0]).toMatchObject({
+      sessionId: 's123',
+      workerCapability: WORKER_CAPABILITY,
+    });
     act(() => {
       serviceWorker.dispatchEvent(
-        new MessageEvent('message', { data: { type: 'init-ok', sessionId: 's123' } }),
+        new MessageEvent('message', {
+          data: {
+            type: 'init-ok',
+            sessionId: 's123',
+            workerCapability: WORKER_CAPABILITY,
+          },
+        }),
       );
     });
     await act(async () => {
@@ -203,8 +220,9 @@ describe('PreviewHost', () => {
       const event = new MessageEvent('message', {
         data: {
           type: 'zakamurai-preview-connect',
-          version: 1,
+          version: PREVIEW_PROTOCOL_VERSION,
           sessionId: 's123',
+          workerCapability: WORKER_CAPABILITY,
         },
         origin: 'http://localhost:3000',
       });
@@ -277,8 +295,9 @@ describe('PreviewHost', () => {
       const event = new MessageEvent('message', {
         data: {
           type: 'zakamurai-preview-connect',
-          version: 1,
+          version: PREVIEW_PROTOCOL_VERSION,
           sessionId: 's123',
+          workerCapability: WORKER_CAPABILITY,
         },
         origin: 'https://zakamurai.com',
       });

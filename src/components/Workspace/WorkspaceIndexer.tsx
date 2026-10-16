@@ -1,4 +1,5 @@
 import { EditorState } from '@/components/App/Views/EditorArea';
+import { createEffectiveFileContentsSnapshot } from '@/components/App/Views/EditorArea/EditorBuffers';
 import { useFileSystem } from '@/components/Storage';
 import type { WorkspaceSkippedFile } from '@/types/domain-types';
 import {
@@ -9,7 +10,7 @@ import {
 import { useEffect, useRef } from 'react';
 import { WorkspaceHealthState, WorkspaceProfileState } from './WorkspaceState';
 
-const INDEX_DEBOUNCE_MS = 600;
+const INDEX_DEBOUNCE_MS = 3000;
 const workspaceIndex = new WorkspaceIndexController();
 
 export function getWorkspaceIndex() {
@@ -20,7 +21,7 @@ export function getWorkspaceIndex() {
 export function useWorkspaceIndexer() {
   const fs = useFileSystem();
   const { isReady, version, mode, rootHandle } = fs;
-  const editorState = EditorState.useState(['fileContents']);
+  const editorState = EditorState.useState(['fileContents', 'dirtyBufferContents']);
   const profileState = WorkspaceProfileState.useState(['include', 'exclude', 'maxFileBytes']);
   const { exclude = [], maxFileBytes = 512 * 1024 } = profileState || {};
   const health = WorkspaceHealthState.useState();
@@ -37,6 +38,7 @@ export function useWorkspaceIndexer() {
     if (timerRef.current) clearTimeout(timerRef.current);
     timerRef.current = setTimeout(async () => {
       try {
+        const fileContents = createEffectiveFileContentsSnapshot(editorState);
         health((draft) => {
           draft.status = 'indexing';
           draft.error = null;
@@ -45,14 +47,10 @@ export function useWorkspaceIndexer() {
         const skippedFiles: WorkspaceSkippedFile[] = [];
         const shouldScanDisk = scannedVersionRef.current !== version;
         const files = shouldScanDisk
-          ? await collectWorkspaceFiles(
-              { mode: mode ?? 'local', rootHandle },
-              editorState.fileContents || {},
-              {
-                onSkipped: (item) => skippedFiles.push(item),
-              },
-            )
-          : editorState.fileContents || {};
+          ? await collectWorkspaceFiles({ mode: mode ?? 'local', rootHandle }, fileContents, {
+              onSkipped: (item) => skippedFiles.push(item),
+            })
+          : fileContents;
         scannedVersionRef.current = version;
         const nextPaths = new Set(Object.keys(files));
         const entries = [];
@@ -111,6 +109,7 @@ export function useWorkspaceIndexer() {
   }, [
     editorState,
     editorState?.fileContents,
+    editorState?.dirtyBufferContents,
     isReady,
     version,
     mode,

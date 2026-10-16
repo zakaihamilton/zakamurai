@@ -1,5 +1,6 @@
 import { TabState } from '@/components/App/Panes/TabBar';
 import { EditorState } from '@/components/App/Views/EditorArea';
+import { readEffectiveFileContent } from '@/components/App/Views/EditorArea/EditorBuffers';
 import { Icons } from '@/components/ui/Icons';
 import Tooltip from '@/components/ui/Tooltip';
 import type { NavigationHistory } from '@/types/domain-types';
@@ -11,7 +12,9 @@ import styles from './NavigationControls.module.css';
 
 export default function NavigationControls() {
   const tabState = TabState.usePassiveState();
-  const editorState = requireStore(EditorState.useState(['navigationHistory', 'fileContents']));
+  const editorState = requireStore(
+    EditorState.useState(['navigationHistory', 'fileContents', 'dirtyBufferContents']),
+  );
 
   const history: NavigationHistory = editorState.navigationHistory || {
     stack: [],
@@ -52,7 +55,7 @@ export default function NavigationControls() {
 
     const targetPath = item.filePath;
     const targetLoc = item.loc;
-    const targetContent = editorState.fileContents?.[targetPath] ?? '';
+    const targetContent = readEffectiveFileContent(editorState, targetPath) ?? '';
 
     const fileName = targetPath.substring(targetPath.lastIndexOf('/') + 1);
     const fileObj = {

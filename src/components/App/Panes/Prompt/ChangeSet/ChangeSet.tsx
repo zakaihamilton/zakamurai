@@ -1,6 +1,7 @@
 import { SidebarState } from '@/components/App/Panes/Sidebar';
 import { TabState } from '@/components/App/Panes/TabBar';
 import { EditorState } from '@/components/App/Views/EditorArea';
+import { readEffectiveFileContent } from '@/components/App/Views/EditorArea/EditorBuffers';
 import { useFileSystem } from '@/components/Storage';
 import { ChangeSetState } from '@/components/Workspace';
 import Tooltip from '@/components/ui/Tooltip';
@@ -14,7 +15,12 @@ export default function ChangeSetPanel({ onOpenInTab = () => {} }: { onOpenInTab
   const [isExpanded, setIsExpanded] = useState(true);
   const state = requireStore(ChangeSetState.useState(['activeId', 'items']));
   const editorState = requireStore(
-    EditorState.useState(['fileContents', 'pendingDiffs', 'pendingDeletions']),
+    EditorState.useState([
+      'fileContents',
+      'dirtyBufferContents',
+      'pendingDiffs',
+      'pendingDeletions',
+    ]),
   );
   const sidebarState = SidebarState.usePassiveState();
   const tabState = TabState.usePassiveState();
@@ -23,7 +29,7 @@ export default function ChangeSetPanel({ onOpenInTab = () => {} }: { onOpenInTab
   const openFile = useCallback(
     (filePath: string) => {
       const fileName = filePath.substring(filePath.lastIndexOf('/') + 1);
-      const content = editorState.fileContents?.[filePath] ?? '';
+      const content = readEffectiveFileContent(editorState, filePath) ?? '';
       tabState?.((draft) => {
         if (!draft.openTabs.some((tab) => tab.id === filePath)) {
           draft.openTabs = [
@@ -39,7 +45,7 @@ export default function ChangeSetPanel({ onOpenInTab = () => {} }: { onOpenInTab
         draft.activeTabId = filePath;
       });
     },
-    [editorState.fileContents, tabState],
+    [editorState, tabState],
   );
   const runBulkAction = useCallback(
     async (action: 'approve' | 'undo') => {

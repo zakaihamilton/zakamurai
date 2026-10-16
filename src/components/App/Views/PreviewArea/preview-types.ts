@@ -9,6 +9,7 @@ export type PreviewConnectMessage = {
   type: string;
   version?: number;
   sessionId?: string;
+  workerCapability?: string;
   surface?: PreviewSurfaceKind;
 };
 

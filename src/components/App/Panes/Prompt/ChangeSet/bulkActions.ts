@@ -1,4 +1,5 @@
 import { removeNodeAtPath } from '@/components/App/Panes/Sidebar/TreeUtils';
+import { commitDirtyBufferContentsInDraft } from '@/components/App/Views/EditorArea/EditorBuffers';
 import Settings from '@/components/Storage/Settings';
 import { updateChangeSetFile } from '@/components/Workspace';
 
@@ -14,6 +15,7 @@ type Store<T> = ((updater: (draft: T) => void) => void) & T;
 
 type EditorDraft = {
   fileContents?: Record<string, string>;
+  dirtyBufferContents?: Record<string, string>;
   pendingDiffs?: Record<string, PendingDiff>;
   pendingDeletions?: Record<string, PendingDeletion>;
 };
@@ -107,6 +109,7 @@ export async function approveAllChangeSetChanges(params: Params): Promise<Result
     let pendingDiffs: Record<string, PendingDiff> = {};
     let pendingDeletions: Record<string, PendingDeletion> = {};
     params.editorState((draft) => {
+      commitDirtyBufferContentsInDraft(draft);
       const nextDiffs = { ...(draft.pendingDiffs || {}) };
       const nextDeletions = { ...(draft.pendingDeletions || {}) };
       const nextContents = { ...(draft.fileContents || {}) };
@@ -170,6 +173,7 @@ export async function undoAllChangeSetChanges(params: Params): Promise<Result> {
   let pendingDiffs: Record<string, PendingDiff> = {};
   let pendingDeletions: Record<string, PendingDeletion> = {};
   params.editorState((draft) => {
+    commitDirtyBufferContentsInDraft(draft);
     const nextDiffs = { ...(draft.pendingDiffs || {}) };
     const nextDeletions = { ...(draft.pendingDeletions || {}) };
     const nextContents = { ...(draft.fileContents || {}) };

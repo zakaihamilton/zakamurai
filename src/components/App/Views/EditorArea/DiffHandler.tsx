@@ -4,7 +4,7 @@ import { TabState } from '@/components/App/Panes/TabBar';
 import Settings from '@/components/Storage/Settings';
 import { ChangeSetState, updateChangeSetFile } from '@/components/Workspace';
 import type { CursorPosition } from '@/types/domain-types';
-import { deleteKeysWithPrefixInDraft, setInDraft } from '@/utils/StateUtils';
+import { deleteInDraft, deleteKeysWithPrefixInDraft, setInDraft } from '@/utils/StateUtils';
 import { useCallback, useEffect, useRef } from 'react';
 import type { DiffActions, DiffHandlerProps, PendingDeletionEntry } from './types';
 
@@ -15,6 +15,7 @@ const isPendingDeletionEntry = (
 
 const EDITOR_PATH_MAPS = [
   'fileContents',
+  'dirtyBufferContents',
   'pendingDiffs',
   'pendingDeletions',
   'history',
@@ -173,6 +174,7 @@ export default function DiffHandler({
 
       state((draft) => {
         draft.fileContents = { ...draft.fileContents, [filePath]: prevContent };
+        deleteInDraft(draft, ['dirtyBufferContents'], filePath);
         if (prevCursor) {
           draft.cursorPos = { ...draft.cursorPos, [filePath]: prevCursor };
         }

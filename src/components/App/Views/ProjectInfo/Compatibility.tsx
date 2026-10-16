@@ -1,5 +1,7 @@
 import { EditorState } from '@/components/App/Views/EditorArea';
+import { createEffectiveFileContentsSnapshot } from '@/components/App/Views/EditorArea/EditorBuffers';
 import { analyzeProjectHealth } from '@/contracts/project';
+import { useEffect, useState } from 'react';
 import { requireStore } from '../../types';
 import styles from './Compatibility.module.css';
 
@@ -10,8 +12,16 @@ const statusLabel = {
 } as const;
 
 export default function ProjectCompatibility() {
-  const editorState = requireStore(EditorState.useState(['fileContents']));
-  const report = analyzeProjectHealth(editorState.fileContents || {});
+  const editorState = requireStore(EditorState.useState(['fileContents', 'dirtyBufferContents']));
+  const [report, setReport] = useState(() =>
+    analyzeProjectHealth(createEffectiveFileContentsSnapshot(editorState)),
+  );
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setReport(analyzeProjectHealth(createEffectiveFileContentsSnapshot(editorState)));
+    }, 3000);
+    return () => window.clearTimeout(timer);
+  }, [editorState, editorState.dirtyBufferContents, editorState.fileContents]);
   const visibleItems = report.items.slice(0, 8);
 
   return (

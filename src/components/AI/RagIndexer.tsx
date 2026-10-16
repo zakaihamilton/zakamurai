@@ -1,11 +1,12 @@
 import { RagState } from '@/components/AI/RagState';
 import type { FileMap } from '@/components/AI/types';
 import { EditorState } from '@/components/App/Views/EditorArea';
+import { createEffectiveFileContentsSnapshot } from '@/components/App/Views/EditorArea/EditorBuffers';
 import { reportDiagnostic } from '@/components/Diagnostics';
 import { useFileSystem } from '@/components/Storage';
 import { useEffect, useRef } from 'react';
 
-const INDEX_DEBOUNCE_MS = 1500;
+const INDEX_DEBOUNCE_MS = 3000;
 
 /**
  * Initialize the RAG worker and keep the index aligned with the mounted workspace
@@ -14,13 +15,13 @@ const INDEX_DEBOUNCE_MS = 1500;
  */
 export function useRagIndexer() {
   const fs = useFileSystem();
-  const editorState = EditorState.useState(['fileContents']);
+  const editorState = EditorState.useState(['fileContents', 'dirtyBufferContents']);
   const ragState = RagState.useState();
   const bootstrappedRef = useRef(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastFingerprintRef = useRef('');
-  const fileContentsRef = useRef(editorState?.fileContents);
-  fileContentsRef.current = editorState?.fileContents;
+  const editorStateRef = useRef(editorState);
+  editorStateRef.current = editorState;
 
   useEffect(() => {
     if (!ragState) return undefined;
@@ -55,11 +56,11 @@ export function useRagIndexer() {
           });
           const files = await collectWorkspaceFiles(
             fs as import('@/components/AI/types').FileSystemLike,
-            fileContentsRef.current || {},
+            createEffectiveFileContentsSnapshot(editorStateRef.current),
           );
           if (cancelled) return;
           await ragSearch.indexWorkspaceFiles(files);
-          const fingerprint = fingerprintContents(fileContentsRef.current);
+          const fingerprint = fingerprintContents(files);
           lastFingerprintRef.current = fingerprint;
           ragState((draft) => {
             draft.status = 'ready';
@@ -93,18 +94,17 @@ export function useRagIndexer() {
 
   useEffect(() => {
     if (!fs?.isReady || !editorState || !ragState) return undefined;
-    const nextFingerprint = fingerprintContents(editorState.fileContents);
-    if (nextFingerprint === lastFingerprintRef.current) return undefined;
-
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(async () => {
       try {
+        const files = createEffectiveFileContentsSnapshot(editorStateRef.current);
+        const nextFingerprint = fingerprintContents(files);
+        if (nextFingerprint === lastFingerprintRef.current) return;
         ragState((draft) => {
           draft.status = 'indexing';
           draft.error = null;
         });
         const { ragSearch } = await import('@/utils/rag/search-utility');
-        const files = editorState.fileContents || {};
         await ragSearch.indexWorkspaceFiles(files);
         lastFingerprintRef.current = nextFingerprint;
         ragState((draft) => {
@@ -131,7 +131,13 @@ export function useRagIndexer() {
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
-  }, [editorState?.fileContents, fs?.isReady, ragState, editorState]);
+  }, [
+    editorState?.dirtyBufferContents,
+    editorState?.fileContents,
+    fs?.isReady,
+    ragState,
+    editorState,
+  ]);
 }
 
 function hashString(str: string): string {

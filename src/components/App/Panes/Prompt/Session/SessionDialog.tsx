@@ -1,5 +1,10 @@
+import { clearAgentContextLedgers } from '@/components/AI/Agent/AgentContextLedgerStore';
 import Dialog from '@/components/ui/Dialog';
-import { deleteAgentSession, renameAgentSession } from '../AgentSessions';
+import {
+  deleteAgentSession,
+  getAgentSessionSubtreeIds,
+  renameAgentSession,
+} from '../AgentSessions';
 import type { SessionDialogProps } from '../prompt-types';
 
 export default function SessionDialog({
@@ -11,7 +16,7 @@ export default function SessionDialog({
 }: SessionDialogProps) {
   if (!sessionDialog || !agentSessionState) return null;
 
-  const handleConfirm = () => {
+  const handleConfirm = async () => {
     if (sessionDialog.type === 'rename') {
       agentSessionState((draft) => {
         const next = renameAgentSession(
@@ -32,6 +37,10 @@ export default function SessionDialog({
         return;
       }
       try {
+        const deletedSessionIds = getAgentSessionSubtreeIds(
+          agentSessionState.sessions,
+          sessionDialog.sessionId,
+        );
         agentSessionState((draft) => {
           const next = deleteAgentSession(
             { sessions: draft.sessions, activeSessionId: draft.activeSessionId },
@@ -40,6 +49,7 @@ export default function SessionDialog({
           draft.sessions = next.sessions;
           draft.activeSessionId = next.activeSessionId;
         });
+        clearAgentContextLedgers(deletedSessionIds);
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         promptUiState((draft) => {

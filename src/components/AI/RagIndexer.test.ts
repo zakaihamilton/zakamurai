@@ -95,7 +95,7 @@ describe('useRagIndexer', () => {
     rerender();
 
     await act(async () => {
-      vi.advanceTimersByTime(1600);
+      vi.advanceTimersByTime(3000);
       await Promise.resolve();
     });
 
@@ -207,10 +207,13 @@ describe('useRagIndexer', () => {
 
     mockEditorState.mockReturnValue({ fileContents: { 'a.js': 'first' } } as never);
     rerender();
-    mockEditorState.mockReturnValue({ fileContents: { 'a.js': 'second' } } as never);
+    mockEditorState.mockReturnValue({
+      fileContents: { 'a.js': 'committed' },
+      dirtyBufferContents: { 'a.js': 'second' },
+    } as never);
     rerender();
     await act(async () => {
-      vi.advanceTimersByTime(1600);
+      vi.advanceTimersByTime(3000);
       await Promise.resolve();
     });
 
@@ -229,7 +232,7 @@ describe('useRagIndexer', () => {
     mockEditorState.mockReturnValue({ fileContents: { 'a.js': 'changed' } } as never);
     rerender();
     await act(async () => {
-      vi.advanceTimersByTime(1600);
+      vi.advanceTimersByTime(3000);
       await Promise.resolve();
       await Promise.resolve();
     });
@@ -241,18 +244,20 @@ describe('useRagIndexer', () => {
   });
 
   it('uses an empty snapshot when editor contents are cleared', async () => {
+    collectWorkspaceFiles.mockImplementation(async (_fs, knownFiles) => ({ ...knownFiles }));
     mockEditorState.mockReturnValue({ fileContents: { 'a.js': 'initial' } } as never);
     const { rerender } = renderHook(() => useRagIndexer());
     await act(async () => {
       await Promise.resolve();
       await Promise.resolve();
     });
+    expect(ragSearch.indexWorkspaceFiles).toHaveBeenCalledWith({ 'a.js': 'initial' });
     ragSearch.indexWorkspaceFiles.mockClear();
 
     mockEditorState.mockReturnValue({ fileContents: undefined } as never);
     rerender();
     await act(async () => {
-      vi.advanceTimersByTime(1600);
+      vi.advanceTimersByTime(3000);
       await Promise.resolve();
     });
 

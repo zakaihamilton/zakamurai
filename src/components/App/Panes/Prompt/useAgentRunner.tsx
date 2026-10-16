@@ -1,5 +1,10 @@
+import { resolveProjectStyleProfile } from '@/components/AI/Agent/ProjectStyleProfile';
 import { AppState } from '@/components/App/AppState';
 import { PreviewState } from '@/components/App/PreviewState';
+import {
+  createEffectiveFileContentsSnapshot,
+  createEffectiveFileContentsView,
+} from '@/components/App/Views/EditorArea/EditorBuffers';
 import { ChangeSetState } from '@/components/Workspace';
 import type { FormEvent } from 'react';
 import { useCallback, useRef } from 'react';
@@ -100,9 +105,13 @@ export default function useAgentRunner({
       addToHistory(userMsg);
       const currentActiveTabId = tabState.activeTabId;
       const currentActiveTab = tabState.openTabs.find((tab) => tab.id === currentActiveTabId);
+      const currentStyleProfile = resolveProjectStyleProfile(
+        createEffectiveFileContentsView(editorState),
+        styleProfile,
+      );
       const autoApproveInitialProject =
         activeSession.messages.length === 0 &&
-        Object.keys(editorState.fileContents || {}).length === 0 &&
+        Object.keys(createEffectiveFileContentsSnapshot(editorState)).length === 0 &&
         (sidebarState.folderTree || []).length === 0;
       const shouldAutoApprove = isWelcomePrompt || autoApproveInitialProject;
 
@@ -156,7 +165,7 @@ export default function useAgentRunner({
         selectedModel,
         cachedModelIds,
         webLLMEngines,
-        styleProfile,
+        styleProfile: currentStyleProfile,
         patchSession,
         pushSessionMessage,
         createSessionMessage,

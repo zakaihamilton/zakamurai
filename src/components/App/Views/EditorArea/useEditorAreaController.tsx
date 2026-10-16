@@ -3,6 +3,7 @@ import { setInDraft } from '@/utils/StateUtils';
 import { useCallback, useEffect, useRef } from 'react';
 import useAssociationNavigator from './AssociationNavigator';
 import useCompletion from './CompletionHandler';
+import { createEffectiveFileContentsView } from './EditorBuffers';
 import { getExpandedFoldedSelection } from './Folding';
 import useHighlightLoader from './HighlightLoader';
 import useScrollHandler from './ScrollHandler';
@@ -41,6 +42,7 @@ export default function useEditorAreaController({
 }: UseEditorAreaControllerParams): EditorSurfaceProps {
   const hasDiff = Boolean(state.pendingDiffs?.[filePath]);
   const hasPendingDeletion = Boolean(state.pendingDeletions?.[filePath]);
+  const effectiveFileContents = createEffectiveFileContentsView(state);
   const diffData = state.pendingDiffs?.[filePath];
   const buffer = useEditorBuffer({ file, filePath, fs, fsHandle, state });
   const {
@@ -192,7 +194,7 @@ export default function useEditorAreaController({
       navigationLinksEnabled: reviewNavigationLinksEnabled,
       filePath,
       handleNavigateToAssociated,
-      fileContents: state.fileContents,
+      fileContents: effectiveFileContents,
       handleJumpToTarget,
       linesCount,
       selectedLines,
@@ -236,7 +238,7 @@ export default function useEditorAreaController({
       isReadOnly,
       navigationLinksEnabled: reviewNavigationLinksEnabled,
       handleNavigateToAssociated,
-      fileContents: state.fileContents,
+      fileContents: effectiveFileContents,
       handleJumpToTarget,
     },
   };

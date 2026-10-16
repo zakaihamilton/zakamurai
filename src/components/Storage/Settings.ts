@@ -162,6 +162,12 @@ const largeWriteGen = {
   changeSets: 0,
 };
 
+// Keep coordinated editor snapshots in order so a slower earlier write cannot
+// land after a newer content/diff/deletion/recovery snapshot.
+let editorBufferWriteQueue: Promise<void> = Promise.resolve();
+let editorBufferWriteGeneration = 0;
+let editorBufferWritesPaused = 0;
+
 function readLegacyLocal<T>(key: string, fallback: T, { raw = false } = {}): T {
   const storage = getStorage();
   if (!storage) return fallback;
@@ -377,6 +383,54 @@ const Settings = {
     return largePersistence.write('pendingDeletions', next);
   },
 
+  /** Persists one coordinated editor snapshot without changing the stored record shape. */
+  async persistEditorBuffersSnapshot({
+    fileContents,
+    pendingDiffs,
+    pendingDeletions,
+    recovery,
+  }: {
+    fileContents: Record<string, string>;
+    pendingDiffs: Record<string, PendingDiff>;
+    pendingDeletions: Record<string, boolean | { originalContent?: string; changeSetId?: string }>;
+    recovery: Partial<RecoveryCheckpoint>;
+  }) {
+    if (editorBufferWritesPaused > 0) return undefined;
+    const normalizedDiffs = normalizePendingDiffs(pendingDiffs);
+    for (const [path, diff] of Object.entries(normalizedDiffs)) {
+      diff.modifiedContent = fileContents[path] ?? diff.modifiedContent ?? '';
+    }
+    const normalizedDeletions = normalizePendingDeletions(pendingDeletions);
+    const generation = editorBufferWriteGeneration;
+    const writeSnapshot = async () => {
+      if (editorBufferWritesPaused > 0 || generation !== editorBufferWriteGeneration) {
+        return undefined;
+      }
+      try {
+        const [contentsOk, diffsOk, deletionsOk, checkpointOk] = await Promise.all([
+          this.setFileContents(fileContents),
+          this.setPendingDiffs(normalizedDiffs),
+          this.setPendingDeletions(normalizedDeletions),
+          this.saveRecoveryCheckpoint({
+            ...recovery,
+            fileContents,
+            pendingDiffs: normalizedDiffs,
+            pendingDeletions: normalizedDeletions,
+          }),
+        ]);
+        return contentsOk && diffsOk && deletionsOk && checkpointOk;
+      } catch {
+        return false;
+      }
+    };
+    const queuedWrite = editorBufferWriteQueue.then(writeSnapshot, writeSnapshot);
+    editorBufferWriteQueue = queuedWrite.then(
+      () => undefined,
+      () => undefined,
+    );
+    return queuedWrite;
+  },
+
   /**
    * Synchronous unload flush for editor buffers. Prefer this in beforeunload handlers.
    */
@@ -388,6 +442,7 @@ const Settings = {
       boolean | { originalContent?: string; changeSetId?: string }
     > | null = {},
   ) {
+    if (editorBufferWritesPaused > 0) return false;
     const contentsOk = largePersistence.persistSync(
       'fileContents',
       fileContents && typeof fileContents === 'object' ? fileContents : {},
@@ -409,6 +464,16 @@ const Settings = {
 
   async setPreviewHtml(html: string | null) {
     return largePersistence.write('previewHtml', html || null);
+  },
+
+  /** Prevent editor autosaves from repopulating storage during a project reset. */
+  pauseEditorBufferWrites() {
+    editorBufferWritesPaused += 1;
+  },
+
+  /** Resume coordinated editor saves after the reset state and starter are installed. */
+  resumeEditorBufferWrites() {
+    editorBufferWritesPaused = Math.max(0, editorBufferWritesPaused - 1);
   },
 
   getSidebarWidth(defaultValue = 280) {
@@ -711,10 +776,12 @@ const Settings = {
       preserveWelcomePrompt?: string;
     } = {},
   ) {
+    editorBufferWriteGeneration += 1;
     // Fence saves that were already in flight before clearing the project. The
     // IndexedDB clear waits for those writes, while the generation fence keeps
     // their localStorage fallback from repopulating the reset workspace.
     largePersistence.invalidateWrites();
+    await editorBufferWriteQueue;
     for (const key of Object.values(KEYS)) {
       clearLegacyLocal(key);
     }

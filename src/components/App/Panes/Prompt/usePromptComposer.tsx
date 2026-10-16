@@ -1,3 +1,7 @@
+import {
+  createEffectiveFileContentsView,
+  readEffectiveFileContent,
+} from '@/components/App/Views/EditorArea/EditorBuffers';
 import type { ExtendedEditorState } from '@/components/App/Views/EditorArea/types';
 import type {
   PromptUiStateShape,
@@ -141,7 +145,7 @@ export default function usePromptComposer({
   const handleFileSelect = useCallback(
     (filePath: string) => {
       const fileName = filePath.split('/').pop() || filePath;
-      const fileContent = editorState.fileContents?.[filePath] || '';
+      const fileContent = readEffectiveFileContent(editorState, filePath) ?? '';
       tabState((draft) => {
         if (!draft.openTabs.some((tab) => tab.id === filePath)) {
           draft.openTabs = [
@@ -167,7 +171,7 @@ export default function usePromptComposer({
       setFilePickerQuery('');
     },
     [
-      editorState.fileContents,
+      editorState,
       filePromptRemainder,
       promptUiState,
       setFilePromptRemainder,
@@ -191,7 +195,7 @@ export default function usePromptComposer({
     filePickerQuery,
     fileScopeArmed,
     files: [
-      ...Object.keys(editorState.fileContents || {}),
+      ...Object.keys(createEffectiveFileContentsView(editorState)),
       ...collectProjectFiles(sidebarState.folderTree || []),
     ],
     handleKeyDown,

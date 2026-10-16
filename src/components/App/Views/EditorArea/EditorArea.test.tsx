@@ -112,7 +112,7 @@ describe('EditorArea', () => {
     });
   });
 
-  it('updates the local buffer and clears a pending AI diff after a manual edit', async () => {
+  it('updates only the dirty path and clears a pending AI diff after a manual edit', async () => {
     const state = setupMocks({
       fileContents: { 'test.js': 'const answer = 1;' },
       pendingDiffs: {
@@ -129,7 +129,8 @@ describe('EditorArea', () => {
       fireEvent.change(getTextarea(), { target: { value: 'const answer = 2;' } });
     });
 
-    expect(state.fileContents['test.js']).toBe('const answer = 2;');
+    expect(state.fileContents['test.js']).toBe('const answer = 1;');
+    expect(state.dirtyBufferContents?.['test.js']).toBe('const answer = 2;');
     expect(state.pendingDiffs['test.js']).toBeUndefined();
   });
 

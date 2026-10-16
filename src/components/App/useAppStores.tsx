@@ -72,6 +72,7 @@ export default function useAppStores(initialValues: InitialAppValues, fs: FileSy
   const editorState = requireStore(
     EditorState.useState(null, {
       fileContents: initialValues.contents,
+      dirtyBufferContents: {},
       aiCompletionEnabled: initialValues.aiCompletionEnabled,
       isReadOnly: initialValues.isReadOnly,
       navigationHistory: { stack: [], currentIndex: -1 },

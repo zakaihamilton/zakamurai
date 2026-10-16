@@ -98,7 +98,7 @@ vi.mock('@/utils/compiler', () => ({
   },
 }));
 
-function renderCompilerHook() {
+function renderCompilerHook(editorState = createMockEditorState()) {
   const mockLogState = makeLogState();
   const mockPreviewState = makePreviewState();
   const mockTabState = makeTabState();
@@ -108,7 +108,7 @@ function renderCompilerHook() {
   vi.mocked(useFileSystem).mockReturnValue(asMockUseFileSystem());
   vi.mocked(AppState.useState).mockReturnValue(makeAppState());
   vi.mocked(SidebarState.useState).mockReturnValue(makeSidebarState());
-  vi.mocked(EditorState.usePassiveState).mockReturnValue(createMockEditorState());
+  vi.mocked(EditorState.usePassiveState).mockReturnValue(editorState);
   vi.mocked(LogState.useState).mockReturnValue(makeLogState({ isSystemProcessing: false }));
   vi.mocked(ProblemsState.usePassiveState).mockReturnValue(makeProblemsState());
 
@@ -174,6 +174,22 @@ describe('useProjectCompiler', () => {
 
     expect(compilerReset).toHaveBeenCalledBefore(compilerCompile);
     expect(compilerCompile).toHaveBeenCalled();
+  });
+
+  it('builds with the latest dirty editor buffers', async () => {
+    const editorState = createMockEditorState({
+      fileContents: { 'src/App.jsx': 'committed source' },
+      dirtyBufferContents: { 'src/App.jsx': 'latest typed source' },
+    });
+    const { result } = renderCompilerHook(editorState);
+
+    await act(async () => {
+      await result.current.handleCompile(true);
+    });
+
+    expect(compilerCompile).toHaveBeenCalledWith(expect.anything(), [], {
+      'src/App.jsx': 'latest typed source',
+    });
   });
 
   it('preserves an AI preview while finalizing silent compile state', async () => {

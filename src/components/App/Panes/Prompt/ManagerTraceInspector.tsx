@@ -10,6 +10,7 @@ import styles from './ManagerTraceInspector.module.css';
 type ManagerTraceInspectorProps = {
   trace: ManagerTrace | null;
   files?: FileMap;
+  getFiles?: () => FileMap;
   onReplayRequest?: (request: string) => void;
 };
 
@@ -25,6 +26,7 @@ const formatEventDetail = (trace: ManagerTrace, sequence: number): string => {
 export default function ManagerTraceInspector({
   trace,
   files = {},
+  getFiles,
   onReplayRequest,
 }: ManagerTraceInspectorProps) {
   const [isOpen, setIsOpen] = useState(false);
@@ -59,7 +61,8 @@ export default function ManagerTraceInspector({
     const { createManagerReplayFixtureFromTrace } = await import(
       '@/components/AI/Agent/ManagerReplay'
     );
-    await copy(JSON.stringify(createManagerReplayFixtureFromTrace(trace, files), null, 2));
+    const currentFiles = getFiles?.() ?? files;
+    await copy(JSON.stringify(createManagerReplayFixtureFromTrace(trace, currentFiles), null, 2));
   };
 
   return (

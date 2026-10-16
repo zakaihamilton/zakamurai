@@ -67,6 +67,7 @@ export function resetNewProjectState({
   });
   editorState((draft) => {
     draft.fileContents = initialContents;
+    draft.dirtyBufferContents = {};
     draft.pendingDiffs = {};
     draft.pendingDeletions = {};
   });
@@ -141,28 +142,33 @@ export default function TopBar() {
   const handleStartOver = async (template = 'scratch') => {
     const initialContents = template === 'scratch' ? SCRATCH_CONTENTS : DEFAULT_CONTENTS;
     await fs.unlinkProject();
-    await Settings.reset(template, {
-      preserveTheme: appState.theme,
-      preserveAIPromptModel: promptUiState?.selectedModel,
-      preserveWelcomePrompt: promptUiState?.welcomePrompt,
-    });
-    // Persist the selected starter before any background sync can observe the reset state.
-    await Settings.setFileContents(initialContents);
-    await Settings.setPendingDiffs({});
-    await Settings.setPreviewHtml(null);
-    resetNewProjectState({
-      template,
-      appState,
-      sidebarState,
-      tabState,
-      editorState,
-      previewState,
-      promptUiState,
-      promptState,
-      agentSessionState,
-      logState,
-      changeSetState,
-    });
+    Settings.pauseEditorBufferWrites();
+    try {
+      await Settings.reset(template, {
+        preserveTheme: appState.theme,
+        preserveAIPromptModel: promptUiState?.selectedModel,
+        preserveWelcomePrompt: promptUiState?.welcomePrompt,
+      });
+      // Persist the selected starter before any background sync can observe the reset state.
+      await Settings.setFileContents(initialContents);
+      await Settings.setPendingDiffs({});
+      await Settings.setPreviewHtml(null);
+      resetNewProjectState({
+        template,
+        appState,
+        sidebarState,
+        tabState,
+        editorState,
+        previewState,
+        promptUiState,
+        promptState,
+        agentSessionState,
+        logState,
+        changeSetState,
+      });
+    } finally {
+      Settings.resumeEditorBufferWrites();
+    }
   };
 
   let breadcrumb = ['Welcome'];

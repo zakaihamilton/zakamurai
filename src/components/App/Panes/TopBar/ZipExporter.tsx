@@ -1,6 +1,7 @@
 import { AppState } from '@/components/App/AppState';
 import { SidebarState } from '@/components/App/Panes/Sidebar';
 import { EditorState } from '@/components/App/Views/EditorArea';
+import { createEffectiveFileContentsSnapshot } from '@/components/App/Views/EditorArea/EditorBuffers';
 import { useFileSystem } from '@/components/Storage';
 import type { TreeNode } from '@/types/domain-types';
 import { ZipWriter } from '@/utils/zip';
@@ -16,6 +17,7 @@ export default function useZipExporter() {
 
   const handleExportZip = useCallback(async () => {
     const zip = new ZipWriter();
+    const fileContents = createEffectiveFileContentsSnapshot(editorState);
 
     if (fs.mode === 'local' && fs.rootHandle) {
       const traverse = async (handle: FileSystemDirectoryHandle, path = '') => {
@@ -23,7 +25,7 @@ export default function useZipExporter() {
           const entryPath = path ? `${path}/${name}` : name;
           if (entry.kind === 'file') {
             const fileHandle = entry as FileSystemFileHandle;
-            const inMemory = editorState.fileContents?.[entryPath];
+            const inMemory = fileContents[entryPath];
             if (inMemory !== undefined) {
               zip.addFile(entryPath, inMemory);
             } else {
@@ -42,7 +44,7 @@ export default function useZipExporter() {
         for (const node of nodes) {
           const nodePath = path ? `${path}/${node.name}` : node.name;
           if (node.type === 'file') {
-            const content = editorState.fileContents?.[nodePath] || '';
+            const content = fileContents[nodePath] || '';
             zip.addFile(nodePath, content);
           } else if (node.type === 'folder') {
             traverse(node.children || [], nodePath);

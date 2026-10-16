@@ -12,6 +12,7 @@ export default function PromptHeader({
   copyContent = '',
   latestManagerTrace,
   traceFiles,
+  getTraceFiles,
   onReplayRequest,
 }: PromptHeaderProps) {
   const [copied, setCopied] = useState(false);
@@ -45,6 +46,7 @@ export default function PromptHeader({
         <ManagerTraceInspector
           trace={latestManagerTrace || null}
           files={traceFiles}
+          getFiles={getTraceFiles}
           onReplayRequest={onReplayRequest}
         />
         <ToolbarButton

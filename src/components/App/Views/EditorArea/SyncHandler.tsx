@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { readEffectiveFileContent } from './EditorBuffers';
 import type { SyncHandlerProps } from './types';
 
 export default function SyncHandler({
@@ -9,6 +10,7 @@ export default function SyncHandler({
   tabState,
 }: SyncHandlerProps) {
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const saveStartedAtRef = useRef<number | null>(null);
   const lastSavedContent = useRef(localContent);
 
   useEffect(() => {
@@ -21,7 +23,11 @@ export default function SyncHandler({
     if (!handle) return;
 
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+    const startedAt = saveStartedAtRef.current ?? Date.now();
+    saveStartedAtRef.current = startedAt;
+    const delay = Math.max(0, Math.min(3000, startedAt + 10000 - Date.now()));
     saveTimeoutRef.current = setTimeout(async () => {
+      saveStartedAtRef.current = null;
       try {
         const writable = await handle.createWritable();
         await writable.write(localContent);
@@ -37,7 +43,7 @@ export default function SyncHandler({
       } catch (err) {
         console.error('Failed to save to FS:', err);
       }
-    }, 1000);
+    }, delay);
 
     return () => {
       if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
@@ -50,6 +56,7 @@ export default function SyncHandler({
     state,
     state.pendingDiffs,
     state.pendingDeletions,
+    state.dirtyBufferContents?.[filePath],
   ]);
 
   useEffect(() => {
@@ -60,7 +67,7 @@ export default function SyncHandler({
 
       const currentTab = tabState?.openTabs.find((t) => t.id === filePath);
       const handle = currentTab?.fsHandle;
-      if (handle && localContent !== state.fileContents?.[filePath]) {
+      if (handle && localContent !== readEffectiveFileContent(state, filePath)) {
         try {
           const writable = await handle.createWritable();
           await writable.write(localContent);
@@ -79,6 +86,7 @@ export default function SyncHandler({
     filePath,
     localContent,
     state.fileContents,
+    state.dirtyBufferContents,
     state.pendingDiffs,
     state.pendingDeletions,
     tabState?.openTabs,

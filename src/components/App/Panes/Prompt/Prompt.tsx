@@ -11,6 +11,7 @@ import type { WelcomeRequest } from '@/components/App/Panes/Prompt/prompt-types'
 import { SidebarState } from '@/components/App/Panes/Sidebar';
 import { TabState } from '@/components/App/Panes/TabBar';
 import { EditorState } from '@/components/App/Views/EditorArea';
+import { createEffectiveFileContentsSnapshot } from '@/components/App/Views/EditorArea/EditorBuffers';
 import { LogState } from '@/components/App/Views/LogArea';
 import { useFileSystem } from '@/components/Storage';
 import { WorkspaceProfileState } from '@/components/Workspace';
@@ -69,6 +70,7 @@ export default function Prompt() {
   );
   const tabState = requireStore(TabState.useState(['activeTabId', 'openTabs']));
   const editorState = requireStore(EditorState.useState(['selectedLines', 'fileContents']));
+  const editorBufferState = requireStore(EditorState.usePassiveState());
   const workspaceProfileState = requireStore(WorkspaceProfileState.useState(['styleProfile']));
   const agentSessionState = requireStore(
     AgentSessionState.useState(['sessions', 'activeSessionId']),
@@ -270,9 +272,11 @@ export default function Prompt() {
   );
   const refreshProjectStyle = useCallback(() => {
     workspaceProfileState((draft) => {
-      draft.styleProfile = createProjectStyleProfile(editorState.fileContents || {});
+      draft.styleProfile = createProjectStyleProfile(
+        createEffectiveFileContentsSnapshot(editorBufferState),
+      );
     });
-  }, [editorState.fileContents, workspaceProfileState]);
+  }, [editorBufferState, workspaceProfileState]);
 
   const selectedModelInfo =
     WEB_LLM_MODELS.find((model) => model.id === selectedModel) || RECOMMENDED_WEB_LLM_MODEL;
@@ -299,7 +303,7 @@ export default function Prompt() {
           isAIProcessing,
           isSystemProcessing,
           latestManagerTrace,
-          traceFiles: editorState.fileContents,
+          getTraceFiles: () => createEffectiveFileContentsSnapshot(editorBufferState),
           onReplayRequest: replayManagerRequest,
         }}
         session={{

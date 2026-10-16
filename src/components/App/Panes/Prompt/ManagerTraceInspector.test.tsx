@@ -83,4 +83,29 @@ describe('ManagerTraceInspector', () => {
     expect(writeText.mock.calls[1][0]).toContain('trace-test-run');
     expect(onReplayRequest).toHaveBeenCalledWith('list files');
   });
+
+  it('reads replay fixture files when the copy action runs', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText },
+    });
+    const currentFiles = { 'src/App.jsx': 'latest buffer content' };
+    const getFiles = vi.fn(() => currentFiles);
+
+    render(
+      <ManagerTraceInspector
+        trace={trace}
+        files={{ 'src/App.jsx': 'stale render content' }}
+        getFiles={getFiles}
+      />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: /Open manager debug trace/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Copy replay fixture' }));
+
+    await waitFor(() => expect(writeText).toHaveBeenCalledOnce());
+    expect(getFiles).toHaveBeenCalledOnce();
+    expect(writeText.mock.calls[0][0]).toContain('latest buffer content');
+    expect(writeText.mock.calls[0][0]).not.toContain('stale render content');
+  });
 });

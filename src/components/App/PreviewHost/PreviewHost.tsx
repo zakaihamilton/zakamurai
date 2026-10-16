@@ -15,10 +15,11 @@ import {
   PREVIEW_CONNECT,
   PREVIEW_CONNECT_ACK,
   PREVIEW_PROTOCOL_VERSION,
+  isValidPreviewCapability,
 } from '../Views/PreviewArea/previewProtocol';
 import styles from './PreviewHost.module.css';
 
-const SW_URL = '/__preview/sw.js?v=28';
+const SW_URL = '/__preview/sw.js?v=29';
 const SESSION_WINDOW_NAME_PREFIXES = ['zakamurai-preview-tab-', 'zakamurai-preview-'];
 const CONNECT_TIMEOUT_MS = 15000;
 
@@ -123,14 +124,21 @@ async function waitForPreviewWorkerControl(registration: ServiceWorkerRegistrati
   });
 }
 
-async function waitForInitAck(sessionId: string): Promise<void> {
+async function waitForInitAck(sessionId: string, workerCapability: string): Promise<void> {
   await new Promise<void>((resolve, reject) => {
     const timeout = window.setTimeout(() => {
       navigator.serviceWorker.removeEventListener('message', onMessage);
       reject(new Error('Preview service worker did not acknowledge init.'));
     }, 5000);
-    const onMessage = (event: MessageEvent<{ type?: string; sessionId?: string }>) => {
-      if (event.data?.type !== 'init-ok' || event.data?.sessionId !== sessionId) return;
+    const onMessage = (
+      event: MessageEvent<{ type?: string; sessionId?: string; workerCapability?: string }>,
+    ) => {
+      if (
+        event.data?.type !== 'init-ok' ||
+        event.data?.sessionId !== sessionId ||
+        event.data?.workerCapability !== workerCapability
+      )
+        return;
       window.clearTimeout(timeout);
       navigator.serviceWorker.removeEventListener('message', onMessage);
       resolve();
@@ -187,7 +195,8 @@ export default function PreviewHost() {
           type: PREVIEW_CONNECT,
           version: PREVIEW_PROTOCOL_VERSION,
         });
-      if (!handshakeOk || !event.ports[0]) {
+      const workerCapability = event.data?.workerCapability;
+      if (!handshakeOk || !event.ports[0] || !isValidPreviewCapability(workerCapability)) {
         return;
       }
       const connectedIdeOrigin = event.origin;
@@ -198,6 +207,7 @@ export default function PreviewHost() {
           type: PREVIEW_CONNECT_ACK,
           version: PREVIEW_PROTOCOL_VERSION,
           sessionId,
+          workerCapability,
           surface: window.parent !== window ? ('iframe' as const) : ('external' as const),
         };
         postMessageToOriginAliases(event.source as Window, ack, connectedIdeOrigin);
@@ -223,10 +233,11 @@ export default function PreviewHost() {
             : registration.active;
         if (!controlling) throw new Error('Preview service worker is not available.');
         const entryUrl = getPreviewEntryUrl(sessionId);
-        const initAck = waitForInitAck(sessionId);
-        controlling.postMessage({ type: 'init', sessionId, ideOrigin: connectedIdeOrigin }, [
-          event.ports[0],
-        ]);
+        const initAck = waitForInitAck(sessionId, workerCapability);
+        controlling.postMessage(
+          { type: 'init', sessionId, ideOrigin: connectedIdeOrigin, workerCapability },
+          [event.ports[0]],
+        );
         await initAck;
         const response = await fetch(entryUrl, { credentials: 'same-origin' });
         const html = await response.text();

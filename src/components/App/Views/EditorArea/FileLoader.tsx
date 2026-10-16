@@ -1,5 +1,6 @@
 import { getImportPathCandidates, getImportRanges, resolveRelativePath } from '@/utils/navigation';
 import { useEffect, useRef } from 'react';
+import { readEffectiveFileContent } from './EditorBuffers';
 import type { FileLoaderProps } from './types';
 
 export default function useFileLoader({
@@ -13,17 +14,24 @@ export default function useFileLoader({
 }: FileLoaderProps) {
   const localContentRef = useRef(localContent);
   const loadedLocalFileRef = useRef<string | null>(null);
+  const effectiveFileContent =
+    readEffectiveFileContent(
+      {
+        fileContents: state.fileContents,
+        dirtyBufferContents: state.dirtyBufferContents,
+      },
+      filePath,
+    ) ?? fallbackContent;
 
   useEffect(() => {
     localContentRef.current = localContent;
   }, [localContent]);
 
   useEffect(() => {
-    const externalContent = state.fileContents?.[filePath] ?? fallbackContent;
-    if (externalContent !== localContent) {
-      setLocalContent(externalContent);
+    if (effectiveFileContent !== localContent) {
+      setLocalContent(effectiveFileContent);
     }
-  }, [state.fileContents?.[filePath], filePath, fallbackContent, localContent, setLocalContent]);
+  }, [effectiveFileContent, localContent, setLocalContent]);
 
   useEffect(() => {
     if ((fs.mode !== 'local' && fs.mode !== 'opfs') || !filePath || !fs.readFile) return;
@@ -76,7 +84,7 @@ export default function useFileLoader({
 
         for (const candidate of candidates) {
           if (candidate === filePath) continue;
-          if (state.fileContents?.[candidate] !== undefined) {
+          if (readEffectiveFileContent(state, candidate) !== undefined) {
             break;
           }
 
@@ -119,7 +127,7 @@ export default function useFileLoader({
 
           for (const candidate of siblingCandidates) {
             if (candidate === filePath) continue;
-            if (state.fileContents?.[candidate] !== undefined) continue;
+            if (readEffectiveFileContent(state, candidate) !== undefined) continue;
 
             try {
               const handle = await fs.getFileHandleAtPath?.(candidate);

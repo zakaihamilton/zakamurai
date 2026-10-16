@@ -5,6 +5,7 @@ import type {
   RunManagerOptions,
   RunManagerResult,
 } from '@/components/AI/types';
+import { createEffectiveFileContentsSnapshot } from '@/components/App/Views/EditorArea/EditorBuffers';
 import type { ExtendedEditorState } from '@/components/App/Views/EditorArea/types';
 import type { FileSystemApi } from '@/components/App/types';
 import { getWorkspaceIndex } from '@/components/Workspace';
@@ -220,7 +221,7 @@ export async function runAgentRequest({
     const canReusePreview =
       !applyFailed &&
       Boolean(previewState) &&
-      fileMapsMatch(previewInspectionFiles, editorState.fileContents || {});
+      fileMapsMatch(previewInspectionFiles, createEffectiveFileContentsSnapshot(editorState));
     if (rejected.length) {
       runState.appendReasoning(
         applyFailed

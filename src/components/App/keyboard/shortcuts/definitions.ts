@@ -1,3 +1,7 @@
+import {
+  commitDirtyBufferContentsInDraft,
+  readEffectiveFileContent,
+} from '@/components/App/Views/EditorArea/EditorBuffers';
 import type { ShortcutDefinition } from '@/components/App/types';
 import { deleteKeysWithPrefixInDraft } from '@/utils/StateUtils';
 import {
@@ -197,6 +201,7 @@ export const SHORTCUTS: ShortcutDefinition[] = [
       if (!filePath) return;
 
       editorState((draft) => {
+        commitDirtyBufferContentsInDraft(draft);
         const history = { ...(draft.history || {}) };
         if (!history[filePath]) {
           history[filePath] = { past: [], future: [] };
@@ -254,6 +259,7 @@ export const SHORTCUTS: ShortcutDefinition[] = [
       if (!filePath) return;
 
       editorState((draft) => {
+        commitDirtyBufferContentsInDraft(draft);
         if (!draft.history || !draft.history[filePath]) return;
         const history = { ...draft.history };
         const hist = { ...history[filePath] };
@@ -292,6 +298,7 @@ export const SHORTCUTS: ShortcutDefinition[] = [
       if (!filePath) return;
 
       editorState((draft) => {
+        commitDirtyBufferContentsInDraft(draft);
         if (!draft.history || !draft.history[filePath]) return;
         const history = { ...draft.history };
         const hist = { ...history[filePath] };
@@ -409,6 +416,7 @@ export const SHORTCUTS: ShortcutDefinition[] = [
             draft,
             [
               'fileContents',
+              'dirtyBufferContents',
               'pendingDiffs',
               'pendingDeletions',
               'history',
@@ -441,7 +449,7 @@ export const SHORTCUTS: ShortcutDefinition[] = [
             draft.pendingDiffs = nextDiffs;
           }
         });
-        const content = editorState.fileContents?.[activeTabId];
+        const content = readEffectiveFileContent(editorState, activeTabId);
         if (fs?.writeFileAtPath && content !== undefined) {
           fs.writeFileAtPath(activeTabId, content);
         }
@@ -479,6 +487,7 @@ export const SHORTCUTS: ShortcutDefinition[] = [
         const prevContent = diff.originalContent;
         const prevCursor = diff.originalCursorPos;
         editorState((draft) => {
+          commitDirtyBufferContentsInDraft(draft);
           draft.fileContents = { ...draft.fileContents, [activeTabId]: prevContent };
           if (prevCursor) {
             draft.cursorPos = { ...draft.cursorPos, [activeTabId]: prevCursor };
