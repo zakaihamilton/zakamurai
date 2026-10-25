@@ -83,8 +83,8 @@ jobs:
             test-results/
           if-no-files-found: ignore
 
-  node-25-compatibility:
-    name: Node 25 compatibility smoke
+  node-24-patched-compatibility:
+    name: Node 24.22.1 compatibility smoke
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
@@ -98,7 +98,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 25
+          node-version: 24.22.1
           cache: pnpm
 
       - name: Install dependencies
@@ -107,5 +107,5 @@ jobs:
       - name: Prepare browser build assets
         run: pnpm run setup:almostnode && pnpm run setup:wasm
 
-      - name: Run Node 25 compatibility smoke checks
+      - name: Run Node 24.22.1 compatibility smoke checks
         run: pnpm run lint && pnpm run typecheck && pnpm run test:unit && pnpm run build && pnpm run perf && pnpm run check:runtime-assets
