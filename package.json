@@ -76,6 +76,7 @@
     "almostnode": "0.2.14",
     "esbuild-wasm": "0.28.1",
     "next": "16.4.1",
+    "onnxruntime-web": "1.26.0-dev.20260416-b7804b056c",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "react-markdown": "10.1.0",
@@ -126,7 +127,13 @@
     "uuid": "11.1.1"
   },
   "lint-staged": {
-    "src/**/*.{js,jsx,ts,tsx}": ["biome check --write", "vitest related --run"],
-    "src/**/*.module.css": ["stylelint --fix"]
+    "src/**/*.{js,jsx,ts,tsx}": [
+      "biome check --write",
+      "vitest related --run"
+    ],
+    "src/**/*.module.css": [
+      "stylelint --fix"
+    ]
   },
-  "packageManager": "pnpm@10.33.0"}
+  "packageManager": "pnpm@10.33.0"
+}
