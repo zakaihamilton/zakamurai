@@ -127,13 +127,8 @@
     "uuid": "11.1.1"
   },
   "lint-staged": {
-    "src/**/*.{js,jsx,ts,tsx}": [
-      "biome check --write",
-      "vitest related --run"
-    ],
-    "src/**/*.module.css": [
-      "stylelint --fix"
-    ]
+    "src/**/*.{js,jsx,ts,tsx}": ["biome check --write", "vitest related --run"],
+    "src/**/*.module.css": ["stylelint --fix"]
   },
   "packageManager": "pnpm@10.33.0"
 }
