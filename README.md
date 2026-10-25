@@ -45,7 +45,7 @@ Zakamurai keeps the core workflow in the browser:
 
 ### Prerequisites
 
-- [Node.js](https://nodejs.org/) 24 (the supported range is `>=24 <26`; Node.js 25 is compatibility-tested in CI)
+- [Node.js](https://nodejs.org/) 24.22.1 or later within the 24.x line (the supported range is `>=24.22.1 <25`)
 - pnpm 10.33.0 (pinned in `package.json`)
 
 ### Start the development server
