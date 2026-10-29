@@ -32,6 +32,8 @@ const getCursorPosition = (content: string, index: number): CursorPosition => {
 };
 
 export default function CodeEditor({
+  ariaLabel,
+  preventWrapping = false,
   localContent,
   handleChange,
   highlightedCode,
@@ -277,7 +279,7 @@ export default function CodeEditor({
   );
 
   return (
-    <div className={styles.editorWrapper}>
+    <div className={`${styles.editorWrapper} ${preventWrapping ? styles.unwrapped : ''}`}>
       <textarea
         ref={textareaRef}
         value={localContent}
@@ -292,8 +294,8 @@ export default function CodeEditor({
         readOnly={readOnly || isReadOnly}
         spellCheck="false"
         wrap="off"
-        aria-label={filePath ? `Code editor: ${filePath}` : 'Code editor'}
-        className={`${styles.textarea} ${isReadOnly || readOnly ? styles.readOnlyTextarea : ''} ${
+        aria-label={ariaLabel || (filePath ? `Code editor: ${filePath}` : 'Code editor')}
+        className={`${styles.textarea} ${preventWrapping ? styles.noWrap : ''} ${isReadOnly || readOnly ? styles.readOnlyTextarea : ''} ${
           !isReadOnly && !readOnly && navigationLinksEnabled ? styles.navigationLinksTextarea : ''
         }`}
       />
@@ -302,7 +304,7 @@ export default function CodeEditor({
       <pre
         ref={preRef}
         aria-hidden="true"
-        className={`${styles.pre} ${isReadOnly || readOnly || navigationLinksEnabled ? styles.readOnlyPre : ''}`}
+        className={`${styles.pre} ${preventWrapping ? styles.noWrap : ''} ${isReadOnly || readOnly || navigationLinksEnabled ? styles.readOnlyPre : ''}`}
         onClick={handlePreClick}
         // biome-ignore lint/security/noDangerouslySetInnerHtml: used for code syntax highlighting
         dangerouslySetInnerHTML={{

@@ -85,3 +85,16 @@
 .sideBySideScroll::-webkit-scrollbar-corner {
   background: transparent;
 }
+
+@media (width <= 768px) {
+  .sideBySideContainer {
+    flex-direction: column;
+    overflow-y: auto;
+  }
+
+  .sideBySidePane {
+    flex: 1 0 240px;
+    border-right: 0;
+    border-bottom: 1px solid var(--border);
+  }
+}

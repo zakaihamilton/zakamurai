@@ -319,6 +319,8 @@ export interface EditorToolingProps {
 }
 
 export interface CodeEditorProps {
+  ariaLabel?: string;
+  preventWrapping?: boolean;
   localContent: string;
   handleChange?: (e: ChangeEvent<HTMLTextAreaElement> | { target: { value: string } }) => void;
   highlightedCode: string;

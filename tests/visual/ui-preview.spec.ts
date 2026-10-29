@@ -89,3 +89,25 @@ test.describe('UI preview visual regression', () => {
     });
   }
 });
+
+test('mobile diff keeps review actions visible and stacks labeled editors', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/ui-preview?screen=diff');
+  await expect(page.getByRole('combobox', { name: 'Screen' })).toHaveValue('diff');
+  const original = page.getByRole('textbox', { name: 'Original code: src/App.tsx' });
+  const modified = page.getByRole('textbox', { name: 'Modified code: src/App.tsx' });
+  const originalBox = await original.boundingBox();
+  const modifiedBox = await modified.boundingBox();
+  expect(originalBox).not.toBeNull();
+  expect(modifiedBox).not.toBeNull();
+  if (!originalBox || !modifiedBox) throw new Error('Diff editors are not visible');
+  expect(modifiedBox.y).toBeGreaterThan(originalBox.y);
+  for (const name of ['Approve', 'Undo', 'Diff']) {
+    const button = page.getByRole('button', { name, exact: true });
+    await expect(button).toBeVisible();
+    const box = await button.boundingBox();
+    expect(box).not.toBeNull();
+    if (!box) throw new Error(`${name} is not visible`);
+    expect(box.x + box.width).toBeLessThanOrEqual(390);
+  }
+});

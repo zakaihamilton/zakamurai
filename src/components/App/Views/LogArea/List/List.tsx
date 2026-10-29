@@ -15,6 +15,9 @@ export default function LogList({
       {visibleLogs.map(({ log, displayIndex }) => (
         <LogItem key={log.id} log={log} displayIndex={displayIndex} />
       ))}
+      {totalLogsCount === 0 && !isProcessing && (
+        <div className={styles.emptyState}>No logs yet. Build your project to see output here.</div>
+      )}
       {totalLogsCount > 0 && visibleLogs.length === 0 && (
         <div className={styles.emptyState}>No logs match "{filterText}"</div>
       )}

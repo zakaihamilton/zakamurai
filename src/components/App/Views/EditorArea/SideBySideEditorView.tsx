@@ -86,6 +86,8 @@ export default function SideBySideEditorView({
         >
           <Gutter linesCount={countLines(diffData.originalContent)} scrollRef={leftScrollRef} />
           <CodeEditor
+            preventWrapping
+            ariaLabel={`Original code: ${filePath}`}
             localContent={diffData.originalContent}
             highlightedCode={originalHighlightedCode}
             readOnly={true}
@@ -128,6 +130,8 @@ export default function SideBySideEditorView({
             scrollRef={rightScrollRef}
           />
           <CodeEditor
+            preventWrapping
+            ariaLabel={`Modified code: ${filePath}`}
             localContent={localContent}
             handleChange={handleChange}
             highlightedCode={highlightedCode}

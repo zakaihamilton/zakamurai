@@ -28,6 +28,21 @@ describe('LogList', () => {
     expect(screen.getByText('Hello bot')).toBeDefined();
   });
 
+  it('explains an empty log and hides that message while work is running', () => {
+    const props = {
+      visibleLogs: [],
+      totalLogsCount: 0,
+      filterText: '',
+      isProcessing: false,
+      isAIProcessing: false,
+      isSystemProcessing: false,
+    };
+    const { rerender } = render(<LogList {...props} />);
+    expect(screen.getByText('No logs yet. Build your project to see output here.')).toBeDefined();
+    rerender(<LogList {...props} isProcessing isSystemProcessing />);
+    expect(screen.queryByText('No logs yet. Build your project to see output here.')).toBeNull();
+  });
+
   it('renders processing messages for AI, system, or both', () => {
     const { rerender } = render(
       <LogList

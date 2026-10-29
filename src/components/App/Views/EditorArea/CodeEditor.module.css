@@ -5,6 +5,10 @@
   position: relative;
 }
 
+.unwrapped {
+  flex-shrink: 0;
+}
+
 .textarea {
   position: absolute;
   inset: 0;
@@ -37,6 +41,16 @@
   word-break: break-all;
   pointer-events: none;
   min-height: 100%;
+}
+
+.noWrap {
+  white-space: pre;
+  word-break: normal;
+}
+
+.pre.noWrap {
+  width: max-content;
+  min-width: 100%;
 }
 
 .readOnlyTextarea {
