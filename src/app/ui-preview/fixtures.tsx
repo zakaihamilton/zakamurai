@@ -1,6 +1,7 @@
 'use client';
 
 import ModelManager from '@/components/AI/Models/ModelManager';
+import { computeDiff } from '@/components/AI/Processor/utils/DiffEngine';
 import { RECOMMENDED_WEB_LLM_MODEL } from '@/components/AI/WebLLMModels';
 import { AppState } from '@/components/App/AppState';
 import { AgentSessionState, createAgentSession } from '@/components/App/Panes/Prompt/AgentSessions';
@@ -17,6 +18,8 @@ import { PreviewState } from '@/components/App/PreviewState';
 import CodeEditor from '@/components/App/Views/EditorArea/CodeEditor';
 import EditorHeader from '@/components/App/Views/EditorArea/EditorHeader';
 import SideBySideEditorView from '@/components/App/Views/EditorArea/SideBySideEditorView';
+import { highlightCodeSync } from '@/components/App/Views/EditorArea/highlightClient';
+import type { HighlightEditorState } from '@/components/App/Views/EditorArea/types';
 import {
   PreviewErrorState,
   PreviewUnavailableState,
@@ -31,8 +34,6 @@ import styles from './preview.module.css';
 export type Scenario = 'populated' | 'empty' | 'error';
 const original = 'export default function App() {\n  return <h1>Hello, world!</h1>;\n}\n';
 const modified = 'export default function App() {\n  return <h1>Welcome to our app!</h1>;\n}\n';
-const escapeHtml = (value: string) =>
-  value.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
 const noop = () => {};
 
 export function DiffFixture({ scenario }: { scenario: Scenario }) {
@@ -41,6 +42,35 @@ export function DiffFixture({ scenario }: { scenario: Scenario }) {
   const [sideBySide, setSideBySide] = useState(true);
   const [readOnly, setReadOnly] = useState(false);
   const [showFind, setShowFind] = useState(false);
+  const filePath = 'src/App.tsx';
+  const diffData = computeDiff(original, content);
+  const highlightState: HighlightEditorState = {
+    pendingDiffs: pending
+      ? {
+          [filePath]: {
+            originalContent: original,
+            modifiedContent: content,
+            diffs: diffData.diffs,
+          },
+        }
+      : {},
+  };
+  const highlight = (value: string, isOriginal = false) =>
+    highlightCodeSync(
+      value,
+      filePath,
+      highlightState,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      isOriginal,
+    );
+  const highlightedCode = highlight(content);
+  const originalHighlightedCode = highlight(original, true);
   return (
     <div className={styles.fixtureColumn}>
       <EditorHeader
@@ -63,10 +93,14 @@ export function DiffFixture({ scenario }: { scenario: Scenario }) {
       />
       {pending && sideBySide ? (
         <SideBySideEditorView
-          diffData={{ originalContent: original, modifiedContent: modified, diffs: [] }}
+          diffData={{
+            originalContent: original,
+            modifiedContent: content,
+            diffs: diffData.diffs,
+          }}
           isReadOnly={readOnly}
           navigationLinksEnabled={false}
-          filePath="src/App.tsx"
+          filePath={filePath}
           handleNavigateToAssociated={noop}
           fileContents={{}}
           handleJumpToTarget={noop}
@@ -74,14 +108,14 @@ export function DiffFixture({ scenario }: { scenario: Scenario }) {
           selectedLines={[]}
           diffActions={{}}
           localContent={content}
-          highlightedCode={escapeHtml(content)}
-          originalHighlightedCode={escapeHtml(original)}
+          highlightedCode={highlightedCode}
+          originalHighlightedCode={originalHighlightedCode}
           handleChange={(e) => setContent(e.target.value)}
         />
       ) : (
         <CodeEditor
           localContent={content}
-          highlightedCode={escapeHtml(content)}
+          highlightedCode={highlightedCode}
           handleChange={(e) => setContent(e.target.value)}
           readOnly={readOnly}
           filePath="src/App.tsx"
