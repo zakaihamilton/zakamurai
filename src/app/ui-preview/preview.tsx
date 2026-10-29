@@ -6,6 +6,7 @@ import { highlightCodeSync } from '@/components/App/Views/EditorArea/highlightCl
 import Instructions from '@/components/App/Views/Instructions';
 import LogArea, { LogState } from '@/components/App/Views/LogArea';
 import Welcome from '@/components/App/Views/Welcome';
+import { PreviewDropdown, PreviewToolbar } from '@zakaihamilton/ui-preview-kit';
 import { useEffect, useState } from 'react';
 import { StateRoot } from 'triactor';
 import {
@@ -131,44 +132,39 @@ export default function Preview() {
       data-preview-ready={ready}
       className={`${styles.page} ${theme === 'light' ? 'light' : ''}`}
     >
-      <header className={styles.controls}>
-        <div>
-          <strong>UI preview · synthetic data</strong>
-          <p>Changes stay in memory. AI submission is disabled.</p>
-        </div>
-        <label>
-          Screen
-          <select
-            value={screen}
-            onChange={(e) => update(e.target.value as Screen, scenario, theme)}
-          >
-            {screens.map((item) => (
-              <option key={item}>{item}</option>
-            ))}
-          </select>
-        </label>
-        <label>
-          Scenario
-          <select
-            value={scenario}
-            onChange={(e) => update(screen, e.target.value as Scenario, theme)}
-          >
-            {scenarios.map((item) => (
-              <option key={item}>{item}</option>
-            ))}
-          </select>
-        </label>
-        <label>
-          Theme
-          <select
-            value={theme}
-            onChange={(e) => update(screen, scenario, e.target.value as 'dark' | 'light')}
-          >
-            <option>dark</option>
-            <option>light</option>
-          </select>
-        </label>
-      </header>
+      <PreviewToolbar
+        theme={theme}
+        subtitle="Synthetic data · local changes only"
+        note="AI submission is disabled. Changes stay in memory."
+      >
+        <PreviewDropdown
+          label="Screen"
+          value={screen}
+          options={screens.map((item) => ({
+            value: item,
+            label: item.replace(/-/g, ' ').replace(/\b\w/g, (letter) => letter.toUpperCase()),
+          }))}
+          onSelect={(value) => update(value as Screen, scenario, theme)}
+        />
+        <PreviewDropdown
+          label="Scenario"
+          value={scenario}
+          options={scenarios.map((item) => ({
+            value: item,
+            label: item.charAt(0).toUpperCase() + item.slice(1),
+          }))}
+          onSelect={(value) => update(screen, value as Scenario, theme)}
+        />
+        <PreviewDropdown
+          label="Theme"
+          value={theme}
+          options={[
+            { value: 'dark', label: 'Dark' },
+            { value: 'light', label: 'Light' },
+          ]}
+          onSelect={(value) => update(screen, scenario, value as 'dark' | 'light')}
+        />
+      </PreviewToolbar>
       <section
         onClickCapture={(event) => {
           if (event.target instanceof Element && event.target.closest('a')) event.preventDefault();

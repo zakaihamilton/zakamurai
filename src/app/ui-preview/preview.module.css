@@ -9,36 +9,6 @@
   color: var(--text-main);
 }
 
-.controls {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: end;
-  gap: 16px;
-  padding: 16px 24px;
-  background: var(--bg-panel);
-  border-bottom: 1px solid var(--border);
-}
-
-.controls p {
-  margin: 4px 0 0;
-  color: var(--text-muted);
-  font-size: 0.85rem;
-}
-
-.controls label {
-  display: grid;
-  gap: 4px;
-  font-size: 0.85rem;
-}
-
-.controls select {
-  color: var(--text-main);
-  background: var(--bg-input);
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  padding: 6px 10px;
-}
-
 .stage {
   flex: 1;
   min-height: 0;

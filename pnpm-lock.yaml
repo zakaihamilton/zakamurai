@@ -26,6 +26,9 @@ importers:
       '@mlc-ai/web-llm':
         specifier: 0.2.84
         version: 0.2.84
+      '@zakaihamilton/ui-preview-kit':
+        specifier: github:zakaihamilton/ui-preview-kit#v0.1.1
+        version: https://codeload.github.com/zakaihamilton/ui-preview-kit/tar.gz/e7c65cdedd160b20ffc2c742345de69a117cb818(react@19.2.4)
       almostnode:
         specifier: 0.2.14
         version: 0.2.14(@swc/helpers@0.5.23)(react@19.2.4)(rollup@4.60.4)(vite@7.3.7(@types/node@22.20.1)(jiti@2.7.0)(tsx@4.23.1)(yaml@2.9.0))
@@ -2625,6 +2628,13 @@ packages:
 
   '@xterm/xterm@6.0.0':
     resolution: {integrity: sha512-TQwDdQGtwwDt+2cgKDLn0IRaSxYu1tSUjgKarSDkUM0ZNiSRXFpjxEsvc/Zgc5kq5omJ+V0a8/kIM2WD3sMOYg==}
+
+  '@zakaihamilton/ui-preview-kit@https://codeload.github.com/zakaihamilton/ui-preview-kit/tar.gz/e7c65cdedd160b20ffc2c742345de69a117cb818':
+    resolution: {tarball: https://codeload.github.com/zakaihamilton/ui-preview-kit/tar.gz/e7c65cdedd160b20ffc2c742345de69a117cb818}
+    version: 0.1.1
+    hasBin: true
+    peerDependencies:
+      react: '>=19.0.0 <20'
 
   a-sync-waterfall@1.0.1:
     resolution: {integrity: sha512-RYTOHHdWipFUliRFMCS4X2Yn2X8M87V/OpSqWzKKOGhzqyUxzyVmhHDH9sAvG+ZuQf/TAOFsLCpMw09I1ufUnA==}
@@ -9576,6 +9586,10 @@ snapshots:
   '@xterm/addon-fit@0.11.0': {}
 
   '@xterm/xterm@6.0.0': {}
+
+  '@zakaihamilton/ui-preview-kit@https://codeload.github.com/zakaihamilton/ui-preview-kit/tar.gz/e7c65cdedd160b20ffc2c742345de69a117cb818(react@19.2.4)':
+    dependencies:
+      react: 19.2.4
 
   a-sync-waterfall@1.0.1: {}
 

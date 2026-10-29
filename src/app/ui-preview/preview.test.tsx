@@ -1,8 +1,19 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 import Preview from './preview';
 
 afterEach(() => window.history.replaceState(null, '', '/'));
+
+function choosePreviewDropdownOption(label: string, option: string) {
+  const trigger = screen
+    .getByText(label, { selector: '.ui-preview-dropdown__label' })
+    .closest('summary');
+  if (!trigger) throw new Error(`Could not find ${label} dropdown trigger`);
+  const dropdown = trigger.closest('details');
+  if (!dropdown) throw new Error(`Could not find ${label} dropdown`);
+  fireEvent.click(trigger);
+  fireEvent.click(within(dropdown).getByRole('button', { name: option }));
+}
 
 describe('UI preview', () => {
   it('loads URL fixtures and resets edits when switching screens', async () => {
@@ -10,9 +21,9 @@ describe('UI preview', () => {
     render(<Preview />);
     const editor = await screen.findByRole('textbox');
     fireEvent.change(editor, { target: { value: 'unsaved fixture' } });
-    fireEvent.change(screen.getByLabelText('Screen'), { target: { value: 'logs' } });
+    choosePreviewDropdownOption('Screen', 'Logs');
     expect(await screen.findByText('Preview ready.')).toBeTruthy();
-    fireEvent.change(screen.getByLabelText('Screen'), { target: { value: 'editor' } });
+    choosePreviewDropdownOption('Screen', 'Editor');
     await waitFor(() =>
       expect((screen.getByRole('textbox') as HTMLTextAreaElement).value).not.toBe(
         'unsaved fixture',
@@ -57,7 +68,7 @@ describe('workspace fixtures', () => {
     window.history.replaceState(null, '', '/ui-preview?screen=preview&scenario=empty');
     render(<Preview />);
     expect(await screen.findByText('No Preview Available')).toBeTruthy();
-    fireEvent.change(screen.getByLabelText('Scenario'), { target: { value: 'error' } });
+    choosePreviewDropdownOption('Scenario', 'Error');
     expect(screen.getByRole('alert')).toHaveTextContent('could not be built');
   });
 
@@ -74,7 +85,7 @@ describe('workspace fixtures', () => {
     render(<Preview />);
     expect(await screen.findByRole('heading', { name: 'AI Models' })).toBeTruthy();
     fireEvent.click(screen.getAllByRole('button', { name: 'Close dialog' })[0]);
-    fireEvent.change(screen.getByLabelText('Screen'), { target: { value: 'download' } });
+    choosePreviewDropdownOption('Screen', 'Download');
     expect(await screen.findByRole('heading', { name: 'Download local AI model?' })).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Download and build' }));
     expect(screen.queryByRole('heading', { name: 'Download local AI model?' })).toBeNull();

@@ -74,6 +74,7 @@
   "dependencies": {
     "@huggingface/transformers": "4.2.0",
     "@mlc-ai/web-llm": "0.2.84",
+    "@zakaihamilton/ui-preview-kit": "github:zakaihamilton/ui-preview-kit#v0.1.1",
     "almostnode": "0.2.14",
     "esbuild-wasm": "0.28.1",
     "next": "16.4.1",
