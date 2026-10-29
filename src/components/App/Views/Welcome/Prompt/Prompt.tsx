@@ -3,13 +3,13 @@ import { RECOMMENDED_WEB_LLM_MODEL, WEB_LLM_MODELS } from '@/components/AI/WebLL
 import { WebLLMState } from '@/components/AI/WebLLMState';
 import { PromptUiState } from '@/components/App/Panes/Prompt/PromptState';
 import { LogState } from '@/components/App/Views/LogArea';
-import Dialog from '@/components/ui/Dialog';
 import { Icons } from '@/components/ui/Icons';
 import Select from '@/components/ui/Select';
 import Tooltip from '@/components/ui/Tooltip';
 import type React from 'react';
 import { useCallback, useState } from 'react';
 import { requireStore } from '../../../types';
+import DownloadConfirmation from './DownloadConfirmation';
 import styles from './Prompt.module.css';
 
 export default function WelcomePrompt() {
@@ -143,12 +143,9 @@ export default function WelcomePrompt() {
           Runs locally in your browser. Your project stays on this device.
         </p>
       </form>
-      <Dialog
+      <DownloadConfirmation
         isOpen={isDownloadConfirmationOpen}
-        title="Download local AI model?"
-        message={`${selectedModelInfo.name} is about ${selectedModelInfo.storageMB.toLocaleString()} MB. It downloads to this browser and runs locally on this device.`}
-        confirmText="Download and build"
-        cancelText="Cancel"
+        model={selectedModelInfo}
         onCancel={() => setDownloadConfirmationOpen(false)}
         onConfirm={() => {
           setDownloadConfirmationOpen(false);

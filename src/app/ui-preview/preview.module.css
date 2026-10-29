@@ -1,0 +1,135 @@
+.page {
+  min-height: 100vh;
+  background: var(--bg-base);
+  color: var(--text-main);
+}
+
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 16px;
+  padding: 16px 24px;
+  background: var(--bg-panel);
+  border-bottom: 1px solid var(--border);
+}
+
+.controls p {
+  margin: 4px 0 0;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.controls label {
+  display: grid;
+  gap: 4px;
+  font-size: 0.85rem;
+}
+
+.controls select {
+  color: var(--text-main);
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 6px 10px;
+}
+
+.stage {
+  min-height: calc(100vh - 90px);
+  display: flex;
+  flex-direction: column;
+  overflow: auto;
+}
+
+.editor {
+  flex: 1;
+  overflow: auto;
+  background: var(--bg-base);
+}
+
+.fileName {
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-muted);
+}
+
+.fixtureColumn {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 500px;
+  overflow: hidden;
+}
+
+.workspace {
+  display: flex;
+  flex: 1;
+  min-height: 500px;
+  overflow: hidden;
+}
+
+.agent {
+  display: flex;
+  flex-direction: column;
+  width: min(100%, 480px);
+  min-height: 500px;
+  border-right: 1px solid var(--border);
+  background: var(--bg-panel);
+}
+
+.previewCanvas {
+  display: grid;
+  place-items: center;
+  flex: 1;
+  padding: 24px;
+  background: #dfe3e8;
+}
+
+.examplePage {
+  width: min(600px, 100%);
+  min-height: 300px;
+  padding: 48px;
+  background: white;
+  color: #202532;
+}
+
+.fixtureNotice {
+  padding: 32px;
+}
+
+.fixtureNotice button {
+  padding: 8px 12px;
+  color: var(--text-main);
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+}
+
+@media (width <= 700px) {
+  .workspace {
+    overflow-x: auto;
+  }
+
+  .workspace > div {
+    min-width: 360px;
+  }
+}
+
+.workspaceShell {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 500px;
+}
+
+.workspaceHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 54px;
+  padding: 0 16px;
+  background: var(--bg-panel);
+  border-bottom: 1px solid var(--border);
+}

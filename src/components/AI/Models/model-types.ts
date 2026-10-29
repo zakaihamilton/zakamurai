@@ -25,6 +25,7 @@ export type ModelOption = {
 export type ModelSelectOption = SelectOption;
 
 export type ModelManagerProps = {
+  capabilityOverride?: import('@/contracts/capabilities').DeviceCapabilityReport;
   isOpen: boolean;
   selectedModelId: string;
   cachedModelIds?: string[];
