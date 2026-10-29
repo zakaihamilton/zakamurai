@@ -136,7 +136,7 @@
 .sideBySideActive {
   background: var(--bg-hover);
   border-color: var(--accent) !important;
-  color: var(--accent) !important;
+  color: var(--text-main) !important;
 }
 
 @media (width <= 768px) {

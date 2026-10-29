@@ -9,6 +9,7 @@
   },
   "scripts": {
     "dev": "tsx scripts/dev-isolated.ts",
+    "dev:ui-preview": "next dev -H 127.0.0.1 -p 3217",
     "dev:ide": "next dev --webpack",
     "dev:same-origin": "next dev --webpack",
     "dev:isolated": "tsx scripts/dev-isolated.ts",
@@ -35,10 +36,10 @@
     "test:e2e:isolated:webkit": "pnpm exec playwright test --config=playwright.isolated.config.ts --project=webkit",
     "test:e2e:chromium": "pnpm run test:e2e",
     "test:visual": "pnpm run test:visual:chromium && pnpm run test:visual:webkit && pnpm exec playwright test tests/visual/accessibility.spec.ts",
-    "test:visual:chromium": "pnpm exec playwright test --project=chromium tests/visual/regression.spec.ts",
-    "test:visual:webkit": "pnpm exec playwright test --project=webkit tests/visual/regression.spec.ts",
+    "test:visual:chromium": "pnpm exec playwright test --project=chromium tests/visual/regression.spec.ts tests/visual/ui-preview.spec.ts",
+    "test:visual:webkit": "pnpm exec playwright test --project=webkit tests/visual/regression.spec.ts tests/visual/ui-preview.spec.ts",
     "test:visual:regression": "pnpm run test:visual:chromium",
-    "test:visual:update": "pnpm exec playwright test tests/visual/regression.spec.ts --update-snapshots=all",
+    "test:visual:update": "pnpm exec playwright test tests/visual/regression.spec.ts tests/visual/ui-preview.spec.ts --update-snapshots=all",
     "setup:almostnode": "tsx scripts/runtime-assets.ts --almostnode",
     "setup:wasm": "tsx scripts/runtime-assets.ts --wasm",
     "setup:playwright": "if [ -z \"$VERCEL\" ]; then playwright install chromium webkit; fi",
@@ -67,7 +68,7 @@
     "health:licenses": "license-checker --json",
     "health:documentation": "markdownlint-cli2 \"**/*.md\" \"#node_modules\" \"#test-results\" \"#.next\" \"#coverage\" \"#.repnix\"",
     "health:a11y": "pnpm exec playwright test --project=chromium tests/visual/accessibility.spec.ts",
-    "health:visual": "pnpm exec playwright test --project=chromium tests/visual/regression.spec.ts",
+    "health:visual": "pnpm exec playwright test --project=chromium tests/visual/regression.spec.ts tests/visual/ui-preview.spec.ts",
     "health:interactions": "vitest run src/components/App/Panes/Prompt/Reasoning/Reasoning.test.tsx"
   },
   "dependencies": {

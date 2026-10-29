@@ -93,6 +93,8 @@ If these variables are omitted on a `*.vercel.app` deployment, Zakamurai uses a 
 
 ## Development
 
+For isolated, fixture-driven visual review without a project or model download, see [UI preview](./docs/ui-preview.md).
+
 The main quality gate mirrors CI and checks formatting, linting, architecture, types, tests, builds, performance budgets, preview security, visual regressions, and dependency advisories:
 
 ```bash

@@ -11,6 +11,7 @@ import { modelValues } from './modelUtils';
 
 export default function ModelManager({
   isOpen,
+  capabilityOverride,
   selectedModelId,
   cachedModelIds = [],
   onCancel,
@@ -22,9 +23,14 @@ export default function ModelManager({
   const [searchTerm, setSearchTerm] = useState('');
   const [sort, setSort] = useState<ModelSortState>(null);
   const [modelPendingRemoval, setModelPendingRemoval] = useState<ModelOption | null>(null);
-  const { capabilityReport, isChecking, refreshCapabilities } = useDeviceCapabilities({
-    enabled: isOpen,
+  const {
+    capabilityReport: detectedCapabilities,
+    isChecking,
+    refreshCapabilities,
+  } = useDeviceCapabilities({
+    enabled: isOpen && !capabilityOverride,
   });
+  const capabilityReport = capabilityOverride ?? detectedCapabilities;
 
   const visibleModels = useMemo(() => {
     const query = searchTerm.trim().toLocaleLowerCase();
@@ -86,7 +92,9 @@ export default function ModelManager({
                 </strong>
                 <button
                   type="button"
-                  onClick={() => void refreshCapabilities()}
+                  onClick={() => {
+                    if (!capabilityOverride) void refreshCapabilities();
+                  }}
                   disabled={isChecking}
                 >
                   {isChecking ? 'Checking…' : 'Recheck'}
