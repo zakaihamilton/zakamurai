@@ -25,6 +25,7 @@ test('fixture views are selectable and do not persist edits', async ({ page }) =
 
 test('welcome submission does not start a model download', async ({ page }) => {
   await page.goto('/ui-preview?screen=welcome');
+  await expect(page.locator('[data-preview-ready="true"]')).toBeVisible();
   await page.getByRole('textbox', { name: 'Describe what you want to build' }).fill('Build a demo');
   await page.getByRole('button', { name: 'Start building with AI' }).click();
   await expect(page.getByRole('heading', { name: 'Download local AI model?' })).toHaveCount(0);

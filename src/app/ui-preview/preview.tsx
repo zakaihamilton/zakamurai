@@ -100,6 +100,7 @@ function initialValue<T extends string>(key: string, allowed: readonly T[], fall
 }
 
 export default function Preview() {
+  const [ready, setReady] = useState(false);
   const [screen, setScreen] = useState<Screen>('welcome');
   const [scenario, setScenario] = useState<Scenario>('populated');
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
@@ -107,6 +108,7 @@ export default function Preview() {
     setScreen(initialValue('screen', screens, 'welcome'));
     setScenario(initialValue('scenario', scenarios, 'populated'));
     setTheme(initialValue('theme', ['dark', 'light'] as const, 'dark'));
+    setReady(true);
   }, []);
   useEffect(() => {
     const hadLightTheme = document.body.classList.contains('light');
@@ -127,7 +129,10 @@ export default function Preview() {
     window.history.replaceState(null, '', `?${params}`);
   };
   return (
-    <main className={`${styles.page} ${theme === 'light' ? 'light' : ''}`}>
+    <main
+      data-preview-ready={ready}
+      className={`${styles.page} ${theme === 'light' ? 'light' : ''}`}
+    >
       <header className={styles.controls}>
         <div>
           <strong>UI preview · synthetic data</strong>
