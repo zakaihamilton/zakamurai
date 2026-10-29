@@ -19,13 +19,5 @@ jobs:
       - run: pnpm install --frozen-lockfile --ignore-scripts
       - run: pnpm run setup:almostnode && pnpm run setup:wasm
       - run: pnpm exec playwright install --with-deps chromium webkit
-      - name: Refresh Linux preview baselines
-        run: pnpm exec playwright test tests/visual/ui-preview.spec.ts --grep 'UI preview visual regression' --update-snapshots=all --workers=1
-      - name: Upload Linux baselines
-        uses: actions/upload-artifact@v4
-        with:
-          name: ui-preview-linux-baselines-final
-          path: tests/visual/ui-preview.spec.ts-snapshots/*-linux.png
-          if-no-files-found: error
       - name: Verify checked-in preview baselines
         run: pnpm exec playwright test tests/visual/ui-preview.spec.ts --workers=1
