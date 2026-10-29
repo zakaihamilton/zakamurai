@@ -65,11 +65,6 @@ test('diff and preview error fixtures have no serious accessibility violations',
 });
 
 test.describe('UI preview visual regression', () => {
-  // Linux baselines must be generated on the CI platform before enabling these snapshots there.
-  test.skip(
-    process.platform !== 'darwin' && process.env.UPDATE_UI_PREVIEW_SNAPSHOTS !== '1',
-    'UI preview screenshot baselines are available on macOS only',
-  );
   const cases = [
     { screen: 'workspace', scenario: 'populated', theme: 'dark' },
     { screen: 'diff', scenario: 'populated', theme: 'dark' },

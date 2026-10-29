@@ -24,4 +24,4 @@ The workspace is a composition of production components with a fixture shell, no
 
 ## Visual regression
 
-The standard visual commands exercise the preview's workspace, diff, agent-error and preview-error fixtures in Chromium and WebKit. macOS baselines are checked in. Linux screenshot checks are temporarily skipped because Linux baselines have not yet been generated; the interaction and accessibility tests still run there. On a Linux CI-equivalent host, generate them with `UPDATE_UI_PREVIEW_SNAPSHOTS=1 pnpm exec playwright test tests/visual/ui-preview.spec.ts --update-snapshots=all`, review the images, remove the platform skip, and rerun without the update flag.
+The standard visual commands exercise the preview's workspace, diff, agent-error and preview-error fixtures in Chromium and WebKit. Linux and macOS baselines are checked in. Generate or update snapshots on the target platform with `pnpm run test:visual:update`, review the images, and rerun the visual checks without the update flag.
