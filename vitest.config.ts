@@ -10,7 +10,7 @@ export default defineConfig({
     environment: 'jsdom',
     globals: true,
     setupFiles: ['./src/setupTests.ts'],
-    server: { deps: { inline: ['@zakaihamilton/ui-preview-kit'] } },
+    server: { deps: { inline: ['ui-preview-kit'] } },
     exclude: [
       '**/node_modules/**',
       '**/dist/**',

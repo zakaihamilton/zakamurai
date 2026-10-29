@@ -6,9 +6,9 @@ import { highlightCodeSync } from '@/components/App/Views/EditorArea/highlightCl
 import Instructions from '@/components/App/Views/Instructions';
 import LogArea, { LogState } from '@/components/App/Views/LogArea';
 import Welcome from '@/components/App/Views/Welcome';
-import { PreviewDropdown, PreviewToolbar } from '@zakaihamilton/ui-preview-kit';
 import { useEffect, useState } from 'react';
 import { StateRoot } from 'triactor';
+import { PreviewDropdown, PreviewToolbar } from 'ui-preview-kit';
 import {
   AgentFixture,
   DiffFixture,
