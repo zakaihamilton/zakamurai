@@ -2,6 +2,7 @@
 
 import { WebLLMState } from '@/components/AI/WebLLMState';
 import CodeEditor from '@/components/App/Views/EditorArea/CodeEditor';
+import { highlightCodeSync } from '@/components/App/Views/EditorArea/highlightClient';
 import Instructions from '@/components/App/Views/Instructions';
 import LogArea, { LogState } from '@/components/App/Views/LogArea';
 import Welcome from '@/components/App/Views/Welcome';
@@ -82,10 +83,7 @@ function Fixture({
       <div className={styles.fileName}>src/App.tsx · synthetic file</div>
       <CodeEditor
         localContent={content}
-        highlightedCode={content
-          .replaceAll('&', '&amp;')
-          .replaceAll('<', '&lt;')
-          .replaceAll('>', '&gt;')}
+        highlightedCode={highlightCodeSync(content, 'src/App.tsx', {})}
         handleChange={(event) => setContent(event.target.value)}
         filePath="src/App.tsx"
       />
