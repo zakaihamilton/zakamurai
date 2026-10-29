@@ -25,6 +25,7 @@ export default function PromptComposer({
     <form onSubmit={onSubmit} className={styles.form}>
       <div className={styles.composer}>
         <textarea
+          aria-label="Message the AI Manager"
           value={value}
           onChange={onChange}
           onKeyDown={onKeyDown}

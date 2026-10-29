@@ -142,5 +142,22 @@
 @media (width <= 768px) {
   .editorHeader {
     padding: 12px 16px;
+    flex-wrap: wrap;
+  }
+
+  .headerTitle {
+    flex-basis: 100%;
+  }
+
+  .headerActions {
+    flex-wrap: wrap;
+    gap: 6px;
+    min-width: 0;
+  }
+
+  .diffHeaderToolbar {
+    flex-wrap: wrap;
+    gap: 6px;
+    max-width: 100%;
   }
 }

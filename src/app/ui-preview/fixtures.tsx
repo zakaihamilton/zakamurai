@@ -227,7 +227,7 @@ export function ModelsFixture({ scenario }: { scenario: Scenario }) {
           hardwareConcurrency: 8,
           storageUsageMB: 0,
           storageQuotaMB: 4096,
-          recommendedModelId: RECOMMENDED_WEB_LLM_MODEL.id,
+          recommendedModelId: scenario === 'error' ? null : RECOMMENDED_WEB_LLM_MODEL.id,
           reasons: ['Synthetic device report'],
           checkedAt: 0,
         }}

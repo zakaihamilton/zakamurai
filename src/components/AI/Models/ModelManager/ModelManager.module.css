@@ -74,6 +74,14 @@
   padding-left: 18px;
 }
 
+.tableScrollHint {
+  display: none;
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
 .modelManagerStatus {
   border: 1px solid var(--border-light);
   border-radius: 6px;
@@ -91,6 +99,10 @@
 }
 
 @media (width <= 768px) {
+  .tableScrollHint {
+    display: block;
+  }
+
   .modelDialog {
     width: calc(100vw - 24px);
     max-width: calc(100vw - 24px);

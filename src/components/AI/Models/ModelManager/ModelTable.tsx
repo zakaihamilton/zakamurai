@@ -15,7 +15,8 @@ export default function ModelTable({
   onRequestUncache,
 }: ModelTableProps) {
   return (
-    <div className={styles.modelTableWrap}>
+    // biome-ignore lint/a11y/noNoninteractiveTabindex: the scrollable table needs keyboard access.
+    <section className={styles.modelTableWrap} aria-label="AI models" tabIndex={0}>
       <table className={styles.modelTable}>
         <thead>
           <tr>
@@ -96,6 +97,6 @@ export default function ModelTable({
           )}
         </tbody>
       </table>
-    </div>
+    </section>
   );
 }

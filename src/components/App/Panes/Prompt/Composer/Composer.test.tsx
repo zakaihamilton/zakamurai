@@ -51,7 +51,7 @@ describe('PromptComposer', () => {
         isOpen={true}
       />,
     );
-    expect(screen.getByPlaceholderText('Tell the AI Manager what to do...')).toBeDefined();
+    expect(screen.getByRole('textbox', { name: 'Message the AI Manager' })).toBeDefined();
   });
 
   it('shows stop button when AI processing', () => {
