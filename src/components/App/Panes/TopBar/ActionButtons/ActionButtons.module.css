@@ -146,7 +146,7 @@
   }
 }
 
-@media (width <= 380px) {
+@media (width <= 400px) {
   .actionGroups {
     gap: 4px;
   }

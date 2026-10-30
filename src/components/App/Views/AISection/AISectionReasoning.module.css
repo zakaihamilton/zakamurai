@@ -46,6 +46,7 @@
   flex-direction: column;
   gap: 16px;
   container-type: size;
+  container-name: visual-reasoning;
 }
 
 .runOverview {
@@ -53,6 +54,7 @@
   grid-template-columns: minmax(180px, 0.72fr) minmax(220px, 0.95fr) repeat(4, minmax(86px, 1fr));
   gap: 10px;
   align-items: stretch;
+  min-width: 0;
   padding: 10px;
   border: 1px solid color-mix(in srgb, var(--accent) 22%, var(--border-light));
   border-radius: 14px;
@@ -121,20 +123,21 @@
 }
 
 .runStatus strong {
+  min-width: 0;
   color: var(--text-main);
   font-size: 15px;
   line-height: 1.2;
+  overflow-wrap: anywhere;
 }
 
 .runRequest {
   display: block;
-  max-width: 260px;
+  max-width: 100%;
+  min-width: 0;
   margin-top: 4px;
-  overflow: hidden;
   color: var(--text-muted);
   font-size: 11px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
 }
 
 .runExecution {
@@ -189,9 +192,7 @@
 .runExecutionTitle,
 .runExecutionDetail {
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
 }
 
 .runExecutionTitle {
@@ -208,6 +209,8 @@
 
 .runExecutionOutcome {
   flex: 0 0 auto;
+  min-width: 0;
+  max-width: 100%;
   border: 1px solid var(--border-light);
   border-radius: 999px;
   padding: 4px 7px;
@@ -217,6 +220,9 @@
   font-weight: 800;
   letter-spacing: 0.04em;
   text-transform: uppercase;
+  overflow-wrap: anywhere;
+  text-align: center;
+  white-space: normal;
 }
 
 .runExecutionOutcomerunning {
@@ -257,25 +263,23 @@
 }
 
 .metricGrid dt {
-  overflow: hidden;
+  min-width: 0;
   color: var(--text-muted);
   font-size: 9px;
   font-weight: 800;
-  text-overflow: ellipsis;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
 }
 
 .metricGrid dd {
+  min-width: 0;
   margin: 0;
-  overflow: hidden;
   color: var(--text-main);
   font-family: var(--font-mono, monospace);
   font-size: 12px;
   font-weight: 700;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
 }
 
 .visualRunDetails {
@@ -1580,15 +1584,32 @@
   box-shadow: 0 2px 0 var(--accent-glow);
 }
 
-@media (width <= 760px) {
+@container visual-reasoning (width <= 815px) {
   .runOverview {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .metricGrid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 7px;
+  }
+}
+
+@container visual-reasoning (width <= 520px) {
+  .runExecution {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .runExecutionOutcome {
+    grid-column: 2;
+    justify-self: start;
+  }
+}
+
+@container visual-reasoning (width < 400px) {
+  .metricGrid {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
@@ -1607,15 +1628,6 @@
   }
 
   .executionStatus {
-    justify-self: start;
-  }
-
-  .runExecution {
-    grid-template-columns: auto minmax(0, 1fr);
-  }
-
-  .runExecutionOutcome {
-    grid-column: 2;
     justify-self: start;
   }
 

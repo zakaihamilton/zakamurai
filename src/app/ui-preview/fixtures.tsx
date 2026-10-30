@@ -1,10 +1,16 @@
 'use client';
 
+import { applyManagerPlan, createRunningAgentActivity } from '@/components/AI/Agent/AgentActivity';
 import ModelManager from '@/components/AI/Models/ModelManager';
 import { computeDiff } from '@/components/AI/Processor/utils/DiffEngine';
 import { RECOMMENDED_WEB_LLM_MODEL } from '@/components/AI/WebLLMModels';
+import type { ManagerPlan } from '@/components/AI/types';
 import { AppState } from '@/components/App/AppState';
-import { AgentSessionState, createAgentSession } from '@/components/App/Panes/Prompt/AgentSessions';
+import {
+  AgentSessionState,
+  createAgentRunUsage,
+  createAgentSession,
+} from '@/components/App/Panes/Prompt/AgentSessions';
 import PromptComposer from '@/components/App/Panes/Prompt/Composer/Composer';
 import ReasoningPanel from '@/components/App/Panes/Prompt/Reasoning/Reasoning';
 import SessionManager from '@/components/App/Panes/Prompt/Session/SessionManager';
@@ -15,6 +21,8 @@ import TabBar, { TabState } from '@/components/App/Panes/TabBar/TabBar';
 import ActionButtons from '@/components/App/Panes/TopBar/ActionButtons/ActionButtons';
 import Breadcrumb from '@/components/App/Panes/TopBar/Breadcrumb/Breadcrumb';
 import { PreviewState } from '@/components/App/PreviewState';
+import AISectionReasoning from '@/components/App/Views/AISection/AISectionReasoning';
+import type { ReasoningGroup } from '@/components/App/Views/AISection/AISectionReasoning';
 import CodeEditor from '@/components/App/Views/EditorArea/CodeEditor';
 import EditorHeader from '@/components/App/Views/EditorArea/EditorHeader';
 import SideBySideEditorView from '@/components/App/Views/EditorArea/SideBySideEditorView';
@@ -28,13 +36,113 @@ import PreviewToolbar from '@/components/App/Views/PreviewArea/Toolbar/Toolbar';
 import DownloadConfirmation from '@/components/App/Views/Welcome/Prompt/DownloadConfirmation';
 import { storageFailureMessage } from '@/components/Storage/StorageHealth';
 import { Notification, NotificationState } from '@/components/ui/Notification/Notification';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import styles from './preview.module.css';
 
 export type Scenario = 'populated' | 'empty' | 'error';
 const original = 'export default function App() {\n  return <h1>Hello, world!</h1>;\n}\n';
 const modified = 'export default function App() {\n  return <h1>Welcome to our app!</h1>;\n}\n';
 const noop = () => {};
+
+export function AIReasoningFixture() {
+  const contentRef = useRef<HTMLDivElement>(null);
+  const request = `Build a responsive workspace overview with readable run status, execution details, and metrics at every pane width. Preserve the current visual design and keep this unusually long request visible: ${'responsive-layout-'.repeat(12)}`;
+  const plan: ManagerPlan = {
+    intent: 'edit',
+    modelRequired: true,
+    confidence: 'high',
+    steps: [
+      {
+        kind: 'tool',
+        tool: 'read_file',
+        reason: 'Inspect the existing workspace and its current spacing rules.',
+      },
+      {
+        kind: 'model',
+        task: 'generate-changes',
+        reason: 'Prepare a layout adjustment that remains clear in a narrow pane.',
+      },
+      {
+        kind: 'tool',
+        tool: 'validate',
+        reason: 'Check that the updated files fit the intended screen widths.',
+      },
+    ],
+  };
+  const baseActivity = applyManagerPlan(createRunningAgentActivity(request, 1), plan);
+  const activity = {
+    ...baseActivity,
+    durationMs: 42_600,
+    currentPhase: 'work' as const,
+    currentNodeId: 'plan-0',
+    nodes: baseActivity.nodes.map((node) => ({
+      ...node,
+      timestamp: '10:00:00',
+      ...(node.id === 'request' ? { detail: request } : {}),
+      ...(node.id === 'plan-0'
+        ? {
+            status: 'active' as const,
+            detail: `Reading the existing files and tracing their layout behavior across resizable panes. ${'pane-width-'.repeat(10)}`,
+          }
+        : {}),
+    })),
+  };
+  const activeSession = {
+    ...createAgentSession({ name: 'Run overview fixture' }),
+    id: 'run-overview-fixture',
+    createdAt: 1,
+    updatedAt: 1,
+    status: 'running',
+    messages: [{ id: 1, role: 'user', text: request, timestamp: '10:00:00' }],
+    runUsage: {
+      ...createAgentRunUsage(),
+      modelIds: [RECOMMENDED_WEB_LLM_MODEL.id],
+      requestedModelIds: [RECOMMENDED_WEB_LLM_MODEL.id],
+      modelCalls: 3,
+      outcomes: { success: 2, error: 0, aborted: 0 },
+      totalMs: 42_600,
+      toolCalls: { read_file: 2, validate: 1 },
+      finalValidationStatus: 'passed' as const,
+    },
+  };
+  const reasoningGroups: ReasoningGroup[] = [
+    {
+      step: null,
+      entries: [
+        { text: '**Routing:** preparing a small workspace layout update.', timestamp: '10:00:00' },
+      ],
+    },
+    {
+      step: 1,
+      entries: [
+        {
+          text: 'Reviewing the existing pane dimensions and spacing.',
+          timestamp: '10:00:01',
+          input: 'Inspect the layout styles.',
+          output: 'The run overview has a minimum width larger than its pane.',
+        },
+      ],
+    },
+  ];
+
+  return (
+    <div className={styles.reasoning}>
+      <AISectionReasoning
+        activeSession={activeSession}
+        reasoningGroups={reasoningGroups}
+        activity={activity}
+        timelineExpanded={false}
+        viewType="visual"
+        runUsageSummary="## Synthetic run details\n\nThis fixture uses local data and does not start AI inference."
+        latestError=""
+        fallbackContent="No run activity is available."
+        content="Synthetic run overview fixture."
+        contentRef={contentRef}
+        autoScroll={false}
+      />
+    </div>
+  );
+}
 
 export function DiffFixture({ scenario }: { scenario: Scenario }) {
   const [content, setContent] = useState(scenario === 'empty' ? original : modified);
