@@ -1,12 +1,16 @@
 import type { AgentEvent } from '@/components/AI/types';
 import { AppState } from '@/components/App/AppState';
+import { PreviewState } from '@/components/App/PreviewState';
+import { ChangeSetState } from '@/components/Workspace';
 import { makeAgentSession } from '@/test-utils/agentSessionMocks';
 import { createMockEditorState, createMockTab } from '@/test-utils/editorMocks';
 import { makeFileSystemApi } from '@/test-utils/fsMocks';
 import {
   makeAgentSessionState,
   makeAppState,
+  makeChangeSetState,
   makeLogState,
+  makePreviewState,
   makePromptUiState,
   makeSidebarState,
   makeTabState,
@@ -48,7 +52,7 @@ const {
 });
 
 vi.mock('@/components/Workspace', () => ({
-  ChangeSetState: { usePassiveState: () => ({}) },
+  ChangeSetState: { usePassiveState: vi.fn() },
   getWorkspaceIndex: () => ({ queryText: vi.fn().mockResolvedValue([]) }),
 }));
 
@@ -57,7 +61,7 @@ vi.mock('@/components/App/AppState', () => ({
 }));
 
 vi.mock('@/components/App/PreviewState', () => ({
-  PreviewState: { usePassiveState: vi.fn(() => ({})) },
+  PreviewState: { usePassiveState: vi.fn() },
 }));
 
 vi.mock('@/components/AI/Agent', () => ({
@@ -298,6 +302,8 @@ describe('useAgentRunner', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(AppState.usePassiveState).mockReturnValue(makeAppState());
+    vi.mocked(ChangeSetState.usePassiveState).mockReturnValue(makeChangeSetState());
+    vi.mocked(PreviewState.usePassiveState).mockReturnValue(makePreviewState());
     applyAgentChanges.mockReturnValue({ applied: 0, deletions: [], changeSet: null });
     runAgent.mockResolvedValue({
       summary: 'single done',

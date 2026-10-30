@@ -62,8 +62,8 @@ describe('WorkspaceIndexer', () => {
     mockUseFileSystem.mockReturnValue({
       isReady: true,
       version: 1,
-      mode: 'sandbox',
-      rootHandle: null,
+      mode: 'local',
+      rootHandle: {} as FileSystemDirectoryHandle,
     } as never);
     mockEditorState.mockReturnValue({
       fileContents: { 'src/index.js': 'console.log("hello");' },
@@ -137,11 +137,8 @@ describe('WorkspaceIndexer', () => {
     renderHook(() => useWorkspaceIndexer());
     await flushIndex(() => expect(workspaceController.getHealth).toHaveBeenCalledOnce());
 
-    expect(collectWorkspaceFiles).toHaveBeenCalledWith(
-      { mode: 'local', rootHandle: null },
-      {},
-      expect.any(Object),
-    );
+    expect(collectWorkspaceFiles).not.toHaveBeenCalled();
+    expect(workspaceController.applyFileChanges).not.toHaveBeenCalled();
   });
 
   it('debounces rerenders before indexing the latest snapshot', async () => {
@@ -162,16 +159,27 @@ describe('WorkspaceIndexer', () => {
     ]);
   });
 
-  it('reuses the editor snapshot after the first disk scan and removes deleted paths', async () => {
+  it('rescans after the filesystem version changes and removes deleted paths', async () => {
+    const fs = {
+      isReady: true,
+      version: 1,
+      mode: 'local',
+      rootHandle: {} as FileSystemDirectoryHandle,
+    };
+    mockUseFileSystem.mockReturnValue(fs as never);
+    collectWorkspaceFiles
+      .mockResolvedValueOnce({ 'src/index.js': 'console.log("hello");' })
+      .mockResolvedValueOnce({});
     const { rerender } = renderHook(() => useWorkspaceIndexer());
     await flushIndex(() => expect(workspaceController.getHealth).toHaveBeenCalledOnce());
     workspaceController.applyFileChanges.mockClear();
 
     mockEditorState.mockReturnValue({ fileContents: {} } as never);
+    mockUseFileSystem.mockReturnValue({ ...fs, version: 2 } as never);
     rerender();
     await flushIndex(() => expect(workspaceController.applyFileChanges).toHaveBeenCalled());
 
-    expect(collectWorkspaceFiles).toHaveBeenCalledOnce();
+    expect(collectWorkspaceFiles).toHaveBeenCalledTimes(2);
     expect(workspaceController.applyFileChanges).toHaveBeenCalledWith([
       { path: 'src/index.js', deleted: true },
     ]);

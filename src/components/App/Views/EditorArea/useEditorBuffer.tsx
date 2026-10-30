@@ -1,7 +1,7 @@
 import { DEFAULT_CONTENTS, SCRATCH_CONTENTS } from '@/components/Storage/InitialData';
-import { computeDiff } from '@/components/AI/Processor/utils/DiffEngine';
 import Settings from '@/components/Storage/Settings';
 import type { EditorAreaUiStateShape } from '@/types/domain-types';
+import { deleteInDraft } from '@/utils/StateUtils';
 import { formatCode } from '@/utils/formatter';
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 import useCodeFolding from './CodeFolding';
@@ -155,13 +155,8 @@ export default function useEditorBuffer({
           history[filePath] = { ...history[filePath], future: [] };
           draft.history = history;
         }
-        const pendingDiff = draft.pendingDiffs?.[filePath];
-        if (pendingDiff) {
-          const { diffs } = computeDiff(pendingDiff.originalContent, nextContent);
-          draft.pendingDiffs = {
-            ...draft.pendingDiffs,
-            [filePath]: { ...pendingDiff, modifiedContent: nextContent, diffs },
-          };
+        if (draft.pendingDiffs?.[filePath]) {
+          deleteInDraft(draft, ['pendingDiffs'], filePath);
         }
         accepted = true;
       });

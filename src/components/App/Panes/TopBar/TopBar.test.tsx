@@ -8,7 +8,7 @@ import { EditorState } from '@/components/App/Views/EditorArea';
 import { LogState } from '@/components/App/Views/LogArea';
 import { SCRATCH_CONTENTS, SCRATCH_FILES } from '@/components/Storage/InitialData';
 import Settings from '@/components/Storage/Settings';
-import { ChangeSetState } from '@/components/Workspace';
+import { ChangeSetState, ProblemsState, WorkspaceHealthState } from '@/components/Workspace';
 import { createMockEditorState } from '@/test-utils/editorMocks';
 import {
   makeAgentSessionState,
@@ -16,10 +16,12 @@ import {
   makeChangeSetState,
   makeLogState,
   makePreviewState,
+  makeProblemsState,
   makePromptState,
   makePromptUiState,
   makeSidebarState,
   makeTabState,
+  makeWorkspaceHealthState,
 } from '@/test-utils/stateMocks';
 import { fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
@@ -118,6 +120,12 @@ vi.mock('@/components/Workspace', () => ({
   ChangeSetState: {
     usePassiveState: vi.fn(),
   },
+  ProblemsState: {
+    usePassiveState: vi.fn(),
+  },
+  WorkspaceHealthState: {
+    usePassiveState: vi.fn(),
+  },
 }));
 
 describe('TopBar', () => {
@@ -141,6 +149,8 @@ describe('TopBar', () => {
     );
     vi.mocked(PromptUiState.usePassiveState).mockReturnValue(makePromptUiState());
     vi.mocked(ChangeSetState.usePassiveState).mockReturnValue(makeChangeSetState());
+    vi.mocked(ProblemsState.usePassiveState).mockReturnValue(makeProblemsState());
+    vi.mocked(WorkspaceHealthState.usePassiveState).mockReturnValue(makeWorkspaceHealthState());
   });
 
   function setupCommonMocks({
@@ -257,6 +267,7 @@ describe('TopBar', () => {
         { id: 'preview', type: 'preview', label: 'Preview' },
       ],
       activeTabId: 'src/App.js',
+      lastCodeTabId: 'src/App.js',
     });
     setupCommonMocks({ projectName: 'Test Project', tabState });
 

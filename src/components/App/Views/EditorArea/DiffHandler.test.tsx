@@ -118,7 +118,7 @@ describe('DiffHandler', () => {
     });
 
     expect(state.pendingDiffs['a.js']).toBeUndefined();
-    expect(fs.writeFileAtPath).toHaveBeenCalledWith('a.js', 'next');
+    expect(fs.writeFileAtPath).toHaveBeenCalledWith('a.js', 'next', fs.rootHandle);
   });
 
   it('keeps a pending diff when the mounted filesystem rejects the write', async () => {
@@ -179,7 +179,7 @@ describe('DiffHandler', () => {
     expect(setLocalContent).toHaveBeenCalledWith('old');
     expect(state.fileContents['a.js']).toBe('old');
     expect(state.pendingDiffs['a.js']).toBeUndefined();
-    expect(fs.writeFileAtPath).toHaveBeenCalledWith('a.js', 'old');
+    expect(fs.writeFileAtPath).toHaveBeenCalledWith('a.js', 'old', fs.rootHandle);
   });
 
   it('keeps a pending diff when the filesystem rejects an undo write', async () => {
@@ -253,7 +253,7 @@ describe('DiffHandler', () => {
       await handleApprove?.();
     });
 
-    expect(fs.deleteFileAtPath).toHaveBeenCalledWith('a.js');
+    expect(fs.deleteFileAtPath).toHaveBeenCalledWith('a.js', fs.rootHandle);
     expect(state.pendingDeletions?.['a.js']).toBeUndefined();
     expect(tabState.openTabs).toEqual([{ id: 'b.js', type: 'file', label: 'b.js' }]);
   });
@@ -313,7 +313,7 @@ describe('DiffHandler', () => {
     state.pendingDiffs = {
       'a.js': { originalContent: 'old', modifiedContent: 'next', diffs: [], changeSetId: 'cs-1' },
     };
-    fs.readFileAtPath = vi.fn().mockRejectedValue(new Error('missing'));
+    fs.readFileAtPath = vi.fn().mockRejectedValueOnce(new Error('missing')).mockResolvedValue('');
     fs.writeFileAtPath.mockRejectedValue(new Error('disk full'));
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const error = vi.spyOn(console, 'error').mockImplementation(() => {});

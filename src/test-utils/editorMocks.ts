@@ -24,7 +24,8 @@ function createCallableMockStore<T extends object>(initial: T): StateStore<T> & 
   };
 
   const updater = vi.fn((cb: (draft: Draft<T>) => void) => {
-    const draft = structuredClone(snapshot) as Draft<T>;
+    // Match triactor's shallow draft semantics and preserve filesystem handles.
+    const draft = { ...snapshot } as Draft<T>;
     cb(draft);
     Object.assign(snapshot, draft);
     syncProps();

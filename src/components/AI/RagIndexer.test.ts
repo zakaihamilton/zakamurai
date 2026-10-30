@@ -55,7 +55,11 @@ describe('useRagIndexer', () => {
     vi.clearAllMocks();
     consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {}) as Mock;
     consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {}) as Mock;
-    mockUseFileSystem.mockReturnValue({ isReady: true } as never);
+    mockUseFileSystem.mockReturnValue({
+      isReady: true,
+      mode: 'sandbox',
+      rootHandle: null,
+    } as never);
     mockEditorState.mockReturnValue({ fileContents: {} } as never);
     mockRagState.mockReturnValue(Object.assign(vi.fn(), { status: 'idle' }) as never);
     ragSearch.init.mockResolvedValue(undefined);
@@ -70,6 +74,12 @@ describe('useRagIndexer', () => {
   });
 
   it('initializes the RAG indexer when FS is ready', async () => {
+    mockUseFileSystem.mockReturnValue({
+      isReady: true,
+      mode: 'local',
+      rootHandle: {} as FileSystemDirectoryHandle,
+      version: 1,
+    } as never);
     renderHook(() => useRagIndexer());
 
     await act(async () => {
@@ -139,6 +149,12 @@ describe('useRagIndexer', () => {
   });
 
   it('does not bootstrap after the hook is unmounted during initialization', async () => {
+    mockUseFileSystem.mockReturnValue({
+      isReady: true,
+      mode: 'local',
+      rootHandle: {} as FileSystemDirectoryHandle,
+      version: 1,
+    } as never);
     let resolveInitialization = () => {};
     ragSearch.init.mockImplementation(
       () =>
@@ -163,6 +179,12 @@ describe('useRagIndexer', () => {
   });
 
   it('does not index files collected after the hook is unmounted', async () => {
+    mockUseFileSystem.mockReturnValue({
+      isReady: true,
+      mode: 'local',
+      rootHandle: {} as FileSystemDirectoryHandle,
+      version: 1,
+    } as never);
     let resolveCollection = (_files: Record<string, string>) => {};
     collectWorkspaceFiles.mockImplementation(
       () =>
@@ -186,6 +208,12 @@ describe('useRagIndexer', () => {
   });
 
   it('uses an empty editor snapshot when bootstrapping without file contents', async () => {
+    mockUseFileSystem.mockReturnValue({
+      isReady: true,
+      mode: 'local',
+      rootHandle: {} as FileSystemDirectoryHandle,
+      version: 1,
+    } as never);
     mockEditorState.mockReturnValue({ fileContents: undefined } as never);
 
     renderHook(() => useRagIndexer());

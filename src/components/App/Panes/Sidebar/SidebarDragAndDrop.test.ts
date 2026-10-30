@@ -110,11 +110,39 @@ describe('useSidebarDragAndDrop', () => {
   });
 
   it('handleDrop supports local mode and updates expanded folders', async () => {
-    const sidebarState = makeSidebarState();
+    const sourceHandle = makeFileHandle('App.js');
+    const destinationHandle = {
+      ...makeDirectoryHandle('components'),
+      entries: async function* () {},
+    } as unknown as FileSystemDirectoryHandle;
+    const sidebarState = makeSidebarState({
+      folderTree: [
+        asNormalizedTreeNode({
+          name: 'src',
+          type: 'folder',
+          path: ['src'],
+          children: [
+            asNormalizedTreeNode({
+              name: 'App.js',
+              type: 'file',
+              path: ['src', 'App.js'],
+              handle: sourceHandle,
+            }),
+          ],
+        }),
+        asNormalizedTreeNode({
+          name: 'components',
+          type: 'folder',
+          path: ['components'],
+          handle: destinationHandle,
+          children: [],
+        }),
+      ],
+    });
     sidebarState.draggedItem = {
       path: ['src', 'App.js'],
       name: 'App.js',
-      handle: makeFileHandle('App.js'),
+      handle: sourceHandle,
     } as never;
     const setDropTargetPath = vi.fn();
     const fs = makeFileSystemApi({
@@ -139,7 +167,7 @@ describe('useSidebarDragAndDrop', () => {
         name: 'components',
         type: 'folder',
         path: ['components'],
-        handle: makeDirectoryHandle('components'),
+        handle: destinationHandle,
       }),
     });
 
