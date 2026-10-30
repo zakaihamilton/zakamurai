@@ -246,6 +246,12 @@ test('run overview responds to pane width and keeps long content inside its cont
         status,
         execution,
         metrics,
+        metricPairGaps: [...grid.children].map((card) => {
+          const label = card.querySelector('dt')?.getBoundingClientRect();
+          const value = card.querySelector('dd')?.getBoundingClientRect();
+          if (!label || !value) throw new Error('Run overview metric content is missing.');
+          return value.top - label.bottom;
+        }),
         gridDisplay: getComputedStyle(grid).display,
         overflows: element.scrollWidth > element.clientWidth,
         metricCellsOutside: metrics.some(
@@ -270,6 +276,7 @@ test('run overview responds to pane width and keeps long content inside its cont
     expect(geometry.metricCellsOutside).toBe(false);
     expect(geometry.metricTextOverflows).toBe(false);
     expect(geometry.childrenOutside).toBe(false);
+    expect(geometry.metricPairGaps.every((gap) => gap <= 12)).toBe(true);
     if (mode === 'wide') {
       expect(Math.abs(geometry.execution.y - geometry.status.y)).toBeLessThan(1);
       expect(geometry.gridDisplay).toBe('contents');
@@ -314,4 +321,29 @@ test('run overview responds to pane width and keeps long content inside its cont
     [...element.querySelectorAll('dt, dd')].some((cell) => cell.scrollWidth > cell.clientWidth + 1),
   );
   expect(longMetricTextOverflows).toBe(false);
+});
+
+test('desktop model table shows a horizontal scroll cue when columns overflow', async ({
+  page,
+}) => {
+  for (const width of [900, 1024, 1127, 1128, 1280]) {
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto('/ui-preview?screen=models&scenario=populated&theme=dark');
+    await expect(page.locator('[data-preview-ready="true"]')).toBeVisible();
+    const table = page.locator('[class*="modelTableWrap__"]');
+    const hint = page.locator('[class*="tableScrollHint__"]');
+    const dimensions = await table.evaluate((element) => ({
+      clientWidth: element.clientWidth,
+      scrollWidth: element.scrollWidth,
+    }));
+    const hasHorizontalOverflow = dimensions.scrollWidth > dimensions.clientWidth;
+
+    expect(hasHorizontalOverflow).toBe(width < 1128);
+    if (hasHorizontalOverflow) {
+      await expect(hint).toBeVisible();
+      await expect(hint).toHaveText(/scroll or swipe horizontally/i);
+    } else {
+      await expect(hint).toBeHidden();
+    }
+  }
 });

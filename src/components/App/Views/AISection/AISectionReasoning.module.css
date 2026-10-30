@@ -254,6 +254,7 @@
 
 .metricGrid > div {
   display: grid;
+  align-self: start;
   gap: 5px;
   min-width: 0;
   padding: 9px 10px;
