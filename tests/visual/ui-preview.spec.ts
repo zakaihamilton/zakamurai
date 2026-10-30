@@ -160,7 +160,9 @@ test('mobile workspace action controls stay within the screen in both themes', a
   }
 });
 
-test('mobile storage notifications keep horizontal gutters in both themes', async ({ page }) => {
+test('mobile storage notifications keep gutters and wrap long messages in both themes', async ({
+  page,
+}) => {
   for (const width of [320, 390]) {
     await page.setViewportSize({ width, height: 844 });
     for (const theme of ['dark', 'light']) {
@@ -173,6 +175,16 @@ test('mobile storage notifications keep horizontal gutters in both themes', asyn
         content:
           '[class*="Notification_toast__"] { animation: none !important; transform: none !important; }',
       });
+      const message = toast.locator('[class*="Notification_message__"]');
+      await message.evaluate((element) => {
+        element.textContent = 'x'.repeat(160);
+      });
+      const messageWidth = await message.evaluate((element) => ({
+        clientWidth: element.clientWidth,
+        scrollWidth: element.scrollWidth,
+      }));
+      expect(messageWidth.scrollWidth).toBeLessThanOrEqual(messageWidth.clientWidth);
+
       const bounds = await container.evaluate((element) => {
         const containerBounds = element.getBoundingClientRect();
         const toastBounds = element.firstElementChild?.getBoundingClientRect();
