@@ -146,8 +146,9 @@ export default function useEditorBuffer({
       const nextContent = hasCollapsedFolds
         ? applyFoldedContentEdit(localContentRef.current, event.target.value, editorLineItems || [])
         : event.target.value;
-      setLocalContent(nextContent);
+      let accepted = false;
       state((draft) => {
+        if (draft.pendingFileOperations?.[filePath]) return;
         setDirtyBufferInDraft(draft, filePath, nextContent);
         if (draft.history?.[filePath]) {
           const history = { ...draft.history };
@@ -162,7 +163,9 @@ export default function useEditorBuffer({
             [filePath]: { ...pendingDiff, modifiedContent: nextContent, diffs },
           };
         }
+        accepted = true;
       });
+      if (accepted) setLocalContent(nextContent);
     },
     [editorLineItems, filePath, hasCollapsedFolds, setLocalContent, state],
   );

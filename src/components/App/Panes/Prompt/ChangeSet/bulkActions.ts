@@ -7,6 +7,10 @@ import Settings from '@/components/Storage/Settings';
 import { updateChangeSetFile } from '@/components/Workspace';
 import { removeEditorPathStateInDraft } from '@/components/App/Views/EditorArea/EditorBuffers';
 import { removeLastCodeTabPathInDraft } from '@/components/App/Panes/TabBar/TabStateUtils';
+import {
+  acquireFileOperation,
+  releaseFileOperation,
+} from '@/components/App/Views/EditorArea/FileOperations';
 import type { TabStateShape } from '@/types/domain-types';
 
 type PendingDiff = {
@@ -23,6 +27,7 @@ type Store<T> = ((updater: (draft: T) => void) => void) & T;
 type EditorDraft = {
   fileContents?: Record<string, string>;
   dirtyBufferContents?: Record<string, string>;
+  pendingFileOperations?: Record<string, string>;
   pendingDiffs?: Record<string, PendingDiff>;
   pendingDeletions?: Record<string, PendingDeletion>;
 };
@@ -73,7 +78,11 @@ const hasExternalConflict = async (
 const hasUnexpectedFile = async (fs: FileSystem | null | undefined, path: string) => {
   if (!fs?.rootHandle) return false;
   if (!fs.getFileHandleAtPath) return true;
-  return Boolean(await fs.getFileHandleAtPath(path, fs.rootHandle));
+  try {
+    return Boolean(await fs.getFileHandleAtPath(path, fs.rootHandle));
+  } catch {
+    return true;
+  }
 };
 
 const targetsFor = (editorState: Store<EditorDraft>, changeSetId: string) => ({
@@ -91,10 +100,19 @@ export async function approveAllChangeSetChanges(params: Params): Promise<Result
   const { diffs, deletions } = targetsFor(params.editorState, params.changeSetId);
   const acceptedDiffs: Array<[string, PendingDiff]> = [];
   const acceptedDeletions: Array<[string, PendingDeletion]> = [];
+  const operationTokens: Array<[string, string]> = [];
   let conflicted = 0;
+  const releaseOperationLocks = () => {
+    for (const [path, token] of operationTokens) {
+      releaseFileOperation(params.editorState, path, token);
+    }
+  };
 
   for (const [path, diff] of diffs) {
     if (!isCurrent()) break;
+    const operationToken = acquireFileOperation(params.editorState, path);
+    if (!operationToken) continue;
+    operationTokens.push([path, operationToken]);
     const conflict = diff.isNewFile
       ? await hasUnexpectedFile(params.fs, path)
       : await hasExternalConflict(params.fs, path, diff.originalContent);
@@ -143,10 +161,14 @@ export async function approveAllChangeSetChanges(params: Params): Promise<Result
   }
 
   if (!isCurrent()) {
+    releaseOperationLocks();
     return { applied: acceptedDiffs.length, rejected: 0, conflicted };
   }
   for (const [path, deletion] of deletions) {
     if (!isCurrent()) break;
+    const operationToken = acquireFileOperation(params.editorState, path);
+    if (!operationToken) continue;
+    operationTokens.push([path, operationToken]);
     const currentDeletion = params.editorState.pendingDeletions?.[path];
     if (
       !currentDeletion ||
@@ -187,6 +209,7 @@ export async function approveAllChangeSetChanges(params: Params): Promise<Result
   }
 
   if (!isCurrent()) {
+    releaseOperationLocks();
     return { applied: acceptedDiffs.length + acceptedDeletions.length, rejected: 0, conflicted };
   }
   const removedDeletions: string[] = [];
@@ -261,6 +284,7 @@ export async function approveAllChangeSetChanges(params: Params): Promise<Result
       }
     });
   }
+  releaseOperationLocks();
   return {
     applied: removedDiffs.length + removedDeletions.length,
     rejected: 0,
@@ -273,10 +297,19 @@ export async function undoAllChangeSetChanges(params: Params): Promise<Result> {
   if (!isCurrent()) return { applied: 0, rejected: 0, conflicted: 0 };
   const { diffs, deletions } = targetsFor(params.editorState, params.changeSetId);
   const revertedDiffs: Array<[string, PendingDiff]> = [];
+  const operationTokens: Array<[string, string]> = [];
   const removedNewFiles: string[] = [];
   let conflicted = 0;
+  const releaseOperationLocks = () => {
+    for (const [path, token] of operationTokens) {
+      releaseFileOperation(params.editorState, path, token);
+    }
+  };
   for (const [path, diff] of diffs) {
     if (!isCurrent()) break;
+    const operationToken = acquireFileOperation(params.editorState, path);
+    if (!operationToken) continue;
+    operationTokens.push([path, operationToken]);
     const currentDiff = params.editorState.pendingDiffs?.[path];
     if (
       !currentDiff ||
@@ -313,6 +346,7 @@ export async function undoAllChangeSetChanges(params: Params): Promise<Result> {
     updateChangeSetFile(params.changeSetState as never, params.changeSetId, path, 'rejected');
   }
   if (!isCurrent()) {
+    releaseOperationLocks();
     return { applied: 0, rejected: revertedDiffs.length, conflicted };
   }
   for (const [path] of deletions) {
@@ -320,12 +354,14 @@ export async function undoAllChangeSetChanges(params: Params): Promise<Result> {
     updateChangeSetFile(params.changeSetState as never, params.changeSetId, path, 'rejected');
   }
   if (!isCurrent()) {
+    releaseOperationLocks();
     return { applied: 0, rejected: revertedDiffs.length + deletions.length, conflicted };
   }
   let contents: Record<string, string> = {};
   let pendingDiffs: Record<string, PendingDiff> = {};
   let pendingDeletions: Record<string, PendingDeletion> = {};
   if (!isCurrent()) {
+    releaseOperationLocks();
     return { applied: 0, rejected: revertedDiffs.length + deletions.length, conflicted };
   }
   params.editorState((draft) => {
@@ -398,6 +434,7 @@ export async function undoAllChangeSetChanges(params: Params): Promise<Result> {
       }
     });
   }
+  releaseOperationLocks();
   return {
     applied: 0,
     rejected: revertedDiffs.length + deletions.length,

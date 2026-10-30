@@ -19,6 +19,7 @@ export default function ChangeSetPanel({ onOpenInTab = () => {} }: { onOpenInTab
     EditorState.useState([
       'fileContents',
       'dirtyBufferContents',
+      'pendingFileOperations',
       'pendingDiffs',
       'pendingDeletions',
     ]),

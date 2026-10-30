@@ -14,6 +14,7 @@ import { SHORTCUT_GROUPS } from './constants';
 import { removeLastCodeTabPathInDraft } from '@/components/App/Panes/TabBar/TabStateUtils';
 import { removeNodeAtPath } from '@/components/App/Panes/Sidebar/TreeUtils';
 import { updateChangeSetFile } from '@/components/Workspace';
+import { runWithFileOperation } from '@/components/App/Views/EditorArea/FileOperations';
 
 async function hasExternalConflict(
   fs: FileSystemApi | undefined,
@@ -461,7 +462,7 @@ export const SHORTCUTS: ShortcutDefinition[] = [
           }
           return current === hasDeletion;
         };
-        void (async () => {
+        void runWithFileOperation(editorState, activeTabId, async () => {
           if (!isCurrentWorkspace() || !samePendingDeletion()) return;
           if (typeof hasDeletion === 'object' && hasDeletion !== null) {
             const conflict = await hasExternalConflict(
@@ -530,7 +531,7 @@ export const SHORTCUTS: ShortcutDefinition[] = [
             );
           }
           showNotification?.('Deletion approved', 'success');
-        })().catch((error) => {
+        }).catch((error) => {
           if (!isCurrentWorkspace()) return;
           showNotification?.(
             `Could not delete the file: ${error instanceof Error ? error.message : String(error)}`,
@@ -549,7 +550,7 @@ export const SHORTCUTS: ShortcutDefinition[] = [
               current.isNewFile === hasDiff.isNewFile,
           );
         };
-        void (async () => {
+        void runWithFileOperation(editorState, activeTabId, async () => {
           if (!isCurrentWorkspace() || !samePendingDiff()) return;
           const conflict = hasDiff.isNewFile
             ? await hasUnexpectedFile(fs, activeTabId, rootHandle)
@@ -596,7 +597,7 @@ export const SHORTCUTS: ShortcutDefinition[] = [
           if (!removed) return;
           updateChangeSetFile(changeSetState, hasDiff.changeSetId || '', activeTabId, 'accepted');
           showNotification?.('Changes approved & saved', 'success');
-        })().catch((error) => {
+        }).catch((error) => {
           if (!isCurrentWorkspace()) return;
           showNotification?.(
             `Could not save the file: ${error instanceof Error ? error.message : String(error)}`,
@@ -632,6 +633,7 @@ export const SHORTCUTS: ShortcutDefinition[] = [
       const isCurrentWorkspace = () => (appState.workspaceEpoch || 0) === workspaceEpoch;
       const pendingDeletion = editorState.pendingDeletions?.[activeTabId];
       if (pendingDeletion) {
+        if (editorState.pendingFileOperations?.[activeTabId]) return;
         editorState((draft) => {
           if (draft.pendingDeletions) {
             const next = { ...draft.pendingDeletions };
@@ -664,7 +666,7 @@ export const SHORTCUTS: ShortcutDefinition[] = [
               current.isNewFile === diff.isNewFile,
           );
         };
-        void (async () => {
+        void runWithFileOperation(editorState, activeTabId, async () => {
           if (!isCurrentWorkspace() || !samePendingDiff()) return;
           const conflict = diff.isNewFile
             ? await hasUnexpectedFile(fs, activeTabId, rootHandle)
@@ -729,7 +731,7 @@ export const SHORTCUTS: ShortcutDefinition[] = [
           });
           updateChangeSetFile(changeSetState, diff.changeSetId || '', activeTabId, 'rejected');
           showNotification?.('Changes cancelled', 'info');
-        })().catch((error) => {
+        }).catch((error) => {
           if (!isCurrentWorkspace()) return;
           showNotification?.(
             `Could not restore the file: ${error instanceof Error ? error.message : String(error)}`,

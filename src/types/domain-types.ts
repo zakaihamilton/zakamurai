@@ -328,6 +328,8 @@ export interface EditorStateShape {
   dirtyBufferContents?: Record<string, string>;
   aiCompletionEnabled: boolean;
   isReadOnly: boolean;
+  /** Transient per-file lock while a change review operation is in progress. */
+  pendingFileOperations?: Record<string, string>;
   navigationHistory: NavigationHistory;
   pendingDiffs: Record<string, PendingDiff>;
   pendingDeletions: Record<string, boolean | { originalContent?: string; changeSetId?: string }>;

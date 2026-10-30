@@ -9,6 +9,7 @@ import type { CursorPosition } from '@/types/domain-types';
 import { removeEditorPathStateInDraft } from './EditorBuffers';
 import { deleteInDraft, setInDraft } from '@/utils/StateUtils';
 import { useCallback, useEffect, useRef } from 'react';
+import { acquireFileOperation, releaseFileOperation } from './FileOperations';
 import type { DiffActions, DiffHandlerProps, PendingDeletionEntry } from './types';
 
 const isPendingDeletionEntry = (
@@ -78,7 +79,21 @@ export default function DiffHandler({
     [filePath, fs],
   );
 
-  const handleApprove = useCallback(async () => {
+  const runFileOperation = useCallback(
+    async (operation: () => Promise<void>) => {
+      if (!isCurrentWorkspace()) return;
+      const token = acquireFileOperation(state, filePath);
+      if (!token) return;
+      try {
+        await operation();
+      } finally {
+        releaseFileOperation(state, filePath, token);
+      }
+    },
+    [filePath, isCurrentWorkspace, state],
+  );
+
+  const performApprove = useCallback(async () => {
     if (!isCurrentWorkspace()) return;
     const pendingDeletion = state.pendingDeletions?.[filePath];
     if (isPendingDeletionEntry(pendingDeletion)) {
@@ -220,7 +235,12 @@ export default function DiffHandler({
     tabState,
   ]);
 
-  const handleUndo = useCallback(async () => {
+  const handleApprove = useCallback(
+    () => runFileOperation(performApprove),
+    [performApprove, runFileOperation],
+  );
+
+  const performUndo = useCallback(async () => {
     if (!isCurrentWorkspace()) return;
     const pendingDeletion = state.pendingDeletions?.[filePath];
     if (isPendingDeletionEntry(pendingDeletion)) {
@@ -331,6 +351,11 @@ export default function DiffHandler({
     setLocalContent,
     tabState,
   ]);
+
+  const handleUndo = useCallback(
+    () => runFileOperation(performUndo),
+    [performUndo, runFileOperation],
+  );
 
   const toggleLine = useCallback(
     (line: number) => {
