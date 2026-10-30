@@ -55,6 +55,15 @@
   background: var(--bg-panel);
 }
 
+.reasoning {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  min-height: 500px;
+  overflow: hidden;
+  background: var(--bg-base);
+}
+
 .previewCanvas {
   display: grid;
   place-items: center;

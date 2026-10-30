@@ -213,7 +213,9 @@ test.describe('Zakamurai Visual Regression', () => {
   test('Dialogs - New Project', async ({ page }) => {
     await page.getByTestId('more-actions-btn').filter({ visible: true }).click();
 
-    await page.getByText('New Project', { exact: true }).click();
+    const menu = page.getByRole('menu');
+    await expect(menu).toBeVisible();
+    await menu.getByRole('button', { name: 'New Project', exact: true }).click();
 
     // Wait for dialog
     await expect(page.getByText('Are you sure you want to start a new project?')).toBeVisible();
@@ -227,7 +229,8 @@ test.describe('Zakamurai Visual Regression', () => {
 
   test('Mobile workspace surfaces', async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 812 });
-    await page.waitForTimeout(500);
+    await expect(page.getByText('Initializing workspace...')).not.toBeVisible({ timeout: 60000 });
+    await expect(page.getByTestId('compile-btn').filter({ visible: true })).toBeVisible();
     await expect(page).toHaveScreenshot('mobile-welcome.png', { animations: 'disabled' });
 
     const toggle = page.getByTestId('sidebar-toggle').filter({ visible: true });
@@ -242,7 +245,8 @@ test.describe('Zakamurai Visual Regression', () => {
 
   test('Narrow mobile workspace has no horizontal overflow', async ({ page }) => {
     await page.setViewportSize({ width: 320, height: 720 });
-    await page.waitForTimeout(500);
+    await expect(page.getByText('Initializing workspace...')).not.toBeVisible({ timeout: 60000 });
+    await expect(page.getByTestId('compile-btn').filter({ visible: true })).toBeVisible();
     const dimensions = await page.evaluate(() => ({
       viewport: window.innerWidth,
       documentWidth: document.documentElement.scrollWidth,

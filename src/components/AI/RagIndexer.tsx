@@ -1,10 +1,14 @@
 import { RagState } from '@/components/AI/RagState';
 import type { FileMap } from '@/components/AI/types';
 import { EditorState } from '@/components/App/Views/EditorArea';
-import { createEffectiveFileContentsSnapshot } from '@/components/App/Views/EditorArea/EditorBuffers';
+import {
+  createEffectivePreviewFileContentsSnapshot,
+  mergeWorkspaceDiskFiles,
+} from '@/components/App/Views/EditorArea/EditorBuffers';
+import type { EditorBufferSource } from '@/components/App/Views/EditorArea/EditorBuffers';
 import { reportDiagnostic } from '@/components/Diagnostics';
 import { useFileSystem } from '@/components/Storage';
-import { useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 
 const INDEX_DEBOUNCE_MS = 3000;
 
@@ -15,13 +19,47 @@ const INDEX_DEBOUNCE_MS = 3000;
  */
 export function useRagIndexer() {
   const fs = useFileSystem();
-  const editorState = EditorState.useState(['fileContents', 'dirtyBufferContents']);
+  const editorState = EditorState.useState([
+    'fileContents',
+    'dirtyBufferContents',
+    'pendingDiffs',
+    'pendingDeletions',
+  ]);
   const ragState = RagState.useState();
   const bootstrappedRef = useRef(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastFingerprintRef = useRef('');
+  const syncGenerationRef = useRef(0);
+  const diskSnapshotRef = useRef<{
+    files: FileMap | null;
+    rootHandle: FileSystemDirectoryHandle | null;
+    version: number | null;
+  }>({ files: null, rootHandle: null, version: null });
   const editorStateRef = useRef(editorState);
   editorStateRef.current = editorState;
+
+  const collectCurrentFiles = useCallback(
+    async (
+      collectWorkspaceFiles: typeof import('@/components/AI/Agent/Snapshot').collectWorkspaceFiles,
+      nextEditorState: EditorBufferSource | null | undefined,
+    ) => {
+      if (fs.mode === 'local' && fs.rootHandle) {
+        const cached = diskSnapshotRef.current;
+        if (!cached.files || cached.rootHandle !== fs.rootHandle || cached.version !== fs.version) {
+          cached.files = await collectWorkspaceFiles(
+            { mode: 'local', rootHandle: fs.rootHandle },
+            {},
+          );
+          cached.rootHandle = fs.rootHandle;
+          cached.version = fs.version;
+        }
+        return mergeWorkspaceDiskFiles(cached.files, nextEditorState);
+      }
+      diskSnapshotRef.current = { files: null, rootHandle: null, version: null };
+      return createEffectivePreviewFileContentsSnapshot(nextEditorState);
+    },
+    [fs.mode, fs.rootHandle, fs.version],
+  );
 
   useEffect(() => {
     if (!ragState) return undefined;
@@ -54,12 +92,10 @@ export function useRagIndexer() {
           ragState((draft) => {
             draft.status = 'indexing';
           });
-          const files = await collectWorkspaceFiles(
-            fs as import('@/components/AI/types').FileSystemLike,
-            createEffectiveFileContentsSnapshot(editorStateRef.current),
-          );
+          const files = await collectCurrentFiles(collectWorkspaceFiles, editorStateRef.current);
           if (cancelled) return;
           await ragSearch.indexWorkspaceFiles(files);
+          if (cancelled) return;
           const fingerprint = fingerprintContents(files);
           lastFingerprintRef.current = fingerprint;
           ragState((draft) => {
@@ -72,6 +108,7 @@ export function useRagIndexer() {
           console.log('[RAG] Workspace bootstrap index complete.');
         }
       } catch (error) {
+        if (cancelled) return;
         const err = error as Error;
         console.error('[RAG] Failed to initialize indexer:', error);
         reportDiagnostic({
@@ -90,14 +127,18 @@ export function useRagIndexer() {
     return () => {
       cancelled = true;
     };
-  }, [fs, fs?.isReady, ragState]);
+  }, [collectCurrentFiles, fs, fs?.isReady, ragState]);
 
   useEffect(() => {
     if (!fs?.isReady || !editorState || !ragState) return undefined;
     if (debounceRef.current) clearTimeout(debounceRef.current);
+    const generation = ++syncGenerationRef.current;
+    let cancelled = false;
     debounceRef.current = setTimeout(async () => {
       try {
-        const files = createEffectiveFileContentsSnapshot(editorStateRef.current);
+        const { collectWorkspaceFiles } = await import('@/components/AI/Agent/Snapshot');
+        const files = await collectCurrentFiles(collectWorkspaceFiles, editorStateRef.current);
+        if (cancelled || generation !== syncGenerationRef.current) return;
         const nextFingerprint = fingerprintContents(files);
         if (nextFingerprint === lastFingerprintRef.current) return;
         ragState((draft) => {
@@ -106,6 +147,7 @@ export function useRagIndexer() {
         });
         const { ragSearch } = await import('@/utils/rag/search-utility');
         await ragSearch.indexWorkspaceFiles(files);
+        if (cancelled || generation !== syncGenerationRef.current) return;
         lastFingerprintRef.current = nextFingerprint;
         ragState((draft) => {
           draft.status = 'ready';
@@ -114,6 +156,7 @@ export function useRagIndexer() {
           draft.lastFingerprint = nextFingerprint;
         });
       } catch (error) {
+        if (cancelled || generation !== syncGenerationRef.current) return;
         const err = error as Error;
         console.error('[RAG] Failed to sync workspace index:', error);
         reportDiagnostic({
@@ -129,12 +172,17 @@ export function useRagIndexer() {
     }, INDEX_DEBOUNCE_MS);
 
     return () => {
+      cancelled = true;
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
   }, [
+    fs,
     editorState?.dirtyBufferContents,
     editorState?.fileContents,
+    editorState?.pendingDiffs,
+    editorState?.pendingDeletions,
     fs?.isReady,
+    collectCurrentFiles,
     ragState,
     editorState,
   ]);

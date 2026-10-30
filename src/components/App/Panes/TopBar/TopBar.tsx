@@ -18,7 +18,12 @@ import {
 } from '@/components/Storage/InitialData';
 import Settings from '@/components/Storage/Settings';
 import { STORAGE_RECOVERY_EVENT } from '@/components/Storage/StorageHealth';
-import { ChangeSetState } from '@/components/Workspace';
+import {
+  ChangeSetState,
+  DEFAULT_WORKSPACE_HEALTH,
+  ProblemsState,
+  WorkspaceHealthState,
+} from '@/components/Workspace';
 import Dialog from '@/components/ui/Dialog';
 import { Icons } from '@/components/ui/Icons';
 import Tooltip from '@/components/ui/Tooltip';
@@ -49,6 +54,8 @@ export function resetNewProjectState({
   agentSessionState,
   logState,
   changeSetState,
+  problemsState,
+  workspaceHealthState,
 }: ResetNewProjectStateParams) {
   const isScratch = template === 'scratch';
   const initialFiles = isScratch ? SCRATCH_FILES : DEFAULT_FILES;
@@ -56,20 +63,31 @@ export function resetNewProjectState({
 
   appState((draft) => {
     draft.projectName = Settings.getProjectName() || '';
+    draft.workspaceEpoch = (draft.workspaceEpoch || 0) + 1;
   });
   sidebarState((draft) => {
     draft.folderTree = initialFiles as import('@/types/domain-types').TreeNode[];
     draft.expandedFolders = {};
+    draft.draggedItem = null;
   });
   tabState((draft) => {
     draft.openTabs = [];
     draft.activeTabId = null;
+    draft.lastCodeTabId = null;
   });
   editorState((draft) => {
     draft.fileContents = initialContents;
     draft.dirtyBufferContents = {};
     draft.pendingDiffs = {};
     draft.pendingDeletions = {};
+    draft.navigationHistory = { stack: [], currentIndex: -1 };
+    draft.shouldScrollTo = null;
+    draft.history = {};
+    draft.cursorPos = {};
+    draft.selectedLines = {};
+    draft.isCompleting = {};
+    draft.completionActivity = {};
+    draft.aiCompletionDebug = undefined;
   });
   promptState?.((draft) => {
     draft.promptHistory = [];
@@ -106,8 +124,26 @@ export function resetNewProjectState({
     draft.activeId = null;
     draft.items = [];
   });
+  problemsState?.((draft) => {
+    draft.items = [];
+  });
+  workspaceHealthState?.((draft) => {
+    Object.assign(draft, DEFAULT_WORKSPACE_HEALTH);
+  });
   previewState((draft) => {
     draft.htmlContent = null;
+    draft.isCompilerReady = false;
+    draft.previewAddress = '/preview/dist/index.html';
+    draft.previewSessionId = null;
+    draft.containerStatus = 'idle';
+    draft.compileStatus = 'idle';
+    draft.compilePhase = null;
+    draft.lastCompileAt = null;
+    draft.containerError = null;
+    draft.restoreError = null;
+    draft.compileError = null;
+    draft.compileDiagnostic = undefined;
+    draft.serverError = null;
   });
 }
 
@@ -126,6 +162,8 @@ export default function TopBar() {
   const promptState = PromptState.usePassiveState();
   const agentSessionState = AgentSessionState.usePassiveState();
   const logState = LogState.usePassiveState();
+  const problemsState = ProblemsState.usePassiveState();
+  const workspaceHealthState = WorkspaceHealthState.usePassiveState();
 
   const { handleCompile, handleRebuild, handleOpenLog, handleOpenPreview, handleClearFS } =
     useProjectCompiler();
@@ -140,6 +178,10 @@ export default function TopBar() {
   const activeTab = openTabs.find((t) => t.id === activeTabId);
 
   const handleStartOver = async (template = 'scratch') => {
+    appState((draft) => {
+      draft.workspaceEpoch = (draft.workspaceEpoch || 0) + 1;
+    });
+    promptUiState?.abortController?.abort();
     const initialContents = template === 'scratch' ? SCRATCH_CONTENTS : DEFAULT_CONTENTS;
     await fs.unlinkProject();
     Settings.pauseEditorBufferWrites();
@@ -165,6 +207,8 @@ export default function TopBar() {
         agentSessionState,
         logState,
         changeSetState,
+        problemsState,
+        workspaceHealthState,
       });
     } finally {
       Settings.resumeEditorBufferWrites();

@@ -24,6 +24,7 @@ function EditorAreaInner({ file, fsHandle }: EditorAreaProps) {
     'pendingDeletions',
     'fileContents',
     'dirtyBufferContents',
+    'pendingFileOperations',
     'isReadOnly',
     'selectedLines',
     'cursorPos',

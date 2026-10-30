@@ -1,6 +1,6 @@
 import type { FileSystemApi } from '@/components/App/types';
 import type { FileSystemStateShape } from '@/types/domain-types';
-import { useCallback, useEffect, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { createState } from 'triactor';
 import type { Draft } from 'triactor';
 import { clearHandle, loadHandle, saveHandle, withTimeout } from './LocalFSPersistence';
@@ -36,6 +36,10 @@ export function useFileSystem({ bootstrap = false } = {}): FileSystemApi {
     refreshTrigger = 0,
     isReady = false,
   } = fileSystemState || {};
+  const rootHandleRef = useRef(rootHandle);
+  const rootGenerationRef = useRef(0);
+  const rootRefreshRequestRef = useRef(0);
+  rootHandleRef.current = rootHandle;
   const setFileSystemValue = useCallback(
     <K extends keyof FileSystemStateShape>(
       key: K,
@@ -64,6 +68,10 @@ export function useFileSystem({ bootstrap = false } = {}): FileSystemApi {
   const refreshDirectory = useCallback(
     async (dirHandle: FileSystemDirectoryHandle, updateSidebar = true) => {
       if (!fileSystemState) return;
+      if (updateSidebar && rootGenerationRef.current > 0 && !rootHandleRef.current) return;
+      if (updateSidebar && rootHandleRef.current && rootHandleRef.current !== dirHandle) return;
+      const rootGeneration = rootGenerationRef.current;
+      const requestId = updateSidebar ? ++rootRefreshRequestRef.current : null;
       try {
         const entries: DirEntry[] = [];
         for await (const [name, handle] of dirHandle.entries()) {
@@ -75,6 +83,14 @@ export function useFileSystem({ bootstrap = false } = {}): FileSystemApi {
           return a.kind === 'directory' ? -1 : 1;
         });
 
+        if (
+          rootGenerationRef.current !== rootGeneration ||
+          (updateSidebar && rootHandleRef.current && rootHandleRef.current !== dirHandle) ||
+          (requestId !== null && requestId !== rootRefreshRequestRef.current)
+        ) {
+          return entries;
+        }
+
         // Only update global files list if we are refreshing the root
         // or if we are in a mode where currentDirHandle tracks the sidebar root
         if (updateSidebar) {
@@ -84,6 +100,7 @@ export function useFileSystem({ bootstrap = false } = {}): FileSystemApi {
               type: entry.kind === 'directory' ? 'folder' : 'file',
               path: [],
               kind: entry.kind,
+              handle: entry.handle,
             }));
             draft.currentDirHandle = dirHandle;
           });
@@ -94,6 +111,12 @@ export function useFileSystem({ bootstrap = false } = {}): FileSystemApi {
         });
         return entries;
       } catch (err) {
+        if (
+          rootGenerationRef.current !== rootGeneration ||
+          (requestId !== null && requestId !== rootRefreshRequestRef.current)
+        ) {
+          return;
+        }
         const message = err instanceof Error ? err.message : String(err);
         setFileSystemValue('error', `Failed to read directory: ${message}`);
       }
@@ -105,6 +128,8 @@ export function useFileSystem({ bootstrap = false } = {}): FileSystemApi {
     if (!fileSystemState) return;
     try {
       const handle = await navigator.storage.getDirectory();
+      rootGenerationRef.current += 1;
+      rootHandleRef.current = handle;
       fileSystemState((draft) => {
         draft.rootHandle = handle;
         draft.mode = 'opfs';
@@ -120,6 +145,8 @@ export function useFileSystem({ bootstrap = false } = {}): FileSystemApi {
     if (!fileSystemState || !window.showDirectoryPicker) return;
     try {
       const handle = await window.showDirectoryPicker({ mode: 'readwrite' });
+      rootGenerationRef.current += 1;
+      rootHandleRef.current = handle;
       fileSystemState((draft) => {
         draft.rootHandle = handle;
         draft.mode = 'local';
@@ -149,6 +176,8 @@ export function useFileSystem({ bootstrap = false } = {}): FileSystemApi {
           );
           if (!active) return;
           if (status === 'granted') {
+            rootGenerationRef.current += 1;
+            rootHandleRef.current = handle;
             fileSystemState((draft) => {
               draft.rootHandle = handle;
               draft.mode = 'local';
@@ -196,7 +225,7 @@ export function useFileSystem({ bootstrap = false } = {}): FileSystemApi {
         const writable = await fileHandle.createWritable();
         await writable.write(content);
         await writable.close();
-        await refreshDirectory(dirHandle);
+        await refreshDirectory(rootHandle || dirHandle);
       } catch (err) {
         setFileSystemValue(
           'error',
@@ -204,7 +233,7 @@ export function useFileSystem({ bootstrap = false } = {}): FileSystemApi {
         );
       }
     },
-    [currentDirHandle, refreshDirectory, setFileSystemValue],
+    [currentDirHandle, refreshDirectory, rootHandle, setFileSystemValue],
   );
 
   const writeFileAtPath = useCallback(
@@ -222,7 +251,7 @@ export function useFileSystem({ bootstrap = false } = {}): FileSystemApi {
         const writable = await fileHandle.createWritable();
         await writable.write(content);
         await writable.close();
-        await refreshDirectory(root); // Refresh from root to see changes everywhere
+        await refreshDirectory(root, root === rootHandle); // Refresh root entries after a workspace write.
         return true;
       } catch (err) {
         setFileSystemValue(
@@ -259,7 +288,7 @@ export function useFileSystem({ bootstrap = false } = {}): FileSystemApi {
           currentHandle = await currentHandle.getDirectoryHandle(parts[i]);
         }
         await currentHandle.removeEntry(parts[parts.length - 1], { recursive: true });
-        await refreshDirectory(root);
+        await refreshDirectory(root, root === rootHandle);
         return true;
       } catch (err) {
         setFileSystemValue(
@@ -294,7 +323,7 @@ export function useFileSystem({ bootstrap = false } = {}): FileSystemApi {
       if (!dirHandle) throw new Error('No directory mounted');
       try {
         await dirHandle.getDirectoryHandle(folderName, { create: true });
-        await refreshDirectory(dirHandle);
+        await refreshDirectory(rootHandle || dirHandle);
       } catch (err) {
         setFileSystemValue(
           'error',
@@ -302,7 +331,7 @@ export function useFileSystem({ bootstrap = false } = {}): FileSystemApi {
         );
       }
     },
-    [currentDirHandle, refreshDirectory, setFileSystemValue],
+    [currentDirHandle, refreshDirectory, rootHandle, setFileSystemValue],
   );
 
   const deleteEntry = useCallback(
@@ -310,7 +339,7 @@ export function useFileSystem({ bootstrap = false } = {}): FileSystemApi {
       if (!dirHandle) throw new Error('No directory mounted');
       try {
         await dirHandle.removeEntry(name, { recursive: true });
-        await refreshDirectory(dirHandle);
+        await refreshDirectory(rootHandle || dirHandle);
       } catch (err) {
         setFileSystemValue(
           'error',
@@ -318,7 +347,7 @@ export function useFileSystem({ bootstrap = false } = {}): FileSystemApi {
         );
       }
     },
-    [currentDirHandle, refreshDirectory, setFileSystemValue],
+    [currentDirHandle, refreshDirectory, rootHandle, setFileSystemValue],
   );
 
   const moveEntry = useCallback(
@@ -335,24 +364,28 @@ export function useFileSystem({ bootstrap = false } = {}): FileSystemApi {
         } else {
           throw new Error('FileSystemHandle.move is not supported in this environment');
         }
-        await refreshDirectory(destinationDirHandle);
-        setFileSystemValue('refreshTrigger', (v = 0) => v + 1);
+        await refreshDirectory(rootHandle || destinationDirHandle);
+        return true;
       } catch (err) {
         setFileSystemValue(
           'error',
           `Failed to move entry: ${err instanceof Error ? err.message : String(err)}`,
         );
+        return false;
       }
     },
-    [refreshDirectory, setFileSystemValue],
+    [refreshDirectory, rootHandle, setFileSystemValue],
   );
 
   const unlinkProject = useCallback(async () => {
     if (!fileSystemState) return;
     try {
       await clearHandle();
+      rootGenerationRef.current += 1;
+      rootHandleRef.current = null;
       fileSystemState((draft) => {
         draft.rootHandle = null;
+        draft.currentDirHandle = null;
         draft.mode = null;
         draft.files = [];
         draft.error = null;

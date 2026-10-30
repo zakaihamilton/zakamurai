@@ -1,5 +1,5 @@
-import { useEffect, useRef } from 'react';
-import { readEffectiveFileContent } from './EditorBuffers';
+import { AppState } from '@/components/App/AppState';
+import { useCallback, useEffect, useRef } from 'react';
 import type { SyncHandlerProps } from './types';
 
 export default function SyncHandler({
@@ -9,9 +9,24 @@ export default function SyncHandler({
   state,
   tabState,
 }: SyncHandlerProps) {
+  const appState = AppState.usePassiveState();
+  const workspaceEpoch = appState?.workspaceEpoch || 0;
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const saveStartedAtRef = useRef<number | null>(null);
   const lastSavedContent = useRef(localContent);
+  const writeQueueRef = useRef<Promise<void>>(Promise.resolve());
+
+  const writeContent = useCallback((handle: FileSystemFileHandle, content: string) => {
+    const write = writeQueueRef.current
+      .catch(() => {})
+      .then(async () => {
+        const writable = await handle.createWritable();
+        await writable.write(content);
+        await writable.close();
+      });
+    writeQueueRef.current = write;
+    return write;
+  }, []);
 
   useEffect(() => {
     if (fs.mode !== 'local' || !filePath) return;
@@ -29,16 +44,23 @@ export default function SyncHandler({
     saveTimeoutRef.current = setTimeout(async () => {
       saveStartedAtRef.current = null;
       try {
-        const writable = await handle.createWritable();
-        await writable.write(localContent);
-        await writable.close();
+        if ((appState?.workspaceEpoch || 0) !== workspaceEpoch) return;
+        await writeContent(handle, localContent);
+        if ((appState?.workspaceEpoch || 0) !== workspaceEpoch) return;
         lastSavedContent.current = localContent;
         state((draft) => {
+          if (draft.dirtyBufferContents?.[filePath] === localContent) {
+            draft.fileContents = { ...draft.fileContents, [filePath]: localContent };
+            const nextDirty = { ...draft.dirtyBufferContents };
+            delete nextDirty[filePath];
+            draft.dirtyBufferContents = nextDirty;
+          }
           draft.lastSaved = new Date().toLocaleTimeString([], {
             hour: '2-digit',
             minute: '2-digit',
           });
         });
+        fs.triggerRefresh?.();
         console.log('Saved to FS:', filePath);
       } catch (err) {
         console.error('Failed to save to FS:', err);
@@ -51,12 +73,16 @@ export default function SyncHandler({
   }, [
     localContent,
     filePath,
+    appState,
+    workspaceEpoch,
     fs.mode,
     tabState?.openTabs,
     state,
+    fs.triggerRefresh,
     state.pendingDiffs,
     state.pendingDeletions,
     state.dirtyBufferContents?.[filePath],
+    writeContent,
   ]);
 
   useEffect(() => {
@@ -67,11 +93,12 @@ export default function SyncHandler({
 
       const currentTab = tabState?.openTabs.find((t) => t.id === filePath);
       const handle = currentTab?.fsHandle;
-      if (handle && localContent !== readEffectiveFileContent(state, filePath)) {
+      if (handle && localContent !== lastSavedContent.current) {
         try {
-          const writable = await handle.createWritable();
-          await writable.write(localContent);
-          await writable.close();
+          if ((appState?.workspaceEpoch || 0) !== workspaceEpoch) return;
+          await writeContent(handle, localContent);
+          if ((appState?.workspaceEpoch || 0) !== workspaceEpoch) return;
+          lastSavedContent.current = localContent;
           console.log('Flushed to FS on exit:', filePath);
         } catch (err) {
           console.error('Failed to flush to FS on exit:', err);
@@ -85,12 +112,13 @@ export default function SyncHandler({
     fs.mode,
     filePath,
     localContent,
-    state.fileContents,
-    state.dirtyBufferContents,
+    appState,
+    workspaceEpoch,
     state.pendingDiffs,
     state.pendingDeletions,
     tabState?.openTabs,
     state,
+    writeContent,
   ]);
 
   return null;

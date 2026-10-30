@@ -12,6 +12,16 @@ import { syncFilesToContainer } from './syncer';
 import type { AlmostnodeContainer, FolderTreeNode, LocalFsLike, OnLog, OnPhase } from './types';
 
 const loadBrowserBundler = () => import('./browser-bundler');
+let compilerOperationQueue: Promise<void> = Promise.resolve();
+
+function serializeCompilerOperation<T>(operation: () => Promise<T>): Promise<T> {
+  const queued = compilerOperationQueue.then(operation, operation);
+  compilerOperationQueue = queued.then(
+    () => undefined,
+    () => undefined,
+  );
+  return queued;
+}
 
 function usesBrowserBundler(buildCommand: string | undefined): boolean {
   if (!buildCommand) return false;
@@ -54,7 +64,7 @@ export class Compiler {
    * The next compile() call will re-create a fresh container.
    */
   static async reset(): Promise<void> {
-    await resetContainer();
+    await serializeCompilerOperation(() => resetContainer());
   }
 
   get container(): AlmostnodeContainer | null {
@@ -75,6 +85,14 @@ export class Compiler {
     folderTree: FolderTreeNode[],
     fileContents: Record<string, string>,
   ): Promise<void> {
+    await serializeCompilerOperation(() => this.syncFilesInternal(fs, folderTree, fileContents));
+  }
+
+  private async syncFilesInternal(
+    fs: LocalFsLike,
+    folderTree: FolderTreeNode[],
+    fileContents: Record<string, string>,
+  ): Promise<void> {
     this.onPhase('syncing');
     const container = await this.init();
     await syncFilesToContainer(container, fs, folderTree, fileContents, this.onLog);
@@ -85,11 +103,19 @@ export class Compiler {
     folderTree: FolderTreeNode[],
     fileContents: Record<string, string>,
   ): Promise<void> {
+    await serializeCompilerOperation(() => this.compileInternal(fs, folderTree, fileContents));
+  }
+
+  private async compileInternal(
+    fs: LocalFsLike,
+    folderTree: FolderTreeNode[],
+    fileContents: Record<string, string>,
+  ): Promise<void> {
     try {
       const container = await this.init();
       const { npm, runtime, vfs } = container;
 
-      await this.syncFiles(fs, folderTree, fileContents);
+      await this.syncFilesInternal(fs, folderTree, fileContents);
 
       if (vfs.existsSync('/package.json')) {
         this.onPhase('installing');
@@ -241,8 +267,19 @@ import('${scriptPath}').catch(err => console.error('[Runner Error]', err));
     fileContents: Record<string, string>,
     check: string,
   ): Promise<string> {
+    return serializeCompilerOperation(() =>
+      this.runProjectCheckInternal(fs, folderTree, fileContents, check),
+    );
+  }
+
+  private async runProjectCheckInternal(
+    fs: LocalFsLike,
+    folderTree: FolderTreeNode[],
+    fileContents: Record<string, string>,
+    check: string,
+  ): Promise<string> {
     const container = await this.init();
-    await this.syncFiles(fs, folderTree, fileContents);
+    await this.syncFilesInternal(fs, folderTree, fileContents);
     const packageJson = JSON.parse(container.vfs.readFileSync('/package.json', 'utf8')) as {
       scripts?: Record<string, string>;
     };

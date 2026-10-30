@@ -139,7 +139,7 @@ export default function ModelManager({
           )}
           <ModelSearch searchTerm={searchTerm} onSearchTermChange={setSearchTerm} />
           <p className={styles.tableScrollHint}>
-            Swipe horizontally to see model details and cache controls.
+            Scroll or swipe horizontally to view model details and cache controls.
           </p>
           <ModelTable
             visibleModels={visibleModels}

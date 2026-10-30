@@ -8,8 +8,10 @@ import LogArea, { LogState } from '@/components/App/Views/LogArea';
 import Welcome from '@/components/App/Views/Welcome';
 import { useEffect, useState } from 'react';
 import { StateRoot } from 'triactor';
-import { PreviewDropdown, PreviewToolbar } from 'ui-preview-kit';
+import { PreviewToolbar } from 'ui-preview-kit';
+import PreviewDropdown from './PreviewDropdown';
 import {
+  AIReasoningFixture,
   AgentFixture,
   DiffFixture,
   DownloadFixture,
@@ -26,6 +28,7 @@ const screens = [
   'editor',
   'diff',
   'agent',
+  'reasoning',
   'preview',
   'logs',
   'instructions',
@@ -73,6 +76,7 @@ function Fixture({
   if (screen === 'workspace') return <WorkspaceFixture scenario={scenario} theme={theme} />;
   if (screen === 'diff') return <DiffFixture scenario={scenario} />;
   if (screen === 'agent') return <AgentFixture scenario={scenario} />;
+  if (screen === 'reasoning') return <AIReasoningFixture />;
   if (screen === 'preview') return <PreviewFixture scenario={scenario} />;
   if (screen === 'models') return <ModelsFixture scenario={scenario} />;
   if (screen === 'download') return <DownloadFixture />;
@@ -131,6 +135,15 @@ export default function Preview() {
     <main
       data-preview-ready={ready}
       className={`${styles.page} ${theme === 'light' ? 'light' : ''}`}
+      onPointerDown={(event) => {
+        const target = event.target as Node;
+        if (!(target instanceof Node)) return;
+        for (const details of event.currentTarget.querySelectorAll<HTMLDetailsElement>(
+          'details[open]',
+        )) {
+          if (!details.contains(target)) details.open = false;
+        }
+      }}
     >
       <PreviewToolbar
         theme={theme}

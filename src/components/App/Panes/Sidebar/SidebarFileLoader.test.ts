@@ -7,6 +7,26 @@ import { renderHook } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import useSidebarFileLoader from './SidebarFileLoader';
 
+function makeSidebarStateForFile(path: string[], handle?: FileSystemFileHandle) {
+  let node = asNormalizedTreeNode({
+    name: path.at(-1) || '',
+    type: 'file',
+    path,
+    ...(handle ? { handle } : {}),
+  });
+
+  for (let index = path.length - 2; index >= 0; index -= 1) {
+    node = asNormalizedTreeNode({
+      name: path[index],
+      type: 'folder',
+      path: path.slice(0, index + 1),
+      children: [node],
+    });
+  }
+
+  return makeSidebarState({ folderTree: [node] });
+}
+
 describe('useSidebarFileLoader', () => {
   const defaultArgs = {
     fs: makeFileSystemApi({
@@ -120,7 +140,7 @@ describe('useSidebarFileLoader', () => {
   it('handles handleOpenFile in sandbox mode', async () => {
     const editorState = createMockEditorState({ fileContents: { 'src/App.js': 'code' } });
     const tabState = createMockTabState({ openTabs: [] });
-    const sidebarState = makeSidebarState({ expandedFolders: {} });
+    const sidebarState = makeSidebarStateForFile(['src', 'App.js']);
 
     const { result } = renderHook(() =>
       useSidebarFileLoader({
@@ -178,6 +198,7 @@ describe('useSidebarFileLoader', () => {
       }),
     };
     const mockDirHandle = {
+      entries: async function* () {},
       getFileHandle: vi.fn().mockResolvedValue(mockFileHandle),
     } as unknown as FileSystemDirectoryHandle;
     const fs = makeFileSystemApi({ mode: 'local', triggerRefresh: vi.fn() });
@@ -213,6 +234,7 @@ describe('useSidebarFileLoader', () => {
 
   it('handles handleCreate in local mode for folders', async () => {
     const mockDirHandle = {
+      entries: async function* () {},
       getDirectoryHandle: vi.fn().mockResolvedValue({}),
     } as unknown as FileSystemDirectoryHandle;
     const fs = makeFileSystemApi({ mode: 'local', triggerRefresh: vi.fn() });
@@ -632,9 +654,10 @@ describe('useSidebarFileLoader', () => {
         fileContents: { 'src/App.js': 'stale cached content' },
       });
       const tabState = createMockTabState({ openTabs: [] });
+      const sidebarState = makeSidebarStateForFile(['src', 'App.js'], fileHandle);
 
       const { result } = renderHook(() =>
-        useSidebarFileLoader({ ...defaultArgs, fs, editorState, tabState }),
+        useSidebarFileLoader({ ...defaultArgs, fs, editorState, tabState, sidebarState }),
       );
 
       await result.current.handleOpenFile(
@@ -659,12 +682,15 @@ describe('useSidebarFileLoader', () => {
       const readFile = vi.fn().mockResolvedValue('svg source');
       const fs = makeFileSystemApi({ mode: 'local', readFile });
       const editorState = createMockEditorState({ fileContents: {} });
+      const fileHandle = { name: 'photo.png' } as FileSystemFileHandle;
+      const sidebarState = makeSidebarStateForFile(['assets', 'photo.png'], fileHandle);
 
       const { result } = renderHook(() =>
         useSidebarFileLoader({
           ...defaultArgs,
           fs,
           editorState,
+          sidebarState,
         }),
       );
 
@@ -674,7 +700,7 @@ describe('useSidebarFileLoader', () => {
             name: 'photo.png',
             type: 'file',
             path: ['assets', 'photo.png'],
-            handle: { name: 'photo.png' } as FileSystemFileHandle,
+            handle: fileHandle,
           }),
           path: ['assets', 'photo.png'],
           pathStr: 'assets/photo.png',
@@ -692,6 +718,7 @@ describe('useSidebarFileLoader', () => {
       const fs = makeFileSystemApi({ mode: 'local', readFile });
       const editorState = createMockEditorState({ fileContents: {} });
       const tabState = createMockTabState({ openTabs: [] });
+      const sidebarState = makeSidebarStateForFile(['src', 'App.js'], fileHandle);
 
       const { result } = renderHook(() =>
         useSidebarFileLoader({
@@ -699,6 +726,7 @@ describe('useSidebarFileLoader', () => {
           fs,
           editorState,
           tabState,
+          sidebarState,
         }),
       );
 
@@ -725,6 +753,8 @@ describe('useSidebarFileLoader', () => {
       const fs = makeFileSystemApi({ mode: 'local', readFile });
       const editorState = createMockEditorState({ fileContents: {} });
       const tabState = createMockTabState({ openTabs: [] });
+      const fileHandle = { name: 'photo.png' } as FileSystemFileHandle;
+      const sidebarState = makeSidebarStateForFile(['assets', 'photo.png'], fileHandle);
 
       const { result } = renderHook(() =>
         useSidebarFileLoader({
@@ -732,6 +762,7 @@ describe('useSidebarFileLoader', () => {
           fs,
           editorState,
           tabState,
+          sidebarState,
         }),
       );
 
@@ -741,7 +772,7 @@ describe('useSidebarFileLoader', () => {
             name: 'photo.png',
             type: 'file',
             path: ['assets', 'photo.png'],
-            handle: { name: 'photo.png' } as FileSystemFileHandle,
+            handle: fileHandle,
           }),
           path: ['assets', 'photo.png'],
           pathStr: 'assets/photo.png',
@@ -750,18 +781,22 @@ describe('useSidebarFileLoader', () => {
 
       expect(readFile).not.toHaveBeenCalled();
       expect(editorState).not.toHaveBeenCalled();
+      expect(tabState).toHaveBeenCalled();
     });
 
     it('loads media file text when opened in editor view', async () => {
       const readFile = vi.fn().mockResolvedValue('svg source');
       const fs = makeFileSystemApi({ mode: 'local', readFile });
       const editorState = createMockEditorState({ fileContents: {} });
+      const fileHandle = { name: 'icon.svg' } as FileSystemFileHandle;
+      const sidebarState = makeSidebarStateForFile(['assets', 'icon.svg'], fileHandle);
 
       const { result } = renderHook(() =>
         useSidebarFileLoader({
           ...defaultArgs,
           fs,
           editorState,
+          sidebarState,
         }),
       );
 
@@ -771,7 +806,7 @@ describe('useSidebarFileLoader', () => {
             name: 'icon.svg',
             type: 'file',
             path: ['assets', 'icon.svg'],
-            handle: { name: 'icon.svg' } as FileSystemFileHandle,
+            handle: fileHandle,
           }),
           path: ['assets', 'icon.svg'],
           pathStr: 'assets/icon.svg',
@@ -796,12 +831,14 @@ describe('useSidebarFileLoader', () => {
           },
         ],
       });
+      const sidebarState = makeSidebarStateForFile(['src', 'App.js']);
 
       const { result } = renderHook(() =>
         useSidebarFileLoader({
           ...defaultArgs,
           editorState,
           tabState,
+          sidebarState,
         }),
       );
 
@@ -820,7 +857,8 @@ describe('useSidebarFileLoader', () => {
     });
 
     it('closes the sidebar on mobile after opening a file', async () => {
-      const sidebarState = makeSidebarState({ isSidebarOpen: true, expandedFolders: {} });
+      const sidebarState = makeSidebarStateForFile(['src', 'App.js']);
+      sidebarState.isSidebarOpen = true;
       const appState = makeAppState({ isMobile: true });
 
       const { result } = renderHook(() =>
@@ -966,6 +1004,7 @@ describe('useSidebarFileLoader', () => {
       const triggerRefresh = vi.fn();
       const fs = makeFileSystemApi({ mode: 'local', triggerRefresh });
       const parentHandle = { removeEntry } as unknown as FileSystemDirectoryHandle;
+      const fileHandle = { name: 'App.js' } as FileSystemFileHandle;
       const sidebarState = makeSidebarState({
         folderTree: [
           asNormalizedTreeNode({
@@ -974,7 +1013,12 @@ describe('useSidebarFileLoader', () => {
             path: ['src'],
             handle: parentHandle,
             children: [
-              asNormalizedTreeNode({ name: 'App.js', type: 'file', path: ['src', 'App.js'] }),
+              asNormalizedTreeNode({
+                name: 'App.js',
+                type: 'file',
+                path: ['src', 'App.js'],
+                handle: fileHandle,
+              }),
             ],
           }),
         ],
@@ -997,7 +1041,12 @@ describe('useSidebarFileLoader', () => {
 
       await result.current.handleDelete(
         makeFlatTreeRow({
-          item: asNormalizedTreeNode({ name: 'App.js', type: 'file', path: ['src', 'App.js'] }),
+          item: asNormalizedTreeNode({
+            name: 'App.js',
+            type: 'file',
+            path: ['src', 'App.js'],
+            handle: fileHandle,
+          }),
           path: ['src', 'App.js'],
           pathStr: 'src/App.js',
         }),
@@ -1012,6 +1061,7 @@ describe('useSidebarFileLoader', () => {
       const removeEntry = vi.fn().mockRejectedValue(new Error('Permission denied'));
       const fs = makeFileSystemApi({ mode: 'local', triggerRefresh: vi.fn() });
       const parentHandle = { removeEntry } as unknown as FileSystemDirectoryHandle;
+      const fileHandle = { name: 'App.js' } as FileSystemFileHandle;
       const sidebarState = makeSidebarState({
         folderTree: [
           asNormalizedTreeNode({
@@ -1019,6 +1069,14 @@ describe('useSidebarFileLoader', () => {
             type: 'folder',
             path: ['src'],
             handle: parentHandle,
+            children: [
+              asNormalizedTreeNode({
+                name: 'App.js',
+                type: 'file',
+                path: ['src', 'App.js'],
+                handle: fileHandle,
+              }),
+            ],
           }),
         ],
       });
@@ -1038,14 +1096,22 @@ describe('useSidebarFileLoader', () => {
 
       await result.current.handleDelete(
         makeFlatTreeRow({
-          item: asNormalizedTreeNode({ name: 'App.js', type: 'file', path: ['src', 'App.js'] }),
+          item: asNormalizedTreeNode({
+            name: 'App.js',
+            type: 'file',
+            path: ['src', 'App.js'],
+            handle: fileHandle,
+          }),
           path: ['src', 'App.js'],
           pathStr: 'src/App.js',
         }),
       );
 
       expect(consoleErrorSpy).toHaveBeenCalled();
-      expect(addNotification).not.toHaveBeenCalled();
+      expect(addNotification).toHaveBeenCalledWith(
+        'Could not delete "App.js": Permission denied',
+        'error',
+      );
       consoleErrorSpy.mockRestore();
     });
   });

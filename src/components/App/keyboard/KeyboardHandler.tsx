@@ -3,6 +3,7 @@ import { SidebarState } from '@/components/App/Panes/Sidebar';
 import { TabState } from '@/components/App/Panes/TabBar';
 import { EditorState } from '@/components/App/Views/EditorArea';
 import { LogState } from '@/components/App/Views/LogArea';
+import { ChangeSetState } from '@/components/Workspace';
 import type { FileSystemApi } from '@/components/App/types';
 import { useFileSystem } from '@/components/Storage';
 import { useNotification } from '@/components/ui/Notification';
@@ -18,6 +19,7 @@ export function useKeyboardHandler() {
   const fs = useFileSystem() as FileSystemApi;
   const { addNotification: showNotification } = useNotification();
   const editorState = EditorState.usePassiveState();
+  const changeSetState = ChangeSetState.usePassiveState();
 
   useEffect(() => {
     if (!sidebarState || !logState || !appState || !tabState || !editorState) return undefined;
@@ -33,6 +35,7 @@ export function useKeyboardHandler() {
         appState,
         tabState,
         editorState,
+        changeSetState,
         fs,
         showNotification,
         event: e,
@@ -78,5 +81,14 @@ export function useKeyboardHandler() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [sidebarState, logState, appState, tabState, showNotification, editorState, fs]);
+  }, [
+    sidebarState,
+    logState,
+    appState,
+    tabState,
+    showNotification,
+    editorState,
+    changeSetState,
+    fs,
+  ]);
 }

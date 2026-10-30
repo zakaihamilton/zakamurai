@@ -68,6 +68,7 @@ export interface FileHistory {
 export interface PendingDiff {
   originalContent: string;
   modifiedContent: string;
+  isNewFile?: boolean;
   originalCursorPos?: CursorPosition;
   diffs: unknown[];
   changeSetId?: string;
@@ -281,6 +282,8 @@ export interface AppStateShape {
   isMobile: boolean;
   compileRequest: number;
   silentCompileRequest: number;
+  /** Incremented when the current project is replaced to fence late async work. */
+  workspaceEpoch?: number;
 }
 
 export interface SidebarStateShape {
@@ -325,6 +328,8 @@ export interface EditorStateShape {
   dirtyBufferContents?: Record<string, string>;
   aiCompletionEnabled: boolean;
   isReadOnly: boolean;
+  /** Transient per-file lock while a change review operation is in progress. */
+  pendingFileOperations?: Record<string, string>;
   navigationHistory: NavigationHistory;
   pendingDiffs: Record<string, PendingDiff>;
   pendingDeletions: Record<string, boolean | { originalContent?: string; changeSetId?: string }>;

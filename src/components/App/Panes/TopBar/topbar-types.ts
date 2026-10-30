@@ -4,10 +4,12 @@ import type {
   LogStateShape,
   NavigationHistory,
   PreviewStateShape,
+  ProblemsStateShape,
   PromptStateShape,
   PromptUiStateShape,
   SidebarStateShape,
   TabStateShape,
+  WorkspaceHealthStateShape,
 } from '@/types/domain-types';
 import type { StateStore } from 'triactor';
 export type ResetNewProjectStateParams = {
@@ -22,6 +24,8 @@ export type ResetNewProjectStateParams = {
   agentSessionState?: StateStore<AgentSessionStateShape> | null;
   logState?: StateStore<LogStateShape> | null;
   changeSetState?: StateStore<import('@/types/domain-types').ChangeSetStateShape> | null;
+  problemsState?: StateStore<ProblemsStateShape> | null;
+  workspaceHealthState?: StateStore<WorkspaceHealthStateShape> | null;
 };
 
 export type BreadcrumbProps = {

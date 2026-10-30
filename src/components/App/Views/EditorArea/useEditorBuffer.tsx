@@ -1,6 +1,7 @@
 import { DEFAULT_CONTENTS, SCRATCH_CONTENTS } from '@/components/Storage/InitialData';
 import Settings from '@/components/Storage/Settings';
 import type { EditorAreaUiStateShape } from '@/types/domain-types';
+import { deleteInDraft } from '@/utils/StateUtils';
 import { formatCode } from '@/utils/formatter';
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 import useCodeFolding from './CodeFolding';
@@ -145,8 +146,9 @@ export default function useEditorBuffer({
       const nextContent = hasCollapsedFolds
         ? applyFoldedContentEdit(localContentRef.current, event.target.value, editorLineItems || [])
         : event.target.value;
-      setLocalContent(nextContent);
+      let accepted = false;
       state((draft) => {
+        if (draft.pendingFileOperations?.[filePath]) return;
         setDirtyBufferInDraft(draft, filePath, nextContent);
         if (draft.history?.[filePath]) {
           const history = { ...draft.history };
@@ -154,11 +156,11 @@ export default function useEditorBuffer({
           draft.history = history;
         }
         if (draft.pendingDiffs?.[filePath]) {
-          const pendingDiffs = { ...draft.pendingDiffs };
-          delete pendingDiffs[filePath];
-          draft.pendingDiffs = pendingDiffs;
+          deleteInDraft(draft, ['pendingDiffs'], filePath);
         }
+        accepted = true;
       });
+      if (accepted) setLocalContent(nextContent);
     },
     [editorLineItems, filePath, hasCollapsedFolds, setLocalContent, state],
   );

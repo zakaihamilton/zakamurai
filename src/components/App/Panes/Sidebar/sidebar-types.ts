@@ -1,5 +1,7 @@
+import type { AppStateShape } from '@/types/domain-types';
 import type { FileSystemApi, FlatTreeRow, NormalizedTreeNode } from '@/components/App/types';
-import type { SidebarStateShape, SidebarUiStateShape } from '@/types/domain-types';
+import type { EditorStateStore } from '@/components/App/Views/EditorArea/types';
+import type { SidebarStateShape, SidebarUiStateShape, TabStateShape } from '@/types/domain-types';
 import type {
   CSSProperties,
   ChangeEvent,
@@ -157,7 +159,12 @@ export type SidebarContextMenuProps = {
 
 export type UseSidebarDragAndDropParams = {
   fs: FileSystemApi;
+  appState?: StateStore<AppStateShape>;
   sidebarState: StateStore<SidebarStateShape>;
+  editorState?: EditorStateStore;
+  tabState?: StateStore<TabStateShape>;
+  changeSetState?: StateStore<import('@/types/domain-types').ChangeSetStateShape> | null;
+  addNotification?: (message: string, type?: 'success' | 'error' | 'info' | string) => void;
   setDropTargetPath: Dispatch<SetStateAction<string | null>>;
 };
 

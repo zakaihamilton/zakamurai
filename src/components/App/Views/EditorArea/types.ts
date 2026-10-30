@@ -41,11 +41,22 @@ export type TabStateStore = StateStore<TabStateShape>;
 export interface EditorFileSystem {
   mode: string | null;
   rootHandle?: FileSystemDirectoryHandle | null;
+  triggerRefresh?: () => void;
   readFile?: (handle: FileSystemFileHandle) => Promise<string>;
-  getFileHandleAtPath?: (path: string) => Promise<FileSystemFileHandle | null>;
-  writeFileAtPath?: (path: string, content: string) => Promise<boolean | undefined>;
-  deleteFileAtPath?: (path: string) => Promise<boolean | undefined>;
-  readFileAtPath?: (path: string) => Promise<string>;
+  getFileHandleAtPath?: (
+    path: string,
+    root?: FileSystemDirectoryHandle | null,
+  ) => Promise<FileSystemFileHandle | null>;
+  writeFileAtPath?: (
+    path: string,
+    content: string,
+    root?: FileSystemDirectoryHandle | null,
+  ) => Promise<boolean | undefined>;
+  deleteFileAtPath?: (
+    path: string,
+    root?: FileSystemDirectoryHandle | null,
+  ) => Promise<boolean | undefined>;
+  readFileAtPath?: (path: string, root?: FileSystemDirectoryHandle | null) => Promise<string>;
 }
 
 // ---------------------------------------------------------------------------

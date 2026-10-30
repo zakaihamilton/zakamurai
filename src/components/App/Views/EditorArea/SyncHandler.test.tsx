@@ -107,7 +107,17 @@ describe('SyncHandler', () => {
 
   it('flushes changes on beforeunload', async () => {
     state.fileContents[filePath] = 'initial';
-    render(
+    const view = render(
+      <SyncHandler
+        fs={fs}
+        filePath={filePath}
+        localContent="initial"
+        state={state}
+        tabState={tabState}
+      />,
+    );
+
+    view.rerender(
       <SyncHandler
         fs={fs}
         filePath={filePath}

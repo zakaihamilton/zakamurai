@@ -25,6 +25,7 @@ vi.mock('./highlighter', () => ({
 vi.mock('@/components/App/AppState', () => ({
   AppState: {
     useState: vi.fn(),
+    usePassiveState: vi.fn(),
   },
 }));
 
@@ -47,6 +48,7 @@ describe('EditorArea', () => {
     });
     vi.spyOn(EditorState, 'useState').mockReturnValue(state);
     vi.mocked(useFileSystem).mockReturnValue({ mode: null } as ReturnType<typeof useFileSystem>);
+    vi.mocked(AppState.usePassiveState).mockReturnValue(makeAppState());
     vi.spyOn(AppState, 'useState').mockReturnValue(makeAppState());
     vi.spyOn(TabState, 'useState').mockReturnValue(createMockTabState());
     return state;

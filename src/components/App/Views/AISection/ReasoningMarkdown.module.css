@@ -1,0 +1,35 @@
+.blockquote {
+  composes: blockquote from "./AISectionReasoning.module.css";
+}
+
+.code {
+  composes: code from "./AISectionReasoning.module.css";
+}
+
+.heading {
+  composes: heading from "./AISectionReasoning.module.css";
+}
+
+.link {
+  composes: link from "./AISectionReasoning.module.css";
+}
+
+.list {
+  composes: list from "./AISectionReasoning.module.css";
+}
+
+.listItem {
+  composes: listItem from "./AISectionReasoning.module.css";
+}
+
+.paragraph {
+  composes: paragraph from "./AISectionReasoning.module.css";
+}
+
+.pre {
+  composes: pre from "./AISectionReasoning.module.css";
+}
+
+.stepHeading {
+  composes: stepHeading from "./AISectionReasoning.module.css";
+}

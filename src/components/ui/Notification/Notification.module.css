@@ -75,10 +75,12 @@
 }
 
 .message {
+  min-width: 0;
   font-size: 13px;
   font-weight: 500;
   color: var(--text-main);
   line-height: 1.4;
+  overflow-wrap: anywhere;
 }
 
 @keyframes slide-in {
@@ -96,4 +98,15 @@
 :global(.light) .toast {
   background: rgb(255 255 255 / 90%);
   border-color: var(--border-light);
+}
+
+@media (width <= 520px) {
+  .container {
+    left: 16px;
+    right: 16px;
+  }
+
+  .toast {
+    min-width: 0;
+  }
 }

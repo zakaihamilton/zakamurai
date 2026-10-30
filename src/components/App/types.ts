@@ -80,16 +80,22 @@ export type FileSystemApi = {
     sourceHandle: FileSystemHandle,
     destinationDirHandle: FileSystemDirectoryHandle,
     newName?: string | null,
-  ) => Promise<void>;
+  ) => Promise<boolean>;
   unlinkProject: () => Promise<void>;
   isReady: boolean;
 };
 
 /** Adapt browser FileSystem API for compiler / agent modules expecting LocalFsLike. */
-export function toCompilerFs(fs: FileSystemApi): LocalFsLike {
+export function toCompilerFs(
+  fs: FileSystemApi,
+  deletedPaths: string[] = [],
+  overlayPaths?: string[],
+): LocalFsLike {
   return {
     mode: fs.mode || 'opfs',
     rootHandle: fs.rootHandle ?? undefined,
+    deletedPaths,
+    ...(overlayPaths ? { overlayPaths } : {}),
   };
 }
 
@@ -171,6 +177,7 @@ export type SidebarFileLoaderParams = {
   sidebarState: StateStore<SidebarStateShape>;
   tabState: StateStore<TabStateShape>;
   editorState: StateStore<import('@/components/App/Views/EditorArea/types').ExtendedEditorState>;
+  changeSetState?: StateStore<ChangeSetStateShape> | null;
   setLoadingPaths: Dispatch<SetStateAction<Record<string, boolean>>>;
   addNotification: (
     message: string,

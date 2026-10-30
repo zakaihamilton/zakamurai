@@ -28,7 +28,8 @@ export function createMockStateStore<T extends object>(initial: T): StateStore<T
   };
 
   const updater = vi.fn((cb: (draft: Draft<T>) => void) => {
-    const draft = structuredClone(state) as Draft<T>;
+    // Triactor drafts are shallow; keep handles and other non-cloneable values intact.
+    const draft = { ...state } as Draft<T>;
     cb(draft);
     Object.assign(state, draft);
     syncProps();
@@ -65,6 +66,7 @@ export function makeAppState(
     isMobile: false,
     compileRequest: 0,
     silentCompileRequest: 0,
+    workspaceEpoch: 0,
     ...overrides,
   });
 }

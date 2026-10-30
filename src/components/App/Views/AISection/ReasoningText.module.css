@@ -1,0 +1,43 @@
+.reasoningEntry {
+  composes: reasoningEntry from "./AISectionReasoning.module.css";
+}
+
+.reasoningError {
+  composes: reasoningError from "./AISectionReasoning.module.css";
+}
+
+.reasoningErrorLabel {
+  composes: reasoningErrorLabel from "./AISectionReasoning.module.css";
+}
+
+.reasoningGroup {
+  composes: reasoningGroup from "./AISectionReasoning.module.css";
+}
+
+.reasoningText {
+  composes: reasoningText from "./AISectionReasoning.module.css";
+}
+
+.runSummary {
+  composes: runSummary from "./AISectionReasoning.module.css";
+}
+
+.stepHeading {
+  composes: stepHeading from "./AISectionReasoning.module.css";
+}
+
+.timestamp {
+  composes: timestamp from "./AISectionReasoning.module.css";
+}
+
+.transcriptSection {
+  composes: transcriptSection from "./AISectionReasoning.module.css";
+}
+
+.transcriptText {
+  composes: transcriptText from "./AISectionReasoning.module.css";
+}
+
+.transcriptType {
+  composes: transcriptType from "./AISectionReasoning.module.css";
+}

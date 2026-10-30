@@ -35,14 +35,64 @@ export const normalizeChildren = (
 ): NormalizedTreeNode[] =>
   [...nodes].sort(treeSorter).map((node) => {
     const type = getNodeType(node);
-    const nodePath = node.path || [...parentPath, node.name];
+    const nodePath = node.path?.length ? node.path : [...parentPath, node.name];
     return {
       ...node,
       type,
       path: nodePath,
       children: node.children ? normalizeChildren(node.children, nodePath) : node.children,
+      ...(type === 'folder'
+        ? {
+            childrenLoaded:
+              typeof node.childrenLoaded === 'boolean'
+                ? node.childrenLoaded
+                : node.children !== undefined,
+          }
+        : {}),
     } as NormalizedTreeNode;
   });
+
+export const mergeFileSystemTree = (
+  fileSystemNodes: TreeNode[],
+  currentNodes: TreeNode[],
+  shouldPreserveMissing: (node: TreeNode, path: string[]) => boolean = () => false,
+  parentPath: string[] = [],
+): NormalizedTreeNode[] => {
+  const currentByKey = new Map<string, TreeNode>(
+    currentNodes.map((node) => [`${getNodeType(node)}:${node.name}`, node] as const),
+  );
+  const fileSystemKeys = new Set<string>();
+  const merged = fileSystemNodes.map((node) => {
+    const type = getNodeType(node);
+    const key = `${type}:${node.name}`;
+    fileSystemKeys.add(key);
+    const current = currentByKey.get(key);
+    const path = node.path?.length ? node.path : [...parentPath, node.name];
+    if (type !== 'folder' || !current) return node as NormalizedTreeNode;
+
+    return {
+      ...node,
+      children: current.children
+        ? node.children === undefined
+          ? current.children
+          : mergeFileSystemTree(node.children, current.children, shouldPreserveMissing, path)
+        : node.children,
+      childrenLoaded:
+        typeof current.childrenLoaded === 'boolean'
+          ? current.childrenLoaded
+          : current.children !== undefined,
+    } as NormalizedTreeNode;
+  });
+
+  for (const current of currentNodes) {
+    const key = `${getNodeType(current)}:${current.name}`;
+    if (fileSystemKeys.has(key)) continue;
+    const path = current.path?.length ? current.path : [...parentPath, current.name];
+    if (shouldPreserveMissing(current, path)) merged.push(current as NormalizedTreeNode);
+  }
+
+  return normalizeChildren(merged, parentPath);
+};
 
 function ensurePathInLevel(
   level: TreeNode[],
@@ -92,22 +142,72 @@ export const setChildrenAtPath = (
   nodes: TreeNode[],
   path: string[],
   children: TreeNode[],
+  childrenLoaded?: boolean,
 ): TreeNode[] => {
   if (path.length === 0) return children;
   return nodes.map((node) => {
     if (node.name !== path[0]) return node;
-    const nextChildren = setChildrenAtPath(node.children || [], path.slice(1), children);
+    if (path.length === 1) {
+      return { ...node, children, ...(childrenLoaded === undefined ? {} : { childrenLoaded }) };
+    }
+    const nextChildren = setChildrenAtPath(
+      node.children || [],
+      path.slice(1),
+      children,
+      childrenLoaded,
+    );
     return { ...node, children: nextChildren };
   });
 };
 
-export const renameNodeAtPath = (nodes: TreeNode[], path: string[], name: string): TreeNode[] =>
+const remapSubtreePath = (node: TreeNode, nextPath: string[]): TreeNode => ({
+  ...node,
+  path: nextPath,
+  ...(node.children
+    ? {
+        children: node.children.map((child) => remapSubtreePath(child, [...nextPath, child.name])),
+      }
+    : {}),
+});
+
+export const renameNodeAtPath = (
+  nodes: TreeNode[],
+  path: string[],
+  name: string,
+  parentPath: string[] = [],
+): TreeNode[] =>
   nodes.map((node) => {
     if (node.name !== path[0]) return node;
-    const nodePath = node.path || path;
-    if (path.length === 1) return { ...node, name, path: [...nodePath.slice(0, -1), name] };
-    return { ...node, children: renameNodeAtPath(node.children || [], path.slice(1), name) };
+    const nodePath = node.path?.length ? node.path : [...parentPath, node.name];
+    if (path.length === 1) {
+      const nextPath = [...nodePath.slice(0, -1), name];
+      return remapSubtreePath({ ...node, name }, nextPath);
+    }
+    const children = renameNodeAtPath(node.children || [], path.slice(1), name, nodePath);
+    return { ...node, children };
   });
+
+export const moveNodeAtPath = (
+  nodes: TreeNode[],
+  sourcePath: string[],
+  destinationPath: string[],
+): TreeNode[] => {
+  const source = findNodeAtPath(nodes, sourcePath);
+  if (!source || sourcePath.length === 0 || destinationPath.length === 0) return nodes;
+  const moved = remapSubtreePath(source, destinationPath);
+  const withoutSource = removeNodeAtPath(nodes, sourcePath);
+  return addNodeAtPath(withoutSource, destinationPath.slice(0, -1), moved);
+};
+
+export const isValidEntryName = (name: string): boolean =>
+  Boolean(
+    name &&
+      name === name.trim() &&
+      name !== '.' &&
+      name !== '..' &&
+      !/[\\/:*?"<>|]/.test(name) &&
+      !Array.from(name).some((character) => character.charCodeAt(0) < 32),
+  );
 
 export const addNodeAtPath = (nodes: TreeNode[], path: string[], node: TreeNode): TreeNode[] => {
   if (path.length === 0) return normalizeChildren([...nodes, node]);
