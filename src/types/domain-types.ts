@@ -68,6 +68,7 @@ export interface FileHistory {
 export interface PendingDiff {
   originalContent: string;
   modifiedContent: string;
+  isNewFile?: boolean;
   originalCursorPos?: CursorPosition;
   diffs: unknown[];
   changeSetId?: string;
@@ -281,6 +282,8 @@ export interface AppStateShape {
   isMobile: boolean;
   compileRequest: number;
   silentCompileRequest: number;
+  /** Incremented when the current project is replaced to fence late async work. */
+  workspaceEpoch?: number;
 }
 
 export interface SidebarStateShape {

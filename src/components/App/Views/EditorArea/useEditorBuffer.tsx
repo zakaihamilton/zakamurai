@@ -1,4 +1,5 @@
 import { DEFAULT_CONTENTS, SCRATCH_CONTENTS } from '@/components/Storage/InitialData';
+import { computeDiff } from '@/components/AI/Processor/utils/DiffEngine';
 import Settings from '@/components/Storage/Settings';
 import type { EditorAreaUiStateShape } from '@/types/domain-types';
 import { formatCode } from '@/utils/formatter';
@@ -153,10 +154,13 @@ export default function useEditorBuffer({
           history[filePath] = { ...history[filePath], future: [] };
           draft.history = history;
         }
-        if (draft.pendingDiffs?.[filePath]) {
-          const pendingDiffs = { ...draft.pendingDiffs };
-          delete pendingDiffs[filePath];
-          draft.pendingDiffs = pendingDiffs;
+        const pendingDiff = draft.pendingDiffs?.[filePath];
+        if (pendingDiff) {
+          const { diffs } = computeDiff(pendingDiff.originalContent, nextContent);
+          draft.pendingDiffs = {
+            ...draft.pendingDiffs,
+            [filePath]: { ...pendingDiff, modifiedContent: nextContent, diffs },
+          };
         }
       });
     },

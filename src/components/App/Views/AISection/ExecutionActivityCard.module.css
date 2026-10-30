@@ -1,0 +1,215 @@
+.executionCard {
+  composes: executionCard from "./AISectionReasoning.module.css";
+}
+
+.executionCardArt {
+  composes: executionCardArt from "./AISectionReasoning.module.css";
+}
+
+.executionCardArtGeneration {
+  composes: executionCardArtGeneration from "./AISectionReasoning.module.css";
+}
+
+.executionCardArtIcon {
+  composes: executionCardArtIcon from "./AISectionReasoning.module.css";
+}
+
+.executionCardArtLabel {
+  composes: executionCardArtLabel from "./AISectionReasoning.module.css";
+}
+
+.executionCardArtrecovery {
+  composes: executionCardArtrecovery from "./AISectionReasoning.module.css";
+}
+
+.executionCardArtresult {
+  composes: executionCardArtresult from "./AISectionReasoning.module.css";
+}
+
+.executionCardArttool {
+  composes: executionCardArttool from "./AISectionReasoning.module.css";
+}
+
+.executionCardArtvalidation {
+  composes: executionCardArtvalidation from "./AISectionReasoning.module.css";
+}
+
+.executionCardBody {
+  composes: executionCardBody from "./AISectionReasoning.module.css";
+}
+
+.executionCardHeader {
+  composes: executionCardHeader from "./AISectionReasoning.module.css";
+}
+
+.executionCardIndex {
+  composes: executionCardIndex from "./AISectionReasoning.module.css";
+}
+
+.executionDetail {
+  composes: executionDetail from "./AISectionReasoning.module.css";
+}
+
+.executionGenerationBody {
+  composes: executionGenerationBody from "./AISectionReasoning.module.css";
+}
+
+.executionGenerationDetails {
+  composes: executionGenerationDetails from "./AISectionReasoning.module.css";
+}
+
+.executionGenerationDetailsIcon {
+  composes: executionGenerationDetailsIcon from "./AISectionReasoning.module.css";
+}
+
+.executionGenerationMeter {
+  composes: executionGenerationMeter from "./AISectionReasoning.module.css";
+}
+
+.executionGenerationMeterFill {
+  composes: executionGenerationMeterFill from "./AISectionReasoning.module.css";
+}
+
+.executionGenerationMetric {
+  composes: executionGenerationMetric from "./AISectionReasoning.module.css";
+}
+
+.executionGenerationProgress {
+  composes: executionGenerationProgress from "./AISectionReasoning.module.css";
+}
+
+.executionGenerationRawDetail {
+  composes: executionGenerationRawDetail from "./AISectionReasoning.module.css";
+}
+
+.executionGenerationSummary {
+  composes: executionGenerationSummary from "./AISectionReasoning.module.css";
+}
+
+.executionGenerationSummaryHeading {
+  composes: executionGenerationSummaryHeading from "./AISectionReasoning.module.css";
+}
+
+.executionGenerationWait {
+  composes: executionGenerationWait from "./AISectionReasoning.module.css";
+}
+
+.executionGenerationWaitDot {
+  composes: executionGenerationWaitDot from "./AISectionReasoning.module.css";
+}
+
+.executionGenerationWaitText {
+  composes: executionGenerationWaitText from "./AISectionReasoning.module.css";
+}
+
+.executionIO {
+  composes: executionIO from "./AISectionReasoning.module.css";
+}
+
+.executionMarker {
+  composes: executionMarker from "./AISectionReasoning.module.css";
+}
+
+.executionMeta {
+  composes: executionMeta from "./AISectionReasoning.module.css";
+}
+
+.executionMetaItem {
+  composes: executionMetaItem from "./AISectionReasoning.module.css";
+}
+
+.executionNode {
+  composes: executionNode from "./AISectionReasoning.module.css";
+}
+
+.executionNodeLiveGeneration {
+  composes: executionNodeLiveGeneration from "./AISectionReasoning.module.css";
+}
+
+.executionNodeSelected {
+  composes: executionNodeSelected from "./AISectionReasoning.module.css";
+}
+
+.executionNodeWorking {
+  composes: executionNodeWorking from "./AISectionReasoning.module.css";
+}
+
+.executionNodeactive {
+  composes: executionNodeactive from "./AISectionReasoning.module.css";
+}
+
+.executionNodecompleted {
+  composes: executionNodecompleted from "./AISectionReasoning.module.css";
+}
+
+.executionNodefailed {
+  composes: executionNodefailed from "./AISectionReasoning.module.css";
+}
+
+.executionNodemodel {
+  composes: executionNodemodel from "./AISectionReasoning.module.css";
+}
+
+.executionNodequeued {
+  composes: executionNodequeued from "./AISectionReasoning.module.css";
+}
+
+.executionNoderecovery {
+  composes: executionNoderecovery from "./AISectionReasoning.module.css";
+}
+
+.executionNodeskipped {
+  composes: executionNodeskipped from "./AISectionReasoning.module.css";
+}
+
+.executionNodevalidation {
+  composes: executionNodevalidation from "./AISectionReasoning.module.css";
+}
+
+.executionReason {
+  composes: executionReason from "./AISectionReasoning.module.css";
+}
+
+.executionStatus {
+  composes: executionStatus from "./AISectionReasoning.module.css";
+}
+
+.executionTitle {
+  composes: executionTitle from "./AISectionReasoning.module.css";
+}
+
+.executionTitleGroup {
+  composes: executionTitleGroup from "./AISectionReasoning.module.css";
+}
+
+.generationArtBadge {
+  composes: generationArtBadge from "./AISectionReasoning.module.css";
+}
+
+.generationArtIcon {
+  composes: generationArtIcon from "./AISectionReasoning.module.css";
+}
+
+.generationArtLiveDot {
+  composes: generationArtLiveDot from "./AISectionReasoning.module.css";
+}
+
+.generationArtSparkle {
+  composes: generationArtSparkle from "./AISectionReasoning.module.css";
+}
+
+.generationArtStream {
+  composes: generationArtStream from "./AISectionReasoning.module.css";
+}
+
+.generationArtStreamLine {
+  composes: generationArtStreamLine from "./AISectionReasoning.module.css";
+}
+
+.generationArtStreamLineMedium {
+  composes: generationArtStreamLineMedium from "./AISectionReasoning.module.css";
+}
+
+.generationArtStreamLineShort {
+  composes: generationArtStreamLineShort from "./AISectionReasoning.module.css";
+}

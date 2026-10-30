@@ -11,7 +11,7 @@ import type { WelcomeRequest } from '@/components/App/Panes/Prompt/prompt-types'
 import { SidebarState } from '@/components/App/Panes/Sidebar';
 import { TabState } from '@/components/App/Panes/TabBar';
 import { EditorState } from '@/components/App/Views/EditorArea';
-import { createEffectiveFileContentsSnapshot } from '@/components/App/Views/EditorArea/EditorBuffers';
+import { createEffectivePreviewFileContentsSnapshot } from '@/components/App/Views/EditorArea/EditorBuffers';
 import { LogState } from '@/components/App/Views/LogArea';
 import { useFileSystem } from '@/components/Storage';
 import { WorkspaceProfileState } from '@/components/Workspace';
@@ -273,7 +273,7 @@ export default function Prompt() {
   const refreshProjectStyle = useCallback(() => {
     workspaceProfileState((draft) => {
       draft.styleProfile = createProjectStyleProfile(
-        createEffectiveFileContentsSnapshot(editorBufferState),
+        createEffectivePreviewFileContentsSnapshot(editorBufferState),
       );
     });
   }, [editorBufferState, workspaceProfileState]);
@@ -303,7 +303,7 @@ export default function Prompt() {
           isAIProcessing,
           isSystemProcessing,
           latestManagerTrace,
-          getTraceFiles: () => createEffectiveFileContentsSnapshot(editorBufferState),
+          getTraceFiles: () => createEffectivePreviewFileContentsSnapshot(editorBufferState),
           onReplayRequest: replayManagerRequest,
         }}
         session={{

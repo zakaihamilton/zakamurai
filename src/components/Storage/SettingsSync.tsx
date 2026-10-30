@@ -47,6 +47,7 @@ export function useSettingsSync(
     | undefined,
   workspaceProfileState: StateStore<WorkspaceProfileStateShape> | null = null,
   changeSetState: StateStore<ChangeSetStateShape> | null = null,
+  isLocalFileSystem = false,
 ) {
   const persist = useStoragePersistenceStatus();
   const saveStartedAtRef = useRef<number | null>(null);
@@ -237,7 +238,11 @@ export function useSettingsSync(
       const contentStateUnchangedBeforeCommit = mutableState.fileContents === contentsAtStart;
       const dirtyStateUnchangedBeforeCommit =
         mutableState.dirtyBufferContents === dirtyStateAtStart;
-      if (typeof mutableState === 'function' && Object.keys(dirtyAtStart).length > 0) {
+      if (
+        !isLocalFileSystem &&
+        typeof mutableState === 'function' &&
+        Object.keys(dirtyAtStart).length > 0
+      ) {
         mutableState((draft) => {
           commitDirtyBufferContentsInDraft(draft, dirtyAtStart);
           committedContents = draft.fileContents;
@@ -266,6 +271,7 @@ export function useSettingsSync(
     pendingDiffs,
     persist,
     projectName,
+    isLocalFileSystem,
   ]);
 
   useEffect(() => {

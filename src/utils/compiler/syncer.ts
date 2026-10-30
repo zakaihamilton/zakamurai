@@ -8,6 +8,21 @@ type DirectoryHandleWithEntries = FileSystemDirectoryHandle & {
   entries: () => AsyncIterableIterator<[string, FileSystemHandle]>;
 };
 
+const IGNORED_PATH_SEGMENTS = new Set(['node_modules', '.git', 'dist', '.npm']);
+
+function normalizeProjectPath(path: string): string | null {
+  if (path.includes('\\')) return null;
+  const segments = path.split('/').filter(Boolean);
+  if (segments.length === 0 || segments.some((segment) => segment === '.' || segment === '..')) {
+    return null;
+  }
+  return segments.join('/');
+}
+
+function isIgnoredPath(path: string): boolean {
+  return path.split('/').some((segment) => IGNORED_PATH_SEGMENTS.has(segment));
+}
+
 // The virtual container is intentionally shared between builds. Remember which
 // project files we wrote so removing a file in the editor removes it there too.
 const syncedFiles = new WeakMap<AlmostnodeContainer, Set<string>>();
@@ -26,16 +41,29 @@ export async function syncFilesToContainer(
   const currentFiles = new Set<string>();
   const previousContents = syncedContents.get(container) || new Map<string, string>();
   const nextContents = new Map(previousContents);
+  const deletedPaths = new Set(
+    (fs.deletedPaths || [])
+      .map(normalizeProjectPath)
+      .filter((path): path is string => Boolean(path)),
+  );
+  const overlayPaths = fs.overlayPaths
+    ? new Set(
+        fs.overlayPaths.map(normalizeProjectPath).filter((path): path is string => Boolean(path)),
+      )
+    : null;
+  const hasLocalRoot = fs.mode === 'local' && Boolean(fs.rootHandle);
   const syncFile = async (fullPath: string, contentPromise: () => Promise<string>) => {
+    const pathStr = normalizeProjectPath(String(fullPath));
+    if (!pathStr || isIgnoredPath(pathStr) || deletedPaths.has(pathStr)) return;
     syncCount++;
     if (syncCount % 50 === 0) {
       await new Promise((resolve) => setTimeout(resolve, 0));
     }
 
-    const pathStr = String(fullPath);
-    const vfsPath = pathStr.startsWith('/') ? pathStr : `/${pathStr}`;
+    const vfsPath = `/${pathStr}`;
     currentFiles.add(vfsPath);
-    const inMemory = fileContents[pathStr];
+    const canOverlay = !hasLocalRoot || !overlayPaths || overlayPaths.has(pathStr);
+    const inMemory = canOverlay ? fileContents[pathStr] : undefined;
     let content: string;
     if (inMemory !== undefined) {
       content = inMemory;
@@ -130,13 +158,22 @@ export async function syncFilesToContainer(
   // Include any buffer that is not yet present in the traversed source so
   // validation and the following build use the same workspace.
   for (const [path, content] of Object.entries(fileContents)) {
-    const vfsPath = path.startsWith('/') ? path : `/${path}`;
+    const projectPath = normalizeProjectPath(path);
+    if (
+      !projectPath ||
+      isIgnoredPath(projectPath) ||
+      deletedPaths.has(projectPath) ||
+      (hasLocalRoot && overlayPaths && !overlayPaths.has(projectPath))
+    ) {
+      continue;
+    }
+    const vfsPath = `/${projectPath}`;
     if (currentFiles.has(vfsPath)) continue;
     const parentPath = vfsPath.slice(0, vfsPath.lastIndexOf('/'));
     if (parentPath && !container.vfs.existsSync(parentPath)) {
       container.vfs.mkdirSync?.(parentPath, { recursive: true });
     }
-    await syncFile(path, async () => content);
+    await syncFile(projectPath, async () => content);
   }
 
   const previousFiles = syncedFiles.get(container) || new Set<string>();

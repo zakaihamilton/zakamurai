@@ -1,3 +1,4 @@
+import { AppState } from '@/components/App/AppState';
 import { SidebarState } from '@/components/App/Panes/Sidebar';
 import { TabState } from '@/components/App/Panes/TabBar';
 import { EditorState } from '@/components/App/Views/EditorArea';
@@ -24,6 +25,8 @@ export default function ChangeSetPanel({ onOpenInTab = () => {} }: { onOpenInTab
   );
   const sidebarState = SidebarState.usePassiveState();
   const tabState = TabState.usePassiveState();
+  const appState = AppState.usePassiveState();
+  const workspaceEpoch = appState?.workspaceEpoch || 0;
   const fs = useFileSystem();
   const changeSet = (state.items || []).find((item) => item.id === state.activeId);
   const openFile = useCallback(
@@ -57,11 +60,12 @@ export default function ChangeSetPanel({ onOpenInTab = () => {} }: { onOpenInTab
         fs,
         sidebarState: sidebarState as never,
         tabState: tabState as never,
+        isWorkspaceCurrent: () => (appState?.workspaceEpoch || 0) === workspaceEpoch,
       };
       if (action === 'approve') await approveAllChangeSetChanges(params);
       else await undoAllChangeSetChanges(params);
     },
-    [changeSet, editorState, fs, sidebarState, state, tabState],
+    [appState, changeSet, editorState, fs, sidebarState, state, tabState, workspaceEpoch],
   );
   if (!changeSet) return null;
   const reviewed = changeSet.files.filter(

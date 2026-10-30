@@ -3,7 +3,7 @@ import { SidebarState } from '@/components/App/Panes/Sidebar';
 import { TabState } from '@/components/App/Panes/TabBar';
 import { PreviewState } from '@/components/App/PreviewState';
 import { EditorState } from '@/components/App/Views/EditorArea';
-import { createEffectiveFileContentsSnapshot } from '@/components/App/Views/EditorArea/EditorBuffers';
+import { createEffectivePreviewFileContentsSnapshot } from '@/components/App/Views/EditorArea/EditorBuffers';
 import { LogState } from '@/components/App/Views/LogArea';
 import { reportDiagnostic } from '@/components/Diagnostics';
 import { markPerformance, measurePerformance } from '@/components/Performance';
@@ -26,28 +26,54 @@ const PHASE_LABELS: Record<string, string> = {
   error: 'Build failed',
 };
 const AI_PREVIEW_MARKER = /\n<!-- zakamurai-ai-preview:\d+ -->$/;
+type PendingCompileRequest = { silent: boolean; workspaceEpoch: number };
 
 export default function useProjectCompiler() {
-  const appState = requireStore(AppState.useState(['compileRequest', 'silentCompileRequest']));
-  const { compileRequest, silentCompileRequest } = appState;
+  const appState = requireStore(
+    AppState.useState(['compileRequest', 'silentCompileRequest', 'workspaceEpoch']),
+  );
+  const { compileRequest, silentCompileRequest, workspaceEpoch = 0 } = appState;
   const fs = useFileSystem();
+  const currentRootHandleRef = useRef(fs.rootHandle);
+  currentRootHandleRef.current = fs.rootHandle;
   const tabState = requireStore(TabState.usePassiveState());
   const { folderTree } = requireStore(SidebarState.useState(['folderTree']));
   const editorState = requireStore(EditorState.usePassiveState());
   const logState = requireStore(LogState.usePassiveState());
   const previewState = requireStore(PreviewState.usePassiveState());
   const problemsState = requireStore(ProblemsState.usePassiveState());
-  const { isSystemProcessing } = requireStore(LogState.useState(['isSystemProcessing']));
+  const { isSystemProcessing, isAIProcessing } = requireStore(
+    LogState.useState(['isSystemProcessing', 'isAIProcessing']),
+  );
   const { addNotification } = useNotification();
   const isCompilingRef = useRef(false);
   const isRebuildingRef = useRef(false);
+  const pendingCompileRef = useRef<PendingCompileRequest | null>(null);
+  const handleCompileRef = useRef<((silent?: boolean) => Promise<void>) | null>(null);
   const lastCompileRequestRef = useRef(0);
   const lastSilentCompileRequestRef = useRef(0);
 
   const isSystemProcessingRef = useRef(isSystemProcessing);
+  const isAIProcessingRef = useRef(isAIProcessing);
   useEffect(() => {
     isSystemProcessingRef.current = isSystemProcessing;
-  }, [isSystemProcessing]);
+    isAIProcessingRef.current = isAIProcessing;
+    if (!isSystemProcessing && !isAIProcessing && pendingCompileRef.current !== null) {
+      if (pendingCompileRef.current.workspaceEpoch !== workspaceEpoch) {
+        pendingCompileRef.current = null;
+        return;
+      }
+      const hasFullCompileRequest = compileRequest !== lastCompileRequestRef.current;
+      const hasSilentCompileRequest = silentCompileRequest !== lastSilentCompileRequestRef.current;
+      const pendingCompile = pendingCompileRef.current.silent !== false && !hasFullCompileRequest;
+      pendingCompileRef.current = null;
+      if (hasFullCompileRequest) lastCompileRequestRef.current = compileRequest;
+      if (hasSilentCompileRequest) {
+        lastSilentCompileRequestRef.current = silentCompileRequest;
+      }
+      void handleCompileRef.current?.(pendingCompile);
+    }
+  }, [compileRequest, isAIProcessing, isSystemProcessing, silentCompileRequest, workspaceEpoch]);
 
   const handleOpenLog = useCallback(() => {
     tabState((draft) => {
@@ -72,8 +98,29 @@ export default function useProjectCompiler() {
   const handleCompile = useCallback(
     async (silent = false) => {
       const isSilent = silent === true;
-      if (isSystemProcessingRef.current || isCompilingRef.current) return;
+      const queueCompile = () => {
+        const pending = pendingCompileRef.current;
+        pendingCompileRef.current =
+          !pending || pending.workspaceEpoch !== workspaceEpoch
+            ? { silent: isSilent, workspaceEpoch }
+            : { silent: pending.silent && isSilent, workspaceEpoch };
+      };
+      if (isCompilingRef.current) {
+        // Keep the most recent build request while a previous build is unwinding.
+        // A full build takes priority over a queued silent rebuild.
+        queueCompile();
+        return;
+      }
+      if (isSystemProcessingRef.current || isAIProcessingRef.current) {
+        queueCompile();
+        return;
+      }
       isCompilingRef.current = true;
+      const compileWorkspaceEpoch = workspaceEpoch;
+      const compileRootHandle = fs.rootHandle;
+      const isCurrentWorkspace = () =>
+        (appState.workspaceEpoch || 0) === compileWorkspaceEpoch &&
+        currentRootHandleRef.current === compileRootHandle;
       markPerformance('build-start');
 
       logState((draft) => {
@@ -95,7 +142,7 @@ export default function useProjectCompiler() {
       let logTimer: ReturnType<typeof setTimeout> | null = null;
 
       const flushLogs = () => {
-        if (logQueue.length === 0) return;
+        if (logQueue.length === 0 || !isCurrentWorkspace()) return;
         const batch = [...logQueue];
         logQueue.length = 0;
         logState((draft) => {
@@ -112,6 +159,7 @@ export default function useProjectCompiler() {
       };
 
       const onLog = (text: string) => {
+        if (!isCurrentWorkspace()) return;
         logQueue.push(text);
         if (!logTimer) {
           logTimer = setTimeout(() => {
@@ -122,6 +170,7 @@ export default function useProjectCompiler() {
       };
 
       const onPhase = (phase: string) => {
+        if (!isCurrentWorkspace()) return;
         previewState((draft) => {
           draft.compilePhase = PHASE_LABELS[phase] || phase;
         });
@@ -129,17 +178,26 @@ export default function useProjectCompiler() {
 
       try {
         const { Compiler } = await loadCompiler();
+        if (!isCurrentWorkspace()) return;
         previewState((draft) => {
           draft.containerStatus = 'initializing';
         });
         const compiler = new Compiler(onLog, onPhase);
-        const localFs = toCompilerFs(fs);
+        const deletedPaths = Object.keys(editorState.pendingDeletions || {});
+        const overlayPaths = [
+          ...new Set([
+            ...Object.keys(editorState.pendingDiffs || {}),
+            ...Object.keys(editorState.dirtyBufferContents || {}),
+          ]),
+        ];
+        const localFs = toCompilerFs(fs, deletedPaths, overlayPaths);
         // Build/Preview compile proposed editor buffers, including unapproved AI diffs.
         await compiler.compile(
           localFs,
           folderTree,
-          createEffectiveFileContentsSnapshot(editorState),
+          createEffectivePreviewFileContentsSnapshot(editorState),
         );
+        if (!isCurrentWorkspace()) return;
         problemsState((draft) => {
           draft.items = [];
         });
@@ -193,6 +251,7 @@ export default function useProjectCompiler() {
           onLog(`[WARN] Could not load preview: ${message}`);
         }
       } catch (err) {
+        if (!isCurrentWorkspace()) return;
         const diagnostic = normalizeCompilerDiagnostic(err);
         reportDiagnostic({
           source: 'compiler',
@@ -227,7 +286,17 @@ export default function useProjectCompiler() {
         logState((draft) => {
           draft.isSystemProcessing = false;
         });
+        isSystemProcessingRef.current = false;
         isCompilingRef.current = false;
+        const pendingCompile = pendingCompileRef.current;
+        if (pendingCompile !== null) {
+          pendingCompileRef.current = null;
+          if (pendingCompile.workspaceEpoch === (appState.workspaceEpoch || 0)) {
+            queueMicrotask(() => {
+              void handleCompileRef.current?.(pendingCompile.silent);
+            });
+          }
+        }
       }
     },
     [
@@ -241,8 +310,12 @@ export default function useProjectCompiler() {
       addNotification,
       handleOpenLog,
       handleOpenPreview,
+      appState,
+      workspaceEpoch,
     ],
   );
+
+  handleCompileRef.current = handleCompile;
 
   useEffect(() => {
     if (compileRequest > 0 && compileRequest !== lastCompileRequestRef.current) {
@@ -259,9 +332,16 @@ export default function useProjectCompiler() {
   }, [silentCompileRequest, handleCompile]);
 
   const handleClearFS = useCallback(async () => {
+    const requestWorkspaceEpoch = workspaceEpoch;
+    const requestRootHandle = fs.rootHandle;
+    const isCurrentWorkspace = () =>
+      (appState.workspaceEpoch || 0) === requestWorkspaceEpoch &&
+      currentRootHandleRef.current === requestRootHandle;
     try {
       const { Compiler } = await loadCompiler();
+      if (!isCurrentWorkspace()) return;
       await Compiler.reset();
+      if (!isCurrentWorkspace()) return;
       previewState((draft) => {
         draft.htmlContent = null;
         draft.isCompilerReady = false;
@@ -279,6 +359,7 @@ export default function useProjectCompiler() {
       });
       handleOpenLog();
     } catch (err) {
+      if (!isCurrentWorkspace()) return;
       const errorMsg = err instanceof Error ? err.message : String(err);
       reportDiagnostic({ source: 'compiler', severity: 'error', message: errorMsg });
       addNotification(`Failed to clear filesystem: ${errorMsg}`, 'error');
@@ -294,20 +375,43 @@ export default function useProjectCompiler() {
         ];
       });
     }
-  }, [previewState, logState, handleOpenLog, addNotification]);
+  }, [
+    appState,
+    fs.rootHandle,
+    workspaceEpoch,
+    previewState,
+    logState,
+    handleOpenLog,
+    addNotification,
+  ]);
 
   const handleRebuild = useCallback(async () => {
-    if (isSystemProcessingRef.current || isCompilingRef.current || isRebuildingRef.current) return;
+    if (
+      isSystemProcessingRef.current ||
+      isAIProcessingRef.current ||
+      isCompilingRef.current ||
+      isRebuildingRef.current
+    ) {
+      return;
+    }
     isRebuildingRef.current = true;
+    const requestWorkspaceEpoch = workspaceEpoch;
+    const requestRootHandle = fs.rootHandle;
+    const isCurrentWorkspace = () =>
+      (appState.workspaceEpoch || 0) === requestWorkspaceEpoch &&
+      currentRootHandleRef.current === requestRootHandle;
 
     try {
       const { Compiler } = await loadCompiler();
+      if (!isCurrentWorkspace()) return;
       await Compiler.reset();
+      if (!isCurrentWorkspace()) return;
       previewState((draft) => {
         draft.isCompilerReady = false;
       });
       await handleCompile();
     } catch (err) {
+      if (!isCurrentWorkspace()) return;
       const errorMsg = err instanceof Error ? err.message : String(err);
       reportDiagnostic({ source: 'compiler', severity: 'error', message: errorMsg });
       addNotification(`Failed to rebuild: ${errorMsg}`, 'error');
@@ -326,7 +430,16 @@ export default function useProjectCompiler() {
     } finally {
       isRebuildingRef.current = false;
     }
-  }, [handleCompile, previewState, logState, handleOpenLog, addNotification]);
+  }, [
+    appState,
+    fs.rootHandle,
+    workspaceEpoch,
+    handleCompile,
+    previewState,
+    logState,
+    handleOpenLog,
+    addNotification,
+  ]);
 
   return {
     handleCompile,

@@ -1,0 +1,59 @@
+.executionCard {
+  composes: executionCard from "./AISectionReasoning.module.css";
+}
+
+.executionMarker {
+  composes: executionMarker from "./AISectionReasoning.module.css";
+}
+
+.executionNode {
+  composes: executionNode from "./AISectionReasoning.module.css";
+}
+
+.executionNodeModelProgress {
+  composes: executionNodeModelProgress from "./AISectionReasoning.module.css";
+}
+
+.executionNodeWorking {
+  composes: executionNodeWorking from "./AISectionReasoning.module.css";
+}
+
+.modelProgressCard {
+  composes: modelProgressCard from "./AISectionReasoning.module.css";
+}
+
+.modelProgressCopy {
+  composes: modelProgressCopy from "./AISectionReasoning.module.css";
+}
+
+.modelProgressEyebrow {
+  composes: modelProgressEyebrow from "./AISectionReasoning.module.css";
+}
+
+.modelProgressMeter {
+  composes: modelProgressMeter from "./AISectionReasoning.module.css";
+}
+
+.modelProgressRing {
+  composes: modelProgressRing from "./AISectionReasoning.module.css";
+}
+
+.modelProgressRingIndeterminate {
+  composes: modelProgressRingIndeterminate from "./AISectionReasoning.module.css";
+}
+
+.modelProgressRingText {
+  composes: modelProgressRingText from "./AISectionReasoning.module.css";
+}
+
+.modelProgressRingTrack {
+  composes: modelProgressRingTrack from "./AISectionReasoning.module.css";
+}
+
+.modelProgressRingValue {
+  composes: modelProgressRingValue from "./AISectionReasoning.module.css";
+}
+
+.modelProgressRingWrap {
+  composes: modelProgressRingWrap from "./AISectionReasoning.module.css";
+}

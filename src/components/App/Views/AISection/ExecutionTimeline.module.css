@@ -1,0 +1,31 @@
+.deckNavButton {
+  composes: deckNavButton from "./AISectionReasoning.module.css";
+}
+
+.deckNavTooltip {
+  composes: deckNavTooltip from "./AISectionReasoning.module.css";
+}
+
+.executionDeck {
+  composes: executionDeck from "./AISectionReasoning.module.css";
+}
+
+.executionDeckCollapsed {
+  composes: executionDeckCollapsed from "./AISectionReasoning.module.css";
+}
+
+.executionMap {
+  composes: executionMap from "./AISectionReasoning.module.css";
+}
+
+.executionMapCollapsed {
+  composes: executionMapCollapsed from "./AISectionReasoning.module.css";
+}
+
+.executionMapExpanded {
+  composes: executionMapExpanded from "./AISectionReasoning.module.css";
+}
+
+.executionSection {
+  composes: executionSection from "./AISectionReasoning.module.css";
+}

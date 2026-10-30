@@ -47,12 +47,13 @@ export function ensureFileInTree(
       let folderIdx = nextLevel.findIndex((n) => n.name === seg && n.type === 'folder');
       let folderNode: FolderTreeNode;
       if (folderIdx === -1) {
-        folderNode = { name: seg, type: 'folder', children: [] };
+        folderNode = { name: seg, type: 'folder', children: [], childrenLoaded: true };
         nextLevel.push(folderNode);
         folderIdx = nextLevel.length - 1;
       } else {
         folderNode = { ...nextLevel[folderIdx] };
         nextLevel[folderIdx] = folderNode;
+        folderNode.childrenLoaded ??= folderNode.children !== undefined;
       }
       folderNode.children = ensureInLevel(folderNode.children || [], pathSegments.slice(1));
       return nextLevel;
@@ -142,6 +143,7 @@ export function applyAgentChanges(
     .filter((change) => change.after !== undefined)
     .map((change) => ({
       ...change,
+      isNewFile: change.before === undefined,
       before: typeof change.before === 'string' ? change.before : '',
       after: formatCode(change.after as string, change.path),
     }))
@@ -161,7 +163,7 @@ export function applyAgentChanges(
   if (!autoApprove) addChangeSet(changeSetState ?? null, changeSet);
   let applied = 0;
 
-  for (const { path, before, after } of writes) {
+  for (const { path, before, after, isNewFile } of writes) {
     const originalContent = before;
     const finalContent = after;
     const { diffs } = computeDiff(originalContent, finalContent);
@@ -202,6 +204,7 @@ export function applyAgentChanges(
       setInDraft(draft, ['pendingDiffs', path], {
         originalContent,
         modifiedContent: finalContent,
+        isNewFile,
         originalCursorPos: existingCursor !== undefined ? existingCursor : currentCursor,
         diffs,
         changeSetId: changeSet?.id,

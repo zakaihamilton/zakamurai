@@ -18,6 +18,8 @@ export type FolderTreeNode = {
   name: string;
   type: 'folder' | 'file';
   children?: FolderTreeNode[];
+  childrenLoaded?: boolean;
+  handle?: FileSystemHandle;
 };
 
 export type Diff = {
@@ -519,6 +521,7 @@ export type LogEntry = {
 export type PendingDiff = {
   originalContent: string;
   modifiedContent: string;
+  isNewFile?: boolean;
   originalCursorPos?: number;
   diffs: Diff[];
   changeSetId?: string;
@@ -552,6 +555,8 @@ export type TabState = {
 export type FileSystemLike = {
   rootHandle?: FileSystemDirectoryHandle | null;
   mode?: string | null;
+  deletedPaths?: string[];
+  overlayPaths?: string[];
   isReady?: boolean;
   getFileHandleAtPath?: (path: string) => Promise<FileSystemFileHandle | null>;
   readFile?: (handle: FileSystemFileHandle) => Promise<string>;
@@ -599,7 +604,7 @@ export type AgentContextSnapshot = {
 };
 
 export type SnapshotOptions = {
-  onSkipped?: (info: { path: string; size: number; reason: string }) => void;
+  onSkipped?: (info: { path: string; size?: number; reason: string }) => void;
 };
 
 export type EsbuildTransform = (content: string, options: { loader: string }) => Promise<void>;

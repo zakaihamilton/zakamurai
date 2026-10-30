@@ -8,12 +8,23 @@ import type {
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 import type { RefObject } from 'react';
 import type { StateStore } from 'triactor';
-import { flattenTree, insertCreateRow, isNodeModulesPath, normalizeChildren } from './TreeUtils';
+import {
+  flattenTree,
+  insertCreateRow,
+  isNodeModulesPath,
+  mergeFileSystemTree,
+  normalizeChildren,
+} from './TreeUtils';
 import type { SidebarTreeRow } from './sidebar-types';
 
 type SidebarDataParams = {
   fs: FileSystemApi;
   sidebarState: StateStore<SidebarStateShape>;
+  editorState: {
+    pendingDiffs?: Record<string, unknown>;
+    pendingDeletions?: Record<string, unknown>;
+    dirtyBufferContents?: Record<string, string>;
+  };
   sidebarUiState: StateStore<SidebarUiStateShape>;
   tabState: StateStore<TabStateShape>;
   projectName: string;
@@ -21,7 +32,7 @@ type SidebarDataParams = {
   expandedFolders: Record<string, boolean>;
   deferredFilterText: string;
   creatingAt: SidebarUiStateShape['creatingAt'];
-  loadChildren: (row: FlatTreeRow) => Promise<void>;
+  loadChildren: (row: FlatTreeRow, force?: boolean) => Promise<void>;
   handleToggle: (row: FlatTreeRow, options?: { expandOnly?: boolean }) => void;
 };
 
@@ -36,6 +47,7 @@ type SidebarDataResult = {
 export default function useSidebarData({
   fs,
   sidebarState,
+  editorState,
   sidebarUiState,
   tabState,
   projectName,
@@ -47,6 +59,9 @@ export default function useSidebarData({
   handleToggle,
 }: SidebarDataParams): SidebarDataResult {
   const searchInputRef = useRef<HTMLInputElement | null>(null);
+  const loadingIncompleteFoldersRef = useRef(new Map<string, symbol>());
+  const lastRootHandleRef = useRef(fs.rootHandle);
+  const refreshedFilesystemVersionRef = useRef<number | null>(null);
   const syncedFsRef = useRef<{
     files: TreeNode[] | null;
     mode: string | null;
@@ -67,17 +82,58 @@ export default function useSidebarData({
 
     syncedFsRef.current = { files: fs.files, mode: fs.mode, version: fs.version };
     const nextTree = normalizeChildren(fs.files || []);
+    const stagedPaths = new Set([
+      ...Object.keys(editorState.pendingDiffs || {}),
+      ...Object.keys(editorState.pendingDeletions || {}),
+      ...Object.keys(editorState.dirtyBufferContents || {}),
+    ]);
+    const stagedPathsAndAncestors = new Set<string>();
+    for (const stagedPath of stagedPaths) {
+      const segments = stagedPath.split('/').filter(Boolean);
+      for (let index = 1; index <= segments.length; index++) {
+        stagedPathsAndAncestors.add(segments.slice(0, index).join('/'));
+      }
+    }
+    const preservesStagedPath = (_node: TreeNode, path: string[]): boolean =>
+      stagedPathsAndAncestors.has(path.join('/'));
     sidebarState((draft) => {
-      draft.folderTree = nextTree;
+      draft.folderTree = mergeFileSystemTree(nextTree, draft.folderTree || [], preservesStagedPath);
       const nextExpanded = { ...(draft.expandedFolders || {}) };
-      for (const row of flattenTree(nextTree, {}, '', [], 0)) {
+      for (const row of flattenTree(draft.folderTree, {}, '', [], 0)) {
         if (row.item.type === 'folder' && isNodeModulesPath(row.path)) {
           nextExpanded[row.pathStr] = false;
         }
       }
       draft.expandedFolders = nextExpanded;
     });
-  }, [fs.files, fs.mode, fs.version, sidebarState]);
+  }, [editorState, fs.files, fs.mode, fs.version, sidebarState]);
+
+  useEffect(() => {
+    if (fs.mode !== 'local') return;
+    if (lastRootHandleRef.current !== fs.rootHandle) {
+      lastRootHandleRef.current = fs.rootHandle;
+      loadingIncompleteFoldersRef.current.clear();
+    }
+    const filesystemVersionChanged = refreshedFilesystemVersionRef.current !== fs.version;
+    refreshedFilesystemVersionRef.current = fs.version;
+    const incompleteExpandedFolders = flattenTree(folderTree, expandedFolders, '').filter(
+      (row) =>
+        row.item.type === 'folder' &&
+        (filesystemVersionChanged || row.item.childrenLoaded === false) &&
+        expandedFolders[row.pathStr] === true &&
+        Boolean(row.item.handle),
+    );
+    for (const row of incompleteExpandedFolders) {
+      if (loadingIncompleteFoldersRef.current.has(row.pathStr)) continue;
+      const requestToken = Symbol(row.pathStr);
+      loadingIncompleteFoldersRef.current.set(row.pathStr, requestToken);
+      void loadChildren(row, true).finally(() => {
+        if (loadingIncompleteFoldersRef.current.get(row.pathStr) === requestToken) {
+          loadingIncompleteFoldersRef.current.delete(row.pathStr);
+        }
+      });
+    }
+  }, [expandedFolders, folderTree, fs.mode, fs.rootHandle, fs.version, loadChildren]);
 
   useEffect(() => {
     const handleFocusSearch = () => {

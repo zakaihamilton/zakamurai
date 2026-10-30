@@ -1,5 +1,8 @@
 import type { FileMap, RunManagerOptions } from '@/components/AI/types';
-import { createEffectiveFileContentsSnapshot } from '@/components/App/Views/EditorArea/EditorBuffers';
+import {
+  createEffectiveFileContentsSnapshot,
+  createEffectivePreviewFileContentsSnapshot,
+} from '@/components/App/Views/EditorArea/EditorBuffers';
 import type { ExtendedEditorState } from '@/components/App/Views/EditorArea/types';
 import type { FileSystemApi } from '@/components/App/types';
 import Settings from '@/components/Storage/Settings';
@@ -33,7 +36,17 @@ export async function prepareAgentRunContext({
     import('@/utils/compiler'),
   ]);
   const fileContents = createEffectiveFileContentsSnapshot(editorState);
-  const workspaceFiles = await collectWorkspaceFiles(toCompilerFs(fs) as never, fileContents);
+  const pendingDeletionPaths = Object.keys(editorState.pendingDeletions || {});
+  const overlayPaths = [
+    ...new Set([
+      ...Object.keys(editorState.pendingDiffs || {}),
+      ...Object.keys(editorState.dirtyBufferContents || {}),
+    ]),
+  ];
+  const workspaceFiles = await collectWorkspaceFiles(
+    toCompilerFs(fs, pendingDeletionPaths, overlayPaths) as never,
+    createEffectivePreviewFileContentsSnapshot(editorState),
+  );
   const projectHealth = analyzeProjectHealth(workspaceFiles);
   const preflightSummary = projectHealth.items.length
     ? projectHealth.items
@@ -75,30 +88,58 @@ const quoteDetail = (value: string): string => `\`${value.replaceAll('`', '\\`')
 export function createManagerToolOptions({
   Compiler,
   fs,
+  baselineFiles = {},
+  baselineDeletedPaths = [],
+  baselineOverlayPaths = [],
   sidebarState,
   tabState,
   previewState,
   deferPreviewNavigation = false,
+  isWorkspaceCurrent = () => true,
   onPreviewInspection,
 }: {
   Compiler: typeof import('@/utils/compiler').Compiler;
   fs: FileSystemApi;
+  baselineFiles?: FileMap;
+  baselineDeletedPaths?: string[];
+  baselineOverlayPaths?: string[];
   sidebarState: StateStore<SidebarStateShape>;
   tabState: StateStore<TabStateShape>;
   previewState?: StateStore<PreviewStateShape>;
   /** Restore the welcome run's previous tab when preview inspection cannot provide evidence. */
   deferPreviewNavigation?: boolean;
+  isWorkspaceCurrent?: () => boolean;
   onPreviewInspection?: (files: FileMap, result: unknown) => void;
 }): Pick<
   RunManagerOptions,
   'validate' | 'runProjectCheck' | 'inspectPreview' | 'retrieveContext' | 'onPreviewInspection'
 > {
+  const compilerFsFor = (stagedFiles: FileMap) => {
+    const overlayPaths = new Set(baselineOverlayPaths);
+    for (const [path, content] of Object.entries(stagedFiles)) {
+      if (!Object.hasOwn(baselineFiles, path) || baselineFiles[path] !== content) {
+        overlayPaths.add(path);
+      }
+    }
+    return toCompilerFs(
+      fs,
+      [
+        ...new Set([
+          ...baselineDeletedPaths.filter((path) => !Object.hasOwn(stagedFiles, path)),
+          ...Object.keys(baselineFiles).filter((path) => !Object.hasOwn(stagedFiles, path)),
+        ]),
+      ],
+      [...overlayPaths],
+    );
+  };
   return {
     onPreviewInspection,
     retrieveContext: async (query, k) => {
+      if (!isWorkspaceCurrent()) return [];
       const lexical = (await getWorkspaceIndex()
         .queryText(query, k)
         .catch(() => [])) as Array<{ path: string; preview?: string; score?: number }>;
+      if (!isWorkspaceCurrent()) return [];
       return lexical.map((item) => ({
         filePath: item.path,
         content: item.preview || '',
@@ -106,10 +147,28 @@ export function createManagerToolOptions({
       }));
     },
     validate: async (stagedFiles: FileMap) => {
+      if (!isWorkspaceCurrent()) {
+        return {
+          status: 'failed',
+          check: 'build',
+          diagnostics: 'Workspace changed during this run.',
+        };
+      }
       const validationLogs: string[] = [];
       const compiler = new Compiler((line: string) => validationLogs.push(line));
       try {
-        await compiler.compile(toCompilerFs(fs), sidebarState.folderTree || [], stagedFiles);
+        await compiler.compile(
+          compilerFsFor(stagedFiles),
+          sidebarState.folderTree || [],
+          stagedFiles,
+        );
+        if (!isWorkspaceCurrent()) {
+          return {
+            status: 'failed',
+            check: 'build',
+            diagnostics: 'Workspace changed during this run.',
+          };
+        }
         return {
           status: 'passed',
           check: 'build',
@@ -125,27 +184,40 @@ export function createManagerToolOptions({
       }
     },
     runProjectCheck: async (check, stagedFiles) => {
+      if (!isWorkspaceCurrent()) return 'Workspace changed during this run.';
       const logs: string[] = [];
       const compiler = new Compiler((line: string) => logs.push(line));
       const output = await compiler.runProjectCheck(
-        toCompilerFs(fs),
+        compilerFsFor(stagedFiles),
         sidebarState.folderTree || [],
         stagedFiles,
         check,
       );
+      if (!isWorkspaceCurrent()) return 'Workspace changed during this run.';
       return [output, ...logs.slice(-12)].filter(Boolean).join('\n');
     },
     inspectPreview: async (stagedFiles: FileMap) => {
+      if (!isWorkspaceCurrent()) {
+        return { status: 'unavailable', diagnostics: 'Workspace changed during this run.' };
+      }
       const logs: string[] = [];
       const previousActiveTabId = tabState.activeTabId;
       let previewInspectionAccepted = false;
       const restoreDeferredPreviewNavigation = () => {
-        if (!deferPreviewNavigation || previewInspectionAccepted || !previousActiveTabId) return;
+        if (
+          !isWorkspaceCurrent() ||
+          !deferPreviewNavigation ||
+          previewInspectionAccepted ||
+          !previousActiveTabId
+        ) {
+          return;
+        }
         tabState((draft) => {
           if (draft.activeTabId === 'preview') draft.activeTabId = previousActiveTabId;
         });
       };
       const reportPreviewInspection = (result: unknown) => {
+        if (!isWorkspaceCurrent()) return;
         previewInspectionAccepted =
           typeof result === 'object' &&
           result !== null &&
@@ -158,7 +230,14 @@ export function createManagerToolOptions({
       );
       const evidenceRevision = previewState ? evidenceBridge.clearPreviewEvidence() : 0;
       try {
-        await compiler.compile(toCompilerFs(fs), sidebarState.folderTree || [], stagedFiles);
+        await compiler.compile(
+          compilerFsFor(stagedFiles),
+          sidebarState.folderTree || [],
+          stagedFiles,
+        );
+        if (!isWorkspaceCurrent()) {
+          return { status: 'unavailable', diagnostics: 'Workspace changed during this run.' };
+        }
         let evidence = evidenceBridge.getLatestPreviewEvidence();
         if (previewState) {
           const container = compiler.container;
@@ -187,6 +266,9 @@ export function createManagerToolOptions({
             draft.isCompilerReady = true;
           });
           evidence = await evidenceBridge.waitForPreviewEvidence(evidenceRevision);
+          if (!isWorkspaceCurrent()) {
+            return { status: 'unavailable', diagnostics: 'Workspace changed during this run.' };
+          }
           if (!evidence) {
             restoreDeferredPreviewNavigation();
             const result = {

@@ -23,7 +23,7 @@ export function makeFileSystemApi(overrides: Partial<FileSystemApi> = {}): FileS
     getFileHandleAtPath: vi.fn(async () => null),
     createFolder: vi.fn(async () => {}),
     deleteEntry: vi.fn(async () => {}),
-    moveEntry: vi.fn(async () => {}),
+    moveEntry: vi.fn(async () => true),
     unlinkProject: vi.fn(async () => {}),
     isReady: true,
     ...overrides,

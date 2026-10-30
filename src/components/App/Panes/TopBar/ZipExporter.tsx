@@ -1,7 +1,7 @@
 import { AppState } from '@/components/App/AppState';
 import { SidebarState } from '@/components/App/Panes/Sidebar';
 import { EditorState } from '@/components/App/Views/EditorArea';
-import { createEffectiveFileContentsSnapshot } from '@/components/App/Views/EditorArea/EditorBuffers';
+import { createEffectivePreviewFileContentsSnapshot } from '@/components/App/Views/EditorArea/EditorBuffers';
 import { useFileSystem } from '@/components/Storage';
 import type { TreeNode } from '@/types/domain-types';
 import { ZipWriter } from '@/utils/zip';
@@ -17,12 +17,23 @@ export default function useZipExporter() {
 
   const handleExportZip = useCallback(async () => {
     const zip = new ZipWriter();
-    const fileContents = createEffectiveFileContentsSnapshot(editorState);
+    const fileContents = createEffectivePreviewFileContentsSnapshot(editorState);
+    const deletedPaths = Object.keys(editorState.pendingDeletions || {});
+    const isDeletedPath = (path: string) =>
+      deletedPaths.some(
+        (deletedPath) => path === deletedPath || path.startsWith(`${deletedPath}/`),
+      );
 
     if (fs.mode === 'local' && fs.rootHandle) {
+      const addedPaths = new Set<string>();
+      const overlayPaths = new Set([
+        ...Object.keys(editorState.dirtyBufferContents || {}),
+        ...Object.keys(editorState.pendingDiffs || {}),
+      ]);
       const traverse = async (handle: FileSystemDirectoryHandle, path = '') => {
         for await (const [name, entry] of handle.entries()) {
           const entryPath = path ? `${path}/${name}` : name;
+          if (isDeletedPath(entryPath)) continue;
           if (entry.kind === 'file') {
             const fileHandle = entry as FileSystemFileHandle;
             const inMemory = fileContents[entryPath];
@@ -33,16 +44,24 @@ export default function useZipExporter() {
               const content = await file.arrayBuffer();
               zip.addFile(entryPath, new Uint8Array(content));
             }
+            addedPaths.add(entryPath);
           } else if (entry.kind === 'directory') {
             await traverse(entry as FileSystemDirectoryHandle, entryPath);
           }
         }
       };
       await traverse(fs.rootHandle);
+      for (const path of overlayPaths) {
+        if (isDeletedPath(path) || addedPaths.has(path) || !Object.hasOwn(fileContents, path)) {
+          continue;
+        }
+        zip.addFile(path, fileContents[path]);
+      }
     } else {
       const traverse = (nodes: TreeNode[], path = '') => {
         for (const node of nodes) {
           const nodePath = path ? `${path}/${node.name}` : node.name;
+          if (isDeletedPath(nodePath)) continue;
           if (node.type === 'file') {
             const content = fileContents[nodePath] || '';
             zip.addFile(nodePath, content);

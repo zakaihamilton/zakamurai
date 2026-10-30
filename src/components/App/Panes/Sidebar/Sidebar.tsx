@@ -2,6 +2,7 @@ import { AppState } from '@/components/App/AppState';
 import { TabState } from '@/components/App/Panes/TabBar';
 import { EditorState } from '@/components/App/Views/EditorArea';
 import { useFileSystem } from '@/components/Storage';
+import { ChangeSetState } from '@/components/Workspace';
 import { useNotification } from '@/components/ui/Notification';
 import type { SidebarStateShape, SidebarUiStateShape } from '@/types/domain-types';
 import { useCallback, useDeferredValue } from 'react';
@@ -39,6 +40,7 @@ export default function Sidebar() {
   const fs = useFileSystem();
   const tabState = requireStore(TabState.useState(['activeTabId', 'openTabs']));
   const editorState = EditorState.usePassiveState();
+  const changeSetState = ChangeSetState.usePassiveState();
   const sidebarUiState = requireStore(
     SidebarUiState.useState(null, {
       filterText: '',
@@ -96,13 +98,19 @@ export default function Sidebar() {
       sidebarState,
       tabState,
       editorState: requireStore(editorState),
+      changeSetState,
       setLoadingPaths,
       addNotification,
     });
 
   const { handleDragStart, handleDragOver, handleDragEnter, handleDrop } = useSidebarDragAndDrop({
     fs,
+    appState: requireStore(appState),
     sidebarState,
+    editorState: requireStore(editorState),
+    tabState,
+    changeSetState,
+    addNotification,
     setDropTargetPath,
   });
 
@@ -110,6 +118,7 @@ export default function Sidebar() {
     useSidebarData({
       fs,
       sidebarState,
+      editorState: editorState || {},
       sidebarUiState,
       tabState,
       projectName,
@@ -119,6 +128,7 @@ export default function Sidebar() {
       creatingAt,
       loadChildren: loadChildren as (
         row: import('@/components/App/types').FlatTreeRow,
+        force?: boolean,
       ) => Promise<void>,
       handleToggle: handleToggle as (
         row: import('@/components/App/types').FlatTreeRow,

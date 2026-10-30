@@ -1,0 +1,23 @@
+.emptyVisualIcon {
+  composes: emptyVisualIcon from "./AISectionReasoning.module.css";
+}
+
+.emptyVisualState {
+  composes: emptyVisualState from "./AISectionReasoning.module.css";
+}
+
+.reasoningError {
+  composes: reasoningError from "./AISectionReasoning.module.css";
+}
+
+.reasoningErrorLabel {
+  composes: reasoningErrorLabel from "./AISectionReasoning.module.css";
+}
+
+.visualRunDetails {
+  composes: visualRunDetails from "./AISectionReasoning.module.css";
+}
+
+.visualRunDetailsContent {
+  composes: visualRunDetailsContent from "./AISectionReasoning.module.css";
+}

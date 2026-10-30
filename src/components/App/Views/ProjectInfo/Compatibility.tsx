@@ -1,7 +1,12 @@
 import { EditorState } from '@/components/App/Views/EditorArea';
-import { createEffectiveFileContentsSnapshot } from '@/components/App/Views/EditorArea/EditorBuffers';
+import {
+  createEffectivePreviewFileContentsSnapshot,
+  mergeWorkspaceDiskFiles,
+} from '@/components/App/Views/EditorArea/EditorBuffers';
+import { collectWorkspaceFiles } from '@/components/AI/Agent/Snapshot';
+import { useFileSystem } from '@/components/Storage';
 import { analyzeProjectHealth } from '@/contracts/project';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { requireStore } from '../../types';
 import styles from './Compatibility.module.css';
 
@@ -12,16 +17,55 @@ const statusLabel = {
 } as const;
 
 export default function ProjectCompatibility() {
-  const editorState = requireStore(EditorState.useState(['fileContents', 'dirtyBufferContents']));
+  const fs = useFileSystem();
+  const filesystemVersionRef = useRef(fs.version);
+  filesystemVersionRef.current = fs.version;
+  const editorState = requireStore(
+    EditorState.useState([
+      'fileContents',
+      'dirtyBufferContents',
+      'pendingDiffs',
+      'pendingDeletions',
+    ]),
+  );
   const [report, setReport] = useState(() =>
-    analyzeProjectHealth(createEffectiveFileContentsSnapshot(editorState)),
+    analyzeProjectHealth(createEffectivePreviewFileContentsSnapshot(editorState)),
   );
   useEffect(() => {
-    const timer = window.setTimeout(() => {
-      setReport(analyzeProjectHealth(createEffectiveFileContentsSnapshot(editorState)));
+    const requestVersion = fs.version;
+    let cancelled = false;
+    const timer = window.setTimeout(async () => {
+      try {
+        let files = createEffectivePreviewFileContentsSnapshot(editorState);
+        if (fs.mode === 'local' && fs.rootHandle) {
+          const diskFiles = await collectWorkspaceFiles(
+            { mode: 'local', rootHandle: fs.rootHandle },
+            {},
+          );
+          if (cancelled || filesystemVersionRef.current !== requestVersion) return;
+          files = mergeWorkspaceDiskFiles(diskFiles, editorState);
+        }
+        if (!cancelled && filesystemVersionRef.current === requestVersion) {
+          setReport(analyzeProjectHealth(files));
+        }
+      } catch (error) {
+        console.error('Failed to analyze project compatibility:', error);
+      }
     }, 3000);
-    return () => window.clearTimeout(timer);
-  }, [editorState, editorState.dirtyBufferContents, editorState.fileContents]);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [
+    fs.mode,
+    fs.rootHandle,
+    fs.version,
+    editorState,
+    editorState.dirtyBufferContents,
+    editorState.fileContents,
+    editorState.pendingDiffs,
+    editorState.pendingDeletions,
+  ]);
   const visibleItems = report.items.slice(0, 8);
 
   return (

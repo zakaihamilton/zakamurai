@@ -65,6 +65,9 @@ export type FolderTreeNode = {
 export type LocalFsLike = {
   mode: string;
   rootHandle?: FileSystemDirectoryHandle;
+  deletedPaths?: string[];
+  /** Editor buffers allowed to create or override missing local filesystem files. */
+  overlayPaths?: string[];
 };
 
 export type EsbuildOutputFile = {

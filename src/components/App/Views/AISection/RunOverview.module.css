@@ -1,0 +1,95 @@
+.metricGrid {
+  composes: metricGrid from "./AISectionReasoning.module.css";
+}
+
+.runExecution {
+  composes: runExecution from "./AISectionReasoning.module.css";
+}
+
+.runExecutionCopy {
+  composes: runExecutionCopy from "./AISectionReasoning.module.css";
+}
+
+.runExecutionDetail {
+  composes: runExecutionDetail from "./AISectionReasoning.module.css";
+}
+
+.runExecutionIndicator {
+  composes: runExecutionIndicator from "./AISectionReasoning.module.css";
+}
+
+.runExecutionIndicatoraborted {
+  composes: runExecutionIndicatoraborted from "./AISectionReasoning.module.css";
+}
+
+.runExecutionIndicatorerror {
+  composes: runExecutionIndicatorerror from "./AISectionReasoning.module.css";
+}
+
+.runExecutionIndicatorrunning {
+  composes: runExecutionIndicatorrunning from "./AISectionReasoning.module.css";
+}
+
+.runExecutionIndicatorsuccess {
+  composes: runExecutionIndicatorsuccess from "./AISectionReasoning.module.css";
+}
+
+.runExecutionOutcome {
+  composes: runExecutionOutcome from "./AISectionReasoning.module.css";
+}
+
+.runExecutionOutcomeaborted {
+  composes: runExecutionOutcomeaborted from "./AISectionReasoning.module.css";
+}
+
+.runExecutionOutcomeerror {
+  composes: runExecutionOutcomeerror from "./AISectionReasoning.module.css";
+}
+
+.runExecutionOutcomerunning {
+  composes: runExecutionOutcomerunning from "./AISectionReasoning.module.css";
+}
+
+.runExecutionOutcomesuccess {
+  composes: runExecutionOutcomesuccess from "./AISectionReasoning.module.css";
+}
+
+.runExecutionTitle {
+  composes: runExecutionTitle from "./AISectionReasoning.module.css";
+}
+
+.runOverview {
+  composes: runOverview from "./AISectionReasoning.module.css";
+}
+
+.runRequest {
+  composes: runRequest from "./AISectionReasoning.module.css";
+}
+
+.runStatus {
+  composes: runStatus from "./AISectionReasoning.module.css";
+}
+
+.runStatusLabel {
+  composes: runStatusLabel from "./AISectionReasoning.module.css";
+}
+
+.statusMarker {
+  composes: statusMarker from "./AISectionReasoning.module.css";
+}
+
+.statusMarkererror {
+  composes: statusMarkererror from "./AISectionReasoning.module.css";
+}
+
+.statusMarkerready {
+  composes: statusMarkerready from "./AISectionReasoning.module.css";
+}
+
+.statusMarkerrunning {
+  composes: statusMarkerrunning from "./AISectionReasoning.module.css";
+}
+
+.statusMarkerstopped {
+  composes: statusMarkerstopped from "./AISectionReasoning.module.css";
+}

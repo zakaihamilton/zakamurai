@@ -3,7 +3,7 @@ import { AppState } from '@/components/App/AppState';
 import { PreviewState } from '@/components/App/PreviewState';
 import {
   createEffectiveFileContentsSnapshot,
-  createEffectiveFileContentsView,
+  createEffectivePreviewFileContentsSnapshot,
 } from '@/components/App/Views/EditorArea/EditorBuffers';
 import { ChangeSetState } from '@/components/Workspace';
 import type { FormEvent } from 'react';
@@ -106,14 +106,16 @@ export default function useAgentRunner({
       const currentActiveTabId = tabState.activeTabId;
       const currentActiveTab = tabState.openTabs.find((tab) => tab.id === currentActiveTabId);
       const currentStyleProfile = resolveProjectStyleProfile(
-        createEffectiveFileContentsView(editorState),
+        createEffectivePreviewFileContentsSnapshot(editorState),
         styleProfile,
       );
       const autoApproveInitialProject =
         activeSession.messages.length === 0 &&
         Object.keys(createEffectiveFileContentsSnapshot(editorState)).length === 0 &&
         (sidebarState.folderTree || []).length === 0;
-      const shouldAutoApprove = isWelcomePrompt || autoApproveInitialProject;
+      // A mounted filesystem needs the review marker to keep sidebar opens on the
+      // proposed editor buffer until the user approves it to disk.
+      const shouldAutoApprove = !fs.rootHandle && (isWelcomePrompt || autoApproveInitialProject);
 
       pushSessionMessage(sessionId, createSessionMessage({ role: 'user', text: userMsg }));
       patchSession(sessionId, {

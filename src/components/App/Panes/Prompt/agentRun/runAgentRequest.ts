@@ -1,11 +1,14 @@
-import { applyAgentChanges } from '@/components/AI/Agent/Applier';
+import { applyAgentChanges, removeFileFromTree } from '@/components/AI/Agent/Applier';
 import type {
   AgentEvent,
   FileMap,
   RunManagerOptions,
   RunManagerResult,
 } from '@/components/AI/types';
-import { createEffectiveFileContentsSnapshot } from '@/components/App/Views/EditorArea/EditorBuffers';
+import {
+  createEffectivePreviewFileContentsSnapshot,
+  removeEditorPathStateInDraft,
+} from '@/components/App/Views/EditorArea/EditorBuffers';
 import type { ExtendedEditorState } from '@/components/App/Views/EditorArea/types';
 import type { FileSystemApi } from '@/components/App/types';
 import { getWorkspaceIndex } from '@/components/Workspace';
@@ -16,6 +19,7 @@ import type {
   PreviewStateShape,
   PromptUiStateShape,
 } from '@/types/domain-types';
+import { removeLastCodeTabPathInDraft } from '@/components/App/Panes/TabBar/TabStateUtils';
 import type {
   AgentSessionMessage,
   LogStateShape,
@@ -105,6 +109,35 @@ export async function runAgentRequest({
     logState,
   });
   const controller = new AbortController();
+  const workspaceEpoch = appState.workspaceEpoch || 0;
+  const previousActiveTabId = tabState.activeTabId;
+  const hadPreviewTab = tabState.openTabs.some((tab) => tab.id === 'preview');
+  const previousPreview = previewState
+    ? {
+        htmlContent: previewState.htmlContent,
+        isCompilerReady: previewState.isCompilerReady,
+        previewAddress: previewState.previewAddress,
+        restoreError: previewState.restoreError,
+        compileError: previewState.compileError,
+        serverError: previewState.serverError,
+      }
+    : null;
+  const restorePreview = () => {
+    if ((appState.workspaceEpoch || 0) !== workspaceEpoch) return;
+    tabState((draft) => {
+      if (!hadPreviewTab) draft.openTabs = draft.openTabs.filter((tab) => tab.id !== 'preview');
+      draft.activeTabId = previousActiveTabId;
+    });
+    if (!previewState || !previousPreview) return;
+    previewState((draft) => {
+      draft.htmlContent = previousPreview.htmlContent;
+      draft.isCompilerReady = previousPreview.isCompilerReady;
+      draft.previewAddress = previousPreview.previewAddress;
+      draft.restoreError = previousPreview.restoreError;
+      draft.compileError = previousPreview.compileError;
+      draft.serverError = previousPreview.serverError;
+    });
+  };
   promptUiState((draft) => {
     draft.abortController = controller;
   });
@@ -140,9 +173,14 @@ export async function runAgentRequest({
       styleProfile,
       signal: controller.signal,
       workspaceIndex: getWorkspaceIndex() as never,
-      onMetrics: runState.recordMetrics,
-      onRecovery: runState.recordRecovery,
+      onMetrics: (metrics) => {
+        if (appState.workspaceEpoch === workspaceEpoch) runState.recordMetrics(metrics);
+      },
+      onRecovery: (event) => {
+        if (appState.workspaceEpoch === workspaceEpoch) runState.recordRecovery(event);
+      },
       onTrace: (trace) => {
+        if (appState.workspaceEpoch !== workspaceEpoch) return;
         runState.recordTrace(trace);
         promptUiState((draft) => {
           draft.latestManagerTrace = trace;
@@ -151,6 +189,15 @@ export async function runAgentRequest({
       ...createManagerToolOptions({
         Compiler,
         fs,
+        baselineFiles: workspaceFiles,
+        baselineDeletedPaths: Object.keys(editorState.pendingDeletions || {}),
+        baselineOverlayPaths: [
+          ...new Set([
+            ...Object.keys(editorState.pendingDiffs || {}),
+            ...Object.keys(editorState.dirtyBufferContents || {}),
+          ]),
+        ],
+        isWorkspaceCurrent: () => appState.workspaceEpoch === workspaceEpoch,
         sidebarState,
         tabState,
         previewState: previewState || undefined,
@@ -165,6 +212,7 @@ export async function runAgentRequest({
         },
       }),
       onEvent: (managerEvent) => {
+        if (appState.workspaceEpoch !== workspaceEpoch) return;
         if (managerEvent.type === 'validation') {
           const output = managerEvent.output || managerEvent.message || '';
           runState.recordValidation(
@@ -202,7 +250,10 @@ export async function runAgentRequest({
     logState((draft) => {
       stillProcessing = draft.isAIProcessing;
     });
-    if (!stillProcessing) return;
+    if (!stillProcessing) {
+      restorePreview();
+      return;
+    }
     const {
       applied,
       deletions,
@@ -218,10 +269,52 @@ export async function runAgentRequest({
     });
     const stagedAnything = applied > 0 || Boolean(changeSet) || deletions.length > 0;
     const applyFailed = rejected.length > 0 && (shouldAutoApprove || !stagedAnything);
+    if (applyFailed) restorePreview();
+
+    if (deletions.length) {
+      if (shouldAutoApprove) {
+        editorState((draft) => {
+          for (const deletion of deletions) {
+            removeEditorPathStateInDraft(draft, deletion.path);
+          }
+        });
+        for (const deletion of deletions) {
+          removeFileFromTree(sidebarState as never, deletion.path);
+        }
+        tabState((draft) => {
+          const deletedPaths = new Set(deletions.map(({ path }) => path));
+          draft.openTabs = draft.openTabs.filter(
+            (tab) =>
+              ![...deletedPaths].some((path) => tab.id === path || tab.id.startsWith(`${path}/`)),
+          );
+          if (draft.activeTabId && !draft.openTabs.some((tab) => tab.id === draft.activeTabId)) {
+            draft.activeTabId = draft.openTabs.at(-1)?.id || null;
+          }
+          removeLastCodeTabPathInDraft(
+            draft,
+            deletions.map(({ path }) => path),
+          );
+        });
+      } else {
+        editorState((draft) => {
+          const next = { ...(draft.pendingDeletions || {}) };
+          for (const deletion of deletions) {
+            next[deletion.path] = {
+              originalContent: deletion.before,
+              changeSetId: changeSet?.id || '',
+            };
+          }
+          draft.pendingDeletions = next;
+        });
+      }
+    }
     const canReusePreview =
       !applyFailed &&
       Boolean(previewState) &&
-      fileMapsMatch(previewInspectionFiles, createEffectiveFileContentsSnapshot(editorState));
+      fileMapsMatch(
+        previewInspectionFiles,
+        createEffectivePreviewFileContentsSnapshot(editorState),
+      );
     if (rejected.length) {
       runState.appendReasoning(
         applyFailed
@@ -258,7 +351,11 @@ export async function runAgentRequest({
       draft.isAIProcessing = false;
     });
 
-    if (!applyFailed && (isWelcomePrompt || (autoApproveInitialProject && applied > 0))) {
+    const previewNeedsRebuild = Boolean(previewInspectionFiles && previewState && !canReusePreview);
+    if (
+      !applyFailed &&
+      (isWelcomePrompt || (autoApproveInitialProject && applied > 0) || previewNeedsRebuild)
+    ) {
       const projectLabel = isWelcomePrompt ? 'Welcome project' : 'Initial project';
       runState.appendReasoning(
         `**${projectLabel} ready:** ${canReusePreview ? 'using the validated preview as the first build…' : 'starting the first build now…'}`,
@@ -280,19 +377,9 @@ export async function runAgentRequest({
         }),
       );
     }
-    if (deletions.length) {
-      editorState((draft) => {
-        const next = { ...(draft.pendingDeletions || {}) };
-        for (const deletion of deletions) {
-          next[deletion.path] = {
-            originalContent: deletion.before,
-            changeSetId: changeSet?.id || '',
-          };
-        }
-        draft.pendingDeletions = next;
-      });
-    }
   } catch (error) {
+    if ((appState.workspaceEpoch || 0) !== workspaceEpoch) return;
+    restorePreview();
     await handleAgentRunError({
       error,
       sessionId,

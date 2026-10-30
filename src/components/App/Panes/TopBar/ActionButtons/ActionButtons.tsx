@@ -62,6 +62,10 @@ export default function ActionButtons({
     }
   }, [activeTabId, tabState]);
 
+  useEffect(() => {
+    lastContentTabIdRef.current = lastCodeTabId;
+  }, [lastCodeTabId]);
+
   useEffect(
     () => () => {
       if (rebuildTimerRef.current) clearTimeout(rebuildTimerRef.current);

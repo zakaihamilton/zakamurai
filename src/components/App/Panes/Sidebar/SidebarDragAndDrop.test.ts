@@ -119,7 +119,7 @@ describe('useSidebarDragAndDrop', () => {
     const setDropTargetPath = vi.fn();
     const fs = makeFileSystemApi({
       mode: 'local',
-      moveEntry: vi.fn().mockResolvedValue(undefined),
+      moveEntry: vi.fn().mockResolvedValue(true),
     });
 
     const { result } = renderHook(() =>
