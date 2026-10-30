@@ -74,8 +74,7 @@ export default function useEditorAreaController({
     toggleFold,
     foldLabel,
   } = buffer;
-  const isReadOnly =
-    state.isReadOnly === true || Boolean(state.pendingFileOperations?.[filePath]);
+  const isReadOnly = state.isReadOnly === true || Boolean(state.pendingFileOperations?.[filePath]);
   const isCommandPressed = useEditorNavigationMode();
   const navigationLinksEnabled = isReadOnly || isCommandPressed;
   const reviewNavigationLinksEnabled = hasDiff ? false : navigationLinksEnabled;
