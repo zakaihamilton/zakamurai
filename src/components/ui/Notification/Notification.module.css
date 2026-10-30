@@ -97,3 +97,14 @@
   background: rgb(255 255 255 / 90%);
   border-color: var(--border-light);
 }
+
+@media (width <= 520px) {
+  .container {
+    left: 16px;
+    right: 16px;
+  }
+
+  .toast {
+    min-width: 0;
+  }
+}

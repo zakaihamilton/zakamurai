@@ -160,6 +160,39 @@ test('mobile workspace action controls stay within the screen in both themes', a
   }
 });
 
+test('mobile storage notifications keep horizontal gutters in both themes', async ({ page }) => {
+  for (const width of [320, 390]) {
+    await page.setViewportSize({ width, height: 844 });
+    for (const theme of ['dark', 'light']) {
+      await page.goto(`/ui-preview?screen=storage&scenario=error&theme=${theme}`);
+      await expect(page.locator('[data-preview-ready="true"]')).toBeVisible();
+      const toast = page.locator('[class*="Notification_toast__"]');
+      const container = toast.locator('xpath=..');
+      await expect(toast).toBeVisible();
+      await page.addStyleTag({
+        content:
+          '[class*="Notification_toast__"] { animation: none !important; transform: none !important; }',
+      });
+      const bounds = await container.evaluate((element) => {
+        const containerBounds = element.getBoundingClientRect();
+        const toastBounds = element.firstElementChild?.getBoundingClientRect();
+        if (!toastBounds) throw new Error('The storage notification is missing.');
+        return {
+          containerLeft: containerBounds.left,
+          containerRight: containerBounds.right,
+          toastLeft: toastBounds.left,
+          toastRight: toastBounds.right,
+        };
+      });
+
+      expect(bounds.containerLeft).toBeGreaterThanOrEqual(16);
+      expect(bounds.containerRight).toBeLessThanOrEqual(width - 16);
+      expect(bounds.toastLeft).toBeGreaterThanOrEqual(bounds.containerLeft);
+      expect(bounds.toastRight).toBeLessThanOrEqual(bounds.containerRight);
+    }
+  }
+});
+
 test('run overview responds to pane width and keeps long content inside its container', async ({
   page,
 }) => {
