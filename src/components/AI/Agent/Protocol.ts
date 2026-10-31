@@ -82,6 +82,25 @@ export function extractSourcePayload(text: string): string | null {
   return null;
 }
 
+const findJsonObjectEnd = (candidate: string, start: number): number => {
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+  for (let index = start; index < candidate.length; index++) {
+    const char = candidate[index];
+    if (inString) {
+      if (escaped) escaped = false;
+      else if (char === '\\') escaped = true;
+      else if (char === '"') inString = false;
+      continue;
+    }
+    if (char === '"') inString = true;
+    if (char === '{') depth++;
+    if (char === '}' && --depth === 0) return index;
+  }
+  return -1;
+};
+
 const parseJsonAction = (text: string): AgentAction => {
   const candidate = text.trim();
   try {
@@ -91,23 +110,8 @@ const parseJsonAction = (text: string): AgentAction => {
     const actionStart = candidate.search(/\{[\s\n\r]*["']?action["']?\s*:/);
     const start = actionStart >= 0 ? actionStart : candidate.indexOf('{');
     if (start < 0) throw new Error('Agent response is not valid JSON');
-
-    let depth = 0;
-    let inString = false;
-    let escaped = false;
-    for (let index = start; index < candidate.length; index++) {
-      const char = candidate[index];
-      if (inString) {
-        if (escaped) escaped = false;
-        else if (char === '\\') escaped = true;
-        else if (char === '"') inString = false;
-        continue;
-      }
-      if (char === '"') inString = true;
-      if (char === '{') depth++;
-      if (char === '}' && --depth === 0)
-        return JSON.parse(candidate.slice(start, index + 1)) as AgentAction;
-    }
+    const end = findJsonObjectEnd(candidate, start);
+    if (end >= 0) return JSON.parse(candidate.slice(start, end + 1)) as AgentAction;
     throw new Error('Agent response is not valid JSON');
   }
 };
@@ -209,7 +213,35 @@ const parseFencedWrite = (text: string, metadata?: AgentAction): AgentAction | n
     );
   }
   const source = matchingSource || compatibleSources[0];
-  if (source !== undefined) return { ...value, content: source.content };
+  if (source !== undefined) {
+    const sourceContent = source.content.trim();
+    if (/^\{\s*["']?action["']?\s*:\s*["']write_file["']/.test(sourceContent)) {
+      const metadataEnd = findJsonObjectEnd(sourceContent, 0);
+      if (metadataEnd >= 0) {
+        try {
+          const embeddedMetadata = JSON.parse(
+            sourceContent.slice(0, metadataEnd + 1),
+          ) as AgentAction;
+          const trailingSource = sourceContent.slice(metadataEnd + 1).trim();
+          const embeddedContent =
+            'content' in embeddedMetadata && typeof embeddedMetadata.content === 'string'
+              ? embeddedMetadata.content.trim()
+              : '';
+          if (
+            embeddedMetadata.action === 'write_file' &&
+            embeddedMetadata.path === value.path &&
+            !embeddedContent &&
+            trailingSource
+          ) {
+            return { ...value, content: trailingSource };
+          }
+        } catch {
+          // Keep source as-is when the leading text is not valid action metadata.
+        }
+      }
+    }
+    return { ...value, content: source.content };
+  }
 
   // Small models often emit write_file metadata and then raw source without a fence.
   const jsonEnd = (() => {

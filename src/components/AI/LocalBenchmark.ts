@@ -118,10 +118,12 @@ export const LOCAL_AI_BENCHMARK_CASES: LocalAIBenchmarkCase[] = [
 export function getLocalAIBenchmarkSetupError({
   hasWebGPU,
   hasAdapter,
+  hasShaderF16,
   hasWorkers,
 }: {
   hasWebGPU: boolean;
   hasAdapter: boolean;
+  hasShaderF16: boolean;
   hasWorkers: boolean;
 }): string | null {
   if (!hasWebGPU) {
@@ -132,6 +134,9 @@ export function getLocalAIBenchmarkSetupError({
   }
   if (!hasWorkers) {
     return 'Web Workers are unavailable. Run the benchmark in a supported browser context.';
+  }
+  if (!hasShaderF16) {
+    return 'The selected local model requires WebGPU shader-f16 support. Use a Chromium build and GPU adapter that expose this feature.';
   }
   return null;
 }

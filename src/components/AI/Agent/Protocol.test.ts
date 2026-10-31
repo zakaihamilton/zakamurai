@@ -135,6 +135,25 @@ export default function App() {
     });
   });
 
+  it('strips write_file metadata that a local model copies inside its source fence', () => {
+    const source = 'export default function App() { return <main>Todo</main>; }';
+    expect(
+      parseAgentAction(
+        [
+          '```jsx',
+          '{"action":"write_file","path":"src/App.jsx","reason":"build UI"}',
+          source,
+          '```',
+        ].join('\n'),
+      ),
+    ).toEqual({
+      action: 'write_file',
+      path: 'src/App.jsx',
+      reason: 'build UI',
+      content: source,
+    });
+  });
+
   it('accepts react-labelled fences and prefers them over empty JSON content', () => {
     expect(
       parseAgentAction(`{"action":"write_file","path":"src/App.jsx","content":"","reason":"build"}

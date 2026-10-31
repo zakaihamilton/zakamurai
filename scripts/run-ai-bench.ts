@@ -5,6 +5,11 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { type BrowserContext, type Page, chromium } from '@playwright/test';
 import {
+  LOCAL_AI_BENCHMARK_CHROMIUM_CHANNEL,
+  getLocalAIBenchmarkChromiumArgs,
+  getLocalAIBenchmarkDevServerEnv,
+} from './ai-bench-browser';
+import {
   LOCAL_AI_BENCHMARK_USAGE,
   type LocalAIBenchmarkCliOptions,
   parseLocalAIBenchmarkArgs,
@@ -201,29 +206,26 @@ async function main(): Promise<void> {
     git = { revision: gitRevision, dirtyFiles: gitChanges };
 
     const npmCommand = process.platform === 'win32' ? 'npm.cmd' : 'npm';
-    server = spawn(npmCommand, ['run', 'dev'], {
+    const devServer = spawn(npmCommand, ['run', 'dev'], {
       cwd: repositoryRoot,
       detached: process.platform !== 'win32',
       stdio: 'inherit',
       env: {
-        ...process.env,
+        ...getLocalAIBenchmarkDevServerEnv(process.env, process.platform),
         PLAYWRIGHT_IDE_PORT: String(basePort),
         PLAYWRIGHT_PREVIEW_PORT: String(previewPort),
         ZAKAMURAI_AI_BENCH: '1',
         NEXT_TELEMETRY_DISABLED: '1',
       },
     });
-    await waitForBenchRoute(server);
+    server = devServer;
+    await waitForBenchRoute(devServer);
 
     context = await chromium.launchPersistentContext(browserProfilePath, {
       headless: true,
+      channel: LOCAL_AI_BENCHMARK_CHROMIUM_CHANNEL,
       viewport: { width: 1280, height: 900 },
-      args: [
-        '--enable-unsafe-webgpu',
-        '--enable-features=Vulkan',
-        '--use-vulkan',
-        '--ignore-gpu-blocklist',
-      ],
+      args: getLocalAIBenchmarkChromiumArgs(process.platform),
     });
     const page = context.pages()[0] || (await context.newPage());
     page.setDefaultTimeout(benchmarkTimeoutMs);
@@ -248,7 +250,7 @@ async function main(): Promise<void> {
   }
 
   report.git = git;
-  report.browser = 'Chromium headless with WebGPU flags';
+  report.browser = 'Playwright Chromium new headless with platform-specific WebGPU flags';
   report.caseFilter = options.caseId || null;
   await writeLocalAIBenchmarkReport(reportPath, report);
   printSummary(report, reportPath);
