@@ -27,12 +27,19 @@ import PreviewBridge from '@/components/App/Views/PreviewArea/PreviewBridge';
 import type { PreviewEvidence } from '@/components/App/Views/PreviewArea/preview-types';
 import {
   clearPreviewEvidence,
+  reportPreviewEvidence,
+  reportPreviewRuntimeError,
   waitForPreviewEvidence,
 } from '@/components/App/Views/PreviewArea/previewEvidenceBridge';
 import {
   buildPreviewUrl,
   getPreviewOrigins,
 } from '@/components/App/Views/PreviewArea/previewOrigins';
+import {
+  PREVIEW_MESSAGE_TYPES,
+  isTrustedPreviewMessage,
+  parsePreviewMessage,
+} from '@/components/App/Views/PreviewArea/previewSandbox';
 import { PREVIEW_IFRAME_SANDBOX } from '@/components/App/Views/PreviewArea/previewSandbox';
 import { DEFAULT_CONTENTS, DEFAULT_FILES } from '@/components/Storage/InitialData';
 import { Compiler } from '@/utils/compiler';
@@ -145,13 +152,30 @@ function selectedCasesFromLocation(): {
   return { model, cases: [benchmarkCase], error: null };
 }
 
-async function readWebGPUAvailability(): Promise<{ hasWebGPU: boolean; hasAdapter: boolean }> {
-  const gpu = (navigator as Navigator & { gpu?: { requestAdapter: () => Promise<unknown> } }).gpu;
-  if (!gpu) return { hasWebGPU: false, hasAdapter: false };
+async function readWebGPUAvailability(): Promise<{
+  hasWebGPU: boolean;
+  hasAdapter: boolean;
+  hasShaderF16: boolean;
+}> {
+  const gpu = (
+    navigator as Navigator & {
+      gpu?: {
+        requestAdapter: () => Promise<{
+          features?: { has: (feature: string) => boolean };
+        } | null>;
+      };
+    }
+  ).gpu;
+  if (!gpu) return { hasWebGPU: false, hasAdapter: false, hasShaderF16: false };
   try {
-    return { hasWebGPU: true, hasAdapter: Boolean(await gpu.requestAdapter()) };
+    const adapter = await gpu.requestAdapter();
+    return {
+      hasWebGPU: true,
+      hasAdapter: Boolean(adapter),
+      hasShaderF16: adapter?.features?.has('shader-f16') ?? false,
+    };
   } catch {
-    return { hasWebGPU: true, hasAdapter: false };
+    return { hasWebGPU: true, hasAdapter: false, hasShaderF16: false };
   }
 }
 
@@ -169,6 +193,27 @@ export default function LocalAIBenchmarkRunner() {
     hasStartedRef.current = true;
     void runBenchmark();
   }, []);
+
+  useEffect(() => {
+    if (!previewFrame) return undefined;
+    const onMessage = (event: MessageEvent) => {
+      if (!isTrustedPreviewMessage(event, frameRef.current?.contentWindow, previewFrame.origin)) {
+        return;
+      }
+      const payload = parsePreviewMessage(event.data);
+      if (!payload) return;
+      if (
+        payload.type === PREVIEW_MESSAGE_TYPES.RUNTIME_ERROR ||
+        payload.type === PREVIEW_MESSAGE_TYPES.UNHANDLED_REJECTION
+      ) {
+        if (payload.message) reportPreviewRuntimeError(payload.message);
+      } else if (payload.type === PREVIEW_MESSAGE_TYPES.EVIDENCE) {
+        reportPreviewEvidence(payload);
+      }
+    };
+    window.addEventListener('message', onMessage);
+    return () => window.removeEventListener('message', onMessage);
+  }, [previewFrame]);
 
   const runBenchmark = async () => {
     const startedAt = new Date().toISOString();

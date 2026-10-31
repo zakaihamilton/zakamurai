@@ -131,16 +131,44 @@ export default function App() {
 
   it('explains missing browser runtime requirements', () => {
     expect(
-      getLocalAIBenchmarkSetupError({ hasWebGPU: false, hasAdapter: false, hasWorkers: true }),
+      getLocalAIBenchmarkSetupError({
+        hasWebGPU: false,
+        hasAdapter: false,
+        hasShaderF16: false,
+        hasWorkers: true,
+      }),
     ).toMatch(/WebGPU is unavailable/);
     expect(
-      getLocalAIBenchmarkSetupError({ hasWebGPU: true, hasAdapter: false, hasWorkers: true }),
+      getLocalAIBenchmarkSetupError({
+        hasWebGPU: true,
+        hasAdapter: false,
+        hasShaderF16: false,
+        hasWorkers: true,
+      }),
     ).toMatch(/compatible adapter/);
     expect(
-      getLocalAIBenchmarkSetupError({ hasWebGPU: true, hasAdapter: true, hasWorkers: false }),
+      getLocalAIBenchmarkSetupError({
+        hasWebGPU: true,
+        hasAdapter: true,
+        hasShaderF16: false,
+        hasWorkers: false,
+      }),
     ).toMatch(/Web Workers are unavailable/);
     expect(
-      getLocalAIBenchmarkSetupError({ hasWebGPU: true, hasAdapter: true, hasWorkers: true }),
+      getLocalAIBenchmarkSetupError({
+        hasWebGPU: true,
+        hasAdapter: true,
+        hasShaderF16: false,
+        hasWorkers: true,
+      }),
+    ).toMatch(/requires WebGPU shader-f16/);
+    expect(
+      getLocalAIBenchmarkSetupError({
+        hasWebGPU: true,
+        hasAdapter: true,
+        hasShaderF16: true,
+        hasWorkers: true,
+      }),
     ).toBe(null);
   });
 
