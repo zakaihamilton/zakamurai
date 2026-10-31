@@ -15,7 +15,9 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
-  workers: process.env.CI ? 1 : undefined,
+  // The visual suite runs the in-browser WASM compiler; concurrent browser
+  // workers can starve builds and make unrelated UI checks time out locally.
+  workers: 1,
   reporter: 'list',
   expect: {
     toHaveScreenshot: {
