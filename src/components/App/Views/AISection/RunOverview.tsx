@@ -1,9 +1,10 @@
 import { formatDuration } from '@/components/AI/Agent/formatDuration';
+import Tooltip from '@/components/ui/Tooltip';
 import type { AgentActivityState, AgentSession } from '@/types/domain-types';
 import {
+  type DisplayRunStatus,
   getActivityRunStatus,
   getLiveExecutionInfo,
-  type DisplayRunStatus,
 } from './AISectionReasoningUtils';
 import styles from './RunOverview.module.css';
 
@@ -46,7 +47,11 @@ export default function RunOverview({
         <div>
           <span className={styles.runStatusLabel}>Run status</span>
           <strong>{statusLabels[status]}</strong>
-          {activity?.request ? <span className={styles.runRequest}>{activity.request}</span> : null}
+          {activity?.request ? (
+            <Tooltip content={activity.request} className={styles.runTextTooltip}>
+              <span className={styles.runRequest}>{activity.request}</span>
+            </Tooltip>
+          ) : null}
         </div>
       </div>
       <section className={styles.runExecution} aria-label="Live execution">
@@ -55,9 +60,13 @@ export default function RunOverview({
           aria-hidden="true"
         />
         <div className={styles.runExecutionCopy}>
-          <strong className={styles.runExecutionTitle}>{liveExecution.title}</strong>
+          <Tooltip content={liveExecution.title} className={styles.runTextTooltip}>
+            <strong className={styles.runExecutionTitle}>{liveExecution.title}</strong>
+          </Tooltip>
           {liveExecution.detail ? (
-            <span className={styles.runExecutionDetail}>{liveExecution.detail}</span>
+            <Tooltip content={liveExecution.detail} className={styles.runTextTooltip}>
+              <span className={styles.runExecutionDetail}>{liveExecution.detail}</span>
+            </Tooltip>
           ) : null}
         </div>
         <span

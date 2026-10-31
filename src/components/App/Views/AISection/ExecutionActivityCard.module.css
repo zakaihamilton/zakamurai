@@ -62,6 +62,10 @@
   composes: executionGenerationDetailsIcon from "./AISectionReasoning.module.css";
 }
 
+.executionGenerationLegend {
+  composes: executionGenerationLegend from "./AISectionReasoning.module.css";
+}
+
 .executionGenerationMeter {
   composes: executionGenerationMeter from "./AISectionReasoning.module.css";
 }

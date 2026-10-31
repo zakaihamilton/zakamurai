@@ -30,6 +30,12 @@
   flex: 1;
 }
 
+.headerTooltip {
+  width: 100%;
+  min-width: 0;
+  overflow: hidden;
+}
+
 .headerName {
   font-size: 13px;
   font-weight: 600;

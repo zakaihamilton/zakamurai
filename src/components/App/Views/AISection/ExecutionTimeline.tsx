@@ -2,10 +2,10 @@ import { Icons } from '@/components/ui/Icons';
 import Tooltip from '@/components/ui/Tooltip';
 import type { AgentActivityState } from '@/types/domain-types';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import ActivityNode from './ExecutionActivityCard';
-import ModelProgressCard from './ModelProgressCard';
 import type { ModelProgress } from './AISectionReasoningUtils';
+import ActivityNode from './ExecutionActivityCard';
 import styles from './ExecutionTimeline.module.css';
+import ModelProgressCard from './ModelProgressCard';
 
 export default function ExecutionTimeline({
   activity,
@@ -44,7 +44,7 @@ export default function ExecutionTimeline({
     return [...visibleCardIds.filter((cardId) => cardId !== workingCardId), workingCardId];
   }, [activity.nodes, cardIds, workingCardId]);
   const navigationCardIds = timelineExpanded ? cardIds : collapsedCardIds;
-  const cardIdKey = navigationCardIds.join('|');
+  const cardIdKey = cardIds.join('|');
   const defaultCardId =
     (workingCardId && navigationCardIds.includes(workingCardId)
       ? workingCardId
@@ -60,6 +60,16 @@ export default function ExecutionTimeline({
   const selectedCardIndex = displayedSelectedCardId
     ? navigationCardIds.indexOf(displayedSelectedCardId)
     : -1;
+  const selectedNode = activity.nodes.find((item) => item.id === displayedSelectedCardId);
+  const selectedCardLabel =
+    selectedNode?.label ||
+    (displayedSelectedCardId === 'model-progress'
+      ? `Loading ${modelProgress?.modelName || 'model'}`
+      : 'Timeline');
+  const deckPositionLabel =
+    selectedCardIndex >= 0
+      ? `Card ${selectedCardIndex + 1} of ${navigationCardIds.length}: ${selectedCardLabel}`
+      : 'No timeline cards';
   const previousCardDisabled = selectedCardIndex <= 0;
   const nextCardDisabled =
     selectedCardIndex < 0 || selectedCardIndex >= navigationCardIds.length - 1;
@@ -227,28 +237,24 @@ export default function ExecutionTimeline({
   }, [timelineExpanded]);
 
   useLayoutEffect(() => {
-    if (!timelineExpanded || !workingCardId) return;
+    if (!timelineExpanded || !displayedSelectedCardId) return;
 
     const executionMap = executionMapRef.current;
     if (!executionMap) return;
 
     const cards = Array.from(executionMap.querySelectorAll<HTMLElement>(':scope > [data-card-id]'));
-    const workingCard = cards.find((card) => card.dataset.cardId === workingCardId);
+    const selectedCard = cards.find((card) => card.dataset.cardId === displayedSelectedCardId);
     if (
-      !workingCard ||
+      !selectedCard ||
       executionMap.clientWidth <= 0 ||
       executionMap.scrollWidth <= executionMap.clientWidth
     ) {
       return;
     }
 
-    const mapRect = executionMap.getBoundingClientRect();
-    const cardRect = workingCard.getBoundingClientRect();
     const maxScrollLeft = executionMap.scrollWidth - executionMap.clientWidth;
     const centeredScrollLeft =
-      executionMap.scrollLeft +
-      (cardRect.left - mapRect.left) -
-      (executionMap.clientWidth - cardRect.width) / 2;
+      selectedCard.offsetLeft + selectedCard.offsetWidth / 2 - executionMap.clientWidth / 2;
     const nextScrollLeft = Math.min(Math.max(centeredScrollLeft, 0), maxScrollLeft);
     if (Math.abs(nextScrollLeft - executionMap.scrollLeft) < 1) return;
 
@@ -257,7 +263,7 @@ export default function ExecutionTimeline({
       left: nextScrollLeft,
       behavior: reducedMotion ? 'auto' : 'smooth',
     });
-  }, [timelineExpanded, workingCardId]);
+  }, [displayedSelectedCardId, timelineExpanded]);
 
   useEffect(
     () => () => {
@@ -274,6 +280,7 @@ export default function ExecutionTimeline({
           progress={modelProgress}
           isWorking={workingCardId === cardId}
           isSelected={displayedSelectedCardId === cardId}
+          isHiddenFromAccessibility={!timelineExpanded && displayedSelectedCardId !== cardId}
         />
       );
     }
@@ -290,6 +297,7 @@ export default function ExecutionTimeline({
         isCurrent={item.id === workingCardId}
         isWorking={item.id === workingCardId}
         isSelected={item.id === displayedSelectedCardId}
+        isHiddenFromAccessibility={!timelineExpanded && displayedSelectedCardId !== item.id}
         showStepIO={showStepIO}
       />
     );
@@ -300,19 +308,20 @@ export default function ExecutionTimeline({
       <div
         className={`${styles.executionDeck} ${timelineExpanded ? styles.executionDeckExpanded : styles.executionDeckCollapsed}`}
       >
-        {!timelineExpanded ? (
-          <Tooltip content="Previous card" className={styles.deckNavTooltip}>
-            <button
-              type="button"
-              className={styles.deckNavButton}
-              aria-label="Previous timeline card"
-              disabled={previousCardDisabled}
-              onClick={() => moveSelectedCard(-1)}
-            >
-              <Icons.ChevronLeft size={18} />
-            </button>
-          </Tooltip>
-        ) : null}
+        <Tooltip content="Previous card" className={styles.deckNavTooltip}>
+          <button
+            type="button"
+            className={styles.deckNavButton}
+            aria-label="Previous timeline card"
+            disabled={previousCardDisabled}
+            onClick={() => moveSelectedCard(-1)}
+          >
+            <Icons.ChevronLeft size={18} />
+          </button>
+        </Tooltip>
+        <output className={styles.deckPosition} aria-atomic="true">
+          {deckPositionLabel}
+        </output>
         <ol
           ref={executionMapRef}
           className={`${styles.executionMap} ${timelineExpanded ? styles.executionMapExpanded : styles.executionMapCollapsed}`}
@@ -322,19 +331,17 @@ export default function ExecutionTimeline({
         >
           {cardRenderOrder.map(renderCard)}
         </ol>
-        {!timelineExpanded ? (
-          <Tooltip content="Next card" className={styles.deckNavTooltip}>
-            <button
-              type="button"
-              className={styles.deckNavButton}
-              aria-label="Next timeline card"
-              disabled={nextCardDisabled}
-              onClick={() => moveSelectedCard(1)}
-            >
-              <Icons.ChevronRight size={18} />
-            </button>
-          </Tooltip>
-        ) : null}
+        <Tooltip content="Next card" className={styles.deckNavTooltip}>
+          <button
+            type="button"
+            className={styles.deckNavButton}
+            aria-label="Next timeline card"
+            disabled={nextCardDisabled}
+            onClick={() => moveSelectedCard(1)}
+          >
+            <Icons.ChevronRight size={18} />
+          </button>
+        </Tooltip>
       </div>
     </section>
   );

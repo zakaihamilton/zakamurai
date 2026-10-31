@@ -30,6 +30,12 @@
   font-weight: 600;
 }
 
+.activeNameTooltip {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+
 .runningDot {
   width: 6px;
   height: 6px;

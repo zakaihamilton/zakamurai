@@ -1,3 +1,4 @@
+import Tooltip from '@/components/ui/Tooltip';
 import type { NavigationHistoryEntry } from '@/types/domain-types';
 import type { HistoryDropdownProps } from '../topbar-types';
 import styles from './HistoryDropdown.module.css';
@@ -46,19 +47,22 @@ export default function HistoryDropdown({
               const originalIdx = history.stack.length - 1 - idx;
               const isActive = originalIdx === history.currentIndex;
               return (
-                <button
+                <Tooltip
                   key={`${item.filePath}-${originalIdx}`}
-                  type="button"
-                  className={`${styles.historyItem} ${isActive ? styles.activeHistoryItem : ''}`}
-                  onClick={() => onItemClick(originalIdx)}
-                  role="menuitem"
-                  data-testid={`history-item-${originalIdx}`}
+                  content={item.filePath}
+                  className={styles.historyItemTooltip}
                 >
-                  <span className={styles.historyLabel} title={item.filePath}>
-                    {item.label}
-                  </span>
-                  <span className={styles.historyLoc}>L{item.loc.line}</span>
-                </button>
+                  <button
+                    type="button"
+                    className={`${styles.historyItem} ${isActive ? styles.activeHistoryItem : ''}`}
+                    onClick={() => onItemClick(originalIdx)}
+                    role="menuitem"
+                    data-testid={`history-item-${originalIdx}`}
+                  >
+                    <span className={styles.historyLabel}>{item.label}</span>
+                    <span className={styles.historyLoc}>L{item.loc.line}</span>
+                  </button>
+                </Tooltip>
               );
             })}
         </div>

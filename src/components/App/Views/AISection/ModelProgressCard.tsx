@@ -10,10 +10,12 @@ export default function ModelProgressCard({
   progress,
   isWorking,
   isSelected,
+  isHiddenFromAccessibility,
 }: {
   progress: ModelProgress;
   isWorking: boolean;
   isSelected: boolean;
+  isHiddenFromAccessibility: boolean;
 }) {
   const normalizedProgress =
     progress.progress === null
@@ -31,11 +33,13 @@ export default function ModelProgressCard({
       data-card-id="model-progress"
       data-card-selected={isSelected ? 'true' : undefined}
       data-card-working={isWorking ? 'true' : undefined}
+      aria-hidden={isHiddenFromAccessibility || undefined}
+      inert={isHiddenFromAccessibility}
     >
       <span className={styles.executionMarker} aria-hidden="true">
         <Icons.Download size={14} />
       </span>
-      <article className={`${styles.executionCard} ${styles.modelProgressCard}`} aria-live="polite">
+      <article className={`${styles.executionCard} ${styles.modelProgressCard}`}>
         <div className={styles.modelProgressRingWrap}>
           <div
             className={styles.modelProgressMeter}

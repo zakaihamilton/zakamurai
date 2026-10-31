@@ -1,5 +1,6 @@
 import ContextMenu from '@/components/ui/ContextMenu';
 import { Icons } from '@/components/ui/Icons';
+import Tooltip from '@/components/ui/Tooltip';
 import { isMediaFile } from '@/utils/file';
 import styles from './TabContextMenu.module.css';
 import type { TabContextMenuProps } from './tab-types';
@@ -54,12 +55,12 @@ export default function TabContextMenu({
           )}
         </span>
         <div className={styles.headerTextContainer}>
-          <span className={styles.headerName} title={tab.label}>
-            {tab.label}
-          </span>
-          <span className={styles.headerPath} title={getSubLabel()}>
-            {getSubLabel()}
-          </span>
+          <Tooltip content={tab.label} className={styles.headerTooltip}>
+            <span className={styles.headerName}>{tab.label}</span>
+          </Tooltip>
+          <Tooltip content={getSubLabel()} className={styles.headerTooltip}>
+            <span className={styles.headerPath}>{getSubLabel()}</span>
+          </Tooltip>
         </div>
       </div>
       <div className={styles.divider} />

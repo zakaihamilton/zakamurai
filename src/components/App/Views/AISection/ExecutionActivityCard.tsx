@@ -23,6 +23,7 @@ export default function ActivityNode({
   isCurrent,
   isWorking,
   isSelected,
+  isHiddenFromAccessibility,
   showStepIO,
 }: {
   item: AgentActivityNode;
@@ -30,11 +31,13 @@ export default function ActivityNode({
   isCurrent: boolean;
   isWorking: boolean;
   isSelected: boolean;
+  isHiddenFromAccessibility: boolean;
   showStepIO: boolean;
 }) {
   const ActivityIcon = activityIcons[item.kind];
   const isLiveGeneration = isLiveGenerationNode(item);
   const generationProgress = isLiveGeneration ? parseGenerationProgress(item.detail) : null;
+  const detail = nodeDetail(item);
   const metadata = [
     item.tool ? item.tool : item.task ? item.task : '',
     item.turn !== undefined ? `turn ${item.turn}` : '',
@@ -49,6 +52,8 @@ export default function ActivityNode({
       data-card-working={isWorking ? 'true' : undefined}
       data-card-variant={isLiveGeneration ? 'live-generation' : undefined}
       aria-current={isCurrent ? 'step' : undefined}
+      aria-hidden={isHiddenFromAccessibility || undefined}
+      inert={isHiddenFromAccessibility}
     >
       <span className={styles.executionMarker} aria-hidden="true">
         {item.status === 'completed' ? <Icons.Check size={13} /> : <ActivityIcon size={14} />}
@@ -115,11 +120,8 @@ export default function ActivityNode({
           </header>
           {isLiveGeneration ? (
             <>
-              <output
-                className={styles.executionGenerationSummary}
-                aria-live="polite"
-                aria-atomic="true"
-              >
+              <fieldset className={styles.executionGenerationSummary}>
+                <legend className={styles.executionGenerationLegend}>Generation progress</legend>
                 <div className={styles.executionGenerationSummaryHeading}>
                   <strong>Generating changes</strong>
                   <span>Streaming</span>
@@ -143,11 +145,11 @@ export default function ActivityNode({
                 </div>
                 <div className={styles.executionGenerationWait}>
                   <span className={styles.executionGenerationWaitDot} aria-hidden="true" />
-                  <span className={styles.executionGenerationWaitText}>
+                  <output className={styles.executionGenerationWaitText} aria-atomic="true">
                     {generationProgress?.waitingLabel}
-                  </span>
+                  </output>
                 </div>
-              </output>
+              </fieldset>
               <details className={styles.executionGenerationDetails}>
                 <summary>
                   <span>Generation details</span>
@@ -159,9 +161,9 @@ export default function ActivityNode({
               </details>
             </>
           ) : (
-            <p className={styles.executionDetail}>{nodeDetail(item)}</p>
+            <p className={styles.executionDetail}>{detail}</p>
           )}
-          {item.status === 'queued' && item.reason && item.reason !== item.detail ? (
+          {item.status === 'queued' && item.reason && !detail.includes(item.reason) ? (
             <p className={styles.executionReason}>{item.reason}</p>
           ) : null}
           {showStepIO && (item.input || item.output) ? (

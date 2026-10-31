@@ -66,10 +66,21 @@
   box-shadow: var(--shadow-sm);
 }
 
+.runOverview .runTextTooltip {
+  display: grid;
+  width: 100%;
+  min-width: 0;
+}
+
 .runStatus {
+  box-sizing: border-box;
   display: flex;
   align-items: center;
+  height: 108px;
   gap: 11px;
+  min-height: 0;
+  max-height: 108px;
+  overflow: hidden;
   min-width: 0;
   padding: 10px 12px;
   border: 1px solid var(--border-light);
@@ -112,6 +123,7 @@
   display: grid;
   gap: 2px;
   min-width: 0;
+  overflow: hidden;
 }
 
 .runStatusLabel {
@@ -124,28 +136,39 @@
 
 .runStatus strong {
   min-width: 0;
+  overflow: hidden;
   color: var(--text-main);
   font-size: 15px;
   line-height: 1.2;
-  overflow-wrap: anywhere;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .runRequest {
-  display: block;
+  display: -webkit-box;
   max-width: 100%;
   min-width: 0;
   margin-top: 4px;
   color: var(--text-muted);
   font-size: 11px;
+  line-clamp: 2;
+  overflow: hidden;
   overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
 .runExecution {
+  box-sizing: border-box;
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
+  height: 108px;
   gap: 9px;
   min-width: 0;
+  min-height: 0;
+  max-height: 108px;
+  overflow: hidden;
   padding: 10px 12px;
   border: 1px solid color-mix(in srgb, var(--accent) 34%, var(--border-light));
   border-radius: 10px;
@@ -192,19 +215,26 @@
 .runExecutionTitle,
 .runExecutionDetail {
   min-width: 0;
+  display: -webkit-box;
+  overflow: hidden;
   overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
 }
 
 .runExecutionTitle {
   color: var(--text-main);
   font-size: 13px;
   line-height: 1.2;
+  line-clamp: 2;
+  -webkit-line-clamp: 2;
 }
 
 .runExecutionDetail {
   color: var(--text-muted);
   font-size: 11px;
   line-height: 1.25;
+  line-clamp: 2;
+  -webkit-line-clamp: 2;
 }
 
 .runExecutionOutcome {
@@ -220,9 +250,10 @@
   font-weight: 800;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  overflow-wrap: anywhere;
+  overflow: hidden;
   text-align: center;
-  white-space: normal;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .runExecutionOutcomerunning {
@@ -253,10 +284,15 @@
 }
 
 .metricGrid > div {
+  box-sizing: border-box;
   display: grid;
   align-self: start;
+  height: 108px;
   gap: 5px;
   min-width: 0;
+  min-height: 0;
+  max-height: 108px;
+  overflow: hidden;
   padding: 9px 10px;
   border: 1px solid var(--border-light);
   border-radius: 9px;
@@ -265,22 +301,26 @@
 
 .metricGrid dt {
   min-width: 0;
+  overflow: hidden;
   color: var(--text-muted);
   font-size: 9px;
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  overflow-wrap: anywhere;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .metricGrid dd {
   min-width: 0;
   margin: 0;
+  overflow: hidden;
   color: var(--text-main);
   font-family: var(--font-mono, monospace);
   font-size: 12px;
   font-weight: 700;
-  overflow-wrap: anywhere;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .visualRunDetails {
@@ -937,13 +977,24 @@
 }
 
 .executionGenerationSummary {
+  position: relative;
   display: grid;
   gap: 8px;
+  min-width: 0;
   margin: 10px 0 9px;
   border: 1px solid color-mix(in srgb, var(--accent) 22%, var(--border-light));
   border-radius: 8px;
   padding: 9px 10px;
   background: var(--bg-surface);
+}
+
+.executionGenerationLegend {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 
 .executionGenerationSummaryHeading {
@@ -1315,6 +1366,7 @@
 }
 
 .executionDeck {
+  position: relative;
   display: flex;
   flex: 1 1 auto;
   align-items: stretch;
@@ -1322,6 +1374,28 @@
   gap: 12px;
   min-height: 0;
   min-width: 0;
+}
+
+.deckPosition {
+  position: absolute;
+  z-index: 5;
+  top: 0;
+  left: 50%;
+  max-width: calc(100% - 120px);
+  overflow: hidden;
+  border: 1px solid var(--border-light);
+  border-radius: 999px;
+  padding: 4px 10px;
+  color: var(--text-muted);
+  background: var(--bg-surface);
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--text-main) 8%, transparent);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  pointer-events: none;
 }
 
 .executionDeckCollapsed {

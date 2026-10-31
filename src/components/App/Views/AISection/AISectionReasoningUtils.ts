@@ -134,8 +134,13 @@ const outcomeBadgeLabels: Record<AgentActivityOutcome, string> = {
   aborted: 'Stopped',
 };
 
-export const nodeDetail = (item: AgentActivityNode): string =>
-  item.detail || item.reason || statusLabels[item.status];
+export const nodeDetail = (item: AgentActivityNode): string => {
+  const detail = item.detail || item.reason || statusLabels[item.status];
+  if (item.status === 'queued' || !/^up next:\s*/i.test(detail)) return detail;
+
+  const reason = item.reason?.trim() || detail.replace(/^up next:\s*/i, '').trim();
+  return item.reason ? `Reason: ${reason}` : reason;
+};
 
 export type GenerationProgressSummary = {
   characterCount: number | null;

@@ -1,5 +1,6 @@
 import ContextMenu from '@/components/ui/ContextMenu';
 import { Icons } from '@/components/ui/Icons';
+import Tooltip from '@/components/ui/Tooltip';
 import { isMediaFile } from '@/utils/file';
 import { getFileViews } from '@/utils/fileViews';
 import styles from './SidebarContextMenu.module.css';
@@ -40,12 +41,15 @@ export default function SidebarContextMenu({
           )}
         </span>
         <div className={styles.headerTextContainer}>
-          <span className={styles.headerName} title={item.name}>
-            {item.name}
-          </span>
-          <span className={styles.headerPath} title={item.isRoot ? item.name : `/${pathStr}`}>
-            {item.isRoot ? 'Root' : `/${pathStr}`}
-          </span>
+          <Tooltip content={item.name} className={styles.headerTooltip}>
+            <span className={styles.headerName}>{item.name}</span>
+          </Tooltip>
+          <Tooltip
+            content={item.isRoot ? item.name : `/${pathStr}`}
+            className={styles.headerTooltip}
+          >
+            <span className={styles.headerPath}>{item.isRoot ? 'Root' : `/${pathStr}`}</span>
+          </Tooltip>
         </div>
       </div>
       <div className={styles.divider} />

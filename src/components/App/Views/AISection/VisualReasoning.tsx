@@ -1,10 +1,24 @@
 import type { AgentActivityState, AgentSession } from '@/types/domain-types';
 import ReactMarkdown from 'react-markdown';
+import type { ModelProgress } from './AISectionReasoningUtils';
+import ExecutionTimeline from './ExecutionTimeline';
 import { summaryMarkdownComponents } from './ReasoningMarkdown';
 import RunOverview from './RunOverview';
-import ExecutionTimeline from './ExecutionTimeline';
-import type { ModelProgress } from './AISectionReasoningUtils';
 import styles from './VisualReasoning.module.css';
+
+const reconcileValidationClaim = (
+  text: string,
+  validationStatus: 'passed' | 'failed' | 'unavailable' | undefined,
+): string => {
+  if (validationStatus === 'passed' || !/\bvalidated the build\b/i.test(text)) return text;
+
+  const validationNote =
+    validationStatus === 'failed' ? 'validation failed' : 'validation status was unavailable';
+  return text
+    .replace(/\s+and\s+(?:successfully\s+)?validated the build\b/gi, `; ${validationNote}`)
+    .replace(/\b(?:successfully\s+)?validated the build\b/gi, validationNote)
+    .replace(/^\s*[;,]\s*/, '');
+};
 
 export default function VisualReasoning({
   activeSession,
@@ -25,30 +39,45 @@ export default function VisualReasoning({
   fallbackContent: string;
   showStepIO: boolean;
 }) {
-  const hasMap = activity.nodes.length > 0;
+  const validationStatus = activeSession?.runUsage?.finalValidationStatus;
+  const displayActivity =
+    validationStatus === 'passed'
+      ? activity
+      : {
+          ...activity,
+          nodes: activity.nodes.map((node) => {
+            if (node.kind !== 'result') return node;
+            const detail = reconcileValidationClaim(node.detail, validationStatus);
+            return detail === node.detail ? node : { ...node, detail };
+          }),
+        };
+  const displayRunUsageSummary = reconcileValidationClaim(runUsageSummary, validationStatus);
+  const hasMap = displayActivity.nodes.length > 0;
   const hasContent = hasMap || Boolean(runUsageSummary) || Boolean(modelProgress);
 
   return (
     <>
       <RunOverview
         activeSession={activeSession}
-        activity={activity}
+        activity={displayActivity}
         latestError={latestError}
         hasContent={hasContent}
       />
       {hasMap || modelProgress ? (
         <ExecutionTimeline
-          activity={activity}
+          activity={displayActivity}
           modelProgress={modelProgress}
           timelineExpanded={timelineExpanded}
           showStepIO={showStepIO}
         />
       ) : null}
-      {runUsageSummary ? (
+      {displayRunUsageSummary ? (
         <details className={styles.visualRunDetails}>
           <summary>Run details</summary>
           <div className={styles.visualRunDetailsContent}>
-            <ReactMarkdown components={summaryMarkdownComponents}>{runUsageSummary}</ReactMarkdown>
+            <ReactMarkdown components={summaryMarkdownComponents}>
+              {displayRunUsageSummary}
+            </ReactMarkdown>
           </div>
         </details>
       ) : null}

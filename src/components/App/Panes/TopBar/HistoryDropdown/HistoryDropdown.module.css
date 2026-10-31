@@ -109,6 +109,10 @@
   gap: 12px;
 }
 
+.historyItemTooltip {
+  width: 100%;
+}
+
 .historyItem:hover {
   background: var(--bg-hover);
   color: var(--text-main);

@@ -132,16 +132,12 @@ export default function ChangeSetPanel({ onOpenInTab = () => {} }: { onOpenInTab
           </div>
           <div className={styles.files}>
             {changeSet.files.map((file) => (
-              <button
-                key={file.path}
-                type="button"
-                className={styles.file}
-                title={file.path}
-                onClick={() => openFile(file.path)}
-              >
-                {file.status === 'conflicted' ? '⚠ ' : ''}
-                {file.path}
-              </button>
+              <Tooltip key={file.path} content={file.path} className={styles.fileTooltip}>
+                <button type="button" className={styles.file} onClick={() => openFile(file.path)}>
+                  {file.status === 'conflicted' ? '⚠ ' : ''}
+                  {file.path}
+                </button>
+              </Tooltip>
             ))}
           </div>
         </>

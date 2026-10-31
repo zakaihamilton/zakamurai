@@ -12,9 +12,11 @@ export default function SessionManager({
     <div className={styles.manager}>
       <div className={styles.activeAgent} aria-label="Active conversation">
         <span className={styles.activeLabel}>Conversation</span>
-        <span className={styles.activeName} title={activeSession?.name}>
-          {activeSession?.name || 'No conversation selected'}
-        </span>
+        <Tooltip content={activeSession?.name || ''} className={styles.activeNameTooltip}>
+          <span className={styles.activeName}>
+            {activeSession?.name || 'No conversation selected'}
+          </span>
+        </Tooltip>
         {activeSession?.status === 'running' && (
           <span className={styles.runningDot} aria-label="Running" />
         )}

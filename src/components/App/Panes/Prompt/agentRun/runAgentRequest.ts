@@ -5,6 +5,7 @@ import type {
   RunManagerOptions,
   RunManagerResult,
 } from '@/components/AI/types';
+import { removeLastCodeTabPathInDraft } from '@/components/App/Panes/TabBar/TabStateUtils';
 import {
   createEffectivePreviewFileContentsSnapshot,
   removeEditorPathStateInDraft,
@@ -19,7 +20,6 @@ import type {
   PreviewStateShape,
   PromptUiStateShape,
 } from '@/types/domain-types';
-import { removeLastCodeTabPathInDraft } from '@/components/App/Panes/TabBar/TabStateUtils';
 import type {
   AgentSessionMessage,
   LogStateShape,
@@ -74,6 +74,17 @@ const fileMapsMatch = (left: FileMap | null, right: FileMap): boolean => {
     leftPaths.length === rightPaths.length &&
     leftPaths.every((path) => Object.hasOwn(right, path) && left[path] === right[path])
   );
+};
+
+const getValidationStatus = (output: string): 'passed' | 'failed' | 'unavailable' | null => {
+  const structuredStatus = output.match(/"status"\s*:\s*"(passed|failed|unavailable)"/i)?.[1];
+  if (structuredStatus) {
+    return structuredStatus.toLowerCase() as 'passed' | 'failed' | 'unavailable';
+  }
+  if (/\bvalidation\b.{0,60}\bpassed\b/i.test(output)) return 'passed';
+  if (/\bvalidation\b.{0,60}\bfailed\b/i.test(output)) return 'failed';
+  if (/\bvalidation\b.{0,60}\b(?:unavailable|could not run)\b/i.test(output)) return 'unavailable';
+  return null;
 };
 
 export async function runAgentRequest({
@@ -213,15 +224,20 @@ export async function runAgentRequest({
       }),
       onEvent: (managerEvent) => {
         if (appState.workspaceEpoch !== workspaceEpoch) return;
-        if (managerEvent.type === 'validation') {
-          const output = managerEvent.output || managerEvent.message || '';
-          runState.recordValidation(
-            /(?:"status"\s*:\s*"passed"|validation passed)/i.test(output)
-              ? 'passed'
-              : /(?:"status"\s*:\s*"failed"|validation failed)/i.test(output)
-                ? 'failed'
-                : 'unavailable',
-          );
+        const output = managerEvent.output || managerEvent.message || '';
+        const actionName =
+          typeof managerEvent.action === 'string'
+            ? managerEvent.action
+            : managerEvent.action?.action;
+        const validationStatus = getValidationStatus(output);
+        if (
+          managerEvent.type === 'validation' ||
+          (managerEvent.type === 'context' &&
+            (managerEvent.tool === 'validate' ||
+              actionName === 'validate' ||
+              /\bbuild validation\b/i.test(output)))
+        ) {
+          runState.recordValidation(validationStatus || 'unavailable');
         }
         const legacyAction = managerEvent as unknown as AgentEvent;
         if (managerEvent.type === 'tool' || legacyAction.type === 'tool') {

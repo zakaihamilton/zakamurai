@@ -1,10 +1,18 @@
 .health {
+  display: block;
   padding: 6px 14px 10px;
   color: var(--text-secondary);
   font-size: 11px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.tooltipWrapper {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .dot {

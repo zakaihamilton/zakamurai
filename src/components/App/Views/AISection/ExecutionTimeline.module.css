@@ -2,6 +2,10 @@
   composes: deckNavButton from "./AISectionReasoning.module.css";
 }
 
+.deckPosition {
+  composes: deckPosition from "./AISectionReasoning.module.css";
+}
+
 .deckNavTooltip {
   composes: deckNavTooltip from "./AISectionReasoning.module.css";
 }

@@ -66,6 +66,10 @@
   composes: runRequest from "./AISectionReasoning.module.css";
 }
 
+.runTextTooltip {
+  composes: runTextTooltip from "./AISectionReasoning.module.css";
+}
+
 .runStatus {
   composes: runStatus from "./AISectionReasoning.module.css";
 }

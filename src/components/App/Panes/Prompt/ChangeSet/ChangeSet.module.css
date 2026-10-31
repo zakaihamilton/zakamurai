@@ -131,6 +131,10 @@
   text-align: left;
 }
 
+.fileTooltip {
+  width: 100%;
+}
+
 .file:hover,
 .file:focus-visible {
   background: var(--bg-hover);
