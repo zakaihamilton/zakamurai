@@ -113,6 +113,7 @@ Useful focused commands:
 | `pnpm run test:visual:chromium` | Run Chromium visual regression tests |
 | `pnpm run test:visual:webkit` | Run WebKit visual regression tests |
 | `pnpm run test:promptfoo` | Run static AI compliance checks without API keys |
+| `pnpm run ai:bench` | Run local Build with AI cases with WebLLM, compilation, and preview checks |
 | `pnpm run check:architecture` | Enforce project architecture rules |
 | `pnpm run check:runtime-assets` | Verify generated browser runtime assets |
 | `pnpm run verify:ai` | Run optional extended AI regression checks |
@@ -120,6 +121,8 @@ Useful focused commands:
 Visual snapshots are platform-specific. Run `pnpm run test:visual:update` on the target CI platform to regenerate its baselines, then run `pnpm run test:visual` without the update flag to verify them.
 
 For AI reliability and browser memory profiling, see the [AI memory profiling workflow](./docs/ai-memory-profiling.md). The static AI checks use the local echo provider and golden fixtures in [`tests/ai-golden/`](./tests/ai-golden/); they do not require API keys.
+
+`pnpm run ai:bench` runs the todo, dashboard, and landing page cases in a headless Chromium browser. It uses the recommended local model by default and may download its weights the first time. Select a model or case with `pnpm run ai:bench -- --model <model-id> --case <todo|dashboard|landing>`. Reports and the persistent local model cache are stored under `test-results/ai-bench/`; the command does not change the app workspace or prompt files.
 
 ## Architecture and contributing
 
