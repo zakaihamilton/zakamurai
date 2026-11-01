@@ -105,9 +105,9 @@
 }
 
 .activityDetailsPanel {
-  display: grid;
-  align-content: start;
+  display: flex;
   flex: 1 1 0;
+  flex-direction: column;
   gap: 12px;
   box-sizing: border-box;
   min-height: 0;
