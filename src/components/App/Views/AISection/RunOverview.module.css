@@ -264,6 +264,16 @@
   overflow-wrap: anywhere;
 }
 
+.streamingCharacterCount {
+  display: inline-block;
+  width: 7ch;
+  color: inherit;
+  font-family: var(--font-mono, monospace);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  white-space: nowrap;
+}
+
 .nextSummary {
   display: flex;
   flex-wrap: wrap;

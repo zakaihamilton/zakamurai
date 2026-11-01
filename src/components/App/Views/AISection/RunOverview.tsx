@@ -40,6 +40,21 @@ const getCurrentNode = (activity: AgentActivityState): AgentActivityNode | undef
 const getFailedNode = (activity: AgentActivityState): AgentActivityNode | undefined =>
   activity.nodes.find((item) => item.status === 'failed' && item.phase !== 'result');
 
+const renderLiveDetail = (detail: string) => {
+  const match = detail.match(/streaming its next action \(([,\d]+)(?= character\(s\) received)/);
+  if (!match || match.index === undefined) return detail;
+
+  const count = match[1];
+  const countStart = match.index + match[0].length - count.length;
+  return (
+    <>
+      {detail.slice(0, countStart)}
+      <span className={styles.streamingCharacterCount}>{count}</span>
+      {detail.slice(countStart + count.length)}
+    </>
+  );
+};
+
 export default function RunOverview({
   activeSession,
   activity,
@@ -211,7 +226,7 @@ export default function RunOverview({
           <span className={styles.liveLabel}>{liveLabel}</span>
         </div>
         <h2 className={styles.liveTitle}>{currentTitle}</h2>
-        <p className={styles.liveDetail}>{currentDetail}</p>
+        <p className={styles.liveDetail}>{renderLiveDetail(currentDetail)}</p>
         {modelProgress ? (
           <div className={styles.modelProgress}>
             <progress
