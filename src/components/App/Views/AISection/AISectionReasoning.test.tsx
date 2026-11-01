@@ -12,6 +12,7 @@ import { createRef } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import AISectionReasoning, { getLiveExecutionInfo } from './AISectionReasoning';
 import type { ReasoningGroup } from './AISectionReasoning';
+import { getProgressRoadmap } from './AISectionReasoningUtils';
 
 const executionMapScrollTo = vi.fn();
 
@@ -84,6 +85,36 @@ const generationActivity: AgentActivityState = {
   ),
 };
 
+describe('AI section progress roadmap', () => {
+  it('completes a stage when a failed attempt is followed by a successful retry', () => {
+    const recoveredValidation: AgentActivityState = {
+      ...activityBase,
+      outcome: 'success',
+      currentPhase: 'result',
+      currentNodeId: null,
+      nodes: activityBase.nodes.flatMap((item) => {
+        if (item.id === 'plan-2') {
+          return [
+            { ...item, status: 'failed' as const, detail: 'Validation failed before repair.' },
+            {
+              ...item,
+              id: 'event-retry-validation',
+              status: 'completed' as const,
+              detail: 'Validation passed after repair.',
+            },
+          ];
+        }
+        if (item.id === 'result') return [{ ...item, status: 'completed' as const }];
+        return [item];
+      }),
+    };
+
+    expect(
+      getProgressRoadmap(recoveredValidation).find((stage) => stage.id === 'validation'),
+    ).toMatchObject({ status: 'completed' });
+  });
+});
+
 const createProps = (overrides: Partial<React.ComponentProps<typeof AISectionReasoning>> = {}) => ({
   activeSession: makeAgentSession({
     status: 'running',
@@ -98,6 +129,7 @@ const createProps = (overrides: Partial<React.ComponentProps<typeof AISectionRea
   reasoningGroups: groups,
   visualReasoningGroups: groups,
   activity,
+  activityDetailsOpen: true,
   viewType: 'visual' as const,
   showStepIO: false,
   runUsageSummary: '',
@@ -110,6 +142,25 @@ const createProps = (overrides: Partial<React.ComponentProps<typeof AISectionRea
 });
 
 describe('AISectionReasoning', () => {
+  it('keeps detailed activity collapsed by default', () => {
+    const onToggleActivityDetails = vi.fn();
+    render(
+      <AISectionReasoning
+        {...createProps({
+          activityDetailsOpen: undefined,
+          onToggleActivityDetails,
+        })}
+      />,
+    );
+
+    const detailsToggle = screen.getByRole('button', { name: 'Activity details' });
+    expect(detailsToggle).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.queryByRole('region', { name: 'Execution timeline' })).toBeNull();
+
+    fireEvent.click(detailsToggle);
+    expect(onToggleActivityDetails).toHaveBeenCalledOnce();
+  });
+
   it('renders the live execution map with planned future work', () => {
     const { rerender } = render(<AISectionReasoning {...createProps()} />);
 
@@ -182,14 +233,15 @@ describe('AISectionReasoning', () => {
       />,
     );
 
-    const progressbar = screen.getByRole('progressbar', { name: 'Loading Qwen local model' });
+    const executionRegion = screen.getByRole('region', { name: 'Execution timeline' });
+    const progressbar = within(executionRegion).getByRole('progressbar', {
+      name: 'Loading Qwen local model',
+    });
     expect(progressbar).toHaveAttribute('aria-valuenow', '50');
     expect(progressbar).toHaveAttribute('aria-valuetext', '50%');
-    expect(screen.getByText('Fetching model weights…')).toBeDefined();
+    expect(within(executionRegion).getByText('Fetching model weights…')).toBeDefined();
     expect(progressbar.closest('li')).toBe(
-      screen
-        .getByRole('region', { name: 'Execution timeline' })
-        .querySelector('[data-card-id="model-progress"]'),
+      executionRegion.querySelector('[data-card-id="model-progress"]'),
     );
 
     rerender(
@@ -204,10 +256,13 @@ describe('AISectionReasoning', () => {
       />,
     );
 
+    const updatedExecutionRegion = screen.getByRole('region', { name: 'Execution timeline' });
     expect(
-      screen.getByRole('progressbar', { name: 'Loading Qwen local model' }),
+      within(updatedExecutionRegion).getByRole('progressbar', {
+        name: 'Loading Qwen local model',
+      }),
     ).not.toHaveAttribute('aria-valuenow');
-    expect(screen.getByText('Initializing…')).toBeDefined();
+    expect(within(updatedExecutionRegion).getByText('Initializing…')).toBeDefined();
   });
 
   it('renders active change generation as a live streaming card', () => {
@@ -524,10 +579,10 @@ describe('AISectionReasoning', () => {
     const completed = finishAgentActivity(activity, 'success', 'Everything is ready.', 2_000);
     const { rerender } = render(<AISectionReasoning {...createProps({ activity: completed })} />);
     expect(getLiveExecutionInfo(completed).outcome).toBe('Route complete');
-    expect(screen.getByText('Everything is ready.')).toBeDefined();
     const liveExecution = screen.getByRole('region', { name: 'Live execution' });
-    expect(within(liveExecution).getAllByText('Route complete')).toHaveLength(1);
-    expect(within(liveExecution).getByText('Complete')).toBeDefined();
+    expect(within(liveExecution).getByText('Everything is ready.')).toBeDefined();
+    expect(within(liveExecution).getByText('Final result')).toBeDefined();
+    expect(within(liveExecution).getByText('Run complete')).toBeDefined();
 
     const failed = finishAgentActivity(activity, 'error', 'Validation failed.', 2_000);
     rerender(<AISectionReasoning {...createProps({ activity: failed })} />);

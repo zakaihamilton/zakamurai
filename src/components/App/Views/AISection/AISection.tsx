@@ -137,6 +137,7 @@ export default function AISectionView({ tab }: { tab: Tab }) {
   const [copied, setCopied] = useState(false);
   const [autoScroll, setAutoScroll] = useState(true);
   const [timelineExpanded, setTimelineExpanded] = useState(false);
+  const [activityDetailsOpen, setActivityDetailsOpen] = useState(false);
   const contentRef = useRef<HTMLDivElement | null>(null);
   const activeSession = getActiveAgentSession(agentSessionState);
   const [showStepIO, setShowStepIO] = useState(activeSession?.showStepIO === true);
@@ -251,14 +252,11 @@ export default function AISectionView({ tab }: { tab: Tab }) {
     <section className={styles.page} aria-label={titleBySection[section]}>
       <AISectionHeader
         title={titleBySection[section]}
-        showStepIOToggle={section === 'reasoning'}
+        showStepIOToggle={section === 'reasoning' && reasoningView === 'text'}
         showStepIO={section === 'reasoning' && showStepIO}
         showViewToggle={section === 'reasoning'}
         viewType={reasoningView}
-        showTimelineToggle={section === 'reasoning' && reasoningView === 'visual'}
-        timelineExpanded={timelineExpanded}
-        onToggleTimeline={() => setTimelineExpanded((expanded) => !expanded)}
-        showAutoScrollToggle={section === 'reasoning'}
+        showAutoScrollToggle={section === 'reasoning' && reasoningView === 'text'}
         autoScroll={section === 'reasoning' && autoScroll}
         copied={copied}
         onToggleStepIO={toggleStepIO}
@@ -273,6 +271,10 @@ export default function AISectionView({ tab }: { tab: Tab }) {
           activity={activity}
           modelProgress={modelProgress}
           timelineExpanded={timelineExpanded}
+          activityDetailsOpen={activityDetailsOpen}
+          onToggleActivityDetails={() => setActivityDetailsOpen((open) => !open)}
+          onToggleTimeline={() => setTimelineExpanded((expanded) => !expanded)}
+          onToggleStepIO={toggleStepIO}
           viewType={reasoningView}
           showStepIO={showStepIO}
           runUsageSummary={runUsageSummary}

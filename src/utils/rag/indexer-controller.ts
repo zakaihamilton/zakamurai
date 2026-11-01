@@ -16,8 +16,15 @@ type WorkerMessage = {
 
 export type RagInferenceDevice = 'webgpu' | 'wasm';
 
+export type RagIndexSyncSummary = {
+  indexedFileCount: number;
+  indexedChunkCount: number;
+  skippedFileCount: number;
+  skippedChunkCount: number;
+};
+
 const DEFAULT_REQUEST_TIMEOUT_MS = 30_000;
-const INDEX_REQUEST_TIMEOUT_MS = 120_000;
+const SYNC_WORKSPACE_TIMEOUT_MS = 300_000;
 const UNLOAD_REQUEST_TIMEOUT_MS = 10_000;
 
 export type FileSystemObserverRecord = {
@@ -138,7 +145,7 @@ export class IndexerController {
   }
 
   private requestTimeout(type: string): number {
-    if (type === 'INDEX_FILE') return INDEX_REQUEST_TIMEOUT_MS;
+    if (type === 'SYNC_WORKSPACE' || type === 'INDEX_FILE') return SYNC_WORKSPACE_TIMEOUT_MS;
     if (type === 'UNLOAD_MODEL') return UNLOAD_REQUEST_TIMEOUT_MS;
     return DEFAULT_REQUEST_TIMEOUT_MS;
   }
@@ -261,20 +268,11 @@ export class IndexerController {
   async indexWorkspaceFiles(
     files: Record<string, string> = {},
     device: RagInferenceDevice = 'webgpu',
-  ): Promise<number> {
+  ): Promise<RagIndexSyncSummary> {
     if (!this.worker) {
       await this.init();
     }
-    const entries = Object.entries(files);
-    for (const [filePath, content] of entries) {
-      if (typeof content !== 'string') continue;
-      try {
-        await this.sendMessage('INDEX_FILE', { filePath, content, device });
-      } catch (e) {
-        console.error(`[IndexerController] Failed to index ${filePath}:`, e);
-      }
-    }
-    return entries.length;
+    return (await this.sendMessage('SYNC_WORKSPACE', { files, device })) as RagIndexSyncSummary;
   }
 
   async search(query: string, k = 5, device: RagInferenceDevice = 'webgpu'): Promise<unknown> {

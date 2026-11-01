@@ -199,6 +199,27 @@ describe('StatusBar', () => {
     expect(screen.getByText('RAG: indexing')).toBeDefined();
   });
 
+  it('shows why a partial RAG index omitted content', () => {
+    vi.mocked(RagState.useState).mockReturnValue({
+      status: 'partial',
+      warning: 'RAG index is partial: 3 chunks omitted by workspace indexing limits.',
+    } as ReturnType<typeof RagState.useState> extends infer T ? T : never);
+    vi.mocked(AppState.useState).mockReturnValue(
+      makeAppState({ theme: 'dark', projectName: 'Test Project' }),
+    );
+    vi.mocked(EditorState.useState).mockReturnValue(createMockEditorState());
+    vi.mocked(TabState.useState).mockReturnValue(makeTabState({ activeTabId: null, openTabs: [] }));
+
+    const { container } = render(<StatusBar />);
+
+    expect(screen.getByText('RAG: partial')).toBeDefined();
+    expect(
+      [...container.querySelectorAll('[data-tooltip]')].some((node) =>
+        node.getAttribute('data-tooltip')?.includes('3 chunks omitted'),
+      ),
+    ).toBe(true);
+  });
+
   it('renders virtual storage mode when not local', () => {
     vi.mocked(useFileSystem).mockReturnValue(asMockUseFileSystem({ mode: null }));
     vi.mocked(AppState.useState).mockReturnValue(

@@ -324,7 +324,7 @@ export default function useCompletion({
         const ragQuery = buildCompletionRagQuery(before);
         let ragContext = '';
         try {
-          if (ragStatus === 'ready') {
+          if (ragStatus === 'ready' || ragStatus === 'partial') {
             const { ragSearch } = await import('@/utils/rag/search-utility');
             const ragResults = await ragSearch.retrieveContext(ragQuery, 3);
             ragContext = ragSearch.formatPromptContext(ragResults);

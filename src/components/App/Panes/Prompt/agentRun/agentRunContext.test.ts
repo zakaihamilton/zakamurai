@@ -25,7 +25,7 @@ describe('createManagerToolOptions preview inspection', () => {
     clearPreviewEvidence();
   });
 
-  it('activates the preview surface before waiting for staged evidence', async () => {
+  it('mounts the preview surface without changing the active tab', async () => {
     const tabStateValue: TabStateShape = {
       openTabs: [],
       activeTabId: 'src/App.jsx',
@@ -82,7 +82,7 @@ describe('createManagerToolOptions preview inspection', () => {
       path: '/preview/dist/index.html',
       screenshotCaptured: true,
     });
-    expect(tabStateValue.activeTabId).toBe('preview');
+    expect(tabStateValue.activeTabId).toBe('src/App.jsx');
     expect(tabStateValue.openTabs).toEqual([{ id: 'preview', type: 'preview', label: 'Preview' }]);
     expect(vfs.writeFileSync).toHaveBeenCalledWith(
       '/index.html',
@@ -90,7 +90,7 @@ describe('createManagerToolOptions preview inspection', () => {
     );
   });
 
-  it('keeps preview active after a successful welcome-run preview inspection', async () => {
+  it('keeps the current tab active after a successful welcome-run preview inspection', async () => {
     const tabStateValue: TabStateShape = {
       openTabs: [{ id: 'ai-section:reasoning', type: 'ai-section', label: 'Progress & Reasoning' }],
       activeTabId: 'ai-section:reasoning',
@@ -136,12 +136,11 @@ describe('createManagerToolOptions preview inspection', () => {
       sidebarState,
       tabState,
       previewState,
-      deferPreviewNavigation: true,
     });
 
     await options.inspectPreview?.({ 'src/App.jsx': 'export default function App() {}' });
 
-    expect(tabStateValue.activeTabId).toBe('preview');
+    expect(tabStateValue.activeTabId).toBe('ai-section:reasoning');
   });
 
   it('prepares AI context and recovery from the latest dirty editor buffers', async () => {

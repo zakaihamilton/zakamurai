@@ -1,5 +1,6 @@
 import { RagState } from '@/components/AI/RagState';
 import type { FileMap } from '@/components/AI/types';
+import { AppState } from '@/components/App/AppState';
 import { EditorState } from '@/components/App/Views/EditorArea';
 import {
   createEffectivePreviewFileContentsSnapshot,
@@ -8,9 +9,28 @@ import {
 import type { EditorBufferSource } from '@/components/App/Views/EditorArea/EditorBuffers';
 import { reportDiagnostic } from '@/components/Diagnostics';
 import { useFileSystem } from '@/components/Storage';
+import { WorkspaceProfileState } from '@/components/Workspace/WorkspaceState';
+import type { RagIndexSyncSummary } from '@/utils/rag/indexer-controller';
+import { selectRagWorkspaceFiles } from '@/utils/rag/rag-files';
 import { useCallback, useEffect, useRef } from 'react';
 
 const INDEX_DEBOUNCE_MS = 3000;
+const EMPTY_EXCLUDED_PATHS: string[] = [];
+
+function getIndexWarning(summary?: RagIndexSyncSummary): string | null {
+  const skippedFileCount = summary?.skippedFileCount ?? 0;
+  const skippedChunkCount = summary?.skippedChunkCount ?? 0;
+  const omitted = [
+    skippedFileCount > 0 ? `${skippedFileCount} file${skippedFileCount === 1 ? '' : 's'}` : null,
+    skippedChunkCount > 0
+      ? `${skippedChunkCount} chunk${skippedChunkCount === 1 ? '' : 's'}`
+      : null,
+  ].filter((value): value is string => value !== null);
+
+  return omitted.length > 0
+    ? `RAG index is partial: ${omitted.join(' and ')} omitted by workspace indexing limits.`
+    : null;
+}
 
 /**
  * Initialize the RAG worker and keep the index aligned with the mounted workspace
@@ -25,10 +45,18 @@ export function useRagIndexer() {
     'pendingDiffs',
     'pendingDeletions',
   ]);
+  const appState = AppState.useState(['workspaceEpoch']);
+  const workspaceEpoch = appState?.workspaceEpoch || 0;
   const ragState = RagState.useState();
+  const workspaceProfile = WorkspaceProfileState.useState(['exclude', 'maxFileBytes']);
+  const excludedPaths = workspaceProfile?.exclude || EMPTY_EXCLUDED_PATHS;
+  const maxFileBytes = workspaceProfile?.maxFileBytes;
   const bootstrappedRef = useRef(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastFingerprintRef = useRef('');
+  const lastWorkspaceEpochRef = useRef(workspaceEpoch);
+  const workspaceEpochRef = useRef(workspaceEpoch);
+  workspaceEpochRef.current = workspaceEpoch;
   const syncGenerationRef = useRef(0);
   const diskSnapshotRef = useRef<{
     files: FileMap | null;
@@ -60,21 +88,40 @@ export function useRagIndexer() {
     },
     [fs.mode, fs.rootHandle, fs.version],
   );
+  const selectIndexableFiles = useCallback(
+    (files: FileMap) => selectRagWorkspaceFiles(files, { exclude: excludedPaths, maxFileBytes }),
+    [excludedPaths, maxFileBytes],
+  );
+
+  useEffect(() => {
+    if (lastWorkspaceEpochRef.current === workspaceEpoch) return;
+    lastWorkspaceEpochRef.current = workspaceEpoch;
+    bootstrappedRef.current = false;
+    lastFingerprintRef.current = '';
+    ragState?.((draft) => {
+      draft.status = 'initializing';
+      draft.error = null;
+      draft.warning = null;
+    });
+  }, [ragState, workspaceEpoch]);
 
   useEffect(() => {
     if (!ragState) return undefined;
     let cancelled = false;
 
     const initRag = async () => {
+      const initWorkspaceEpoch = workspaceEpoch;
       try {
         ragState((draft) => {
           draft.status = 'initializing';
           draft.error = null;
+          draft.warning = null;
         });
         // Start the timeout before dynamic imports so hung imports are covered.
-        const timeout = new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new Error('RAG Init Timeout')), 10000),
-        );
+        let timeoutId: ReturnType<typeof setTimeout> | undefined;
+        const timeout = new Promise<never>((_, reject) => {
+          timeoutId = setTimeout(() => reject(new Error('RAG Init Timeout')), 10000);
+        });
         const initWork = (async () => {
           const [{ ragSearch }, { collectWorkspaceFiles }] = await Promise.all([
             import('@/utils/rag/search-utility'),
@@ -83,32 +130,52 @@ export function useRagIndexer() {
           await ragSearch.init();
           return { ragSearch, collectWorkspaceFiles };
         })();
-        const { ragSearch, collectWorkspaceFiles } = await Promise.race([initWork, timeout]);
-        if (cancelled || !fs?.isReady) return;
+        let initialized: Awaited<typeof initWork>;
+        try {
+          initialized = await Promise.race([initWork, timeout]);
+        } finally {
+          if (timeoutId) clearTimeout(timeoutId);
+        }
+        const { ragSearch, collectWorkspaceFiles } = initialized;
+        if (cancelled || workspaceEpochRef.current !== initWorkspaceEpoch || !fs?.isReady) return;
         console.log('[RAG] Indexer initialized successfully.');
 
         if (!bootstrappedRef.current) {
-          bootstrappedRef.current = true;
           ragState((draft) => {
             draft.status = 'indexing';
+            draft.warning = null;
           });
-          const files = await collectCurrentFiles(collectWorkspaceFiles, editorStateRef.current);
-          if (cancelled) return;
-          await ragSearch.indexWorkspaceFiles(files);
-          if (cancelled) return;
+          const bootstrapSyncGeneration = syncGenerationRef.current;
+          const collectedFiles = await collectCurrentFiles(
+            collectWorkspaceFiles,
+            editorStateRef.current,
+          );
+          if (cancelled || workspaceEpochRef.current !== initWorkspaceEpoch) return;
+          const files = selectIndexableFiles(collectedFiles);
+          const summary = await ragSearch.indexWorkspaceFiles(files);
+          if (
+            cancelled ||
+            workspaceEpochRef.current !== initWorkspaceEpoch ||
+            bootstrapSyncGeneration !== syncGenerationRef.current
+          ) {
+            return;
+          }
           const fingerprint = fingerprintContents(files);
           lastFingerprintRef.current = fingerprint;
+          bootstrappedRef.current = true;
+          const warning = getIndexWarning(summary);
           ragState((draft) => {
-            draft.status = 'ready';
+            draft.status = warning ? 'partial' : 'ready';
             draft.error = null;
-            draft.indexedFileCount = Object.keys(files || {}).length;
+            draft.warning = warning;
+            draft.indexedFileCount = summary?.indexedFileCount ?? Object.keys(files).length;
             draft.lastIndexedAt = Date.now();
             draft.lastFingerprint = fingerprint;
           });
           console.log('[RAG] Workspace bootstrap index complete.');
         }
       } catch (error) {
-        if (cancelled) return;
+        if (cancelled || workspaceEpochRef.current !== initWorkspaceEpoch) return;
         const err = error as Error;
         console.error('[RAG] Failed to initialize indexer:', error);
         reportDiagnostic({
@@ -119,6 +186,7 @@ export function useRagIndexer() {
         ragState((draft) => {
           draft.status = 'error';
           draft.error = err?.message || String(error);
+          draft.warning = null;
         });
       }
     };
@@ -127,36 +195,71 @@ export function useRagIndexer() {
     return () => {
       cancelled = true;
     };
-  }, [collectCurrentFiles, fs, fs?.isReady, ragState]);
+  }, [collectCurrentFiles, fs, fs?.isReady, ragState, selectIndexableFiles, workspaceEpoch]);
 
   useEffect(() => {
     if (!fs?.isReady || !editorState || !ragState) return undefined;
     if (debounceRef.current) clearTimeout(debounceRef.current);
     const generation = ++syncGenerationRef.current;
+    const syncWorkspaceEpoch = workspaceEpoch;
     let cancelled = false;
+    if (bootstrappedRef.current) {
+      ragState((draft) => {
+        draft.status = 'indexing';
+        draft.error = null;
+      });
+    }
     debounceRef.current = setTimeout(async () => {
       try {
         const { collectWorkspaceFiles } = await import('@/components/AI/Agent/Snapshot');
-        const files = await collectCurrentFiles(collectWorkspaceFiles, editorStateRef.current);
-        if (cancelled || generation !== syncGenerationRef.current) return;
+        const collectedFiles = await collectCurrentFiles(
+          collectWorkspaceFiles,
+          editorStateRef.current,
+        );
+        if (
+          cancelled ||
+          workspaceEpochRef.current !== syncWorkspaceEpoch ||
+          generation !== syncGenerationRef.current
+        ) {
+          return;
+        }
+        const files = selectIndexableFiles(collectedFiles);
         const nextFingerprint = fingerprintContents(files);
-        if (nextFingerprint === lastFingerprintRef.current) return;
-        ragState((draft) => {
-          draft.status = 'indexing';
-          draft.error = null;
-        });
+        if (nextFingerprint === lastFingerprintRef.current) {
+          ragState((draft) => {
+            draft.status = draft.warning ? 'partial' : 'ready';
+            draft.error = null;
+          });
+          return;
+        }
         const { ragSearch } = await import('@/utils/rag/search-utility');
-        await ragSearch.indexWorkspaceFiles(files);
-        if (cancelled || generation !== syncGenerationRef.current) return;
+        const summary = await ragSearch.indexWorkspaceFiles(files);
+        if (
+          cancelled ||
+          workspaceEpochRef.current !== syncWorkspaceEpoch ||
+          generation !== syncGenerationRef.current
+        ) {
+          return;
+        }
+        bootstrappedRef.current = true;
         lastFingerprintRef.current = nextFingerprint;
+        const warning = getIndexWarning(summary);
         ragState((draft) => {
-          draft.status = 'ready';
-          draft.indexedFileCount = Object.keys(files).length;
+          draft.status = warning ? 'partial' : 'ready';
+          draft.error = null;
+          draft.warning = warning;
+          draft.indexedFileCount = summary?.indexedFileCount ?? Object.keys(files).length;
           draft.lastIndexedAt = Date.now();
           draft.lastFingerprint = nextFingerprint;
         });
       } catch (error) {
-        if (cancelled || generation !== syncGenerationRef.current) return;
+        if (
+          cancelled ||
+          workspaceEpochRef.current !== syncWorkspaceEpoch ||
+          generation !== syncGenerationRef.current
+        ) {
+          return;
+        }
         const err = error as Error;
         console.error('[RAG] Failed to sync workspace index:', error);
         reportDiagnostic({
@@ -167,6 +270,7 @@ export function useRagIndexer() {
         ragState((draft) => {
           draft.status = 'error';
           draft.error = err?.message || String(error);
+          draft.warning = null;
         });
       }
     }, INDEX_DEBOUNCE_MS);
@@ -182,7 +286,9 @@ export function useRagIndexer() {
     editorState?.pendingDiffs,
     editorState?.pendingDeletions,
     fs?.isReady,
+    workspaceEpoch,
     collectCurrentFiles,
+    selectIndexableFiles,
     ragState,
     editorState,
   ]);

@@ -3,13 +3,18 @@ import { withoutManagerErrorMessages } from '@/components/App/Panes/Prompt/Agent
 import type { AgentActivityState, AgentSession } from '@/types/domain-types';
 import { useEffect, useRef } from 'react';
 import type { RefObject } from 'react';
-import TextReasoning from './ReasoningText';
-import type { ModelProgress, ReasoningGroup, ReasoningViewType } from './AISectionReasoningUtils';
-import VisualReasoning from './VisualReasoning';
 import styles from './AISectionReasoning.module.css';
+import type { ModelProgress, ReasoningGroup, ReasoningViewType } from './AISectionReasoningUtils';
+import TextReasoning from './ReasoningText';
+import VisualReasoning from './VisualReasoning';
+
+const noop = () => undefined;
 
 export {
   extractReasoningLabel,
+  getNextActivityNode,
+  getProgressRoadmap,
+  getRecentMilestones,
   getLiveExecutionInfo,
   getReasoningEntryStatus,
   getReasoningGroupStatus,
@@ -21,6 +26,9 @@ export {
 export type {
   LiveExecutionInfo,
   ModelProgress,
+  ProgressRoadmapStage,
+  ProgressRoadmapStageId,
+  ProgressRoadmapStageStatus,
   ReasoningGroup,
   ReasoningViewType,
   TimelineStatus,
@@ -33,8 +41,12 @@ type AISectionReasoningProps = {
   activity?: AgentActivityState;
   modelProgress?: ModelProgress;
   timelineExpanded?: boolean;
+  activityDetailsOpen?: boolean;
   viewType?: ReasoningViewType;
   showStepIO?: boolean;
+  onToggleActivityDetails?: () => void;
+  onToggleTimeline?: () => void;
+  onToggleStepIO?: () => void;
   runUsageSummary: string;
   latestError?: string;
   fallbackContent: string;
@@ -51,8 +63,12 @@ export default function AISectionReasoning({
   activity,
   modelProgress,
   timelineExpanded = false,
+  activityDetailsOpen = false,
   viewType = 'visual',
   showStepIO = false,
+  onToggleActivityDetails = noop,
+  onToggleTimeline = noop,
+  onToggleStepIO = noop,
   runUsageSummary,
   latestError = '',
   fallbackContent,
@@ -72,6 +88,8 @@ export default function AISectionReasoning({
     );
 
   const handleScroll = () => {
+    if (viewType !== 'text') return;
+
     const contentElement = contentRef.current;
     if (!contentElement) return;
 
@@ -87,12 +105,12 @@ export default function AISectionReasoning({
   };
 
   useEffect(() => {
-    if (!autoScroll || !content || !contentRef.current) return;
+    if (viewType !== 'text' || !autoScroll || !content || !contentRef.current) return;
     contentRef.current.scrollTo({
       top: contentRef.current.scrollHeight,
       behavior: 'auto',
     });
-  }, [autoScroll, content, contentRef]);
+  }, [autoScroll, content, contentRef, viewType]);
 
   const visual = viewType === 'visual';
 
@@ -108,9 +126,12 @@ export default function AISectionReasoning({
           activity={visualActivity}
           modelProgress={modelProgress}
           timelineExpanded={timelineExpanded}
+          activityDetailsOpen={activityDetailsOpen}
+          onToggleActivityDetails={onToggleActivityDetails}
+          onToggleTimeline={onToggleTimeline}
+          onToggleStepIO={onToggleStepIO}
           runUsageSummary={runUsageSummary}
           latestError={latestError}
-          fallbackContent={fallbackContent}
           showStepIO={showStepIO}
         />
       ) : (

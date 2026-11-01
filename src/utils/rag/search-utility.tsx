@@ -1,5 +1,9 @@
 import { isWebLLMGpuMemoryReserved } from '@/utils/ai-memory-governor';
-import { IndexerController, type RagInferenceDevice } from './indexer-controller';
+import {
+  IndexerController,
+  type RagIndexSyncSummary,
+  type RagInferenceDevice,
+} from './indexer-controller';
 
 type LinkedCss = {
   filePath: string;
@@ -19,6 +23,7 @@ type RawSearchResult = {
   content: string;
   score?: number;
   cssLinks?: string;
+  linkedCss?: LinkedCss[];
 };
 
 export const RAG_EXTRACTOR_IDLE_UNLOAD_MS = 15_000;
@@ -108,23 +113,38 @@ export class RagSearchUtility {
     }
   }
 
-  async retrieveContext(query: string, k = 5): Promise<ContextItem[]> {
+  async retrieveContext(
+    query: string,
+    k = 5,
+    workspaceFiles?: Record<string, string>,
+  ): Promise<ContextItem[]> {
+    if (!query.trim()) return [];
     await this.init();
 
-    const rawResults = (await this.withTransientExtractor((device) =>
-      this.controller.search(query, k, device),
-    )) as RawSearchResult[];
+    const rawResults = (await this.withTransientExtractor(async (device) => {
+      if (workspaceFiles) {
+        await this.controller.indexWorkspaceFiles(workspaceFiles, device);
+      }
+      return this.controller.search(query, k, device);
+    })) as RawSearchResult[];
     const enrichedResults: ContextItem[] = [];
 
     for (const result of rawResults) {
       const item: ContextItem = {
         filePath: result.filePath,
         content: result.content,
-        score: result.score || 0,
-        linkedCss: [],
+        score: typeof result.score === 'number' ? result.score : 0,
+        linkedCss: Array.isArray(result.linkedCss)
+          ? result.linkedCss.filter(
+              (css): css is LinkedCss =>
+                typeof css?.filePath === 'string' && typeof css?.content === 'string',
+            )
+          : [],
       };
 
-      if (result.cssLinks) {
+      // Keep compatibility with older serialized results while new worker results
+      // include the linked stylesheet contents from the active workspace snapshot.
+      if (item.linkedCss.length === 0 && result.cssLinks) {
         try {
           const links = JSON.parse(result.cssLinks) as string[];
           for (const cssPath of links) {
@@ -151,7 +171,7 @@ export class RagSearchUtility {
     return enrichedResults;
   }
 
-  async indexWorkspaceFiles(files: Record<string, string> = {}): Promise<number> {
+  async indexWorkspaceFiles(files: Record<string, string> = {}): Promise<RagIndexSyncSummary> {
     await this.init();
     return this.withTransientExtractor((device) =>
       this.controller.indexWorkspaceFiles(files, device),
@@ -180,7 +200,7 @@ export class RagSearchUtility {
 
   async purgeIndex(): Promise<unknown> {
     this.clearUnloadTimer();
-    if (!this.isInitialized) return;
+    await this.init();
     return this.enqueue(() => this.controller.purgeIndex());
   }
 

@@ -71,7 +71,9 @@ export default function Prompt() {
   const tabState = requireStore(TabState.useState(['activeTabId', 'openTabs']));
   const editorState = requireStore(EditorState.useState(['selectedLines', 'fileContents']));
   const editorBufferState = requireStore(EditorState.usePassiveState());
-  const workspaceProfileState = requireStore(WorkspaceProfileState.useState(['styleProfile']));
+  const workspaceProfileState = requireStore(
+    WorkspaceProfileState.useState(['styleProfile', 'exclude', 'maxFileBytes']),
+  );
   const agentSessionState = requireStore(
     AgentSessionState.useState(['sessions', 'activeSessionId']),
   );
@@ -150,6 +152,10 @@ export default function Prompt() {
     cachedModelIds,
     webLLMEngines: engines,
     styleProfile,
+    workspaceProfile: {
+      exclude: workspaceProfileState.exclude || [],
+      maxFileBytes: workspaceProfileState.maxFileBytes,
+    },
   });
 
   useEffect(() => {

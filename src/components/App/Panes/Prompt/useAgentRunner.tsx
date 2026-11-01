@@ -39,6 +39,7 @@ export default function useAgentRunner({
   cachedModelIds = [],
   webLLMEngines = {},
   styleProfile,
+  workspaceProfile,
 }: UseAgentRunnerParams) {
   const changeSetState = requireStore(ChangeSetState.usePassiveState());
   const appState = requireStore(AppState.usePassiveState());
@@ -168,6 +169,7 @@ export default function useAgentRunner({
         cachedModelIds,
         webLLMEngines,
         styleProfile: currentStyleProfile,
+        workspaceProfile,
         patchSession,
         pushSessionMessage,
         createSessionMessage,
@@ -189,6 +191,7 @@ export default function useAgentRunner({
       cachedModelIds,
       webLLMEngines,
       styleProfile,
+      workspaceProfile,
       patchSession,
       promptScope,
       promptUiState,

@@ -138,6 +138,7 @@ export default function useAppStores(initialValues: InitialAppValues, fs: FileSy
   RagState.useState(null, {
     status: 'idle',
     error: null,
+    warning: null,
     indexedFileCount: 0,
     lastIndexedAt: null,
     lastFingerprint: null,

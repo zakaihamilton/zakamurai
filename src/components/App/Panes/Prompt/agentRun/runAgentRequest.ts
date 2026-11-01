@@ -26,6 +26,7 @@ import type {
   SidebarStateShape,
   TabStateShape,
   WebLLMEngineState,
+  WorkspaceProfileStateShape,
 } from '@/types/domain-types';
 import type { StateStore } from 'triactor';
 import { createManagerToolOptions, prepareAgentRunContext } from './agentRunContext';
@@ -61,6 +62,7 @@ export type RunAgentRequestParams = {
   cachedModelIds: string[];
   webLLMEngines: Record<string, WebLLMEngineState>;
   styleProfile?: import('@/components/AI/Agent/ProjectStyleProfile').ProjectStyleProfile;
+  workspaceProfile?: Pick<WorkspaceProfileStateShape, 'exclude' | 'maxFileBytes'>;
   patchSession: (sessionId: string, patch: Partial<AgentSession>) => void;
   pushSessionMessage: (sessionId: string, message: AgentSessionMessage) => void;
   createSessionMessage: SessionMessageFactory;
@@ -109,6 +111,7 @@ export async function runAgentRequest({
   cachedModelIds,
   webLLMEngines,
   styleProfile,
+  workspaceProfile,
   patchSession,
   pushSessionMessage,
   createSessionMessage,
@@ -121,7 +124,6 @@ export async function runAgentRequest({
   });
   const controller = new AbortController();
   const workspaceEpoch = appState.workspaceEpoch || 0;
-  const previousActiveTabId = tabState.activeTabId;
   const hadPreviewTab = tabState.openTabs.some((tab) => tab.id === 'preview');
   const previousPreview = previewState
     ? {
@@ -136,8 +138,9 @@ export async function runAgentRequest({
   const restorePreview = () => {
     if ((appState.workspaceEpoch || 0) !== workspaceEpoch) return;
     tabState((draft) => {
-      if (!hadPreviewTab) draft.openTabs = draft.openTabs.filter((tab) => tab.id !== 'preview');
-      draft.activeTabId = previousActiveTabId;
+      if (!hadPreviewTab && draft.activeTabId !== 'preview') {
+        draft.openTabs = draft.openTabs.filter((tab) => tab.id !== 'preview');
+      }
     });
     if (!previewState || !previousPreview) return;
     previewState((draft) => {
@@ -212,7 +215,7 @@ export async function runAgentRequest({
         sidebarState,
         tabState,
         previewState: previewState || undefined,
-        deferPreviewNavigation: isWelcomePrompt,
+        workspaceProfile,
         onPreviewInspection: (stagedFiles, inspection) => {
           previewInspectionFiles =
             typeof inspection === 'object' &&

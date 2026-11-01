@@ -2,6 +2,7 @@ import type {
   AgentActivityNode,
   AgentActivityNodeStatus,
   AgentActivityOutcome,
+  AgentActivityPhase,
   AgentActivityState,
   AgentReasoningEntry,
   AgentSession,
@@ -192,4 +193,154 @@ export const getLiveExecutionInfo = (activity: AgentActivityState): LiveExecutio
     badge: outcomeBadgeLabels[activity.outcome],
     tone: activity.outcome,
   };
+};
+
+export type ProgressRoadmapStageId = 'request' | 'context' | 'work' | 'validation' | 'result';
+
+export type ProgressRoadmapStageStatus = 'upcoming' | 'active' | 'completed' | 'failed' | 'skipped';
+
+export type ProgressRoadmapStage = {
+  id: ProgressRoadmapStageId;
+  label: string;
+  status: ProgressRoadmapStageStatus;
+};
+
+const roadmapStageConfig: Array<{
+  id: ProgressRoadmapStageId;
+  label: string;
+  matches: (phase: AgentActivityPhase) => boolean;
+}> = [
+  {
+    id: 'request',
+    label: 'Request',
+    matches: (phase) => phase === 'request' || phase === 'routing',
+  },
+  { id: 'context', label: 'Context', matches: (phase) => phase === 'context' },
+  { id: 'work', label: 'Work', matches: (phase) => phase === 'work' || phase === 'recovery' },
+  { id: 'validation', label: 'Validate', matches: (phase) => phase === 'validation' },
+  { id: 'result', label: 'Result', matches: (phase) => phase === 'result' },
+];
+
+const roadmapStageIndexForPhase = (phase: AgentActivityPhase | null): number | null => {
+  if (!phase) return null;
+  const index = roadmapStageConfig.findIndex((stage) => stage.matches(phase));
+  return index >= 0 ? index : null;
+};
+
+export const getProgressRoadmap = (activity: AgentActivityState): ProgressRoadmapStage[] => {
+  const activeNode =
+    activity.nodes.find((item) => item.id === activity.currentNodeId) ||
+    activity.nodes.find((item) => item.status === 'active');
+  const currentStageIndex = roadmapStageIndexForPhase(
+    activity.currentPhase || activeNode?.phase || null,
+  );
+  const terminal = activity.outcome !== 'idle' && activity.outcome !== 'running';
+
+  return roadmapStageConfig.map((stage, index) => {
+    const stageNodes = activity.nodes.filter((item) => stage.matches(item.phase));
+    const latestAttempt = [...stageNodes]
+      .reverse()
+      .find(
+        (item) =>
+          item.status === 'failed' || item.status === 'active' || item.status === 'completed',
+      );
+    const hasFailed = latestAttempt?.status === 'failed';
+    const hasActive = latestAttempt?.status === 'active';
+    const hasQueued = stageNodes.some((item) => item.status === 'queued');
+    const hasCompletedAttempt = latestAttempt?.status === 'completed';
+
+    let status: ProgressRoadmapStageStatus = 'upcoming';
+    if (hasFailed) {
+      status = 'failed';
+    } else if (
+      activity.outcome === 'aborted' &&
+      stageNodes.some((item) => item.status === 'skipped')
+    ) {
+      status = 'skipped';
+    } else if (hasActive || (activity.outcome === 'running' && currentStageIndex === index)) {
+      status = 'active';
+    } else if (
+      stageNodes.length > 0 &&
+      (stageNodes.every((item) => item.status === 'completed' || item.status === 'skipped') ||
+        (hasCompletedAttempt && !hasQueued))
+    ) {
+      status =
+        hasCompletedAttempt || stageNodes.some((item) => item.status === 'completed')
+          ? 'completed'
+          : 'skipped';
+    } else if (hasQueued) {
+      status = 'upcoming';
+    } else if (
+      activity.outcome === 'running' &&
+      stage.id === 'validation' &&
+      currentStageIndex !== null &&
+      currentStageIndex >= 2 &&
+      stageNodes.length === 0
+    ) {
+      status = 'skipped';
+    } else if (terminal && currentStageIndex !== null && index < currentStageIndex) {
+      status = stageNodes.length > 0 ? 'completed' : 'skipped';
+    } else if (index === roadmapStageConfig.length - 1 && activity.outcome === 'success') {
+      status = 'completed';
+    } else if (index === roadmapStageConfig.length - 1 && activity.outcome === 'error') {
+      status = 'failed';
+    } else if (index === roadmapStageConfig.length - 1 && activity.outcome === 'aborted') {
+      status = 'skipped';
+    }
+
+    return { id: stage.id, label: stage.label, status };
+  });
+};
+
+export const getNextActivityNode = (
+  activity: AgentActivityState,
+): AgentActivityNode | undefined => {
+  if (activity.outcome !== 'running') return undefined;
+
+  const currentNode =
+    activity.nodes.find((item) => item.id === activity.currentNodeId) ||
+    activity.nodes.find((item) => item.status === 'active');
+  const currentStageIndex = roadmapStageIndexForPhase(
+    currentNode?.phase || activity.currentPhase || null,
+  );
+  const queuedNodes = activity.nodes.filter(
+    (item) => item.status === 'queued' && item.phase !== 'request',
+  );
+  if (currentStageIndex === null) return queuedNodes[0];
+
+  return (
+    queuedNodes.find((item) => roadmapStageIndexForPhase(item.phase) === currentStageIndex) ||
+    queuedNodes.find((item) => {
+      const stageIndex = roadmapStageIndexForPhase(item.phase);
+      return stageIndex !== null && stageIndex > currentStageIndex;
+    }) ||
+    queuedNodes[0]
+  );
+};
+
+export const getRecentMilestones = (
+  activity: AgentActivityState,
+  limit = 3,
+): AgentActivityNode[] => {
+  const recent: AgentActivityNode[] = [];
+  const seen = new Set<string>();
+
+  for (const item of [...activity.nodes].reverse()) {
+    if (
+      item.status !== 'completed' ||
+      item.phase === 'request' ||
+      item.phase === 'routing' ||
+      item.phase === 'result'
+    ) {
+      continue;
+    }
+
+    const key = `${item.label}|${item.detail}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    recent.push(item);
+    if (recent.length >= limit) break;
+  }
+
+  return recent;
 };

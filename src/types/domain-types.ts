@@ -458,6 +458,7 @@ export interface FileSystemStateShape {
 export interface RagStateShape {
   status: string;
   error: string | null;
+  warning: string | null;
   indexedFileCount: number;
   lastIndexedAt: number | null;
   lastFingerprint: string | null;

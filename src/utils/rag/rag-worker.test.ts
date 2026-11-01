@@ -103,6 +103,9 @@ describe('rag-worker', () => {
   beforeEach(async () => {
     await testables.resetRuntime();
     vi.clearAllMocks();
+    transformersMock.extractor.mockResolvedValue({
+      data: [0.1, 0.2, 0.3],
+    });
     transformersMock.shouldFail = false;
     transformersMock.webGPUShouldFail = false;
   });
@@ -225,6 +228,115 @@ describe('rag-worker', () => {
       { device: 'wasm' },
     );
     consoleWarn.mockRestore();
+  });
+
+  it('reconciles workspace snapshots and keeps identical chunks scoped to their files', async () => {
+    transformersMock.extractor.mockImplementation(async (text: string) => ({
+      data: text.toLowerCase().includes('alpha')
+        ? [1, 0, 0]
+        : text.toLowerCase().includes('beta')
+          ? [0, 1, 0]
+          : [0, 0, 1],
+    }));
+    const onMessage = listeners.message;
+    const sync = async (id: string, files: Record<string, string>) =>
+      onMessage({ data: { id, type: 'SYNC_WORKSPACE', payload: { files } } });
+    const search = async (id: string, query: string) => {
+      mockSelf.postMessage.mockClear();
+      await onMessage({ data: { id, type: 'SEARCH', payload: { query, k: 5 } } });
+      return mockSelf.postMessage.mock.calls[0][0] as {
+        payload: Array<{ filePath: string }>;
+      };
+    };
+
+    await sync('sync-initial', {
+      'src/alpha.ts': 'alpha implementation with enough text',
+      'src/beta.ts': 'beta implementation with enough text',
+    });
+    const alphaBefore = await search('search-alpha-before', 'alpha');
+    expect(alphaBefore.payload.map(({ filePath }) => filePath)).toEqual(['src/alpha.ts']);
+
+    await sync('sync-updated', {
+      'src/beta.ts': 'beta implementation with enough text',
+      'src/copy-a.ts': 'shared implementation with enough text',
+      'src/copy-b.ts': 'shared implementation with enough text',
+    });
+    const alphaAfter = await search('search-alpha-after', 'alpha');
+    const shared = await search('search-shared', 'shared');
+
+    expect(alphaAfter.payload).toEqual([]);
+    expect(shared.payload.map(({ filePath }) => filePath)).toEqual([
+      'src/copy-a.ts',
+      'src/copy-b.ts',
+    ]);
+  });
+
+  it('reports only files that fit in the workspace index', async () => {
+    const files = Object.fromEntries(
+      Array.from({ length: 1501 }, (_, index) => [
+        `src/file-${String(index).padStart(4, '0')}.ts`,
+        `export const value${index} = "long enough chunk content";`,
+      ]),
+    );
+
+    await listeners.message({
+      data: { id: 'sync-at-capacity', type: 'SYNC_WORKSPACE', payload: { files } },
+    });
+
+    expect(mockSelf.postMessage).toHaveBeenCalledWith({
+      id: 'sync-at-capacity',
+      type: 'SYNC_WORKSPACE_SUCCESS',
+      payload: {
+        indexedFileCount: 1500,
+        indexedChunkCount: 1500,
+        skippedFileCount: 0,
+        skippedChunkCount: 1,
+      },
+    });
+  });
+
+  it('returns active linked stylesheet content for alias imports and ignores blank queries', async () => {
+    transformersMock.extractor.mockImplementation(async (text: string) => ({
+      data: text.toLowerCase().includes('widget') ? [1, 0, 0] : [0, 1, 0],
+    }));
+    const onMessage = listeners.message;
+    await onMessage({
+      data: {
+        id: 'sync-css',
+        type: 'SYNC_WORKSPACE',
+        payload: {
+          files: {
+            'src/Widget.tsx':
+              "import styles from '@/theme.css';\nexport const Widget = () => null;",
+            'src/theme.css': '.widget { color: rebeccapurple; }',
+          },
+        },
+      },
+    });
+
+    mockSelf.postMessage.mockClear();
+    await onMessage({
+      data: { id: 'search-widget', type: 'SEARCH', payload: { query: 'widget', k: 3 } },
+    });
+    const widgetResults = mockSelf.postMessage.mock.calls[0][0] as {
+      payload: Array<{ filePath: string; linkedCss: Array<{ filePath: string; content: string }> }>;
+    };
+    expect(
+      widgetResults.payload.find(({ filePath }) => filePath === 'src/Widget.tsx'),
+    ).toMatchObject({
+      filePath: 'src/Widget.tsx',
+      linkedCss: [{ filePath: 'src/theme.css', content: '.widget { color: rebeccapurple; }' }],
+    });
+
+    const embeddingCallsBeforeBlankQuery = transformersMock.extractor.mock.calls.length;
+    mockSelf.postMessage.mockClear();
+    await onMessage({ data: { id: 'search-empty', type: 'SEARCH', payload: { query: '   ' } } });
+    expect(mockSelf.postMessage).toHaveBeenCalledWith({
+      id: 'search-empty',
+      type: 'SEARCH_SUCCESS',
+      payload: [],
+    });
+    expect(transformersMock.extractor).toHaveBeenCalledTimes(embeddingCallsBeforeBlankQuery);
   });
 
   it('handles errors and posts ERROR message', async () => {

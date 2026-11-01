@@ -6,10 +6,15 @@ import {
   makeSidebarState,
   makeTabState,
 } from '@/test-utils/stateMocks';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import WorkspaceArea from './WorkspaceArea';
+
+const previewModule = vi.hoisted(() => ({
+  promise: null as Promise<void> | null,
+  resolve: null as (() => void) | null,
+}));
 
 vi.mock('@/components/App/AppState', () => ({ AppState: { useState: vi.fn() } }));
 vi.mock('@/components/App/Panes', () => ({
@@ -47,7 +52,12 @@ vi.mock('../Views/Welcome', () => ({
   default: () => <div data-testid="welcome" />,
 }));
 vi.mock('../Views/LogArea', () => ({ default: () => <div data-testid="log-area" /> }));
-vi.mock('../Views/PreviewArea', () => ({ default: () => <div data-testid="preview-area" /> }));
+vi.mock('../Views/PreviewArea', () => ({
+  default: () => {
+    if (previewModule.promise) throw previewModule.promise;
+    return <div data-testid="preview-area" />;
+  },
+}));
 vi.mock('../Views/ProjectInfo', () => ({ default: () => <div data-testid="project-info" /> }));
 vi.mock('../Views/Instructions', () => ({ default: () => <div data-testid="instructions" /> }));
 vi.mock('../Views/Readiness', () => ({ default: () => <div data-testid="readiness" /> }));
@@ -111,19 +121,61 @@ describe('WorkspaceArea', () => {
     await waitFor(() => expect(screen.getByTestId('log-area')).toBeDefined());
   });
 
-  it('renders preview area for preview tab', async () => {
+  it('keeps the editor visible while an inactive preview is still loading', async () => {
     vi.mocked(AppState.useState).mockReturnValue(makeAppState({ isMobile: false }));
     vi.mocked(TabState.useState).mockReturnValue(
       makeTabState({
-        openTabs: [{ id: 'preview', type: 'preview', label: 'Preview' }],
-        activeTabId: 'preview',
+        openTabs: [
+          {
+            id: 'src/App.jsx',
+            type: 'file',
+            label: 'App.jsx',
+            file: { name: 'App.jsx', path: ['src', 'App.jsx'] },
+          },
+        ],
+        activeTabId: 'src/App.jsx',
       }),
     );
     vi.mocked(SidebarState.useState).mockReturnValue(makeSidebarState({ showAIInput: false }));
     vi.mocked(PromptState.useState).mockReturnValue(makePromptState());
 
-    render(<WorkspaceArea />);
-    await waitFor(() => expect(screen.getByTestId('preview-area')).toBeDefined());
+    const { rerender } = render(<WorkspaceArea />);
+    await waitFor(() => expect(screen.getByTestId('editor-area')).toBeDefined());
+
+    let resolvePreviewLoad = () => {};
+    previewModule.promise = new Promise<void>((resolve) => {
+      resolvePreviewLoad = resolve;
+    });
+    previewModule.resolve = () => {
+      previewModule.promise = null;
+      resolvePreviewLoad();
+    };
+    vi.mocked(TabState.useState).mockReturnValue(
+      makeTabState({
+        openTabs: [
+          {
+            id: 'src/App.jsx',
+            type: 'file',
+            label: 'App.jsx',
+            file: { name: 'App.jsx', path: ['src', 'App.jsx'] },
+          },
+          { id: 'preview', type: 'preview', label: 'Preview' },
+        ],
+        activeTabId: 'src/App.jsx',
+      }),
+    );
+    rerender(<WorkspaceArea />);
+
+    expect(screen.getByTestId('editor-area')).toBeDefined();
+    expect(screen.queryByTestId('preview-area')).toBeNull();
+
+    await act(async () => {
+      previewModule.resolve?.();
+      await Promise.resolve();
+    });
+    expect(await screen.findByTestId('preview-area')).toBeDefined();
+    previewModule.promise = null;
+    previewModule.resolve = null;
   });
 
   it('renders project info for project-info tab', async () => {

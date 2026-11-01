@@ -11,6 +11,7 @@ import type {
   PromptUiStateShape,
   SidebarStateShape,
   TabStateShape,
+  WorkspaceProfileStateShape,
 } from '@/types/domain-types';
 import type { ChangeEvent, FormEvent, KeyboardEvent } from 'react';
 import type { StateStore } from 'triactor';
@@ -180,6 +181,7 @@ export type UseAgentRunnerParams = {
   cachedModelIds?: string[];
   webLLMEngines?: Record<string, import('@/types/domain-types').WebLLMEngineState>;
   styleProfile?: import('@/components/AI/Agent/ProjectStyleProfile').ProjectStyleProfile;
+  workspaceProfile?: Pick<WorkspaceProfileStateShape, 'exclude' | 'maxFileBytes'>;
 };
 
 export type AgentEventFormatter = (event: AgentEvent) => string;

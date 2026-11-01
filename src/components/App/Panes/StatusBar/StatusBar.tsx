@@ -36,7 +36,9 @@ export default function StatusBar() {
     ]),
   );
   const tabState = requireStore(TabState.useState(['activeTabId', 'openTabs']));
-  const { status: ragStatus } = requireStore(RagState.useState(['status']));
+  const { status: ragStatus, warning: ragWarning } = requireStore(
+    RagState.useState(['status', 'warning']),
+  );
   const { activeTabId, openTabs = [] } = tabState;
   const activeTab = openTabs.find((t) => t.id === activeTabId);
   const { cursorPos = {} } = editorState;
@@ -142,7 +144,15 @@ export default function StatusBar() {
           </output>
         </Tooltip>
         {ragStatus && ragStatus !== 'idle' && (
-          <Tooltip content={`RAG index: ${ragStatus}`} className={styles.tooltipWrapper}>
+          <Tooltip
+            content={
+              ragWarning ||
+              (ragStatus === 'partial'
+                ? 'RAG index is partial; some workspace content was skipped.'
+                : `RAG index: ${ragStatus}`)
+            }
+            className={styles.tooltipWrapper}
+          >
             <div className={styles.item}>
               <span>RAG: {ragStatus}</span>
             </div>

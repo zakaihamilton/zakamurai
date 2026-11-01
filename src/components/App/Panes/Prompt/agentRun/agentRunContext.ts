@@ -6,7 +6,6 @@ import {
 import type { ExtendedEditorState } from '@/components/App/Views/EditorArea/types';
 import type { FileSystemApi } from '@/components/App/types';
 import Settings from '@/components/Storage/Settings';
-import { getWorkspaceIndex } from '@/components/Workspace';
 import { analyzeProjectHealth } from '@/contracts/project';
 import { createWorkspaceSnapshot } from '@/contracts/workspace';
 import type {
@@ -15,6 +14,8 @@ import type {
   SidebarStateShape,
   TabStateShape,
 } from '@/types/domain-types';
+import type { RagWorkspaceFilterOptions } from '@/utils/rag/rag-files';
+import { selectRagWorkspaceFiles } from '@/utils/rag/rag-files';
 import type { StateStore } from 'triactor';
 import { toCompilerFs } from '../../../types';
 
@@ -94,9 +95,9 @@ export function createManagerToolOptions({
   sidebarState,
   tabState,
   previewState,
-  deferPreviewNavigation = false,
   isWorkspaceCurrent = () => true,
   onPreviewInspection,
+  workspaceProfile,
 }: {
   Compiler: typeof import('@/utils/compiler').Compiler;
   fs: FileSystemApi;
@@ -106,10 +107,9 @@ export function createManagerToolOptions({
   sidebarState: StateStore<SidebarStateShape>;
   tabState: StateStore<TabStateShape>;
   previewState?: StateStore<PreviewStateShape>;
-  /** Restore the welcome run's previous tab when preview inspection cannot provide evidence. */
-  deferPreviewNavigation?: boolean;
   isWorkspaceCurrent?: () => boolean;
   onPreviewInspection?: (files: FileMap, result: unknown) => void;
+  workspaceProfile?: RagWorkspaceFilterOptions;
 }): Pick<
   RunManagerOptions,
   'validate' | 'runProjectCheck' | 'inspectPreview' | 'retrieveContext' | 'onPreviewInspection'
@@ -135,16 +135,12 @@ export function createManagerToolOptions({
   return {
     onPreviewInspection,
     retrieveContext: async (query, k) => {
+      if (!isWorkspaceCurrent() || !query.trim()) return [];
+      const { ragSearch } = await import('@/utils/rag/search-utility');
+      const indexableFiles = selectRagWorkspaceFiles(baselineFiles, workspaceProfile);
+      const results = await ragSearch.retrieveContext(query, k, indexableFiles);
       if (!isWorkspaceCurrent()) return [];
-      const lexical = (await getWorkspaceIndex()
-        .queryText(query, k)
-        .catch(() => [])) as Array<{ path: string; preview?: string; score?: number }>;
-      if (!isWorkspaceCurrent()) return [];
-      return lexical.map((item) => ({
-        filePath: item.path,
-        content: item.preview || '',
-        score: item.score || 0,
-      }));
+      return results.filter((item) => Object.hasOwn(indexableFiles, item.filePath));
     },
     validate: async (stagedFiles: FileMap) => {
       if (!isWorkspaceCurrent()) {
@@ -201,27 +197,8 @@ export function createManagerToolOptions({
         return { status: 'unavailable', diagnostics: 'Workspace changed during this run.' };
       }
       const logs: string[] = [];
-      const previousActiveTabId = tabState.activeTabId;
-      let previewInspectionAccepted = false;
-      const restoreDeferredPreviewNavigation = () => {
-        if (
-          !isWorkspaceCurrent() ||
-          !deferPreviewNavigation ||
-          previewInspectionAccepted ||
-          !previousActiveTabId
-        ) {
-          return;
-        }
-        tabState((draft) => {
-          if (draft.activeTabId === 'preview') draft.activeTabId = previousActiveTabId;
-        });
-      };
       const reportPreviewInspection = (result: unknown) => {
         if (!isWorkspaceCurrent()) return;
-        previewInspectionAccepted =
-          typeof result === 'object' &&
-          result !== null &&
-          (result as { status?: unknown }).status === 'passed';
         onPreviewInspection?.({ ...stagedFiles }, result);
       };
       const compiler = new Compiler((line: string) => logs.push(line));
@@ -255,7 +232,6 @@ export function createManagerToolOptions({
                 { id: 'preview', type: 'preview', label: 'Preview' },
               ];
             }
-            draft.activeTabId = 'preview';
           });
           previewState((draft) => {
             draft.htmlContent = `${html}\n<!-- zakamurai-ai-preview:${Date.now()} -->`;
@@ -270,7 +246,6 @@ export function createManagerToolOptions({
             return { status: 'unavailable', diagnostics: 'Workspace changed during this run.' };
           }
           if (!evidence) {
-            restoreDeferredPreviewNavigation();
             const result = {
               status: 'unavailable',
               path: '/preview/dist/index.html',
@@ -295,7 +270,6 @@ export function createManagerToolOptions({
         reportPreviewInspection(result);
         return result;
       } catch (error) {
-        restoreDeferredPreviewNavigation();
         const result = {
           status: 'failed',
           runtimeErrors: [error instanceof Error ? error.message : String(error)],

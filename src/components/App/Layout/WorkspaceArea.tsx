@@ -29,6 +29,7 @@ export default function WorkspaceArea() {
   const { openTabs = [], activeTabId } = tabState;
   const { showAIInput } = sidebarState;
   const { promptWidth } = promptState;
+  const previewTabOpen = openTabs.some((tab) => tab.id === 'preview');
 
   const handlePromptResize = (clientX: number) => {
     if (showAIInput) {
@@ -58,6 +59,7 @@ export default function WorkspaceArea() {
   };
 
   const activeTab = openTabs.find((t) => t.id === activeTabId);
+  const isPreviewActive = activeTab?.type === 'preview';
   const activeFileViewType =
     activeTab?.type === 'file'
       ? activeTab.viewType || getDefaultFileViewType(activeTab.file?.name ?? '')
@@ -83,13 +85,25 @@ export default function WorkspaceArea() {
                 />
               ))}
             {activeTab?.type === 'logs' && <LogArea />}
-            {activeTab?.type === 'preview' && <PreviewArea />}
             {activeTab?.type === 'project-info' && <ProjectInfo />}
             {activeTab?.type === 'instructions' && <Instructions />}
             {activeTab?.type === 'readiness' && <Readiness />}
             {activeTab?.type === 'token-breakdown' && <TokenBreakdown tab={activeTab} />}
             {activeTab?.type === 'ai-section' && <AISectionView tab={activeTab} />}
             {!activeTab && <Welcome />}
+            {previewTabOpen && (
+              <Suspense fallback={null}>
+                <div
+                  className={`${styles.previewLayer} ${
+                    isPreviewActive ? '' : styles.previewLayerInactive
+                  }`}
+                  aria-hidden={!isPreviewActive}
+                  inert={!isPreviewActive}
+                >
+                  <PreviewArea />
+                </div>
+              </Suspense>
+            )}
           </Suspense>
         </div>
       </div>

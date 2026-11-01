@@ -92,6 +92,38 @@ describe('useRagIndexer', () => {
     expect(ragSearch.indexWorkspaceFiles).toHaveBeenCalled();
   });
 
+  it('marks the RAG index partial when the worker skips content', async () => {
+    const ragDraft = {
+      status: 'idle',
+      error: null as string | null,
+      warning: null as string | null,
+      indexedFileCount: 0,
+      lastIndexedAt: null as number | null,
+      lastFingerprint: null as string | null,
+    };
+    const ragState = vi.fn((update: (draft: typeof ragDraft) => void) => update(ragDraft));
+    mockRagState.mockReturnValue(ragState as never);
+    ragSearch.indexWorkspaceFiles.mockResolvedValue({
+      indexedFileCount: 4,
+      indexedChunkCount: 1500,
+      skippedFileCount: 1,
+      skippedChunkCount: 3,
+    });
+
+    renderHook(() => useRagIndexer());
+
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(ragDraft).toMatchObject({
+      status: 'partial',
+      warning: 'RAG index is partial: 1 file and 3 chunks omitted by workspace indexing limits.',
+      indexedFileCount: 4,
+    });
+  });
+
   it('debounces reindexing when file contents change', async () => {
     const { rerender } = renderHook(() => useRagIndexer());
 
