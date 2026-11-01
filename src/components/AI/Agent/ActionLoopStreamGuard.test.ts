@@ -62,6 +62,30 @@ describe('ActionLoopStreamGuard', () => {
     });
   });
 
+  it('truncates cleanly when a write_file action has leading whitespace', () => {
+    const cleanFence = [
+      '{"action": "write_file", "path": "src/App.jsx"}',
+      '```jsx',
+      "import { useState } from 'react';",
+      "import styles from './App.module.css';",
+      'export default function App() {',
+      '  const [count, setCount] = useState(0);',
+      '  return <button className={styles.btn} onClick={() => setCount(count + 1)}>{count}</button>;',
+      '}',
+      '```',
+    ].join('\n');
+    const output = `\n${cleanFence}\n\nI have finished writing the file for you.`;
+    const result = inspectStreamingActionOutput({
+      output,
+      lightweightModel: true,
+    });
+    expect(result).toEqual({
+      action: 'complete',
+      text: `\n${cleanFence}`,
+      reason: 'closed-fence',
+    });
+  });
+
   it('aborts early when a JSX fence starts with an HTML document', () => {
     const output = [
       '```jsx',

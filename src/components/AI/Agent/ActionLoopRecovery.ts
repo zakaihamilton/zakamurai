@@ -505,6 +505,16 @@ const withSessionPrefixIfAvailable = (
   const combinedRecoveryInstruction = [recoveryMessages[0]?.content, recoveryMessages[1]?.content]
     .filter(Boolean)
     .join('\n\n');
+  if (messages.at(-1)?.role === 'user') {
+    const last = messages.at(-1);
+    return [
+      ...messages.slice(0, -1),
+      {
+        role: 'user',
+        content: `${last?.content || ''}\n\n${combinedRecoveryInstruction}`,
+      },
+    ];
+  }
   return [
     ...messages,
     {

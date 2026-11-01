@@ -13,13 +13,39 @@ const REACT_HOOKS = [
 
 const escapeRegExp = (value: string): string => value.replace(/[.+^${}()|[\]\\]/g, '\\$&');
 
+const prependImport = (content: string, importStatement: string): string => {
+  const directiveMatch =
+    /^((\s*(?:\/\/[^\n]*\n|\/\*[\s\S]*?\*\/\s*)*)(['"]use (?:client|server)['"];?))\s*(\n|$)/i.exec(
+      content,
+    );
+  if (directiveMatch) {
+    const prefix = directiveMatch[1];
+    const rest = content.slice(directiveMatch[0].length);
+    return `${prefix}\n${importStatement}\n${rest}`;
+  }
+  return `${importStatement}\n${content}`;
+};
+
 const extractBalancedBraces = (text: string, openIndex: number): string | null => {
   if (text[openIndex] !== '{') return null;
   let depth = 0;
   let inString: '"' | "'" | '`' | null = null;
+  let inLineComment = false;
+  let inBlockComment = false;
   let escaped = false;
   for (let index = openIndex; index < text.length; index++) {
     const char = text[index];
+    if (inLineComment) {
+      if (char === '\n') inLineComment = false;
+      continue;
+    }
+    if (inBlockComment) {
+      if (char === '*' && text[index + 1] === '/') {
+        inBlockComment = false;
+        index += 1;
+      }
+      continue;
+    }
     if (inString) {
       if (escaped) {
         escaped = false;
@@ -30,6 +56,16 @@ const extractBalancedBraces = (text: string, openIndex: number): string | null =
         continue;
       }
       if (char === inString) inString = null;
+      continue;
+    }
+    if (char === '/' && text[index + 1] === '/') {
+      inLineComment = true;
+      index += 1;
+      continue;
+    }
+    if (char === '/' && text[index + 1] === '*') {
+      inBlockComment = true;
+      index += 1;
       continue;
     }
     if (char === '"' || char === "'" || char === '`') {
@@ -90,7 +126,7 @@ export function repairMissingReactHookImports(content: string): string {
     );
   }
 
-  return `import { ${missingHooks.join(', ')} } from 'react';\n${content}`;
+  return prependImport(content, `import { ${missingHooks.join(', ')} } from 'react';`);
 }
 
 /**
@@ -233,7 +269,7 @@ export function spliceSymbolScopedWrite(
     const importLine = importMatch[0].trim();
     const specifier = importMatch[1];
     if (!new RegExp(`\\bfrom\\s*['"]${escapeRegExp(specifier)}['"]`).test(spliced)) {
-      spliced = `${importLine}\n${spliced}`;
+      spliced = prependImport(spliced, importLine);
     }
   }
 

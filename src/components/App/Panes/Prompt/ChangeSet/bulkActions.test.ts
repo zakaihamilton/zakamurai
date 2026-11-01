@@ -1,5 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
-import { approveAllChangeSetChanges, undoAllChangeSetChanges } from './bulkActions';
+import {
+  approveAllChangeSetChanges,
+  rewindToChangeSetCheckpoint,
+  undoAllChangeSetChanges,
+} from './bulkActions';
 
 function store<T extends object>(initial: T) {
   const state = Object.assign((updater: (draft: T) => void) => updater(state), initial);
@@ -92,5 +96,60 @@ describe('bulk AI change-set actions', () => {
     expect(editorState.pendingDiffs['a.js']).toBeDefined();
     expect(editorState.fileContents['a.js']).toBe('new');
     expect(changeSetState.items[0].files[0].status).toBe('pending-review');
+  });
+
+  it('rewinds to a checkpoint and restores deleted files into the sidebar folder tree', async () => {
+    const editorState = store<{
+      fileContents: Record<string, string>;
+      pendingDiffs: Record<string, unknown>;
+      pendingDeletions: Record<string, unknown>;
+    }>({
+      fileContents: { 'src/keep.js': 'content' },
+      pendingDiffs: {},
+      pendingDeletions: {},
+    });
+    const sidebarState = store<{
+      folderTree?: Array<{ name: string; type: string; children?: unknown[] }>;
+    }>({
+      folderTree: [{ name: 'src', type: 'folder', children: [{ name: 'keep.js', type: 'file' }] }],
+    });
+    const changeSetState = store({
+      items: [
+        {
+          id: 'cs-0',
+          files: [{ path: 'src/keep.js', originalContent: 'old-keep', proposedContent: 'content' }],
+        },
+        {
+          id: 'cs-1',
+          files: [
+            { path: 'src/deleted.js', originalContent: 'restored-content', deleted: true },
+            { path: 'src/created.js', originalContent: '', proposedContent: 'new-file' },
+          ],
+        },
+      ],
+      activeId: 'cs-1',
+    });
+
+    const result = await rewindToChangeSetCheckpoint({
+      changeSetId: 'cs-1',
+      editorState: editorState as never,
+      changeSetState,
+      sidebarState: sidebarState as never,
+    });
+
+    expect(result.restoredFiles).toBe(2);
+    expect(editorState.fileContents['src/deleted.js']).toBe('restored-content');
+    expect(editorState.fileContents['src/created.js']).toBeUndefined();
+    expect(changeSetState.items.length).toBe(1);
+    expect(changeSetState.activeId).toBe('cs-0');
+
+    // Deleted file restored into folder tree
+    const srcFolder = sidebarState.folderTree?.find((node) => node.name === 'src');
+    expect(srcFolder?.children).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ name: 'deleted.js', type: 'file' }),
+        expect.objectContaining({ name: 'keep.js', type: 'file' }),
+      ]),
+    );
   });
 });

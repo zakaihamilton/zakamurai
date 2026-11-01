@@ -1,3 +1,4 @@
+import { ensureFileInTree } from '@/components/AI/Agent/Applier';
 import { removeNodeAtPath } from '@/components/App/Panes/Sidebar/TreeUtils';
 import { removeLastCodeTabPathInDraft } from '@/components/App/Panes/TabBar/TabStateUtils';
 import {
@@ -483,6 +484,7 @@ export async function rewindToChangeSetCheckpoint({
   }
 
   const removedPaths: string[] = [];
+  const restoredPaths: string[] = [];
   if (fs?.rootHandle) {
     for (const [path, content] of restoreMap.entries()) {
       try {
@@ -512,6 +514,7 @@ export async function rewindToChangeSetCheckpoint({
         removedPaths.push(path);
       } else {
         nextContents[path] = content;
+        restoredPaths.push(path);
       }
     }
 
@@ -542,6 +545,11 @@ export async function rewindToChangeSetCheckpoint({
         }
       }
     });
+  }
+  if (sidebarState && restoredPaths.length) {
+    for (const path of restoredPaths) {
+      ensureFileInTree(sidebarState as never, path);
+    }
   }
 
   changeSetState?.((draft) => {

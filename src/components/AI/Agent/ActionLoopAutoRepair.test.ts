@@ -147,4 +147,34 @@ export default function App() {
     expect(repaired).toContain('function HelperBadge()');
     expect(repaired).toContain('export default function App()');
   });
+
+  it('preserves "use client" directive before injected imports', () => {
+    const source = `'use client';
+
+export default function Counter() {
+  const [count, setCount] = useState(0);
+  return <button onClick={() => setCount(count + 1)}>{count}</button>;
+}`;
+    const repaired = repairMissingReactHookImports(source);
+    expect(repaired.startsWith("'use client';\nimport { useState } from 'react';")).toBe(true);
+  });
+
+  it('splices function correctly when file contains comments with apostrophes and braces', () => {
+    const existing = `// Don't modify this helper { test }
+export function helperOne() {
+  /* user's custom logic } */
+  return 1;
+}
+
+export default function App() {
+  return <div>Old</div>;
+}
+`;
+    const incoming = `function App() {
+  return <div>New</div>;
+}`;
+    const spliced = spliceSymbolScopedWrite(existing, incoming, 'src/App.jsx');
+    expect(spliced).toContain('export function helperOne()');
+    expect(spliced).toContain('<div>New</div>');
+  });
 });

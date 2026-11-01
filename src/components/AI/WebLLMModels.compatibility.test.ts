@@ -19,9 +19,11 @@ describe('WebLLM model catalog compatibility', () => {
     const heavy7B = WEB_LLM_MODELS.find((m) => m.id.includes('7B')) ?? WEB_LLM_MODELS[0];
     const tiny05B = WEB_LLM_MODELS.find((m) => m.id.includes('0.5B')) ?? WEB_LLM_MODELS[0];
     const mid3B = WEB_LLM_MODELS.find((m) => m.id.includes('3B')) ?? WEB_LLM_MODELS[0];
+    const mid15B = WEB_LLM_MODELS.find((m) => m.id.includes('1.5B')) ?? WEB_LLM_MODELS[0];
 
     expect(getModelHardwareFitBadge(heavy7B, 4)).toBe('Heavy for GPU');
     expect(getModelHardwareFitBadge(tiny05B, 8)).toBe('Fastest');
     expect(getModelHardwareFitBadge(mid3B, 8)).toBe('Fits Device');
+    expect(getModelHardwareFitBadge(mid15B, 4)).toBe('Fits Device');
   });
 });

@@ -303,7 +303,7 @@ export default function Prompt() {
       badges: [
         model.recommended ? 'Recommended' : '',
         cachedModelIds.includes(model.id) ? 'Cached' : '',
-        hwBadge && hwBadge !== 'Fits Device' ? hwBadge : '',
+        hwBadge && (!model.recommended || hwBadge !== 'Fits Device') ? hwBadge : '',
       ].filter(Boolean),
     };
   });

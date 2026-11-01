@@ -233,6 +233,7 @@ export default function PreviewArea() {
     previewAreaUiState((draft) => {
       draft.isLoading = true;
       draft.error = null;
+      draft.isInspecting = false;
       draft.refreshKey = Date.now();
     });
   }, [previewAreaUiState]);

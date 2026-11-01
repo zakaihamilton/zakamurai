@@ -67,7 +67,7 @@ export function inspectStreamingActionOutput({
   // If the model already emitted a complete action JSON + closed fence or fence-only block,
   // and is now generating trailing prose or a second code fence, truncate cleanly at the first closed fence.
   const closedFenceMatch =
-    /^(?:s*\{[^\n]*?"action"\s*:\s*"write_file"[^\n]*\}\s*\n)?\s*(```(?:jsx|tsx|js|ts|css|json|html)?\s*\n[\s\S]{80,}?\n```)\s*\n+(\S[\s\S]{25,})$/i.exec(
+    /^(?:\s*\{[^\n]*?"action"\s*:\s*"write_file"[^\n]*\}\s*\n)?\s*(```(?:jsx|tsx|js|ts|css|json|html)?\s*\n[\s\S]{80,}?\n```)\s*\n+(\S[\s\S]{25,})$/i.exec(
       output,
     );
   if (closedFenceMatch && lightweightModel) {
