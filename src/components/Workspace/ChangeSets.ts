@@ -8,16 +8,22 @@ export function createChangeSet({
   validation = null,
 }: {
   request?: string;
-  changes?: Array<{ path: string; before?: string; after?: string }>;
+  changes?: Array<{ path: string; before?: string; after?: string; isNewFile?: boolean }>;
   validation?: unknown;
 }) {
-  const files = changes.map(({ path, before = '', after }) => ({
-    path,
-    originalContent: before,
-    proposedContent: after,
-    deleted: after === undefined,
-    hunks: after === undefined ? [] : computeDiff(before, after).diffs,
-  }));
+  const files = changes.map(({ path, before, after, isNewFile }) => {
+    const originalContent = before ?? '';
+    const wasNewFile =
+      typeof isNewFile === 'boolean' ? isNewFile : before === undefined && after !== undefined;
+    return {
+      path,
+      originalContent,
+      proposedContent: after,
+      deleted: after === undefined,
+      ...(after === undefined ? {} : { isNewFile: wasNewFile }),
+      hunks: after === undefined ? [] : computeDiff(originalContent, after).diffs,
+    };
+  });
   return {
     id: `changeset-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     request,

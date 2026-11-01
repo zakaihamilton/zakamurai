@@ -369,4 +369,26 @@ describe('rag-worker', () => {
       pipeline: expect.any(Function),
     });
   });
+
+  it('splits code along symbol boundaries and prefixes chunks with file and symbol headers', () => {
+    const code = [
+      "import styles from './Navbar.module.css';",
+      '',
+      'export function Navbar() {',
+      '  return <nav className={styles.nav}>Brand</nav>;',
+      '}',
+      '',
+      'export const Footer = () => {',
+      '  return <footer>Copyright 2026</footer>;',
+      '};',
+    ].join('\n');
+
+    const chunks = testables.splitIntoChunks(code, 'src/Navbar.jsx');
+    expect(chunks.some((chunk) => chunk.includes('// File: src/Navbar.jsx | Symbol: Navbar'))).toBe(
+      true,
+    );
+    expect(chunks.some((chunk) => chunk.includes('// File: src/Navbar.jsx | Symbol: Footer'))).toBe(
+      true,
+    );
+  });
 });

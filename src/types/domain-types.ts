@@ -115,6 +115,7 @@ export interface ChangeSetFile {
   originalContent?: string;
   proposedContent?: string;
   deleted?: boolean;
+  isNewFile?: boolean;
   hunks?: unknown[];
   status?: string;
 }
@@ -424,6 +425,7 @@ export interface PreviewAreaUiStateShape {
   isMaximized: boolean;
   address: string;
   host: string;
+  isInspecting?: boolean;
 }
 
 export interface NotificationStateShape {

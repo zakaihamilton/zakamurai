@@ -12,6 +12,7 @@ export default function PreviewIframeContainer({
   errorCopied,
   onCopyError,
   onDismissError,
+  onFixWithAI,
   scale,
   isCompilerReady,
   iframeRef,
@@ -38,6 +39,7 @@ export default function PreviewIframeContainer({
         errorCopied={errorCopied}
         onCopyError={onCopyError}
         onDismissError={onDismissError}
+        onFixWithAI={onFixWithAI}
       />
       <div
         className={styles.scaleWrapper}

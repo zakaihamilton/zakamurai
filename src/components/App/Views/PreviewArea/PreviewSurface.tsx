@@ -17,12 +17,15 @@ export default function PreviewSurface({
   onRefresh,
   onOpenExternal,
   onToggleMaximize,
+  isInspecting,
+  onToggleInspect,
   hasLoadedOnce,
   showInitOverlay,
   displayError,
   errorCopied,
   onCopyError,
   onDismissError,
+  onFixWithAI,
   isCompilerReady,
   iframeRef,
   previewIframeUrl,
@@ -49,6 +52,8 @@ export default function PreviewSurface({
         onRefresh={onRefresh}
         onOpenExternal={onOpenExternal}
         onToggleMaximize={onToggleMaximize}
+        isInspecting={isInspecting}
+        onToggleInspect={onToggleInspect}
       />
       <PreviewIframeContainer
         isLoading={isLoading}
@@ -58,6 +63,7 @@ export default function PreviewSurface({
         errorCopied={errorCopied}
         onCopyError={onCopyError}
         onDismissError={onDismissError}
+        onFixWithAI={onFixWithAI}
         scale={scale}
         isCompilerReady={isCompilerReady}
         iframeRef={iframeRef}

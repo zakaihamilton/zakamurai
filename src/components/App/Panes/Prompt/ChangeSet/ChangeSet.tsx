@@ -10,10 +10,15 @@ import { useCallback, useState } from 'react';
 import { requireStore } from '../../../types';
 import SectionActions from '../SectionExpandButton';
 import styles from './ChangeSet.module.css';
-import { approveAllChangeSetChanges, undoAllChangeSetChanges } from './bulkActions';
+import {
+  approveAllChangeSetChanges,
+  rewindToChangeSetCheckpoint,
+  undoAllChangeSetChanges,
+} from './bulkActions';
 
 export default function ChangeSetPanel({ onOpenInTab = () => {} }: { onOpenInTab?: () => void }) {
   const [isExpanded, setIsExpanded] = useState(true);
+  const [showTimeline, setShowTimeline] = useState(false);
   const state = requireStore(ChangeSetState.useState(['activeId', 'items']));
   const editorState = requireStore(
     EditorState.useState([
@@ -68,7 +73,22 @@ export default function ChangeSetPanel({ onOpenInTab = () => {} }: { onOpenInTab
     },
     [appState, changeSet, editorState, fs, sidebarState, state, tabState, workspaceEpoch],
   );
+  const handleRewindCheckpoint = useCallback(
+    async (targetChangeSetId: string) => {
+      await rewindToChangeSetCheckpoint({
+        changeSetId: targetChangeSetId,
+        editorState: editorState as never,
+        changeSetState: state as never,
+        fs,
+        sidebarState: sidebarState as never,
+        tabState: tabState as never,
+        isWorkspaceCurrent: () => (appState?.workspaceEpoch || 0) === workspaceEpoch,
+      });
+    },
+    [appState, editorState, fs, sidebarState, state, tabState, workspaceEpoch],
+  );
   if (!changeSet) return null;
+  const allItems = state.items || [];
   const reviewed = changeSet.files.filter(
     (file) => file.status && file.status !== 'pending-review',
   ).length;
@@ -129,7 +149,37 @@ export default function ChangeSetPanel({ onOpenInTab = () => {} }: { onOpenInTab
             >
               Undo all ({pendingCount})
             </button>
+            {allItems.length > 0 && (
+              <button
+                type="button"
+                className={styles.timelineToggle}
+                onClick={() => setShowTimeline((open) => !open)}
+                aria-expanded={showTimeline}
+              >
+                Checkpoints ({allItems.length})
+              </button>
+            )}
           </div>
+          {showTimeline && allItems.length > 0 && (
+            <div className={styles.timelineList} aria-label="Change set checkpoint timeline">
+              {[...allItems].reverse().map((item, idx) => (
+                <div key={item.id} className={styles.timelineItem}>
+                  <span className={styles.timelineLabel}>
+                    #{allItems.length - idx}: {item.request || 'AI edit'} ({item.files.length} file
+                    {item.files.length === 1 ? '' : 's'})
+                  </span>
+                  <button
+                    type="button"
+                    className={styles.rewindBtn}
+                    onClick={() => void handleRewindCheckpoint(item.id)}
+                    aria-label={`Rewind before checkpoint ${allItems.length - idx}`}
+                  >
+                    Rewind before
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
           <div className={styles.files}>
             {changeSet.files.map((file) => (
               <Tooltip key={file.path} content={file.path} className={styles.fileTooltip}>

@@ -211,6 +211,7 @@ export type ManagerModelCall = {
   contextWindowSize?: number;
   /** Repeatable sampling for qualification runs. Production calls normally omit this. */
   seed?: number;
+  stop?: string[];
   responseFormat?: ModelResponseFormat;
   taskKind?: ModelTaskKind;
   attempt?: number;
@@ -331,6 +332,7 @@ export type SemanticSearchResult = {
   content?: string;
   preview?: string;
   score?: number;
+  linkedCss?: Array<{ filePath: string; content: string }>;
 };
 
 export type WorkspaceIndex = {
@@ -474,6 +476,7 @@ export type WebLLMOptions = {
   onMetrics?: ((metrics: WebLLMGenerationMetrics) => void) | null;
   sessionId?: string;
   seed?: number;
+  stop?: string[];
   responseFormat?: ModelResponseFormat;
   taskKind?: ModelTaskKind;
   attempt?: number;

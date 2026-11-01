@@ -1,6 +1,5 @@
 import type { RunAgentOptions, RunAgentResult } from '@/components/AI/types';
 import {
-  validateAIChanges,
   validateContentSyntax,
   validateFileContentType,
   workspaceFulfillsInteractiveRequest,
@@ -9,7 +8,6 @@ import {
   MAX_RELIABILITY_MODEL_CALLS,
   assertTaskPathAllowed,
   buildTaskContract,
-  isTaskPathAllowed,
 } from '../ReliabilityContracts';
 import { AgentExecutionError, AgentRecoveryValidationError } from './ActionLoopErrors';
 import { createAutoFinishContextReadyWrite } from './ActionLoopFastPath';
@@ -36,7 +34,7 @@ import {
   wireNewComponentIntoScratchEntry,
   writeRecovery,
 } from './ActionLoopRecovery';
-import { createActionLoopOpening } from './ActionLoopSession';
+import { createActionLoopOpening, handleActionLoopDirectReply } from './ActionLoopSession';
 import { isNewAppGenerationRequest } from './ActionLoopSmallModel';
 import {
   NON_PRODUCTIVE_ACTIONS,
@@ -58,7 +56,6 @@ import {
   prepareWriteFileAction,
 } from './ActionLoopWrites';
 import { AgentContextManager, formatVerificationResult } from './ContextManager';
-import { parseModelResult } from './ManagerProtocol';
 import { listProjectChecks, runProjectCheck } from './ProjectChecks';
 import {
   ensureProjectRootTokens,
@@ -67,7 +64,6 @@ import {
   repairProjectStyleRelationships,
 } from './ProjectStyleProfile';
 import { AGENT_SYSTEM_PROMPT, ALL_AGENT_ACTIONS, parseAgentAction } from './Protocol';
-import { visualPreviewInspectionFailure } from './VisualPreviewEvidence';
 import { AgentWorkspace } from './Workspace';
 
 export async function runActionLoop({
@@ -302,6 +298,7 @@ export async function runActionLoop({
       incompleteWriteRetries,
       lightweight: lightweightModel,
       messages,
+      preserveSessionPrefix: Boolean(sessionId || modelSession),
     });
     const safeModelMessages = modelMessages.filter(Boolean);
     const modelResponse = await requestNextAction({
@@ -363,145 +360,41 @@ export async function runActionLoop({
     } catch (error) {
       const err = error as Error;
       const replyText = typeof reply === 'string' ? reply : '';
-      try {
-        const directResult = parseModelResult(replyText);
-        if (directResult.kind === 'changes' && directResult.changes.length) {
-          const changes = directResult.changes.map((change) => ({
-            ...change,
-            path: change.path || change.filePath || '',
-            ...(typeof change.content === 'string' ? { after: change.content } : {}),
-            ...(change.before === undefined
-              ? { before: workspace.files[change.path || change.filePath || ''] }
-              : {}),
-          }));
-          const validation = validateAIChanges(changes);
-          const outsideContract = validation.accepted.find(
-            (change) => !isTaskPathAllowed(taskContract, change.path),
-          );
-          if (outsideContract) {
-            validation.rejected.push(
-              `Target path is outside the task contract: ${outsideContract.path}`,
-            );
-          }
-          if (validation.rejected.length || !validation.accepted.length) {
-            messages.push({
-              role: 'user',
-              content: observation(
-                'changes',
-                false,
-                validation.rejected.join('\n') || 'No usable changes were returned.',
-              ),
-            });
-            continue;
-          }
-          for (const change of validation.accepted) {
-            if (change.after === undefined) workspace.delete(change.path);
-            else workspace.write(change.path, change.after);
-          }
-          clearFailedWriteAttempts();
-          let verification = '';
-          if (validate) {
-            verification = await runValidation(
-              turn,
-              directChangesRecoveryPending || forcedWriteRecoveryPending ? 'recovery' : 'model',
-            );
-          }
-          if (verification.includes('"status":"failed"')) {
-            if (++directRepairAttempts > 2)
-              throw new AgentExecutionError(verification, workspace.changes());
-            failedWritePath =
-              changes.find((change) => change.after !== undefined)?.path ||
-              recoveryWritePath(workspace.files, activeFile) ||
-              '';
-            failedWriteContent = failedWritePath ? workspace.files[failedWritePath] || '' : '';
-            failedWriteDiagnostic = verification;
-            forcedWriteRecoveryPending = Boolean(failedWritePath);
-            forcedRecoveryTargetPath = failedWritePath || forcedRecoveryTargetPath;
-            messages.push({
-              role: 'user',
-              content: observation(
-                'validate',
-                false,
-                `${verification}\nReturn a corrected kind=changes response with complete file contents.`,
-              ),
-            });
-            continue;
-          }
-          let previewSummary = '';
-          if (previewInspectionRequired && !previewInspectState.inspectedPreview) {
-            onEvent({ type: 'tool', turn, action: { action: 'inspect_preview' }, agentRole });
-            const preview = inspectPreview
-              ? await inspectPreview(workspace.files)
-              : { status: 'unavailable', diagnostics: 'Preview inspection is unavailable.' };
-            previewInspectState.inspectedPreview = true;
-            const previewFailure = visualPreviewInspectionFailure(preview);
-            previewInspectState.previewInspectionAccepted = !previewFailure;
-            if (inspectPreview) {
-              previewSummary = `\n\nPreview inspection:\n${JSON.stringify(
-                previewFailure
-                  ? {
-                      ...(typeof preview === 'object' && preview ? preview : {}),
-                      visualReview: 'insufficient',
-                      diagnostics: previewFailure,
-                    }
-                  : preview,
-              )}`;
-            }
-            if (previewFailure) {
-              messages.push({
-                role: 'user',
-                content: observation('inspect_preview', false, previewFailure),
-              });
-              continue;
-            }
-          }
-          const changesResult = workspace.changes();
-          const summary =
-            directResult.summary || `Prepared ${changesResult.length} file(s) for review.`;
-          onEvent({
-            type: 'finished',
-            turn,
-            changes: changesResult,
-            message: summary,
-            agentRole,
-            provenance:
-              directChangesRecoveryPending || forcedWriteRecoveryPending ? 'recovery' : 'model',
-          });
-          return {
-            changes: changesResult,
-            files: workspace.files,
-            summary: `${summary}${previewSummary}`,
-            events: turn,
-            workspace,
-          };
-        }
-        if (directResult.kind === 'answer') {
-          if (hostAssistedSession && workspace.changes().length > 0 && validate) {
-            try {
-              applyCssModuleRecovery(turn);
-              const validationResult = await runValidation(turn);
-              if (!isFailedValidationResult(validationResult)) {
-                const wiredEntry = wireNewComponentIntoScratchEntry(workspace);
-                const changes = workspace.changes();
-                const summary = autoFinishSummary('validate', wiredEntry);
-                onEvent({ type: 'finished', turn, changes, message: summary, agentRole });
-                context.record('validation', validationResult);
-                return { changes, files: workspace.files, summary, events: turn, workspace };
-              }
-            } catch {}
-          }
-          messages.push({
-            role: 'user',
-            content: observation(
-              'changes',
-              false,
-              'The previous model response did not return any changes for an edit request. return changes for an edit request as a complete kind=changes response with at least one file change.',
-            ),
-          });
-          continue;
-        }
-      } catch (directError) {
-        if (directError instanceof AgentExecutionError) throw directError;
+      const directOutcome = await handleActionLoopDirectReply({
+        replyText,
+        workspace,
+        taskContract,
+        validate,
+        runValidation,
+        turn,
+        directChangesRecoveryPending,
+        forcedWriteRecoveryPending,
+        directRepairAttempts,
+        activeFile,
+        previewInspectionRequired,
+        previewInspectState,
+        inspectPreview,
+        onEvent,
+        agentRole,
+        hostAssistedSession,
+        applyCssModuleRecovery,
+        autoFinishSummary,
+        context,
+        clearFailedWriteAttempts,
+        messages,
+      });
+      if (directOutcome.kind === 'handled') {
+        if (directOutcome.result) return directOutcome.result;
+        continue;
+      }
+      if (directOutcome.kind === 'repair') {
+        directRepairAttempts = directOutcome.directRepairAttempts;
+        failedWritePath = directOutcome.failedWritePath;
+        failedWriteContent = directOutcome.failedWriteContent;
+        failedWriteDiagnostic = directOutcome.failedWriteDiagnostic;
+        forcedWriteRecoveryPending = Boolean(failedWritePath);
+        forcedRecoveryTargetPath = failedWritePath || forcedRecoveryTargetPath;
+        continue;
       }
       protocolFailures++;
       if (isIncompleteWriteError(err.message)) {

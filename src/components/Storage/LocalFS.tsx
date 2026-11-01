@@ -291,6 +291,14 @@ export function useFileSystem({ bootstrap = false } = {}): FileSystemApi {
         await refreshDirectory(root, root === rootHandle);
         return true;
       } catch (err) {
+        if (
+          typeof err === 'object' &&
+          err !== null &&
+          'name' in err &&
+          err.name === 'NotFoundError'
+        ) {
+          return true;
+        }
         setFileSystemValue(
           'error',
           `Failed to delete file at path: ${err instanceof Error ? err.message : String(err)}`,

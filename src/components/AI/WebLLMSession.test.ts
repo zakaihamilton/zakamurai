@@ -218,4 +218,56 @@ describe('worker-resident WebLLM sessions', () => {
     expect(requests.map((request) => request.operation)).toEqual(['start', 'rehydrate']);
     await deleteCachedWebLLMModel('session-model');
   });
+
+  it('reuses a shared worker prefix when a repair turn appends a delta onto the initial prompt', async () => {
+    const requests: Array<{
+      operation: string;
+      messages?: Array<{ role: string; content: string }>;
+    }> = [];
+    const engine = {
+      chat: { completions: { create: vi.fn() } },
+      interruptGenerate: vi.fn(),
+      resetChat: vi.fn().mockResolvedValue(undefined),
+      unload: vi.fn().mockResolvedValue(undefined),
+      worker: { terminate: vi.fn() },
+      getPromise: vi.fn(async (message: { content: { requestMessage: string } }) => {
+        requests.push(JSON.parse(message.content.requestMessage));
+        return null;
+      }),
+      asyncGenerate: vi.fn(async function* () {
+        yield { choices: [{ delta: { content: 'draft' } }] };
+        yield { choices: [{ finish_reason: 'stop', delta: {} }] };
+      }),
+    };
+    createEngine.mockResolvedValue(engine);
+    const { askWebLLM, deleteCachedWebLLMModel } = await import('./WebLLMAPI');
+
+    const baseMessages = [
+      { role: 'system' as const, content: 'system' },
+      { role: 'user' as const, content: 'build a todo app' },
+    ];
+    await askWebLLM('', '', null, {
+      model: 'session-model',
+      sessionId: 'prefix-session',
+      messages: baseMessages,
+      stop: ['\n```\n\n'],
+    });
+
+    const repairMessages = [
+      ...baseMessages,
+      { role: 'assistant' as const, content: 'draft' },
+      { role: 'user' as const, content: 'Repair target: src/App.jsx' },
+    ];
+    await askWebLLM('', '', null, {
+      model: 'session-model',
+      sessionId: 'prefix-session',
+      messages: repairMessages,
+    });
+
+    expect(requests.map((request) => request.operation)).toEqual(['start', 'append']);
+    expect(requests[1].messages).toEqual([
+      { role: ' user'.trim(), content: 'Repair target: src/App.jsx' },
+    ]);
+    await deleteCachedWebLLMModel('session-model');
+  });
 });

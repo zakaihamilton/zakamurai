@@ -306,4 +306,36 @@ export default function App() {
       false,
     );
   });
+
+  it('merges recovery instructions into the existing user turn when preserving session prefix', () => {
+    const existingMessages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [
+      { role: 'system', content: 'Base system prompt' },
+      { role: 'user', content: 'Initial user turn' },
+      { role: 'assistant', content: '{"action": "write_file", "path": "src/App.jsx"}' },
+      { role: 'user', content: 'Observation: write failed' },
+    ];
+    const messages = buildActionLoopModelMessages({
+      request: 'create a counter',
+      targetPath: 'src/App.jsx',
+      files: { 'src/App.jsx': '' },
+      failedWritePath: 'src/App.jsx',
+      failedWriteContent: 'bad content',
+      failedWriteDiagnostic: 'Syntax error on line 2',
+      directChangesRecoveryPending: false,
+      forcedWriteRecoveryPending: false,
+      incompleteWriteRetries: 0,
+      lightweight: true,
+      messages: existingMessages,
+      preserveSessionPrefix: true,
+    });
+
+    expect(messages.length).toBe(4);
+    expect(messages[3].role).toBe('user');
+    expect(messages[3].content).toContain('Observation: write failed');
+    expect(messages[3].content).toContain('Syntax error on line 2');
+    // Ensure strict role alternation
+    for (let i = 1; i < messages.length; i++) {
+      expect(messages[i].role).not.toBe(messages[i - 1].role);
+    }
+  });
 });

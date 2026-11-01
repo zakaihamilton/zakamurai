@@ -10,6 +10,7 @@ export const PREVIEW_MESSAGE_TYPES = {
   NAVIGATE: 'navigate',
   EVIDENCE: 'evidence',
   RECONNECT: 'reconnect',
+  ELEMENT_PICKED: 'element-picked',
 } as const;
 
 /**
@@ -281,6 +282,53 @@ export const PREVIEW_ERROR_BRIDGE_SCRIPT = `(function(){
     var msg = reason && reason.message ? reason.message : String(reason || 'Unhandled rejection');
     post(${JSON.stringify(PREVIEW_MESSAGE_TYPES.UNHANDLED_REJECTION)}, msg);
   });
+  var inspectActive = false;
+  var highlightEl = null;
+  function clearHighlight() {
+    if (highlightEl && highlightEl.parentNode) {
+      highlightEl.parentNode.removeChild(highlightEl);
+    }
+    highlightEl = null;
+  }
+  window.addEventListener('message', function (event) {
+    var parentOrigin = window.__zakamuraiPreviewParentOrigin;
+    if (parentOrigin && event.origin && event.origin !== parentOrigin) return;
+    if (event.data && event.data.source === SRC && event.data.type === 'toggle-inspect') {
+      inspectActive = Boolean(event.data.active);
+      document.body.style.cursor = inspectActive ? 'crosshair' : '';
+      if (!inspectActive) clearHighlight();
+    }
+  });
+  window.addEventListener('mousemove', function (event) {
+    if (!inspectActive) return;
+    var target = event.target;
+    if (!target || target === document.body || target === document.documentElement) return;
+    var rect = target.getBoundingClientRect();
+    if (!highlightEl) {
+      highlightEl = document.createElement('div');
+      highlightEl.style.cssText = 'position:fixed;pointer-events:none;z-index:999999;border:2px solid #3b82f6;background:rgba(59,130,246,0.12);border-radius:4px;transition:all 0.05s ease;';
+      document.body.appendChild(highlightEl);
+    }
+    highlightEl.style.top = rect.top + 'px';
+    highlightEl.style.left = rect.left + 'px';
+    highlightEl.style.width = rect.width + 'px';
+    highlightEl.style.height = rect.height + 'px';
+  }, true);
+  window.addEventListener('click', function (event) {
+    if (!inspectActive) return;
+    event.preventDefault();
+    event.stopPropagation();
+    var target = event.target;
+    inspectActive = false;
+    document.body.style.cursor = '';
+    clearHighlight();
+    if (target && target.tagName) {
+      var tag = String(target.tagName || '').toLowerCase();
+      var cls = typeof target.className === 'string' ? target.className.trim().slice(0, 120) : '';
+      var txt = String(target.innerText || target.textContent || target.getAttribute('aria-label') || '').replace(/\\s+/g, ' ').trim().slice(0, 140);
+      post(${JSON.stringify(PREVIEW_MESSAGE_TYPES.ELEMENT_PICKED)}, '', { tagName: tag, className: cls, elementText: txt });
+    }
+  }, true);
   try {
     post(${JSON.stringify(PREVIEW_MESSAGE_TYPES.NAVIGATE)}, '', { path: location.pathname || '' });
     setTimeout(function () {
@@ -379,6 +427,11 @@ export function parsePreviewMessage(data: unknown): PreviewMessage | null {
         issues: Array.isArray(audit.issues) ? audit.issues.slice(0, 20).map(String) : [],
       };
     }
+  }
+  if (record.type === PREVIEW_MESSAGE_TYPES.ELEMENT_PICKED) {
+    parsed.tagName = record.tagName == null ? '' : String(record.tagName).slice(0, 60);
+    parsed.className = record.className == null ? '' : String(record.className).slice(0, 160);
+    parsed.elementText = record.elementText == null ? '' : String(record.elementText).slice(0, 200);
   }
   return parsed;
 }

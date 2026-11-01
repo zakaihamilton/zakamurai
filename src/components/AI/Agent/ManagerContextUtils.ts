@@ -1,6 +1,7 @@
-import type { AgentChange, ManagerToolName, ModelResult } from '../types';
+import type { AgentChange, ManagerToolName, ModelResult, SemanticSearchResult } from '../types';
 import type { createManagerPlan } from './ManagerRouter';
 import { type ManagerToolResult, formatContextResults } from './ManagerTools';
+import { extractFileSymbols } from './SymbolInspector';
 
 const MAX_INITIAL_CONTEXT_FILES = 6;
 const MAX_CONTEXT_CHARS = 28000;
@@ -81,6 +82,122 @@ export const selectInitialContextFiles = (
   ];
   return [...new Set(prioritized.filter(Boolean))].slice(0, limit);
 };
+
+const STOP_WORDS = new Set([
+  'the',
+  'and',
+  'for',
+  'with',
+  'that',
+  'this',
+  'from',
+  'into',
+  'make',
+  'update',
+  'change',
+  'fix',
+  'add',
+  'create',
+  'file',
+  'files',
+  'code',
+  'please',
+  'app',
+  'component',
+]);
+
+/**
+ * Reciprocal Rank Fusion (RRF) combining lexical symbol/token matching and
+ * semantic RAG similarity to rank candidate workspace files for initial context.
+ */
+export function rankHybridContextFiles({
+  request,
+  files,
+  semanticResults = [],
+  activeFile = null,
+  maxFiles = MAX_INITIAL_CONTEXT_FILES,
+}: {
+  request: string;
+  files: Record<string, string>;
+  semanticResults?: SemanticSearchResult[];
+  activeFile?: string | null;
+  maxFiles?: number;
+}): string[] {
+  const paths = Object.keys(files).filter((path) => SOURCE_FILE_PATTERN.test(path));
+  if (paths.length === 0) return [];
+  const limit = Math.max(1, Math.min(maxFiles, MAX_INITIAL_CONTEXT_FILES));
+
+  const queryTerms = [
+    ...new Set(
+      request
+        .toLowerCase()
+        .split(/[^a-z0-9_]+/)
+        .filter((term) => term.length >= 3 && !STOP_WORDS.has(term)),
+    ),
+  ];
+
+  // 1. Lexical / Symbol score per file
+  const lexicalScored = paths
+    .map((path) => {
+      const content = String(files[path] || '');
+      const lowerPath = path.toLowerCase();
+      const lowerContent = content.toLowerCase();
+      const outline = extractFileSymbols(content, path);
+      const symbolNames = outline.symbols.map((s) => s.name.toLowerCase());
+      let score = 0;
+      for (const term of queryTerms) {
+        if (lowerPath.includes(term)) score += 4;
+        if (symbolNames.some((sym) => sym.includes(term))) score += 3;
+        if (lowerContent.includes(term)) score += 1;
+      }
+      return { path, score };
+    })
+    .filter((entry) => entry.score > 0)
+    .sort((a, b) => b.score - a.score);
+
+  // 2. Semantic rank per file
+  const semanticPaths: string[] = [];
+  for (const hit of semanticResults) {
+    if (
+      hit.filePath &&
+      Object.hasOwn(files, hit.filePath) &&
+      !semanticPaths.includes(hit.filePath)
+    ) {
+      semanticPaths.push(hit.filePath);
+    }
+    if (Array.isArray(hit.linkedCss)) {
+      for (const css of hit.linkedCss) {
+        if (
+          css.filePath &&
+          Object.hasOwn(files, css.filePath) &&
+          !semanticPaths.includes(css.filePath)
+        ) {
+          semanticPaths.push(css.filePath);
+        }
+      }
+    }
+  }
+
+  // 3. Reciprocal Rank Fusion (RRF k=60)
+  const rrfScores = new Map<string, number>();
+  const K = 60;
+  lexicalScored.forEach((entry, idx) => {
+    rrfScores.set(entry.path, (rrfScores.get(entry.path) || 0) + 1 / (K + idx + 1));
+  });
+  semanticPaths.forEach((path, idx) => {
+    rrfScores.set(path, (rrfScores.get(path) || 0) + 1.25 / (K + idx + 1));
+  });
+
+  const rrfRanked = [...rrfScores.entries()].sort((a, b) => b[1] - a[1]).map(([path]) => path);
+
+  const baseline = selectInitialContextFiles(Object.keys(files), activeFile, limit);
+  const combined = [
+    ...(activeFile && Object.hasOwn(files, activeFile) ? [activeFile] : []),
+    ...rrfRanked,
+    ...baseline,
+  ];
+  return [...new Set(combined)].slice(0, limit);
+}
 
 export const normalizeModelChanges = (
   result: ModelResult,

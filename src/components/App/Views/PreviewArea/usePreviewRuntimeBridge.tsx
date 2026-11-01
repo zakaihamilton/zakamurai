@@ -24,6 +24,7 @@ export default function usePreviewRuntimeBridge({
   previewOrigin,
   setPreviewError,
   setHasLoadedOnce,
+  onElementPicked,
 }: UsePreviewRuntimeBridgeParams) {
   const listenersRef = useRef<PreviewIframeListeners | null>(null);
   const removeIframeListeners = useCallback(() => {
@@ -93,11 +94,20 @@ export default function usePreviewRuntimeBridge({
         reportPreviewEvidence(payload);
       } else if (payload.type === PREVIEW_MESSAGE_TYPES.RECONNECT) {
         if (iframeRef.current && previewUrl) iframeRef.current.src = previewUrl;
+      } else if (payload.type === PREVIEW_MESSAGE_TYPES.ELEMENT_PICKED) {
+        previewAreaUiState((draft) => {
+          draft.isInspecting = false;
+        });
+        onElementPicked?.({
+          tagName: payload.tagName || 'element',
+          className: payload.className || '',
+          elementText: payload.elementText || '',
+        });
       }
     };
     window.addEventListener('message', onMessage);
     return () => window.removeEventListener('message', onMessage);
-  }, [iframeRef, previewAreaUiState, previewOrigin, previewUrl, setPreviewError]);
+  }, [iframeRef, onElementPicked, previewAreaUiState, previewOrigin, previewUrl, setPreviewError]);
 
   return useCallback(() => {
     markPerformance('preview-ready');

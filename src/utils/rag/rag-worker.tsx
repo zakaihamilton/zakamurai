@@ -161,39 +161,104 @@ function earliestSuffixWithinTokenLimit(text: string, limit: number): number {
   return best;
 }
 
-function splitIntoChunks(content: string): string[] {
+const SYMBOL_BOUNDARY_RE =
+  /\n(?=(?:export\s+(?:default\s+)?(?:async\s+)?(?:function|class|const|let|interface|type)\s+[A-Za-z0-9_$]+|(?:async\s+)?function\s+[A-Za-z0-9_$]+\s*\(|class\s+[A-Za-z0-9_$]+\s*(?:extends|implements|\{)|\.(?:[A-Za-z_-][A-Za-z0-9_-]*)\s*\{|@media\b|@keyframes\b))/g;
+
+function extractSymbolHeader(segment: string): string | null {
+  for (const rawLine of segment.split('\n')) {
+    const line = rawLine.trim();
+    if (!line || line.startsWith('//') || line.startsWith('/*') || line.startsWith('*')) continue;
+    const codeMatch = line.match(
+      /^(?:export\s+)?(?:default\s+)?(?:async\s+)?(?:function|class|const|let|interface|type)\s+([A-Za-z0-9_$]+)/,
+    );
+    if (codeMatch?.[1]) return codeMatch[1];
+    const cssMatch = line.match(/^(\.[A-Za-z_-][A-Za-z0-9_-]*)\s*\{/);
+    if (cssMatch?.[1]) return cssMatch[1];
+  }
+  return null;
+}
+
+function splitSegmentByTokenWindow(segment: string, headerPrefix = ''): string[] {
   const chunks: string[] = [];
-  let remaining = content.trim();
+  let remaining = segment.trim();
   let overlap = '';
 
   while (remaining.length > 0) {
     const candidate = overlap + remaining.slice(0, MAX_CHUNK_SOURCE_CHARS);
+    const effectiveLimit = Math.max(
+      32,
+      MAX_EMBED_TOKENS - (headerPrefix ? tokenCount(headerPrefix) : 0),
+    );
     let cut = candidate.length;
-    if (tokenCount(candidate) > MAX_EMBED_TOKENS) {
-      cut = longestPrefixWithinTokenLimit(candidate, MAX_EMBED_TOKENS);
+    if (tokenCount(candidate) > effectiveLimit) {
+      cut = longestPrefixWithinTokenLimit(candidate, effectiveLimit);
       const boundary = Math.max(candidate.lastIndexOf('\n', cut), candidate.lastIndexOf(' ', cut));
       if (boundary > overlap.length && boundary >= cut * 0.55) {
         cut = boundary + 1;
       }
     }
     if (cut <= overlap.length) {
-      cut = longestPrefixWithinTokenLimit(candidate, MAX_EMBED_TOKENS);
+      cut = longestPrefixWithinTokenLimit(candidate, effectiveLimit);
     }
     if (cut < candidate.length && /[\uDC00-\uDFFF]/.test(candidate[cut])) cut--;
-    while (cut > overlap.length && tokenCount(candidate.slice(0, cut)) > MAX_EMBED_TOKENS) {
+    while (cut > overlap.length && tokenCount(candidate.slice(0, cut)) > effectiveLimit) {
       cut--;
       if (cut > 0 && /[\uDC00-\uDFFF]/.test(candidate[cut])) cut--;
     }
 
-    const chunk = candidate.slice(0, cut).trim();
-    if (chunk.length > 10) chunks.push(chunk);
+    const rawSlice = candidate.slice(0, cut).trim();
+    if (rawSlice.length > 10) {
+      chunks.push(headerPrefix ? `${headerPrefix}\n${rawSlice}` : rawSlice);
+    }
 
     const consumed = Math.min(remaining.length, Math.max(1, cut - overlap.length));
     remaining = remaining.slice(consumed);
-    overlap = chunk.slice(earliestSuffixWithinTokenLimit(chunk, CHUNK_OVERLAP_TOKENS)).trimStart();
+    overlap = rawSlice
+      .slice(earliestSuffixWithinTokenLimit(rawSlice, CHUNK_OVERLAP_TOKENS))
+      .trimStart();
   }
 
   return chunks;
+}
+
+function splitIntoChunks(content: string, filePath?: string): string[] {
+  const trimmed = content.trim();
+  if (!trimmed) return [];
+  const rawSegments = trimmed
+    .split(SYMBOL_BOUNDARY_RE)
+    .map((s) => s.trim())
+    .filter(Boolean);
+  if (rawSegments.length <= 1) {
+    const symbol = extractSymbolHeader(trimmed);
+    const prefix = filePath && symbol ? `// File: ${filePath} | Symbol: ${symbol}` : '';
+    return splitSegmentByTokenWindow(trimmed, prefix);
+  }
+
+  const mergedSegments: string[] = [];
+  for (const segment of rawSegments) {
+    const prev = mergedSegments.at(-1);
+    const prevIsImportsOnly = Boolean(
+      prev && !extractSymbolHeader(prev) && /^import\b/m.test(prev),
+    );
+    if (
+      prev &&
+      tokenCount(`${prev}\n\n${segment}`) <= MAX_EMBED_TOKENS &&
+      (!extractSymbolHeader(segment) || prevIsImportsOnly)
+    ) {
+      mergedSegments[mergedSegments.length - 1] = `${prev}\n\n${segment}`;
+    } else {
+      mergedSegments.push(segment);
+    }
+  }
+
+  const allChunks: string[] = [];
+  for (const segment of mergedSegments) {
+    const symbol = extractSymbolHeader(segment);
+    const prefix = filePath && symbol ? `// File: ${filePath} | Symbol: ${symbol}` : '';
+    const subChunks = splitSegmentByTokenWindow(segment, prefix);
+    allChunks.push(...subChunks);
+  }
+  return allChunks;
 }
 
 function resolveRelativePath(importerPath: string, importPath: string): string | null {
@@ -500,7 +565,7 @@ async function indexFile({
   }
 
   const fileHash = await getHash(content);
-  const chunks = splitIntoChunks(content);
+  const chunks = splitIntoChunks(content, filePath);
   const cssLinks = findStylesheetLinks(filePath, content, new Set(stylesheetContents.keys()));
   const seen = new Set<string>();
   const uniqueChunks: Array<{ content: string; hash: string }> = [];
@@ -589,7 +654,7 @@ async function syncWorkspace({
     const cssLinks = findStylesheetLinks(filePath, content, knownStyles);
     const seenChunks = new Set<string>();
     const uniqueChunks: Array<{ content: string; hash: string }> = [];
-    for (const chunkContent of splitIntoChunks(content)) {
+    for (const chunkContent of splitIntoChunks(content, filePath)) {
       const hash = await getHash(chunkContent);
       if (seenChunks.has(hash)) continue;
       seenChunks.add(hash);
@@ -716,6 +781,8 @@ self.addEventListener('message', async (event: MessageEvent) => {
 
 export const __testables = {
   loadTransformers,
+  splitIntoChunks,
+  extractSymbolHeader,
   resetTransformers() {
     transformersPromise = undefined;
   },

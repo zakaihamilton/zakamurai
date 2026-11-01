@@ -5,13 +5,14 @@ import {
   validateContentSyntax,
   validateCssContentSafety,
   validateCssModuleUsage,
-  validateDeclaredStateVariables,
   validateDeclaredFunctionCalls,
+  validateDeclaredStateVariables,
   validateFileContentType,
   validateGeneratedPlaceholder,
   validateRequestFulfillment,
 } from '../ChangeValidator';
 import { assertTaskPathAllowed } from '../ReliabilityContracts';
+import { autoRepairGeneratedJsxSource } from './ActionLoopAutoRepair';
 import {
   isNewAppGenerationRequest,
   shouldSalvageGeneratedInteractiveSource,
@@ -97,6 +98,16 @@ export function prepareWriteFileAction({
   lightweightModel: boolean;
 }): PreparedWriteFile {
   let next = action;
+  if (/\.(?:jsx|tsx)$/i.test(next.path || '') && typeof next.content === 'string') {
+    const repairedSource = autoRepairGeneratedJsxSource(
+      next.path || '',
+      next.content,
+      files[next.path || ''],
+    );
+    if (repairedSource !== next.content) {
+      next = { ...next, content: repairedSource };
+    }
+  }
   const normalizedSideEffectCss = /\.(jsx|tsx)$/i.test(next.path || '')
     ? normalizeSideEffectCssSource(next.path || '', next.content || '')
     : null;

@@ -1,3 +1,80 @@
+import type {
+  WebLLMGenerationMetrics,
+  WebLLMOptions,
+  WebLLMRecoveryEvent,
+} from '@/components/AI/types';
+import { reportDiagnostic } from '@/components/Diagnostics/Diagnostics';
+import { unwrapAttemptError } from './WebLLMRecovery';
+
+export const errorFingerprint = (value: string): string => {
+  let result = 2166136261;
+  for (let index = 0; index < value.length; index += 1) {
+    result ^= value.charCodeAt(index);
+    result = Math.imul(result, 16777619);
+  }
+  return `fnv1a-${(result >>> 0).toString(16).padStart(8, '0')}`;
+};
+
+export const readUsedJSHeapMB = (): number | undefined => {
+  if (typeof performance === 'undefined') return undefined;
+  const memory = (
+    performance as Performance & {
+      memory?: { usedJSHeapSize?: number };
+    }
+  ).memory;
+  if (!Number.isFinite(memory?.usedJSHeapSize)) return undefined;
+  return Math.round(((memory?.usedJSHeapSize || 0) / (1024 * 1024)) * 100) / 100;
+};
+
+export function safeCallback<T>(callback: ((value: T) => void) | null | undefined, value: T): void {
+  try {
+    callback?.(value);
+  } catch (error) {
+    console.warn('[WebLLM] Consumer callback failed:', error);
+  }
+}
+
+export const emitRecovery = (options: WebLLMOptions, event: WebLLMRecoveryEvent) => {
+  safeCallback(options.onRecovery, event);
+  reportDiagnostic({
+    source: 'webllm',
+    severity: 'warning',
+    message: `${event.action} during ${event.phase}`,
+    details: JSON.stringify(event),
+  });
+};
+
+export const emitMetrics = (options: WebLLMOptions, metrics: WebLLMGenerationMetrics) => {
+  safeCallback(options.onMetrics, metrics);
+  reportDiagnostic({
+    source: 'webllm',
+    severity: metrics.outcome === 'error' ? 'error' : 'info',
+    message: `Local AI ${metrics.requestKind} ${metrics.outcome}`,
+    details: JSON.stringify(metrics),
+  });
+};
+
+export const emitFailureDiagnostic = (error: unknown, metrics: WebLLMGenerationMetrics) => {
+  const unwrapped = unwrapAttemptError(error);
+  const failure = unwrapped as { name?: unknown; message?: unknown };
+  const message = typeof failure?.message === 'string' ? failure.message : String(unwrapped);
+  reportDiagnostic({
+    source: 'webllm',
+    severity: 'error',
+    message: 'Local AI request failed',
+    details: JSON.stringify({
+      phase: metrics.failurePhase || 'unknown',
+      requestKind: metrics.requestKind,
+      requestedModelId: metrics.requestedModelId,
+      modelId: metrics.modelId,
+      errorName: typeof failure?.name === 'string' ? failure.name : undefined,
+      errorMessageLength: message.length,
+      errorMessageFingerprint: errorFingerprint(message),
+      recoveryCount: metrics.recoveryCount,
+    }),
+  });
+};
+
 const estimateMessageTokens = (message: { content?: string }): number =>
   Math.ceil((message.content?.length || 0) / 3) + 4;
 
