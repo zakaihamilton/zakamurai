@@ -14,6 +14,8 @@ export default function PreviewToolbar({
   onRefresh,
   onOpenExternal,
   onToggleMaximize,
+  isInspecting = false,
+  onToggleInspect,
 }: PreviewToolbarProps) {
   return (
     <div className={styles.toolbar}>
@@ -24,6 +26,24 @@ export default function PreviewToolbar({
       </div>
 
       <div className={styles.toolbarActions}>
+        {onToggleInspect && (
+          <>
+            <ToolbarButton
+              className={`${styles.toolBtn} ${isInspecting ? styles.toolBtnActive : ''}`}
+              onClick={onToggleInspect}
+              tooltip={
+                isInspecting ? 'Cancel element inspect' : 'Inspect element to prompt Local AI'
+              }
+              aria-label={
+                isInspecting ? 'Cancel element inspect' : 'Inspect element to prompt Local AI'
+              }
+              aria-pressed={isInspecting}
+            >
+              <Icons.Search size={14} />
+            </ToolbarButton>
+            <div className={styles.separator} />
+          </>
+        )}
         <ToolbarButton
           className={styles.toolBtn}
           onClick={onZoomOut}

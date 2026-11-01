@@ -9,6 +9,7 @@ export function PreviewErrorState({
   copied,
   onCopy,
   onDismiss,
+  onFixWithAI,
 }: PreviewErrorStateProps) {
   return (
     <div className={styles.emptyState}>
@@ -20,7 +21,12 @@ export function PreviewErrorState({
         {message}
       </div>
       {onCopy && onDismiss && copied !== undefined && (
-        <PreviewErrorActions copied={copied} onCopy={onCopy} onDismiss={onDismiss} />
+        <PreviewErrorActions
+          copied={copied}
+          onCopy={onCopy}
+          onDismiss={onDismiss}
+          onFixWithAI={onFixWithAI}
+        />
       )}
     </div>
   );

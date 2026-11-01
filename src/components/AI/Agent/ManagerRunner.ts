@@ -17,6 +17,7 @@ import {
   extractPath,
   extractQuery,
   planIncludesTool,
+  rankHybridContextFiles,
   selectInitialContextFiles,
   summarizeToolResult,
 } from './ManagerContextUtils';
@@ -232,11 +233,25 @@ async function executeManager({
       ? listed.value.filter((item) => typeof item === 'string')
       : [];
     if (plan.intent === 'edit' || plan.intent === 'mixed') {
-      for (const contextPath of selectInitialContextFiles(
-        listedPaths,
-        activeFile,
-        modelProfile.maxContextFiles,
-      )) {
+      let semanticHits: import('../types').SemanticSearchResult[] = [];
+      if (typeof retrieveContext === 'function') {
+        try {
+          semanticHits = await retrieveContext(request, 4);
+        } catch {
+          semanticHits = [];
+        }
+      }
+      const candidatePaths =
+        semanticHits.length > 0
+          ? rankHybridContextFiles({
+              request,
+              files: workspace.files,
+              semanticResults: semanticHits,
+              activeFile,
+              maxFiles: modelProfile.maxContextFiles,
+            })
+          : selectInitialContextFiles(listedPaths, activeFile, modelProfile.maxContextFiles);
+      for (const contextPath of candidatePaths) {
         if (contextPath !== path) await notifyTool('read_file', { path: contextPath });
       }
     }

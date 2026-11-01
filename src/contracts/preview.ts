@@ -4,6 +4,7 @@ const PREVIEW_TYPES = new Set([
   'navigate',
   'evidence',
   'reconnect',
+  'element-picked',
 ]);
 
 export function isPreviewMessageShape(value: unknown): value is Record<string, unknown> {

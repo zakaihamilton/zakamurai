@@ -114,4 +114,36 @@ describe('ChangeSetPanel', () => {
       },
     ]);
   });
+
+  it('toggles the checkpoint timeline and triggers rewind', () => {
+    const state = makeChangeSetState({
+      activeId: 'cs2',
+      items: [
+        {
+          id: 'cs1',
+          status: 'reviewed',
+          request: 'Initial setup',
+          createdAt: Date.now() - 1000,
+          files: [{ path: 'src/App.js', originalContent: 'old', proposedContent: 'v1' }],
+        },
+        {
+          id: 'cs2',
+          status: 'pending-review',
+          request: 'Add counter',
+          createdAt: Date.now(),
+          files: [{ path: 'src/App.js', originalContent: 'v1', proposedContent: 'v2' }],
+        },
+      ],
+    });
+    vi.mocked(ChangeSetState.useState).mockReturnValue(state);
+
+    render(<ChangeSetPanel />);
+    const toggleBtn = screen.getByRole('button', { name: /Checkpoints \(2\)/i });
+    fireEvent.click(toggleBtn);
+
+    expect(screen.getByLabelText('Change set checkpoint timeline')).toBeDefined();
+    fireEvent.click(screen.getByLabelText('Rewind before checkpoint 2'));
+    expect(state.items.length).toBe(1);
+    expect(state.activeId).toBe('cs1');
+  });
 });

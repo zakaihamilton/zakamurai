@@ -128,9 +128,15 @@ export const buildContextReadyUserRequest = ({
   const siblingFileChars = lightweight ? 2400 : 8000;
   const clipText = (content: string, maxChars: number) =>
     content.length <= maxChars ? content : `${content.slice(0, maxChars)}\n…[context truncated]`;
+  const targetFileContent = Object.hasOwn(files, targetPath) ? String(files[targetPath] || '') : '';
+  const targetLineCount = targetFileContent ? targetFileContent.split('\n').length : 0;
   const targetFileBlock = Object.hasOwn(files, targetPath)
     ? `--- ${targetPath} ---\n${files[targetPath]}`
     : null;
+  const surgicalEditHint =
+    !lightweight && targetLineCount > 120
+      ? `Note: ${targetPath} has ${targetLineCount} lines. Preserve unchanged functions and imports verbatim; modify only the functions or JSX elements required by the request.`
+      : null;
   const siblingPaths = contextPaths.filter((path) => path !== targetPath);
   const formatSiblings = (maxChars: number) =>
     siblingPaths.length
@@ -185,6 +191,7 @@ export const buildContextReadyUserRequest = ({
       manager ? `Manager-selected context:\n${manager}` : null,
       'The workspace has already been inspected. Do not list, search, or read files.',
       nextStep,
+      surgicalEditHint,
       `Project code contract: ${formatProjectCodeContract(files, targetPath)}.`,
       styleContract,
       'Use the supplied files as context and return the complete implementation now.',

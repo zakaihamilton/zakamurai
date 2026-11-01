@@ -1,5 +1,7 @@
 'use client';
 
+import { PromptUiState } from '@/components/App/Panes/Prompt/PromptState';
+import { SidebarState } from '@/components/App/Panes/Sidebar';
 import type { PreviewAreaUiStateShape } from '@/types/domain-types';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createState } from 'triactor';
@@ -13,6 +15,7 @@ import {
   getPreviewOrigins,
   getSameOriginPreviewWarning,
 } from './previewOrigins';
+import { PREVIEW_MESSAGE_SOURCE } from './previewSandbox';
 import usePreviewRuntimeBridge from './usePreviewRuntimeBridge';
 import usePreviewSessionLifecycle from './usePreviewSessionLifecycle';
 
@@ -54,6 +57,7 @@ export default function PreviewArea() {
       isMaximized: false,
       address: '/preview/dist/index.html',
       host: '',
+      isInspecting: false,
     }),
   );
   const {
@@ -64,7 +68,10 @@ export default function PreviewArea() {
     isSwReady = false,
     isMaximized = false,
     address = '/preview/dist/index.html',
+    isInspecting = false,
   } = previewAreaUiState || {};
+  const promptUiState = PromptUiState.usePassiveState();
+  const sidebarState = SidebarState.usePassiveState();
   isLoadingRef.current = isLoading;
 
   const [errorCopied, setErrorCopied] = useState(false);
@@ -111,6 +118,36 @@ export default function PreviewArea() {
     address,
     onBlockedExternalPreview: setPreviewError,
   });
+  const handleElementPicked = useCallback(
+    ({
+      tagName,
+      className,
+      elementText,
+    }: {
+      tagName: string;
+      className: string;
+      elementText: string;
+    }) => {
+      const selectorDesc = [
+        `<${tagName}${className ? ` class="${className}"` : ''}>`,
+        elementText ? `"${elementText.slice(0, 60)}"` : '',
+      ]
+        .filter(Boolean)
+        .join(' ');
+      const nextPrompt = `Update the ${selectorDesc} element: `;
+      sidebarState?.((draft) => {
+        draft.showAIInput = true;
+        draft.isAIInputPopupOpen = true;
+      });
+      promptUiState?.((draft) => {
+        draft.val = nextPrompt;
+        draft.draftVal = nextPrompt;
+        draft.historyIndex = -1;
+      });
+    },
+    [promptUiState, sidebarState],
+  );
+
   const handleLoad = usePreviewRuntimeBridge({
     iframeRef,
     previewAreaUiState,
@@ -118,6 +155,7 @@ export default function PreviewArea() {
     previewOrigin: origins.previewOrigin || '',
     setPreviewError,
     setHasLoadedOnce,
+    onElementPicked: handleElementPicked,
   });
 
   useEffect(() => {
@@ -157,6 +195,40 @@ export default function PreviewArea() {
     }
   }, [compileError, previewAreaUiState, previewState, restoreError, serverError]);
 
+  const handleFixWithAI = useCallback(() => {
+    if (!displayError) return;
+    const fixPrompt = `Fix this preview error:\n${displayError.slice(0, 1200)}`;
+    sidebarState?.((draft) => {
+      draft.showAIInput = true;
+      draft.isAIInputPopupOpen = true;
+    });
+    promptUiState?.((draft) => {
+      draft.val = fixPrompt;
+      draft.draftVal = fixPrompt;
+      draft.historyIndex = -1;
+      draft.welcomeRequest = { text: fixPrompt, scope: 'project' };
+    });
+  }, [displayError, promptUiState, sidebarState]);
+
+  const handleToggleInspect = useCallback(() => {
+    const nextActive = !isInspecting;
+    previewAreaUiState((draft) => {
+      draft.isInspecting = nextActive;
+    });
+    const targetOrigin =
+      origins.previewOrigin || (typeof window !== 'undefined' ? window.location.origin : '');
+    if (iframeRef.current?.contentWindow && targetOrigin) {
+      iframeRef.current.contentWindow.postMessage(
+        {
+          source: PREVIEW_MESSAGE_SOURCE,
+          type: 'toggle-inspect',
+          active: nextActive,
+        },
+        targetOrigin,
+      );
+    }
+  }, [isInspecting, origins.previewOrigin, previewAreaUiState]);
+
   const handleRefresh = useCallback(() => {
     previewAreaUiState((draft) => {
       draft.isLoading = true;
@@ -191,6 +263,7 @@ export default function PreviewArea() {
           copied={errorCopied}
           onCopy={handleCopyError}
           onDismiss={handleDismissError}
+          onFixWithAI={handleFixWithAI}
         />
       );
     }
@@ -213,12 +286,15 @@ export default function PreviewArea() {
       onRefresh={handleRefresh}
       onOpenExternal={handleOpenExternal}
       onToggleMaximize={toggleMaximize}
+      isInspecting={isInspecting}
+      onToggleInspect={handleToggleInspect}
       hasLoadedOnce={hasLoadedOnce}
       showInitOverlay={!isCompilerReady && !displayError}
       displayError={displayError}
       errorCopied={errorCopied}
       onCopyError={handleCopyError}
       onDismissError={handleDismissError}
+      onFixWithAI={handleFixWithAI}
       isCompilerReady={isCompilerReady}
       iframeRef={iframeRef}
       previewIframeUrl={previewIframeUrl}

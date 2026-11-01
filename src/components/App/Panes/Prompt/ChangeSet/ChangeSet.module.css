@@ -86,7 +86,8 @@
 }
 
 .approveAll,
-.undoAll {
+.undoAll,
+.timelineToggle {
   border: 1px solid var(--border-color, #555);
   border-radius: var(--radius-sm);
   background: var(--bg-input);
@@ -107,6 +108,55 @@
 }
 
 .undoAll:hover:not(:disabled) {
+  border-color: var(--warning-color, #e6a23c);
+}
+
+.timelineToggle:hover {
+  border-color: var(--accent);
+}
+
+.timelineList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 10px;
+  padding: 8px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  background: var(--surface-inset);
+  max-height: 140px;
+  overflow-y: auto;
+}
+
+.timelineItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.timelineLabel {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-secondary);
+  font-size: 11px;
+}
+
+.rewindBtn {
+  flex-shrink: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-surface);
+  color: var(--text-main);
+  font-size: 10px;
+  padding: 2px 6px;
+  cursor: pointer;
+}
+
+.rewindBtn:hover {
   border-color: var(--warning-color, #e6a23c);
 }
 

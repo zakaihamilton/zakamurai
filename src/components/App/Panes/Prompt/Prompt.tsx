@@ -4,7 +4,11 @@ import {
   resolveProjectStyleProfile,
 } from '@/components/AI/Agent/ProjectStyleProfile';
 import { useModelDownloader } from '@/components/AI/Models';
-import { RECOMMENDED_WEB_LLM_MODEL, WEB_LLM_MODELS } from '@/components/AI/WebLLMModels';
+import {
+  RECOMMENDED_WEB_LLM_MODEL,
+  WEB_LLM_MODELS,
+  getModelHardwareFitBadge,
+} from '@/components/AI/WebLLMModels';
 import { WebLLMState } from '@/components/AI/WebLLMState';
 import { AppState } from '@/components/App/AppState';
 import type { WelcomeRequest } from '@/components/App/Panes/Prompt/prompt-types';
@@ -290,15 +294,19 @@ export default function Prompt() {
   const selectedModelEngine = engines[selectedModel];
   const isModelDownloading = selectedModelEngine?.status === 'downloading';
   const modelDownloadProgress = selectedModelEngine?.progressText || '';
-  const modelOptions = WEB_LLM_MODELS.map((model) => ({
-    value: model.id,
-    label: model.name,
-    description: model.requirement,
-    badges: [
-      model.recommended ? 'Recommended' : '',
-      cachedModelIds.includes(model.id) ? 'Cached' : '',
-    ].filter(Boolean),
-  }));
+  const modelOptions = WEB_LLM_MODELS.map((model) => {
+    const hwBadge = getModelHardwareFitBadge(model);
+    return {
+      value: model.id,
+      label: model.name,
+      description: model.requirement,
+      badges: [
+        model.recommended ? 'Recommended' : '',
+        cachedModelIds.includes(model.id) ? 'Cached' : '',
+        hwBadge && hwBadge !== 'Fits Device' ? hwBadge : '',
+      ].filter(Boolean),
+    };
+  });
 
   return (
     <>

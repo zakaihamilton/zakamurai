@@ -13,6 +13,7 @@ vi.mock('@/components/ui/Icons', () => ({
     Check: () => <span>check</span>,
     Copy: () => <span>copy</span>,
     Close: () => <span>close</span>,
+    Sparkles: () => <span>sparkles</span>,
   },
 }));
 
@@ -61,5 +62,19 @@ describe('PreviewErrorActions', () => {
 
     fireEvent.click(screen.getByLabelText('Dismiss error'));
     expect(onDismiss).toHaveBeenCalled();
+  });
+
+  it('invokes onFixWithAI when Fix with AI button is clicked', () => {
+    const onFixWithAI = vi.fn();
+    render(
+      <PreviewErrorActions
+        copied={false}
+        onCopy={vi.fn()}
+        onDismiss={vi.fn()}
+        onFixWithAI={onFixWithAI}
+      />,
+    );
+    fireEvent.click(screen.getByLabelText('Fix with Local AI'));
+    expect(onFixWithAI).toHaveBeenCalled();
   });
 });

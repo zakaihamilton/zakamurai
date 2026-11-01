@@ -53,12 +53,15 @@ export type PreviewSurfaceProps = {
   onRefresh: () => void;
   onOpenExternal: () => void;
   onToggleMaximize: () => void;
+  isInspecting?: boolean;
+  onToggleInspect?: () => void;
   hasLoadedOnce: boolean;
   showInitOverlay: boolean;
   displayError: string | null;
   errorCopied: boolean;
   onCopyError: () => void;
   onDismissError: () => void;
+  onFixWithAI?: () => void;
   isCompilerReady: boolean;
   iframeRef: RefObject<HTMLIFrameElement | null>;
   previewIframeUrl: string | null;
@@ -93,6 +96,9 @@ export type PreviewMessage = {
   screenshotCaptured?: boolean;
   screenshot?: string;
   styleAudit?: PreviewStyleAudit;
+  tagName?: string;
+  className?: string;
+  elementText?: string;
 };
 
 export type PreviewStyleAudit = {
@@ -122,6 +128,7 @@ export type PreviewErrorActionsProps = {
   copied: boolean;
   onCopy: () => void;
   onDismiss: () => void;
+  onFixWithAI?: () => void;
 };
 
 export type PreviewErrorBannerProps = {
@@ -129,6 +136,7 @@ export type PreviewErrorBannerProps = {
   errorCopied: boolean;
   onCopyError: () => void;
   onDismissError: () => void;
+  onFixWithAI?: () => void;
 };
 
 export type PreviewErrorStateProps = {
@@ -137,6 +145,7 @@ export type PreviewErrorStateProps = {
   copied?: boolean;
   onCopy?: () => void;
   onDismiss?: () => void;
+  onFixWithAI?: () => void;
 };
 
 export type PreviewIframeContainerProps = {
@@ -147,6 +156,7 @@ export type PreviewIframeContainerProps = {
   errorCopied: boolean;
   onCopyError: () => void;
   onDismissError: () => void;
+  onFixWithAI?: () => void;
   scale: number;
   isCompilerReady: boolean;
   iframeRef: RefObject<HTMLIFrameElement | null>;
@@ -167,6 +177,8 @@ export type PreviewToolbarProps = {
   onRefresh: () => void;
   onOpenExternal: () => void;
   onToggleMaximize: () => void;
+  isInspecting?: boolean;
+  onToggleInspect?: () => void;
 };
 
 export type UsePreviewRuntimeBridgeParams = {
@@ -176,6 +188,11 @@ export type UsePreviewRuntimeBridgeParams = {
   previewOrigin: string;
   setPreviewError: (message: string) => void;
   setHasLoadedOnce: (value: boolean) => void;
+  onElementPicked?: (elementInfo: {
+    tagName: string;
+    className: string;
+    elementText: string;
+  }) => void;
 };
 
 export type UsePreviewSessionLifecycleParams = {

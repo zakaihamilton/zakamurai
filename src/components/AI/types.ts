@@ -332,6 +332,7 @@ export type SemanticSearchResult = {
   content?: string;
   preview?: string;
   score?: number;
+  linkedCss?: Array<{ filePath: string; content: string }>;
 };
 
 export type WorkspaceIndex = {

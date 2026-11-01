@@ -424,6 +424,7 @@ export interface PreviewAreaUiStateShape {
   isMaximized: boolean;
   address: string;
   host: string;
+  isInspecting?: boolean;
 }
 
 export interface NotificationStateShape {

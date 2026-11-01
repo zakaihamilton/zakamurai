@@ -208,3 +208,34 @@ export const findCachedFallbackModelId = (
     )[0]?.id || null
   );
 };
+
+/**
+ * Classifies how well a model fits the current device's memory / WebGPU budget
+ * so the UI can badge models as "Best for Device", "Fastest", or "Heavy for GPU".
+ */
+export const getModelHardwareFitBadge = (
+  model: WebLLMModel,
+  deviceMemoryGB?: number | null,
+): string | null => {
+  const mem =
+    deviceMemoryGB ??
+    (typeof navigator !== 'undefined'
+      ? (navigator as Navigator & { deviceMemory?: number }).deviceMemory
+      : undefined);
+  const effectiveRamGB = Number.isFinite(mem) && (mem || 0) > 0 ? Number(mem) : 8;
+  const availableVramMB = effectiveRamGB * 520;
+
+  if (model.ramMB > availableVramMB * 1.15) {
+    return 'Heavy for GPU';
+  }
+  if (model.ramMB <= 1000) {
+    return 'Fastest';
+  }
+  if (
+    (effectiveRamGB <= 4 && model.id === 'Qwen2.5-Coder-1.5B-Instruct-q4f16_1-MLC') ||
+    (effectiveRamGB > 4 && model.recommended)
+  ) {
+    return 'Fits Device';
+  }
+  return null;
+};
