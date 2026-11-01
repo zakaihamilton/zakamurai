@@ -14,7 +14,6 @@ import type {
   AgentReasoningEntry,
 } from '@/types/domain-types';
 import type { ManagerTrace, ManagerTraceEvent } from './ManagerTrace';
-import { formatDuration } from './formatDuration';
 
 export const MAX_AGENT_ACTIVITY_NODES = 96;
 export const MAX_AGENT_ACTIVITY_DETAIL_CHARACTERS = 1200;
@@ -26,11 +25,22 @@ const clip = (value: unknown, limit = MAX_AGENT_ACTIVITY_DETAIL_CHARACTERS): str
   return text.length > limit ? `${text.slice(0, limit)}…` : text;
 };
 
-const timestamp = (): string => new Date().toTimeString().split(' ')[0];
+const timestamp = (): string => {
+  const now = new Date();
+  const milliseconds = String(now.getMilliseconds()).padStart(3, '0');
+  return `${now.toTimeString().split(' ')[0]}.${milliseconds}`;
+};
 
 const elapsedLabel = (elapsedMs: number | undefined): string => {
   if (!Number.isFinite(elapsedMs) || !elapsedMs || elapsedMs < 0) return '';
-  return `+${formatDuration(elapsedMs)}`;
+  const totalMilliseconds = Math.floor(elapsedMs);
+  const totalSeconds = Math.floor(totalMilliseconds / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  const milliseconds = totalMilliseconds % 1000;
+  const paddedSeconds = String(seconds).padStart(2, '0');
+  const paddedMilliseconds = String(milliseconds).padStart(3, '0');
+  return `+${minutes}m ${paddedSeconds}.${paddedMilliseconds}s`;
 };
 
 const capNodes = (nodes: AgentActivityNode[]): AgentActivityNode[] =>

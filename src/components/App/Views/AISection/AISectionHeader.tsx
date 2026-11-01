@@ -10,6 +10,7 @@ const reasoningViewOptions: Array<{
   icon: typeof Icons.Brain;
 }> = [
   { type: 'visual', label: 'Visual timeline', icon: Icons.Brain },
+  { type: 'activity', label: 'Activity details', icon: Icons.History },
   { type: 'text', label: 'Text log', icon: Icons.Terminal },
 ];
 

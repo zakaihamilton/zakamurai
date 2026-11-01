@@ -11,6 +11,7 @@ vi.mock('@/components/ui/Icons', () => ({
     Columns: () => <span data-testid="icon-columns" />,
     Copy: () => <span data-testid="icon-copy" />,
     Grid: () => <span data-testid="icon-grid" />,
+    History: () => <span data-testid="icon-history" />,
     Terminal: () => <span data-testid="icon-terminal" />,
   },
 }));
@@ -44,6 +45,10 @@ describe('AISectionHeader', () => {
       'true',
     );
     expect(screen.getByRole('button', { name: 'Show text log' })).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    );
+    expect(screen.getByRole('button', { name: 'Show activity details' })).toHaveAttribute(
       'aria-pressed',
       'false',
     );

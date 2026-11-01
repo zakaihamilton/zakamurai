@@ -1,4 +1,5 @@
 import { formatDuration } from '@/components/AI/Agent/formatDuration';
+import { remarkStreamingCharacterCount } from '@/components/App/Views/AISection/streamingCharacterCount';
 import { Icons } from '@/components/ui/Icons';
 import ToolbarButton from '@/components/ui/ToolbarButton';
 import Tooltip from '@/components/ui/Tooltip';
@@ -281,7 +282,18 @@ function ReasoningPanelInner({
                 blockquote: ({ node, ...props }) => (
                   <blockquote className={styles.reasoningBlockquote} {...props} />
                 ),
-                code: ({ node, ...props }) => <code className={styles.reasoningCode} {...props} />,
+                code: ({ node, children, className, ...props }) => {
+                  return className === 'streaming-character-count' ? (
+                    <span className={styles.reasoningCounter}>{children}</span>
+                  ) : (
+                    <code
+                      className={`${styles.reasoningCode}${className ? ` ${className}` : ''}`}
+                      {...props}
+                    >
+                      {children}
+                    </code>
+                  );
+                },
                 h1: ({ node, children, ...props }) => (
                   <h1 className={styles.reasoningHeading} {...props}>
                     {children}
@@ -318,6 +330,7 @@ function ReasoningPanelInner({
                 pre: ({ node, ...props }) => <pre className={styles.reasoningPre} {...props} />,
                 ul: ({ node, ...props }) => <ul className={styles.reasoningList} {...props} />,
               }}
+              remarkPlugins={[remarkStreamingCharacterCount]}
             >
               {displayedReasoning}
             </ReactMarkdown>

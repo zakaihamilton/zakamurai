@@ -18,6 +18,12 @@ import { MAX_REASONING_EVENTS, clipReasoningStepIO, createAgentRunUsage } from '
 
 type PatchSession = (sessionId: string, patch: Partial<AgentSession>) => void;
 
+const formatTimestamp = (): string => {
+  const now = new Date();
+  const milliseconds = String(now.getMilliseconds()).padStart(3, '0');
+  return `${now.toTimeString().split(' ')[0]}.${milliseconds}`;
+};
+
 export function createAgentRunState({
   sessionId,
   request = '',
@@ -134,7 +140,7 @@ export function createAgentRunState({
 
     const entry: AgentReasoningEntry = {
       text: line,
-      timestamp: new Date().toTimeString().split(' ')[0],
+      timestamp: formatTimestamp(),
       ...metadata,
       ...(metadata.input ? { input: clipReasoningStepIO(metadata.input) } : {}),
       ...(metadata.output ? { output: clipReasoningStepIO(metadata.output) } : {}),

@@ -41,10 +41,8 @@ type AISectionReasoningProps = {
   activity?: AgentActivityState;
   modelProgress?: ModelProgress;
   timelineExpanded?: boolean;
-  activityDetailsOpen?: boolean;
   viewType?: ReasoningViewType;
   showStepIO?: boolean;
-  onToggleActivityDetails?: () => void;
   onToggleTimeline?: () => void;
   onToggleStepIO?: () => void;
   runUsageSummary: string;
@@ -63,10 +61,8 @@ export default function AISectionReasoning({
   activity,
   modelProgress,
   timelineExpanded = false,
-  activityDetailsOpen = false,
   viewType = 'visual',
   showStepIO = false,
-  onToggleActivityDetails = noop,
   onToggleTimeline = noop,
   onToggleStepIO = noop,
   runUsageSummary,
@@ -112,35 +108,34 @@ export default function AISectionReasoning({
     });
   }, [autoScroll, content, contentRef, viewType]);
 
-  const visual = viewType === 'visual';
+  const visualMode = viewType !== 'text';
 
   return (
     <div
       ref={contentRef}
-      className={`${styles.content} ${styles.markdownContent}${visual ? ` ${styles.visualContent}` : ''}`}
+      className={`${styles.content} ${styles.markdownContent}${visualMode ? ` ${styles.visualContent}` : ''}`}
       onScroll={handleScroll}
     >
-      {visual ? (
-        <VisualReasoning
-          activeSession={activeSession}
-          activity={visualActivity}
-          modelProgress={modelProgress}
-          timelineExpanded={timelineExpanded}
-          activityDetailsOpen={activityDetailsOpen}
-          onToggleActivityDetails={onToggleActivityDetails}
-          onToggleTimeline={onToggleTimeline}
-          onToggleStepIO={onToggleStepIO}
-          runUsageSummary={runUsageSummary}
-          latestError={latestError}
-          showStepIO={showStepIO}
-        />
-      ) : (
+      {viewType === 'text' ? (
         <TextReasoning
           messages={transcriptMessages}
           groups={reasoningGroups}
           runUsageSummary={runUsageSummary}
           latestError={latestError}
           fallbackContent={fallbackContent}
+        />
+      ) : (
+        <VisualReasoning
+          activeSession={activeSession}
+          activity={visualActivity}
+          modelProgress={modelProgress}
+          viewType={viewType}
+          timelineExpanded={timelineExpanded}
+          onToggleTimeline={onToggleTimeline}
+          onToggleStepIO={onToggleStepIO}
+          runUsageSummary={runUsageSummary}
+          latestError={latestError}
+          showStepIO={showStepIO}
         />
       )}
     </div>

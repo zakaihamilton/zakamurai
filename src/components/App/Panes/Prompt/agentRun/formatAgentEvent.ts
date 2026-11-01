@@ -41,10 +41,17 @@ export const formatAgentEvent: AgentEventFormatter = (event) => {
       role,
     );
   }
+  if (legacy.type === 'thinking') {
+    const hasStepContext = Boolean(legacy.agentRole || legacy.action != null);
+    const message = legacy.message || (hasStepContext ? 'thinking…' : '');
+    if (hasStepContext) {
+      const role = legacy.agentRole ? `**${legacy.agentRole}** · ` : '';
+      return `${role}**Step ${legacy.turn}:** ${message}`;
+    }
+    return message;
+  }
   if (legacy.agentRole || legacy.action != null) {
     const role = legacy.agentRole ? `**${legacy.agentRole}** · ` : '';
-    if (legacy.type === 'thinking')
-      return `${role}**Step ${legacy.turn}:** ${legacy.message || 'thinking…'}`;
     if (legacy.type === 'tool') {
       const action =
         typeof legacy.action === 'string' ? legacy.action : legacy.action?.action || '';

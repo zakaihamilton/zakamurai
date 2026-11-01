@@ -6,6 +6,16 @@
   composes: code from "./AISectionReasoning.module.css";
 }
 
+.streamingCount {
+  display: inline-block;
+  width: 7ch;
+  color: inherit;
+  font-family: var(--font-mono, monospace);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  white-space: nowrap;
+}
+
 .heading {
   composes: heading from "./AISectionReasoning.module.css";
 }

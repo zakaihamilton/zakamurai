@@ -129,7 +129,6 @@ const createProps = (overrides: Partial<React.ComponentProps<typeof AISectionRea
   reasoningGroups: groups,
   visualReasoningGroups: groups,
   activity,
-  activityDetailsOpen: true,
   viewType: 'visual' as const,
   showStepIO: false,
   runUsageSummary: '',
@@ -142,23 +141,12 @@ const createProps = (overrides: Partial<React.ComponentProps<typeof AISectionRea
 });
 
 describe('AISectionReasoning', () => {
-  it('keeps detailed activity collapsed by default', () => {
-    const onToggleActivityDetails = vi.fn();
-    render(
-      <AISectionReasoning
-        {...createProps({
-          activityDetailsOpen: undefined,
-          onToggleActivityDetails,
-        })}
-      />,
-    );
+  it('renders activity details as a separate view', () => {
+    render(<AISectionReasoning {...createProps({ viewType: 'activity' })} />);
 
-    const detailsToggle = screen.getByRole('button', { name: 'Activity details' });
-    expect(detailsToggle).toHaveAttribute('aria-expanded', 'false');
-    expect(screen.queryByRole('region', { name: 'Execution timeline' })).toBeNull();
-
-    fireEvent.click(detailsToggle);
-    expect(onToggleActivityDetails).toHaveBeenCalledOnce();
+    expect(screen.getByRole('region', { name: 'Activity details' })).toBeDefined();
+    expect(screen.getByRole('region', { name: 'Execution timeline' })).toBeDefined();
+    expect(screen.queryByRole('button', { name: 'Activity details' })).toBeNull();
   });
 
   it('renders the live execution map with planned future work', () => {

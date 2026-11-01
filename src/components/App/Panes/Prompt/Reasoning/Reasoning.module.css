@@ -325,6 +325,16 @@
   padding: 1px 4px;
 }
 
+.reasoningCounter {
+  display: inline-block;
+  width: 7ch;
+  color: inherit;
+  font-family: var(--font-mono, monospace);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  white-space: nowrap;
+}
+
 .reasoningPre {
   overflow-x: hidden;
   border: 1px solid var(--border-light);

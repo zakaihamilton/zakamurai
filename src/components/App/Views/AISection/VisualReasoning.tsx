@@ -2,7 +2,11 @@ import { formatDuration } from '@/components/AI/Agent/formatDuration';
 import { Icons } from '@/components/ui/Icons';
 import type { AgentActivityState, AgentSession } from '@/types/domain-types';
 import ReactMarkdown from 'react-markdown';
-import { type ModelProgress, getRecentMilestones } from './AISectionReasoningUtils';
+import {
+  type ModelProgress,
+  type ReasoningViewType,
+  getRecentMilestones,
+} from './AISectionReasoningUtils';
 import ExecutionTimeline from './ExecutionTimeline';
 import { summaryMarkdownComponents } from './ReasoningMarkdown';
 import RunOverview from './RunOverview';
@@ -20,6 +24,20 @@ const reconcileValidationClaim = (
     .replace(/\s+and\s+(?:successfully\s+)?validated the build\b/gi, `; ${validationNote}`)
     .replace(/\b(?:successfully\s+)?validated the build\b/gi, validationNote)
     .replace(/^\s*[;,]\s*/, '');
+};
+
+const formatMilestoneTimestamp = (item: AgentActivityState['nodes'][number]): string => {
+  if (typeof item.elapsedMs !== 'number' || !Number.isFinite(item.elapsedMs))
+    return item.timestamp;
+
+  const elapsedMs = Math.max(0, Math.floor(item.elapsedMs));
+  const totalSeconds = Math.floor(elapsedMs / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  const milliseconds = elapsedMs % 1000;
+  const paddedSeconds = String(seconds).padStart(2, '0');
+  const paddedMilliseconds = String(milliseconds).padStart(3, '0');
+  return `+${minutes}m ${paddedSeconds}.${paddedMilliseconds}s`;
 };
 
 const RunMetrics = ({
@@ -74,13 +92,111 @@ const RunMetrics = ({
   );
 };
 
+const ActivityDetailsView = ({
+  activity,
+  activeSession,
+  modelProgress,
+  timelineExpanded,
+  onToggleTimeline,
+  onToggleStepIO,
+  runUsageSummary,
+  latestError,
+  showStepIO,
+}: {
+  activity: AgentActivityState;
+  activeSession: AgentSession | null;
+  modelProgress?: ModelProgress;
+  timelineExpanded: boolean;
+  onToggleTimeline: () => void;
+  onToggleStepIO: () => void;
+  runUsageSummary: string;
+  latestError: string;
+  showStepIO: boolean;
+}) => {
+  const hasTimeline = activity.nodes.length > 0 || Boolean(modelProgress);
+  const usage = activeSession?.runUsage;
+  const toolCount = Object.values(usage?.toolCalls || {}).reduce(
+    (total, count) => total + count,
+    0,
+  );
+  const hasRunMetrics = Boolean(
+    usage && (usage.modelCalls > 0 || toolCount > 0 || activity.durationMs > 0),
+  );
+  const hasDetails =
+    hasTimeline || hasRunMetrics || Boolean(runUsageSummary) || Boolean(latestError);
+
+  return (
+    <section className={styles.activityDetailsView} aria-label="Activity details">
+      <div className={styles.activityDetailsPanel}>
+        {hasTimeline ? (
+          <>
+            <div className={styles.activityDetailsActions}>
+              <button
+                className={styles.activityDetailsAction}
+                type="button"
+                aria-pressed={timelineExpanded}
+                onClick={onToggleTimeline}
+              >
+                {timelineExpanded ? <Icons.Columns size={15} /> : <Icons.Grid size={15} />}
+                <span>
+                  {timelineExpanded ? 'Collapse timeline cards' : 'Expand timeline cards'}
+                </span>
+              </button>
+              <button
+                className={styles.activityDetailsAction}
+                type="button"
+                aria-pressed={showStepIO}
+                onClick={onToggleStepIO}
+              >
+                <Icons.Terminal size={15} />
+                <span>{showStepIO ? 'Hide input / output' : 'Show input / output'}</span>
+              </button>
+            </div>
+            <ExecutionTimeline
+              activity={activity}
+              modelProgress={modelProgress}
+              timelineExpanded={timelineExpanded}
+              showStepIO={showStepIO}
+            />
+          </>
+        ) : null}
+
+        <RunMetrics activity={activity} activeSession={activeSession} />
+
+        {runUsageSummary ? (
+          <details className={styles.visualRunDetails}>
+            <summary>Completed run summary</summary>
+            <div className={styles.visualRunDetailsContent}>
+              <ReactMarkdown components={summaryMarkdownComponents}>
+                {runUsageSummary}
+              </ReactMarkdown>
+            </div>
+          </details>
+        ) : null}
+
+        {latestError ? (
+          <aside className={styles.reasoningError} role="alert">
+            <strong className={styles.reasoningErrorLabel}>Latest error</strong>
+            <span>{latestError}</span>
+          </aside>
+        ) : null}
+
+        {!hasDetails ? (
+          <p className={styles.activityDetailsEmpty}>
+            Activity details will appear when a run starts.
+          </p>
+        ) : null}
+      </div>
+    </section>
+  );
+};
+
 export default function VisualReasoning({
   activeSession,
   activity,
   modelProgress,
+  viewType,
   timelineExpanded,
-  activityDetailsOpen,
-  onToggleActivityDetails,
   onToggleTimeline,
   onToggleStepIO,
   runUsageSummary,
@@ -90,9 +206,8 @@ export default function VisualReasoning({
   activeSession: AgentSession | null;
   activity: AgentActivityState;
   modelProgress?: ModelProgress;
+  viewType: Exclude<ReasoningViewType, 'text'>;
   timelineExpanded: boolean;
-  activityDetailsOpen: boolean;
-  onToggleActivityDetails: () => void;
   onToggleTimeline: () => void;
   onToggleStepIO: () => void;
   runUsageSummary: string;
@@ -115,16 +230,22 @@ export default function VisualReasoning({
   const hasMap = displayActivity.nodes.length > 0;
   const hasRunContent = hasMap || Boolean(runUsageSummary);
   const milestones = getRecentMilestones(displayActivity);
-  const usage = activeSession?.runUsage;
-  const toolCount = Object.values(usage?.toolCalls || {}).reduce(
-    (total, count) => total + count,
-    0,
-  );
-  const hasRunMetrics = Boolean(
-    usage && (usage.modelCalls > 0 || toolCount > 0 || displayActivity.durationMs > 0),
-  );
-  const showActivityDetails =
-    hasMap || Boolean(modelProgress) || hasRunMetrics || Boolean(displayRunUsageSummary);
+
+  if (viewType === 'activity') {
+    return (
+      <ActivityDetailsView
+        activity={displayActivity}
+        activeSession={activeSession}
+        modelProgress={modelProgress}
+        timelineExpanded={timelineExpanded}
+        onToggleTimeline={onToggleTimeline}
+        onToggleStepIO={onToggleStepIO}
+        runUsageSummary={displayRunUsageSummary}
+        latestError={latestError}
+        showStepIO={showStepIO}
+      />
+    );
+  }
 
   return (
     <>
@@ -140,84 +261,22 @@ export default function VisualReasoning({
         <section className={styles.recentMilestones} aria-label="Recent milestones">
           <h2>Recent milestones</h2>
           <ol className={styles.milestoneList}>
-            {milestones.map((item) => (
-              <li className={styles.milestone} key={item.id}>
-                <span className={styles.milestoneIcon} aria-hidden="true">
-                  <Icons.Check size={13} />
-                </span>
-                <div className={styles.milestoneCopy}>
-                  <strong>{item.label}</strong>
-                  {item.detail && item.detail !== item.label ? <p>{item.detail}</p> : null}
-                </div>
-                {item.timestamp ? (
-                  <span className={styles.milestoneTime}>{item.timestamp}</span>
-                ) : null}
-              </li>
-            ))}
-          </ol>
-        </section>
-      ) : null}
-
-      {showActivityDetails ? (
-        <section className={styles.activityDetails} aria-label="Activity details">
-          <button
-            className={styles.activityDetailsToggle}
-            type="button"
-            aria-expanded={activityDetailsOpen}
-            aria-controls={activityDetailsOpen ? 'activity-details-panel' : undefined}
-            onClick={onToggleActivityDetails}
-          >
-            <span>Activity details</span>
-            <Icons.ChevronDown size={16} />
-          </button>
-          {activityDetailsOpen ? (
-            <div className={styles.activityDetailsPanel} id="activity-details-panel">
-              <div className={styles.activityDetailsActions}>
-                <button
-                  className={styles.activityDetailsAction}
-                  type="button"
-                  aria-pressed={timelineExpanded}
-                  onClick={onToggleTimeline}
-                >
-                  {timelineExpanded ? <Icons.Columns size={15} /> : <Icons.Grid size={15} />}
-                  <span>
-                    {timelineExpanded ? 'Collapse timeline cards' : 'Expand timeline cards'}
+            {milestones.map((item) => {
+              const timestamp = formatMilestoneTimestamp(item);
+              return (
+                <li className={styles.milestone} key={item.id}>
+                  <span className={styles.milestoneIcon} aria-hidden="true">
+                    <Icons.Check size={13} />
                   </span>
-                </button>
-                <button
-                  className={styles.activityDetailsAction}
-                  type="button"
-                  aria-pressed={showStepIO}
-                  onClick={onToggleStepIO}
-                >
-                  <Icons.Terminal size={15} />
-                  <span>{showStepIO ? 'Hide input / output' : 'Show input / output'}</span>
-                </button>
-              </div>
-
-              <RunMetrics activity={displayActivity} activeSession={activeSession} />
-
-              {hasMap || modelProgress ? (
-                <ExecutionTimeline
-                  activity={displayActivity}
-                  modelProgress={modelProgress}
-                  timelineExpanded={timelineExpanded}
-                  showStepIO={showStepIO}
-                />
-              ) : null}
-
-              {displayRunUsageSummary ? (
-                <details className={styles.visualRunDetails}>
-                  <summary>Completed run summary</summary>
-                  <div className={styles.visualRunDetailsContent}>
-                    <ReactMarkdown components={summaryMarkdownComponents}>
-                      {displayRunUsageSummary}
-                    </ReactMarkdown>
+                  <div className={styles.milestoneCopy}>
+                    <strong>{item.label}</strong>
+                    {item.detail && item.detail !== item.label ? <p>{item.detail}</p> : null}
                   </div>
-                </details>
-              ) : null}
-            </div>
-          ) : null}
+                  {timestamp ? <span className={styles.milestoneTime}>{timestamp}</span> : null}
+                </li>
+              );
+            })}
+          </ol>
         </section>
       ) : null}
 

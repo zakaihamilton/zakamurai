@@ -2,6 +2,7 @@ import type { AgentSessionMessage } from '@/types/domain-types';
 import ReactMarkdown from 'react-markdown';
 import { keyReasoningEntries, type ReasoningGroup } from './AISectionReasoningUtils';
 import { markdownComponents, summaryMarkdownComponents } from './ReasoningMarkdown';
+import { remarkStreamingCharacterCount } from './streamingCharacterCount';
 import styles from './ReasoningText.module.css';
 
 function Transcript({ messages }: { messages: AgentSessionMessage[] }) {
@@ -41,7 +42,12 @@ function ReasoningGroups({ groups }: { groups: ReasoningGroup[] }) {
             <article className={styles.reasoningEntry} key={entry.renderKey}>
               {entry.timestamp ? <time className={styles.timestamp}>{entry.timestamp}</time> : null}
               <div className={styles.reasoningText}>
-                <ReactMarkdown components={markdownComponents}>{entry.text}</ReactMarkdown>
+                <ReactMarkdown
+                  components={markdownComponents}
+                  remarkPlugins={[remarkStreamingCharacterCount]}
+                >
+                  {entry.text}
+                </ReactMarkdown>
               </div>
             </article>
           ))}

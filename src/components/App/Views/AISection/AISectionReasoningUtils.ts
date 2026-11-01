@@ -13,7 +13,7 @@ export type ReasoningGroup = {
   entries: AgentReasoningEntry[];
 };
 
-export type ReasoningViewType = 'visual' | 'text';
+export type ReasoningViewType = 'visual' | 'activity' | 'text';
 
 export type ModelProgress = {
   modelName: string;
@@ -22,7 +22,7 @@ export type ModelProgress = {
 };
 
 export const normalizeReasoningViewType = (value: string | undefined): ReasoningViewType =>
-  value === 'text' ? 'text' : 'visual';
+  value === 'text' || value === 'activity' ? value : 'visual';
 
 export type KeyedReasoningEntry = AgentReasoningEntry & { renderKey: string };
 

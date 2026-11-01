@@ -8,7 +8,15 @@ export const markdownComponents: Components = {
     </a>
   ),
   blockquote: ({ node, ...props }) => <blockquote className={styles.blockquote} {...props} />,
-  code: ({ node, ...props }) => <code className={styles.code} {...props} />,
+  code: ({ node, children, className, ...props }) => {
+    return className === 'streaming-character-count' ? (
+      <span className={styles.streamingCount}>{children}</span>
+    ) : (
+      <code className={`${styles.code}${className ? ` ${className}` : ''}`} {...props}>
+        {children}
+      </code>
+    );
+  },
   h1: ({ node, children, ...props }) => (
     <h1 className={styles.heading} {...props}>
       {children}
