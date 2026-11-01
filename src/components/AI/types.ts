@@ -211,6 +211,7 @@ export type ManagerModelCall = {
   contextWindowSize?: number;
   /** Repeatable sampling for qualification runs. Production calls normally omit this. */
   seed?: number;
+  stop?: string[];
   responseFormat?: ModelResponseFormat;
   taskKind?: ModelTaskKind;
   attempt?: number;
@@ -474,6 +475,7 @@ export type WebLLMOptions = {
   onMetrics?: ((metrics: WebLLMGenerationMetrics) => void) | null;
   sessionId?: string;
   seed?: number;
+  stop?: string[];
   responseFormat?: ModelResponseFormat;
   taskKind?: ModelTaskKind;
   attempt?: number;

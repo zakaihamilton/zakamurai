@@ -1,10 +1,4 @@
-import type {
-  WebLLMGenerationMetrics,
-  WebLLMMessage,
-  WebLLMOptions,
-  WebLLMRecoveryEvent,
-} from '@/components/AI/types';
-import { reportDiagnostic } from '@/components/Diagnostics/Diagnostics';
+import type { WebLLMMessage, WebLLMOptions } from '@/components/AI/types';
 import { releaseWebLLMGpuMemory, reserveWebLLMGpuMemory } from '@/utils/ai-memory-governor';
 import { DEFAULT_SYSTEM_PROMPT } from './Prompts';
 import type {
@@ -17,7 +11,16 @@ import type {
   SessionFallback,
   WebLLMEngine,
 } from './WebLLMEngineTypes';
-import { ensureSystemMessageFirst, pruneWebLLMMessages } from './WebLLMMessageUtils';
+import {
+  emitFailureDiagnostic,
+  emitMetrics,
+  emitRecovery,
+  ensureSystemMessageFirst,
+  errorFingerprint,
+  pruneWebLLMMessages,
+  readUsedJSHeapMB,
+  safeCallback,
+} from './WebLLMMessageUtils';
 import {
   WEB_LLM_MODELS,
   findCachedFallbackModelId,
@@ -70,34 +73,6 @@ const abortError = (message = 'WebLLM generation interrupted') =>
 
 const throwIfAborted = (signal?: AbortSignal) => {
   if (signal?.aborted) throw abortError();
-};
-
-const errorFingerprint = (value: string): string => {
-  let result = 2166136261;
-  for (let index = 0; index < value.length; index += 1) {
-    result ^= value.charCodeAt(index);
-    result = Math.imul(result, 16777619);
-  }
-  return `fnv1a-${(result >>> 0).toString(16).padStart(8, '0')}`;
-};
-
-const readUsedJSHeapMB = (): number | undefined => {
-  if (typeof performance === 'undefined') return undefined;
-  const memory = (
-    performance as Performance & {
-      memory?: { usedJSHeapSize?: number };
-    }
-  ).memory;
-  if (!Number.isFinite(memory?.usedJSHeapSize)) return undefined;
-  return Math.round(((memory?.usedJSHeapSize || 0) / (1024 * 1024)) * 100) / 100;
-};
-
-const safeCallback = <T,>(callback: ((value: T) => void) | null | undefined, value: T) => {
-  try {
-    callback?.(value);
-  } catch (error) {
-    console.warn('[WebLLM] Consumer callback failed:', error);
-  }
 };
 
 const raceWithAbort = <T,>(promise: Promise<T>, signal?: AbortSignal): Promise<T> => {
@@ -453,6 +428,7 @@ const createGenerationOptions = (modelId: string, options: WebLLMOptions) => {
   };
   if (options.max_tokens !== undefined) generationOptions.max_tokens = options.max_tokens;
   if (options.seed !== undefined) generationOptions.seed = options.seed;
+  if (options.stop?.length) generationOptions.stop = options.stop;
   if (options.responseFormat) generationOptions.response_format = options.responseFormat;
   return generationOptions;
 };
@@ -682,16 +658,6 @@ const getRememberedFallback = async (requestedModelId: string): Promise<SessionF
 
 const waitForNetworkRetry = () => new Promise<void>((resolve) => setTimeout(resolve, 250));
 
-const emitRecovery = (options: WebLLMOptions, event: WebLLMRecoveryEvent) => {
-  safeCallback(options.onRecovery, event);
-  reportDiagnostic({
-    source: 'webllm',
-    severity: 'warning',
-    message: `${event.action} during ${event.phase}`,
-    details: JSON.stringify(event),
-  });
-};
-
 const executeWithRecovery = async (
   requestedModelId: string,
   messages: WebLLMMessage[],
@@ -815,37 +781,6 @@ const executeWithRecovery = async (
     clearModelFailure(fallbackModelId);
     return { result, recoveryCount };
   }
-};
-
-const emitMetrics = (options: WebLLMOptions, metrics: WebLLMGenerationMetrics) => {
-  safeCallback(options.onMetrics, metrics);
-  reportDiagnostic({
-    source: 'webllm',
-    severity: metrics.outcome === 'error' ? 'error' : 'info',
-    message: `Local AI ${metrics.requestKind} ${metrics.outcome}`,
-    details: JSON.stringify(metrics),
-  });
-};
-
-const emitFailureDiagnostic = (error: unknown, metrics: WebLLMGenerationMetrics) => {
-  const unwrapped = unwrapAttemptError(error);
-  const failure = unwrapped as { name?: unknown; message?: unknown };
-  const message = typeof failure?.message === 'string' ? failure.message : String(unwrapped);
-  reportDiagnostic({
-    source: 'webllm',
-    severity: 'error',
-    message: 'Local AI request failed',
-    details: JSON.stringify({
-      phase: metrics.failurePhase || 'unknown',
-      requestKind: metrics.requestKind,
-      requestedModelId: metrics.requestedModelId,
-      modelId: metrics.modelId,
-      errorName: typeof failure?.name === 'string' ? failure.name : undefined,
-      errorMessageLength: message.length,
-      errorMessageFingerprint: errorFingerprint(message),
-      recoveryCount: metrics.recoveryCount,
-    }),
-  });
 };
 
 export const getCachedWebLLMModelIds = async (): Promise<string[]> => {

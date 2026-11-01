@@ -7,7 +7,7 @@ import {
 } from '@/test-utils/previewMocks';
 import { act, render } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import PreviewBridge from './PreviewBridge';
+import PreviewBridge, { MAX_SESSION_CAPABILITIES, getSessionCapability } from './PreviewBridge';
 import { PREVIEW_CONNECT, PREVIEW_CONNECT_ACK, PREVIEW_PROTOCOL_VERSION } from './previewProtocol';
 
 const CAPABILITY_PATTERN = /^[a-f\d]{64}$/i;
@@ -605,5 +605,22 @@ describe('PreviewBridge', () => {
 
     vi.unstubAllGlobals();
     vi.restoreAllMocks();
+  });
+
+  it('bounds sessionCapabilities with LRU eviction when exceeding MAX_SESSION_CAPABILITIES', () => {
+    const firstCap = getSessionCapability('lru-session-0');
+    const secondCap = getSessionCapability('lru-session-1');
+
+    for (let i = 2; i < MAX_SESSION_CAPABILITIES; i++) {
+      getSessionCapability(`lru-session-${i}`);
+    }
+
+    // Touch lru-session-0 so it becomes most-recently-used; lru-session-1 is now oldest.
+    expect(getSessionCapability('lru-session-0')).toBe(firstCap);
+
+    // Adding one more entry should evict lru-session-1 while preserving lru-session-0.
+    getSessionCapability('lru-session-overflow');
+    expect(getSessionCapability('lru-session-0')).toBe(firstCap);
+    expect(getSessionCapability('lru-session-1')).not.toBe(secondCap);
   });
 });

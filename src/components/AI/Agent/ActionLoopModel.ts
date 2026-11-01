@@ -7,6 +7,10 @@ import type {
   WebLLMRecoveryEvent,
 } from '@/components/AI/types';
 import { getModelDownloadProgress } from './ActionLoopRecovery';
+import {
+  type StreamInterceptionResult,
+  inspectStreamingActionOutput,
+} from './ActionLoopStreamGuard';
 import { formatDuration } from './formatDuration';
 
 type AskWebLLM = Awaited<ReturnType<typeof import('./ActionLoopRecovery').loadAskWebLLM>>;
@@ -140,60 +144,85 @@ export async function requestNextAction({
       return { text, finishReason };
     }
     if (!askWebLLM) throw new Error('WebLLM is unavailable.');
-    const text = await askWebLLM(
-      '',
-      '',
-      (output) => {
-        streamedCharacterCount = output.length;
-        const now = Date.now();
-        const isFirstChunk = !receivedModelOutput;
-        receivedModelOutput = true;
+    let interceptedStream: StreamInterceptionResult | null = null;
+    let lastGuardCharCount = 0;
+    let text: string;
+    try {
+      text = await askWebLLM(
+        '',
+        '',
+        (output) => {
+          streamedCharacterCount = output.length;
+          const now = Date.now();
+          const isFirstChunk = !receivedModelOutput;
+          receivedModelOutput = true;
 
-        const charDelta = streamedCharacterCount - lastEmitCharCount;
-        const timeDelta = now - lastEmitTime;
+          if (!interceptedStream && streamedCharacterCount - lastGuardCharCount >= 180) {
+            lastGuardCharCount = streamedCharacterCount;
+            const interception = inspectStreamingActionOutput({ output, lightweightModel });
+            if (interception) {
+              interceptedStream = interception;
+              void import('../WebLLMAPI')
+                .then(({ interruptWebLLMModel }) => interruptWebLLMModel(model))
+                .catch(() => undefined);
+              return;
+            }
+          }
 
-        if (isFirstChunk || timeDelta >= 500 || charDelta >= 15) {
-          lastEmitTime = now;
-          lastEmitCharCount = streamedCharacterCount;
-          const waitingTarget = lightweightModel ? 'complete source code' : 'one complete action';
-          onEvent({
-            type: 'thinking',
-            turn,
-            agentRole,
-            replaceProgress: true,
-            message: `Local model is responding — streaming its next action (${streamedCharacterCount.toLocaleString()} character(s) received). Waiting for ${waitingTarget} before validation…`,
-          });
-        }
-      },
-      {
-        model,
-        messages: safeModelMessages,
-        signal,
-        requestKind: 'agent',
-        onMetrics: handleMetrics,
-        onRecovery: (recovery: WebLLMRecoveryEvent) => {
-          const action =
-            recovery.action === 'fallback' || recovery.action === 'reuse-fallback'
-              ? `continuing with cached fallback ${recovery.modelId}`
-              : `rebuilding ${recovery.modelId} and retrying`;
-          onEvent({
-            type: 'thinking',
-            turn,
-            agentRole,
-            replaceProgress: true,
-            message: `Local model recovery: ${action} after ${recovery.reason.replaceAll('-', ' ')}.`,
-          });
+          const charDelta = streamedCharacterCount - lastEmitCharCount;
+          const timeDelta = now - lastEmitTime;
+
+          if (isFirstChunk || timeDelta >= 500 || charDelta >= 15) {
+            lastEmitTime = now;
+            lastEmitCharCount = streamedCharacterCount;
+            const waitingTarget = lightweightModel ? 'complete source code' : 'one complete action';
+            onEvent({
+              type: 'thinking',
+              turn,
+              agentRole,
+              replaceProgress: true,
+              message: `Local model is responding — streaming its next action (${streamedCharacterCount.toLocaleString()} character(s) received). Waiting for ${waitingTarget} before validation…`,
+            });
+          }
         },
-        temperature,
-        top_p: topP,
-        max_tokens: maxTokens,
-        contextWindowSize: profile.contextWindowSize,
-        sessionId,
-        seed: attemptSeed,
-        taskKind,
-        attempt: turn,
-      },
-    );
+        {
+          model,
+          messages: safeModelMessages,
+          signal,
+          requestKind: 'agent',
+          onMetrics: handleMetrics,
+          onRecovery: (recovery: WebLLMRecoveryEvent) => {
+            const action =
+              recovery.action === 'fallback' || recovery.action === 'reuse-fallback'
+                ? `continuing with cached fallback ${recovery.modelId}`
+                : `rebuilding ${recovery.modelId} and retrying`;
+            onEvent({
+              type: 'thinking',
+              turn,
+              agentRole,
+              replaceProgress: true,
+              message: `Local model recovery: ${action} after ${recovery.reason.replaceAll('-', ' ')}.`,
+            });
+          },
+          temperature,
+          top_p: topP,
+          max_tokens: maxTokens,
+          contextWindowSize: profile.contextWindowSize,
+          sessionId,
+          seed: attemptSeed,
+          taskKind,
+          attempt: turn,
+        },
+      );
+    } catch (error) {
+      if (interceptedStream && !signal?.aborted) {
+        return { text: (interceptedStream as StreamInterceptionResult).text, finishReason: 'stop' };
+      }
+      throw error;
+    }
+    if (interceptedStream && !signal?.aborted) {
+      return { text: (interceptedStream as StreamInterceptionResult).text, finishReason: 'stop' };
+    }
     return { text, finishReason };
   } finally {
     clearInterval(heartbeat);

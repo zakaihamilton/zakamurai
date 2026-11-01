@@ -24,13 +24,22 @@ const WORKER_BRIDGE_MAINTENANCE_MS = 8000;
 const WORKER_BRIDGE_KEY = Symbol('preview-worker-bridge');
 const SURFACE_IFRAME = 'iframe' as const;
 const SURFACE_EXTERNAL = 'external' as const;
+export const MAX_SESSION_CAPABILITIES = 64;
 const sessionCapabilities = new Map<string, string>();
 
-function getSessionCapability(sessionId: string): string {
-  let capability = sessionCapabilities.get(sessionId);
-  if (!capability) {
-    capability = createPreviewCapability();
-    sessionCapabilities.set(sessionId, capability);
+export function getSessionCapability(sessionId: string): string {
+  const existing = sessionCapabilities.get(sessionId);
+  if (existing) {
+    sessionCapabilities.delete(sessionId);
+    sessionCapabilities.set(sessionId, existing);
+    return existing;
+  }
+  const capability = createPreviewCapability();
+  sessionCapabilities.set(sessionId, capability);
+  while (sessionCapabilities.size > MAX_SESSION_CAPABILITIES) {
+    const oldestKey = sessionCapabilities.keys().next().value;
+    if (oldestKey === undefined) break;
+    sessionCapabilities.delete(oldestKey);
   }
   return capability;
 }

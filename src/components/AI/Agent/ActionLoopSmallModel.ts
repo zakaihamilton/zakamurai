@@ -124,16 +124,51 @@ For board or turn-based game requests:
 - Allow each active turn to act. Include reset or restart. Mapped clickable cells must be <button type="button">.
 `.trim();
 
+/**
+ * Compact starter skeleton for lightweight (0.5B–2B) models so they fill in a valid
+ * structure rather than guessing React imports, CSS Module bindings, or default exports.
+ */
+export const buildArchetypeSkeleton = (
+  request: string,
+  targetPath = 'src/App.jsx',
+): string | null => {
+  if (!isNewAppGenerationRequest(request) && !isKnownInteractiveAppRequest(request)) return null;
+  const baseName =
+    targetPath
+      .split('/')
+      .pop()
+      ?.replace(/\.(?:jsx|tsx)$/i, '') || 'App';
+  const componentName = /^[A-Z][A-Za-z0-9_$]*$/.test(baseName) ? baseName : 'App';
+  const moduleSuffix = '.module.css';
+  return [
+    'Required module skeleton (expand with full state, handlers, and JSX controls):',
+    "import { useState } from 'react';",
+    `import styles from './${baseName}${moduleSuffix}';`,
+    `export default function ${componentName}() { /* state, handlers, return (<main className={styles.app}>...</main>) */ }`,
+  ].join('\n');
+};
+
 export const generationGuidanceForRequest = (
   request: string,
-  { interactiveContract = false }: { interactiveContract?: boolean } = {},
-): string[] => [
-  ...(interactiveContract ? [INTERACTIVE_GENERATION_GUIDANCE] : []),
-  ...(isTodoAppRequest(request) ? [TODO_APP_GENERATION_GUIDANCE] : []),
-  ...(isClockAppRequest(request) ? [CLOCK_APP_GENERATION_GUIDANCE] : []),
-  ...(isNotesAppRequest(request) ? [NOTES_APP_GENERATION_GUIDANCE] : []),
-  ...(isBoardGameRequest(request) ? [BOARD_GAME_GENERATION_GUIDANCE] : []),
-];
+  {
+    interactiveContract = false,
+    targetPath,
+    lightweight = false,
+  }: { interactiveContract?: boolean; targetPath?: string; lightweight?: boolean } = {},
+): string[] => {
+  const skeleton =
+    lightweight && (interactiveContract || isKnownInteractiveAppRequest(request))
+      ? buildArchetypeSkeleton(request, targetPath)
+      : null;
+  return [
+    ...(interactiveContract ? [INTERACTIVE_GENERATION_GUIDANCE] : []),
+    ...(isTodoAppRequest(request) ? [TODO_APP_GENERATION_GUIDANCE] : []),
+    ...(isClockAppRequest(request) ? [CLOCK_APP_GENERATION_GUIDANCE] : []),
+    ...(isNotesAppRequest(request) ? [NOTES_APP_GENERATION_GUIDANCE] : []),
+    ...(isBoardGameRequest(request) ? [BOARD_GAME_GENERATION_GUIDANCE] : []),
+    ...(skeleton ? [skeleton] : []),
+  ];
+};
 
 export const LIGHTWEIGHT_AGENT_SYSTEM_PROMPT = `
 You are a small local coding model. Reply once with no explanation.

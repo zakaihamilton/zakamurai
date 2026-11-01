@@ -113,12 +113,36 @@ export const runSessionCompletion = async (
   if (!normalizedMessages.length) throw new Error('Agent session received no valid messages.');
   const previous = histories.get(sessionId);
   const sourceMessages = previous?.sourceMessages || previous?.messages || [];
-  const canAppend =
+  const workerMessages = previous?.messages || [];
+  let commonPrefixLength = 0;
+  if (previous?.modelId === modelId) {
+    const maxPrefix = Math.min(
+      sourceMessages.length,
+      workerMessages.length,
+      normalizedMessages.length,
+    );
+    while (
+      commonPrefixLength < maxPrefix &&
+      sameMessage(sourceMessages[commonPrefixLength], normalizedMessages[commonPrefixLength]) &&
+      sameMessage(workerMessages[commonPrefixLength], normalizedMessages[commonPrefixLength])
+    ) {
+      commonPrefixLength += 1;
+    }
+  }
+  const exactPrefixAppend =
     previous?.modelId === modelId &&
     Boolean(sourceMessages.length) &&
     sourceMessages.length <= normalizedMessages.length &&
     sourceMessages.every((message, index) => sameMessage(message, normalizedMessages[index]));
-  const delta = canAppend ? normalizedMessages.slice(sourceMessages.length) : normalizedMessages;
+  const sharedPrefixAppend =
+    !exactPrefixAppend &&
+    previous?.modelId === modelId &&
+    commonPrefixLength >= 2 &&
+    commonPrefixLength < normalizedMessages.length &&
+    commonPrefixLength === workerMessages.length;
+  const canAppend = exactPrefixAppend || sharedPrefixAppend;
+  const matchedPrefixLength = exactPrefixAppend ? sourceMessages.length : commonPrefixLength;
+  const delta = canAppend ? normalizedMessages.slice(matchedPrefixLength) : normalizedMessages;
   const inputBudget = Math.max(
     256,
     (options.contextWindowSize ?? 4096) - (options.max_tokens ?? 1200) - 128,

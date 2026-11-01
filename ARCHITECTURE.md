@@ -97,10 +97,10 @@ Browser persistence keeps the existing `fileContents` record and IndexedDB/local
 | **Prompts** | `src/components/AI/Prompts.tsx` | System prompts and output format instructions |
 | **Processor** | `src/components/AI/Processor/` | Legacy SEARCH/REPLACE parser (tests/fixtures). `DiffEngine` and `PathResolver` are still used when staging agent changes. |
 | **ChangeValidator** | `src/components/AI/ChangeValidator.tsx` | Path safety, syntax checks before staging |
-| **Agent** | `src/components/AI/Agent/` | `runManager`, action loop, applier |
+| **Agent** | `src/components/AI/Agent/` | `ManagerRunner.ts` (`runManager`), `ActionLoop.ts` (`runActionLoop`), applier |
 | **WebLLM** | `src/components/AI/WebLLMAPI.tsx` | In-browser model inference |
 
-Flow: user prompt → `runManager` collects workspace context → model output → validator → `applyAgentChanges` writes `fileContents` and `pendingDiffs` → user reviews in the editor. Build/Preview already see the proposed buffers. LocalFS flush waits for approve.
+Flow: user prompt → `runManager` (`src/components/AI/Agent/ManagerRunner.ts`) routes and collects workspace context → `runActionLoop` (`src/components/AI/Agent/ActionLoop.ts`) executes tool/write turns → `validateAIChanges` (`src/components/AI/ChangeValidator.tsx`) → `applyAgentChanges` writes `fileContents` and `pendingDiffs` → user reviews in the editor. Build/Preview already see the proposed buffers. LocalFS flush waits for approve.
 
 AI changes must use project-relative paths. `validateAIChanges` rejects absolute paths, traversal, duplicates, and malformed content before staging. `replace_file_content` runs the same content suite after an exact SEARCH match; SEARCH/REPLACE never falls back to fuzzy matching.
 
