@@ -450,6 +450,7 @@ export async function rewindToChangeSetCheckpoint({
   fs,
   sidebarState,
   tabState,
+  isWorkspaceCurrent,
 }: {
   changeSetId: string;
   editorState: Store<EditorDraft>;
@@ -462,13 +463,18 @@ export async function rewindToChangeSetCheckpoint({
         originalContent?: string;
         proposedContent?: string;
         deleted?: boolean;
+        isNewFile?: boolean;
       }>;
     }>;
   }> | null;
   fs?: FileSystem | null;
   sidebarState?: Store<{ folderTree?: unknown[] }> | null;
   tabState?: Store<TabStateShape> | null;
-}): Promise<{ restoredFiles: number }> {
+  isWorkspaceCurrent?: () => boolean;
+}): Promise<{ restoredFiles: number; failedPath?: string }> {
+  const isCurrent = () => isWorkspaceCurrent?.() ?? true;
+  if (!isCurrent()) return { restoredFiles: 0 };
+
   const items = changeSetState?.items || [];
   const targetIndex = items.findIndex((item) => item.id === changeSetId);
   if (targetIndex < 0) return { restoredFiles: 0 };
@@ -478,7 +484,11 @@ export async function rewindToChangeSetCheckpoint({
   for (const set of setsToRewind) {
     for (const file of set.files) {
       const original = file.originalContent ?? '';
-      const wasNewFile = !file.deleted && original === '';
+      const wasNewFile =
+        file.isNewFile ??
+        (!file.deleted &&
+          original === '' &&
+          !Object.hasOwn(editorState.fileContents || {}, file.path));
       restoreMap.set(file.path, wasNewFile ? undefined : original);
     }
   }
@@ -487,17 +497,25 @@ export async function rewindToChangeSetCheckpoint({
   const restoredPaths: string[] = [];
   if (fs?.rootHandle) {
     for (const [path, content] of restoreMap.entries()) {
+      if (!isCurrent()) return { restoredFiles: 0 };
       try {
         if (content === undefined) {
-          await fs.deleteFileAtPath?.(path, fs.rootHandle);
+          if (!fs.deleteFileAtPath) return { restoredFiles: 0, failedPath: path };
+          const deleted = await fs.deleteFileAtPath(path, fs.rootHandle);
+          if (!isCurrent()) return { restoredFiles: 0 };
+          if (deleted === false) return { restoredFiles: 0, failedPath: path };
         } else {
-          await fs.writeFileAtPath?.(path, content, fs.rootHandle);
+          if (!fs.writeFileAtPath) return { restoredFiles: 0, failedPath: path };
+          const written = await fs.writeFileAtPath(path, content, fs.rootHandle);
+          if (!isCurrent()) return { restoredFiles: 0 };
+          if (written === false) return { restoredFiles: 0, failedPath: path };
         }
       } catch {
-        // Best-effort local FS sync
+        return { restoredFiles: 0, failedPath: path };
       }
     }
   }
+  if (!isCurrent()) return { restoredFiles: 0 };
 
   let nextContentsSnapshot: Record<string, string> = {};
   editorState((draft) => {

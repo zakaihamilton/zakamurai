@@ -82,9 +82,10 @@ export default function ChangeSetPanel({ onOpenInTab = () => {} }: { onOpenInTab
         fs,
         sidebarState: sidebarState as never,
         tabState: tabState as never,
+        isWorkspaceCurrent: () => (appState?.workspaceEpoch || 0) === workspaceEpoch,
       });
     },
-    [editorState, fs, sidebarState, state, tabState],
+    [appState, editorState, fs, sidebarState, state, tabState, workspaceEpoch],
   );
   if (!changeSet) return null;
   const allItems = state.items || [];

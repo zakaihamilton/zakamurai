@@ -26,6 +26,145 @@ const prependImport = (content: string, importStatement: string): string => {
   return `${importStatement}\n${content}`;
 };
 
+const MODULE_IMPORT_STATEMENT =
+  /^[ \t]*import[ \t]+(?!['"])[\s\S]*?\bfrom\s*(['"])[^'"]+\1[ \t]*;?/gm;
+const SIDE_EFFECT_IMPORT_STATEMENT = /^[ \t]*import[ \t]*(['"])[^'"]+\1[ \t]*;?/gm;
+
+const findImportStatements = (content: string) => {
+  const matches = [
+    ...content.matchAll(MODULE_IMPORT_STATEMENT),
+    ...content.matchAll(SIDE_EFFECT_IMPORT_STATEMENT),
+  ].sort((left, right) => (left.index ?? 0) - (right.index ?? 0));
+  return matches.map((match) => ({
+    start: match.index ?? 0,
+    end: (match.index ?? 0) + match[0].length,
+    text: match[0].trim(),
+  }));
+};
+
+const removeImportStatements = (content: string): string => {
+  const imports = findImportStatements(content);
+  if (!imports.length) return content;
+  let result = '';
+  let cursor = 0;
+  for (const statement of imports) {
+    result += content.slice(cursor, statement.start);
+    cursor = statement.end;
+  }
+  return result + content.slice(cursor);
+};
+
+type ParsedModuleImport = {
+  statement: string;
+  specifier: string;
+  quote: "'" | '"';
+  typeOnly: boolean;
+  sideEffectOnly: boolean;
+  defaultBinding?: string;
+  namespaceBinding?: string;
+  namedBindings: string[];
+};
+
+const parseModuleImport = (statement: string): ParsedModuleImport | null => {
+  const sideEffect = /^\s*import\s*(['"])([^'"]+)\1\s*;?\s*$/.exec(statement);
+  if (sideEffect) {
+    return {
+      statement: statement.trim(),
+      specifier: sideEffect[2],
+      quote: sideEffect[1] as "'" | '"',
+      typeOnly: false,
+      sideEffectOnly: true,
+      namedBindings: [],
+    };
+  }
+
+  const parsed = /^\s*import\s+(type\s+)?([\s\S]*?)\s+from\s*(['"])([^'"]+)\3\s*;?\s*$/.exec(
+    statement,
+  );
+  if (!parsed) return null;
+  const clause = parsed[2].trim();
+  const open = clause.indexOf('{');
+  const close = open < 0 ? -1 : clause.lastIndexOf('}');
+  const namedBindings =
+    close > open
+      ? clause
+          .slice(open + 1, close)
+          .replace(/\/\*[\s\S]*?\*\//g, '')
+          .replace(/\/\/[^\n]*/g, '')
+          .split(',')
+          .map((binding) => binding.trim())
+          .filter(Boolean)
+      : [];
+  const head = (open < 0 ? clause : clause.slice(0, open)).replace(/,\s*$/, '').trim();
+  const tail = close < 0 ? '' : clause.slice(close + 1).replace(/^\s*,\s*/, '');
+
+  return {
+    statement: statement.trim(),
+    specifier: parsed[4],
+    quote: parsed[3] as "'" | '"',
+    typeOnly: Boolean(parsed[1]),
+    sideEffectOnly: false,
+    defaultBinding: /^([A-Za-z_$][\w$]*)/.exec(head)?.[1],
+    namespaceBinding: /\*\s+as\s+([A-Za-z_$][\w$]*)/.exec(`${head} ${tail}`)?.[1],
+    namedBindings,
+  };
+};
+
+const localBindingName = (binding: string): string =>
+  (binding.split(/\s+as\s+/i).at(-1) || '').trim().replace(/^['"]|['"]$/g, '');
+
+const importLocalBindings = (parsed: ParsedModuleImport): Set<string> => {
+  const names = [parsed.defaultBinding, parsed.namespaceBinding].filter((name): name is string =>
+    Boolean(name),
+  );
+  for (const binding of parsed.namedBindings) {
+    const name = localBindingName(binding.replace(/^type\s+/, ''));
+    if (name) names.push(name);
+  }
+  return new Set(names);
+};
+
+const mergeIncomingImport = (content: string, statement: string): string => {
+  const incoming = parseModuleImport(statement);
+  if (!incoming) return content;
+  const sameModule = findImportStatements(content)
+    .map(({ text }) => parseModuleImport(text))
+    .filter(
+      (parsed): parsed is ParsedModuleImport =>
+        parsed !== null && parsed.specifier === incoming.specifier,
+    );
+  if (!sameModule.length) return prependImport(content, incoming.statement);
+  if (incoming.sideEffectOnly) return content;
+
+  const existingNames = new Set(
+    sameModule.flatMap((parsed) =>
+      parsed.typeOnly && !incoming.typeOnly ? [] : [...importLocalBindings(parsed)],
+    ),
+  );
+  const defaultBinding =
+    incoming.defaultBinding && !existingNames.has(incoming.defaultBinding)
+      ? incoming.defaultBinding
+      : undefined;
+  const namespaceBinding =
+    incoming.namespaceBinding && !existingNames.has(incoming.namespaceBinding)
+      ? incoming.namespaceBinding
+      : undefined;
+  const namedBindings = incoming.namedBindings.filter(
+    (binding) => !existingNames.has(localBindingName(binding.replace(/^type\s+/, ''))),
+  );
+  const clauses = [
+    defaultBinding,
+    namespaceBinding ? `* as ${namespaceBinding}` : undefined,
+    namedBindings.length ? `{ ${namedBindings.join(', ')} }` : undefined,
+  ].filter((part): part is string => Boolean(part));
+  if (!clauses.length) return content;
+  const typeOnly = incoming.typeOnly ? ' type' : '';
+  return prependImport(
+    content,
+    `import${typeOnly} ${clauses.join(', ')} from ${incoming.quote}${incoming.specifier}${incoming.quote};`,
+  );
+};
+
 const extractBalancedBraces = (text: string, openIndex: number): string | null => {
   if (text[openIndex] !== '{') return null;
   let depth = 0;
@@ -241,8 +380,7 @@ export function spliceSymbolScopedWrite(
   // Ensure the incoming payload has no extra top-level statements outside imports and the single function.
   const withoutFunction =
     incomingContent.slice(0, incomingFn.start) + incomingContent.slice(incomingFn.end);
-  const nonImportRemainder = stripComments(withoutFunction)
-    .replace(/^\s*import\b[^\n;]*;?\s*$/gm, '')
+  const nonImportRemainder = stripComments(removeImportStatements(withoutFunction))
     .replace(/^\s*export\s+default\s+[A-Za-z_$][\w$]*\s*;?\s*$/gm, '')
     .trim();
   if (nonImportRemainder.length > 0) return incomingContent;
@@ -262,15 +400,8 @@ export function spliceSymbolScopedWrite(
     replacementText +
     existingContent.slice(targetFn.end);
 
-  const incomingImports = [
-    ...incomingContent.matchAll(/^\s*import\b[^\n;]*from\s*['"]([^'"]+)['"]\s*;?\s*$/gm),
-  ];
-  for (const importMatch of incomingImports) {
-    const importLine = importMatch[0].trim();
-    const specifier = importMatch[1];
-    if (!new RegExp(`\\bfrom\\s*['"]${escapeRegExp(specifier)}['"]`).test(spliced)) {
-      spliced = prependImport(spliced, importLine);
-    }
+  for (const { text } of findImportStatements(incomingContent)) {
+    spliced = mergeIncomingImport(spliced, text);
   }
 
   return spliced;

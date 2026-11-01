@@ -115,6 +115,7 @@ export interface ChangeSetFile {
   originalContent?: string;
   proposedContent?: string;
   deleted?: boolean;
+  isNewFile?: boolean;
   hunks?: unknown[];
   status?: string;
 }
