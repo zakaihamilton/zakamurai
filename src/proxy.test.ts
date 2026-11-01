@@ -165,15 +165,16 @@ describe('proxy', () => {
     expect(res.headers.get('Content-Security-Policy')).toBeUndefined();
   });
 
-  it('rewrites preview routing on unconfigured Vercel branch IDE hosts', () => {
+  it('keeps unconfigured Vercel branch preview routes off the preview surface', () => {
     const req = createMockProxyRequest(
       'https://zakamurai-git-feature-team.vercel.app/__preview/host?session=test&zakamurai-surface=preview',
       { host: 'zakamurai-git-feature-team.vercel.app' },
     );
     const res = proxy(req as unknown as NextRequest) as unknown as MockNextResponse;
-    expect(res.type).toBe('rewrite');
-    expect(res.url?.pathname).toBe('/preview-host');
-    expect(res.headers.get('Cross-Origin-Opener-Policy')).toBe('unsafe-none');
+    expect(res.type).toBe('next');
+    expect(res.url).toBeUndefined();
+    expect(res.headers.get('Cross-Origin-Opener-Policy')).toBe('same-origin-allow-popups');
+    expect(res.headers.get('Content-Security-Policy')).toBeUndefined();
   });
 
   it('rejects Vercel surface routing when an origin variable is configured', () => {

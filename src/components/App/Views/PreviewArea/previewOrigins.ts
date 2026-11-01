@@ -30,9 +30,6 @@ const trimOrigin = (value: unknown): string | null => {
   }
 };
 
-const hasOriginValue = (value: unknown): boolean =>
-  typeof value === 'string' && value.trim().length > 0;
-
 const toHostOrigin = (host: unknown): string | null => {
   if (typeof host !== 'string' || !host.trim()) return null;
   return trimOrigin(host.includes('://') ? host : `https://${host}`);
@@ -88,24 +85,11 @@ export function isVercelAppHost(hostname: string): boolean {
   return typeof hostname === 'string' && hostname.toLowerCase().endsWith('.vercel.app');
 }
 
-function getVercelDeploymentOrigins(
-  windowOrigin: string,
-  { allowSameOriginFallback }: { allowSameOriginFallback: boolean },
-): PreviewOrigins | null {
+function getVercelDeploymentOrigins(windowOrigin: string): PreviewOrigins | null {
   if (!windowOrigin || !isVercelAppHost(new URL(windowOrigin).hostname)) return null;
 
-  if (allowSameOriginFallback) {
-    return {
-      ideOrigin: windowOrigin,
-      previewOrigin: windowOrigin,
-      isIsolated: false,
-      useSurfaceQuery: true,
-    };
-  }
-
-  // A path or service-worker scope cannot isolate origin-wide storage. Fail
-  // closed on branch deployments instead of executing workspace code beside
-  // the IDE's localStorage, IndexedDB, cookies, and parent DOM.
+  // A Vercel deployment URL is not the configured IDE origin. Require the
+  // stable IDE domain to be opened before any workspace preview can run.
   return {
     ideOrigin: windowOrigin,
     previewOrigin: null,
@@ -225,13 +209,7 @@ export function getPreviewOrigins({
     };
   }
 
-  const vercelDeploymentOrigins = windowOrigin
-    ? getVercelDeploymentOrigins(windowOrigin, {
-        allowSameOriginFallback:
-          !hasOriginValue(process.env.NEXT_PUBLIC_IDE_ORIGIN) &&
-          !hasOriginValue(process.env.NEXT_PUBLIC_PREVIEW_ORIGIN),
-      })
-    : null;
+  const vercelDeploymentOrigins = windowOrigin ? getVercelDeploymentOrigins(windowOrigin) : null;
   if (vercelDeploymentOrigins) {
     return vercelDeploymentOrigins;
   }
@@ -269,6 +247,15 @@ export function getPreviewConfigurationError(
   origins: PreviewOrigins | null | undefined,
 ): string | null {
   if (!origins?.ideOrigin || !origins?.previewOrigin) {
+    if (origins?.ideOrigin) {
+      try {
+        if (isVercelAppHost(new URL(origins.ideOrigin).hostname)) {
+          return 'Preview is not available on *.vercel.app deployment URLs. Open the configured IDE domain and set NEXT_PUBLIC_IDE_ORIGIN and NEXT_PUBLIC_PREVIEW_ORIGIN.';
+        }
+      } catch {
+        // Fall through to the general configuration message.
+      }
+    }
     return 'Preview origins are not configured. Set NEXT_PUBLIC_IDE_ORIGIN and NEXT_PUBLIC_PREVIEW_ORIGIN.';
   }
   if (!origins.isIsolated && !origins.useSurfaceQuery) {

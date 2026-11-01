@@ -62,7 +62,7 @@ export type RunAgentRequestParams = {
   cachedModelIds: string[];
   webLLMEngines: Record<string, WebLLMEngineState>;
   styleProfile?: import('@/components/AI/Agent/ProjectStyleProfile').ProjectStyleProfile;
-  workspaceProfile?: Pick<WorkspaceProfileStateShape, 'exclude' | 'maxFileBytes'>;
+  workspaceProfile?: Pick<WorkspaceProfileStateShape, 'include' | 'exclude' | 'maxFileBytes'>;
   patchSession: (sessionId: string, patch: Partial<AgentSession>) => void;
   pushSessionMessage: (sessionId: string, message: AgentSessionMessage) => void;
   createSessionMessage: SessionMessageFactory;

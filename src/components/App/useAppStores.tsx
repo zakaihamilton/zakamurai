@@ -195,12 +195,15 @@ export default function useAppStores(initialValues: InitialAppValues, fs: FileSy
       draft.isAIProcessing = false;
     });
     agentSessionState?.((draft) => {
-      for (const session of Object.values(draft.sessions || {})) {
+      const sessions = { ...(draft.sessions || {}) };
+      let changed = false;
+      for (const [sessionId, session] of Object.entries(sessions)) {
         if (session.status === 'running') {
-          session.status = 'idle';
-          session.activity = undefined;
+          sessions[sessionId] = { ...session, status: 'idle', activity: undefined };
+          changed = true;
         }
       }
+      if (changed) draft.sessions = sessions;
     });
     sidebarState((draft) => {
       draft.draggedItem = null;

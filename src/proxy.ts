@@ -8,7 +8,6 @@ import {
   getPreviewFrameAncestors,
   getPreviewServiceWorkerAllowedHeader,
   isPreviewHost,
-  isVercelAppHost,
 } from './components/App/Views/PreviewArea/previewOrigins';
 
 function getPreviewOriginUrl(): URL {
@@ -40,22 +39,6 @@ function isLocalDevHost(request: NextRequest): boolean {
   return host === 'localhost' || host === '127.0.0.1' || host === '[::1]';
 }
 
-function isUnconfiguredVercelSurfaceHost(request: NextRequest): boolean {
-  const hasOriginConfiguration = [
-    process.env.NEXT_PUBLIC_IDE_ORIGIN,
-    process.env.NEXT_PUBLIC_PREVIEW_ORIGIN,
-  ].some((value) => typeof value === 'string' && value.trim());
-  if (hasOriginConfiguration) return false;
-
-  const host = request.headers.get('host');
-  if (!host) return false;
-  try {
-    return isVercelAppHost(new URL(`https://${host}`).hostname);
-  } catch {
-    return false;
-  }
-}
-
 function isPreviewSurfaceRequest(request: NextRequest): boolean {
   if (isPreviewHostRequest(request)) return true;
   const hasSurfaceSignal =
@@ -70,10 +53,9 @@ function isPreviewSurfaceRequest(request: NextRequest): boolean {
   // Next route and the iframe shows "This page could not be found."
   if (isLocalDevHost(request)) return true;
 
-  // In production, only the configured preview host may serve preview
-  // surfaces. An unconfigured Vercel deployment is the documented compatibility
-  // fallback and opts into the same-origin preview surface explicitly.
-  return isUnconfiguredVercelSurfaceHost(request);
+  // Same-origin preview is limited to local development. Vercel deployments
+  // must configure a distinct preview host before workspace code can execute.
+  return false;
 }
 
 function resolveIdeOriginForPreviewHeaders(request: NextRequest): string | null {

@@ -11,14 +11,17 @@ import { reportDiagnostic } from '@/components/Diagnostics';
 import { useFileSystem } from '@/components/Storage';
 import { WorkspaceProfileState } from '@/components/Workspace/WorkspaceState';
 import type { RagIndexSyncSummary } from '@/utils/rag/indexer-controller';
-import { selectRagWorkspaceFiles } from '@/utils/rag/rag-files';
+import { selectRagWorkspaceFilesWithSummary } from '@/utils/rag/rag-files';
 import { useCallback, useEffect, useRef } from 'react';
 
 const INDEX_DEBOUNCE_MS = 3000;
 const EMPTY_EXCLUDED_PATHS: string[] = [];
 
-function getIndexWarning(summary?: RagIndexSyncSummary): string | null {
-  const skippedFileCount = summary?.skippedFileCount ?? 0;
+function getIndexWarning(
+  summary?: RagIndexSyncSummary,
+  filteredSkippedFileCount = 0,
+): string | null {
+  const skippedFileCount = (summary?.skippedFileCount ?? 0) + filteredSkippedFileCount;
   const skippedChunkCount = summary?.skippedChunkCount ?? 0;
   const omitted = [
     skippedFileCount > 0 ? `${skippedFileCount} file${skippedFileCount === 1 ? '' : 's'}` : null,
@@ -48,7 +51,8 @@ export function useRagIndexer() {
   const appState = AppState.useState(['workspaceEpoch']);
   const workspaceEpoch = appState?.workspaceEpoch || 0;
   const ragState = RagState.useState();
-  const workspaceProfile = WorkspaceProfileState.useState(['exclude', 'maxFileBytes']);
+  const workspaceProfile = WorkspaceProfileState.useState(['include', 'exclude', 'maxFileBytes']);
+  const includedPaths = workspaceProfile?.include || EMPTY_EXCLUDED_PATHS;
   const excludedPaths = workspaceProfile?.exclude || EMPTY_EXCLUDED_PATHS;
   const maxFileBytes = workspaceProfile?.maxFileBytes;
   const bootstrappedRef = useRef(false);
@@ -58,6 +62,7 @@ export function useRagIndexer() {
   const workspaceEpochRef = useRef(workspaceEpoch);
   workspaceEpochRef.current = workspaceEpoch;
   const syncGenerationRef = useRef(0);
+  const lastIndexSummaryRef = useRef<RagIndexSyncSummary | undefined>(undefined);
   const diskSnapshotRef = useRef<{
     files: FileMap | null;
     rootHandle: FileSystemDirectoryHandle | null;
@@ -89,8 +94,13 @@ export function useRagIndexer() {
     [fs.mode, fs.rootHandle, fs.version],
   );
   const selectIndexableFiles = useCallback(
-    (files: FileMap) => selectRagWorkspaceFiles(files, { exclude: excludedPaths, maxFileBytes }),
-    [excludedPaths, maxFileBytes],
+    (files: FileMap) =>
+      selectRagWorkspaceFilesWithSummary(files, {
+        include: includedPaths,
+        exclude: excludedPaths,
+        maxFileBytes,
+      }),
+    [excludedPaths, includedPaths, maxFileBytes],
   );
 
   useEffect(() => {
@@ -98,6 +108,7 @@ export function useRagIndexer() {
     lastWorkspaceEpochRef.current = workspaceEpoch;
     bootstrappedRef.current = false;
     lastFingerprintRef.current = '';
+    lastIndexSummaryRef.current = undefined;
     ragState?.((draft) => {
       draft.status = 'initializing';
       draft.error = null;
@@ -151,8 +162,8 @@ export function useRagIndexer() {
             editorStateRef.current,
           );
           if (cancelled || workspaceEpochRef.current !== initWorkspaceEpoch) return;
-          const files = selectIndexableFiles(collectedFiles);
-          const summary = await ragSearch.indexWorkspaceFiles(files);
+          const selection = selectIndexableFiles(collectedFiles);
+          const summary = await ragSearch.indexWorkspaceFiles(selection.files);
           if (
             cancelled ||
             workspaceEpochRef.current !== initWorkspaceEpoch ||
@@ -160,15 +171,17 @@ export function useRagIndexer() {
           ) {
             return;
           }
-          const fingerprint = fingerprintContents(files);
+          lastIndexSummaryRef.current = summary;
+          const fingerprint = fingerprintContents(selection.files);
           lastFingerprintRef.current = fingerprint;
           bootstrappedRef.current = true;
-          const warning = getIndexWarning(summary);
+          const warning = getIndexWarning(summary, selection.skippedFileCount);
           ragState((draft) => {
             draft.status = warning ? 'partial' : 'ready';
             draft.error = null;
             draft.warning = warning;
-            draft.indexedFileCount = summary?.indexedFileCount ?? Object.keys(files).length;
+            draft.indexedFileCount =
+              summary?.indexedFileCount ?? Object.keys(selection.files).length;
             draft.lastIndexedAt = Date.now();
             draft.lastFingerprint = fingerprint;
           });
@@ -223,17 +236,19 @@ export function useRagIndexer() {
         ) {
           return;
         }
-        const files = selectIndexableFiles(collectedFiles);
-        const nextFingerprint = fingerprintContents(files);
+        const selection = selectIndexableFiles(collectedFiles);
+        const nextFingerprint = fingerprintContents(selection.files);
         if (nextFingerprint === lastFingerprintRef.current) {
+          const warning = getIndexWarning(lastIndexSummaryRef.current, selection.skippedFileCount);
           ragState((draft) => {
-            draft.status = draft.warning ? 'partial' : 'ready';
+            draft.status = warning ? 'partial' : 'ready';
             draft.error = null;
+            draft.warning = warning;
           });
           return;
         }
         const { ragSearch } = await import('@/utils/rag/search-utility');
-        const summary = await ragSearch.indexWorkspaceFiles(files);
+        const summary = await ragSearch.indexWorkspaceFiles(selection.files);
         if (
           cancelled ||
           workspaceEpochRef.current !== syncWorkspaceEpoch ||
@@ -241,14 +256,15 @@ export function useRagIndexer() {
         ) {
           return;
         }
+        lastIndexSummaryRef.current = summary;
         bootstrappedRef.current = true;
         lastFingerprintRef.current = nextFingerprint;
-        const warning = getIndexWarning(summary);
+        const warning = getIndexWarning(summary, selection.skippedFileCount);
         ragState((draft) => {
           draft.status = warning ? 'partial' : 'ready';
           draft.error = null;
           draft.warning = warning;
-          draft.indexedFileCount = summary?.indexedFileCount ?? Object.keys(files).length;
+          draft.indexedFileCount = summary?.indexedFileCount ?? Object.keys(selection.files).length;
           draft.lastIndexedAt = Date.now();
           draft.lastFingerprint = nextFingerprint;
         });

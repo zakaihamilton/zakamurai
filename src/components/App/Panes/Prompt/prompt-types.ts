@@ -181,7 +181,7 @@ export type UseAgentRunnerParams = {
   cachedModelIds?: string[];
   webLLMEngines?: Record<string, import('@/types/domain-types').WebLLMEngineState>;
   styleProfile?: import('@/components/AI/Agent/ProjectStyleProfile').ProjectStyleProfile;
-  workspaceProfile?: Pick<WorkspaceProfileStateShape, 'exclude' | 'maxFileBytes'>;
+  workspaceProfile?: Pick<WorkspaceProfileStateShape, 'include' | 'exclude' | 'maxFileBytes'>;
 };
 
 export type AgentEventFormatter = (event: AgentEvent) => string;

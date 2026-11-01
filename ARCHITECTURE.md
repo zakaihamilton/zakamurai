@@ -107,15 +107,13 @@ AI changes must use project-relative paths. `validateAIChanges` rejects absolute
 ## 8. Preview Security Model
 
 - IDE and preview run on **different origins** in configured production deployments
-  (`NEXT_PUBLIC_IDE_ORIGIN`, `NEXT_PUBLIC_PREVIEW_ORIGIN`). Unconfigured `*.vercel.app`
-  deployments use an explicit same-origin `/__preview/` compatibility surface with weaker
-  isolation.
+  (`NEXT_PUBLIC_IDE_ORIGIN`, `NEXT_PUBLIC_PREVIEW_ORIGIN`). Direct `*.vercel.app`
+  deployment URLs fail closed; users must open the IDE through its configured domain.
 - `PreviewBridge` (IDE side) and `PreviewHost` (preview origin) exchange a one-time `zakamurai-preview-connect` handshake with protocol version, session ID, and an ephemeral random capability before transferring a `MessagePort` to the service worker.
 - Preview error and reconnect messages pin `postMessage` to the IDE origin (`window.__zakamuraiPreviewParentOrigin`). Do not use wildcard target origins.
 - `isValidPreviewHandshake` in `previewOrigins.ts` is shared — do not relax checks on one side only.
 - In isolated mode, user project code never receives same-origin access to IDE storage, cookies,
-  or the parent DOM. The unconfigured Vercel compatibility surface intentionally has weaker
-  same-origin isolation.
+  or the parent DOM. Same-origin preview is restricted to explicit local development.
 
 ## 9. Testing Expectations
 

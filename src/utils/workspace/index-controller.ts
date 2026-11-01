@@ -15,6 +15,7 @@ type FileChangeEntry = {
 };
 
 type IndexProfile = {
+  include?: string[];
   exclude?: string[];
 };
 
@@ -121,6 +122,9 @@ export async function hashContent(content: string | null | undefined): Promise<s
 export function shouldSkipPath(path: string, profile: IndexProfile = {}): string | null {
   const parts = path.split('/');
   if (parts.some((part) => SKIP_NAMES.has(part))) return 'default exclusion';
+  if (profile.include?.length && !profile.include.some((rule) => path.includes(rule))) {
+    return 'not included by project profile';
+  }
   if ((profile.exclude || []).some((rule) => path.includes(rule))) return 'project exclusion';
   return null;
 }

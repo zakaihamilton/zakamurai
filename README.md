@@ -89,7 +89,7 @@ NEXT_PUBLIC_PREVIEW_ORIGIN=https://preview.zakamurai.com
 
 Add `preview.zakamurai.com` in **Project Settings → Domains** and create the CNAME record Vercel provides. The preview subdomain must not redirect to `www`.
 
-If these variables are omitted on a `*.vercel.app` deployment, Zakamurai uses a same-origin `/__preview/` compatibility surface so the app remains usable without additional deployment configuration. This fallback has weaker isolation; configure both origins for production deployments.
+Direct `*.vercel.app` deployment URLs cannot run workspace previews, even when the custom domains are configured. Open the IDE through its configured domain; previews run on the distinct preview domain. Use `pnpm run dev:same-origin` only for explicit local development when you accept the weaker isolation.
 
 ## Development
 

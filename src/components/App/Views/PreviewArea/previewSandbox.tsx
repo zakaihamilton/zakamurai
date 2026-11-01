@@ -17,9 +17,8 @@ export const PREVIEW_MESSAGE_TYPES = {
  *
  * Configured production previews are hosted on a different origin and use their
  * own scoped service worker. `allow-same-origin` preserves that distinct preview
- * origin so its service worker and exact-origin message checks can operate. The
- * unconfigured Vercel compatibility surface intentionally shares the deployment
- * origin and therefore has weaker isolation.
+ * origin so its service worker and exact-origin message checks can operate.
+ * Same-origin preview is limited to explicit local development.
  */
 export const PREVIEW_IFRAME_SANDBOX = 'allow-scripts allow-same-origin allow-forms allow-popups';
 

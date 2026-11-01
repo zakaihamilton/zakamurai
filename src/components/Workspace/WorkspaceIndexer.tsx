@@ -31,7 +31,7 @@ export function useWorkspaceIndexer() {
     'pendingDeletions',
   ]);
   const profileState = WorkspaceProfileState.useState(['include', 'exclude', 'maxFileBytes']);
-  const { exclude = [], maxFileBytes = 512 * 1024 } = profileState || {};
+  const { include = [], exclude = [], maxFileBytes = 512 * 1024 } = profileState || {};
   const health = WorkspaceHealthState.useState();
   const hashesRef = useRef(new Map<string, string>());
   const diskFilesRef = useRef<Record<string, string> | null>(null);
@@ -87,7 +87,7 @@ export function useWorkspaceIndexer() {
         const entries = [];
         const nextHashes = new Map(hashesRef.current);
         for (const [path, content] of Object.entries(files)) {
-          const skipReason = shouldSkipPath(path, { exclude });
+          const skipReason = shouldSkipPath(path, { include, exclude });
           if (skipReason) {
             skippedFiles.push({ path, reason: skipReason });
             if (nextHashes.has(path)) {
@@ -156,6 +156,7 @@ export function useWorkspaceIndexer() {
     mode,
     rootHandle,
     health,
+    include,
     exclude,
     maxFileBytes,
   ]);

@@ -72,7 +72,7 @@ export default function Prompt() {
   const editorState = requireStore(EditorState.useState(['selectedLines', 'fileContents']));
   const editorBufferState = requireStore(EditorState.usePassiveState());
   const workspaceProfileState = requireStore(
-    WorkspaceProfileState.useState(['styleProfile', 'exclude', 'maxFileBytes']),
+    WorkspaceProfileState.useState(['styleProfile', 'include', 'exclude', 'maxFileBytes']),
   );
   const agentSessionState = requireStore(
     AgentSessionState.useState(['sessions', 'activeSessionId']),
@@ -153,6 +153,7 @@ export default function Prompt() {
     webLLMEngines: engines,
     styleProfile,
     workspaceProfile: {
+      include: workspaceProfileState.include || [],
       exclude: workspaceProfileState.exclude || [],
       maxFileBytes: workspaceProfileState.maxFileBytes,
     },
