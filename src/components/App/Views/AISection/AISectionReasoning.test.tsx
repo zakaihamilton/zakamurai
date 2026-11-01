@@ -224,6 +224,7 @@ describe('AISectionReasoning', () => {
     const { rerender } = render(
       <AISectionReasoning
         {...createProps({
+          timelineExpanded: true,
           modelProgress: {
             modelName: 'Qwen local model',
             progress: 0.5,
@@ -247,6 +248,7 @@ describe('AISectionReasoning', () => {
     rerender(
       <AISectionReasoning
         {...createProps({
+          timelineExpanded: true,
           modelProgress: {
             modelName: 'Qwen local model',
             progress: null,
@@ -281,10 +283,11 @@ describe('AISectionReasoning', () => {
     expect(generationNode).toHaveTextContent('characters received');
     expect(generationNode).toHaveTextContent('Waiting for complete source');
     expect(generationNode).toHaveTextContent('Live model output');
-    const generationSummary = generationNode?.querySelector('output[aria-live="polite"]');
-    expect(generationSummary).toHaveAttribute('aria-live', 'polite');
-    expect(generationSummary).toHaveAttribute('aria-atomic', 'true');
+    const generationSummary = generationNode?.querySelector('fieldset');
+    expect(generationSummary).toBeTruthy();
     expect(generationSummary).not.toHaveTextContent(streamedGenerationDetail);
+    const generationWaitOutput = generationSummary?.querySelector('output');
+    expect(generationWaitOutput).toHaveAttribute('aria-atomic', 'true');
     const generationDetails = generationNode?.querySelector('details');
     expect(generationDetails).not.toHaveAttribute('open');
     expect(generationDetails).toHaveTextContent(streamedGenerationDetail);
@@ -328,7 +331,7 @@ describe('AISectionReasoning', () => {
     const generationNode = screen
       .getByRole('region', { name: 'Execution timeline' })
       .querySelector('[data-card-id="plan-1"]');
-    const generationSummary = generationNode?.querySelector('output[aria-live="polite"]');
+    const generationSummary = generationNode?.querySelector('fieldset');
 
     expect(generationSummary).toHaveTextContent('…');
     expect(generationSummary).toHaveTextContent('receiving output');
@@ -409,9 +412,9 @@ describe('AISectionReasoning', () => {
       scrollLeft: { configurable: true, value: 0, writable: true },
       scrollWidth: { configurable: true, value: 1_000 },
     });
-    Object.defineProperty(workingCard, 'getBoundingClientRect', {
-      configurable: true,
-      value: () => ({ left: 620, width: 280 }),
+    Object.defineProperties(workingCard, {
+      offsetLeft: { configurable: true, value: 620 },
+      offsetWidth: { configurable: true, value: 280 },
     });
 
     rerender(<AISectionReasoning {...createProps({ timelineExpanded: true })} />);
@@ -547,7 +550,7 @@ describe('AISectionReasoning', () => {
     rerender(<AISectionReasoning {...createProps({ activity: nextActivity })} />);
 
     expect(screen.getAllByText('Generate changes').length).toBeGreaterThan(0);
-    expect(screen.getByText('Source loaded.')).toBeDefined();
+    expect(screen.getAllByText('Source loaded.').length).toBeGreaterThan(0);
 
     const executionRegion = screen.getByRole('region', { name: 'Execution timeline' });
     const nodes = [...executionRegion.querySelectorAll('li')];
@@ -577,7 +580,14 @@ describe('AISectionReasoning', () => {
 
   it('renders completed and blocked map outcomes', () => {
     const completed = finishAgentActivity(activity, 'success', 'Everything is ready.', 2_000);
-    const { rerender } = render(<AISectionReasoning {...createProps({ activity: completed })} />);
+    const { rerender } = render(
+      <AISectionReasoning
+        {...createProps({
+          activity: completed,
+          activeSession: makeAgentSession({ status: 'ready' }),
+        })}
+      />,
+    );
     expect(getLiveExecutionInfo(completed).outcome).toBe('Route complete');
     const liveExecution = screen.getByRole('region', { name: 'Live execution' });
     expect(within(liveExecution).getByText('Everything is ready.')).toBeDefined();
@@ -585,7 +595,14 @@ describe('AISectionReasoning', () => {
     expect(within(liveExecution).getByText('Run complete')).toBeDefined();
 
     const failed = finishAgentActivity(activity, 'error', 'Validation failed.', 2_000);
-    rerender(<AISectionReasoning {...createProps({ activity: failed })} />);
+    rerender(
+      <AISectionReasoning
+        {...createProps({
+          activity: failed,
+          activeSession: makeAgentSession({ status: 'error' }),
+        })}
+      />,
+    );
     expect(getLiveExecutionInfo(failed).outcome).toBe('Route stopped');
     expect(screen.getAllByText('Blocked').length).toBeGreaterThan(0);
   });

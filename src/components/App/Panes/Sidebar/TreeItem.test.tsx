@@ -2,7 +2,7 @@ import { AppState } from '@/components/App/AppState';
 import { requireElement } from '@/test-utils/domMocks';
 import { makeAppState } from '@/test-utils/stateMocks';
 import { asNormalizedTreeNode, makeFlatTreeRow } from '@/test-utils/treeMocks';
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import TreeItem from './TreeItem';
 import type { SidebarTreeRow } from './sidebar-types';
@@ -206,11 +206,12 @@ describe('TreeItem', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByRole('menu')).toBeDefined();
+      const menu = screen.getByRole('menu');
+      expect(menu).toBeDefined();
       // Name of file
-      expect(screen.getByTitle('app.js')).toBeDefined();
+      expect(within(menu).getByText('app.js')).toBeDefined();
       // Path of file
-      expect(screen.getByTitle('/sub/dir/app.js')).toBeDefined();
+      expect(within(menu).getByText('/sub/dir/app.js')).toBeDefined();
     });
   });
 
