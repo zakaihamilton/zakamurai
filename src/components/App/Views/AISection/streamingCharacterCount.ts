@@ -1,6 +1,3 @@
-import type { Root } from 'mdast';
-import type { Plugin } from 'unified';
-
 type MarkdownNode = {
   type: string;
   value?: string;
@@ -53,6 +50,6 @@ const markStreamingCounts = (parent: MarkdownNode): void => {
   parent.children = children;
 };
 
-export const remarkStreamingCharacterCount: Plugin<[], Root> = () => (tree) => {
+export const remarkStreamingCharacterCount = () => (tree: unknown): void => {
   markStreamingCounts(tree as unknown as MarkdownNode);
 };
