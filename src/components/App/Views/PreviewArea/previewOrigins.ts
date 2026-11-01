@@ -121,7 +121,8 @@ export function derivePreviewHostFromIde(ideOrigin: string): string {
     return url.origin;
   }
   if (url.hostname.startsWith(PREVIEW_HOST_PREFIX)) return url.origin;
-  url.hostname = `${PREVIEW_HOST_PREFIX}${url.hostname}`;
+  const ideHostname = url.hostname.startsWith('www.') ? url.hostname.slice(4) : url.hostname;
+  url.hostname = `${PREVIEW_HOST_PREFIX}${ideHostname}`;
   return url.origin;
 }
 

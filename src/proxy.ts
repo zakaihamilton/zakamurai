@@ -25,6 +25,15 @@ function getPreviewOriginUrl(): URL {
 const previewOriginUrl = getPreviewOriginUrl();
 
 function isPreviewHostRequest(request: NextRequest): boolean {
+  const configuredIdeOrigin = process.env.NEXT_PUBLIC_IDE_ORIGIN;
+  if (configuredIdeOrigin) {
+    try {
+      if (new URL(configuredIdeOrigin).origin === previewOriginUrl.origin) return false;
+    } catch {
+      // Invalid IDE configuration must not prevent the rest of the proxy from handling requests.
+    }
+  }
+
   const host = request.headers.get('host');
   const previewOrigins = {
     ideOrigin: null,
@@ -87,7 +96,10 @@ function withPreviewHeaders(response: NextResponse, request: NextRequest): NextR
     `frame-ancestors ${getPreviewFrameAncestors({ ideOrigin })}`,
   );
   response.headers.set('Cross-Origin-Resource-Policy', 'cross-origin');
-  response.headers.set('Referrer-Policy', 'no-referrer');
+  // Same-origin requests need the session path so the preview service worker can
+  // route root-absolute /dist assets to the correct workspace. Cross-origin
+  // requests still omit the referrer.
+  response.headers.set('Referrer-Policy', 'same-origin');
   // IDE uses COOP: same-origin-allow-popups. That only retains popup references
   // when the popup opts out with unsafe-none — otherwise window.open's
   // WindowProxy is severed and the MessagePort handshake never arrives.
