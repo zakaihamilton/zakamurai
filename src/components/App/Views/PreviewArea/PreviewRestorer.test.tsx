@@ -1,6 +1,5 @@
-import { AppState } from '@/components/App/AppState';
 import { PreviewState } from '@/components/App/PreviewState';
-import { makeAppState, makePreviewState } from '@/test-utils/stateMocks';
+import { makePreviewState } from '@/test-utils/stateMocks';
 import { act, renderHook } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { usePreviewRestorer } from './PreviewRestorer';
@@ -9,13 +8,8 @@ vi.mock('@/components/App/PreviewState', () => ({
   PreviewState: { useState: vi.fn() },
 }));
 
-vi.mock('@/components/App/AppState', () => ({
-  AppState: { useState: vi.fn() },
-}));
-
 describe('usePreviewRestorer', () => {
   let previewStateMock: ReturnType<typeof makePreviewState>;
-  let appStateMock: ReturnType<typeof makeAppState>;
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -27,15 +21,10 @@ describe('usePreviewRestorer', () => {
       previewAddress: '/preview/dist/index.html',
     });
 
-    appStateMock = makeAppState({
-      silentCompileRequest: 0,
-    });
-
     vi.mocked(PreviewState.useState).mockReturnValue(previewStateMock);
-    vi.mocked(AppState.useState).mockReturnValue(appStateMock);
   });
 
-  it('triggers a silent compile when restoring a saved preview without setting a restore error', async () => {
+  it('leaves a saved preview for manual rebuild after reload', async () => {
     renderHook(() => usePreviewRestorer());
 
     await act(async () => {
@@ -43,11 +32,12 @@ describe('usePreviewRestorer', () => {
     });
 
     expect(previewStateMock.isCompilerReady).toBe(false);
-    expect(previewStateMock.restoreError).toBeNull();
-    expect(appStateMock.silentCompileRequest).toBe(1);
+    expect(previewStateMock.restoreError).toBe(
+      'The saved preview needs a new build after reload. Select Build to restore it.',
+    );
   });
 
-  it('handles an empty preview without triggering a compile or setting an error', async () => {
+  it('handles an empty preview without setting an error', async () => {
     previewStateMock.htmlContent = null;
 
     renderHook(() => usePreviewRestorer());
@@ -58,6 +48,5 @@ describe('usePreviewRestorer', () => {
 
     expect(previewStateMock.restoreError).toBeNull();
     expect(previewStateMock.isCompilerReady).toBe(false);
-    expect(appStateMock.silentCompileRequest).toBe(0);
   });
 });

@@ -1,17 +1,15 @@
-import { AppState } from '@/components/App/AppState';
 import { PreviewState } from '@/components/App/PreviewState';
 import { useEffect, useRef } from 'react';
 import { requireStore } from '../../types';
 
 /**
- * On reload, saved preview HTML alone is not enough — bundled /dist/assets are gone.
- * Trigger a silent recompile on reload so preview rebuilds automatically without manual user action.
+ * Saved preview HTML does not preserve the compiler's in-memory /dist assets.
+ * Leave rebuilding to the user instead of starting a build automatically on reload.
  */
 export function usePreviewRestorer() {
   const previewState = requireStore(
     PreviewState.useState(['htmlContent', 'isCompilerReady', 'restoreError']),
   );
-  const appState = requireStore(AppState.useState(['silentCompileRequest']));
   const { htmlContent } = previewState;
   const restoredRef = useRef(false);
 
@@ -29,11 +27,8 @@ export function usePreviewRestorer() {
 
     previewState((draft) => {
       draft.isCompilerReady = false;
-      draft.restoreError = null;
+      draft.restoreError =
+        'The saved preview needs a new build after reload. Select Build to restore it.';
     });
-
-    appState((draft) => {
-      draft.silentCompileRequest = (draft.silentCompileRequest || 0) + 1;
-    });
-  }, [htmlContent, previewState, appState]);
+  }, [htmlContent, previewState]);
 }

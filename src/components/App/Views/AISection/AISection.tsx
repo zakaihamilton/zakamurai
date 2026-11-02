@@ -184,6 +184,12 @@ export default function AISectionView({ tab }: { tab: Tab }) {
     activeSession?.status,
     activeSession?.runUsage,
   );
+  const isWorking = activeSession?.status === 'running';
+  const runStartedAt =
+    activeSession?.activity?.startedAt ||
+    activeSession?.messages.filter((message) => message.role === 'user').at(-1)?.id ||
+    0;
+  const [now, setNow] = useState(() => Date.now());
   const latestError = getLatestManagerError(activeSession);
   const activity = activeSession?.activity?.nodes.length
     ? activeSession.activity
@@ -198,6 +204,15 @@ export default function AISectionView({ tab }: { tab: Tab }) {
   useEffect(() => {
     setShowStepIO(activeSession?.showStepIO === true);
   }, [activeSession?.showStepIO]);
+
+  useEffect(() => {
+    if (!isWorking) return;
+
+    const updateNow = () => setNow(Date.now());
+    updateNow();
+    const interval = window.setInterval(updateNow, 1000);
+    return () => window.clearInterval(interval);
+  }, [isWorking]);
 
   const toggleStepIO = () => {
     const next = !showStepIO;
@@ -247,6 +262,8 @@ export default function AISectionView({ tab }: { tab: Tab }) {
     window.setTimeout(() => setCopied(false), 2000);
   };
 
+  const elapsedSeconds = runStartedAt ? Math.max(0, Math.floor((now - runStartedAt) / 1000)) : 0;
+
   return (
     <section className={styles.page} aria-label={titleBySection[section]}>
       <AISectionHeader
@@ -263,6 +280,15 @@ export default function AISectionView({ tab }: { tab: Tab }) {
         onToggleAutoScroll={() => setAutoScroll((enabled) => !enabled)}
         onCopy={copy}
       />
+      {section === 'reasoning' && isWorking ? (
+        <output className={styles.runStatus} aria-live="polite">
+          <span className={styles.runStatusDot} aria-hidden="true" />
+          <strong>AI is working</strong>
+          <span>
+            {elapsedSeconds} {elapsedSeconds === 1 ? 'second' : 'seconds'} elapsed
+          </span>
+        </output>
+      ) : null}
       {section === 'reasoning' ? (
         <AISectionReasoning
           activeSession={activeSession}

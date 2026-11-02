@@ -4,21 +4,30 @@ import Tooltip from '@/components/ui/Tooltip';
 import { requireStore } from '../../../types';
 import styles from './WorkingIndicator.module.css';
 
-export default function WorkingIndicator() {
+export default function WorkingIndicator({
+  onOpenProgress,
+}: {
+  onOpenProgress?: () => void;
+}) {
   const { isAIProcessing } = requireStore(LogState.useState(['isAIProcessing']));
 
   if (!isAIProcessing) return null;
 
   return (
     <Tooltip content="AI working...">
-      <div className={styles.workingIndicator} aria-label="AI working...">
+      <button
+        type="button"
+        className={styles.workingIndicator}
+        onClick={onOpenProgress}
+        aria-label="AI working..."
+      >
         <Icons.BotSmall />
         <span className={styles.activityDots} aria-hidden="true">
           <span />
           <span />
           <span />
         </span>
-      </div>
+      </button>
     </Tooltip>
   );
 }

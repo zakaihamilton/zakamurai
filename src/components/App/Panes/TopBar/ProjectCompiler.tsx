@@ -132,6 +132,7 @@ export default function useProjectCompiler() {
         draft.containerStatus = 'ready';
         draft.containerError = null;
         draft.compileError = null;
+        draft.restoreError = null;
       });
 
       if (!isSilent && tabState.activeTabId !== 'ai-logs') {

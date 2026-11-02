@@ -177,6 +177,19 @@ export default function TopBar() {
 
   const activeTab = openTabs.find((t) => t.id === activeTabId);
 
+  const handleOpenProgress = () => {
+    const id = 'ai-section:reasoning';
+    tabState((draft) => {
+      if (!draft.openTabs.some((tab) => tab.id === id)) {
+        draft.openTabs = [
+          ...draft.openTabs,
+          { id, type: 'ai-section', label: 'Progress & Reasoning', viewType: 'visual' },
+        ];
+      }
+      draft.activeTabId = id;
+    });
+  };
+
   const handleStartOver = async (template = 'scratch') => {
     appState((draft) => {
       draft.workspaceEpoch = (draft.workspaceEpoch || 0) + 1;
@@ -270,7 +283,7 @@ export default function TopBar() {
       </Tooltip>
 
       <div className={styles.workingIndicator}>
-        <WorkingIndicator />
+        <WorkingIndicator onOpenProgress={handleOpenProgress} />
       </div>
 
       <NavigationControls />

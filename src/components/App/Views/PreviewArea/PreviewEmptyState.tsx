@@ -32,7 +32,7 @@ export function PreviewErrorState({
   );
 }
 
-export function PreviewUnavailableState() {
+export function PreviewUnavailableState({ message }: { message?: string } = {}) {
   return (
     <div className={styles.emptyState}>
       <div className={styles.emptyIcon}>
@@ -40,8 +40,12 @@ export function PreviewUnavailableState() {
       </div>
       <h2 className={styles.emptyTitle}>No Preview Available</h2>
       <p className={styles.emptyText}>
-        Build your project first. The preview will load{' '}
-        <code className={styles.code}>dist/index.html</code> from the build output.
+        {message || (
+          <>
+            Build your project first. The preview will load{' '}
+            <code className={styles.code}>dist/index.html</code> from the build output.
+          </>
+        )}
       </p>
     </div>
   );

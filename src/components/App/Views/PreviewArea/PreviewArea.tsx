@@ -273,6 +273,9 @@ export default function PreviewArea() {
   if (previewConfigurationError) {
     return <PreviewErrorState title="Preview Setup Required" message={previewConfigurationError} />;
   }
+  if (!isCompilerReady && restoreError) {
+    return <PreviewUnavailableState message={restoreError} />;
+  }
 
   return (
     <PreviewSurface
