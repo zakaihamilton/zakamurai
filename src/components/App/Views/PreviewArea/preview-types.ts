@@ -35,7 +35,7 @@ export type PreviewBridgeProps = {
   iframeRef: RefObject<HTMLIFrameElement | null>;
   externalPreviewRef?: RefObject<Window | null>;
   externalPreviewNonce?: number;
-  iframeHandshakeNonce?: number;
+  iframeHandshakeNonce?: number | string;
   sessionId: string;
   previewOrigin: string;
   onError?: (message: string) => void;
@@ -67,6 +67,7 @@ export type PreviewSurfaceProps = {
   previewIframeUrl: string | null;
   sessionId: string | null;
   refreshKey: number;
+  iframeHandshakeNonce: number | string;
   onLoad: () => void;
   externalPreviewRef: RefObject<Window | null>;
   externalPreviewNonce: number;
@@ -188,6 +189,7 @@ export type UsePreviewRuntimeBridgeParams = {
   previewOrigin: string;
   setPreviewError: (message: string) => void;
   setHasLoadedOnce: (value: boolean) => void;
+  onReconnect?: (path?: string) => void;
   onElementPicked?: (elementInfo: {
     tagName: string;
     className: string;

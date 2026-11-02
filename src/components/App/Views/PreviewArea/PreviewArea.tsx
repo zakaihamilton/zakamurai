@@ -15,6 +15,7 @@ import {
   getPreviewOrigins,
   getSameOriginPreviewWarning,
 } from './previewOrigins';
+import { isSafePreviewPath } from './previewProtocol';
 import { PREVIEW_MESSAGE_SOURCE } from './previewSandbox';
 import usePreviewRuntimeBridge from './usePreviewRuntimeBridge';
 import usePreviewSessionLifecycle from './usePreviewSessionLifecycle';
@@ -75,6 +76,7 @@ export default function PreviewArea() {
   isLoadingRef.current = isLoading;
 
   const [errorCopied, setErrorCopied] = useState(false);
+  const [recoveryNonce, setRecoveryNonce] = useState(0);
   const displayError = error || restoreError || compileError || serverError;
   const origins = getPreviewOrigins({
     windowOrigin: typeof window === 'undefined' ? '' : window.location.origin,
@@ -118,6 +120,40 @@ export default function PreviewArea() {
     address,
     onBlockedExternalPreview: setPreviewError,
   });
+  const handlePreviewReconnect = useCallback(
+    (path?: string) => {
+      if (!iframeRef.current || !previewUrl) return;
+
+      const recoveryUrl = new URL(previewUrl);
+      if (path) {
+        let target: URL;
+        try {
+          target = new URL(path, recoveryUrl.origin);
+        } catch {
+          return;
+        }
+        const sessionPrefix = `/__preview/${encodeURIComponent(previewSessionRef.current)}/`;
+        if (
+          target.origin !== recoveryUrl.origin ||
+          !target.pathname.startsWith(sessionPrefix) ||
+          !isSafePreviewPath(target.pathname)
+        ) {
+          return;
+        }
+        recoveryUrl.searchParams.set('target', `${target.pathname}${target.search}`);
+      } else {
+        recoveryUrl.searchParams.delete('target');
+      }
+
+      previewAreaUiState((draft) => {
+        draft.isLoading = true;
+        draft.error = null;
+      });
+      iframeRef.current.src = recoveryUrl.toString();
+      setRecoveryNonce((nonce) => nonce + 1);
+    },
+    [previewAreaUiState, previewSessionRef, previewUrl],
+  );
   const handleElementPicked = useCallback(
     ({
       tagName,
@@ -155,6 +191,7 @@ export default function PreviewArea() {
     previewOrigin: origins.previewOrigin || '',
     setPreviewError,
     setHasLoadedOnce,
+    onReconnect: handlePreviewReconnect,
     onElementPicked: handleElementPicked,
   });
 
@@ -304,6 +341,7 @@ export default function PreviewArea() {
       previewIframeUrl={previewIframeUrl}
       sessionId={previewSessionRef.current}
       refreshKey={refreshKey}
+      iframeHandshakeNonce={`${refreshKey}:${recoveryNonce}`}
       onLoad={handleLoad}
       externalPreviewRef={externalPreviewRef}
       externalPreviewNonce={externalPreviewNonce}

@@ -4,6 +4,7 @@ const bridges = new Map();
 let nextId = 0;
 // Keep in sync with PREVIEW_HOST_PATH in previewOrigins.js
 const PREVIEW_BOOTSTRAP_PATH = '/__preview/host';
+const PREVIEW_SURFACE_PARAM = 'zakamurai-surface';
 
 function isPreviewBootstrapPath(pathname) {
   return pathname === PREVIEW_BOOTSTRAP_PATH || pathname.startsWith(`${PREVIEW_BOOTSTRAP_PATH}/`);
@@ -300,6 +301,31 @@ function installPreviewErrorBridge() {
   if (window.__zakamuraiPreviewBridge) return;
   window.__zakamuraiPreviewBridge = true;
   const targetOrigin = window.__zakamuraiPreviewParentOrigin;
+  // React-managed forms commonly update client state in onSubmit without
+  // preventDefault(). Keep those submissions in the preview document instead
+  // of letting the browser navigate away before the state update can render.
+  document.addEventListener(
+    'submit',
+    (event) => {
+      const form = event.target;
+      if (
+        !(form instanceof HTMLFormElement) ||
+        form.hasAttribute('action') ||
+        (form.target && form.target !== '_self')
+      ) {
+        return;
+      }
+      const reactPropsKey = Object.keys(form).find((key) => key.startsWith('__reactProps$'));
+      const reactHandlersKey = Object.keys(form).find((key) =>
+        key.startsWith('__reactEventHandlers$'),
+      );
+      const props = form[reactPropsKey] || form[reactHandlersKey];
+      if (typeof props?.onSubmit === 'function' || typeof props?.onSubmitCapture === 'function') {
+        event.preventDefault();
+      }
+    },
+    true,
+  );
   if (!targetOrigin) return;
   const post = (type, message, extra) => {
     window.parent.postMessage(
@@ -428,25 +454,85 @@ async function handleVirtualRequest(sessionId, request, path) {
   });
 }
 
-function lostConnectionPage(sessionId = null, ideOrigin = null) {
+function safeRecoveryTarget(sessionId, target) {
+  if (!sessionId || !target || typeof target !== 'string' || !target.startsWith('/')) return null;
+  try {
+    const candidate = new URL(target, self.location.origin);
+    const prefix = `/__preview/${encodeURIComponent(sessionId)}/`;
+    let decodedPath = candidate.pathname;
+    for (let attempt = 0; attempt < 4; attempt++) {
+      const decoded = decodeURIComponent(decodedPath);
+      if (decoded === decodedPath) break;
+      decodedPath = decoded;
+      if (attempt === 3) return null;
+    }
+    if (
+      candidate.origin !== self.location.origin ||
+      !candidate.pathname.startsWith(prefix) ||
+      decodedPath.includes('..') ||
+      decodedPath.includes('\\')
+    ) {
+      return null;
+    }
+    return `${candidate.pathname}${candidate.search}`;
+  } catch (_e) {
+    return null;
+  }
+}
+
+function escapeInlineJson(value) {
+  return JSON.stringify(value)
+    .replace(/</g, '\\u003c')
+    .replace(/>/g, '\\u003e')
+    .replace(/&/g, '\\u0026')
+    .replace(/\u2028/g, '\\u2028')
+    .replace(/\u2029/g, '\\u2029');
+}
+
+function getConfiguredIdeOrigin() {
+  try {
+    const origin = new URL(self.location.href).searchParams.get('ideOrigin');
+    return isValidPreviewInitOrigin(origin) ? origin : null;
+  } catch (_e) {
+    return null;
+  }
+}
+
+function lostConnectionPage(sessionId = null, ideOrigin = null, target = null) {
+  const recoveryTarget = safeRecoveryTarget(sessionId, target);
+  const bootstrapUrl = sessionId
+    ? (() => {
+        const url = new URL(PREVIEW_BOOTSTRAP_PATH, self.location.origin);
+        url.searchParams.set('session', sessionId);
+        url.searchParams.set(PREVIEW_SURFACE_PARAM, 'preview');
+        if (recoveryTarget) url.searchParams.set('target', recoveryTarget);
+        return `${url.pathname}${url.search}`;
+      })()
+    : null;
   // Top-level external tabs cannot talk to the IDE via parent.postMessage.
   // Send them through the explicit preview handshake route. Using / would
   // reload the IDE itself when local previews share the IDE origin.
-  const reconnectToHandshake =
-    sessionId &&
-    `<script>(function(){try{if(window.parent!==window)return;location.replace('/__preview/host?session='+encodeURIComponent(${JSON.stringify(sessionId)})+'&zakamurai-surface=preview');}catch(_e){}})();</script>`;
-  const reconnectScript = ideOrigin
-    ? `<script>(function(){try{var m=location.pathname.match(/^\\/(__preview\\/)([^/]+)/);var sessionId=m&&m[2];if(!sessionId||window.parent===window)return;window.parent.postMessage({source:'zakamurai-preview',type:'reconnect',sessionId:decodeURIComponent(sessionId),message:'Preview connection was lost.'},${JSON.stringify(ideOrigin)});}catch(_e){}})();</script>`
+  const reconnectToHandshake = bootstrapUrl
+    ? `<script>(function(){try{if(window.parent!==window)return;location.replace(${escapeInlineJson(bootstrapUrl)});}catch(_e){}})();</script>`
     : '';
+  const origins = expandOriginAliases(ideOrigin);
+  const reconnectPayload = recoveryTarget
+    ? { source: 'zakamurai-preview', type: 'reconnect', path: recoveryTarget }
+    : null;
+  const reconnectScript =
+    origins.length && reconnectPayload
+      ? `<script>(function(){try{if(window.parent===window)return;var targets=${escapeInlineJson(origins)};var message=${escapeInlineJson(reconnectPayload)};for(var i=0;i<targets.length;i++){try{window.parent.postMessage(message,targets[i]);}catch(_e){}}}catch(_e){}})();</script>`
+      : '';
   return previewResponse(
     `<!doctype html><html><head><meta charset="utf-8"><title>Preview</title>
 <style>html,body{margin:0;height:100%;background:#101214;color:#e7ecef;font:14px/1.4 system-ui,sans-serif}
-main{padding:2rem}</style>${reconnectScript}${reconnectToHandshake || ''}</head>
-<body><main><p>Preview connection was lost. Return to Zakamurai and click Build, then open Preview again.</p></main></body></html>`,
+main{padding:2rem}</style>${reconnectScript}${reconnectToHandshake}</head>
+<body><main><p>${reconnectPayload ? 'Reconnecting preview…' : 'Preview connection was lost. Return to Zakamurai and click Build, then open Preview again.'}</p></main></body></html>`,
     {
-      status: 503,
+      status: reconnectPayload || reconnectToHandshake ? 200 : 503,
       headers: { 'Content-Type': 'text/html; charset=utf-8' },
     },
+    ideOrigin,
   );
 }
 
@@ -467,7 +553,29 @@ self.addEventListener('fetch', (event) => {
     const sessionId = sessionIdFromPreviewPath(url.pathname);
     const bridge = getBridge(sessionId);
     if (!sessionId || !bridge || !pickPort(bridge)) {
-      event.respondWith(lostConnectionPage(sessionId, bridge?.ideOrigin));
+      const isDocumentNavigation =
+        event.request.method === 'GET' &&
+        event.request.mode === 'navigate' &&
+        (!event.request.destination ||
+          event.request.destination === 'document' ||
+          event.request.destination === 'iframe');
+      if (isDocumentNavigation) {
+        event.respondWith(
+          lostConnectionPage(
+            sessionId,
+            bridge?.ideOrigin || getConfiguredIdeOrigin(),
+            `${url.pathname}${url.search}`,
+          ),
+        );
+      } else {
+        event.respondWith(
+          previewResponse(
+            'Preview connection is not ready. Reopen the preview to reconnect.',
+            { status: 503, headers: { 'Content-Type': 'text/plain; charset=utf-8' } },
+            bridge?.ideOrigin || getConfiguredIdeOrigin(),
+          ),
+        );
+      }
       return;
     }
     const prefix = `/__preview/${sessionId}`;

@@ -15,11 +15,12 @@ import {
   PREVIEW_CONNECT,
   PREVIEW_CONNECT_ACK,
   PREVIEW_PROTOCOL_VERSION,
+  isSafePreviewPath,
   isValidPreviewCapability,
 } from '../Views/PreviewArea/previewProtocol';
 import styles from './PreviewHost.module.css';
 
-const SW_URL = '/__preview/sw.js?v=29';
+const SW_VERSION = '30';
 const SESSION_WINDOW_NAME_PREFIXES = ['zakamurai-preview-tab-', 'zakamurai-preview-'];
 const CONNECT_TIMEOUT_MS = 15000;
 
@@ -52,8 +53,31 @@ function postMessageToOriginAliases(
   }
 }
 
-function getPreviewEntryUrl(sessionId: string): string {
-  return `/__preview/${encodeURIComponent(sessionId)}/dist/index.html`;
+function getPreviewEntryUrl(sessionId: string, target: string | null): string {
+  const fallback = `/__preview/${encodeURIComponent(sessionId)}/dist/index.html`;
+  if (!target) return fallback;
+
+  try {
+    const candidate = new URL(target, window.location.origin);
+    const sessionPrefix = `/__preview/${encodeURIComponent(sessionId)}/`;
+    if (
+      candidate.origin !== window.location.origin ||
+      !candidate.pathname.startsWith(sessionPrefix) ||
+      !isSafePreviewPath(candidate.pathname)
+    ) {
+      return fallback;
+    }
+    return `${candidate.pathname}${candidate.search}`;
+  } catch {
+    return fallback;
+  }
+}
+
+function getServiceWorkerUrl(ideOrigin: string): string {
+  const url = new URL('/__preview/sw.js', window.location.origin);
+  url.searchParams.set('v', SW_VERSION);
+  url.searchParams.set('ideOrigin', ideOrigin);
+  return url.toString();
 }
 
 async function waitForWorkerState(worker: ServiceWorker, state: ServiceWorkerState): Promise<void> {
@@ -216,9 +240,12 @@ export default function PreviewHost() {
       }
       try {
         const swScope = getPreviewServiceWorkerScope(origins);
-        const registration = await navigator.serviceWorker.register(SW_URL, {
-          scope: swScope,
-        });
+        const registration = await navigator.serviceWorker.register(
+          getServiceWorkerUrl(ideOrigin),
+          {
+            scope: swScope,
+          },
+        );
         await ensureActiveWorker(registration);
         // An activated worker is not necessarily the worker controlling this
         // page yet. This matters for the root-scoped local preview: the first
@@ -232,7 +259,8 @@ export default function PreviewHost() {
             ? navigator.serviceWorker.controller
             : registration.active;
         if (!controlling) throw new Error('Preview service worker is not available.');
-        const entryUrl = getPreviewEntryUrl(sessionId);
+        const recoveryTarget = new URLSearchParams(window.location.search).get('target');
+        const entryUrl = getPreviewEntryUrl(sessionId, recoveryTarget);
         const initAck = waitForInitAck(sessionId, workerCapability);
         controlling.postMessage(
           { type: 'init', sessionId, ideOrigin: connectedIdeOrigin, workerCapability },

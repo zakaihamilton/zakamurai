@@ -5,6 +5,7 @@ import {
   PREVIEW_SERVICE_WORKER_PATH,
   PREVIEW_SURFACE_PARAM,
   PREVIEW_SURFACE_VALUE,
+  expandOriginAliases,
   getPreviewFrameAncestors,
   getPreviewServiceWorkerAllowedHeader,
   isPreviewHost,
@@ -75,6 +76,22 @@ function resolveIdeOriginForPreviewHeaders(request: NextRequest): string | null 
   if (hostname.startsWith('preview.')) {
     return `${proto}://${hostname.slice('preview.'.length)}${portSuffix}`;
   }
+  if (isLocalDevHost(request) && isPreviewVirtualPath(request.nextUrl.pathname)) {
+    try {
+      const configuredIdeOrigin = process.env.NEXT_PUBLIC_IDE_ORIGIN;
+      if (configuredIdeOrigin && new URL(configuredIdeOrigin).origin === configuredIdeOrigin) {
+        const configuredHost = new URL(configuredIdeOrigin).hostname;
+        if (configuredHost === 'localhost' || configuredHost === '127.0.0.1') {
+          return configuredIdeOrigin;
+        }
+      }
+      const localOrigin = new URL(`${proto}://${hostHeader}`);
+      if (localOrigin.port === '3001') localOrigin.port = '3000';
+      return localOrigin.origin;
+    } catch {
+      // Fall through to the branch origin when local host metadata is malformed.
+    }
+  }
   if (request.nextUrl.searchParams.get(PREVIEW_SURFACE_PARAM) === PREVIEW_SURFACE_VALUE) {
     return `${proto}://${hostname}${portSuffix}`;
   }
@@ -128,6 +145,32 @@ function isPreviewServiceWorkerPath(pathname: string): boolean {
   return pathname === PREVIEW_SERVICE_WORKER_PATH;
 }
 
+function isPreviewDocumentNavigation(request: NextRequest): boolean {
+  const destination = request.headers.get('sec-fetch-dest');
+  return (
+    request.method === 'GET' &&
+    request.headers.get('sec-fetch-mode') === 'navigate' &&
+    (destination === 'document' || destination === 'iframe')
+  );
+}
+
+function escapeInlineJson(value: unknown): string {
+  return (JSON.stringify(value) || 'null')
+    .replace(/</g, '\\u003c')
+    .replace(/>/g, '\\u003e')
+    .replace(/&/g, '\\u0026')
+    .replace(/\u2028/g, '\\u2028')
+    .replace(/\u2029/g, '\\u2029');
+}
+
+function previewReconnectPage(path: string, ideOrigin: string | null): string {
+  const origins = expandOriginAliases(ideOrigin);
+  const reconnectScript = origins.length
+    ? `<script>(function(){try{if(window.parent===window)return;var targets=${escapeInlineJson(origins)};var message=${escapeInlineJson({ source: 'zakamurai-preview', type: 'reconnect', path })};for(var i=0;i<targets.length;i++){try{window.parent.postMessage(message,targets[i]);}catch(_e){}}}catch(_e){}})();</script>`
+    : '';
+  return `<!doctype html><html><head><meta charset="utf-8"><title>Reconnecting preview</title>${reconnectScript}</head><body><p>Reconnecting preview…</p></body></html>`;
+}
+
 export function proxy(request: NextRequest): NextResponse {
   const { pathname } = request.nextUrl;
   if (isPreviewServiceWorkerPath(pathname)) {
@@ -154,9 +197,25 @@ export function proxy(request: NextRequest): NextResponse {
   }
 
   // Session preview documents are served by the preview service worker. If the
-  // worker missed the navigation, do not rewrite into PreviewHost (that looped
-  // "Connecting isolated preview…").
+  // worker missed the navigation, ask the IDE to reopen PreviewHost. It will
+  // establish a fresh, capability-checked bridge and retry this session URL.
   if (isPreviewVirtualPath(pathname)) {
+    if (isPreviewDocumentNavigation(request)) {
+      const response = new NextResponse(
+        previewReconnectPage(
+          `${pathname}${request.nextUrl.search}`,
+          resolveIdeOriginForPreviewHeaders(request),
+        ),
+        {
+          status: 200,
+          headers: {
+            'Cache-Control': 'no-store',
+            'Content-Type': 'text/html; charset=utf-8',
+          },
+        },
+      );
+      return withPreviewHeaders(response, request);
+    }
     return withPreviewHeaders(
       new NextResponse('Preview service worker is not controlling this page. Rebuild to retry.', {
         status: 503,

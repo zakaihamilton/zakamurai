@@ -31,6 +31,7 @@ export default function PreviewSurface({
   previewIframeUrl,
   sessionId,
   refreshKey,
+  iframeHandshakeNonce,
   onLoad,
   externalPreviewRef,
   externalPreviewNonce,
@@ -76,7 +77,7 @@ export default function PreviewSurface({
         iframeRef={iframeRef}
         externalPreviewRef={externalPreviewRef}
         externalPreviewNonce={externalPreviewNonce}
-        iframeHandshakeNonce={refreshKey}
+        iframeHandshakeNonce={iframeHandshakeNonce}
         sessionId={sessionId || ''}
         previewOrigin={previewOrigin}
         onError={onError}

@@ -20,10 +20,10 @@ import {
 export default function usePreviewRuntimeBridge({
   iframeRef,
   previewAreaUiState,
-  previewUrl,
   previewOrigin,
   setPreviewError,
   setHasLoadedOnce,
+  onReconnect,
   onElementPicked,
 }: UsePreviewRuntimeBridgeParams) {
   const listenersRef = useRef<PreviewIframeListeners | null>(null);
@@ -93,7 +93,7 @@ export default function usePreviewRuntimeBridge({
       } else if (payload.type === PREVIEW_MESSAGE_TYPES.EVIDENCE) {
         reportPreviewEvidence(payload);
       } else if (payload.type === PREVIEW_MESSAGE_TYPES.RECONNECT) {
-        if (iframeRef.current && previewUrl) iframeRef.current.src = previewUrl;
+        onReconnect?.(payload.path);
       } else if (payload.type === PREVIEW_MESSAGE_TYPES.ELEMENT_PICKED) {
         previewAreaUiState((draft) => {
           draft.isInspecting = false;
@@ -107,7 +107,7 @@ export default function usePreviewRuntimeBridge({
     };
     window.addEventListener('message', onMessage);
     return () => window.removeEventListener('message', onMessage);
-  }, [iframeRef, onElementPicked, previewAreaUiState, previewOrigin, previewUrl, setPreviewError]);
+  }, [iframeRef, onElementPicked, onReconnect, previewAreaUiState, previewOrigin, setPreviewError]);
 
   return useCallback(() => {
     markPerformance('preview-ready');
