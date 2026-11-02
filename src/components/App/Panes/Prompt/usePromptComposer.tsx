@@ -112,9 +112,21 @@ export default function usePromptComposer({
         }
         if (!event.shiftKey) handleSubmit(event);
       } else if (event.key === 'ArrowUp') {
-        handleArrowUp();
+        const target = event.currentTarget;
+        const isAtFirstLine =
+          target.selectionStart === target.selectionEnd &&
+          target.value.lastIndexOf('\n', target.selectionStart - 1) === -1;
+        if (isAtFirstLine) {
+          handleArrowUp();
+        }
       } else if (event.key === 'ArrowDown') {
-        handleArrowDown();
+        const target = event.currentTarget;
+        const isAtLastLine =
+          target.selectionStart === target.selectionEnd &&
+          target.value.indexOf('\n', target.selectionStart) === -1;
+        if (isAtLastLine) {
+          handleArrowDown();
+        }
       }
     },
     [handleArrowDown, handleArrowUp, handleStop, handleSubmit, promptUiState],

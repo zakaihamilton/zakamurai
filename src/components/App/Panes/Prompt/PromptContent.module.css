@@ -87,6 +87,7 @@
     transform: translateX(100%);
     width: min(400px, 90vw) !important;
     display: flex; /* Override closed display: none if any */
+    visibility: hidden;
   }
 }
 

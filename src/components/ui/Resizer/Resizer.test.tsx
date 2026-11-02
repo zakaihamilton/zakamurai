@@ -125,6 +125,30 @@ describe('Resizer', () => {
     expect(onResize).toHaveBeenCalledTimes(3);
   });
 
+  it('supports right-anchored pane resizing for mouse and keyboard', () => {
+    const onResize = vi.fn();
+    mockUseState.mockReturnValue(null);
+    render(
+      <Resizer
+        side="right"
+        onResize={onResize}
+        value={360}
+        min={300}
+        max={600}
+        label="Resize AI panel"
+      />,
+    );
+
+    const resizer = screen.getByRole('separator', { name: 'Resize AI panel' });
+    fireEvent.keyDown(resizer, { key: 'ArrowLeft' });
+    fireEvent.keyDown(resizer, { key: 'ArrowRight' });
+    fireEvent.keyDown(resizer, { key: 'ArrowLeft', shiftKey: true });
+
+    expect(onResize).toHaveBeenNthCalledWith(1, 376);
+    expect(onResize).toHaveBeenNthCalledWith(2, 344);
+    expect(onResize).toHaveBeenNthCalledWith(3, 408);
+  });
+
   it('disables interactions and applies collapsed class when isCollapsed, disabled, or hidden className is present', () => {
     const onResizeStart = vi.fn();
     const onDoubleClick = vi.fn();

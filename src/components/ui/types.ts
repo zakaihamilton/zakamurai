@@ -67,4 +67,5 @@ export type ResizerProps = {
   className?: string;
   disabled?: boolean;
   isCollapsed?: boolean;
+  side?: 'left' | 'right';
 };

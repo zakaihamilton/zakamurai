@@ -192,4 +192,17 @@ describe('KeyboardHandler', () => {
     expect(editorState).not.toHaveBeenCalled();
     document.body.removeChild(input);
   });
+
+  it('ignores editor undo and text shortcuts if input/textarea is focused', () => {
+    render(<TestComponent />);
+
+    const input = document.createElement('input');
+    document.body.appendChild(input);
+    input.focus();
+
+    fireEvent.keyDown(input, { key: 'z', metaKey: true });
+
+    expect(editorState).not.toHaveBeenCalled();
+    document.body.removeChild(input);
+  });
 });

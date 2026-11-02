@@ -3,7 +3,7 @@ import { Icons } from '@/components/ui/Icons';
 import Tooltip from '@/components/ui/Tooltip';
 import type { SidebarStateShape, TabBarUiStateShape, TabStateShape } from '@/types/domain-types';
 import type React from 'react';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { createState } from 'triactor';
 import type { StateStore } from 'triactor';
 import { requireStore } from '../../types';
@@ -46,6 +46,12 @@ export default function TabBar() {
     }),
   );
   const { draggedTabId = null, dropTargetId = null, isOverBar = false } = tabBarUiState || {};
+
+  useEffect(() => {
+    if (!activeTabId) return;
+    const element = tabRefs.current.get(activeTabId);
+    element?.scrollIntoView?.({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+  }, [activeTabId]);
 
   const resetDragState = () => {
     tabBarUiState((draft) => {

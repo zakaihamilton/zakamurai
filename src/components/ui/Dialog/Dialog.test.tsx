@@ -155,4 +155,62 @@ describe('Dialog', () => {
     document.removeEventListener(DIALOG_FOCUS_RESTORED_EVENT, onFocusRestored);
     opener.remove();
   });
+
+  it('sets aria-describedby pointing to the message element', () => {
+    render(
+      <Dialog
+        isOpen={true}
+        title="Title"
+        message="Detailed message text"
+        onConfirm={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    );
+    const dialog = screen.getByRole('dialog', { name: 'Title' });
+    const describedById = dialog.getAttribute('aria-describedby');
+    expect(describedById).toBeTruthy();
+    expect(document.getElementById(describedById!)?.textContent).toBe('Detailed message text');
+  });
+
+  it('handles nested dialogs such that Escape only closes the topmost dialog', () => {
+    const onCancelParent = vi.fn();
+    const onCancelChild = vi.fn();
+
+    const { rerender } = render(
+      <>
+        <Dialog
+          isOpen={true}
+          title="Parent"
+          message="Parent body"
+          onConfirm={vi.fn()}
+          onCancel={onCancelParent}
+        />
+        <Dialog
+          isOpen={true}
+          title="Child"
+          message="Child body"
+          onConfirm={vi.fn()}
+          onCancel={onCancelChild}
+        />
+      </>,
+    );
+
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(onCancelChild).toHaveBeenCalledOnce();
+    expect(onCancelParent).not.toHaveBeenCalled();
+
+    // After child dialog closes
+    rerender(
+      <Dialog
+        isOpen={true}
+        title="Parent"
+        message="Parent body"
+        onConfirm={vi.fn()}
+        onCancel={onCancelParent}
+      />,
+    );
+
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(onCancelParent).toHaveBeenCalledOnce();
+  });
 });

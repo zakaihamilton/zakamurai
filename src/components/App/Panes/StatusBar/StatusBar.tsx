@@ -207,9 +207,9 @@ export default function StatusBar() {
                 <span>{aiStatusLabel}</span>
               </button>
             </Tooltip>
-            <div className={styles.item}>
-              <Icons.BotSmall size={14} />
-              <span className={styles.hideOnMobile}>{language}</span>
+            <div className={`${styles.item} ${styles.hideOnMobile}`}>
+              <Icons.Code size={14} />
+              <span>{language}</span>
             </div>
           </>
         )}

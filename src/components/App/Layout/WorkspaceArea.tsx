@@ -31,10 +31,9 @@ export default function WorkspaceArea() {
   const { promptWidth } = promptState;
   const previewTabOpen = openTabs.some((tab) => tab.id === 'preview');
 
-  const handlePromptResize = (clientX: number) => {
+  const handlePromptResize = (newWidth: number) => {
     if (showAIInput) {
       promptState((draft) => {
-        const newWidth = window.innerWidth - clientX;
         draft.promptWidth = Math.max(300, Math.min(newWidth, 600));
       });
     }
@@ -110,6 +109,7 @@ export default function WorkspaceArea() {
       {!isMobile && (
         <Node id="prompt-resizer">
           <Resizer
+            side="right"
             onResize={handlePromptResize}
             onResizeStart={handleResizeStart}
             onResizeEnd={handleResizeEnd}

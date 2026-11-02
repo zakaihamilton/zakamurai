@@ -72,7 +72,9 @@ export default function SidebarTree({
         )}
       />
       {rows.length === 1 && !hasFileSystem && (
-        <div className={styles.noFiles}>No files found matching "{filterText}"</div>
+        <div className={styles.noFiles}>
+          {filterText ? `No files found matching "${filterText}"` : 'No files in workspace'}
+        </div>
       )}
     </>
   );

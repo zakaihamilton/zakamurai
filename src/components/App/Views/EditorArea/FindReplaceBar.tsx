@@ -27,7 +27,15 @@ export default function FindReplaceBar({
           placeholder="Find..."
           value={findQuery}
           onChange={(e) => setFindQuery(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && handleFind()}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              handleFind();
+            } else if (e.key === 'Escape') {
+              e.preventDefault();
+              setShowFind(false);
+            }
+          }}
           className={styles.findInput}
           aria-label="Find in file"
         />
@@ -68,6 +76,15 @@ export default function FindReplaceBar({
           placeholder="Replace with..."
           value={replaceQuery}
           onChange={(e) => setReplaceQuery(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              handleReplace();
+            } else if (e.key === 'Escape') {
+              e.preventDefault();
+              setShowFind(false);
+            }
+          }}
           className={styles.findInput}
           aria-label="Replace with"
         />

@@ -19,6 +19,7 @@ export default function Resizer({
   className = '',
   disabled = false,
   isCollapsed = false,
+  side = 'left',
 }: ResizerProps) {
   const isHiddenClass = Boolean(
     className &&
@@ -53,11 +54,12 @@ export default function Resizer({
       if (isResizing && !isDisabled) {
         const clientX = 'clientX' in e ? e.clientX : (e as TouchEvent).touches?.[0]?.clientX;
         if (clientX !== undefined) {
-          onResize(clientX);
+          const newWidth = side === 'right' ? window.innerWidth - clientX : clientX;
+          onResize(newWidth);
         }
       }
     },
-    [isDisabled, isResizing, onResize],
+    [isDisabled, isResizing, onResize, side],
   );
 
   useEffect(() => {
@@ -104,8 +106,12 @@ export default function Resizer({
         if (isDisabled) return;
         const step = event.shiftKey ? 48 : 16;
         let nextValue: number | undefined;
-        if (event.key === 'ArrowLeft') nextValue = Math.max(min, value - step);
-        if (event.key === 'ArrowRight') nextValue = Math.min(max, value + step);
+        if (event.key === 'ArrowLeft') {
+          nextValue = side === 'right' ? Math.min(max, value + step) : Math.max(min, value - step);
+        }
+        if (event.key === 'ArrowRight') {
+          nextValue = side === 'right' ? Math.max(min, value - step) : Math.min(max, value + step);
+        }
         if (event.key === 'Home') nextValue = min;
         if (event.key === 'End') nextValue = max;
         if (nextValue !== undefined) {

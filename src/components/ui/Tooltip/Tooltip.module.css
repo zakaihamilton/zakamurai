@@ -13,7 +13,7 @@
   left: var(--tooltip-left);
   max-width: var(--tooltip-max-width, 280px);
   max-height: var(--tooltip-max-height);
-  pointer-events: none;
+  pointer-events: auto;
   box-sizing: border-box;
   z-index: 120000;
   padding: 8px 14px;

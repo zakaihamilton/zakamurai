@@ -3,7 +3,7 @@ import { DIALOG_FOCUS_RESTORED_EVENT } from '@/components/ui/focusRestore';
 import type { TooltipProps } from '@/components/ui/types';
 import type { TooltipStateShape } from '@/types/domain-types';
 import { useShouldShowKeyboardShortcuts } from '@/utils/keyboard';
-import React, { useCallback, useEffect, useLayoutEffect, useRef } from 'react';
+import React, { useCallback, useEffect, useId, useLayoutEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Node, createState } from 'triactor';
 import styles from './Tooltip.module.css';
@@ -72,6 +72,7 @@ function TooltipInner({
     placement = 'top',
     arrowOffset = 0,
   } = tooltipState || {};
+  const tooltipId = useId();
   const triggerRef = useRef<HTMLDivElement>(null);
   const tooltipRef = useRef<HTMLDivElement>(null);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -236,6 +237,19 @@ function TooltipInner({
   useEffect(() => {
     if (!isVisible) return;
 
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        hideTooltip();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isVisible, hideTooltip]);
+
+  useEffect(() => {
+    if (!isVisible) return;
+
     const handleWindowBlurOrHide = () => {
       hideTooltip();
     };
@@ -282,6 +296,7 @@ function TooltipInner({
       <div
         ref={triggerRef}
         className={`${styles.container} ${className}`}
+        aria-describedby={isVisible ? tooltipId : undefined}
         onMouseEnter={showTooltip}
         onMouseLeave={hideTooltip}
         onPointerDown={showTooltipOnTouch}
@@ -299,8 +314,14 @@ function TooltipInner({
         createPortal(
           <div
             ref={tooltipRef}
+            id={tooltipId}
             className={`${styles.tooltip} ${styles[placement]} ${theme === 'light' ? styles.light : ''}`}
             role="tooltip"
+            onMouseEnter={() => {
+              isTriggerActiveRef.current = true;
+              if (timeoutRef.current) clearTimeout(timeoutRef.current);
+            }}
+            onMouseLeave={hideTooltip}
             style={{
               '--tooltip-top': `${coords.top}px`,
               '--tooltip-left': `${coords.left}px`,

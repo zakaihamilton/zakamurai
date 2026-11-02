@@ -67,6 +67,7 @@
   .sidebar:not(.isOpen) {
     transform: translateX(-100%);
     box-shadow: none;
+    visibility: hidden;
   }
 }
 

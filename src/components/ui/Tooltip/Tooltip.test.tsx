@@ -560,4 +560,61 @@ describe('Tooltip', () => {
     });
     expect(screen.queryByRole('tooltip')).toBeNull();
   });
+
+  it('hides active tooltip when Escape is pressed', async () => {
+    render(
+      <Tooltip content="Helper text">
+        <button type="button">Hover me</button>
+      </Tooltip>,
+    );
+
+    const trigger = getTrigger('Hover me');
+    await showTooltip(trigger);
+    expect(screen.getByRole('tooltip')).toBeDefined();
+
+    await act(async () => {
+      fireEvent.keyDown(window, { key: 'Escape' });
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(screen.queryByRole('tooltip')).toBeNull();
+  });
+
+  it('links trigger with aria-describedby when tooltip is visible', async () => {
+    render(
+      <Tooltip content="Helper text">
+        <button type="button">Hover me</button>
+      </Tooltip>,
+    );
+
+    const trigger = getTrigger('Hover me');
+    expect(trigger.getAttribute('aria-describedby')).toBeNull();
+
+    await showTooltip(trigger);
+    const tooltip = screen.getByRole('tooltip');
+    expect(tooltip.id).toBeTruthy();
+    expect(trigger.getAttribute('aria-describedby')).toBe(tooltip.id);
+  });
+
+  it('keeps tooltip open when hovering the tooltip and hides on mouse leave', async () => {
+    render(
+      <Tooltip content="Helper text">
+        <button type="button">Hover me</button>
+      </Tooltip>,
+    );
+
+    const trigger = getTrigger('Hover me');
+    await showTooltip(trigger);
+    const tooltip = screen.getByRole('tooltip');
+
+    fireEvent.mouseEnter(tooltip);
+    expect(screen.getByRole('tooltip')).toBeDefined();
+
+    await act(async () => {
+      fireEvent.mouseLeave(tooltip);
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(screen.queryByRole('tooltip')).toBeNull();
+  });
 });

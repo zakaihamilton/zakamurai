@@ -84,7 +84,7 @@ export default function TreeItemContent({
       <div
         {...controls.longPressHandlers}
         onContextMenu={controls.handleContextMenu}
-        draggable={!item.isRoot}
+        draggable={!item.isRoot && !controls.isEditing}
         onDragStart={(event) => onDragStart(event, row)}
         onDragOver={(event) => onDragOver(event, row)}
         onDragEnter={(event) => onDragEnter(event, row)}
@@ -93,28 +93,27 @@ export default function TreeItemContent({
         onDragEnd={onDragEnd}
         className={`${styles.item} ${isActive ? styles.active : ''} ${isDropTarget ? styles.dropTarget : ''} ${isDragged ? styles.dragging : ''}`}
       >
-        <button type="button" onClick={handleClick} className={styles.itemButton}>
-          <span className={styles.iconContainer}>
-            {item.type === 'folder' &&
-              (isExpanded ? <Icons.ChevronDown /> : <Icons.ChevronRight />)}
-          </span>
-          <span
-            className={`${styles.typeIcon} ${
-              item.type === 'folder' ? styles.typeIconFolder : styles.typeIconFile
-            }`}
-          >
-            {isLoading ? (
-              <div className={styles.spinner} />
-            ) : item.type === 'folder' ? (
-              <Icons.Folder open={isExpanded} />
-            ) : isMediaFile(item.name) ? (
-              <Icons.Image />
-            ) : (
-              <Icons.File />
-            )}
-          </span>
-
-          {controls.isEditing ? (
+        {controls.isEditing ? (
+          <div className={styles.itemButton}>
+            <span className={styles.iconContainer}>
+              {item.type === 'folder' &&
+                (isExpanded ? <Icons.ChevronDown /> : <Icons.ChevronRight />)}
+            </span>
+            <span
+              className={`${styles.typeIcon} ${
+                item.type === 'folder' ? styles.typeIconFolder : styles.typeIconFile
+              }`}
+            >
+              {isLoading ? (
+                <div className={styles.spinner} />
+              ) : item.type === 'folder' ? (
+                <Icons.Folder open={isExpanded} />
+              ) : isMediaFile(item.name) ? (
+                <Icons.Image />
+              ) : (
+                <Icons.File />
+              )}
+            </span>
             <input
               ref={controls.editInputRef}
               value={controls.editValue}
@@ -127,8 +126,30 @@ export default function TreeItemContent({
               onClick={(event) => event.stopPropagation()}
               onDoubleClick={(event) => event.stopPropagation()}
               className={styles.editInput}
+              aria-label={`Rename ${item.name}`}
             />
-          ) : (
+          </div>
+        ) : (
+          <button type="button" onClick={handleClick} className={styles.itemButton}>
+            <span className={styles.iconContainer}>
+              {item.type === 'folder' &&
+                (isExpanded ? <Icons.ChevronDown /> : <Icons.ChevronRight />)}
+            </span>
+            <span
+              className={`${styles.typeIcon} ${
+                item.type === 'folder' ? styles.typeIconFolder : styles.typeIconFile
+              }`}
+            >
+              {isLoading ? (
+                <div className={styles.spinner} />
+              ) : item.type === 'folder' ? (
+                <Icons.Folder open={isExpanded} />
+              ) : isMediaFile(item.name) ? (
+                <Icons.Image />
+              ) : (
+                <Icons.File />
+              )}
+            </span>
             <Tooltip
               content={item.isRoot ? item.name : `/${pathStr}`}
               className={styles.nameTooltip}
@@ -143,8 +164,8 @@ export default function TreeItemContent({
                 <HighlightedName name={item.name} pathStr={pathStr} filterText={filterText} />
               </span>
             </Tooltip>
-          )}
-        </button>
+          </button>
+        )}
       </div>
 
       <SidebarContextMenu

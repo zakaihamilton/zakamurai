@@ -29,6 +29,7 @@ export default function PromptContent({
     <aside
       className={`${styles.prompt} ${isOpen ? '' : styles.closed}`}
       aria-hidden={!isOpen}
+      inert={!isOpen}
       style={isMobile ? undefined : ({ '--panel-width': desktopWidth } as CssCustomProperties)}
     >
       <div className={styles.content}>

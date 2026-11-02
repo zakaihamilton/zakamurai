@@ -31,7 +31,7 @@
   gap: 6px;
   padding: 0 13px;
   height: 100%;
-  cursor: pointer;
+  cursor: default;
   transition: all var(--transition-fast);
   min-width: 90px;
   border-left: 1px solid transparent;
@@ -44,15 +44,16 @@ button.item {
   color: inherit;
   font: inherit;
   background: transparent;
+  cursor: pointer;
+}
+
+button.item:hover {
+  background: var(--bg-panel);
+  color: var(--text-main);
 }
 
 .right .item {
   border-left: 1px solid var(--border-light);
-}
-
-.item:hover {
-  background: var(--bg-panel);
-  color: var(--text-main);
 }
 
 .left .item:first-child {

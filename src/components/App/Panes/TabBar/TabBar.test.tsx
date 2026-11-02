@@ -283,4 +283,19 @@ describe('TabBar', () => {
     expect(stateUpdate).toHaveBeenCalled();
     expect(sidebarState).toHaveBeenCalled();
   });
+
+  it('scrolls the active tab into view when active tab changes', () => {
+    const scrollIntoView = vi.fn();
+    window.HTMLElement.prototype.scrollIntoView = scrollIntoView;
+    const sidebarState = makeSidebarState({ expandedFolders: {} });
+    const stateUpdate = makeTabState({
+      openTabs: [fileTab('tab1', 'Tab 1'), fileTab('tab2', 'Tab 2')],
+      activeTabId: 'tab2',
+    });
+    vi.spyOn(TabState, 'useState').mockReturnValue(stateUpdate);
+    vi.mocked(SidebarState.useState).mockReturnValue(sidebarState);
+
+    render(<TabBar />);
+    expect(scrollIntoView).toHaveBeenCalled();
+  });
 });

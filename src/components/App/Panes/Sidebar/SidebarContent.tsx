@@ -13,6 +13,7 @@ export default function SidebarContent({
     <aside
       className={`${styles.sidebar} ${isOpen ? styles.isOpen : ''}`}
       aria-hidden={!isOpen}
+      inert={!isOpen}
       style={isMobile ? undefined : ({ '--panel-width': desktopWidth } as CssCustomProperties)}
     >
       <div className={styles.contentWrapper}>

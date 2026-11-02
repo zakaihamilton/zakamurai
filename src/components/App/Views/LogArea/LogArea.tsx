@@ -78,7 +78,9 @@ export default function LogArea() {
   };
 
   const handleClear = () => {
-    logState.logs = [];
+    logState((draft) => {
+      draft.logs = [];
+    });
   };
 
   const handleCopyAll = () => {

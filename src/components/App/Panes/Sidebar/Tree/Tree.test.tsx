@@ -118,4 +118,34 @@ describe('SidebarTree', () => {
 
     expect(screen.getByText('No files found matching "missing"')).toBeDefined();
   });
+
+  it('shows generic empty workspace message when no filter text is entered and no filesystem', () => {
+    render(
+      <SidebarTree
+        {...handlers}
+        rows={[
+          makeFlatTreeRow({
+            pathStr: 'root',
+            item: asNormalizedTreeNode({
+              name: 'root',
+              type: 'folder',
+              path: ['root'],
+              isRoot: true,
+            }),
+          }) as SidebarTreeRow,
+        ]}
+        activeTabId={null}
+        scrollToIndex={undefined}
+        filterText=""
+        expandedFolders={{}}
+        loadingPaths={{}}
+        draggedPath={null}
+        dropTargetPath={null}
+        isOpen={true}
+        hasFileSystem={false}
+      />,
+    );
+
+    expect(screen.getByText('No files in workspace')).toBeDefined();
+  });
 });

@@ -9,7 +9,7 @@ import { useFileSystem } from '@/components/Storage';
 import { useNotification } from '@/components/ui/Notification';
 import { markKeyboardActivity } from '@/utils/keyboard';
 import { useEffect } from 'react';
-import { SHORTCUTS, SHORTCUT_HIGHLIGHT_EVENT, isMatch } from './Shortcuts';
+import { SHORTCUT_GROUPS, SHORTCUTS, SHORTCUT_HIGHLIGHT_EVENT, isMatch } from './Shortcuts';
 
 export function useKeyboardHandler() {
   const sidebarState = SidebarState.usePassiveState();
@@ -63,14 +63,23 @@ export function useKeyboardHandler() {
         return;
       }
 
+      const isEditableTarget = Boolean(
+        target &&
+          (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable),
+      );
+
       for (const shortcut of SHORTCUTS) {
         if (shortcut.isGlobal && shortcut.action && isMatch(e, shortcut)) {
-          if (
-            (shortcut.id === 'navigate-back' || shortcut.id === 'navigate-forward') &&
-            (target?.tagName?.toLowerCase() === 'input' ||
-              target?.tagName?.toLowerCase() === 'textarea')
-          ) {
-            continue;
+          if (isEditableTarget) {
+            const isTextEditingShortcut =
+              shortcut.group === SHORTCUT_GROUPS.EDITOR ||
+              shortcut.id.startsWith('navigate-') ||
+              shortcut.id.startsWith('cancel-ai') ||
+              shortcut.key === 'Backspace' ||
+              (Array.isArray(shortcut.key) && shortcut.key.includes('Backspace'));
+            if (isTextEditingShortcut) {
+              continue;
+            }
           }
           e.preventDefault();
           shortcut.action(states);

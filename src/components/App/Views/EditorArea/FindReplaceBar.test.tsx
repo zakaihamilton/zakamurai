@@ -63,6 +63,9 @@ describe('FindReplaceBar', () => {
     fireEvent.keyDown(screen.getByPlaceholderText('Find...'), { key: 'Enter' });
     expect(handleFind).toHaveBeenCalled();
 
+    fireEvent.keyDown(screen.getByPlaceholderText('Find...'), { key: 'Escape' });
+    expect(setShowFind).toHaveBeenCalledWith(false);
+
     fireEvent.click(screen.getByText('Next'));
     expect(setMatchIndex).toHaveBeenCalled();
 
@@ -79,6 +82,12 @@ describe('FindReplaceBar', () => {
 
     fireEvent.click(screen.getByText('Replace'));
     expect(handleReplace).toHaveBeenCalled();
+
+    fireEvent.keyDown(screen.getByPlaceholderText('Replace with...'), { key: 'Enter' });
+    expect(handleReplace).toHaveBeenCalledTimes(2);
+
+    fireEvent.keyDown(screen.getByPlaceholderText('Replace with...'), { key: 'Escape' });
+    expect(setShowFind).toHaveBeenCalledWith(false);
 
     fireEvent.click(screen.getByText('All'));
     expect(handleReplaceAll).toHaveBeenCalled();

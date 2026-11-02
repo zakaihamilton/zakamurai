@@ -6,6 +6,8 @@ import { createPortal } from 'react-dom';
 import { notifyDialogFocusRestored } from '../focusRestore';
 import styles from './Dialog.module.css';
 
+const activeDialogStack: symbol[] = [];
+
 export default function Dialog({
   isOpen,
   title,
@@ -21,10 +23,15 @@ export default function Dialog({
 }: DialogProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const openerRef = useRef<HTMLElement | null>(null);
+  const onCancelRef = useRef(onCancel);
+  onCancelRef.current = onCancel;
   const titleId = useId();
+  const messageId = useId();
 
   useEffect(() => {
     if (!isOpen) return undefined;
+    const dialogId = Symbol('dialog');
+    activeDialogStack.push(dialogId);
     openerRef.current = document.activeElement as HTMLElement | null;
     const dialog = dialogRef.current;
     const focusable = dialog?.querySelectorAll<HTMLElement>(
@@ -42,8 +49,11 @@ export default function Dialog({
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
-        event.preventDefault();
-        onCancel();
+        if (activeDialogStack[activeDialogStack.length - 1] === dialogId) {
+          event.preventDefault();
+          event.stopPropagation();
+          onCancelRef.current();
+        }
         return;
       }
       if (event.key !== 'Tab' || !focusable?.length) return;
@@ -60,13 +70,17 @@ export default function Dialog({
     document.addEventListener('keydown', handleKeyDown);
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
+      const idx = activeDialogStack.lastIndexOf(dialogId);
+      if (idx !== -1) {
+        activeDialogStack.splice(idx, 1);
+      }
       const opener = openerRef.current;
       if (opener?.isConnected) {
         notifyDialogFocusRestored(opener);
         opener.focus();
       }
     };
-  }, [isOpen, onCancel]);
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -84,6 +98,7 @@ export default function Dialog({
         open
         aria-modal="true"
         aria-labelledby={titleId}
+        aria-describedby={message && !children ? messageId : undefined}
         tabIndex={-1}
       >
         <div className={styles.header}>
@@ -100,7 +115,11 @@ export default function Dialog({
           </Tooltip>
         </div>
         <div className={`${styles.content} ${children ? styles.customContent : ''}`}>
-          {children || <div className={styles.message}>{message}</div>}
+          {children || (
+            <div id={messageId} className={styles.message}>
+              {message}
+            </div>
+          )}
         </div>
         {footer !== undefined ? (
           footer
