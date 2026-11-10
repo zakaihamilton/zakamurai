@@ -101,6 +101,7 @@ export async function runActionLoop({
   const context = new AgentContextManager({ request, priorContext });
   const {
     lightweightModel,
+    modularGeneration: initialModularGeneration,
     contextReady,
     hostAssistedWrite,
     enforceFulfillment,
@@ -125,7 +126,7 @@ export async function runActionLoop({
     conversationContext: context.toString(),
   });
   const previewInspectionRequired = requirePreviewInspection && Boolean(inspectPreview);
-  let modularGeneration = session.modularGeneration;
+  let modularGeneration = initialModularGeneration;
   let protocolFailures = 0;
   let modularOutputFailures = 0;
   const modularOutputRecoveryMessage =
