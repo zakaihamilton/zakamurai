@@ -125,7 +125,11 @@ export async function runActionLoop({
     conversationContext: context.toString(),
   });
   const previewInspectionRequired = requirePreviewInspection && Boolean(inspectPreview);
+  let modularGeneration = session.modularGeneration;
   let protocolFailures = 0;
+  let modularOutputFailures = 0;
+  const modularOutputRecoveryMessage =
+    'For this new app, a single action or source fence is not accepted. Return the complete app entry, its CSS Module, up to two src/components/ subcomponents, and each component CSS Module as path-labelled fences in one response.';
   let lastFingerprint = '';
   let repeatedActions = 0;
   let lastSuccessfulFingerprint = '';
@@ -332,6 +336,18 @@ export async function runActionLoop({
     });
 
     if (modelResponse.finishReason === 'length') {
+      if (modularGeneration) {
+        modularOutputFailures += 1;
+        const message =
+          'The previous modular bundle reached the output token limit and was not staged. Return all required files again with very concise source and CSS Module contents, keeping the full bundle under about 1500 tokens. Do not omit the app entry, any required subcomponent, or any co-located CSS Module.';
+        if (modularOutputFailures >= 2) {
+          throw new AgentExecutionError(message, workspace.changes());
+        }
+        messages.push({ role: 'user', content: observation('model_output', false, message) });
+        context.record('truncated_modular_output', message);
+        onEvent({ type: 'observation', turn, error: true, message, agentRole });
+        continue;
+      }
       const target: string =
         forcedRecoveryTargetPath || recoveryWritePath(workspace.files, activeFile) || 'src/App.jsx';
       incompleteWriteRetries += 1;
@@ -353,8 +369,7 @@ export async function runActionLoop({
       action = parseAgentAction(reply, {
         allowedActions: effectiveAllowedActions,
         // Bind common source-only replies to the known entry path.
-        defaultWritePath:
-          forcedRecoveryTargetPath || recoveryWritePath(workspace.files, activeFile),
+        defaultWritePath: forcedRecoveryTargetPath || lightweightTargetPath,
       });
       protocolFailures = 0;
     } catch (error) {
@@ -377,6 +392,10 @@ export async function runActionLoop({
         onEvent,
         agentRole,
         hostAssistedSession,
+        modularGeneration,
+        modularOutputFailures,
+        request,
+        modularTargetPath: lightweightTargetPath,
         applyCssModuleRecovery,
         autoFinishSummary,
         context,
@@ -384,6 +403,8 @@ export async function runActionLoop({
         messages,
       });
       if (directOutcome.kind === 'handled') {
+        modularOutputFailures = directOutcome.modularOutputFailures ?? modularOutputFailures;
+        directRepairAttempts = directOutcome.directRepairAttempts ?? directRepairAttempts;
         if (directOutcome.result) return directOutcome.result;
         continue;
       }
@@ -394,6 +415,28 @@ export async function runActionLoop({
         failedWriteDiagnostic = directOutcome.failedWriteDiagnostic;
         forcedWriteRecoveryPending = Boolean(failedWritePath);
         forcedRecoveryTargetPath = failedWritePath || forcedRecoveryTargetPath;
+        continue;
+      }
+      if (modularGeneration) {
+        modularOutputFailures += 1;
+        if (modularOutputFailures >= 2) {
+          throw new AgentExecutionError(
+            `The local model could not provide the required modular file bundle. ${modularOutputRecoveryMessage}`,
+            workspace.changes(),
+          );
+        }
+        messages.push({
+          role: 'user',
+          content: observation('protocol', false, modularOutputRecoveryMessage),
+        });
+        context.record('modular_generation_recovery', modularOutputRecoveryMessage);
+        onEvent({
+          type: 'observation',
+          turn,
+          error: true,
+          message: modularOutputRecoveryMessage,
+          agentRole,
+        });
         continue;
       }
       protocolFailures++;
@@ -531,6 +574,40 @@ export async function runActionLoop({
       messages.push({
         role: 'user',
         content: observation('protocol', false, incompleteWriteGuidance),
+      });
+      continue;
+    }
+    if (
+      modularGeneration &&
+      action.action === 'write_file' &&
+      action.path === lightweightTargetPath
+    ) {
+      modularGeneration = false;
+      const message =
+        'The local model returned a single app file instead of the requested modular bundle. The host will use CSS Module recovery for this response.';
+      context.record('modular_generation_single_file_fallback', message);
+      onEvent({ type: 'observation', turn, action, message, agentRole });
+    }
+    if (modularGeneration) {
+      modularOutputFailures += 1;
+      if (modularOutputFailures >= 2) {
+        throw new AgentExecutionError(
+          `The local model could not provide the required modular file bundle. ${modularOutputRecoveryMessage}`,
+          workspace.changes(),
+        );
+      }
+      messages.push({
+        role: 'user',
+        content: observation('protocol', false, modularOutputRecoveryMessage),
+      });
+      context.record('modular_generation_recovery', modularOutputRecoveryMessage);
+      onEvent({
+        type: 'observation',
+        turn,
+        action,
+        error: true,
+        message: modularOutputRecoveryMessage,
+        agentRole,
       });
       continue;
     }

@@ -110,6 +110,7 @@ export const buildContextReadyUserRequest = ({
   responsiveGeneration = false,
   hostGuidance = null,
   includeProductContract = false,
+  modularGeneration = false,
 }: {
   request: string;
   targetPath: string;
@@ -120,8 +121,9 @@ export const buildContextReadyUserRequest = ({
   responsiveGeneration?: boolean;
   hostGuidance?: string | null;
   includeProductContract?: boolean;
+  modularGeneration?: boolean;
 }): string => {
-  const stylesheetPath = targetPath.replace(/\.(jsx|tsx)$/i, '.module.css');
+  const stylesheetPath = targetPath.replace(/\.(?:[jt]sx?)$/i, '.module.css');
   const contextPaths = [targetPath, stylesheetPath, 'package.json'].filter(
     (path, index, paths) => Object.hasOwn(files, path) && paths.indexOf(path) === index,
   );
@@ -175,12 +177,22 @@ export const buildContextReadyUserRequest = ({
     interactiveContract: lightweight || includeProductContract,
     targetPath,
     lightweight,
+    modularGeneration,
   });
+  const formatStyleContract = (responsive: boolean) =>
+    styleProfile
+      ? `Project generation contract:\n${formatProjectStyleContract(styleProfile, {
+          responsive,
+          modelAuthoredModules: modularGeneration,
+        })}`
+      : null;
   let styleContract = styleProfile
-    ? `Project generation contract:\n${formatProjectStyleContract(styleProfile, { responsive: responsiveGeneration })}`
+    ? formatStyleContract(responsiveGeneration)
     : null;
   const nextStep = lightweight
-    ? `Your next response must be ONLY a labelled code fence with the complete source for ${targetPath}. Do not return JSON.`
+    ? modularGeneration
+      ? `Return only path-labelled code fences, one complete file per fence, using the required jsx/css path=... format. Include ${targetPath}, its CSS Module, up to two focused subcomponents under src/components/, and a co-located CSS Module for each. Return every file in this response; no JSON or prose.`
+      : `Your next response must be ONLY a labelled code fence with the complete source for ${targetPath}. Do not return JSON.`
     : `Your next response must be exactly one write_file action for ${targetPath}.`;
   const assemble = () =>
     joinPromptSections([
@@ -223,9 +235,7 @@ export const buildContextReadyUserRequest = ({
         conversation = null;
       },
       () => {
-        styleContract = styleProfile
-          ? `Project generation contract:\n${formatProjectStyleContract(styleProfile, { responsive: false })}`
-          : null;
+        styleContract = formatStyleContract(false);
       },
       () => {
         styleContract = null;

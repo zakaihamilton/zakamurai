@@ -299,6 +299,9 @@ export function parseAgentAction(
   { allowedActions = ALL_AGENT_ACTIONS, defaultWritePath = null }: ParseAgentActionOptions = {},
 ): AgentAction {
   if (typeof text !== 'string') throw new Error('Agent response must be text');
+  if (/^```[a-z0-9+.-]+[ \t]+path=/im.test(text)) {
+    throw new Error('Path-labelled file bundles must be parsed as a complete changes response.');
+  }
   const allowed = new Set(allowedActions?.length ? allowedActions : ALL_AGENT_ACTIONS);
   let value: AgentAction;
   try {

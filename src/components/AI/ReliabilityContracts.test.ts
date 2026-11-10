@@ -69,7 +69,7 @@ describe('AI reliability contracts', () => {
       assessSmallModelRequest('create a notes app', 'Qwen2.5-Coder-1.5B-Instruct-q4f16_1-MLC'),
     ).toMatchObject({
       complexity: 'simple',
-      forceSingleFile: true,
+      forceSingleFile: false,
     });
     expect(
       assessSmallModelRequest(
