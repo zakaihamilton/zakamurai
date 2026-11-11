@@ -397,13 +397,11 @@ describe('runActionLoop', () => {
     ).toBe(true);
   });
 
-  it('uses a compact prompt and earlier recovery for lightweight models', async () => {
+  it('uses a compact modular prompt and falls back to host-assisted writes for lightweight models', async () => {
     const modelClient = vi
       .fn()
       .mockResolvedValueOnce('{"action":"list_files"}')
-      .mockResolvedValueOnce(PLAYABLE_INTERACTIVE_APP)
-      .mockResolvedValueOnce('{"action":"validate"}')
-      .mockResolvedValueOnce('{"action":"finish","summary":"Created notes app"}');
+      .mockResolvedValueOnce(PLAYABLE_INTERACTIVE_APP);
     const validate = vi.fn().mockResolvedValue('Checks passed.');
 
     const result = await runActionLoop({
@@ -417,27 +415,17 @@ describe('runActionLoop', () => {
 
     expect(result.files['src/App.jsx']).toContain('Notes');
     expect(result.files['src/App.jsx']).toContain('useState');
-    expect(modelClient.mock.calls[0][0].messages[0].content).toContain(
-      'You are a small local coding model',
-    );
-    expect(modelClient.mock.calls[0][0].messages[0].content).toContain('labelled source fence');
-    expect(modelClient.mock.calls[0][0].messages[1].content).toContain(
-      'Your next response must be ONLY a labelled code fence with the complete source for src/App.jsx',
-    );
-    expect(modelClient.mock.calls[0][0].messages[1].content).toContain('--- src/App.jsx ---');
-    expect(modelClient.mock.calls[0][0].messages[1].content).toContain(
-      'primary controls and current status',
-    );
-    expect(modelClient.mock.calls[0][0].messages[1].content).not.toContain('[list_files]');
+    const systemPrompt = modelClient.mock.calls[0][0].messages[0].content;
+    const userPrompt = modelClient.mock.calls[0][0].messages[1].content;
+    expect(systemPrompt).toContain('You are a small local coding model');
+    expect(systemPrompt).toContain('path-labelled source fences');
+    expect(userPrompt).toContain('Return only path-labelled code fences');
+    expect(userPrompt).toContain('--- src/App.jsx ---');
+    expect(userPrompt).toContain('primary controls and current status');
+    expect(userPrompt).not.toContain('[list_files]');
     expect(modelClient.mock.calls[0][0]).toMatchObject({ temperature: 0.1 });
     expect(modelClient.mock.calls[1][0].messages[0].content).toContain('emergency write mode');
-    expect(modelClient.mock.calls[1][0].messages[0].content).toContain(
-      'Reply with ONLY this labelled code fence',
-    );
-    expect(modelClient.mock.calls[1][0].messages[0].content).not.toContain(
-      '{"action":"write_file"',
-    );
-    expect(modelClient.mock.calls[1][0]).toMatchObject({ temperature: 0.02 });
+    expect(modelClient).toHaveBeenCalledTimes(2);
   });
 
   it('repairs a notes component when a render helper is referenced before it exists', async () => {
@@ -553,7 +541,7 @@ export default function App() {
     expect(recoveryMessages[1].content).toContain('Current contents of src/App.jsx');
   });
 
-  it('retries incomplete write_file metadata with fence-only recovery for 1.5B models', async () => {
+  it('retries incomplete write_file metadata with a modular recovery prompt for 1.5B models', async () => {
     askWebLLM
       .mockResolvedValueOnce(
         '{"action":"write_file","path":"src/App.jsx","reason":"create a notes app"}',
@@ -576,9 +564,9 @@ export default function App() {
     const recoveryPrompt = askWebLLM.mock.calls[1]?.[3]?.messages
       ?.map((message: { content: string }) => message.content)
       .join('\n');
-    expect(recoveryPrompt).toContain('Reply with ONLY this labelled code fence');
-    expect(recoveryPrompt).toContain('```jsx');
-    expect(recoveryPrompt).not.toContain('{"action":"write_file"');
+    expect(recoveryPrompt).toContain('complete app entry');
+    expect(recoveryPrompt).toContain('path-labelled fences');
+    expect(recoveryPrompt).toContain('{"action":"write_file","path":"src/App.jsx"');
     expect(recoveryPrompt).not.toContain('for example {"action":"list_files"}');
   });
 
@@ -813,7 +801,7 @@ export default function App() {
     expect(result.files['src/App.jsx']).toContain('useState');
     expect(result.files['src/App.jsx']).toContain('onClick');
     expect(result.files['src/App.module.css']).toContain('grid-template-columns');
-    expect(askWebLLM).toHaveBeenCalledTimes(2);
+    expect(askWebLLM).toHaveBeenCalledOnce();
   });
 
   it('auto-attaches a CSS Module when a lightweight model writes an unstyled interactive App', async () => {
@@ -1958,8 +1946,12 @@ ReactDOM.createRoot(document.getElementById("root")).render(<App />);`;
     });
 
     expect(result.files['src/App.jsx']).toContain('WINNING_LINES');
-    expect(askWebLLM.mock.calls[1]?.[3]?.messages?.[0]?.content).toContain('emergency write mode');
-    expect(askWebLLM.mock.calls[1]?.[3]?.messages?.[0]?.content).toContain('one closed component');
+    expect(askWebLLM.mock.calls[1]?.[3]?.messages?.[0]?.content).toContain(
+      'complete compact component set in one response',
+    );
+    expect(askWebLLM.mock.calls[1]?.[3]?.messages?.[0]?.content).toContain(
+      'up to two focused subcomponents',
+    );
   });
 
   it('uses a mid-tier fenced write path for 3B models when manager context is ready', async () => {
@@ -3075,11 +3067,11 @@ export default function App() {
       validate,
     });
 
-    expect(result.summary).toContain('Completed the requested changes and validated the build');
+    expect(result.summary).toContain('validated the build');
     expect(result.files['src/App.jsx']).toContain('Todo App');
     expect(result.files['src/App.jsx']).toContain('styles.button');
     expect(validate).toHaveBeenCalledOnce();
-    expect(askWebLLM).toHaveBeenCalledTimes(2);
+    expect(askWebLLM).toHaveBeenCalledOnce();
   });
 
   it('recovers cleanly when model echoes raw validation JSON after automatic validation', async () => {
@@ -3200,7 +3192,7 @@ export default function App() {
       validate,
     });
 
-    expect(result.summary).toContain('Completed the requested changes and validated the build');
+    expect(result.summary).toContain('validated the build');
     expect(result.files['src/App.jsx']).toContain('Todo App');
     expect(result.files['src/App.jsx']).toContain('styles.button');
     expect(validate).toHaveBeenCalledOnce();

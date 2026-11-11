@@ -11,6 +11,7 @@ import {
   generationGuidanceForRequest,
   isNewAppGenerationRequest,
   resolveActionLoopSessionPolicy,
+  validateModularGenerationFiles,
 } from './ActionLoopSmallModel';
 import { isFailedValidationResult, observation } from './ActionLoopUtils';
 import type { AgentContextManager } from './ContextManager';
@@ -54,6 +55,7 @@ export function createActionLoopOpening({
   messages: WebLLMMessage[];
 } {
   const policy = resolveActionLoopSessionPolicy({
+    request,
     model,
     priorContext,
     agentRole,
@@ -75,14 +77,22 @@ export function createActionLoopOpening({
         responsiveGeneration: isNewAppGenerationRequest(request),
         hostGuidance: assessSmallModelRequest(request, model).guidance,
         includeProductContract: policy.hostAssistedWrite,
+        modularGeneration: policy.modularGeneration,
       })
-    : buildUserRequest({
-        request,
-        scope,
-        activeFile,
-        selectedLines,
-        priorContext: conversationContext,
-      });
+    : [
+        buildUserRequest({
+          request,
+          scope,
+          activeFile,
+          selectedLines,
+          priorContext: conversationContext,
+        }),
+        ...(policy.modularGeneration
+          ? [
+              `Modular app entry path: ${lightweightTargetPath}. Its stylesheet path is ${lightweightTargetPath.replace(/\.(?:[jt]sx?)$/i, '.module.css')}. Use these exact paths in the path-labelled files.`,
+            ]
+          : []),
+      ].join('\n\n');
   const messages: WebLLMMessage[] = [
     { role: 'system', content: policy.agentSystemPrompt },
     {
@@ -93,6 +103,9 @@ export function createActionLoopOpening({
         ...(!policy.useContextReadyPrompt
           ? generationGuidanceForRequest(request, {
               interactiveContract: policy.lightweightModel,
+              targetPath: lightweightTargetPath,
+              lightweight: policy.lightweightModel,
+              modularGeneration: policy.modularGeneration,
             })
           : []),
       ].join('\n\n'),
@@ -123,6 +136,10 @@ export const handleActionLoopDirectReply = async ({
   onEvent,
   agentRole,
   hostAssistedSession,
+  modularGeneration,
+  modularOutputFailures,
+  request,
+  modularTargetPath,
   applyCssModuleRecovery,
   autoFinishSummary,
   context,
@@ -149,6 +166,10 @@ export const handleActionLoopDirectReply = async ({
   onEvent: AgentEventHandler;
   agentRole: string | null;
   hostAssistedSession: boolean;
+  modularGeneration: boolean;
+  modularOutputFailures: number;
+  request: string;
+  modularTargetPath: string;
   applyCssModuleRecovery: (turn: number) => string[];
   autoFinishSummary: (
     reason: 'validate' | 'fulfillment' | 'identical-write' | 'unchanged-reads' | 'safety-limit',
@@ -158,7 +179,12 @@ export const handleActionLoopDirectReply = async ({
   clearFailedWriteAttempts: () => void;
   messages: WebLLMMessage[];
 }): Promise<
-  | { kind: 'handled'; result?: import('@/components/AI/types').RunAgentResult }
+  | {
+      kind: 'handled';
+      result?: import('@/components/AI/types').RunAgentResult;
+      modularOutputFailures?: number;
+      directRepairAttempts?: number;
+    }
   | {
       kind: 'repair';
       failedWritePath: string;
@@ -176,7 +202,54 @@ export const handleActionLoopDirectReply = async ({
 
   try {
     const directResult = parseModelResult(replyText);
+    if (modularGeneration && directResult.kind !== 'changes') return { kind: 'unhandled' };
+    const singleFileModularFallback =
+      modularGeneration &&
+      directResult.kind === 'changes' &&
+      directResult.changes.length === 1 &&
+      (directResult.changes[0].path || directResult.changes[0].filePath) === modularTargetPath;
+    const enforceModularGeneration = modularGeneration && !singleFileModularFallback;
+    if (singleFileModularFallback) {
+      const message =
+        'The local model returned a single app file instead of the requested modular bundle. The host will use CSS Module recovery for this response.';
+      context.record('modular_generation_single_file_fallback', message);
+      onEvent({
+        type: 'observation',
+        turn,
+        action: { action: 'write_file', path: modularTargetPath },
+        message,
+        agentRole,
+      });
+    }
     if (directResult.kind === 'changes' && directResult.changes.length) {
+      if (enforceModularGeneration) {
+        const missingFiles = validateModularGenerationFiles(
+          request,
+          modularTargetPath,
+          directResult.changes.map((change) => ({
+            ...change,
+            path: change.path || change.filePath || '',
+          })),
+        );
+        if (missingFiles.length) {
+          const nextFailureCount = modularOutputFailures + 1;
+          if (nextFailureCount >= 2) {
+            throw new AgentExecutionError(
+              `The local model repeatedly omitted required modular app files: ${missingFiles.join(', ')}.`,
+              workspace.changes(),
+            );
+          }
+          messages.push({
+            role: 'user',
+            content: observation(
+              'changes',
+              false,
+              `The response does not meet modular app requirements: ${missingFiles.join(', ')}. Return the complete path-labelled file bundle with every required component and CSS Module.`,
+            ),
+          });
+          return { kind: 'handled', modularOutputFailures: nextFailureCount };
+        }
+      }
       const changes = directResult.changes.map((change) => ({
         ...change,
         path: change.path || change.filePath || '',
@@ -195,6 +268,24 @@ export const handleActionLoopDirectReply = async ({
         );
       }
       if (validation.rejected.length || !validation.accepted.length) {
+        if (enforceModularGeneration) {
+          const nextFailureCount = modularOutputFailures + 1;
+          if (nextFailureCount >= 2) {
+            throw new AgentExecutionError(
+              `The local model repeatedly returned invalid modular files: ${validation.rejected.join('\n')}`,
+              workspace.changes(),
+            );
+          }
+          messages.push({
+            role: 'user',
+            content: observation(
+              'changes',
+              false,
+              `${validation.rejected.join('\n') || 'No usable changes were returned.'}\nReturn the complete corrected path-labelled bundle with every required component and CSS Module.`,
+            ),
+          });
+          return { kind: 'handled', modularOutputFailures: nextFailureCount };
+        }
         messages.push({
           role: 'user',
           content: observation(
@@ -210,6 +301,7 @@ export const handleActionLoopDirectReply = async ({
         else workspace.write(change.path, change.after);
       }
       clearFailedWriteAttempts();
+      if (hostAssistedSession) applyCssModuleRecovery(turn);
       let verification = '';
       if (validate) {
         verification = await runValidation(
@@ -221,6 +313,17 @@ export const handleActionLoopDirectReply = async ({
         const nextRepairAttempts = directRepairAttempts + 1;
         if (nextRepairAttempts > 2) {
           throw new AgentExecutionError(verification, workspace.changes());
+        }
+        if (enforceModularGeneration) {
+          messages.push({
+            role: 'user',
+            content: observation(
+              'validate',
+              false,
+              `${verification}\nReturn the corrected complete path-labelled bundle, including the app entry, its CSS Module, and every component and co-located CSS Module.`,
+            ),
+          });
+          return { kind: 'handled', directRepairAttempts: nextRepairAttempts };
         }
         const nextFailedPath =
           changes.find((change) => change.after !== undefined)?.path ||

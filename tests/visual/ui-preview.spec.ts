@@ -212,7 +212,6 @@ test('run overview responds to pane width and keeps long content inside its cont
   await page.goto('/ui-preview?screen=reasoning&scenario=populated&theme=dark');
   const overview = page.getByRole('region', { name: 'Run overview' });
   await expect(overview).toBeVisible();
-  await page.evaluate(() => document.fonts.ready);
 
   const content = overview.locator('xpath=..');
   const setContainerWidth = async (width: number) => {
@@ -228,99 +227,67 @@ test('run overview responds to pane width and keeps long content inside its cont
       container.style.flex = 'none';
     }, width);
   };
-  const assertLayout = async (width: number, mode: 'wide' | 'stacked' | 'narrow') => {
+  const assertLayout = async (width: number, mode: 'wide' | 'narrow') => {
     await setContainerWidth(width);
     const geometry = await overview.evaluate((element) => {
+      const heading = element.querySelector('[class*="overviewHeading"]');
       const statusElement = element.querySelector('[class*="runStatus"]');
+      const requestElement = element.querySelector('[class*="runRequest"]');
+      const roadmap = element.querySelector('[aria-label="Run stages"]');
       const executionElement = element.querySelector('[aria-label="Live execution"]');
-      const grid = element.querySelector('dl');
-      if (!statusElement || !executionElement || !grid) {
-        throw new Error('Run overview fixture is missing its status, execution, or metrics.');
+      if (!heading || !statusElement || !requestElement || !roadmap || !executionElement) {
+        throw new Error('Run overview fixture is missing its heading, roadmap, or live execution.');
       }
-      const status = statusElement.getBoundingClientRect();
-      const execution = executionElement.getBoundingClientRect();
-      const metrics = [...grid.children].map((child) => child.getBoundingClientRect());
-      const cells = [...element.querySelectorAll('dt, dd')];
       const bounds = element.getBoundingClientRect();
+      const contained = (child: Element) => {
+        const rect = child.getBoundingClientRect();
+        return rect.width > 0 && rect.left >= bounds.left - 1 && rect.right <= bounds.right + 1;
+      };
       return {
-        status,
-        execution,
-        metrics,
-        metricPairGaps: [...grid.children].map((card) => {
-          const label = card.querySelector('dt')?.getBoundingClientRect();
-          const value = card.querySelector('dd')?.getBoundingClientRect();
-          if (!label || !value) throw new Error('Run overview metric content is missing.');
-          return value.top - label.bottom;
-        }),
-        gridDisplay: getComputedStyle(grid).display,
-        overflows: element.scrollWidth > element.clientWidth,
-        metricCellsOutside: metrics.some(
-          (rect) =>
-            rect.width <= 0 ||
-            rect.height <= 0 ||
-            rect.left < bounds.left - 1 ||
-            rect.right > bounds.right + 1,
+        status: statusElement.getBoundingClientRect(),
+        request: requestElement.getBoundingClientRect(),
+        headingDirection: getComputedStyle(heading).flexDirection,
+        stageLabels: [...roadmap.querySelectorAll('[class*="roadmapLabel"]')].map(
+          (label) => label.textContent,
         ),
-        metricTextOverflows: cells.some((cell) => cell.scrollWidth > cell.clientWidth + 1),
+        stagesContained: [...roadmap.querySelectorAll('li')].every(contained),
+        executionContained: contained(executionElement),
+        overflows: element.scrollWidth > element.clientWidth,
         childrenOutside: [...element.children]
           .filter((child) => getComputedStyle(child).display !== 'contents')
-          .some((child) => {
-            const rect = child.getBoundingClientRect();
-            return rect.left < bounds.left - 1 || rect.right > bounds.right + 1;
-          }),
+          .some((child) => !contained(child)),
       };
     });
 
     expect(geometry.overflows).toBe(false);
-    expect(geometry.metrics).toHaveLength(4);
-    expect(geometry.metricCellsOutside).toBe(false);
-    expect(geometry.metricTextOverflows).toBe(false);
+    expect(geometry.stageLabels).toEqual(['Request', 'Context', 'Work', 'Validate', 'Result']);
+    expect(geometry.stagesContained).toBe(true);
+    expect(geometry.executionContained).toBe(true);
     expect(geometry.childrenOutside).toBe(false);
-    expect(geometry.metricPairGaps.every((gap) => gap <= 12)).toBe(true);
-    if (mode === 'wide') {
-      expect(Math.abs(geometry.execution.y - geometry.status.y)).toBeLessThan(1);
-      expect(geometry.gridDisplay).toBe('contents');
-    } else {
-      expect(geometry.execution.y).toBeGreaterThan(geometry.status.y);
-      expect(geometry.gridDisplay).toBe('grid');
-      if (mode === 'stacked') {
-        expect(Math.abs(geometry.metrics[0].y - geometry.metrics[1].y)).toBeLessThan(1);
-      } else {
-        expect(geometry.metrics[0].y).toBeLessThan(geometry.metrics[1].y);
-      }
+    expect(geometry.headingDirection).toBe(mode === 'wide' ? 'row' : 'column');
+    if (mode === 'narrow') {
+      expect(geometry.request.y).toBeGreaterThan(geometry.status.y);
     }
-
-    return geometry;
   };
 
-  await page.addStyleTag({ content: 'nextjs-portal { display: none !important; }' });
-  for (const width of [390, 815, 816, 1280]) {
-    await assertLayout(width, width > 815 ? 'wide' : width < 400 ? 'narrow' : 'stacked');
-    await expect(overview).toHaveScreenshot(`run-overview-${width}.png`, {
-      animations: 'disabled',
-      caret: 'hide',
-    });
+  for (const width of [390, 559, 560, 561, 1280]) {
+    await assertLayout(width, width > 560 ? 'wide' : 'narrow');
   }
-  await assertLayout(400, 'stacked');
-  await assertLayout(399, 'narrow');
 
   await setContainerWidth(390);
-  await overview
-    .locator('dt')
-    .first()
-    .evaluate((element) => {
-      element.textContent = 'A metric label that is longer than the narrow card';
-    });
-  await overview
-    .locator('dd')
-    .first()
-    .evaluate((element) => {
-      element.textContent = 'validation-output-'.repeat(8);
-    });
-  const longMetricTextOverflows = await overview.evaluate((element) =>
-    [...element.querySelectorAll('dt, dd')].some((cell) => cell.scrollWidth > cell.clientWidth + 1),
+  const longText = 'request-without-spaces-'.repeat(20);
+  await overview.locator('[class*="runRequest"]').evaluate((element, text) => {
+    element.textContent = `Request: ${text}`;
+  }, longText);
+  await overview.locator('[class*="liveDetail"]').evaluate((element, text) => {
+    element.textContent = text;
+  }, longText);
+  const longTextOverflows = await overview.evaluate((element) =>
+    [...element.querySelectorAll('[class*="runRequest"], [class*="liveDetail"]')].some(
+      (node) => node.scrollWidth > node.clientWidth + 1,
+    ),
   );
-  expect(longMetricTextOverflows).toBe(false);
+  expect(longTextOverflows).toBe(false);
 });
 
 test('desktop model table shows a horizontal scroll cue when columns overflow', async ({

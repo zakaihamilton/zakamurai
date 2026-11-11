@@ -19,7 +19,8 @@ const markStreamingCounts = (parent: MarkdownNode): void => {
       continue;
     }
 
-    const streamingCountPattern = /streaming its next action \(([\d,]+)(?= character\(s\) received)/g;
+    const streamingCountPattern =
+      /streaming its next action \(([\d,]+)(?= character\(s\) received)/g;
     let cursor = 0;
     let match = streamingCountPattern.exec(child.value);
     if (!match) {
@@ -50,6 +51,8 @@ const markStreamingCounts = (parent: MarkdownNode): void => {
   parent.children = children;
 };
 
-export const remarkStreamingCharacterCount = () => (tree: unknown): void => {
-  markStreamingCounts(tree as unknown as MarkdownNode);
-};
+export const remarkStreamingCharacterCount =
+  () =>
+  (tree: unknown): void => {
+    markStreamingCounts(tree as unknown as MarkdownNode);
+  };

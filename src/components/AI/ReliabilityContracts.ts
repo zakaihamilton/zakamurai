@@ -23,6 +23,10 @@ const DEMANDING_REQUEST =
   /\b(?:architect(?:ure|ing)?|redesign\s+(?:the\s+)?(?:entire|whole)|migrat(?:e|ion)|rewrite\s+(?:the\s+)?(?:entire|whole|all)|across\s+(?:the\s+)?(?:codebase|project|app|files)|multi[- ]file|multiple\s+files|every\s+file|all\s+files|entire\s+(?:codebase|project)|split\s+into\s+components|extract\s+(?:into|to)\s+components|monorepo)\b/i;
 const MODERATE_REQUEST =
   /\b(?:refactor|restructure|reorganiz|decompose|modulari[sz]e|add\s+(?:a\s+)?(?:new\s+)?(?:page|route|screen)|multi[- ]step|and\s+also)\b/i;
+const CODEBASE_WIDE_REQUEST =
+  /\b(?:architect(?:ure|ing)?|redesign\s+(?:the\s+)?(?:entire|whole)|migrat(?:e|ion)|rewrite\s+(?:the\s+)?(?:entire|whole|all)|across\s+(?:the\s+)?(?:codebase|project)|every\s+file|all\s+files|entire\s+(?:codebase|project)|monorepo)\b/i;
+const NEW_UI_APP_GENERATION =
+  /\b(?:build|create|generate|scaffold|start|make)\b.*\b(?:app|application|dashboard|form|game|interface|layout|list|menu|page|screen|table|todo|ui|widget|website)\b/i;
 
 const allowedWorkspacePaths = (files: FileMap): string[] => {
   const roots = new Set(
@@ -160,6 +164,16 @@ export function assessSmallModelRequest(
   const moderate = !demanding && MODERATE_REQUEST.test(text);
   const complexity = demanding ? 'demanding' : moderate ? 'moderate' : 'simple';
   const recovery = profile.tier === 'recovery';
+  const newUiApp = NEW_UI_APP_GENERATION.test(text) && !/\b(?:existing|current|this)\b/i.test(text);
+
+  if (newUiApp && !CODEBASE_WIDE_REQUEST.test(text)) {
+    return {
+      complexity,
+      forceSingleFile: false,
+      guidance:
+        'Host assistance: create a compact modular app with a small App entry and up to two focused subcomponents. Give every component its own co-located CSS Module and include model-written CSS files. Return path-labelled files together; the host validates and finishes.',
+    };
+  }
 
   if (demanding) {
     return {

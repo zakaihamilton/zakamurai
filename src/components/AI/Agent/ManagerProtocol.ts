@@ -120,6 +120,36 @@ const firstJsonObject = (text: string): unknown => {
   }
 };
 
+const PATH_FENCED_FILE_PATTERN =
+  /^```([a-z0-9+.-]+)[ \t]+path=(?:"([^"]+)"|'([^']+)'|([^\s`]+))[ \t]*\r?\n([\s\S]*?)\r?\n```[ \t]*$/gim;
+
+const parsePathFencedFiles = (text: string): AgentChange[] | null => {
+  const matches = [...text.matchAll(PATH_FENCED_FILE_PATTERN)];
+  if (!matches.length) return null;
+  const languageExtensions: Record<string, string[]> = {
+    js: ['js', 'jsx'],
+    javascript: ['js', 'jsx'],
+    jsx: ['js', 'jsx'],
+    react: ['js', 'jsx'],
+    ts: ['ts', 'tsx'],
+    typescript: ['ts', 'tsx'],
+    tsx: ['ts', 'tsx'],
+    css: ['css'],
+  };
+  const changes: AgentChange[] = [];
+  for (const match of matches) {
+    const language = match[1].toLowerCase();
+    const path = match[2] || match[3] || match[4] || '';
+    const extension = path.split('.').pop()?.toLowerCase() || '';
+    const content = match[5].trim();
+    if (!languageExtensions[language]?.includes(extension) || !content) {
+      throw new Error(`Invalid path-labelled source fence for ${path || 'an unknown file'}.`);
+    }
+    changes.push({ path, content });
+  }
+  return changes;
+};
+
 const safeContextRequests = (value: unknown): ContextRequest[] => {
   if (!Array.isArray(value)) return [];
   return value
@@ -179,6 +209,14 @@ const normalizeChanges = (value: unknown): AgentChange[] => {
 };
 
 export function parseModelResult(text: string): ModelResult {
+  const fileFencedChanges = parsePathFencedFiles(text);
+  if (fileFencedChanges) {
+    return {
+      kind: 'changes',
+      summary: 'Generated the component and CSS Module files.',
+      changes: fileFencedChanges,
+    };
+  }
   const value = firstJsonObject(text) as {
     kind?: unknown;
     summary?: unknown;

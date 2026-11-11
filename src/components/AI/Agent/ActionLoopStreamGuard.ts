@@ -80,7 +80,11 @@ export function inspectStreamingActionOutput({
   }
 
   // Detect fatal HTML document payloads inside a JSX/TSX code fence early.
-  if (/```(?:jsx|tsx)\s*\n[\s\S]{0,200}?(?:<!DOCTYPE\s+html\b|<html[\s>])/i.test(output)) {
+  if (
+    /```(?:jsx|tsx)(?:[ \t]+path=[^\r\n]+)?[ \t]*\r?\n[\s\S]{0,200}?(?:<!DOCTYPE\s+html\b|<html[\s>])/i.test(
+      output,
+    )
+  ) {
     return {
       action: 'abort-malformed',
       text: `${output}\n\`\`\``,
@@ -91,7 +95,7 @@ export function inspectStreamingActionOutput({
 
   // Detect forbidden state library imports early in the stream.
   if (
-    /```(?:jsx|tsx|js|ts)\s*\n[\s\S]{0,400}?\bfrom\s*["'](?:@reduxjs\/toolkit|redux|zustand|recoil)["']/i.test(
+    /```(?:jsx|tsx|js|ts)(?:[ \t]+path=[^\r\n]+)?[ \t]*\r?\n[\s\S]{0,400}?\bfrom\s*["'](?:@reduxjs\/toolkit|redux|zustand|recoil)["']/i.test(
       output,
     )
   ) {

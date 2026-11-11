@@ -27,8 +27,7 @@ const reconcileValidationClaim = (
 };
 
 const formatMilestoneTimestamp = (item: AgentActivityState['nodes'][number]): string => {
-  if (typeof item.elapsedMs !== 'number' || !Number.isFinite(item.elapsedMs))
-    return item.timestamp;
+  if (typeof item.elapsedMs !== 'number' || !Number.isFinite(item.elapsedMs)) return item.timestamp;
 
   const elapsedMs = Math.max(0, Math.floor(item.elapsedMs));
   const totalSeconds = Math.floor(elapsedMs / 1000);

@@ -93,13 +93,123 @@ export const shouldRegenerateFailedInteractiveSource = (
   /undeclared (?:event handler|function|state setter)/i.test(diagnostic);
 
 export const TODO_APP_GENERATION_GUIDANCE = `
-For todo and task-list requests, build a polished task planner rather than a starter shell:
-- Keep tasks in React state with stable ids and a controlled form. Trim empty submissions, then support add, toggle complete, delete, and clear completed.
-- Show a remaining-task count, All/Active/Completed filter tabs, and a helpful empty state. Derive visible tasks and counts from the current state.
-- Use semantic CSS Module roles such as app, shell/card, title, subtitle, form/row, control, primaryAction, secondaryAction, dangerAction, list, item, checkbox, and completed.
-- Give it a warm paper-and-ink palette with one terracotta accent, clear type hierarchy, a composed list surface, compact rows, responsive layout, and visible hover/focus states.
-- MANDATORY todo repair checklist: when tasks start as an empty mapped collection, include a controlled text input or textarea, a visible Add/Create submit control wired to the insertion handler, an explicit empty state, and working add/toggle/delete/clear/filter/count behavior; preserve the CSS Module import as styles and use styles.* for local classes, and do not import App.css or define a JavaScript styles object.
+For todo and task-list requests, create a polished planner in a small component set:
+- Keep state and derived counts in the supplied app entry. Put task entry in src/components/TodoForm.jsx and filtering/list rows in src/components/TodoList.jsx.
+- Create a co-located CSS Module for the app entry, TodoForm, and TodoList. Each component must default-import its module as styles and use styles.* classes.
+- Keep stable ids for each task; use a controlled form; support add, toggle, delete, clear completed, All/Active/Completed filter tabs, remaining count, and a helpful empty state.
+- MANDATORY todo repair checklist: include a controlled text input or textarea, a visible Add/Create submit control wired to insertion, an explicit empty state, and working add/toggle/delete/clear/filter/count behavior. Preserve all CSS Module imports, do not import App.css, and do not define a JavaScript styles object.
+- Use compact responsive rows, a warm paper-and-ink palette with a terracotta accent, clear type, and visible hover/focus states. Do not import App.css or use inline styles.
 `.trim();
+
+export const validateModularGenerationFiles = (
+  request: string,
+  targetPath: string,
+  changes: Array<{
+    path?: string;
+    filePath?: string;
+    content?: string;
+    after?: string;
+  }>,
+): string[] => {
+  const contentByPath = new Map<string, string>(
+    changes.map((change): [string, string] => [
+      change.path || change.filePath || '',
+      typeof change.content === 'string' ? change.content : change.after || '',
+    ]),
+  );
+  const paths = [...contentByPath.keys()];
+  const changedPaths = new Set(paths);
+  const appStylesheetPath = targetPath.replace(/\.(?:[jt]sx?)$/i, '.module.css');
+  const issues = [
+    ...(!changedPaths.has(targetPath) ? [targetPath] : []),
+    ...(!changedPaths.has(appStylesheetPath) ? [appStylesheetPath] : []),
+  ];
+  issues.push(...paths.filter((path) => /\.css$/i.test(path) && !/\.module\.css$/i.test(path)));
+  const componentPaths = paths.filter((path) => /^src\/components\/.+\.(?:[jt]sx?)$/i.test(path));
+  const requiredTodoComponentNames = isTodoAppRequest(request) ? ['TodoForm', 'TodoList'] : [];
+
+  if (!componentPaths.length) issues.push('at least one component under src/components/');
+  if (componentPaths.length > 2) issues.push('no more than two subcomponents');
+  for (const name of requiredTodoComponentNames) {
+    const matchingComponent = componentPaths.some(
+      (path) =>
+        path
+          .split('/')
+          .pop()
+          ?.replace(/\.(?:[jt]sx?)$/i, '') === name,
+    );
+    if (!matchingComponent) {
+      issues.push(`src/components/${name}.jsx or .tsx`);
+    }
+  }
+
+  for (const path of componentPaths) {
+    const stylesheetPath = path.replace(/\.(?:[jt]sx?)$/i, '.module.css');
+    if (!changedPaths.has(stylesheetPath)) issues.push(stylesheetPath);
+  }
+
+  const relativeSpecifier = (fromPath: string, toPath: string): string => {
+    const from = fromPath.split('/').slice(0, -1);
+    const to = toPath.split('/');
+    let common = 0;
+    while (common < from.length && common < to.length && from[common] === to[common]) common++;
+    const relative = [...Array(from.length - common).fill('..'), ...to.slice(common)].join('/');
+    return relative.startsWith('.') ? relative : `./${relative}`;
+  };
+  const imports = (source: string) => [
+    ...source.matchAll(/\bimport\s+([A-Za-z_$][\w$]*)\s+from\s*["']([^"']+)["']/g),
+  ];
+  const appSource = contentByPath.get(targetPath) || '';
+
+  for (const path of [targetPath, ...componentPaths]) {
+    const stylesheetPath = path.replace(/\.(?:[jt]sx?)$/i, '.module.css');
+    const stylesheetSpecifier = relativeSpecifier(path, stylesheetPath);
+    const source = contentByPath.get(path) || '';
+    const hasStylesImport = imports(source).some(
+      (match) => match[1] === 'styles' && match[2] === stylesheetSpecifier,
+    );
+    const classNames = [
+      ...source.matchAll(
+        /\bclassName\s*=\s*\{\s*styles(?:\.([A-Za-z_$][\w$]*)|\[\s*["']([^"']+)["']\s*\])/g,
+      ),
+    ].map((match) => match[1] || match[2]);
+    const cssContent = (contentByPath.get(stylesheetPath) || '').replace(/\/\*[\s\S]*?\*\//g, '');
+    const cssClassNames = new Set(
+      [...cssContent.matchAll(/\.([A-Za-z_-][\w-]*)/g)].map((match) => match[1]),
+    );
+    const hasMatchingClassRule = classNames.some((name) => cssClassNames.has(name));
+    if (!hasStylesImport || !hasMatchingClassRule) {
+      issues.push(
+        `${path} must import ${stylesheetPath} as styles and use class names defined in that CSS Module`,
+      );
+    }
+  }
+
+  for (const path of componentPaths) {
+    const componentName =
+      path
+        .split('/')
+        .pop()
+        ?.replace(/\.(?:[jt]sx?)$/i, '') || '';
+    const moduleSpecifier = relativeSpecifier(targetPath, path.replace(/\.[^.]+$/, ''));
+    const extension = path.split('.').pop() || '';
+    const componentImport = imports(appSource).find(
+      (match) => match[2] === moduleSpecifier || match[2] === `${moduleSpecifier}.${extension}`,
+    );
+    const importedName = componentImport?.[1];
+    const escapedName = importedName?.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const isRendered = escapedName
+      ? new RegExp(
+          `<${escapedName}(?=[\\s/>])|\\b(?:React\\.)?createElement\\(\\s*${escapedName}\\b`,
+        ).test(appSource)
+      : false;
+    if (!importedName || !isRendered) {
+      issues.push(`the app entry must import and render ${componentName} from ${path}`);
+    }
+  }
+
+  return [...new Set(issues)];
+};
 
 export const CLOCK_APP_GENERATION_GUIDANCE = `
 For clock, timer, or stopwatch requests:
@@ -114,8 +224,7 @@ For notes, memo, or list requests:
 - Include a visible empty state, a controlled input or textarea, and a working Add/Save control.
 - Define every render helper before calling it; never call a placeholder such as renderEditState unless its complete function exists.
 - Import the co-located CSS Module as styles, use styles.* for local classes, and never import App.css or define a JavaScript styles object.
-- Return the complete component file in the single required source fence. Do not stop after the first half of a render branch.
-- Do not finish with a heading-only shell.
+- Keep every render branch complete and return a working interface instead of a heading-only shell.
 `.trim();
 
 export const BOARD_GAME_GENERATION_GUIDANCE = `
@@ -154,10 +263,18 @@ export const generationGuidanceForRequest = (
     interactiveContract = false,
     targetPath,
     lightweight = false,
-  }: { interactiveContract?: boolean; targetPath?: string; lightweight?: boolean } = {},
+    modularGeneration = false,
+  }: {
+    interactiveContract?: boolean;
+    targetPath?: string;
+    lightweight?: boolean;
+    modularGeneration?: boolean;
+  } = {},
 ): string[] => {
   const skeleton =
-    lightweight && (interactiveContract || isKnownInteractiveAppRequest(request))
+    lightweight &&
+    !modularGeneration &&
+    (interactiveContract || isKnownInteractiveAppRequest(request))
       ? buildArchetypeSkeleton(request, targetPath)
       : null;
   return [
@@ -212,6 +329,24 @@ for the target component. No JSON, tool calls, CSS, ReactDOM, or prose.
 Include state and handlers when the UI is interactive. The host saves, generates CSS, validates, and finishes.
 `.trim();
 
+export const LIGHTWEIGHT_MODULAR_AGENT_SYSTEM_PROMPT = `
+You are a small local coding model. For a new UI app, return the complete compact component set in one response.
+Return one path-labelled source fence per file, using exactly this format:
+\`\`\`jsx path=src/App.jsx
+complete file content
+\`\`\`
+\`\`\`css path=src/App.module.css
+complete stylesheet content
+\`\`\`
+
+Use project-relative paths only. Include the app entry, up to two focused subcomponents under src/components/, and a co-located .module.css for every component. Export each subcomponent as default, import and render it directly in the app entry, and default-import each co-located module as styles. Write the CSS Modules yourself; do not rely on host-generated styles for the normal path. Keep the complete bundle under about 1700 tokens; use concise code and styles so it fits the local output limit. Include no prose, JSON, tool calls, App.css, inline styles, or ReactDOM bootstrap code. The host validates and stages the files together.
+Use the exact app entry path supplied in the user prompt; the example path above shows only the fence format.
+`.trim();
+
+export const LIGHTWEIGHT_MODULAR_CONTEXT_READY_INSTRUCTIONS = `
+IMPORTANT: The workspace context is supplied. Return only path-labelled source fences in the required file format. Include the App entry, up to two focused subcomponents, and each component's co-located CSS Module. The model must provide the CSS files. Do not inspect files or return JSON, prose, or tool calls.
+`.trim();
+
 export const MIDTIER_CONTEXT_READY_INSTRUCTIONS = `
 IMPORTANT: Workspace context is already supplied. Return exactly one fenced write_file action
 for the target component (JSON metadata line, then one labelled source fence). No exploration
@@ -221,6 +356,7 @@ tools, SEARCH/REPLACE, CSS, ReactDOM, or prose. The host validates and finishes 
 export type ActionLoopSessionPolicy = {
   lightweightModel: boolean;
   midTierModel: boolean;
+  modularGeneration: boolean;
   contextReady: boolean;
   midTierAssisted: boolean;
   hostAssistedWrite: boolean;
@@ -232,12 +368,14 @@ export type ActionLoopSessionPolicy = {
 };
 
 export function resolveActionLoopSessionPolicy({
+  request = '',
   model,
   priorContext,
   agentRole,
   allowedActions,
   systemPrompt,
 }: {
+  request?: string;
   model: string;
   priorContext?: string;
   agentRole?: string | null;
@@ -246,9 +384,11 @@ export function resolveActionLoopSessionPolicy({
 }): ActionLoopSessionPolicy {
   const lightweightModel = isLightweightAgentModel(model);
   const midTierModel = isMidTierAgentModel(model);
+  const modularGeneration = lightweightModel && !agentRole && isNewAppGenerationRequest(request);
   const contextReady = Boolean(priorContext) && !agentRole;
   const midTierAssisted = midTierModel && !agentRole;
-  const hostAssistedWrite = (lightweightModel && contextReady) || midTierAssisted;
+  const hostAssistedWrite =
+    (lightweightModel && contextReady && !modularGeneration) || midTierAssisted;
   const useContextReadyPrompt = contextReady || midTierAssisted;
   const enforceFulfillment = lightweightModel || midTierModel;
   const hostAssistedSession = lightweightModel || hostAssistedWrite;
@@ -260,18 +400,23 @@ export function resolveActionLoopSessionPolicy({
   const baseSystemPrompt = agentRole
     ? systemPrompt
     : lightweightModel
-      ? LIGHTWEIGHT_AGENT_SYSTEM_PROMPT
+      ? modularGeneration
+        ? LIGHTWEIGHT_MODULAR_AGENT_SYSTEM_PROMPT
+        : LIGHTWEIGHT_AGENT_SYSTEM_PROMPT
       : midTierAssisted
         ? MIDTIER_AGENT_SYSTEM_PROMPT
         : systemPrompt;
   const contextReadyInstructions = lightweightModel
-    ? LIGHTWEIGHT_CONTEXT_READY_INSTRUCTIONS
+    ? modularGeneration
+      ? LIGHTWEIGHT_MODULAR_CONTEXT_READY_INSTRUCTIONS
+      : LIGHTWEIGHT_CONTEXT_READY_INSTRUCTIONS
     : midTierAssisted
       ? MIDTIER_CONTEXT_READY_INSTRUCTIONS
       : CONTEXT_READY_AGENT_INSTRUCTIONS;
   return {
     lightweightModel,
     midTierModel,
+    modularGeneration,
     contextReady,
     midTierAssisted,
     hostAssistedWrite,

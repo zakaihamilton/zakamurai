@@ -253,14 +253,16 @@ export const resolveProjectStyleProfile = (
 
 export const formatProjectStyleContract = (
   profile: ProjectStyleProfile,
-  options: { responsive?: boolean } = {},
+  options: { responsive?: boolean; modelAuthoredModules?: boolean } = {},
 ): string => {
   const { tokens } = profile;
   return [
     `Project style: ${profile.source}.`,
     `Use only semantic CSS Module roles: ${PROJECT_STYLE_ROLES.join(', ')}.`,
     `Tokens: background ${tokens.background}; surface ${tokens.surface}; text ${tokens.text}; muted ${tokens.muted}; accent ${tokens.accent}; spacing ${tokens.spacing}; radius ${tokens.radius}.`,
-    'Return component source only. The host generates missing CSS Module rules deterministically.',
+    options.modelAuthoredModules
+      ? 'Return the component and every co-located CSS Module as separate path-labelled files. The model authors each stylesheet; host CSS recovery is only a fallback.'
+      : 'Return component source only. The host generates missing CSS Module rules deterministically.',
     ...(options.responsive ? [RESPONSIVE_GENERATION_CONTRACT] : []),
   ].join('\n');
 };
