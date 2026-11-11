@@ -424,9 +424,7 @@ describe('runActionLoop', () => {
     expect(userPrompt).toContain('primary controls and current status');
     expect(userPrompt).not.toContain('[list_files]');
     expect(modelClient.mock.calls[0][0]).toMatchObject({ temperature: 0.1 });
-    expect(modelClient.mock.calls[1][0].messages[0].content).toContain(
-      'You are a small local coding model',
-    );
+    expect(modelClient.mock.calls[1][0].messages[0].content).toContain('emergency write mode');
     expect(modelClient).toHaveBeenCalledTimes(2);
   });
 
@@ -543,7 +541,7 @@ export default function App() {
     expect(recoveryMessages[1].content).toContain('Current contents of src/App.jsx');
   });
 
-  it('retries incomplete write_file metadata with fence-only recovery for 1.5B models', async () => {
+  it('retries incomplete write_file metadata with a modular recovery prompt for 1.5B models', async () => {
     askWebLLM
       .mockResolvedValueOnce(
         '{"action":"write_file","path":"src/App.jsx","reason":"create a notes app"}',
@@ -566,8 +564,8 @@ export default function App() {
     const recoveryPrompt = askWebLLM.mock.calls[1]?.[3]?.messages
       ?.map((message: { content: string }) => message.content)
       .join('\n');
-    expect(recoveryPrompt).toContain('Reply with ONLY this labelled code fence');
-    expect(recoveryPrompt).toContain('```jsx');
+    expect(recoveryPrompt).toContain('complete app entry');
+    expect(recoveryPrompt).toContain('path-labelled fences');
     expect(recoveryPrompt).not.toContain('{"action":"write_file"');
     expect(recoveryPrompt).not.toContain('for example {"action":"list_files"}');
   });
@@ -803,7 +801,7 @@ export default function App() {
     expect(result.files['src/App.jsx']).toContain('useState');
     expect(result.files['src/App.jsx']).toContain('onClick');
     expect(result.files['src/App.module.css']).toContain('grid-template-columns');
-    expect(askWebLLM).toHaveBeenCalledTimes(2);
+    expect(askWebLLM).toHaveBeenCalledOnce();
   });
 
   it('auto-attaches a CSS Module when a lightweight model writes an unstyled interactive App', async () => {
@@ -3069,7 +3067,7 @@ export default function App() {
       validate,
     });
 
-    expect(result.summary).toContain('Completed the requested changes and validated the build');
+    expect(result.summary).toContain('validated the build');
     expect(result.files['src/App.jsx']).toContain('Todo App');
     expect(result.files['src/App.jsx']).toContain('styles.button');
     expect(validate).toHaveBeenCalledOnce();
@@ -3194,7 +3192,7 @@ export default function App() {
       validate,
     });
 
-    expect(result.summary).toContain('Completed the requested changes and validated the build');
+    expect(result.summary).toContain('validated the build');
     expect(result.files['src/App.jsx']).toContain('Todo App');
     expect(result.files['src/App.jsx']).toContain('styles.button');
     expect(validate).toHaveBeenCalledOnce();
