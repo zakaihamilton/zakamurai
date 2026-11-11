@@ -566,7 +566,7 @@ export default function App() {
       .join('\n');
     expect(recoveryPrompt).toContain('complete app entry');
     expect(recoveryPrompt).toContain('path-labelled fences');
-    expect(recoveryPrompt).not.toContain('{"action":"write_file"');
+    expect(recoveryPrompt).toContain('{"action":"write_file","path":"src/App.jsx"');
     expect(recoveryPrompt).not.toContain('for example {"action":"list_files"}');
   });
 
@@ -3071,7 +3071,7 @@ export default function App() {
     expect(result.files['src/App.jsx']).toContain('Todo App');
     expect(result.files['src/App.jsx']).toContain('styles.button');
     expect(validate).toHaveBeenCalledOnce();
-    expect(askWebLLM).toHaveBeenCalledTimes(2);
+    expect(askWebLLM).toHaveBeenCalledOnce();
   });
 
   it('recovers cleanly when model echoes raw validation JSON after automatic validation', async () => {
