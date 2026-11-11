@@ -203,8 +203,26 @@ export const handleActionLoopDirectReply = async ({
   try {
     const directResult = parseModelResult(replyText);
     if (modularGeneration && directResult.kind !== 'changes') return { kind: 'unhandled' };
+    const singleFileModularFallback =
+      modularGeneration &&
+      directResult.kind === 'changes' &&
+      directResult.changes.length === 1 &&
+      (directResult.changes[0].path || directResult.changes[0].filePath) === modularTargetPath;
+    const enforceModularGeneration = modularGeneration && !singleFileModularFallback;
+    if (singleFileModularFallback) {
+      const message =
+        'The local model returned a single app file instead of the requested modular bundle. The host will use CSS Module recovery for this response.';
+      context.record('modular_generation_single_file_fallback', message);
+      onEvent({
+        type: 'observation',
+        turn,
+        action: { action: 'write_file', path: modularTargetPath },
+        message,
+        agentRole,
+      });
+    }
     if (directResult.kind === 'changes' && directResult.changes.length) {
-      if (modularGeneration) {
+      if (enforceModularGeneration) {
         const missingFiles = validateModularGenerationFiles(
           request,
           modularTargetPath,
@@ -250,7 +268,7 @@ export const handleActionLoopDirectReply = async ({
         );
       }
       if (validation.rejected.length || !validation.accepted.length) {
-        if (modularGeneration) {
+        if (enforceModularGeneration) {
           const nextFailureCount = modularOutputFailures + 1;
           if (nextFailureCount >= 2) {
             throw new AgentExecutionError(
@@ -296,7 +314,7 @@ export const handleActionLoopDirectReply = async ({
         if (nextRepairAttempts > 2) {
           throw new AgentExecutionError(verification, workspace.changes());
         }
-        if (modularGeneration) {
+        if (enforceModularGeneration) {
           messages.push({
             role: 'user',
             content: observation(

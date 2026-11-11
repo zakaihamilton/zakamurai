@@ -96,7 +96,7 @@ export const TODO_APP_GENERATION_GUIDANCE = `
 For todo and task-list requests, create a polished planner in a small component set:
 - Keep state and derived counts in the supplied app entry. Put task entry in src/components/TodoForm.jsx and filtering/list rows in src/components/TodoList.jsx.
 - Create a co-located CSS Module for the app entry, TodoForm, and TodoList. Each component must default-import its module as styles and use styles.* classes.
-- Keep stable task ids; use a controlled form; support add, toggle, delete, clear completed, All/Active/Completed filter tabs, remaining count, and a helpful empty state.
+- Keep stable ids for each task; use a controlled form; support add, toggle, delete, clear completed, All/Active/Completed filter tabs, remaining count, and a helpful empty state.
 - MANDATORY todo repair checklist: include a controlled text input or textarea, a visible Add/Create submit control wired to insertion, an explicit empty state, and working add/toggle/delete/clear/filter/count behavior. Preserve all CSS Module imports, do not import App.css, and do not define a JavaScript styles object.
 - Use compact responsive rows, a warm paper-and-ink palette with a terracotta accent, clear type, and visible hover/focus states. Do not import App.css or use inline styles.
 `.trim();
@@ -124,9 +124,7 @@ export const validateModularGenerationFiles = (
     ...(!changedPaths.has(targetPath) ? [targetPath] : []),
     ...(!changedPaths.has(appStylesheetPath) ? [appStylesheetPath] : []),
   ];
-  issues.push(
-    ...paths.filter((path) => /\.css$/i.test(path) && !/\.module\.css$/i.test(path)),
-  );
+  issues.push(...paths.filter((path) => /\.css$/i.test(path) && !/\.module\.css$/i.test(path)));
   const componentPaths = paths.filter((path) => /^src\/components\/.+\.(?:[jt]sx?)$/i.test(path));
   const requiredTodoComponentNames = isTodoAppRequest(request) ? ['TodoForm', 'TodoList'] : [];
 
@@ -134,7 +132,11 @@ export const validateModularGenerationFiles = (
   if (componentPaths.length > 2) issues.push('no more than two subcomponents');
   for (const name of requiredTodoComponentNames) {
     const matchingComponent = componentPaths.some(
-      (path) => path.split('/').pop()?.replace(/\.(?:[jt]sx?)$/i, '') === name,
+      (path) =>
+        path
+          .split('/')
+          .pop()
+          ?.replace(/\.(?:[jt]sx?)$/i, '') === name,
     );
     if (!matchingComponent) {
       issues.push(`src/components/${name}.jsx or .tsx`);
@@ -154,8 +156,9 @@ export const validateModularGenerationFiles = (
     const relative = [...Array(from.length - common).fill('..'), ...to.slice(common)].join('/');
     return relative.startsWith('.') ? relative : `./${relative}`;
   };
-  const imports = (source: string) =>
-    [...source.matchAll(/\bimport\s+([A-Za-z_$][\w$]*)\s+from\s*["']([^"']+)["']/g)];
+  const imports = (source: string) => [
+    ...source.matchAll(/\bimport\s+([A-Za-z_$][\w$]*)\s+from\s*["']([^"']+)["']/g),
+  ];
   const appSource = contentByPath.get(targetPath) || '';
 
   for (const path of [targetPath, ...componentPaths]) {
@@ -191,8 +194,7 @@ export const validateModularGenerationFiles = (
     const moduleSpecifier = relativeSpecifier(targetPath, path.replace(/\.[^.]+$/, ''));
     const extension = path.split('.').pop() || '';
     const componentImport = imports(appSource).find(
-      (match) =>
-        match[2] === moduleSpecifier || match[2] === `${moduleSpecifier}.${extension}`,
+      (match) => match[2] === moduleSpecifier || match[2] === `${moduleSpecifier}.${extension}`,
     );
     const importedName = componentImport?.[1];
     const escapedName = importedName?.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -382,8 +384,7 @@ export function resolveActionLoopSessionPolicy({
 }): ActionLoopSessionPolicy {
   const lightweightModel = isLightweightAgentModel(model);
   const midTierModel = isMidTierAgentModel(model);
-  const modularGeneration =
-    lightweightModel && !agentRole && isNewAppGenerationRequest(request);
+  const modularGeneration = lightweightModel && !agentRole && isNewAppGenerationRequest(request);
   const contextReady = Boolean(priorContext) && !agentRole;
   const midTierAssisted = midTierModel && !agentRole;
   const hostAssistedWrite =

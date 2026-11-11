@@ -129,7 +129,7 @@ const createProps = (overrides: Partial<React.ComponentProps<typeof AISectionRea
   reasoningGroups: groups,
   visualReasoningGroups: groups,
   activity,
-  viewType: 'visual' as const,
+  viewType: 'activity' as const,
   showStepIO: false,
   runUsageSummary: '',
   latestError: '',
@@ -149,63 +149,19 @@ describe('AISectionReasoning', () => {
     expect(screen.queryByRole('button', { name: 'Activity details' })).toBeNull();
   });
 
-  it('renders the live execution map with planned future work', () => {
-    const { rerender } = render(<AISectionReasoning {...createProps()} />);
+  it('renders the live run roadmap and active step', () => {
+    render(<AISectionReasoning {...createProps({ viewType: 'visual' })} />);
 
-    const executionRegion = screen.getByRole('region', { name: 'Execution timeline' });
+    const overview = screen.getByRole('region', { name: 'Run overview' });
+    const roadmap = within(overview).getByRole('list', { name: 'Run stages' });
+    const stages = [...roadmap.querySelectorAll('li')];
 
-    expect(screen.getByRole('region', { name: 'Run overview' })).toBeDefined();
-    expect(screen.getByRole('region', { name: 'Live execution' })).toHaveTextContent('Read source');
-    expect(executionRegion).toBeDefined();
-
-    const collapsedNodes = [...executionRegion.querySelectorAll('li')];
-    expect(collapsedNodes).toHaveLength(3);
-    expect(collapsedNodes.at(-1)).toHaveTextContent('Read source');
-    expect(collapsedNodes.some((node) => node.textContent?.includes('Generate changes'))).toBe(
-      false,
-    );
-    expect(collapsedNodes.some((node) => node.textContent?.includes('Validate changes'))).toBe(
-      false,
-    );
-
-    rerender(<AISectionReasoning {...createProps({ timelineExpanded: true })} />);
-    const nodes = [...executionRegion.querySelectorAll('li')];
-    expect(nodes[0]).toHaveTextContent('Request');
-    expect(nodes[1]).toHaveTextContent('Route');
-    expect(nodes[2]).toHaveTextContent('Gather context');
     expect(
-      nodes.map((node) => node.querySelector('span[class*="executionTitle"]')?.textContent),
-    ).toEqual([
-      'Request',
-      'Route',
-      'Gather context',
-      'Read source',
-      'Generate changes',
-      'Validate changes',
-      'Ready',
-    ]);
-    expect(nodes.every((node) => !node.hasAttribute('data-depth'))).toBe(true);
-    expect(nodes.every((node) => !node.hasAttribute('data-rotation'))).toBe(true);
-    expect(nodes.every((node) => node.querySelector('[class*="executionCardArt"]'))).toBe(true);
-    expect(nodes.every((node) => node.querySelector('[class*="executionCardArtIcon"]'))).toBe(true);
-    expect(nodes.find((node) => node.getAttribute('aria-current') === 'step')).toHaveTextContent(
-      'Read source',
-    );
-    expect(nodes.find((node) => node.getAttribute('aria-current') === 'step')?.className).toContain(
-      'executionNodeactive',
-    );
-    expect(nodes.find((node) => node.getAttribute('aria-current') === 'step')?.className).toContain(
-      'executionNodeWorking',
-    );
-    expect(nodes.every((node) => node.querySelector('[class*="executionDetail"]'))).toBe(true);
-    expect(screen.getAllByText('Working').length).toBeGreaterThan(0);
-    expect(screen.getByText('Model calls')).toBeDefined();
-    expect(screen.getAllByText('Read source').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('Generate changes').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('Validate changes').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('Up next').length).toBeGreaterThan(0);
-    expect(screen.queryByRole('region', { name: 'Session transcript' })).toBeNull();
-    expect(screen.getAllByText('Build the app').length).toBeGreaterThan(0);
+      stages.map((stage) => stage.querySelector('span[class*="roadmapLabel"]')?.textContent),
+    ).toEqual(['Request', 'Context', 'Work', 'Validate', 'Result']);
+    expect(stages[2]).toHaveAttribute('aria-current', 'step');
+    expect(screen.getByRole('region', { name: 'Live execution' })).toHaveTextContent('Read source');
+    expect(screen.queryByRole('region', { name: 'Execution timeline' })).toBeNull();
   });
 
   it('renders model loading as a progress card with determinate and fallback rings', () => {
@@ -514,7 +470,7 @@ describe('AISectionReasoning', () => {
     expect(screen.queryByText('list_files input')).toBeNull();
 
     rerender(<AISectionReasoning {...createProps({ showStepIO: true })} />);
-    expect(screen.getByText('Input / output')).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Hide input / output' })).toBeDefined();
     expect(screen.getByText('list_files input')).toBeDefined();
     expect(screen.getByText('list_files output')).toBeDefined();
   });
@@ -571,6 +527,7 @@ describe('AISectionReasoning', () => {
     const { rerender } = render(
       <AISectionReasoning
         {...createProps({
+          viewType: 'visual',
           activity: completed,
           activeSession: makeAgentSession({ status: 'ready' }),
         })}
@@ -586,13 +543,16 @@ describe('AISectionReasoning', () => {
     rerender(
       <AISectionReasoning
         {...createProps({
+          viewType: 'visual',
           activity: failed,
           activeSession: makeAgentSession({ status: 'error' }),
         })}
       />,
     );
     expect(getLiveExecutionInfo(failed).outcome).toBe('Route stopped');
-    expect(screen.getAllByText('Blocked').length).toBeGreaterThan(0);
+    expect(
+      within(screen.getByRole('region', { name: 'Live execution' })).getByText('Run stopped'),
+    ).toBeDefined();
   });
 
   it('keeps the existing text log available as the alternate view', () => {
@@ -605,7 +565,7 @@ describe('AISectionReasoning', () => {
     expect(screen.queryByRole('region', { name: 'Live execution' })).toBeNull();
   });
 
-  it('renders errors at the end of the visual timeline', () => {
+  it('renders the latest error in activity details', () => {
     render(
       <AISectionReasoning
         {...createProps({

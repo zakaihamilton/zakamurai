@@ -103,7 +103,7 @@ export async function runActionLoop({
     lightweightModel,
     modularGeneration: initialModularGeneration,
     contextReady,
-    hostAssistedWrite,
+    hostAssistedWrite: initialHostAssistedWrite,
     enforceFulfillment,
     hostAssistedSession,
     effectiveAllowedActions,
@@ -127,6 +127,7 @@ export async function runActionLoop({
   });
   const previewInspectionRequired = requirePreviewInspection && Boolean(inspectPreview);
   let modularGeneration = initialModularGeneration;
+  let hostAssistedWrite = initialHostAssistedWrite;
   let protocolFailures = 0;
   let modularOutputFailures = 0;
   const modularOutputRecoveryMessage =
@@ -578,39 +579,16 @@ export async function runActionLoop({
       });
       continue;
     }
-    if (
-      modularGeneration &&
-      action.action === 'write_file' &&
-      action.path === lightweightTargetPath
-    ) {
-      modularGeneration = false;
-      const message =
-        'The local model returned a single app file instead of the requested modular bundle. The host will use CSS Module recovery for this response.';
-      context.record('modular_generation_single_file_fallback', message);
-      onEvent({ type: 'observation', turn, action, message, agentRole });
-    }
     if (modularGeneration) {
-      modularOutputFailures += 1;
-      if (modularOutputFailures >= 2) {
-        throw new AgentExecutionError(
-          `The local model could not provide the required modular file bundle. ${modularOutputRecoveryMessage}`,
-          workspace.changes(),
-        );
-      }
-      messages.push({
-        role: 'user',
-        content: observation('protocol', false, modularOutputRecoveryMessage),
-      });
-      context.record('modular_generation_recovery', modularOutputRecoveryMessage);
-      onEvent({
-        type: 'observation',
-        turn,
-        action,
-        error: true,
-        message: modularOutputRecoveryMessage,
-        agentRole,
-      });
-      continue;
+      modularGeneration = false;
+      hostAssistedWrite = true;
+      const isSingleAppWrite =
+        action.action === 'write_file' && action.path === lightweightTargetPath;
+      const message = isSingleAppWrite
+        ? 'The local model returned a single app file instead of the requested modular bundle. The host will use CSS Module recovery for this response.'
+        : 'The local model chose the host-assisted action flow instead of a complete modular bundle. Continue with the supplied actions; the host will recover CSS Modules and validate the app.';
+      context.record('modular_generation_legacy_fallback', message);
+      onEvent({ type: 'observation', turn, action, message, agentRole });
     }
     const fingerprint = JSON.stringify(action);
     if (forcedWriteRecoveryPending && action.action !== 'write_file') {

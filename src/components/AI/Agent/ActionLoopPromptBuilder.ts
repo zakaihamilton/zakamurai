@@ -186,9 +186,7 @@ export const buildContextReadyUserRequest = ({
           modelAuthoredModules: modularGeneration,
         })}`
       : null;
-  let styleContract = styleProfile
-    ? formatStyleContract(responsiveGeneration)
-    : null;
+  let styleContract = styleProfile ? formatStyleContract(responsiveGeneration) : null;
   const nextStep = lightweight
     ? modularGeneration
       ? `Return only path-labelled code fences, one complete file per fence, using the required jsx/css path=... format. Include ${targetPath}, its CSS Module, up to two focused subcomponents under src/components/, and a co-located CSS Module for each. Return every file in this response; no JSON or prose.`

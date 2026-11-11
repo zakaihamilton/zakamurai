@@ -397,13 +397,11 @@ describe('runActionLoop', () => {
     ).toBe(true);
   });
 
-  it('uses a compact prompt and earlier recovery for lightweight models', async () => {
+  it('uses a compact modular prompt and falls back to host-assisted writes for lightweight models', async () => {
     const modelClient = vi
       .fn()
       .mockResolvedValueOnce('{"action":"list_files"}')
-      .mockResolvedValueOnce(PLAYABLE_INTERACTIVE_APP)
-      .mockResolvedValueOnce('{"action":"validate"}')
-      .mockResolvedValueOnce('{"action":"finish","summary":"Created notes app"}');
+      .mockResolvedValueOnce(PLAYABLE_INTERACTIVE_APP);
     const validate = vi.fn().mockResolvedValue('Checks passed.');
 
     const result = await runActionLoop({
@@ -417,27 +415,19 @@ describe('runActionLoop', () => {
 
     expect(result.files['src/App.jsx']).toContain('Notes');
     expect(result.files['src/App.jsx']).toContain('useState');
-    expect(modelClient.mock.calls[0][0].messages[0].content).toContain(
+    const systemPrompt = modelClient.mock.calls[0][0].messages[0].content;
+    const userPrompt = modelClient.mock.calls[0][0].messages[1].content;
+    expect(systemPrompt).toContain('You are a small local coding model');
+    expect(systemPrompt).toContain('path-labelled source fences');
+    expect(userPrompt).toContain('Return only path-labelled code fences');
+    expect(userPrompt).toContain('--- src/App.jsx ---');
+    expect(userPrompt).toContain('primary controls and current status');
+    expect(userPrompt).not.toContain('[list_files]');
+    expect(modelClient.mock.calls[0][0]).toMatchObject({ temperature: 0.1 });
+    expect(modelClient.mock.calls[1][0].messages[0].content).toContain(
       'You are a small local coding model',
     );
-    expect(modelClient.mock.calls[0][0].messages[0].content).toContain('labelled source fence');
-    expect(modelClient.mock.calls[0][0].messages[1].content).toContain(
-      'Your next response must be ONLY a labelled code fence with the complete source for src/App.jsx',
-    );
-    expect(modelClient.mock.calls[0][0].messages[1].content).toContain('--- src/App.jsx ---');
-    expect(modelClient.mock.calls[0][0].messages[1].content).toContain(
-      'primary controls and current status',
-    );
-    expect(modelClient.mock.calls[0][0].messages[1].content).not.toContain('[list_files]');
-    expect(modelClient.mock.calls[0][0]).toMatchObject({ temperature: 0.1 });
-    expect(modelClient.mock.calls[1][0].messages[0].content).toContain('emergency write mode');
-    expect(modelClient.mock.calls[1][0].messages[0].content).toContain(
-      'Reply with ONLY this labelled code fence',
-    );
-    expect(modelClient.mock.calls[1][0].messages[0].content).not.toContain(
-      '{"action":"write_file"',
-    );
-    expect(modelClient.mock.calls[1][0]).toMatchObject({ temperature: 0.02 });
+    expect(modelClient).toHaveBeenCalledTimes(2);
   });
 
   it('repairs a notes component when a render helper is referenced before it exists', async () => {
@@ -1958,8 +1948,12 @@ ReactDOM.createRoot(document.getElementById("root")).render(<App />);`;
     });
 
     expect(result.files['src/App.jsx']).toContain('WINNING_LINES');
-    expect(askWebLLM.mock.calls[1]?.[3]?.messages?.[0]?.content).toContain('emergency write mode');
-    expect(askWebLLM.mock.calls[1]?.[3]?.messages?.[0]?.content).toContain('one closed component');
+    expect(askWebLLM.mock.calls[1]?.[3]?.messages?.[0]?.content).toContain(
+      'complete compact component set in one response',
+    );
+    expect(askWebLLM.mock.calls[1]?.[3]?.messages?.[0]?.content).toContain(
+      'up to two focused subcomponents',
+    );
   });
 
   it('uses a mid-tier fenced write path for 3B models when manager context is ready', async () => {

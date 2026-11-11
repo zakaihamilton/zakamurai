@@ -164,8 +164,7 @@ export function assessSmallModelRequest(
   const moderate = !demanding && MODERATE_REQUEST.test(text);
   const complexity = demanding ? 'demanding' : moderate ? 'moderate' : 'simple';
   const recovery = profile.tier === 'recovery';
-  const newUiApp =
-    NEW_UI_APP_GENERATION.test(text) && !/\b(?:existing|current|this)\b/i.test(text);
+  const newUiApp = NEW_UI_APP_GENERATION.test(text) && !/\b(?:existing|current|this)\b/i.test(text);
 
   if (newUiApp && !CODEBASE_WIDE_REQUEST.test(text)) {
     return {
