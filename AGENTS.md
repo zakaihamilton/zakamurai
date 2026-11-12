@@ -44,34 +44,11 @@ Uses the `echo` provider in [promptfooconfig.yaml](./promptfooconfig.yaml). **No
 
 ### Optional `verify:ai`
 
-Runs [scripts/verify-ai.sh](./scripts/verify-ai.sh):
+See [docs/agent-environment.md](./docs/agent-environment.md#optional-verifyai) for its checks and environment requirements.
 
-1. Architectural drift scan via `lucidshark` or `lucid` (skipped if not on PATH)
-2. `promptfoo eval`
-3. Performance budget check
-4. Full visual regression (Chromium + WebKit)
+## Environment-specific notes
 
-Install lucidshark and add it to PATH to enable the architectural scan. See lucidshark releases for install instructions.
-
-## Cursor Cloud specific instructions
-
-### Running
-
-- Dev server: `pnpm run dev` starts the IDE at `http://localhost:3000` and an isolated preview proxy at `http://localhost:3001`. Use `pnpm run dev:same-origin` only when you need the weaker same-origin `/__preview/` surface.
-- `predev`/`prebuild`/`postinstall` copy `almostnode` + ONNX/esbuild WASM assets into `public/` (`setup:almostnode`, `setup:wasm`). If `public/lib/almostnode`, `public/wasm`, or `public/esbuild` look empty, re-run `pnpm install` (or `pnpm run setup:almostnode && pnpm run setup:wasm`) rather than debugging Next.
-
-### Known pre-existing caveats (not environment issues)
-
-- `pnpm run format:check` (Biome) may still report a few formatting diffs on a clean checkout. Prefer `pnpm run format` when touching those files.
-- In-browser Build/Preview uses the custom esbuild-wasm resolver in `src/utils/compiler/browser-bundler.tsx`. Object-shaped package `browser` maps (e.g. react-dom) are applied via `applyBrowserRemap` and must not be treated as entry path strings.
-
-### Playwright / visual tests
-
-- `postinstall` downloads Chromium + WebKit browsers, but Playwright prints a Linux host-requirements warning because some system libraries are missing. Browsers still download. Running `pnpm run test:visual` may require system browser deps (`pnpm exec playwright install-deps`, needs root/apt) before it works.
-
-### LocalFS
-
-- `src/components/Storage/LocalFS.tsx` uses the File System Access API and IndexedDB in the browser. It is not available in all environments (for example headless CI or browsers without the API).
+When working in Cursor Cloud or running `verify:ai`, consult [docs/agent-environment.md](./docs/agent-environment.md) for setup and environment-specific caveats.
 
 <!-- BEGIN:nextjs-agent-rules -->
 
