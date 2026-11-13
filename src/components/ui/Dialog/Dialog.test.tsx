@@ -168,8 +168,8 @@ describe('Dialog', () => {
     );
     const dialog = screen.getByRole('dialog', { name: 'Title' });
     const describedById = dialog.getAttribute('aria-describedby');
-    expect(describedById).toBeTruthy();
-    expect(document.getElementById(describedById!)?.textContent).toBe('Detailed message text');
+    if (!describedById) throw new Error('Dialog message id was not set');
+    expect(document.getElementById(describedById)?.textContent).toBe('Detailed message text');
   });
 
   it('handles nested dialogs such that Escape only closes the topmost dialog', () => {

@@ -31,7 +31,6 @@ dist/
 .nuxt/
 .cache/
 .parcel-cache/
-.eslintcache/
 .sass-cache/
 *.tsbuildinfo
 next-env.d.ts
