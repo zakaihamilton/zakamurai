@@ -20,16 +20,16 @@ const FORBIDDEN_IMPORTS = [
 ];
 
 const COLOCATION_EXEMPT =
-  /\/(icons|state)\/|(?:Handler|Bridge|Restorer|Sync|Diff|FindHandler|Node|InitialData|highlighter|highlightClient|Protocol)\.(?:js|ts|tsx)$/;
+  /\/(icons|state)\/|(?:Handler|Bridge|Restorer|Sync|Diff|FindHandler|Node|InitialData|highlighter|highlightClient|Protocol|TestHelpers)\.(?:js|ts|tsx)$/;
 
 type ArchitectureViolation = { file: string; reason: string };
 
 const LINE_BUDGETS: Record<string, number> = {
-  'src/components/AI/Agent/ActionLoop.ts': 1660,
-  'src/components/AI/Agent/ActionLoopUtils.ts': 1250,
-  'src/components/AI/Agent/ActionLoopRecovery.ts': 800,
-  'src/components/AI/WebLLMAPI.tsx': 1100,
-  'src/components/AI/ChangeValidator.tsx': 900,
+  'src/components/AI/Agent/ActionLoop.ts': 220,
+  'src/components/AI/Agent/ActionLoopUtils.ts': 100,
+  'src/components/AI/Agent/ActionLoopRecovery.ts': 100,
+  'src/components/AI/WebLLMAPI.tsx': 250,
+  'src/components/AI/ChangeValidator.tsx': 250,
   'src/components/Storage/Settings.ts': 850,
   'src/components/App/Views/EditorArea/highlighter.tsx': 800,
   'src/components/AI/Agent/ManagerRunner.ts': 700,

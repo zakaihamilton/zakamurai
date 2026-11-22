@@ -1,4 +1,3 @@
-import type { WebLLMGenerationMetrics, WebLLMRecoveryEvent } from '@/components/AI/types';
 import {
   applyManagerTrace,
   applyRecovery,
@@ -6,6 +5,7 @@ import {
   finishAgentActivity,
 } from '@/components/AI/Agent/AgentActivity';
 import type { ManagerTrace } from '@/components/AI/Agent/ManagerTrace';
+import type { WebLLMGenerationMetrics, WebLLMRecoveryEvent } from '@/components/AI/types';
 import type {
   AgentActivityOutcome,
   AgentReasoningEntry,

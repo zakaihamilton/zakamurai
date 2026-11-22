@@ -387,30 +387,35 @@ describe('VariableResolver', () => {
     });
 
     it('resolves object argument usages in WebLLMAPI', () => {
-      const code = fs.readFileSync('src/components/AI/WebLLMAPI.tsx', 'utf8');
-      const targets = resolveVariables(code, 'src/components/AI/WebLLMAPI.tsx');
-      const messagesDeclarationIndex = code.indexOf('const messages =');
-      const messagesUseIndex = code.indexOf('messages,', messagesDeclarationIndex);
-      const generationOptionsUseIndex = code.indexOf(
-        'generationOptions,',
-        code.indexOf('completions.create'),
-      );
-      const messagesUse = targets.find(
+      const apiCode = fs.readFileSync('src/components/AI/WebLLMAPI.tsx', 'utf8');
+      const apiTargets = resolveVariables(apiCode, 'src/components/AI/WebLLMAPI.tsx');
+      const messagesDeclarationIndex = apiCode.indexOf('const messages =');
+      const messagesUseIndex = apiCode.indexOf('messages,', messagesDeclarationIndex);
+      const messagesUse = apiTargets.find(
         (t) => t.name === 'messages' && t.start === messagesUseIndex,
       );
       expect(messagesUse).toBeDefined();
-      const messagesDeclLine = code.slice(0, messagesDeclarationIndex).split('\n').length;
+      const messagesDeclLine = apiCode.slice(0, messagesDeclarationIndex).split('\n').length;
       expect(messagesUse?.targets[0].loc.line).toBe(messagesDeclLine);
 
-      const generationOptionsUse = targets.find(
+      const runnerCode = fs.readFileSync('src/components/AI/WebLLMCompletionRunner.ts', 'utf8');
+      const runnerTargets = resolveVariables(
+        runnerCode,
+        'src/components/AI/WebLLMCompletionRunner.ts',
+      );
+      const generationOptionsUseIndex = runnerCode.indexOf(
+        'generationOptions,',
+        runnerCode.indexOf('completions.create'),
+      );
+      const generationOptionsUse = runnerTargets.find(
         (t) => t.name === 'generationOptions' && t.start === generationOptionsUseIndex,
       );
       expect(generationOptionsUse).toBeDefined();
-      const generationOptionsDeclarationIndex = code.lastIndexOf(
+      const generationOptionsDeclarationIndex = runnerCode.lastIndexOf(
         'const generationOptions',
         generationOptionsUseIndex,
       );
-      const generationOptionsDeclLine = code
+      const generationOptionsDeclLine = runnerCode
         .slice(0, generationOptionsDeclarationIndex)
         .split('\n').length;
       expect(generationOptionsUse?.targets[0].loc.line).toBe(generationOptionsDeclLine);

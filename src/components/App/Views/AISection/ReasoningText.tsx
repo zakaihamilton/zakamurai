@@ -1,9 +1,9 @@
 import type { AgentSessionMessage } from '@/types/domain-types';
 import ReactMarkdown from 'react-markdown';
-import { keyReasoningEntries, type ReasoningGroup } from './AISectionReasoningUtils';
+import { type ReasoningGroup, keyReasoningEntries } from './AISectionReasoningUtils';
 import { markdownComponents, summaryMarkdownComponents } from './ReasoningMarkdown';
-import { remarkStreamingCharacterCount } from './streamingCharacterCount';
 import styles from './ReasoningText.module.css';
+import { remarkStreamingCharacterCount } from './streamingCharacterCount';
 
 function Transcript({ messages }: { messages: AgentSessionMessage[] }) {
   return (

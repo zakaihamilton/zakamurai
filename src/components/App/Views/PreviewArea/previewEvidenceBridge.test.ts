@@ -1,9 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { PreviewEvidence } from './preview-types';
 import {
+  PREVIEW_EVIDENCE_SETTLE_MS,
   clearPreviewEvidence,
   getLatestPreviewEvidence,
-  PREVIEW_EVIDENCE_SETTLE_MS,
   reportPreviewEvidence,
   reportPreviewRuntimeError,
   setPreviewEvidenceListener,

@@ -1,6 +1,6 @@
-import type { AppStateShape } from '@/types/domain-types';
-import type { FileSystemApi, FlatTreeRow, NormalizedTreeNode } from '@/components/App/types';
 import type { EditorStateStore } from '@/components/App/Views/EditorArea/types';
+import type { FileSystemApi, FlatTreeRow, NormalizedTreeNode } from '@/components/App/types';
+import type { AppStateShape } from '@/types/domain-types';
 import type { SidebarStateShape, SidebarUiStateShape, TabStateShape } from '@/types/domain-types';
 import type {
   CSSProperties,

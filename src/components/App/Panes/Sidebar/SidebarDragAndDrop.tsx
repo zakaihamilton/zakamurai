@@ -1,7 +1,7 @@
-import type { FlatTreeRow } from '@/components/App/types';
-import { remapEditorPathStateInDraft } from '@/components/App/Views/EditorArea/EditorBuffers';
-import { remapChangeSetPaths } from '@/components/Workspace';
 import { remapLastCodeTabPathInDraft } from '@/components/App/Panes/TabBar/TabStateUtils';
+import { remapEditorPathStateInDraft } from '@/components/App/Views/EditorArea/EditorBuffers';
+import type { FlatTreeRow } from '@/components/App/types';
+import { remapChangeSetPaths } from '@/components/Workspace';
 import type { SidebarStateShape, TabStateShape } from '@/types/domain-types';
 import { useCallback, useRef } from 'react';
 import type { Draft } from 'triactor';

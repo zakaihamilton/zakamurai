@@ -1,5 +1,6 @@
 import type { ManagerPlan } from '@/components/AI/types';
 import type { AgentActivityState } from '@/types/domain-types';
+import { describe, expect, it } from 'vitest';
 import {
   applyManagerPlan,
   applyManagerTrace,
@@ -10,7 +11,6 @@ import {
   normalizeAgentActivity,
 } from './AgentActivity';
 import type { ManagerTrace } from './ManagerTrace';
-import { describe, expect, it } from 'vitest';
 
 const plan: ManagerPlan = {
   intent: 'edit',

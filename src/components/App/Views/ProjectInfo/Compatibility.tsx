@@ -1,9 +1,9 @@
+import { collectWorkspaceFiles } from '@/components/AI/Agent/Snapshot';
 import { EditorState } from '@/components/App/Views/EditorArea';
 import {
   createEffectivePreviewFileContentsSnapshot,
   mergeWorkspaceDiskFiles,
 } from '@/components/App/Views/EditorArea/EditorBuffers';
-import { collectWorkspaceFiles } from '@/components/AI/Agent/Snapshot';
 import { useFileSystem } from '@/components/Storage';
 import { analyzeProjectHealth } from '@/contracts/project';
 import { useEffect, useRef, useState } from 'react';

@@ -1,59 +1,213 @@
-.executionCard {
-  composes: executionCard from "./AISectionReasoning.module.css";
-}
-
-.executionMarker {
-  composes: executionMarker from "./AISectionReasoning.module.css";
-}
-
 .executionNode {
-  composes: executionNode from "./AISectionReasoning.module.css";
+  position: relative;
+  z-index: 1;
+  display: grid;
+  flex: 0 0 var(--execution-card-width);
+  grid-template-rows: 34px auto;
+  gap: 12px;
+  width: var(--execution-card-width);
+  min-width: 0;
+  margin: 0;
+  transform-origin: center top;
+  will-change: transform;
+}
+
+.executionNode:first-child {
+  margin-top: 0;
 }
 
 .executionNodeModelProgress {
-  composes: executionNodeModelProgress from "./AISectionReasoning.module.css";
+  min-width: 0;
 }
 
 .executionNodeWorking {
-  composes: executionNodeWorking from "./AISectionReasoning.module.css";
+  order: var(--execution-working-order, 0);
+  z-index: var(--execution-working-z, 1);
+}
+
+.executionMarker {
+  position: relative;
+  z-index: 1;
+  display: var(--execution-marker-display, grid);
+  align-self: start;
+  width: 34px;
+  height: 34px;
+  margin: 0 auto;
+  place-items: center;
+  border: 1px solid var(--border-light);
+  border-radius: 50%;
+  color: var(--text-muted);
+  background: var(--bg-surface);
+  box-shadow: 0 0 0 5px color-mix(in srgb, var(--bg-input) 94%, transparent);
+}
+
+.executionNodeModelProgress .executionMarker {
+  color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 54%, var(--border-light));
+  background: var(--accent-light);
+}
+
+.executionCard {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  width: 100%;
+  height: var(--execution-card-height);
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--border-light) 92%, var(--accent));
+  border-radius: 18px;
+  padding: 8px;
+  background: var(--bg-input);
+  box-shadow: 0 9px 20px color-mix(in srgb, var(--text-main) 6%, transparent), var(--shadow-sm);
+  transition: border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
+}
+
+.executionCard::before {
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  height: 3px;
+  background: var(--border-light);
+  content: "";
+}
+
+.executionCard::after {
+  position: absolute;
+  right: -44px;
+  bottom: -52px;
+  width: 130px;
+  height: 130px;
+  border: 1px solid color-mix(in srgb, var(--accent) 14%, transparent);
+  border-radius: 50%;
+  content: "";
+  pointer-events: none;
 }
 
 .modelProgressCard {
-  composes: modelProgressCard from "./AISectionReasoning.module.css";
+  align-items: center;
+  justify-content: center;
+  gap: 17px;
+  height: var(--execution-card-height);
+  min-height: 0;
+  padding: 18px;
+  text-align: center;
+  border-color: color-mix(in srgb, var(--accent) 38%, var(--border-light));
+  background: radial-gradient(
+      circle at 0 50%,
+      color-mix(in srgb, var(--accent) 14%, transparent),
+      transparent 42%
+    ), var(--bg-input);
 }
 
-.modelProgressCopy {
-  composes: modelProgressCopy from "./AISectionReasoning.module.css";
-}
-
-.modelProgressEyebrow {
-  composes: modelProgressEyebrow from "./AISectionReasoning.module.css";
-}
-
-.modelProgressMeter {
-  composes: modelProgressMeter from "./AISectionReasoning.module.css";
-}
-
-.modelProgressRing {
-  composes: modelProgressRing from "./AISectionReasoning.module.css";
-}
-
-.modelProgressRingIndeterminate {
-  composes: modelProgressRingIndeterminate from "./AISectionReasoning.module.css";
-}
-
-.modelProgressRingText {
-  composes: modelProgressRingText from "./AISectionReasoning.module.css";
-}
-
-.modelProgressRingTrack {
-  composes: modelProgressRingTrack from "./AISectionReasoning.module.css";
-}
-
-.modelProgressRingValue {
-  composes: modelProgressRingValue from "./AISectionReasoning.module.css";
+.modelProgressCard::before {
+  background: linear-gradient(
+    90deg,
+    var(--accent),
+    color-mix(in srgb, var(--accent) 20%, transparent)
+  );
 }
 
 .modelProgressRingWrap {
-  composes: modelProgressRingWrap from "./AISectionReasoning.module.css";
+  display: grid;
+  width: var(--model-progress-ring-size, 92px);
+  height: var(--model-progress-ring-size, 92px);
+  flex: 0 0 auto;
+  place-items: center;
+}
+
+.modelProgressMeter {
+  display: grid;
+  width: var(--model-progress-ring-size, 92px);
+  height: var(--model-progress-ring-size, 92px);
+  place-items: center;
+  border-radius: 50%;
+}
+
+.modelProgressRing {
+  display: block;
+  width: var(--model-progress-ring-size, 92px);
+  height: var(--model-progress-ring-size, 92px);
+  overflow: visible;
+}
+
+.modelProgressRing circle {
+  fill: none;
+  stroke-width: 4;
+}
+
+.modelProgressRingTrack {
+  stroke: var(--border-light);
+  opacity: 0.7;
+}
+
+.modelProgressRingValue {
+  stroke: var(--accent);
+  stroke-linecap: round;
+  transform: rotate(-90deg);
+  transform-origin: 50% 50%;
+  transition: stroke-dashoffset 240ms ease;
+}
+
+.modelProgressRingIndeterminate .modelProgressRingValue {
+  stroke-dasharray: 38 107;
+  animation: model-progress-spin 1.2s linear infinite;
+}
+
+.modelProgressRingText {
+  fill: var(--text-main);
+  font-family: var(--font-mono, monospace);
+  font-size: 8px;
+  font-weight: 800;
+}
+
+.modelProgressCopy {
+  display: grid;
+  gap: 4px;
+  justify-items: center;
+  min-width: 0;
+  max-width: 170px;
+}
+
+.modelProgressEyebrow {
+  display: block;
+  color: var(--accent);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.modelProgressCopy strong {
+  overflow-wrap: anywhere;
+  color: var(--text-main);
+  font-size: 13px;
+  line-height: 1.25;
+}
+
+.modelProgressCopy > span:last-child {
+  color: var(--text-muted);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+@keyframes model-progress-spin {
+  to {
+    transform: rotate(270deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .executionCard,
+  .modelProgressRingValue {
+    transition: none;
+  }
+
+  .modelProgressRingIndeterminate .modelProgressRingValue {
+    animation: none;
+    transition: none;
+  }
 }
