@@ -1,219 +1,872 @@
-.executionCard {
-  composes: executionCard from "./AISectionReasoning.module.css";
-}
-
-.executionCardArt {
-  composes: executionCardArt from "./AISectionReasoning.module.css";
-}
-
-.executionCardArtGeneration {
-  composes: executionCardArtGeneration from "./AISectionReasoning.module.css";
-}
-
-.executionCardArtIcon {
-  composes: executionCardArtIcon from "./AISectionReasoning.module.css";
-}
-
-.executionCardArtLabel {
-  composes: executionCardArtLabel from "./AISectionReasoning.module.css";
-}
-
-.executionCardArtrecovery {
-  composes: executionCardArtrecovery from "./AISectionReasoning.module.css";
-}
-
-.executionCardArtresult {
-  composes: executionCardArtresult from "./AISectionReasoning.module.css";
-}
-
-.executionCardArttool {
-  composes: executionCardArttool from "./AISectionReasoning.module.css";
-}
-
-.executionCardArtvalidation {
-  composes: executionCardArtvalidation from "./AISectionReasoning.module.css";
-}
-
-.executionCardBody {
-  composes: executionCardBody from "./AISectionReasoning.module.css";
-}
-
-.executionCardHeader {
-  composes: executionCardHeader from "./AISectionReasoning.module.css";
-}
-
-.executionCardIndex {
-  composes: executionCardIndex from "./AISectionReasoning.module.css";
-}
-
-.executionDetail {
-  composes: executionDetail from "./AISectionReasoning.module.css";
-}
-
-.executionGenerationBody {
-  composes: executionGenerationBody from "./AISectionReasoning.module.css";
-}
-
-.executionGenerationDetails {
-  composes: executionGenerationDetails from "./AISectionReasoning.module.css";
-}
-
-.executionGenerationDetailsIcon {
-  composes: executionGenerationDetailsIcon from "./AISectionReasoning.module.css";
-}
-
-.executionGenerationLegend {
-  composes: executionGenerationLegend from "./AISectionReasoning.module.css";
-}
-
-.executionGenerationMeter {
-  composes: executionGenerationMeter from "./AISectionReasoning.module.css";
-}
-
-.executionGenerationMeterFill {
-  composes: executionGenerationMeterFill from "./AISectionReasoning.module.css";
-}
-
-.executionGenerationMetric {
-  composes: executionGenerationMetric from "./AISectionReasoning.module.css";
-}
-
-.executionGenerationProgress {
-  composes: executionGenerationProgress from "./AISectionReasoning.module.css";
-}
-
-.executionGenerationRawDetail {
-  composes: executionGenerationRawDetail from "./AISectionReasoning.module.css";
-}
-
-.executionGenerationSummary {
-  composes: executionGenerationSummary from "./AISectionReasoning.module.css";
-}
-
-.executionGenerationSummaryHeading {
-  composes: executionGenerationSummaryHeading from "./AISectionReasoning.module.css";
-}
-
-.executionGenerationWait {
-  composes: executionGenerationWait from "./AISectionReasoning.module.css";
-}
-
-.executionGenerationWaitDot {
-  composes: executionGenerationWaitDot from "./AISectionReasoning.module.css";
-}
-
-.executionGenerationWaitText {
-  composes: executionGenerationWaitText from "./AISectionReasoning.module.css";
-}
-
-.executionIO {
-  composes: executionIO from "./AISectionReasoning.module.css";
-}
-
-.executionMarker {
-  composes: executionMarker from "./AISectionReasoning.module.css";
-}
-
-.executionMeta {
-  composes: executionMeta from "./AISectionReasoning.module.css";
-}
-
-.executionMetaItem {
-  composes: executionMetaItem from "./AISectionReasoning.module.css";
-}
-
 .executionNode {
-  composes: executionNode from "./AISectionReasoning.module.css";
+  position: relative;
+  z-index: 1;
+  display: grid;
+  flex: 0 0 var(--execution-card-width);
+  grid-template-rows: 34px auto;
+  gap: 12px;
+  width: var(--execution-card-width);
+  min-width: 0;
+  margin: 0;
+  transform-origin: center top;
+  will-change: transform;
 }
 
-.executionNodeLiveGeneration {
-  composes: executionNodeLiveGeneration from "./AISectionReasoning.module.css";
-}
-
-.executionNodeSelected {
-  composes: executionNodeSelected from "./AISectionReasoning.module.css";
-}
-
-.executionNodeWorking {
-  composes: executionNodeWorking from "./AISectionReasoning.module.css";
+.executionNode:first-child {
+  margin-top: 0;
 }
 
 .executionNodeactive {
-  composes: executionNodeactive from "./AISectionReasoning.module.css";
+  z-index: 10;
 }
 
-.executionNodecompleted {
-  composes: executionNodecompleted from "./AISectionReasoning.module.css";
+.executionNodeWorking {
+  order: var(--execution-working-order, 0);
+  z-index: var(--execution-working-z, 1);
 }
 
-.executionNodefailed {
-  composes: executionNodefailed from "./AISectionReasoning.module.css";
+.executionNodeSelected {
+  order: var(--execution-selected-order, 0);
+  z-index: var(--execution-selected-z, 1);
 }
 
-.executionNodemodel {
-  composes: executionNodemodel from "./AISectionReasoning.module.css";
+.executionNodeLiveGeneration {
+  z-index: 10;
+}
+
+.executionNodecompleted,
+.executionNodefailed,
+.executionNodemodel,
+.executionNoderecovery,
+.executionNodevalidation {
+  min-width: 0;
 }
 
 .executionNodequeued {
-  composes: executionNodequeued from "./AISectionReasoning.module.css";
-}
-
-.executionNoderecovery {
-  composes: executionNoderecovery from "./AISectionReasoning.module.css";
+  opacity: 1;
 }
 
 .executionNodeskipped {
-  composes: executionNodeskipped from "./AISectionReasoning.module.css";
+  opacity: 0.5;
 }
 
-.executionNodevalidation {
-  composes: executionNodevalidation from "./AISectionReasoning.module.css";
+.executionMarker {
+  position: relative;
+  z-index: 1;
+  display: var(--execution-marker-display, grid);
+  align-self: start;
+  width: 34px;
+  height: 34px;
+  margin: 0 auto;
+  place-items: center;
+  border: 1px solid var(--border-light);
+  border-radius: 50%;
+  color: var(--text-muted);
+  background: var(--bg-surface);
+  box-shadow: 0 0 0 5px color-mix(in srgb, var(--bg-input) 94%, transparent);
 }
 
-.executionReason {
-  composes: executionReason from "./AISectionReasoning.module.css";
+.executionCard {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  width: 100%;
+  height: var(--execution-card-height);
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--border-light) 92%, var(--accent));
+  border-radius: 18px;
+  padding: 8px;
+  background: var(--bg-input);
+  box-shadow: 0 9px 20px color-mix(in srgb, var(--text-main) 6%, transparent), var(--shadow-sm);
+  transition: border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
 }
 
-.executionStatus {
-  composes: executionStatus from "./AISectionReasoning.module.css";
+.executionCard::before {
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  height: 3px;
+  background: var(--border-light);
+  content: "";
 }
 
-.executionTitle {
-  composes: executionTitle from "./AISectionReasoning.module.css";
+.executionCard::after {
+  position: absolute;
+  right: -44px;
+  bottom: -52px;
+  width: 130px;
+  height: 130px;
+  border: 1px solid color-mix(in srgb, var(--accent) 14%, transparent);
+  border-radius: 50%;
+  content: "";
+  pointer-events: none;
 }
 
-.executionTitleGroup {
-  composes: executionTitleGroup from "./AISectionReasoning.module.css";
+.executionGenerationCard {
+  min-height: 0;
+}
+
+.executionCardArt {
+  position: relative;
+  display: grid;
+  flex: 0 0 var(--execution-card-art-height, 170px);
+  min-height: var(--execution-card-art-height, 170px);
+  place-items: center;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--accent) 28%, var(--border-light));
+  border-radius: 12px;
+  color: var(--accent);
+  background: radial-gradient(
+      circle at 50% 46%,
+      color-mix(in srgb, var(--accent) 22%, transparent),
+      transparent 38%
+    ),
+    linear-gradient(
+      145deg,
+      color-mix(in srgb, var(--accent) 13%, var(--bg-surface)),
+      var(--bg-surface)
+    );
+  background-color: var(--bg-surface);
+}
+
+.executionCardArt::before {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 84px;
+  height: 84px;
+  border: 1px solid color-mix(in srgb, var(--accent) 24%, transparent);
+  border-radius: 50%;
+  content: "";
+  transform: translate(-50%, -50%);
+}
+
+.executionCardArt::after {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 118px;
+  height: 118px;
+  border: 1px dashed color-mix(in srgb, var(--accent) 17%, transparent);
+  border-radius: 50%;
+  content: "";
+  transform: translate(-50%, -50%);
+}
+
+.executionCardIndex,
+.executionCardArtLabel {
+  position: absolute;
+  z-index: 1;
+  color: color-mix(in srgb, var(--text-main) 72%, var(--accent));
+  font-family: var(--font-mono, monospace);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.executionCardIndex {
+  top: 11px;
+  left: 13px;
+}
+
+.executionCardArtLabel {
+  right: 13px;
+  bottom: 11px;
+  color: var(--accent);
+  font-size: 9px;
+}
+
+.executionCardArtIcon {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  width: 66px;
+  height: 66px;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--accent) 46%, var(--border-light));
+  border-radius: 50%;
+  background: var(--bg-surface);
+  box-shadow: 0 0 0 7px color-mix(in srgb, var(--accent) 7%, transparent);
+}
+
+.executionCardArtGeneration {
+  flex-basis: var(--execution-card-art-generation-height, 146px);
+  min-height: var(--execution-card-art-generation-height, 146px);
+  align-content: center;
+  gap: 10px;
+  background: radial-gradient(
+      circle at 50% 42%,
+      color-mix(in srgb, var(--accent) 25%, transparent),
+      transparent 36%
+    ),
+    linear-gradient(
+      145deg,
+      color-mix(in srgb, var(--accent) 17%, var(--bg-surface)),
+      var(--bg-surface)
+    );
+  background-color: var(--bg-surface);
+}
+
+.executionCardArtGeneration::before {
+  animation: generation-orbit 8s linear infinite;
+}
+
+.executionCardArtGeneration::after {
+  animation: generation-orbit-reverse 5s linear infinite;
 }
 
 .generationArtBadge {
-  composes: generationArtBadge from "./AISectionReasoning.module.css";
+  position: absolute;
+  top: 11px;
+  right: 12px;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--accent);
+  font-family: var(--font-mono, monospace);
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.generationArtLiveDot,
+.executionGenerationWaitDot {
+  display: block;
+  width: 6px;
+  height: 6px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 13%, transparent);
+  animation: generation-pulse 1.35s ease-in-out infinite;
+}
+
+.executionGenerationWaitDot {
+  width: 5px;
+  height: 5px;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 9%, transparent);
 }
 
 .generationArtIcon {
-  composes: generationArtIcon from "./AISectionReasoning.module.css";
-}
-
-.generationArtLiveDot {
-  composes: generationArtLiveDot from "./AISectionReasoning.module.css";
+  position: relative;
+  z-index: 1;
+  display: grid;
+  width: 64px;
+  height: 64px;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--accent) 52%, var(--border-light));
+  border-radius: 18px;
+  color: var(--accent);
+  background: var(--bg-surface);
+  box-shadow: 0 0 0 7px color-mix(in srgb, var(--accent) 8%, transparent), 0 0 24px
+    color-mix(in srgb, var(--accent) 19%, transparent);
+  transform: rotate(-3deg);
 }
 
 .generationArtSparkle {
-  composes: generationArtSparkle from "./AISectionReasoning.module.css";
+  position: absolute;
+  right: -8px;
+  top: -8px;
+  display: grid;
+  width: 25px;
+  height: 25px;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--accent) 48%, var(--border-light));
+  border-radius: 50%;
+  color: var(--accent);
+  background: var(--bg-surface);
+  animation: generation-sparkle 2.2s ease-in-out infinite;
 }
 
 .generationArtStream {
-  composes: generationArtStream from "./AISectionReasoning.module.css";
+  display: grid;
+  z-index: 1;
+  width: min(124px, 76%);
+  gap: 5px;
 }
 
 .generationArtStreamLine {
-  composes: generationArtStreamLine from "./AISectionReasoning.module.css";
+  display: block;
+  width: 100%;
+  height: 3px;
+  border-radius: 999px;
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--accent) 45%, transparent),
+    var(--accent),
+    color-mix(in srgb, var(--accent) 22%, transparent)
+  );
+  opacity: 0.8;
+  transform-origin: left center;
+  animation: generation-stream 1.6s ease-in-out infinite;
 }
 
-.generationArtStreamLineMedium {
-  composes: generationArtStreamLineMedium from "./AISectionReasoning.module.css";
+.generationArtStreamLine:nth-child(2) {
+  animation-delay: 120ms;
+}
+
+.generationArtStreamLine:nth-child(3) {
+  animation-delay: 240ms;
+}
+
+.generationArtStreamLine:nth-child(4) {
+  animation-delay: 360ms;
 }
 
 .generationArtStreamLineShort {
-  composes: generationArtStreamLineShort from "./AISectionReasoning.module.css";
+  width: 56%;
+}
+
+.generationArtStreamLineMedium {
+  width: 78%;
+}
+
+.executionCardArttool {
+  --accent: var(--text-main);
+}
+
+.executionCardArtvalidation,
+.executionCardArtresult {
+  --accent: var(--success, #4ade80);
+}
+
+.executionCardArtrecovery {
+  --accent: var(--warning, #d7a84b);
+}
+
+.executionNodefailed .executionCardArt {
+  --accent: var(--error, #f87171);
+}
+
+.executionNodequeued .executionCardArt {
+  opacity: 1;
+  filter: saturate(0.65);
+}
+
+.executionCardBody {
+  position: relative;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  overflow: auto;
+  z-index: 1;
+  padding: 11px 4px 2px;
+  scrollbar-width: thin;
+}
+
+.executionGenerationBody {
+  padding-top: 10px;
+}
+
+.executionCardHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 0;
+}
+
+.executionTitleGroup {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.executionTitle {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: var(--text-main);
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.25;
+}
+
+.executionMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  min-width: 0;
+}
+
+.executionMetaItem {
+  max-width: 100%;
+  overflow: hidden;
+  border: 1px solid var(--border-light);
+  border-radius: 999px;
+  padding: 2px 6px;
+  color: var(--text-muted);
+  font-family: var(--font-mono, monospace);
+  font-size: 9px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.executionStatus {
+  flex: 0 0 auto;
+  border: 1px solid var(--border-light);
+  border-radius: 999px;
+  padding: 3px 7px;
+  color: var(--text-muted);
+  background: var(--bg-surface);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.executionDetail {
+  margin: 9px 0 13px;
+  color: var(--text-main);
+  font-size: 12px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.executionReason {
+  margin: -4px 0 13px;
+  color: var(--text-muted);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.executionNodequeued .executionMarker {
+  border-style: dashed;
+}
+
+.executionNodequeued .executionCard {
+  background: var(--bg-input);
+}
+
+.executionNodeactive .executionMarker {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-light);
+  animation: execution-pulse 1.8s ease-in-out infinite;
+}
+
+.executionNodeactive .executionCard {
+  border-color: color-mix(in srgb, var(--accent) 64%, var(--border-light));
+  box-shadow: 0 14px 30px color-mix(in srgb, var(--accent) 19%, transparent), var(--shadow-sm);
+}
+
+.executionNodeactive .executionCard::before {
+  background: linear-gradient(90deg, var(--accent), var(--accent-hover), transparent);
+}
+
+.executionNodeactive .executionStatus {
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--border-light));
+  color: var(--accent);
+  background: var(--accent-light);
+}
+
+.executionNodeLiveGeneration .executionCard {
+  background: var(--bg-input);
+}
+
+.executionNodeLiveGeneration .executionCard::after {
+  border-color: color-mix(in srgb, var(--accent) 22%, transparent);
+}
+
+.executionNodeLiveGeneration .executionMetaItem {
+  border-color: color-mix(in srgb, var(--accent) 24%, var(--border-light));
+  background: color-mix(in srgb, var(--accent) 5%, transparent);
+}
+
+.executionGenerationSummary {
+  position: relative;
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  margin: 10px 0 9px;
+  border: 1px solid color-mix(in srgb, var(--accent) 22%, var(--border-light));
+  border-radius: 8px;
+  padding: 9px 10px;
+  background: var(--bg-surface);
+}
+
+.executionGenerationLegend {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.executionGenerationSummaryHeading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+}
+
+.executionGenerationSummaryHeading strong {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-main);
+  font-size: 11px;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.executionGenerationSummaryHeading span {
+  flex: 0 0 auto;
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--border-light));
+  border-radius: 999px;
+  padding: 3px 6px;
+  color: var(--accent);
+  font-family: var(--font-mono, monospace);
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.executionGenerationProgress {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 9px;
+}
+
+.executionGenerationMeter {
+  position: relative;
+  height: 7px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 13%, var(--bg-input));
+}
+
+.executionGenerationMeterFill {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 46%;
+  border-radius: inherit;
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--accent) 42%, transparent),
+    var(--accent),
+    color-mix(in srgb, var(--accent) 38%, transparent)
+  );
+  box-shadow: 0 0 12px color-mix(in srgb, var(--accent) 34%, transparent);
+  animation: generation-meter 1.6s ease-in-out infinite;
+}
+
+.executionGenerationMetric {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+  min-width: 0;
+  color: var(--text-muted);
+  font-family: var(--font-mono, monospace);
+  white-space: nowrap;
+}
+
+.executionGenerationMetric strong {
+  color: var(--text-main);
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.executionGenerationMetric span {
+  overflow: hidden;
+  color: var(--accent);
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+}
+
+.executionGenerationWait {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  border-top: 1px solid color-mix(in srgb, var(--accent) 17%, var(--border-light));
+  padding-top: 8px;
+  color: var(--text-muted);
+  font-size: 10px;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.executionGenerationWaitText {
+  color: var(--accent);
+}
+
+.executionGenerationDetails {
+  margin: 0;
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  background: var(--bg-surface);
+}
+
+.executionGenerationDetails summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  list-style: none;
+  padding: 8px 10px;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.executionGenerationDetails summary::-webkit-details-marker {
+  display: none;
+}
+
+.executionGenerationDetailsIcon {
+  display: block;
+  flex: 0 0 auto;
+  color: currentcolor;
+  transition: transform 180ms ease;
+}
+
+.executionGenerationDetails[open] .executionGenerationDetailsIcon {
+  transform: rotate(180deg);
+}
+
+.executionGenerationRawDetail {
+  margin: 0;
+  border-top: 1px solid var(--border-light);
+  padding: 8px 10px 10px;
+  color: var(--text-main);
+  font-size: 11px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.executionNodecompleted .executionMarker {
+  border-color: var(--success, #4ade80);
+  color: var(--success, #4ade80);
+}
+
+.executionNodecompleted .executionCard::before {
+  background: var(--success, #4ade80);
+}
+
+.executionNodecompleted .executionStatus {
+  border-color: color-mix(in srgb, var(--success, #4ade80) 45%, var(--border-light));
+  color: var(--success, #4ade80);
+  background: var(--success-light, transparent);
+}
+
+.executionNodefailed .executionMarker {
+  border-color: var(--error, #f87171);
+  color: var(--error, #f87171);
+  background: color-mix(in srgb, var(--error, #f87171) 12%, var(--bg-surface));
+}
+
+.executionNodefailed .executionCard {
+  border-color: color-mix(in srgb, var(--error, #f87171) 55%, var(--border-light));
+}
+
+.executionNodefailed .executionCard::before {
+  background: var(--error, #f87171);
+}
+
+.executionNodefailed .executionStatus {
+  border-color: color-mix(in srgb, var(--error, #f87171) 48%, var(--border-light));
+  color: var(--error, #f87171);
+  background: var(--danger-light, transparent);
+}
+
+.executionNodemodel .executionMarker,
+.executionNodevalidation .executionMarker {
+  color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 52%, var(--border-light));
+}
+
+.executionNoderecovery .executionMarker {
+  color: var(--warning, #d7a84b);
+  border-color: var(--warning, #d7a84b);
+}
+
+.executionNoderecovery .executionCard {
+  border-color: color-mix(in srgb, var(--warning, #d7a84b) 48%, var(--border-light));
+}
+
+.executionIO {
+  margin: 0 0 10px;
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  background: var(--bg-surface);
+}
+
+.executionIO summary {
+  padding: 7px 9px;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.executionIO > div {
+  padding: 0 9px 9px;
+}
+
+.executionIO span {
+  display: block;
+  margin: 4px 0;
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.executionIO pre {
+  max-height: 160px;
+  margin: 0;
+  overflow: auto;
+  border: 1px solid var(--border-light);
+  border-radius: 5px;
+  padding: 8px;
+  color: var(--text-main);
+  background: var(--surface-inset, var(--bg-input));
+  font-family: var(--font-mono, monospace);
+  font-size: 10px;
+  line-height: 1.4;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+@keyframes execution-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 12%, transparent);
+  }
+
+  50% {
+    box-shadow: 0 0 0 8px color-mix(in srgb, var(--accent) 4%, transparent);
+  }
+}
+
+@keyframes generation-orbit {
+  to {
+    transform: translate(-50%, -50%) rotate(360deg);
+  }
+}
+
+@keyframes generation-orbit-reverse {
+  to {
+    transform: translate(-50%, -50%) rotate(-360deg);
+  }
+}
+
+@keyframes generation-pulse {
+  0%,
+  100% {
+    opacity: 0.55;
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 10%, transparent);
+  }
+
+  50% {
+    opacity: 1;
+    box-shadow: 0 0 0 6px color-mix(in srgb, var(--accent) 4%, transparent);
+  }
+}
+
+@keyframes generation-sparkle {
+  0%,
+  100% {
+    transform: rotate(0deg) scale(0.92);
+  }
+
+  50% {
+    transform: rotate(12deg) scale(1.08);
+  }
+}
+
+@keyframes generation-stream {
+  0%,
+  100% {
+    opacity: 0.42;
+    transform: scaleX(0.84);
+  }
+
+  50% {
+    opacity: 1;
+    transform: scaleX(1);
+  }
+}
+
+@keyframes generation-meter {
+  0%,
+  100% {
+    opacity: 0.5;
+    transform: translateX(-28%) scaleX(0.82);
+  }
+
+  50% {
+    opacity: 1;
+    transform: translateX(118%) scaleX(1.08);
+  }
+}
+
+@media (width <= 520px) {
+  .executionCardHeader {
+    display: grid;
+    gap: 10px;
+  }
+
+  .executionStatus {
+    justify-self: start;
+  }
+
+  .generationArtIcon {
+    width: 58px;
+    height: 58px;
+  }
+
+  .generationArtStream {
+    width: min(108px, 76%);
+  }
+
+  .executionGenerationProgress {
+    grid-template-columns: 1fr;
+    gap: 7px;
+  }
+
+  .executionGenerationMetric {
+    justify-content: space-between;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .executionCard {
+    transition: none;
+  }
+
+  .executionNodeactive .executionMarker,
+  .executionCardArtGeneration::before,
+  .executionCardArtGeneration::after,
+  .generationArtLiveDot,
+  .executionGenerationWaitDot,
+  .generationArtSparkle,
+  .generationArtStreamLine,
+  .executionGenerationMeterFill,
+  .executionGenerationDetailsIcon {
+    animation: none;
+    transition: none;
+  }
 }

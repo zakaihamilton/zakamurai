@@ -2,8 +2,8 @@
 
 import App from '@/components/App';
 import AppErrorBoundary from '@/components/App/AppErrorBoundary';
-import { VisitoringProvider } from 'visitoring';
 import { StateRoot } from 'triactor';
+import { VisitoringProvider } from 'visitoring';
 
 const VISITORING_SITE_KEY = 'vk_ECTBdX_1LON-AA9iBUzKmF_J7WImUSDl';
 

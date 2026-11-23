@@ -6,9 +6,9 @@ import { removeLastCodeTabPathInDraft } from '@/components/App/Panes/TabBar/TabS
 import Settings from '@/components/Storage/Settings';
 import { ChangeSetState, updateChangeSetFile } from '@/components/Workspace';
 import type { CursorPosition } from '@/types/domain-types';
-import { removeEditorPathStateInDraft } from './EditorBuffers';
 import { deleteInDraft, setInDraft } from '@/utils/StateUtils';
 import { useCallback, useEffect, useRef } from 'react';
+import { removeEditorPathStateInDraft } from './EditorBuffers';
 import { acquireFileOperation, releaseFileOperation } from './FileOperations';
 import type { DiffActions, DiffHandlerProps, PendingDeletionEntry } from './types';
 

@@ -1,7 +1,7 @@
+import { WebLLMState } from '@/components/AI/WebLLMState';
 import { AgentSessionState } from '@/components/App/Panes/Prompt/AgentSessions';
 import { PromptUiState } from '@/components/App/Panes/Prompt/PromptState';
 import { TabState } from '@/components/App/Panes/TabBar';
-import { WebLLMState } from '@/components/AI/WebLLMState';
 import { ChangeSetState } from '@/components/Workspace';
 import { makeAgentSession } from '@/test-utils/agentSessionMocks';
 import { createMockStateStore, makeTabState } from '@/test-utils/stateMocks';

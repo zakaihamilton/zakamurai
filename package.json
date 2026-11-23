@@ -69,6 +69,7 @@
     "health:licenses": "license-checker --json",
     "health:documentation": "markdownlint-cli2 \"**/*.md\" \"#node_modules\" \"#test-results\" \"#.next\" \"#coverage\" \"#.repnix\"",
     "health:a11y": "pnpm exec playwright test --project=chromium tests/visual/accessibility.spec.ts",
+    "health:accessibility": "eslint \"src/**/*.{jsx,tsx}\"",
     "health:visual": "pnpm exec playwright test --project=chromium tests/visual/regression.spec.ts tests/visual/ui-preview.spec.ts",
     "health:interactions": "vitest run src/components/App/Panes/Prompt/Reasoning/Reasoning.test.tsx"
   },
@@ -99,10 +100,13 @@
     "@types/node": "^22.20.1",
     "@types/react": "19.2.17",
     "@types/react-dom": "19.2.3",
+    "@typescript-eslint/parser": "^8.64.0",
     "@vitejs/plugin-react": "4.7.0",
     "@vitest/coverage-v8": "3.2.7",
     "c8": "^12.0.0",
     "dependency-cruiser": "^18.2.0",
+    "eslint": "^9.39.5",
+    "eslint-plugin-jsx-a11y": "^6.10.2",
     "fast-check": "3.23.2",
     "husky": "9.1.7",
     "jscpd": "^5.0.14",
@@ -120,13 +124,8 @@
     "vitest": "3.2.7"
   },
   "lint-staged": {
-    "src/**/*.{js,jsx,ts,tsx}": [
-      "biome check --write",
-      "vitest related --run"
-    ],
-    "src/**/*.module.css": [
-      "stylelint --fix"
-    ]
+    "src/**/*.{js,jsx,ts,tsx}": ["biome check --write", "vitest related --run"],
+    "src/**/*.module.css": ["stylelint --fix"]
   },
   "packageManager": "pnpm@10.33.0"
 }

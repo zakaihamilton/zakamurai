@@ -1,17 +1,17 @@
 import { writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
-import baseline from './baseline.json';
-import { describe, expect, it } from 'vitest';
 import {
   type AIEvalBaseline,
   compareAIEvalResults,
   matchingQualificationBaseline,
   scoreAIEvalCase,
 } from '@/components/AI/AIEvals';
+import { validateContentSyntax } from '@/components/AI/ChangeValidator';
 import { COMPLETION_SYSTEM_PROMPT } from '@/components/AI/PromptTemplates';
 import { responseFormatForTask } from '@/components/AI/ReliabilityContracts';
-import { validateContentSyntax } from '@/components/AI/ChangeValidator';
 import { askWebLLM, unloadAllWebLLMEngines } from '@/components/AI/WebLLMAPI';
+import { describe, expect, it } from 'vitest';
+import baseline from './baseline.json';
 import { AI_EVAL_CASES, QUALIFICATION_MODEL_IDS } from './cases';
 
 const enabled = process.env.ZAKAMURAI_AI_QUALIFICATION === '1';

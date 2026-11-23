@@ -1,943 +1,266 @@
+import type { ShortcutDefinition } from '@/components/App/types';
 import {
-  commitDirtyBufferContentsInDraft,
-  readEffectiveFileContent,
-  removeEditorPathStateInDraft,
-} from '@/components/App/Views/EditorArea/EditorBuffers';
-import type { FileSystemApi, ShortcutDefinition } from '@/components/App/types';
-import {
+  clearLogsAction,
+  closeAllTabsAction,
+  closeCurrentTabAction,
+  closeModalAction,
   navigateBackAction,
   navigateForwardAction,
+  searchFilesAction,
   switchTabAction,
   toggleCssJsAction,
+  toggleInspectModeAction,
 } from './actions';
+import { approveSaveShortcutAction, cancelChangesShortcutAction } from './changeReviewActions';
 import { SHORTCUT_GROUPS } from './constants';
-import { removeLastCodeTabPathInDraft } from '@/components/App/Panes/TabBar/TabStateUtils';
-import { removeNodeAtPath } from '@/components/App/Panes/Sidebar/TreeUtils';
-import { updateChangeSetFile } from '@/components/Workspace';
-import { runWithFileOperation } from '@/components/App/Views/EditorArea/FileOperations';
+import { redoShortcutAction, undoShortcutAction } from './historyActions';
 
-async function hasExternalConflict(
-  fs: FileSystemApi | undefined,
-  path: string,
-  expected: string,
-  rootHandle: FileSystemDirectoryHandle | null | undefined,
-): Promise<boolean> {
-  if (!rootHandle || !fs?.readFileAtPath) return false;
-  try {
-    return (await fs.readFileAtPath(path, rootHandle)) !== expected;
-  } catch {
-    return true;
-  }
-}
+type ShortcutOpts = Omit<ShortcutDefinition, 'id' | 'group' | 'desc' | 'key' | 'displayKey'>;
 
-async function hasUnexpectedFile(
-  fs: FileSystemApi | undefined,
-  path: string,
-  rootHandle: FileSystemDirectoryHandle | null | undefined,
-): Promise<boolean> {
-  if (!rootHandle) return false;
-  if (!fs?.getFileHandleAtPath) return true;
-  return Boolean(await fs.getFileHandleAtPath(path, rootHandle));
-}
+const def = (
+  id: string,
+  group: string,
+  desc: string,
+  key: string | string[],
+  displayKey: string,
+  opts: ShortcutOpts = {},
+): ShortcutDefinition => ({ id, group, desc, key, displayKey, ...opts });
+
+const { NAVIGATION, EDITOR, AI, TABS, AI_PROMPT, GENERAL } = SHORTCUT_GROUPS;
 
 export const SHORTCUTS: ShortcutDefinition[] = [
-  {
-    id: 'navigate-back',
-    group: SHORTCUT_GROUPS.NAVIGATION,
-    desc: 'Navigate Back',
-    key: 'ArrowLeft',
-    displayKey: 'Alt+←',
+  def('navigate-back', NAVIGATION, 'Navigate Back', 'ArrowLeft', 'Alt+←', {
     modifier: 'alt',
     isGlobal: true,
     action: navigateBackAction,
-  },
-  {
-    id: 'navigate-forward',
-    group: SHORTCUT_GROUPS.NAVIGATION,
-    desc: 'Navigate Forward',
-    key: 'ArrowRight',
-    displayKey: 'Alt+→',
+  }),
+  def('navigate-forward', NAVIGATION, 'Navigate Forward', 'ArrowRight', 'Alt+→', {
     modifier: 'alt',
     isGlobal: true,
     action: navigateForwardAction,
-  },
-  {
-    id: 'navigate-back-cmd',
-    group: SHORTCUT_GROUPS.NAVIGATION,
-    desc: 'Navigate Back',
-    key: '[',
-    displayKey: '⌘[',
+  }),
+  def('navigate-back-cmd', NAVIGATION, 'Navigate Back', '[', '⌘[', {
     modifier: 'cmd',
     platform: 'mac',
     isGlobal: true,
     action: navigateBackAction,
-  },
-  {
-    id: 'navigate-forward-cmd',
-    group: SHORTCUT_GROUPS.NAVIGATION,
-    desc: 'Navigate Forward',
-    key: ']',
-    displayKey: '⌘]',
+  }),
+  def('navigate-forward-cmd', NAVIGATION, 'Navigate Forward', ']', '⌘]', {
     modifier: 'cmd',
     platform: 'mac',
     isGlobal: true,
     action: navigateForwardAction,
-  },
-  {
-    id: 'navigate-back-ctrl-win',
-    group: SHORTCUT_GROUPS.NAVIGATION,
-    desc: 'Navigate Back',
-    key: '[',
-    displayKey: 'Ctrl+[',
+  }),
+  def('navigate-back-ctrl-win', NAVIGATION, 'Navigate Back', '[', 'Ctrl+[', {
     modifier: 'ctrl',
     platform: 'win',
     isGlobal: true,
     action: navigateBackAction,
-  },
-  {
-    id: 'navigate-forward-ctrl-win',
-    group: SHORTCUT_GROUPS.NAVIGATION,
-    desc: 'Navigate Forward',
-    key: ']',
-    displayKey: 'Ctrl+]',
+  }),
+  def('navigate-forward-ctrl-win', NAVIGATION, 'Navigate Forward', ']', 'Ctrl+]', {
     modifier: 'ctrl',
     platform: 'win',
     isGlobal: true,
     action: navigateForwardAction,
-  },
-  {
-    id: 'toggle-css-js',
-    group: SHORTCUT_GROUPS.NAVIGATION,
-    desc: 'Toggle between Component and CSS Module',
-    key: 'b',
-    displayKey: '⌘B',
+  }),
+  def('toggle-css-js', NAVIGATION, 'Toggle between Component and CSS Module', 'b', '⌘B', {
     modifier: 'cmd',
     platform: 'mac',
     isGlobal: true,
     action: toggleCssJsAction,
-  },
-  {
-    id: 'toggle-css-js-win',
-    group: SHORTCUT_GROUPS.NAVIGATION,
-    desc: 'Toggle between Component and CSS Module',
-    key: 'b',
-    displayKey: 'Alt+B',
+  }),
+  def('toggle-css-js-win', NAVIGATION, 'Toggle between Component and CSS Module', 'b', 'Alt+B', {
     modifier: 'alt',
     platform: 'win',
     isGlobal: true,
     action: toggleCssJsAction,
-  },
-  {
-    id: 'toggle-sidebar',
-    group: SHORTCUT_GROUPS.NAVIGATION,
-    desc: 'Toggle Sidebar',
-    key: 'b',
-    displayKey: '⌃B',
+  }),
+  def('toggle-sidebar', NAVIGATION, 'Toggle Sidebar', 'b', '⌃B', {
     modifier: 'ctrl',
     isGlobal: true,
-    action: ({ sidebarState }) => {
-      sidebarState((draft) => {
-        draft.isSidebarOpen = !draft.isSidebarOpen;
-      });
-    },
-  },
-  {
-    id: 'toggle-ai-input',
-    group: SHORTCUT_GROUPS.NAVIGATION,
-    desc: 'Toggle Agent',
-    key: 'j',
-    displayKey: '⌃J',
+    action: ({ sidebarState }) =>
+      sidebarState((d) => {
+        d.isSidebarOpen = !d.isSidebarOpen;
+      }),
+  }),
+  def('toggle-ai-input', NAVIGATION, 'Toggle Agent', 'j', '⌃J', {
     modifier: 'ctrl',
     isGlobal: true,
-    action: ({ sidebarState }) => {
-      sidebarState((draft) => {
-        draft.showAIInput = !draft.showAIInput;
-      });
-    },
-  },
-  {
-    id: 'show-logs',
-    group: SHORTCUT_GROUPS.NAVIGATION,
-    desc: 'Goto Logs',
-    key: 'u',
-    displayKey: '⌃U',
+    action: ({ sidebarState }) =>
+      sidebarState((d) => {
+        d.showAIInput = !d.showAIInput;
+      }),
+  }),
+  def('show-logs', NAVIGATION, 'Goto Logs', 'u', '⌃U', {
     modifier: 'ctrl',
     isGlobal: true,
-    action: ({ tabState }) => {
-      tabState((draft) => {
-        draft.activeTabId = 'ai-logs';
-      });
-    },
-  },
-  {
-    id: 'show-preview',
-    group: SHORTCUT_GROUPS.NAVIGATION,
-    desc: 'Goto Preview',
-    key: 'i',
-    displayKey: '⌃I',
+    action: ({ tabState }) =>
+      tabState((d) => {
+        d.activeTabId = 'ai-logs';
+      }),
+  }),
+  def('show-preview', NAVIGATION, 'Goto Preview', 'i', '⌃I', {
     modifier: 'ctrl',
     isGlobal: true,
-    action: ({ tabState }) => {
-      tabState((draft) => {
-        draft.activeTabId = 'preview';
-      });
-    },
-  },
-  {
-    id: 'search-files',
-    group: SHORTCUT_GROUPS.NAVIGATION,
-    desc: 'Search Files',
-    key: 'p',
-    displayKey: '⌃P',
+    action: ({ tabState }) =>
+      tabState((d) => {
+        d.activeTabId = 'preview';
+      }),
+  }),
+  def('search-files', NAVIGATION, 'Search Files', 'p', '⌃P', {
     modifier: 'ctrl',
     isGlobal: true,
-    action: ({ sidebarState }) => {
-      if (!sidebarState.isSidebarOpen) {
-        sidebarState((draft) => {
-          draft.isSidebarOpen = true;
-        });
-      }
-      window.dispatchEvent(new CustomEvent('focus-file-search'));
-    },
-  },
-  {
-    id: 'toggle-inspect-mode',
-    group: SHORTCUT_GROUPS.EDITOR,
-    desc: 'Toggle Inspect Mode (ReadOnly/Writable)',
-    key: 'e',
-    displayKey: '⌃E',
+    action: searchFilesAction,
+  }),
+  def('toggle-inspect-mode', EDITOR, 'Toggle Inspect Mode (ReadOnly/Writable)', 'e', '⌃E', {
     modifier: 'ctrl',
     isGlobal: true,
-    action: ({ editorState, showNotification }) => {
-      editorState((draft) => {
-        const nextVal = draft.isReadOnly !== true;
-        draft.isReadOnly = nextVal;
-        showNotification?.(nextVal ? 'Inspection mode active' : 'Edit mode active', 'info');
-      });
-    },
-  },
-  {
-    id: 'undo',
-    group: SHORTCUT_GROUPS.EDITOR,
-    desc: 'Undo',
-    key: 'z',
-    displayKey: '⌘Z',
+    action: toggleInspectModeAction,
+  }),
+  def('undo', EDITOR, 'Undo', 'z', '⌘Z', {
     modifier: 'cmd',
     isGlobal: true,
-    action: ({ editorState, tabState }) => {
-      const filePath = tabState.activeTabId;
-      if (!filePath) return;
-
-      editorState((draft) => {
-        commitDirtyBufferContentsInDraft(draft);
-        const history = { ...(draft.history || {}) };
-        if (!history[filePath]) {
-          history[filePath] = { past: [], future: [] };
-        } else {
-          history[filePath] = { ...history[filePath] };
-        }
-        const hist = history[filePath];
-
-        const currentContent = draft.fileContents[filePath];
-        const currentCursor = draft.cursorPos?.[filePath] || { line: 1, col: 1, index: 0 };
-
-        if (hist.lastSnapshotContent !== undefined && currentContent !== hist.lastSnapshotContent) {
-          const future = [...(hist.future || [])];
-          future.push({ content: currentContent, cursor: currentCursor });
-          if (future.length > 100) future.shift();
-          hist.future = future;
-
-          draft.fileContents = { ...draft.fileContents, [filePath]: hist.lastSnapshotContent };
-          if (hist.lastSnapshotCursor !== undefined) {
-            draft.cursorPos = { ...draft.cursorPos, [filePath]: { ...hist.lastSnapshotCursor } };
-          }
-          draft.history = history;
-          return;
-        }
-
-        if (!hist.past || hist.past.length === 0) return;
-
-        const past = [...hist.past];
-        const prevState = past.pop();
-        if (!prevState) return;
-        hist.past = past;
-        const future = [...(hist.future || [])];
-        future.push({ content: currentContent, cursor: currentCursor });
-        if (future.length > 100) future.shift();
-        hist.future = future;
-
-        draft.fileContents = { ...draft.fileContents, [filePath]: prevState.content };
-        if (prevState.cursor !== undefined) {
-          draft.cursorPos = { ...draft.cursorPos, [filePath]: { ...prevState.cursor } };
-        }
-        draft.history = history;
-      });
-    },
-  },
-  {
-    id: 'redo',
-    group: SHORTCUT_GROUPS.EDITOR,
-    desc: 'Redo',
-    key: 'z',
-    displayKey: '⌘⇧Z',
+    action: undoShortcutAction,
+  }),
+  def('redo', EDITOR, 'Redo', 'z', '⌘⇧Z', {
     modifier: 'cmd-shift',
     isGlobal: true,
-    action: ({ editorState, tabState }) => {
-      const filePath = tabState.activeTabId;
-      if (!filePath) return;
-
-      editorState((draft) => {
-        commitDirtyBufferContentsInDraft(draft);
-        if (!draft.history || !draft.history[filePath]) return;
-        const history = { ...draft.history };
-        const hist = { ...history[filePath] };
-        if (!hist.future || hist.future.length === 0) return;
-
-        const currentContent = draft.fileContents[filePath];
-        const currentCursor = draft.cursorPos?.[filePath] || { line: 1, col: 1, index: 0 };
-
-        const future = [...hist.future];
-        const nextState = future.pop();
-        if (!nextState) return;
-        hist.future = future;
-        const past = [...(hist.past || [])];
-        past.push({ content: currentContent, cursor: currentCursor });
-        hist.past = past;
-
-        draft.fileContents = { ...draft.fileContents, [filePath]: nextState.content };
-        if (nextState.cursor !== undefined) {
-          draft.cursorPos = { ...draft.cursorPos, [filePath]: { ...nextState.cursor } };
-        }
-        history[filePath] = hist;
-        draft.history = history;
-      });
-    },
-  },
-  {
-    id: 'redo-y',
-    group: SHORTCUT_GROUPS.EDITOR,
-    desc: 'Redo',
-    key: 'y',
-    displayKey: '⌘Y',
+    action: redoShortcutAction,
+  }),
+  def('redo-y', EDITOR, 'Redo', 'y', '⌘Y', {
     modifier: 'cmd',
     isGlobal: true,
-    action: ({ editorState, tabState }) => {
-      const filePath = tabState.activeTabId;
-      if (!filePath) return;
-
-      editorState((draft) => {
-        commitDirtyBufferContentsInDraft(draft);
-        if (!draft.history || !draft.history[filePath]) return;
-        const history = { ...draft.history };
-        const hist = { ...history[filePath] };
-        if (!hist.future || hist.future.length === 0) return;
-
-        const currentContent = draft.fileContents[filePath];
-        const currentCursor = draft.cursorPos?.[filePath] || { line: 1, col: 1, index: 0 };
-
-        const future = [...hist.future];
-        const nextState = future.pop();
-        if (!nextState) return;
-        hist.future = future;
-        const past = [...(hist.past || [])];
-        past.push({ content: currentContent, cursor: currentCursor });
-        hist.past = past;
-
-        draft.fileContents = { ...draft.fileContents, [filePath]: nextState.content };
-        if (nextState.cursor !== undefined) {
-          draft.cursorPos = { ...draft.cursorPos, [filePath]: { ...nextState.cursor } };
-        }
-        history[filePath] = hist;
-        draft.history = history;
-      });
-    },
-  },
-  {
-    id: 'build-project',
-    group: SHORTCUT_GROUPS.EDITOR,
-    desc: 'Build Project',
-    key: 'Enter',
-    displayKey: '⌘↵',
+    action: redoShortcutAction,
+  }),
+  def('build-project', EDITOR, 'Build Project', 'Enter', '⌘↵', {
     modifier: 'cmd',
     isGlobal: true,
-    action: ({ appState }) => {
-      appState((draft) => {
-        draft.compileRequest = (draft.compileRequest || 0) + 1;
-      });
-    },
-  },
-  {
-    id: 'build-project-silent',
-    group: SHORTCUT_GROUPS.EDITOR,
-    desc: 'Build Project (Stay on Page)',
-    key: 'Enter',
-    displayKey: '⌘⇧↵',
+    action: ({ appState }) =>
+      appState((d) => {
+        d.compileRequest = (d.compileRequest || 0) + 1;
+      }),
+  }),
+  def('build-project-silent', EDITOR, 'Build Project (Stay on Page)', 'Enter', '⌘⇧↵', {
     modifier: 'cmd-shift',
     isGlobal: true,
-    action: ({ appState }) => {
-      appState((draft) => {
-        draft.silentCompileRequest = (draft.silentCompileRequest || 0) + 1;
-      });
-    },
-  },
-  {
-    id: 'indent',
-    group: SHORTCUT_GROUPS.EDITOR,
-    desc: 'Indent Selection',
-    key: 'Tab',
-    displayKey: 'Tab',
-    modifier: 'none',
-    isGlobal: false,
-  },
-  {
-    id: 'outdent',
-    group: SHORTCUT_GROUPS.EDITOR,
-    desc: 'Outdent Selection',
-    key: 'Tab',
-    displayKey: '⇧Tab',
+    action: ({ appState }) =>
+      appState((d) => {
+        d.silentCompileRequest = (d.silentCompileRequest || 0) + 1;
+      }),
+  }),
+  def('indent', EDITOR, 'Indent Selection', 'Tab', 'Tab', { modifier: 'none', isGlobal: false }),
+  def('outdent', EDITOR, 'Outdent Selection', 'Tab', '⇧Tab', {
     modifier: 'shift',
     isGlobal: false,
-  },
-  {
-    id: 'toggle-comment',
-    group: SHORTCUT_GROUPS.EDITOR,
-    desc: 'Toggle Line Comment',
-    key: '/',
-    displayKey: '⌘/',
+  }),
+  def('toggle-comment', EDITOR, 'Toggle Line Comment', '/', '⌘/', {
     modifier: 'cmd',
     isGlobal: false,
-  },
-  {
-    id: 'jump-to-line',
-    group: SHORTCUT_GROUPS.EDITOR,
-    desc: 'Jump to Line',
-    key: 'g',
-    displayKey: '⌃G',
-    modifier: 'ctrl',
-    isGlobal: false,
-  },
-  {
-    id: 'format-code',
-    group: SHORTCUT_GROUPS.EDITOR,
-    desc: 'Format Code',
-    key: 'f',
-    displayKey: '⌃⇧F',
+  }),
+  def('jump-to-line', EDITOR, 'Jump to Line', 'g', '⌃G', { modifier: 'ctrl', isGlobal: false }),
+  def('format-code', EDITOR, 'Format Code', 'f', '⌃⇧F', {
     modifier: 'ctrl-shift',
     isGlobal: false,
-  },
-  {
-    id: 'approve-save',
-    group: SHORTCUT_GROUPS.AI,
-    desc: 'Approve & Save Changes',
-    key: 's',
-    displayKey: '⌘S',
+  }),
+  def('approve-save', AI, 'Approve & Save Changes', 's', '⌘S', {
     modifier: 'cmd',
     isGlobal: true,
-    action: ({
-      appState,
-      tabState,
-      editorState,
-      fs,
-      sidebarState,
-      changeSetState,
-      showNotification,
-    }) => {
-      const activeTabId = tabState.activeTabId;
-      if (!activeTabId) return;
-      const workspaceEpoch = appState.workspaceEpoch || 0;
-      const rootHandle = fs?.rootHandle;
-      const isCurrentWorkspace = () => (appState.workspaceEpoch || 0) === workspaceEpoch;
-      const hasDeletion = editorState.pendingDeletions?.[activeTabId];
-      const hasDiff = editorState.pendingDiffs?.[activeTabId];
-      if (hasDeletion) {
-        const samePendingDeletion = () => {
-          const current = editorState.pendingDeletions?.[activeTabId];
-          if (typeof hasDeletion === 'object' && hasDeletion !== null) {
-            return Boolean(
-              current &&
-                typeof current === 'object' &&
-                current.changeSetId === hasDeletion.changeSetId &&
-                current.originalContent === hasDeletion.originalContent,
-            );
-          }
-          return current === hasDeletion;
-        };
-        void runWithFileOperation(editorState, activeTabId, async () => {
-          if (!isCurrentWorkspace() || !samePendingDeletion()) return;
-          if (typeof hasDeletion === 'object' && hasDeletion !== null) {
-            const conflict = await hasExternalConflict(
-              fs,
-              activeTabId,
-              hasDeletion.originalContent,
-              rootHandle,
-            );
-            if (!isCurrentWorkspace() || !samePendingDeletion()) return;
-            if (conflict) {
-              updateChangeSetFile(
-                changeSetState,
-                hasDeletion.changeSetId || '',
-                activeTabId,
-                'conflicted',
-              );
-              showNotification?.(
-                'The file changed outside the editor; deletion was not approved.',
-                'error',
-              );
-              return;
-            }
-          }
-          if (rootHandle && fs?.deleteFileAtPath) {
-            const deleted = await fs.deleteFileAtPath(activeTabId, rootHandle);
-            if (!isCurrentWorkspace()) return;
-            if (!deleted) {
-              showNotification?.('Could not delete the file from the mounted project', 'error');
-              return;
-            }
-          }
-          if (!isCurrentWorkspace()) return;
-          let removed = false;
-          editorState((draft) => {
-            if (!samePendingDeletion()) return;
-            removeEditorPathStateInDraft(draft, activeTabId);
-            removed = true;
-          });
-          if (!removed) return;
-          sidebarState((draft) => {
-            if (draft.folderTree) {
-              draft.folderTree = removeNodeAtPath(
-                draft.folderTree,
-                activeTabId.split('/').filter(Boolean),
-              );
-            }
-          });
-          tabState((draft) => {
-            draft.openTabs = draft.openTabs.filter(
-              (tab) => tab.id !== activeTabId && !tab.id.startsWith(`${activeTabId}/`),
-            );
-            if (
-              draft.activeTabId === activeTabId ||
-              draft.activeTabId?.startsWith(`${activeTabId}/`)
-            ) {
-              draft.activeTabId = draft.openTabs.at(-1)?.id || null;
-            }
-            removeLastCodeTabPathInDraft(draft, [activeTabId]);
-          });
-          if (typeof hasDeletion === 'object' && hasDeletion !== null) {
-            updateChangeSetFile(
-              changeSetState,
-              hasDeletion.changeSetId || '',
-              activeTabId,
-              'accepted',
-            );
-          }
-          showNotification?.('Deletion approved', 'success');
-        }).catch((error) => {
-          if (!isCurrentWorkspace()) return;
-          showNotification?.(
-            `Could not delete the file: ${error instanceof Error ? error.message : String(error)}`,
-            'error',
-          );
-        });
-      } else if (hasDiff) {
-        const content = readEffectiveFileContent(editorState, activeTabId);
-        const samePendingDiff = () => {
-          const current = editorState.pendingDiffs?.[activeTabId];
-          return Boolean(
-            current &&
-              current.changeSetId === hasDiff.changeSetId &&
-              current.originalContent === hasDiff.originalContent &&
-              current.modifiedContent === hasDiff.modifiedContent &&
-              current.isNewFile === hasDiff.isNewFile,
-          );
-        };
-        void runWithFileOperation(editorState, activeTabId, async () => {
-          if (!isCurrentWorkspace() || !samePendingDiff()) return;
-          const conflict = hasDiff.isNewFile
-            ? await hasUnexpectedFile(fs, activeTabId, rootHandle)
-            : await hasExternalConflict(fs, activeTabId, hasDiff.originalContent, rootHandle);
-          if (!isCurrentWorkspace() || !samePendingDiff()) return;
-          if (conflict) {
-            updateChangeSetFile(
-              changeSetState,
-              hasDiff.changeSetId || '',
-              activeTabId,
-              'conflicted',
-            );
-            showNotification?.(
-              'The file changed outside the editor; changes were not approved.',
-              'error',
-            );
-            return;
-          }
-          if (rootHandle && fs?.writeFileAtPath && content !== undefined) {
-            const written = await fs.writeFileAtPath(activeTabId, content, rootHandle);
-            if (!isCurrentWorkspace() || !samePendingDiff()) return;
-            if (!written) {
-              showNotification?.('Could not save the file to the mounted project', 'error');
-              return;
-            }
-          }
-          if (!isCurrentWorkspace() || !samePendingDiff()) return;
-          let removed = false;
-          editorState((draft) => {
-            const current = draft.pendingDiffs?.[activeTabId];
-            if (
-              current &&
-              current.changeSetId === hasDiff.changeSetId &&
-              current.originalContent === hasDiff.originalContent &&
-              current.modifiedContent === hasDiff.modifiedContent &&
-              current.isNewFile === hasDiff.isNewFile
-            ) {
-              const nextDiffs = { ...draft.pendingDiffs };
-              delete nextDiffs[activeTabId];
-              draft.pendingDiffs = nextDiffs;
-              removed = true;
-            }
-          });
-          if (!removed) return;
-          updateChangeSetFile(changeSetState, hasDiff.changeSetId || '', activeTabId, 'accepted');
-          showNotification?.('Changes approved & saved', 'success');
-        }).catch((error) => {
-          if (!isCurrentWorkspace()) return;
-          showNotification?.(
-            `Could not save the file: ${error instanceof Error ? error.message : String(error)}`,
-            'error',
-          );
-        });
-      } else {
-        showNotification?.('Project saved', 'success');
-      }
-    },
-  },
-  {
-    id: 'cancel-changes',
-    group: SHORTCUT_GROUPS.AI,
-    desc: 'Cancel AI Changes',
-    key: ['.', 'Backspace'],
-    displayKey: '⌘. / ⌘⌫',
+    action: approveSaveShortcutAction,
+  }),
+  def('cancel-changes', AI, 'Cancel AI Changes', ['.', 'Backspace'], '⌘. / ⌘⌫', {
     modifier: 'cmd',
     isGlobal: true,
-    action: ({
-      appState,
-      tabState,
-      editorState,
-      fs,
-      changeSetState,
-      sidebarState,
-      showNotification,
-    }) => {
-      const activeTabId = tabState.activeTabId;
-      if (!activeTabId) return;
-      const workspaceEpoch = appState.workspaceEpoch || 0;
-      const rootHandle = fs?.rootHandle;
-      const isCurrentWorkspace = () => (appState.workspaceEpoch || 0) === workspaceEpoch;
-      const pendingDeletion = editorState.pendingDeletions?.[activeTabId];
-      if (pendingDeletion) {
-        if (editorState.pendingFileOperations?.[activeTabId]) return;
-        editorState((draft) => {
-          if (draft.pendingDeletions) {
-            const next = { ...draft.pendingDeletions };
-            delete next[activeTabId];
-            draft.pendingDeletions = next;
-          }
-        });
-        if (typeof pendingDeletion === 'object' && pendingDeletion !== null) {
-          updateChangeSetFile(
-            changeSetState,
-            pendingDeletion.changeSetId || '',
-            activeTabId,
-            'rejected',
-          );
-        }
-        showNotification?.('Deletion cancelled', 'info');
-        return;
-      }
-      const diff = editorState.pendingDiffs?.[activeTabId];
-      if (diff) {
-        const prevContent = diff.originalContent;
-        const prevCursor = diff.originalCursorPos;
-        const samePendingDiff = () => {
-          const current = editorState.pendingDiffs?.[activeTabId];
-          return Boolean(
-            current &&
-              current.changeSetId === diff.changeSetId &&
-              current.originalContent === diff.originalContent &&
-              current.modifiedContent === diff.modifiedContent &&
-              current.isNewFile === diff.isNewFile,
-          );
-        };
-        void runWithFileOperation(editorState, activeTabId, async () => {
-          if (!isCurrentWorkspace() || !samePendingDiff()) return;
-          const conflict = diff.isNewFile
-            ? await hasUnexpectedFile(fs, activeTabId, rootHandle)
-            : await hasExternalConflict(fs, activeTabId, diff.originalContent, rootHandle);
-          if (!isCurrentWorkspace() || !samePendingDiff()) return;
-          if (conflict) {
-            updateChangeSetFile(changeSetState, diff.changeSetId || '', activeTabId, 'conflicted');
-            showNotification?.(
-              'The file changed outside the editor; changes were not cancelled.',
-              'error',
-            );
-            return;
-          }
-          if (!diff.isNewFile && rootHandle && fs?.writeFileAtPath) {
-            const written = await fs.writeFileAtPath(activeTabId, prevContent, rootHandle);
-            if (!isCurrentWorkspace() || !samePendingDiff()) return;
-            if (!written) {
-              showNotification?.('Could not restore the file in the mounted project', 'error');
-              return;
-            }
-          }
-          if (!isCurrentWorkspace() || !samePendingDiff()) return;
-          if (diff.isNewFile) {
-            editorState((draft) => {
-              removeEditorPathStateInDraft(draft, activeTabId);
-            });
-            sidebarState((draft) => {
-              if (draft.folderTree) {
-                draft.folderTree = removeNodeAtPath(
-                  draft.folderTree,
-                  activeTabId.split('/').filter(Boolean),
-                );
-              }
-            });
-            tabState((draft) => {
-              draft.openTabs = draft.openTabs.filter(
-                (tab) => tab.id !== activeTabId && !tab.id.startsWith(`${activeTabId}/`),
-              );
-              if (
-                draft.activeTabId === activeTabId ||
-                draft.activeTabId?.startsWith(`${activeTabId}/`)
-              ) {
-                draft.activeTabId = draft.openTabs.at(-1)?.id || null;
-              }
-              removeLastCodeTabPathInDraft(draft, [activeTabId]);
-            });
-            updateChangeSetFile(changeSetState, diff.changeSetId || '', activeTabId, 'rejected');
-            showNotification?.('New file cancelled', 'info');
-            return;
-          }
-          editorState((draft) => {
-            commitDirtyBufferContentsInDraft(draft);
-            draft.fileContents = { ...draft.fileContents, [activeTabId]: prevContent };
-            if (prevCursor) {
-              draft.cursorPos = { ...draft.cursorPos, [activeTabId]: prevCursor };
-            }
-            if (draft.pendingDiffs) {
-              const nextDiffs = { ...draft.pendingDiffs };
-              delete nextDiffs[activeTabId];
-              draft.pendingDiffs = nextDiffs;
-            }
-          });
-          updateChangeSetFile(changeSetState, diff.changeSetId || '', activeTabId, 'rejected');
-          showNotification?.('Changes cancelled', 'info');
-        }).catch((error) => {
-          if (!isCurrentWorkspace()) return;
-          showNotification?.(
-            `Could not restore the file: ${error instanceof Error ? error.message : String(error)}`,
-            'error',
-          );
-        });
-      }
-    },
-  },
-  {
-    id: 'show-ai-completion-debug',
-    group: SHORTCUT_GROUPS.AI,
-    desc: 'Show AI Completion Debug',
-    key: 'c',
-    displayKey: '⌃⇧C',
+    action: cancelChangesShortcutAction,
+  }),
+  def('show-ai-completion-debug', AI, 'Show AI Completion Debug', 'c', '⌃⇧C', {
     modifier: 'ctrl-shift',
     isGlobal: true,
-    action: ({ appState }) => {
-      appState((draft) => {
-        draft.showCompletionDebug = !draft.showCompletionDebug;
-      });
+    action: ({ appState }) =>
+      appState((d) => {
+        d.showCompletionDebug = !d.showCompletionDebug;
+      }),
+  }),
+  def('accept-ai-completion', AI, 'Accept Full AI Suggestion', 'Tab', 'Tab', {
+    modifier: 'none',
+    isGlobal: false,
+  }),
+  def(
+    'accept-ai-completion-word-mac',
+    AI,
+    'Accept Next Word of AI Suggestion',
+    'ArrowRight',
+    '⌘→',
+    {
+      modifier: 'cmd',
+      platform: 'mac',
+      isGlobal: false,
     },
-  },
-  {
-    id: 'accept-ai-completion',
-    group: SHORTCUT_GROUPS.AI,
-    desc: 'Accept Full AI Suggestion',
-    key: 'Tab',
-    displayKey: 'Tab',
+  ),
+  def(
+    'accept-ai-completion-word-win',
+    AI,
+    'Accept Next Word of AI Suggestion',
+    'ArrowRight',
+    'Ctrl+→',
+    { modifier: 'ctrl', platform: 'win', isGlobal: false },
+  ),
+  def('dismiss-ai-completion', AI, 'Dismiss AI Suggestion / Stop Thinking', 'Escape', 'Esc', {
     modifier: 'none',
     isGlobal: false,
-  },
-  {
-    id: 'accept-ai-completion-word-mac',
-    group: SHORTCUT_GROUPS.AI,
-    desc: 'Accept Next Word of AI Suggestion',
-    key: 'ArrowRight',
-    displayKey: '⌘→',
-    modifier: 'cmd',
-    platform: 'mac',
-    isGlobal: false,
-  },
-  {
-    id: 'accept-ai-completion-word-win',
-    group: SHORTCUT_GROUPS.AI,
-    desc: 'Accept Next Word of AI Suggestion',
-    key: 'ArrowRight',
-    displayKey: 'Ctrl+→',
-    modifier: 'ctrl',
-    platform: 'win',
-    isGlobal: false,
-  },
-  {
-    id: 'dismiss-ai-completion',
-    group: SHORTCUT_GROUPS.AI,
-    desc: 'Dismiss AI Suggestion / Stop Thinking',
-    key: 'Escape',
-    displayKey: 'Esc',
-    modifier: 'none',
-    isGlobal: false,
-  },
-  {
-    id: 'close-current-tab',
-    group: SHORTCUT_GROUPS.TABS,
-    desc: 'Close Current Tab',
-    key: 'w',
-    displayKey: '⌃W',
+  }),
+  def('close-current-tab', TABS, 'Close Current Tab', 'w', '⌃W', {
     modifier: 'ctrl',
     isGlobal: true,
-    action: ({ tabState }) => {
-      const { activeTabId } = tabState;
-      if (activeTabId) {
-        tabState((draft) => {
-          const filtered = draft.openTabs.filter((t) => t.id !== activeTabId);
-          draft.openTabs = filtered;
-          if (draft.activeTabId === activeTabId) {
-            const newActiveTabId = filtered.length > 0 ? filtered[filtered.length - 1].id : null;
-            draft.activeTabId = newActiveTabId;
-          }
-        });
-      }
-    },
-  },
-  {
-    id: 'next-tab',
-    group: SHORTCUT_GROUPS.TABS,
-    desc: 'Next Tab',
-    key: 't',
-    displayKey: '⌃T',
+    action: closeCurrentTabAction,
+  }),
+  def('next-tab', TABS, 'Next Tab', 't', '⌃T', {
     modifier: 'ctrl',
     isGlobal: true,
     action: (states) => switchTabAction(states, 1),
-  },
-  {
-    id: 'previous-tab',
-    group: SHORTCUT_GROUPS.TABS,
-    desc: 'Previous Tab',
-    key: 't',
-    displayKey: '⌃⇧T',
+  }),
+  def('previous-tab', TABS, 'Previous Tab', 't', '⌃⇧T', {
     modifier: 'ctrl-shift',
     isGlobal: true,
     action: (states) => switchTabAction(states, -1),
-  },
-  {
-    id: 'close-all-tabs',
-    group: SHORTCUT_GROUPS.TABS,
-    desc: 'Close All Tabs',
-    key: 'w',
-    displayKey: '⌃⇧W',
+  }),
+  def('close-all-tabs', TABS, 'Close All Tabs', 'w', '⌃⇧W', {
     modifier: 'ctrl-shift',
     isGlobal: true,
-    action: ({ tabState, showNotification }) => {
-      tabState((draft) => {
-        draft.openTabs = [];
-        draft.activeTabId = null;
-      });
-      showNotification?.('All tabs closed', 'info');
-    },
-  },
-  {
-    id: 'execute-prompt',
-    group: SHORTCUT_GROUPS.AI_PROMPT,
-    desc: 'Execute Prompt',
-    key: 'Enter',
-    displayKey: '↵',
+    action: closeAllTabsAction,
+  }),
+  def('execute-prompt', AI_PROMPT, 'Execute Prompt', 'Enter', '↵', {
     modifier: 'none',
     isGlobal: false,
-  },
-  {
-    id: 'insert-newline',
-    group: SHORTCUT_GROUPS.AI_PROMPT,
-    desc: 'Insert Newline',
-    key: 'Enter',
-    displayKey: '⌘↵',
+  }),
+  def('insert-newline', AI_PROMPT, 'Insert Newline', 'Enter', '⌘↵', {
     modifier: 'cmd',
     isGlobal: false,
-  },
-  {
-    id: 'stop-ai',
-    group: SHORTCUT_GROUPS.AI_PROMPT,
-    desc: 'Stop AI Generation',
-    key: '.',
-    displayKey: '⌘.',
-    modifier: 'cmd',
-    isGlobal: false,
-  },
-  {
-    id: 'show-shortcuts',
-    group: SHORTCUT_GROUPS.GENERAL,
-    desc: 'Show Keyboard Shortcuts',
-    key: 'k',
-    displayKey: '⌃⇧K',
+  }),
+  def('stop-ai', AI_PROMPT, 'Stop AI Generation', '.', '⌘.', { modifier: 'cmd', isGlobal: false }),
+  def('show-shortcuts', GENERAL, 'Show Keyboard Shortcuts', 'k', '⌃⇧K', {
     modifier: 'ctrl-shift',
     isGlobal: true,
-    action: ({ appState }) => {
-      appState((draft) => {
-        draft.showShortcuts = !draft.showShortcuts;
-      });
-    },
-  },
-  {
-    id: 'clear-logs',
-    group: SHORTCUT_GROUPS.GENERAL,
-    desc: 'Clear Logs (in Log Area)',
-    key: 'k',
-    displayKey: '⌃K',
+    action: ({ appState }) =>
+      appState((d) => {
+        d.showShortcuts = !d.showShortcuts;
+      }),
+  }),
+  def('clear-logs', GENERAL, 'Clear Logs (in Log Area)', 'k', '⌃K', {
     modifier: 'ctrl',
     isGlobal: true,
-    action: ({ logState, showNotification }) => {
-      logState((draft) => {
-        draft.logs = [];
-      });
-      showNotification?.('Logs cleared', 'info');
-    },
-  },
-  {
-    id: 'toggle-theme',
-    group: SHORTCUT_GROUPS.GENERAL,
-    desc: 'Toggle Theme',
-    key: 'l',
-    displayKey: '⌃L',
+    action: clearLogsAction,
+  }),
+  def('toggle-theme', GENERAL, 'Toggle Theme', 'l', '⌃L', {
     modifier: 'ctrl',
     isGlobal: true,
-    action: ({ appState }) => {
-      appState((draft) => {
-        draft.theme = draft.theme === 'light' ? 'dark' : 'light';
-      });
-    },
-  },
-  {
-    id: 'close-modal',
-    group: SHORTCUT_GROUPS.GENERAL,
-    desc: 'Close Modal / Cancel',
-    key: 'Escape',
-    displayKey: 'Esc',
+    action: ({ appState }) =>
+      appState((d) => {
+        d.theme = d.theme === 'light' ? 'dark' : 'light';
+      }),
+  }),
+  def('close-modal', GENERAL, 'Close Modal / Cancel', 'Escape', 'Esc', {
     modifier: 'none',
     isGlobal: true,
-    action: ({ appState }) => {
-      appState((draft) => {
-        if (draft.showShortcuts) {
-          draft.showShortcuts = false;
-        }
-        if (draft.showCompletionDebug) {
-          draft.showCompletionDebug = false;
-        }
-      });
-    },
-  },
+    action: closeModalAction,
+  }),
 ];

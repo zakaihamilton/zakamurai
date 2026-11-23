@@ -3,13 +3,13 @@ import { SidebarState } from '@/components/App/Panes/Sidebar';
 import { TabState } from '@/components/App/Panes/TabBar';
 import { EditorState } from '@/components/App/Views/EditorArea';
 import { LogState } from '@/components/App/Views/LogArea';
-import { ChangeSetState } from '@/components/Workspace';
 import type { FileSystemApi } from '@/components/App/types';
 import { useFileSystem } from '@/components/Storage';
+import { ChangeSetState } from '@/components/Workspace';
 import { useNotification } from '@/components/ui/Notification';
 import { markKeyboardActivity } from '@/utils/keyboard';
 import { useEffect } from 'react';
-import { SHORTCUT_GROUPS, SHORTCUTS, SHORTCUT_HIGHLIGHT_EVENT, isMatch } from './Shortcuts';
+import { SHORTCUTS, SHORTCUT_GROUPS, SHORTCUT_HIGHLIGHT_EVENT, isMatch } from './Shortcuts';
 
 export function useKeyboardHandler() {
   const sidebarState = SidebarState.usePassiveState();

@@ -202,3 +202,61 @@ export const switchTabAction = ({ tabState }: ShortcutActionContext, direction: 
     draft.activeTabId = openTabs[nextIndex].id;
   });
 };
+
+export const searchFilesAction = ({ sidebarState }: ShortcutActionContext) => {
+  if (!sidebarState.isSidebarOpen) {
+    sidebarState((draft) => {
+      draft.isSidebarOpen = true;
+    });
+  }
+  window.dispatchEvent(new CustomEvent('focus-file-search'));
+};
+
+export const toggleInspectModeAction = ({
+  editorState,
+  showNotification,
+}: ShortcutActionContext) => {
+  editorState((draft) => {
+    const nextVal = draft.isReadOnly !== true;
+    draft.isReadOnly = nextVal;
+    showNotification?.(nextVal ? 'Inspection mode active' : 'Edit mode active', 'info');
+  });
+};
+
+export const closeCurrentTabAction = ({ tabState }: ShortcutActionContext) => {
+  const { activeTabId } = tabState;
+  if (!activeTabId) return;
+  tabState((draft) => {
+    const filtered = draft.openTabs.filter((t) => t.id !== activeTabId);
+    draft.openTabs = filtered;
+    if (draft.activeTabId === activeTabId) {
+      draft.activeTabId = filtered.length > 0 ? filtered[filtered.length - 1].id : null;
+    }
+  });
+};
+
+export const closeAllTabsAction = ({ tabState, showNotification }: ShortcutActionContext) => {
+  tabState((draft) => {
+    draft.openTabs = [];
+    draft.activeTabId = null;
+  });
+  showNotification?.('All tabs closed', 'info');
+};
+
+export const clearLogsAction = ({ logState, showNotification }: ShortcutActionContext) => {
+  logState((draft) => {
+    draft.logs = [];
+  });
+  showNotification?.('Logs cleared', 'info');
+};
+
+export const closeModalAction = ({ appState }: ShortcutActionContext) => {
+  appState((draft) => {
+    if (draft.showShortcuts) {
+      draft.showShortcuts = false;
+    }
+    if (draft.showCompletionDebug) {
+      draft.showCompletionDebug = false;
+    }
+  });
+};

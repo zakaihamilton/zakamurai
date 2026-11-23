@@ -1,9 +1,42 @@
+.paragraph,
+.list,
+.pre,
 .blockquote {
-  composes: blockquote from "./AISectionReasoning.module.css";
+  margin: 0 0 12px;
+}
+
+.list {
+  box-sizing: var(--md-list-box-sizing, content-box);
+  max-width: var(--md-list-max-width, none);
+  padding-left: 22px;
+  list-style-position: var(--md-list-position, outside);
+}
+
+.listItem {
+  margin: 4px 0;
+}
+
+.heading {
+  margin: 16px 0 8px;
+  color: var(--text-main);
+  font-size: 16px;
+  line-height: 1.35;
+}
+
+.stepHeading {
+  margin: 0 0 10px;
+  color: var(--text-main);
+  font-size: 14px;
+  line-height: 1.35;
 }
 
 .code {
-  composes: code from "./AISectionReasoning.module.css";
+  border-radius: 4px;
+  background: var(--bg-input);
+  color: var(--text-main);
+  font-family: var(--font-mono, monospace);
+  font-size: 12px;
+  padding: 1px 4px;
 }
 
 .streamingCount {
@@ -16,30 +49,29 @@
   white-space: nowrap;
 }
 
-.heading {
-  composes: heading from "./AISectionReasoning.module.css";
+.pre {
+  overflow-x: auto;
+  border: 1px solid var(--border-light);
+  border-radius: 6px;
+  background: var(--bg-input);
+  padding: 12px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.pre .code {
+  display: block;
+  background: transparent;
+  padding: 0;
+  white-space: pre-wrap;
+}
+
+.blockquote {
+  border-left: 3px solid var(--accent);
+  color: var(--text-muted);
+  padding-left: 12px;
 }
 
 .link {
-  composes: link from "./AISectionReasoning.module.css";
-}
-
-.list {
-  composes: list from "./AISectionReasoning.module.css";
-}
-
-.listItem {
-  composes: listItem from "./AISectionReasoning.module.css";
-}
-
-.paragraph {
-  composes: paragraph from "./AISectionReasoning.module.css";
-}
-
-.pre {
-  composes: pre from "./AISectionReasoning.module.css";
-}
-
-.stepHeading {
-  composes: stepHeading from "./AISectionReasoning.module.css";
+  color: var(--accent);
 }

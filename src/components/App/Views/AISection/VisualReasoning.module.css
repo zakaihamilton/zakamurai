@@ -198,19 +198,50 @@
 }
 
 .visualRunDetails {
-  composes: visualRunDetails from "./AISectionReasoning.module.css";
+  margin-top: auto;
+  overflow: hidden;
+  border: 1px solid var(--border-light);
+  border-radius: 10px;
+  background: var(--bg-input);
+}
+
+.visualRunDetails summary {
+  padding: 10px 12px;
+  color: var(--text-main);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
 }
 
 .visualRunDetailsContent {
-  composes: visualRunDetailsContent from "./AISectionReasoning.module.css";
+  --md-list-box-sizing: border-box;
+  --md-list-max-width: 100%;
+  --md-list-position: inside;
+
+  box-sizing: border-box;
+  min-width: 0;
+  padding: 0 12px 12px;
+  overflow-x: auto;
 }
 
 .reasoningError {
-  composes: reasoningError from "./AISectionReasoning.module.css";
+  display: grid;
+  gap: 4px;
+  margin-top: 20px;
+  padding: 12px 14px;
+  border: 1px solid var(--error, var(--error-color, #f87171));
+  border-left-width: 3px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--error, #f87171) 10%, var(--bg-input));
+  color: var(--text-main);
+  overflow-wrap: anywhere;
 }
 
 .reasoningErrorLabel {
-  composes: reasoningErrorLabel from "./AISectionReasoning.module.css";
+  color: var(--error, var(--error-color, #f87171));
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
 @container visual-reasoning (width <= 560px) {

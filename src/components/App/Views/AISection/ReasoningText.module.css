@@ -1,43 +1,79 @@
-.reasoningEntry {
-  composes: reasoningEntry from "./AISectionReasoning.module.css";
+.transcriptSection {
+  margin: 0 0 24px;
+  border-bottom: 3px solid var(--accent);
+  padding-bottom: 16px;
+  box-shadow: 0 2px 0 var(--accent-glow);
 }
 
-.reasoningError {
-  composes: reasoningError from "./AISectionReasoning.module.css";
-}
-
-.reasoningErrorLabel {
-  composes: reasoningErrorLabel from "./AISectionReasoning.module.css";
-}
-
-.reasoningGroup {
-  composes: reasoningGroup from "./AISectionReasoning.module.css";
-}
-
-.reasoningText {
-  composes: reasoningText from "./AISectionReasoning.module.css";
-}
-
-.runSummary {
-  composes: runSummary from "./AISectionReasoning.module.css";
+.reasoningGroup + .reasoningGroup {
+  margin-top: 16px;
+  border-top: 1px solid var(--border-light);
+  padding-top: 16px;
 }
 
 .stepHeading {
-  composes: stepHeading from "./AISectionReasoning.module.css";
+  margin: 0 0 10px;
+  color: var(--text-main);
+  font-size: 14px;
+  line-height: 1.35;
+}
+
+.reasoningEntry {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  column-gap: 12px;
+}
+
+.reasoningEntry + .reasoningEntry {
+  margin-top: 10px;
 }
 
 .timestamp {
-  composes: timestamp from "./AISectionReasoning.module.css";
-}
-
-.transcriptSection {
-  composes: transcriptSection from "./AISectionReasoning.module.css";
-}
-
-.transcriptText {
-  composes: transcriptText from "./AISectionReasoning.module.css";
+  padding-top: 0;
+  color: var(--text-muted);
+  font-family: var(--font-mono, monospace);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  line-height: inherit;
 }
 
 .transcriptType {
-  composes: transcriptType from "./AISectionReasoning.module.css";
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.reasoningText {
+  min-width: 0;
+}
+
+.transcriptText {
+  white-space: pre-wrap;
+}
+
+.runSummary {
+  margin-top: 20px;
+  border-top: 1px solid var(--border);
+  padding-top: 16px;
+}
+
+.reasoningError {
+  display: grid;
+  gap: 4px;
+  margin-top: 20px;
+  padding: 12px 14px;
+  border: 1px solid var(--error, var(--error-color, #f87171));
+  border-left-width: 3px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--error, #f87171) 10%, var(--bg-input));
+  color: var(--text-main);
+  overflow-wrap: anywhere;
+}
+
+.reasoningErrorLabel {
+  color: var(--error, var(--error-color, #f87171));
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
