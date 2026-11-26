@@ -39,7 +39,9 @@ vi.mock('@/utils/workspace/index-controller', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/utils/workspace/index-controller')>();
   return {
     ...actual,
-    WorkspaceIndexController: vi.fn(() => workspaceController),
+    WorkspaceIndexController: vi.fn(function () {
+      return workspaceController;
+    }),
   };
 });
 

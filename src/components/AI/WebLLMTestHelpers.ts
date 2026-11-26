@@ -32,7 +32,9 @@ export async function resetWebLLMTestCase(mockRagUnloadModel: Mock): Promise<Moc
   mockRagUnloadModel.mockResolvedValue(undefined);
   vi.stubGlobal(
     'Worker',
-    vi.fn(() => ({ terminate: vi.fn() })),
+    vi.fn(function () {
+      return { terminate: vi.fn() };
+    }),
   );
 
   const mockEngine = createMockWebLLMEngine();

@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { setMockNavigator } from '@/test-utils/domMocks';
 import { getSharedContainer, initContainer, resetContainer } from './container';
 
 describe('container', () => {
@@ -12,7 +13,7 @@ describe('container', () => {
 
   afterEach(() => {
     global.Function = originalFunction;
-    global.navigator = originalNavigator;
+    setMockNavigator(originalNavigator);
   });
 
   it('initializes and resets the container', async () => {
@@ -23,7 +24,7 @@ describe('container', () => {
       },
     };
 
-    const mockFunction = vi.fn().mockImplementation(() => {
+    const mockFunction = vi.fn(function () {
       return async () => ({
         createContainer: async () => mockContainer,
       });
@@ -43,7 +44,7 @@ describe('container', () => {
   });
 
   it('handles initialization failure', async () => {
-    const mockFunction = vi.fn().mockImplementation(() => {
+    const mockFunction = vi.fn(function () {
       return async () => {
         throw new Error('Import failed');
       };

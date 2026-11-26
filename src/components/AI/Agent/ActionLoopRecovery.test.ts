@@ -1,11 +1,13 @@
 import { describe, expect, it } from 'vitest';
+import { bindWebLLMStore } from '../WebLLMState';
 import {
-  SMALL_MODEL_CONTEXT_READY_CHAR_BUDGET,
   buildActionLoopModelMessages,
   buildContextReadyUserRequest,
   buildRepairFileMessages,
   createAutoFinishSummary,
+  getModelDownloadProgress,
   normalizeFinishSummary,
+  SMALL_MODEL_CONTEXT_READY_CHAR_BUDGET,
 } from './ActionLoopRecovery';
 import {
   isNewAppGenerationRequest,
@@ -337,5 +339,29 @@ export default function App() {
     for (let i = 1; i < messages.length; i++) {
       expect(messages[i].role).not.toBe(messages[i - 1].role);
     }
+  });
+
+  it('reports active model download progress and null otherwise', () => {
+    bindWebLLMStore({
+      activeModelId: 'model-b',
+      engines: {
+        'model-b': { status: 'downloading', progressText: '50% weights' },
+      },
+    } as never);
+    expect(getModelDownloadProgress('model-a')).toBe('the model is downloading — 50% weights');
+
+    bindWebLLMStore({
+      activeModelId: null,
+      engines: {
+        'model-a': { status: 'downloading', progressText: '' },
+      },
+    } as never);
+    expect(getModelDownloadProgress('model-a')).toBe(
+      'the model is downloading; waiting for model files',
+    );
+
+    bindWebLLMStore({ activeModelId: null, engines: {} } as never);
+    expect(getModelDownloadProgress('model-a')).toBeNull();
+    bindWebLLMStore(null);
   });
 });

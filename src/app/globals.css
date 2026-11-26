@@ -59,8 +59,8 @@
   --glass-blur: blur(16px);
   --glass-border: var(--border);
   --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, -apple-system, sans-serif;
-  --font-mono: var(--font-geist-mono), ui-monospace, sfmono-regular, menlo, monaco, consolas,
-    monospace;
+  --font-mono:
+    var(--font-geist-mono), ui-monospace, sfmono-regular, menlo, monaco, consolas, monospace;
   --radius-sm: 7px;
   --radius-md: 10px;
   --radius-lg: 14px;

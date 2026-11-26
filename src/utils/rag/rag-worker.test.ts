@@ -1,5 +1,5 @@
-import { mockStorageManager } from '@/test-utils/domMocks';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { mockStorageManager, setMockNavigator } from '@/test-utils/domMocks';
 
 const transformersMock = vi.hoisted(() => {
   const extractor = Object.assign(
@@ -51,7 +51,7 @@ Object.defineProperty(globalThis, 'self', {
   configurable: true,
 });
 
-globalThis.navigator = {
+setMockNavigator({
   ...globalThis.navigator,
   storage: mockStorageManager({
     getDirectory: vi.fn().mockResolvedValue({
@@ -75,7 +75,7 @@ globalThis.navigator = {
       }),
     }),
   }),
-} as Navigator;
+} as Navigator);
 
 if (globalThis.crypto?.subtle) {
   vi.spyOn(globalThis.crypto.subtle, 'digest').mockResolvedValue(new Uint8Array([1, 2, 3]).buffer);

@@ -4,11 +4,7 @@ import Tooltip from '@/components/ui/Tooltip';
 import { requireStore } from '../../../types';
 import styles from './WorkingIndicator.module.css';
 
-export default function WorkingIndicator({
-  onOpenProgress,
-}: {
-  onOpenProgress?: () => void;
-}) {
+export default function WorkingIndicator({ onOpenProgress }: { onOpenProgress?: () => void }) {
   const { isAIProcessing } = requireStore(LogState.useState(['isAIProcessing']));
 
   if (!isAIProcessing) return null;

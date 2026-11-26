@@ -22,7 +22,7 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],
-      include: ['src/**/*'],
+      include: ['src/**/*.{ts,tsx}'],
       exclude: [
         'src/setupTests.ts',
         'src/**/*.test.{ts,tsx}',
@@ -54,18 +54,6 @@ export default defineConfig({
     alias: {
       '@': path.resolve(__dirname, './src'),
       src: path.resolve(__dirname, './src'),
-    },
-  },
-  esbuild: {
-    loader: 'tsx',
-    include: /(?:src|tests|scripts)\/.*\.[jt]sx?$/,
-    exclude: [],
-  },
-  optimizeDeps: {
-    esbuildOptions: {
-      loader: {
-        '.js': 'jsx',
-      },
     },
   },
 });

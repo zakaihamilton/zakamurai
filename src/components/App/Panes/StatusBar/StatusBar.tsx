@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { RagState } from '@/components/AI/RagState';
 import { AppState } from '@/components/App/AppState';
 import { TabState } from '@/components/App/Panes/TabBar';
@@ -8,7 +9,6 @@ import { useFileSystem } from '@/components/Storage';
 import { Icons } from '@/components/ui/Icons';
 import Tooltip from '@/components/ui/Tooltip';
 import { setInDraft } from '@/utils/StateUtils';
-import { useState } from 'react';
 import { requireStore } from '../../types';
 import styles from './StatusBar.module.css';
 
@@ -167,7 +167,6 @@ export default function StatusBar() {
             className={styles.item}
             onClick={handleFreeMemory}
             disabled={isPurging}
-            aria-label="Free browser memory"
           >
             <Icons.Trash size={14} />
             <span>{isPurging ? 'Purging…' : 'Free Memory'}</span>

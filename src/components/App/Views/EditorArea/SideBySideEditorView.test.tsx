@@ -1,18 +1,12 @@
-import { requireElement } from '@/test-utils/domMocks';
-import { createMockPendingDiff } from '@/test-utils/editorMocks';
 import { fireEvent, render, screen } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { requireElement } from '@/test-utils/domMocks';
+import { createMockPendingDiff } from '@/test-utils/editorMocks';
 import SideBySideEditorView from './SideBySideEditorView';
 
 vi.mock('./CodeEditor', () => ({
-  default: ({
-    value,
-    onChange,
-  }: {
-    value: string;
-    onChange?: (value: string) => void;
-  }) => (
+  default: ({ value, onChange }: { value: string; onChange?: (value: string) => void }) => (
     <textarea
       data-testid="code-editor"
       value={value}

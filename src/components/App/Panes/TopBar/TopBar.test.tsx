@@ -1,3 +1,7 @@
+import { fireEvent, render, screen } from '@testing-library/react';
+import type { ReactElement, ReactNode } from 'react';
+import React from 'react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AppState } from '@/components/App/AppState';
 import { createAgentSession } from '@/components/App/Panes/Prompt/AgentSessions';
 import { PromptUiState } from '@/components/App/Panes/Prompt/PromptState';
@@ -23,10 +27,6 @@ import {
   makeTabState,
   makeWorkspaceHealthState,
 } from '@/test-utils/stateMocks';
-import { fireEvent, render, screen } from '@testing-library/react';
-import React from 'react';
-import type { ReactElement, ReactNode } from 'react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import TopBar, { resetNewProjectState } from './TopBar';
 
 global.URL.createObjectURL = vi.fn();
@@ -72,7 +72,10 @@ vi.mock('@/components/ui/Tooltip', () => ({
   default: ({
     children,
     content,
-  }: { children: ReactElement<{ title?: ReactNode }>; content: ReactNode }) => {
+  }: {
+    children: ReactElement<{ title?: ReactNode }>;
+    content: ReactNode;
+  }) => {
     return React.cloneElement(children, { title: content });
   },
 }));

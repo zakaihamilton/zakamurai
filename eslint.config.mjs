@@ -1,5 +1,20 @@
+import Module, { createRequire } from 'node:module';
 import jsxA11y from 'eslint-plugin-jsx-a11y';
-import tsParser from '@typescript-eslint/parser';
+
+const require = createRequire(import.meta.url);
+const ts6Entry = require.resolve('@typescript/typescript6');
+const originalResolveFilename = Module._resolveFilename;
+Module._resolveFilename = function (request, parent, ...rest) {
+  if (
+    request === 'typescript' &&
+    (parent?.filename?.includes('@typescript-eslint') || parent?.filename?.includes('ts-api-utils'))
+  ) {
+    return ts6Entry;
+  }
+  return originalResolveFilename.call(this, request, parent, ...rest);
+};
+
+const { default: tsParser } = await import('@typescript-eslint/parser');
 
 export default [
   {

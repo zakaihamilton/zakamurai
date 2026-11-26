@@ -7,7 +7,11 @@ vi.mock('@/components/ui/Tooltip', () => ({
     children,
     content,
     className,
-  }: { children?: React.ReactNode; content?: string; className?: string }) => (
+  }: {
+    children?: React.ReactNode;
+    content?: string;
+    className?: string;
+  }) => (
     <div data-tooltip-content={content} className={className}>
       {children}
     </div>

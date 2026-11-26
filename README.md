@@ -103,20 +103,20 @@ pnpm run verify
 
 Useful focused commands:
 
-| Command | Purpose |
-| --- | --- |
-| `pnpm run test` | Run the unit test suite |
-| `pnpm run test:coverage` | Run unit tests with coverage thresholds |
-| `pnpm run test:e2e` | Run Chromium smoke tests |
-| `pnpm run test:visual` | Run Chromium/WebKit visual regression and accessibility tests |
-| `pnpm run test:visual:update` | Regenerate visual baselines for the current platform |
-| `pnpm run test:visual:chromium` | Run Chromium visual regression tests |
-| `pnpm run test:visual:webkit` | Run WebKit visual regression tests |
-| `pnpm run test:promptfoo` | Run static AI compliance checks without API keys |
-| `pnpm run ai:bench` | Run local Build with AI cases with WebLLM, compilation, and preview checks |
-| `pnpm run check:architecture` | Enforce project architecture rules |
-| `pnpm run check:runtime-assets` | Verify generated browser runtime assets |
-| `pnpm run verify:ai` | Run optional extended AI regression checks |
+| Command                         | Purpose                                                                    |
+| ------------------------------- | -------------------------------------------------------------------------- |
+| `pnpm run test`                 | Run the unit test suite                                                    |
+| `pnpm run test:coverage`        | Run unit tests with coverage thresholds                                    |
+| `pnpm run test:e2e`             | Run Chromium smoke tests                                                   |
+| `pnpm run test:visual`          | Run Chromium/WebKit visual regression and accessibility tests              |
+| `pnpm run test:visual:update`   | Regenerate visual baselines for the current platform                       |
+| `pnpm run test:visual:chromium` | Run Chromium visual regression tests                                       |
+| `pnpm run test:visual:webkit`   | Run WebKit visual regression tests                                         |
+| `pnpm run test:promptfoo`       | Run static AI compliance checks without API keys                           |
+| `pnpm run ai:bench`             | Run local Build with AI cases with WebLLM, compilation, and preview checks |
+| `pnpm run check:architecture`   | Enforce project architecture rules                                         |
+| `pnpm run check:runtime-assets` | Verify generated browser runtime assets                                    |
+| `pnpm run verify:ai`            | Run optional extended AI regression checks                                 |
 
 Visual snapshots are platform-specific. Run `pnpm run test:visual:update` on the target CI platform to regenerate its baselines, then run `pnpm run test:visual` without the update flag to verify them.
 
@@ -149,13 +149,13 @@ src/
 
 ## Tech stack
 
-| Layer | Technologies |
-| --- | --- |
-| Application | [Next.js](https://nextjs.org/) 16, [React](https://react.dev/) 19, TypeScript |
-| Styling | CSS Modules |
+| Layer         | Technologies                                                                                                       |
+| ------------- | ------------------------------------------------------------------------------------------------------------------ |
+| Application   | [Next.js](https://nextjs.org/) 16, [React](https://react.dev/) 19, TypeScript                                      |
+| Styling       | CSS Modules                                                                                                        |
 | Browser build | [almostnode](https://www.npmjs.com/package/almostnode), [esbuild-wasm](https://www.npmjs.com/package/esbuild-wasm) |
-| Local AI | [WebLLM](https://webllm.mlc.ai/), WebGPU, WebAssembly |
-| Testing | [Vitest](https://vitest.dev/), [Playwright](https://playwright.dev/), Biome, Stylelint |
+| Local AI      | [WebLLM](https://webllm.mlc.ai/), WebGPU, WebAssembly                                                              |
+| Testing       | [Vitest](https://vitest.dev/), [Playwright](https://playwright.dev/), Biome, Stylelint                             |
 
 ## License
 

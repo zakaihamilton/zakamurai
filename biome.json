@@ -1,33 +1,33 @@
 {
-  "$schema": "https://biomejs.dev/schemas/1.9.4/schema.json",
+  "$schema": "https://biomejs.dev/schemas/2.6.9/schema.json",
   "files": {
-    "ignore": [
-      ".next/**",
-      "node_modules/**",
-      "next-env.d.ts",
-      "public/lib/**",
-      "public/assets/**",
-      "public/wasm/**",
-      "public/__sw__.js",
-      "playwright-report/**",
-      "test-results/**",
-      ".npm-cache/**",
-      ".npm-tmp/**",
-      ".tmp_config/**",
-      ".tmp_home/**",
-      "coverage/**",
-      "out/**",
-      "build/**",
-      "playwright/.cache/**"
+    "includes": [
+      "**",
+      "!**/.next",
+      "!**/node_modules",
+      "!**/next-env.d.ts",
+      "!**/public/lib",
+      "!**/public/assets",
+      "!**/public/wasm",
+      "!**/public/__sw__.js",
+      "!**/playwright-report",
+      "!**/test-results",
+      "!**/.npm-cache",
+      "!**/.npm-tmp",
+      "!**/.tmp_config",
+      "!**/.tmp_home",
+      "!**/.repnix",
+      "!**/coverage",
+      "!**/out",
+      "!**/build",
+      "!**/playwright/.cache"
     ]
   },
-  "organizeImports": {
-    "enabled": true
-  },
+  "assist": { "actions": { "source": { "organizeImports": "on" } } },
   "linter": {
     "enabled": true,
     "rules": {
-      "recommended": true,
+      "preset": "recommended",
       "correctness": {
         "noUnusedImports": "error",
         "noUnusedVariables": "warn"
@@ -35,8 +35,21 @@
       "style": {
         "noNonNullAssertion": "warn"
       },
+      "complexity": {
+        "noImportantStyles": "off"
+      },
+      "suspicious": {
+        "noDuplicateProperties": "off",
+        "noTemplateCurlyInString": "off"
+      },
+      "performance": {
+        "useDomNodeTextContent": "off"
+      },
       "a11y": {
-        "noSvgWithoutTitle": "off"
+        "noSvgWithoutTitle": "off",
+        "noStaticElementInteractions": "off",
+        "useAriaPropsSupportedByRole": "off",
+        "useSemanticElements": "off"
       }
     }
   },
@@ -55,5 +68,17 @@
     "formatter": {
       "quoteStyle": "single"
     }
-  }
+  },
+  "overrides": [
+    {
+      "includes": ["**/*.test.*", "src/test-utils/**", "**/*TestHelpers.*"],
+      "linter": {
+        "rules": {
+          "complexity": {
+            "useArrowFunction": "off"
+          }
+        }
+      }
+    }
+  ]
 }

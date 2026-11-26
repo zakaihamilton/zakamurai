@@ -1,3 +1,7 @@
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import type { ReactElement, ReactNode } from 'react';
+import React from 'react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { WebLLMState } from '@/components/AI/WebLLMState';
 import { AppState } from '@/components/App/AppState';
 import { SidebarState } from '@/components/App/Panes/Sidebar';
@@ -16,10 +20,6 @@ import {
   makeWorkspaceHealthState,
 } from '@/test-utils/stateMocks';
 import type { AgentSessionStateShape, TreeNode } from '@/types/domain-types';
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import React from 'react';
-import type { ReactElement, ReactNode } from 'react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createDefaultAgentSessions, listAgentSessions } from './AgentSessions';
 import Prompt from './Prompt';
 import { PromptState, PromptUiState } from './PromptState';
@@ -43,7 +43,10 @@ vi.mock('@/components/ui/Tooltip', () => ({
   default: ({
     children,
     content,
-  }: { children: ReactElement<{ title?: ReactNode }>; content: ReactNode }) => {
+  }: {
+    children: ReactElement<{ title?: ReactNode }>;
+    content: ReactNode;
+  }) => {
     return React.cloneElement(children, { title: content });
   },
 }));

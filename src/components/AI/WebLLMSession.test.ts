@@ -23,7 +23,9 @@ describe('worker-resident WebLLM sessions', () => {
     vi.clearAllMocks();
     vi.stubGlobal(
       'Worker',
-      vi.fn(() => ({ terminate: vi.fn() })),
+      vi.fn(function () {
+        return { terminate: vi.fn() };
+      }),
     );
   });
 

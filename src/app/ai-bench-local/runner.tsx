@@ -1,20 +1,19 @@
 'use client';
 
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { runManager } from '@/components/AI/Agent';
 import { loadManagerModel } from '@/components/AI/Agent/ManagerModelClient';
 import { ManagerRunError, type ManagerTrace } from '@/components/AI/Agent/ManagerTrace';
 import {
-  LOCAL_AI_BENCHMARK_CASES,
-  type LocalAIBenchmarkCase,
-  type LocalAIBenchmarkPreview,
   evaluateLocalAIBenchmarkCase,
   fingerprintFiles,
   fingerprintPromptMessages,
   getLocalAIBenchmarkModelError,
   getLocalAIBenchmarkSetupError,
+  LOCAL_AI_BENCHMARK_CASES,
+  type LocalAIBenchmarkCase,
+  type LocalAIBenchmarkPreview,
 } from '@/components/AI/LocalBenchmark';
-import { unloadAllWebLLMEngines } from '@/components/AI/WebLLMAPI';
-import { RECOMMENDED_WEB_LLM_MODEL, WEB_LLM_MODELS } from '@/components/AI/WebLLMModels';
 import type {
   AgentChange,
   FileMap,
@@ -23,6 +22,8 @@ import type {
   RunManagerResult,
   WebLLMGenerationMetrics,
 } from '@/components/AI/types';
+import { unloadAllWebLLMEngines } from '@/components/AI/WebLLMAPI';
+import { RECOMMENDED_WEB_LLM_MODEL, WEB_LLM_MODELS } from '@/components/AI/WebLLMModels';
 import PreviewBridge from '@/components/App/Views/PreviewArea/PreviewBridge';
 import type { PreviewEvidence } from '@/components/App/Views/PreviewArea/preview-types';
 import {
@@ -36,15 +37,14 @@ import {
   getPreviewOrigins,
 } from '@/components/App/Views/PreviewArea/previewOrigins';
 import {
-  PREVIEW_MESSAGE_TYPES,
   isTrustedPreviewMessage,
+  PREVIEW_IFRAME_SANDBOX,
+  PREVIEW_MESSAGE_TYPES,
   parsePreviewMessage,
 } from '@/components/App/Views/PreviewArea/previewSandbox';
-import { PREVIEW_IFRAME_SANDBOX } from '@/components/App/Views/PreviewArea/previewSandbox';
 import { DEFAULT_CONTENTS, DEFAULT_FILES } from '@/components/Storage/InitialData';
 import { Compiler } from '@/utils/compiler';
 import type { FolderTreeNode, LocalFsLike } from '@/utils/compiler/types';
-import { useEffect, useRef, useState } from 'react';
 import styles from './runner.module.css';
 
 const FIXED_SEED = 101;
@@ -189,12 +189,6 @@ export default function LocalAIBenchmarkRunner() {
   const hasStartedRef = useRef(false);
 
   useEffect(() => {
-    if (hasStartedRef.current) return;
-    hasStartedRef.current = true;
-    void runBenchmark();
-  }, []);
-
-  useEffect(() => {
     if (!previewFrame) return undefined;
     const onMessage = (event: MessageEvent) => {
       if (!isTrustedPreviewMessage(event, frameRef.current?.contentWindow, previewFrame.origin)) {
@@ -215,7 +209,7 @@ export default function LocalAIBenchmarkRunner() {
     return () => window.removeEventListener('message', onMessage);
   }, [previewFrame]);
 
-  const runBenchmark = async () => {
+  const runBenchmark = useCallback(async () => {
     const startedAt = new Date().toISOString();
     const selection = selectedCasesFromLocation();
     const report: BenchmarkReport = {
@@ -470,7 +464,13 @@ export default function LocalAIBenchmarkRunner() {
       }
       finish('error', errorMessage(error));
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    if (hasStartedRef.current) return;
+    hasStartedRef.current = true;
+    void runBenchmark();
+  }, [runBenchmark]);
 
   return (
     <main>

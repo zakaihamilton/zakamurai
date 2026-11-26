@@ -18,7 +18,8 @@
     width 0.28s cubic-bezier(0.4, 0, 0.2, 1),
     flex-basis 0.28s cubic-bezier(0.4, 0, 0.2, 1),
     padding 0.28s cubic-bezier(0.4, 0, 0.2, 1),
-    border-color 0.28s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+    border-color 0.28s cubic-bezier(0.4, 0, 0.2, 1),
+    box-shadow 0.28s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .prompt::before {
@@ -43,7 +44,9 @@
   overflow-y: auto;
   opacity: 1;
   transform: translateX(0);
-  transition: opacity 0.2s ease, transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+  transition:
+    opacity 0.2s ease,
+    transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .closed {

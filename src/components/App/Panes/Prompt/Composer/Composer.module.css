@@ -9,8 +9,12 @@
   background: var(--bg-input);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
-  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
-  box-shadow: var(--shadow-md), inset 0 1px 0 rgb(255 255 255 / 3%);
+  transition:
+    border-color var(--transition-fast),
+    box-shadow var(--transition-fast);
+  box-shadow:
+    var(--shadow-md),
+    inset 0 1px 0 rgb(255 255 255 / 3%);
 }
 
 .composer:focus-within {
@@ -129,7 +133,11 @@
 }
 
 .buttonActive {
-  background: linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 78%, #4b2aa7));
+  background: linear-gradient(
+    135deg,
+    var(--accent),
+    color-mix(in srgb, var(--accent) 78%, #4b2aa7)
+  );
   color: var(--text-on-accent);
   cursor: pointer;
   box-shadow: none;

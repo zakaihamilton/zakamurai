@@ -33,7 +33,10 @@
   background: var(--border);
   transform: translateX(-50%);
   pointer-events: none;
-  transition: background 0.2s, width 0.2s, box-shadow 0.2s;
+  transition:
+    background 0.2s,
+    width 0.2s,
+    box-shadow 0.2s;
 }
 
 .resizer:hover::after {

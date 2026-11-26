@@ -6,12 +6,12 @@
 
 ## 1. Core Concepts
 
-| Module | Path | Role |
-| --- | --- | --- |
-| **StateRoot / Node** | `triactor` | Isolated state tree mirroring the React hierarchy. Stores attach to nodes. |
-| **Store** | `triactor` | Callable proxy wrapper; mutations notify subscribers (microtask-batched). |
-| **State** | `triactor` | `createState(displayName)` factory → component + hooks. |
-| **StateUtils** | `src/utils/StateUtils.ts` | `setInDraft`, `updateInDraft`, `deleteInDraft`, `remapKeysInDraft`, `deleteKeysWithPrefixInDraft`. |
+| Module               | Path                      | Role                                                                                               |
+| -------------------- | ------------------------- | -------------------------------------------------------------------------------------------------- |
+| **StateRoot / Node** | `triactor`                | Isolated state tree mirroring the React hierarchy. Stores attach to nodes.                         |
+| **Store**            | `triactor`                | Callable proxy wrapper; mutations notify subscribers (microtask-batched).                          |
+| **State**            | `triactor`                | `createState(displayName)` factory → component + hooks.                                            |
+| **StateUtils**       | `src/utils/StateUtils.ts` | `setInDraft`, `updateInDraft`, `deleteInDraft`, `remapKeysInDraft`, `deleteKeysWithPrefixInDraft`. |
 
 The application is wrapped in `<StateRoot>`. Domain stores (`AppState`, `EditorState`, …) are **bootstrapped in `App.tsx` on the root node** via `XState.useState(null, initial)`. Per-file UI stores pass `initial` under `<Node id={filePath}>` so they are scoped to that node.
 
@@ -51,6 +51,7 @@ editorState((draft) => {
 ```
 
 **FORBIDDEN:**
+
 - `draft.fileContents[path] = x` without reassigning `draft.fileContents`
 - `delete draft.pendingDiffs[path]` without replacing the map (use `deleteInDraft`)
 - `useState` for shared domain state
@@ -58,12 +59,12 @@ editorState((draft) => {
 
 ## 4. Editor Content Model
 
-| Layer | Store | Role |
-| --- | --- | --- |
-| Committed workspace | `EditorState.fileContents` | Existing serialized workspace shape used by browser storage |
-| Dirty buffers | `EditorState.dirtyBufferContents` | Path-keyed typing overlay; updated per keystroke and folded into the committed workspace after persistence succeeds |
-| Typing surface | `EditorAreaUiState.localContent` | Per-file Node; immediate editor rendering, synced with the effective buffer |
-| AI review | `EditorState.pendingDiffs` / `pendingDeletions` | Side-by-side review and undo; blocks LocalFS auto-save |
+| Layer               | Store                                           | Role                                                                                                                |
+| ------------------- | ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| Committed workspace | `EditorState.fileContents`                      | Existing serialized workspace shape used by browser storage                                                         |
+| Dirty buffers       | `EditorState.dirtyBufferContents`               | Path-keyed typing overlay; updated per keystroke and folded into the committed workspace after persistence succeeds |
+| Typing surface      | `EditorAreaUiState.localContent`                | Per-file Node; immediate editor rendering, synced with the effective buffer                                         |
+| AI review           | `EditorState.pendingDiffs` / `pendingDeletions` | Side-by-side review and undo; blocks LocalFS auto-save                                                              |
 
 `readEffectiveFileContent` resolves one path from the dirty overlay before the committed map. `createEffectiveFileContentsSnapshot` materializes a workspace for explicit actions and persistence; render-time consumers can use the no-copy effective view. Build, AI context/validation, export, navigation, saves, and unload recovery must use the latest effective buffers. Background indexing and project-health work may wait for the idle snapshot. Typing must not rebuild the whole committed workspace map on each keystroke.
 
@@ -92,13 +93,13 @@ Browser persistence keeps the existing `fileContents` record and IndexedDB/local
 
 ## 7. AI Pipeline
 
-| Module | Path | Role |
-| --- | --- | --- |
-| **Prompts** | `src/components/AI/Prompts.tsx` | System prompts and output format instructions |
-| **Processor** | `src/components/AI/Processor/` | Legacy SEARCH/REPLACE parser (tests/fixtures). `DiffEngine` and `PathResolver` are still used when staging agent changes. |
-| **ChangeValidator** | `src/components/AI/ChangeValidator.tsx` | Path safety, syntax checks before staging |
-| **Agent** | `src/components/AI/Agent/` | `ManagerRunner.ts` (`runManager`), `ActionLoop.ts` (`runActionLoop`), applier |
-| **WebLLM** | `src/components/AI/WebLLMAPI.tsx` | In-browser model inference |
+| Module              | Path                                    | Role                                                                                                                      |
+| ------------------- | --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| **Prompts**         | `src/components/AI/Prompts.tsx`         | System prompts and output format instructions                                                                             |
+| **Processor**       | `src/components/AI/Processor/`          | Legacy SEARCH/REPLACE parser (tests/fixtures). `DiffEngine` and `PathResolver` are still used when staging agent changes. |
+| **ChangeValidator** | `src/components/AI/ChangeValidator.tsx` | Path safety, syntax checks before staging                                                                                 |
+| **Agent**           | `src/components/AI/Agent/`              | `ManagerRunner.ts` (`runManager`), `ActionLoop.ts` (`runActionLoop`), applier                                             |
+| **WebLLM**          | `src/components/AI/WebLLMAPI.tsx`       | In-browser model inference                                                                                                |
 
 Flow: user prompt → `runManager` (`src/components/AI/Agent/ManagerRunner.ts`) routes and collects workspace context → `runActionLoop` (`src/components/AI/Agent/ActionLoop.ts`) executes tool/write turns → `validateAIChanges` (`src/components/AI/ChangeValidator.tsx`) → `applyAgentChanges` writes `fileContents` and `pendingDiffs` → user reviews in the editor. Build/Preview already see the proposed buffers. LocalFS flush waits for approve.
 

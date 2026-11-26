@@ -1,5 +1,5 @@
-import { createMinimalVfsLike, createMutableVfsLike } from '@/test-utils/vfsMocks';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { createMinimalVfsLike, createMutableVfsLike } from '@/test-utils/vfsMocks';
 import {
   __testables,
   assertBrowserBuildSupported,
@@ -682,11 +682,10 @@ describe('browser-bundler', () => {
       '/node_modules/react-dom/server.browser.js': '',
     };
 
-    type ResolveCallback = (args: {
-      path: string;
-      importer?: string;
-      resolveDir?: string;
-    }) => { errors?: unknown; path?: string };
+    type ResolveCallback = (args: { path: string; importer?: string; resolveDir?: string }) => {
+      errors?: unknown;
+      path?: string;
+    };
 
     const build = vi.fn().mockImplementation(
       async (options: {

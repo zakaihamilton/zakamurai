@@ -53,7 +53,11 @@
 
 .compileBtn {
   font-weight: 650;
-  background: linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 78%, #4b2aa7));
+  background: linear-gradient(
+    135deg,
+    var(--accent),
+    color-mix(in srgb, var(--accent) 78%, #4b2aa7)
+  );
   border-color: var(--accent);
   color: var(--text-on-accent);
   min-width: var(--topbar-control-height);

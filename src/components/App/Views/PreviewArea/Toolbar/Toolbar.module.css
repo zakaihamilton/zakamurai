@@ -77,7 +77,9 @@
   background: transparent;
   color: var(--text-muted);
   cursor: pointer;
-  transition: background var(--transition-fast), color var(--transition-fast);
+  transition:
+    background var(--transition-fast),
+    color var(--transition-fast);
   font-size: 14px;
   padding: 0;
 }
@@ -108,7 +110,9 @@
   font-size: 11px;
   font-family: var(--font-mono);
   min-width: 44px;
-  transition: background 0.15s, color 0.15s;
+  transition:
+    background 0.15s,
+    color 0.15s;
 }
 
 .zoomLevel:hover {
