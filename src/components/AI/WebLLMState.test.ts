@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { StateHandle, WebLLMStateDraft } from '@/components/AI/types';
 import {
   bindWebLLMStore,
   getWebLLMStore,
@@ -21,7 +22,7 @@ describe('WebLLMState helpers', () => {
 
   it('updateWebLLMEngine no-ops without a store or model id', () => {
     expect(() => updateWebLLMEngine('m1', { status: 'ready' })).not.toThrow();
-    bindWebLLMStore(vi.fn());
+    bindWebLLMStore(vi.fn<StateHandle<WebLLMStateDraft>>());
     expect(() => updateWebLLMEngine('', { status: 'ready' })).not.toThrow();
   });
 

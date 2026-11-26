@@ -17,7 +17,9 @@
   border: 1px solid var(--border);
   color: var(--accent);
   cursor: pointer;
-  box-shadow: 0 4px 12px rgb(0 0 0 / 30%), 0 0 0 1px rgb(255 255 255 / 5%);
+  box-shadow:
+    0 4px 12px rgb(0 0 0 / 30%),
+    0 0 0 1px rgb(255 255 255 / 5%);
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   backdrop-filter: blur(8px);
 }
@@ -26,7 +28,9 @@
   transform: translateY(-2px);
   background: var(--bg-panel);
   border-color: var(--accent);
-  box-shadow: 0 6px 16px rgb(0 0 0 / 40%), 0 0 0 1px var(--accent);
+  box-shadow:
+    0 6px 16px rgb(0 0 0 / 40%),
+    0 0 0 1px var(--accent);
 }
 
 .jumpBtn:active {

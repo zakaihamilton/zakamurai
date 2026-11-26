@@ -12,5 +12,7 @@ export function createMockWorkerClass(
     postMessage: vi.fn(),
   }),
 ): typeof Worker {
-  return vi.fn(factory) as unknown as typeof Worker;
+  return vi.fn(function () {
+    return factory();
+  }) as unknown as typeof Worker;
 }

@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { mockStorageManager } from '../../test-utils/domMocks';
+import { mockStorageManager, setMockNavigator } from '../../test-utils/domMocks';
 import { createMockWorkerClass } from '../../test-utils/workerMocks';
 import { type FileSystemObserverRecord, IndexerController } from './indexer-controller';
 
@@ -21,16 +21,18 @@ describe('IndexerController', () => {
     originalWorker = global.Worker;
     originalNavigator = global.navigator;
     originalFileSystemObserver = window.FileSystemObserver;
-    window.FileSystemObserver = vi.fn(() => ({
-      observe: vi.fn(),
-      disconnect: vi.fn(),
-    })) as unknown as Window['FileSystemObserver'];
+    window.FileSystemObserver = vi.fn(function () {
+      return {
+        observe: vi.fn(),
+        disconnect: vi.fn(),
+      };
+    }) as unknown as Window['FileSystemObserver'];
   });
 
   afterEach(() => {
     vi.useRealTimers();
     global.Worker = originalWorker;
-    global.navigator = originalNavigator;
+    setMockNavigator(originalNavigator);
     window.FileSystemObserver = originalFileSystemObserver;
   });
 
@@ -79,17 +81,19 @@ describe('IndexerController', () => {
     };
     global.Worker = createMockWorkerClass(() => mockWorker);
 
-    global.navigator = {
+    setMockNavigator({
       ...originalNavigator,
       storage: mockStorageManager({
         getDirectory: vi.fn().mockResolvedValue({}),
       }),
-    } as Navigator;
+    } as Navigator);
 
-    window.FileSystemObserver = vi.fn().mockImplementation(() => ({
-      observe: vi.fn(),
-      disconnect: vi.fn(),
-    })) as unknown as Window['FileSystemObserver'];
+    window.FileSystemObserver = vi.fn(function () {
+      return {
+        observe: vi.fn(),
+        disconnect: vi.fn(),
+      };
+    }) as unknown as Window['FileSystemObserver'];
 
     const controller = new IndexerController();
     await controller.init();
@@ -126,12 +130,12 @@ describe('IndexerController', () => {
       postMessage: vi.fn(),
     };
     global.Worker = createMockWorkerClass(() => mockWorker);
-    global.navigator = {
+    setMockNavigator({
       ...originalNavigator,
       storage: mockStorageManager({
         getDirectory: vi.fn().mockResolvedValue({}),
       }),
-    } as Navigator;
+    } as Navigator);
 
     const controller = new IndexerController();
     await controller.init();
@@ -202,12 +206,12 @@ describe('IndexerController', () => {
       postMessage: vi.fn(),
     };
     global.Worker = createMockWorkerClass(() => mockWorker);
-    global.navigator = {
+    setMockNavigator({
       ...originalNavigator,
       storage: mockStorageManager({
         getDirectory: vi.fn().mockResolvedValue({}),
       }),
-    } as Navigator;
+    } as Navigator);
 
     const controller = new IndexerController();
     await controller.init();
@@ -231,10 +235,10 @@ describe('IndexerController', () => {
   it('skips OPFS observer by default', async () => {
     const getDirectory = vi.fn().mockResolvedValue({});
     global.Worker = createMockWorkerClass();
-    global.navigator = {
+    setMockNavigator({
       ...originalNavigator,
       storage: mockStorageManager({ getDirectory }),
-    } as Navigator;
+    } as Navigator);
     window.FileSystemObserver = undefined;
 
     const controller = new IndexerController();
@@ -248,12 +252,12 @@ describe('IndexerController', () => {
 
   it('enables OPFS observer when requested and warns if unsupported', async () => {
     global.Worker = createMockWorkerClass();
-    global.navigator = {
+    setMockNavigator({
       ...originalNavigator,
       storage: mockStorageManager({
         getDirectory: vi.fn().mockResolvedValue({}),
       }),
-    } as Navigator;
+    } as Navigator);
     window.FileSystemObserver = undefined;
 
     const controller = new IndexerController({ enableOpfsObserver: true });
@@ -267,13 +271,13 @@ describe('IndexerController', () => {
 
   it('handles errors during OPFS observer init gracefully', async () => {
     global.Worker = createMockWorkerClass();
-    global.navigator = {
+    setMockNavigator({
       ...originalNavigator,
       storage: mockStorageManager({
         getDirectory: vi.fn().mockRejectedValue(new Error('OPFS error')),
       }),
-    } as Navigator;
-    window.FileSystemObserver = vi.fn() as unknown as Window['FileSystemObserver'];
+    } as Navigator);
+    window.FileSystemObserver = vi.fn(function () {}) as unknown as Window['FileSystemObserver'];
 
     const controller = new IndexerController({ enableOpfsObserver: true });
     const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
@@ -356,17 +360,19 @@ describe('IndexerController', () => {
       postMessage: vi.fn(),
     };
     global.Worker = createMockWorkerClass(() => mockWorker);
-    global.navigator = {
+    setMockNavigator({
       ...originalNavigator,
       storage: mockStorageManager({
         getDirectory: vi.fn().mockResolvedValue({}),
       }),
-    } as Navigator;
+    } as Navigator);
 
-    window.FileSystemObserver = vi.fn().mockImplementation(() => ({
-      observe: vi.fn(),
-      disconnect: vi.fn(),
-    })) as unknown as Window['FileSystemObserver'];
+    window.FileSystemObserver = vi.fn(function () {
+      return {
+        observe: vi.fn(),
+        disconnect: vi.fn(),
+      };
+    }) as unknown as Window['FileSystemObserver'];
 
     const controller = new IndexerController();
     await controller.init();

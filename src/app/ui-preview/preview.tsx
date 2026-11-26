@@ -1,18 +1,17 @@
 'use client';
 
+import { useEffect, useState } from 'react';
+import { StateRoot } from 'triactor';
+import { PreviewToolbar } from 'ui-preview-kit';
 import { WebLLMState } from '@/components/AI/WebLLMState';
 import CodeEditor from '@/components/App/Views/EditorArea/CodeEditor';
 import { highlightCodeSync } from '@/components/App/Views/EditorArea/highlightClient';
 import Instructions from '@/components/App/Views/Instructions';
 import LogArea, { LogState } from '@/components/App/Views/LogArea';
 import Welcome from '@/components/App/Views/Welcome';
-import { useEffect, useState } from 'react';
-import { StateRoot } from 'triactor';
-import { PreviewToolbar } from 'ui-preview-kit';
-import PreviewDropdown from './PreviewDropdown';
 import {
-  AIReasoningFixture,
   AgentFixture,
+  AIReasoningFixture,
   DiffFixture,
   DownloadFixture,
   ModelsFixture,
@@ -20,6 +19,7 @@ import {
   StorageFixture,
   WorkspaceFixture,
 } from './fixtures';
+import PreviewDropdown from './PreviewDropdown';
 import styles from './preview.module.css';
 
 const screens = [
@@ -45,7 +45,11 @@ function Fixture({
   screen,
   scenario,
   theme,
-}: { screen: Screen; scenario: Scenario; theme: string }) {
+}: {
+  screen: Screen;
+  scenario: Scenario;
+  theme: string;
+}) {
   const [content, setContent] = useState(scenario === 'empty' ? '' : example);
   LogState.useState(null, {
     logs:

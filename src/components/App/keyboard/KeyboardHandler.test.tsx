@@ -1,4 +1,7 @@
 vi.mock('@/components/Storage', () => ({ useFileSystem: vi.fn(() => ({ mode: 'local' })) }));
+
+import { fireEvent, render } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AppState } from '@/components/App/AppState';
 import { SidebarState } from '@/components/App/Panes/Sidebar';
 import { TabState } from '@/components/App/Panes/TabBar';
@@ -12,8 +15,6 @@ import {
   makeSidebarState,
   makeTabState,
 } from '@/test-utils/stateMocks';
-import { fireEvent, render } from '@testing-library/react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useKeyboardHandler } from './KeyboardHandler';
 import { SHORTCUT_HIGHLIGHT_EVENT } from './Shortcuts';
 
@@ -55,7 +56,9 @@ describe('KeyboardHandler', () => {
   let appState: ReturnType<typeof makeAppState>;
   let logState: ReturnType<typeof makeLogState>;
   let editorState: ReturnType<typeof createMockEditorState>;
-  let addNotification: ReturnType<typeof vi.fn>;
+  let addNotification: ReturnType<
+    typeof vi.fn<ReturnType<typeof useNotification>['addNotification']>
+  >;
 
   beforeEach(() => {
     sidebarState = makeSidebarState({ isSidebarOpen: true });

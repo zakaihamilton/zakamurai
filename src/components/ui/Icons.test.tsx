@@ -17,7 +17,7 @@ describe('Icons', () => {
 
     expect(entries.length).toBeGreaterThan(0);
     expect(container.querySelectorAll('[data-icon]')).toHaveLength(entries.length);
-    expect(container.querySelectorAll('svg')).toHaveLength(entries.length - 1);
+    expect(container.querySelectorAll('svg')).toHaveLength(entries.length);
   });
 
   it('renders closed folders and default-sized file icons', () => {

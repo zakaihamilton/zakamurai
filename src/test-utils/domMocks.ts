@@ -107,3 +107,11 @@ export function mockServiceWorker(register: (...args: unknown[]) => Promise<unkn
     value: { register },
   });
 }
+
+export function setMockNavigator(value: Navigator): void {
+  Object.defineProperty(globalThis, 'navigator', {
+    configurable: true,
+    writable: true,
+    value,
+  });
+}

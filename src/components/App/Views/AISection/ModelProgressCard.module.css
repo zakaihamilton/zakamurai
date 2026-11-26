@@ -61,8 +61,13 @@
   border-radius: 18px;
   padding: 8px;
   background: var(--bg-input);
-  box-shadow: 0 9px 20px color-mix(in srgb, var(--text-main) 6%, transparent), var(--shadow-sm);
-  transition: border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
+  box-shadow:
+    0 9px 20px color-mix(in srgb, var(--text-main) 6%, transparent),
+    var(--shadow-sm);
+  transition:
+    border-color 180ms ease,
+    box-shadow 180ms ease,
+    transform 180ms ease;
 }
 
 .executionCard::before {
@@ -96,11 +101,13 @@
   padding: 18px;
   text-align: center;
   border-color: color-mix(in srgb, var(--accent) 38%, var(--border-light));
-  background: radial-gradient(
+  background:
+    radial-gradient(
       circle at 0 50%,
       color-mix(in srgb, var(--accent) 14%, transparent),
       transparent 42%
-    ), var(--bg-input);
+    ),
+    var(--bg-input);
 }
 
 .modelProgressCard::before {

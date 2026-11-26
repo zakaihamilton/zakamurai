@@ -1,7 +1,7 @@
-import type { ChangeSetStateShape, FileSystemStateShape } from '@/types/domain-types';
 import type { Draft, StateStore } from 'triactor';
 import type { Mock } from 'vitest';
 import { vi } from 'vitest';
+import type { ChangeSetStateShape, FileSystemStateShape } from '@/types/domain-types';
 
 export function createMockStateStore<T extends object>(
   initial: T,
@@ -22,7 +22,11 @@ export function createMockStateStore<T extends object>(
   Object.assign(mock, state);
   syncProps();
 
-  const proxy = new Proxy(mock, {
+  const targetFn = ((updater: (draft: Draft<T>) => void) =>
+    mock(updater)) as unknown as StateStore<T>;
+  Object.assign(targetFn, state);
+
+  const proxy = new Proxy(targetFn, {
     get(target, prop, receiver) {
       if (prop === 'mock') {
         return mock;

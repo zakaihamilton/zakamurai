@@ -1,6 +1,6 @@
-import type { AgentSessionMessage } from '@/types/domain-types';
 import ReactMarkdown from 'react-markdown';
-import { type ReasoningGroup, keyReasoningEntries } from './AISectionReasoningUtils';
+import type { AgentSessionMessage } from '@/types/domain-types';
+import { keyReasoningEntries, type ReasoningGroup } from './AISectionReasoningUtils';
 import { markdownComponents, summaryMarkdownComponents } from './ReasoningMarkdown';
 import styles from './ReasoningText.module.css';
 import { remarkStreamingCharacterCount } from './streamingCharacterCount';
@@ -33,26 +33,34 @@ function Transcript({ messages }: { messages: AgentSessionMessage[] }) {
 }
 
 function ReasoningGroups({ groups }: { groups: ReasoningGroup[] }) {
+  const stepOccurrences = new Map<string, number>();
   return (
     <>
-      {groups.map((group, groupIndex) => (
-        <section className={styles.reasoningGroup} key={`${group.step}-${groupIndex}`}>
-          {group.step !== null ? <h2 className={styles.stepHeading}>Step {group.step}</h2> : null}
-          {keyReasoningEntries(group.entries).map((entry) => (
-            <article className={styles.reasoningEntry} key={entry.renderKey}>
-              {entry.timestamp ? <time className={styles.timestamp}>{entry.timestamp}</time> : null}
-              <div className={styles.reasoningText}>
-                <ReactMarkdown
-                  components={markdownComponents}
-                  remarkPlugins={[remarkStreamingCharacterCount]}
-                >
-                  {entry.text}
-                </ReactMarkdown>
-              </div>
-            </article>
-          ))}
-        </section>
-      ))}
+      {groups.map((group) => {
+        const baseStep = String(group.step ?? 'none');
+        const occurrence = stepOccurrences.get(baseStep) ?? 0;
+        stepOccurrences.set(baseStep, occurrence + 1);
+        return (
+          <section className={styles.reasoningGroup} key={`${baseStep}-${occurrence}`}>
+            {group.step !== null ? <h2 className={styles.stepHeading}>Step {group.step}</h2> : null}
+            {keyReasoningEntries(group.entries).map((entry) => (
+              <article className={styles.reasoningEntry} key={entry.renderKey}>
+                {entry.timestamp ? (
+                  <time className={styles.timestamp}>{entry.timestamp}</time>
+                ) : null}
+                <div className={styles.reasoningText}>
+                  <ReactMarkdown
+                    components={markdownComponents}
+                    remarkPlugins={[remarkStreamingCharacterCount]}
+                  >
+                    {entry.text}
+                  </ReactMarkdown>
+                </div>
+              </article>
+            ))}
+          </section>
+        );
+      })}
     </>
   );
 }

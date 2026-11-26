@@ -7,6 +7,27 @@ function Boom(): ReactNode {
   throw new Error('boom');
 }
 
+function Flaky({
+  getShouldThrow,
+  message,
+  label,
+}: {
+  getShouldThrow: () => boolean;
+  message: string;
+  label: string;
+}) {
+  if (getShouldThrow()) throw new Error(message);
+  return <div>{label}</div>;
+}
+
+function BoomString(): ReactNode {
+  throw 'string failure';
+}
+
+function BoomObject(): ReactNode {
+  throw { reason: 'nope' };
+}
+
 describe('AppErrorBoundary', () => {
   afterEach(() => {
     vi.restoreAllMocks();
@@ -50,14 +71,10 @@ describe('AppErrorBoundary', () => {
   it('Try again clears the error and remounts children', () => {
     vi.spyOn(console, 'error').mockImplementation(() => {});
     let shouldThrow = true;
-    function Flaky() {
-      if (shouldThrow) throw new Error('flaky');
-      return <div>recovered</div>;
-    }
 
     render(
       <AppErrorBoundary>
-        <Flaky />
+        <Flaky getShouldThrow={() => shouldThrow} message="flaky" label="recovered" />
       </AppErrorBoundary>,
     );
 
@@ -71,14 +88,10 @@ describe('AppErrorBoundary', () => {
     vi.spyOn(console, 'error').mockImplementation(() => {});
     const focusSpy = vi.spyOn(HTMLElement.prototype, 'focus').mockImplementation(() => {});
     let shouldThrow = true;
-    function Flaky() {
-      if (shouldThrow) throw new Error('again');
-      return <div>ok</div>;
-    }
 
     const { rerender } = render(
       <AppErrorBoundary>
-        <Flaky />
+        <Flaky getShouldThrow={() => shouldThrow} message="again" label="ok" />
       </AppErrorBoundary>,
     );
 
@@ -90,7 +103,7 @@ describe('AppErrorBoundary', () => {
     shouldThrow = true;
     rerender(
       <AppErrorBoundary>
-        <Flaky />
+        <Flaky getShouldThrow={() => shouldThrow} message="again" label="ok" />
       </AppErrorBoundary>,
     );
     expect(screen.getByRole('alert')).toBeDefined();
@@ -99,9 +112,6 @@ describe('AppErrorBoundary', () => {
 
   it('renders string throwables as details', () => {
     vi.spyOn(console, 'error').mockImplementation(() => {});
-    function BoomString(): ReactNode {
-      throw 'string failure';
-    }
     render(
       <AppErrorBoundary>
         <BoomString />
@@ -112,9 +122,6 @@ describe('AppErrorBoundary', () => {
 
   it('renders a generic message for non-Error throwables', () => {
     vi.spyOn(console, 'error').mockImplementation(() => {});
-    function BoomObject(): ReactNode {
-      throw { reason: 'nope' };
-    }
     render(
       <AppErrorBoundary>
         <BoomObject />

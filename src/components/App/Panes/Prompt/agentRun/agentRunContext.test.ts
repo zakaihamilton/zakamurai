@@ -1,14 +1,18 @@
+import type { StateStore } from 'triactor';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { FileSystemApi } from '@/components/App/types';
 import type { ExtendedEditorState } from '@/components/App/Views/EditorArea/types';
 import {
   clearPreviewEvidence,
   reportPreviewEvidence,
 } from '@/components/App/Views/PreviewArea/previewEvidenceBridge';
-import type { FileSystemApi } from '@/components/App/types';
 import Settings from '@/components/Storage/Settings';
-import type { AppStateShape } from '@/types/domain-types';
-import type { PreviewStateShape, SidebarStateShape, TabStateShape } from '@/types/domain-types';
-import type { StateStore } from 'triactor';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type {
+  AppStateShape,
+  PreviewStateShape,
+  SidebarStateShape,
+  TabStateShape,
+} from '@/types/domain-types';
 import { createManagerToolOptions, prepareAgentRunContext } from './agentRunContext';
 
 function makeStore<T extends object>(value: T, afterUpdate?: (next: T) => void): StateStore<T> {
@@ -64,7 +68,9 @@ describe('createManagerToolOptions preview inspection', () => {
       compile: vi.fn().mockResolvedValue(undefined),
       container: { vfs },
     };
-    const Compiler = vi.fn(() => compiler) as unknown as typeof import('@/utils/compiler').Compiler;
+    const Compiler = vi.fn(function () {
+      return compiler;
+    }) as unknown as typeof import('@/utils/compiler').Compiler;
     const options = createManagerToolOptions({
       Compiler,
       fs: { mode: 'opfs', rootHandle: null } as unknown as FileSystemApi,
@@ -129,7 +135,9 @@ describe('createManagerToolOptions preview inspection', () => {
       compile: vi.fn().mockResolvedValue(undefined),
       container: { vfs },
     };
-    const Compiler = vi.fn(() => compiler) as unknown as typeof import('@/utils/compiler').Compiler;
+    const Compiler = vi.fn(function () {
+      return compiler;
+    }) as unknown as typeof import('@/utils/compiler').Compiler;
     const options = createManagerToolOptions({
       Compiler,
       fs: { mode: 'opfs', rootHandle: null } as unknown as FileSystemApi,

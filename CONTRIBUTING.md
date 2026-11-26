@@ -35,16 +35,16 @@ Requires promptfoo (installed via `pnpm install --frozen-lockfile`). lucidshark/
 
 ## Tests
 
-| Command | Purpose |
-| --- | --- |
-| `pnpm run test` | Unit tests |
-| `pnpm run typecheck` | TypeScript `--noEmit` |
-| `pnpm run test:coverage` | Coverage with thresholds |
-| `pnpm run test:promptfoo` | Static AI compliance (no API keys) |
-| `pnpm run check:architecture` | Architecture rule scan |
+| Command                         | Purpose                                           |
+| ------------------------------- | ------------------------------------------------- |
+| `pnpm run test`                 | Unit tests                                        |
+| `pnpm run typecheck`            | TypeScript `--noEmit`                             |
+| `pnpm run test:coverage`        | Coverage with thresholds                          |
+| `pnpm run test:promptfoo`       | Static AI compliance (no API keys)                |
+| `pnpm run check:architecture`   | Architecture rule scan                            |
 | `pnpm run check:runtime-assets` | Generated browser runtime manifest and size check |
-| `pnpm run test:e2e` | Playwright smoke |
-| `pnpm run test:e2e:isolated` | Cross-origin preview security |
+| `pnpm run test:e2e`             | Playwright smoke                                  |
+| `pnpm run test:e2e:isolated`    | Cross-origin preview security                     |
 
 Pre-commit hooks run Biome and related Vitest tests on staged files.
 

@@ -1,10 +1,10 @@
+import { act, fireEvent, render, screen } from '@testing-library/react';
+import type { ReactElement, ReactNode } from 'react';
+import React from 'react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { PreviewState } from '@/components/App/PreviewState';
 import { makePreviewAreaUiState, makePreviewState } from '@/test-utils/stateMocks';
 import type { PreviewAreaUiStateShape, PreviewStateShape } from '@/types/domain-types';
-import { act, fireEvent, render, screen } from '@testing-library/react';
-import React from 'react';
-import type { ReactElement, ReactNode } from 'react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
 import PreviewArea, { PreviewAreaUiState } from './PreviewArea';
 import { getPreviewOrigins } from './previewOrigins';
 import { PREVIEW_MESSAGE_TYPES } from './previewSandbox';
@@ -18,7 +18,10 @@ vi.mock('@/components/ui/Tooltip', () => ({
   default: ({
     children,
     content,
-  }: { children: ReactElement<{ title?: ReactNode }>; content: ReactNode }) => {
+  }: {
+    children: ReactElement<{ title?: ReactNode }>;
+    content: ReactNode;
+  }) => {
     return React.cloneElement(children, { title: content });
   },
 }));

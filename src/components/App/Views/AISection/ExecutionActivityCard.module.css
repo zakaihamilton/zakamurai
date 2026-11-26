@@ -80,8 +80,13 @@
   border-radius: 18px;
   padding: 8px;
   background: var(--bg-input);
-  box-shadow: 0 9px 20px color-mix(in srgb, var(--text-main) 6%, transparent), var(--shadow-sm);
-  transition: border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
+  box-shadow:
+    0 9px 20px color-mix(in srgb, var(--text-main) 6%, transparent),
+    var(--shadow-sm);
+  transition:
+    border-color 180ms ease,
+    box-shadow 180ms ease,
+    transform 180ms ease;
 }
 
 .executionCard::before {
@@ -120,7 +125,8 @@
   border: 1px solid color-mix(in srgb, var(--accent) 28%, var(--border-light));
   border-radius: 12px;
   color: var(--accent);
-  background: radial-gradient(
+  background:
+    radial-gradient(
       circle at 50% 46%,
       color-mix(in srgb, var(--accent) 22%, transparent),
       transparent 38%
@@ -199,7 +205,8 @@
   min-height: var(--execution-card-art-generation-height, 146px);
   align-content: center;
   gap: 10px;
-  background: radial-gradient(
+  background:
+    radial-gradient(
       circle at 50% 42%,
       color-mix(in srgb, var(--accent) 25%, transparent),
       transparent 36%
@@ -265,8 +272,9 @@
   border-radius: 18px;
   color: var(--accent);
   background: var(--bg-surface);
-  box-shadow: 0 0 0 7px color-mix(in srgb, var(--accent) 8%, transparent), 0 0 24px
-    color-mix(in srgb, var(--accent) 19%, transparent);
+  box-shadow:
+    0 0 0 7px color-mix(in srgb, var(--accent) 8%, transparent),
+    0 0 24px color-mix(in srgb, var(--accent) 19%, transparent);
   transform: rotate(-3deg);
 }
 
@@ -454,7 +462,9 @@
 
 .executionNodeactive .executionCard {
   border-color: color-mix(in srgb, var(--accent) 64%, var(--border-light));
-  box-shadow: 0 14px 30px color-mix(in srgb, var(--accent) 19%, transparent), var(--shadow-sm);
+  box-shadow:
+    0 14px 30px color-mix(in srgb, var(--accent) 19%, transparent),
+    var(--shadow-sm);
 }
 
 .executionNodeactive .executionCard::before {

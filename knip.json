@@ -5,6 +5,7 @@
   "ignoreDependencies": ["@types/json-schema", "almostnode", "onnxruntime-web", "promptfoo"],
   "ignoreExportsUsedInFile": true,
   "rules": {
-    "exports": "off"
+    "exports": "off",
+    "types": "off"
   }
 }

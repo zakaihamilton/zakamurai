@@ -34,18 +34,23 @@ export default function TokenVerificationCard({ result, onClose }: TokenVerifica
         </div>
         {result.mismatches.length > 0 && (
           <ul className={styles.mismatchList}>
-            {result.mismatches.map((mismatch, index) => (
-              <li
-                key={`${mismatch.token.value}-${mismatch.token.range?.start ?? index}-${index}`}
-                className={styles.mismatchItem}
-              >
-                <span className={styles.mismatchItemReason}>{mismatch.reason}</span>
-                <span className={styles.mismatchItemDetails}>
-                  Token: "{mismatch.token.value}" | Type: {mismatch.token.type} | Range: [
-                  {mismatch.token.range?.start}, {mismatch.token.range?.end}]
-                </span>
-              </li>
-            ))}
+            {(() => {
+              const seen = new Map<string, number>();
+              return result.mismatches.map((mismatch) => {
+                const base = `${mismatch.token.value}-${mismatch.token.range?.start ?? 'none'}`;
+                const occurrence = seen.get(base) ?? 0;
+                seen.set(base, occurrence + 1);
+                return (
+                  <li key={`${base}-${occurrence}`} className={styles.mismatchItem}>
+                    <span className={styles.mismatchItemReason}>{mismatch.reason}</span>
+                    <span className={styles.mismatchItemDetails}>
+                      Token: "{mismatch.token.value}" | Type: {mismatch.token.type} | Range: [
+                      {mismatch.token.range?.start}, {mismatch.token.range?.end}]
+                    </span>
+                  </li>
+                );
+              });
+            })()}
           </ul>
         )}
       </div>

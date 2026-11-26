@@ -56,7 +56,7 @@ export default function PreviewToolbar({
           className={styles.zoomLevel}
           onClick={onZoomReset}
           tooltip="Reset zoom"
-          aria-label="Reset zoom"
+          aria-label={`${Math.round(scale * 100)}%, Reset zoom`}
         >
           {Math.round(scale * 100)}%
         </ToolbarButton>

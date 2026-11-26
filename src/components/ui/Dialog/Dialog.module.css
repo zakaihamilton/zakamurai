@@ -32,7 +32,9 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  box-shadow: var(--shadow-lg), 0 0 0 1px rgb(255 255 255 / 3%);
+  box-shadow:
+    var(--shadow-lg),
+    0 0 0 1px rgb(255 255 255 / 3%);
   animation: modal-in 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
@@ -156,7 +158,11 @@
 }
 
 .confirmBtn {
-  background: linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 78%, #4b2aa7));
+  background: linear-gradient(
+    135deg,
+    var(--accent),
+    color-mix(in srgb, var(--accent) 78%, #4b2aa7)
+  );
   color: white;
 }
 

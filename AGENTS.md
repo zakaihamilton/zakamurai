@@ -28,13 +28,13 @@ Key modules: `src/components/AI/Agent/` (`runManager`, action loop), `src/compon
 
 ## Quality gates
 
-| Command | Runs in CI | Purpose |
-| --- | --- | --- |
-| `pnpm run verify` | mirrors CI | Full non-mutating local gate |
-| `pnpm run check:architecture` | yes | Codified architecture rules |
-| `pnpm run test:promptfoo` | yes | Static AI compliance (no API keys) |
-| `pnpm run test:coverage` | yes | Vitest with 80% global thresholds and 85% AI statements/lines/functions |
-| `pnpm run verify:ai` | no | Optional extended AI regression |
+| Command                       | Runs in CI | Purpose                                                                 |
+| ----------------------------- | ---------- | ----------------------------------------------------------------------- |
+| `pnpm run verify`             | mirrors CI | Full non-mutating local gate                                            |
+| `pnpm run check:architecture` | yes        | Codified architecture rules                                             |
+| `pnpm run test:promptfoo`     | yes        | Static AI compliance (no API keys)                                      |
+| `pnpm run test:coverage`      | yes        | Vitest with 80% global thresholds and 85% AI statements/lines/functions |
+| `pnpm run verify:ai`          | no         | Optional extended AI regression                                         |
 
 `verify` never rewrites source files. Use `pnpm run format` and `pnpm run stylelint:fix` to apply fixes.
 

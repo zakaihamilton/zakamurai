@@ -101,8 +101,10 @@
   border-radius: var(--radius-lg);
   background: var(--bg-panel);
   box-shadow: var(--shadow-sm);
-  transition: border-color var(--transition-fast), transform var(--transition-fast), box-shadow
-    var(--transition-fast);
+  transition:
+    border-color var(--transition-fast),
+    transform var(--transition-fast),
+    box-shadow var(--transition-fast);
 }
 
 .section:hover {

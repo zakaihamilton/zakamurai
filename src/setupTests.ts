@@ -1,4 +1,4 @@
-import '@testing-library/jest-dom';
+import '@testing-library/jest-dom/vitest';
 
 const localStorageEntries = new Map<string, string>();
 
@@ -33,6 +33,24 @@ if (typeof globalThis.Worker === 'undefined') {
     removeEventListener(): void {}
   }
   globalThis.Worker = MockWorker as unknown as typeof Worker;
+}
+
+// Mock window.matchMedia (not implemented in jsdom 31)
+if (typeof window !== 'undefined' && typeof window.matchMedia !== 'function') {
+  Object.defineProperty(window, 'matchMedia', {
+    configurable: true,
+    writable: true,
+    value: (query: string) => ({
+      matches: false,
+      media: query,
+      onchange: null,
+      addListener: () => {},
+      removeListener: () => {},
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      dispatchEvent: () => false,
+    }),
+  });
 }
 
 // Mock navigator.storage

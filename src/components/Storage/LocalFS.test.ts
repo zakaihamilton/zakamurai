@@ -1,8 +1,9 @@
-import { asDirectoryHandle } from '@/test-utils/vitest-mocks';
-import type { FileSystemStateShape } from '@/types/domain-types';
 import { act, renderHook } from '@testing-library/react';
 import type { StateStore } from 'triactor';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { setMockNavigator } from '@/test-utils/domMocks';
+import { asDirectoryHandle } from '@/test-utils/vitest-mocks';
+import type { FileSystemStateShape } from '@/types/domain-types';
 import { FileSystemState, useFileSystem } from './LocalFS';
 
 type MockDirEntry = { name: string; kind: string };
@@ -110,6 +111,8 @@ const makeFileSystemState = (
 };
 
 describe('useFileSystem', () => {
+  const originalNavigator = globalThis.navigator;
+
   beforeEach(() => {
     vi.clearAllMocks();
     global.indexedDB = makeIDBMock();
@@ -119,6 +122,7 @@ describe('useFileSystem', () => {
     await act(async () => {
       await new Promise((resolve) => setTimeout(resolve, 0));
     });
+    setMockNavigator(originalNavigator);
     vi.restoreAllMocks();
   });
 
@@ -349,10 +353,10 @@ describe('useFileSystem', () => {
 
   it('mountOPFS mounts OPFS storage', async () => {
     const opfsHandle = makeDirHandle('opfs');
-    global.navigator = {
+    setMockNavigator({
       ...global.navigator,
       storage: { getDirectory: vi.fn().mockResolvedValue(opfsHandle) },
-    } as unknown as Navigator;
+    } as unknown as Navigator);
 
     const state = makeFileSystemState();
     vi.spyOn(FileSystemState, 'useState').mockReturnValue(state);
@@ -367,10 +371,10 @@ describe('useFileSystem', () => {
   });
 
   it('mountOPFS handles failure', async () => {
-    global.navigator = {
+    setMockNavigator({
       ...global.navigator,
       storage: { getDirectory: vi.fn().mockRejectedValue(new Error('OPFS unavailable')) },
-    } as unknown as Navigator;
+    } as unknown as Navigator);
 
     const state = makeFileSystemState();
     vi.spyOn(FileSystemState, 'useState').mockReturnValue(state);
@@ -752,10 +756,10 @@ describe('useFileSystem', () => {
   });
 
   it('handles OPFS and path write failures from non-Error rejections', async () => {
-    global.navigator = {
+    setMockNavigator({
       ...global.navigator,
       storage: { getDirectory: vi.fn().mockRejectedValue('opfs unavailable') },
-    } as unknown as Navigator;
+    } as unknown as Navigator);
 
     const badRoot = {
       getDirectoryHandle: vi.fn().mockRejectedValue('not writable'),

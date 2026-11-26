@@ -1,7 +1,6 @@
+import { createState, Node } from 'triactor';
 import { TabState } from '@/components/App/Panes/TabBar';
 import { useFileSystem } from '@/components/Storage';
-import { Node } from 'triactor';
-import { createState } from 'triactor';
 import EditorSurface from './EditorSurface';
 import type { EditorAreaProps, ExtendedEditorState } from './types';
 import useEditorAreaController from './useEditorAreaController';
@@ -31,6 +30,23 @@ function EditorAreaInner({ file, fsHandle }: EditorAreaProps) {
     'aiCompletionEnabled',
   ]);
   if (!state) return null;
+
+  return (
+    <EditorAreaReady file={file} fsHandle={fsHandle} fs={fs} tabState={tabState} state={state} />
+  );
+}
+
+function EditorAreaReady({
+  file,
+  fsHandle,
+  fs,
+  tabState,
+  state,
+}: EditorAreaProps & {
+  fs: ReturnType<typeof useFileSystem>;
+  tabState: ReturnType<typeof TabState.useState>;
+  state: NonNullable<ReturnType<typeof EditorState.useState>>;
+}) {
   const filePath = file?.path?.join('/') || file?.name || '';
   const surfaceProps = useEditorAreaController({ file, fsHandle, filePath, fs, tabState, state });
 

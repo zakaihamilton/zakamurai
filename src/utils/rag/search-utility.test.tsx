@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { mockStorageManager } from '../../test-utils/domMocks';
+import { mockStorageManager, setMockNavigator } from '../../test-utils/domMocks';
 import { releaseWebLLMGpuMemory, reserveWebLLMGpuMemory } from '../ai-memory-governor';
 import { RAG_EXTRACTOR_IDLE_UNLOAD_MS, RagSearchUtility } from './search-utility';
 
@@ -12,7 +12,7 @@ const { mockDispose, mockInit, mockSearch, mockUnloadModel } = vi.hoisted(() => 
 
 vi.mock('./indexer-controller.js', () => {
   return {
-    IndexerController: vi.fn().mockImplementation(() => {
+    IndexerController: vi.fn(function () {
       return {
         dispose: mockDispose,
         init: mockInit,
@@ -36,7 +36,7 @@ describe('RagSearchUtility', () => {
     vi.clearAllTimers();
     vi.useRealTimers();
     releaseWebLLMGpuMemory();
-    global.navigator = originalNavigator;
+    setMockNavigator(originalNavigator);
   });
 
   it('formats retrieved context correctly with linked CSS', () => {
@@ -138,12 +138,12 @@ describe('RagSearchUtility', () => {
       }),
       getFileHandle: vi.fn().mockResolvedValue(mockFile),
     };
-    global.navigator = {
+    setMockNavigator({
       ...originalNavigator,
       storage: mockStorageManager({
         getDirectory: vi.fn().mockResolvedValue(mockDir),
       }),
-    } as Navigator;
+    } as Navigator);
 
     mockInit.mockResolvedValue(undefined);
     mockSearch.mockResolvedValue([
@@ -170,12 +170,12 @@ describe('RagSearchUtility', () => {
   it('handles OPFS read errors and parsing errors gracefully', async () => {
     const consoleWarn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
-    global.navigator = {
+    setMockNavigator({
       ...originalNavigator,
       storage: mockStorageManager({
         getDirectory: vi.fn().mockRejectedValue(new Error('Storage Denied')),
       }),
-    } as Navigator;
+    } as Navigator);
 
     mockInit.mockResolvedValue(undefined);
     mockSearch.mockResolvedValue([
@@ -217,12 +217,12 @@ describe('RagSearchUtility', () => {
       }),
       getFileHandle: vi.fn().mockResolvedValue(mockFile),
     };
-    global.navigator = {
+    setMockNavigator({
       ...originalNavigator,
       storage: mockStorageManager({
         getDirectory: vi.fn().mockResolvedValue(mockDir),
       }),
-    } as Navigator;
+    } as Navigator);
 
     mockInit.mockResolvedValue(undefined);
     mockSearch.mockResolvedValue([

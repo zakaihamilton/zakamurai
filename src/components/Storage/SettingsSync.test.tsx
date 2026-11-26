@@ -1,9 +1,9 @@
+import { act, renderHook } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import Settings from '@/components/Storage/Settings';
 import { useNotification } from '@/components/ui/Notification';
 import { createMockEditorState } from '@/test-utils/editorMocks';
 import type { SidebarStateShape } from '@/types/domain-types';
-import { act, renderHook } from '@testing-library/react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useSettingsSync } from './SettingsSync';
 
 vi.mock('@/components/Storage/Settings', () => {
@@ -53,7 +53,9 @@ vi.mock('@/components/Storage/StorageHealth', () => ({
 }));
 
 describe('useSettingsSync', () => {
-  let addNotification: ReturnType<typeof vi.fn>;
+  let addNotification: ReturnType<
+    typeof vi.fn<ReturnType<typeof useNotification>['addNotification']>
+  >;
 
   beforeEach(() => {
     vi.useFakeTimers();

@@ -154,7 +154,9 @@ function getSubdomainBranchOrigins(windowOrigin: string): PreviewOrigins | null 
 
 export function getPreviewOrigins({
   windowOrigin,
-}: { windowOrigin?: string } = {}): PreviewOrigins {
+}: {
+  windowOrigin?: string;
+} = {}): PreviewOrigins {
   const configuredIdeOrigin = trimOrigin(process.env.NEXT_PUBLIC_IDE_ORIGIN);
   const configuredPreviewOrigin = trimOrigin(process.env.NEXT_PUBLIC_PREVIEW_ORIGIN);
 
@@ -267,7 +269,9 @@ export function getPreviewConfigurationError(
 
 export function getPreviewFrameAncestors({
   ideOrigin,
-}: { ideOrigin?: string | null } = {}): string {
+}: {
+  ideOrigin?: string | null;
+} = {}): string {
   const ancestors = new Set<string>();
   const configuredIdeOrigin = trimOrigin(process.env.NEXT_PUBLIC_IDE_ORIGIN);
   const vercelBranchOrigin = toHostOrigin(process.env.NEXT_PUBLIC_VERCEL_BRANCH_URL);
@@ -332,7 +336,7 @@ export function isPreviewHost(
   try {
     if (!previewOrigin) return false;
     const rawHost = host.trim();
-    if (!rawHost || /[\/?#@]/.test(rawHost)) return false;
+    if (!rawHost || /[/?#@]/.test(rawHost)) return false;
     const configuredOrigin = new URL(previewOrigin);
     const hostOrigin = new URL(`${configuredOrigin.protocol}//${rawHost}`);
     return (

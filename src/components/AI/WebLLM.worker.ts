@@ -40,7 +40,7 @@ class SessionWorkerHandler extends WebWorkerMLCEngineHandler {
     this.handleTask(message.uuid, async () => {
       if (request.operation === 'dispose') {
         this.sessions.delete(request.sessionId);
-        this.loadedModelIdToAsyncGenerator.delete(request.sessionId);
+        this.streamIdToAsyncGenerator.delete(request.sessionId);
         return null;
       }
 
@@ -71,7 +71,7 @@ class SessionWorkerHandler extends WebWorkerMLCEngineHandler {
         request.sessionId,
         stream as unknown as AsyncIterable<unknown>,
       );
-      this.loadedModelIdToAsyncGenerator.set(request.sessionId, tracked as never);
+      this.streamIdToAsyncGenerator.set(request.sessionId, tracked as never);
       return null;
     });
   }
@@ -89,7 +89,7 @@ class SessionWorkerHandler extends WebWorkerMLCEngineHandler {
       }
       if (output) this.sessions.get(sessionId)?.push({ role: 'assistant', content: output });
     } finally {
-      this.loadedModelIdToAsyncGenerator.delete(sessionId);
+      this.streamIdToAsyncGenerator.delete(sessionId);
     }
   }
 }

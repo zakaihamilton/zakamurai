@@ -6,8 +6,8 @@
   justify-content: safe center;
   width: 100%;
   padding: 32px;
-  background: radial-gradient(circle at 50% 18%, var(--accent-light), transparent 34%),
-    var(--bg-base);
+  background:
+    radial-gradient(circle at 50% 18%, var(--accent-light), transparent 34%), var(--bg-base);
   overflow-y: auto;
   animation: page-in 0.35s ease both;
 }

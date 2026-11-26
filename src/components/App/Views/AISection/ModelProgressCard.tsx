@@ -49,7 +49,6 @@ export default function ModelProgressCard({
             aria-valuemax={100}
             aria-valuenow={percentage ?? undefined}
             aria-valuetext={percentage === null ? progress.detail : `${percentage}%`}
-            tabIndex={0}
           >
             <svg
               className={`${styles.modelProgressRing} ${percentage === null ? styles.modelProgressRingIndeterminate : ''}`}

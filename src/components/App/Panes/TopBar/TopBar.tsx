@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { AppState } from '@/components/App/AppState';
 import {
   AgentSessionState,
@@ -18,18 +19,17 @@ import {
 } from '@/components/Storage/InitialData';
 import Settings from '@/components/Storage/Settings';
 import { STORAGE_RECOVERY_EVENT } from '@/components/Storage/StorageHealth';
+import Dialog from '@/components/ui/Dialog';
+import { Icons } from '@/components/ui/Icons';
+import Tooltip from '@/components/ui/Tooltip';
 import {
   ChangeSetState,
   DEFAULT_WORKSPACE_HEALTH,
   ProblemsState,
   WorkspaceHealthState,
 } from '@/components/Workspace';
-import Dialog from '@/components/ui/Dialog';
-import { Icons } from '@/components/ui/Icons';
-import Tooltip from '@/components/ui/Tooltip';
-import { setInDraft } from '@/utils/StateUtils';
 import { formatShortcut } from '@/utils/os';
-import { useEffect } from 'react';
+import { setInDraft } from '@/utils/StateUtils';
 import { requireStore } from '../../types';
 import ActionButtons from './ActionButtons';
 import Breadcrumb from './Breadcrumb';
@@ -38,9 +38,9 @@ import NavigationControls from './NavigationControls';
 import useProjectCompiler from './ProjectCompiler';
 import ThemeToggle from './ThemeToggle';
 import styles from './TopBar.module.css';
+import type { ResetNewProjectStateParams } from './topbar-types';
 import WorkingIndicator from './WorkingIndicator';
 import useZipExporter from './ZipExporter';
-import type { ResetNewProjectStateParams } from './topbar-types';
 
 export function resetNewProjectState({
   template = 'default',
@@ -255,32 +255,33 @@ export default function TopBar() {
   const isSidebarActive = isMobile ? isSidebarPopupOpen : isSidebarOpen;
   return (
     <header className={styles.header}>
-      <Tooltip
-        content={isSidebarActive ? 'Collapse Sidebar' : 'Expand Sidebar'}
-        shortcut={formatShortcut('⌃B')}
-        className={styles.menuToggle}
-      >
-        <button
-          type="button"
-          onClick={() =>
-            sidebarState((draft) => {
-              if (isMobile) {
-                draft.isSidebarPopupOpen = !draft.isSidebarPopupOpen;
-                draft.isAIInputPopupOpen = false;
-              } else {
-                draft.isSidebarOpen = !draft.isSidebarOpen;
-              }
-            })
-          }
-          aria-label={isSidebarActive ? 'Collapse Sidebar' : 'Expand Sidebar'}
-          data-testid="sidebar-toggle"
+      <div className={styles.menuToggle}>
+        <Tooltip
+          content={isSidebarActive ? 'Collapse Sidebar' : 'Expand Sidebar'}
+          shortcut={formatShortcut('⌃B')}
         >
-          <Icons.ZLogo size={isMobile ? 28 : 32} />
-          <span className={styles.brandTitle}>
-            ZAKAMUR<span className={styles.aiHighlight}>AI</span>
-          </span>
-        </button>
-      </Tooltip>
+          <button
+            type="button"
+            onClick={() =>
+              sidebarState((draft) => {
+                if (isMobile) {
+                  draft.isSidebarPopupOpen = !draft.isSidebarPopupOpen;
+                  draft.isAIInputPopupOpen = false;
+                } else {
+                  draft.isSidebarOpen = !draft.isSidebarOpen;
+                }
+              })
+            }
+            aria-label={isSidebarActive ? 'Collapse Sidebar' : 'Expand Sidebar'}
+            data-testid="sidebar-toggle"
+          >
+            <Icons.ZLogo size={isMobile ? 28 : 32} />
+          </button>
+        </Tooltip>
+        <span className={styles.brandTitle} aria-hidden="true">
+          ZAKAMUR<span className={styles.aiHighlight}>AI</span>
+        </span>
+      </div>
 
       <div className={styles.workingIndicator}>
         <WorkingIndicator onOpenProgress={handleOpenProgress} />
