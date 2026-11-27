@@ -1,3 +1,4 @@
+import { useCallback, useState } from 'react';
 import { AppState } from '@/components/App/AppState';
 import { SidebarState } from '@/components/App/Panes/Sidebar';
 import { EditorState } from '@/components/App/Views/EditorArea';
@@ -5,7 +6,6 @@ import { createEffectivePreviewFileContentsSnapshot } from '@/components/App/Vie
 import { useFileSystem } from '@/components/Storage';
 import type { TreeNode } from '@/types/domain-types';
 import { ZipWriter } from '@/utils/zip';
-import { useCallback, useState } from 'react';
 import { requireStore } from '../../types';
 
 export default function useZipExporter() {
@@ -15,7 +15,9 @@ export default function useZipExporter() {
   const { folderTree } = requireStore(SidebarState.useState(['folderTree']));
   const [exportError, setExportError] = useState<string | null>(null);
 
-  const handleExportZip = useCallback(async () => {
+  const projectZipName = `${(projectName || 'project').replace(/\s+/g, '_')}.zip`;
+
+  const createProjectZip = useCallback(async () => {
     const zip = new ZipWriter();
     const fileContents = createEffectivePreviewFileContentsSnapshot(editorState);
     const deletedPaths = Object.keys(editorState.pendingDeletions || {});
@@ -58,31 +60,88 @@ export default function useZipExporter() {
         zip.addFile(path, fileContents[path]);
       }
     } else {
+      const addedPaths = new Set<string>();
       const traverse = (nodes: TreeNode[], path = '') => {
         for (const node of nodes) {
           const nodePath = path ? `${path}/${node.name}` : node.name;
           if (isDeletedPath(nodePath)) continue;
           if (node.type === 'file') {
-            const content = fileContents[nodePath] || '';
+            const content = fileContents[nodePath] ?? '';
             zip.addFile(nodePath, content);
+            addedPaths.add(nodePath);
           } else if (node.type === 'folder') {
             traverse(node.children || [], nodePath);
           }
         }
       };
       traverse(folderTree);
+      for (const [path, content] of Object.entries(fileContents)) {
+        if (isDeletedPath(path) || addedPaths.has(path)) continue;
+        zip.addFile(path, content);
+      }
     }
 
-    const blob = await zip.generateBlob();
+    return zip.generateBlob();
+  }, [fs, editorState, folderTree]);
+
+  const downloadBlob = useCallback((blob: Blob, filename: string) => {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `${(projectName || 'project').replace(/\s+/g, '_')}.zip`;
+    link.download = filename;
     document.body.appendChild(link);
     link.click();
     link.remove();
-    URL.revokeObjectURL(url);
-  }, [fs, editorState, folderTree, projectName]);
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }, []);
+
+  const handleExportZip = useCallback(async () => {
+    try {
+      const blob = await createProjectZip();
+      downloadBlob(blob, projectZipName);
+    } catch (error) {
+      setExportError(error instanceof Error ? error.message : 'Could not export the source ZIP.');
+    }
+  }, [createProjectZip, downloadBlob, projectZipName]);
+
+  const handleShareProject = useCallback(async () => {
+    let blob: Blob;
+    try {
+      blob = await createProjectZip();
+    } catch (error) {
+      setExportError(error instanceof Error ? error.message : 'Could not create the source ZIP.');
+      return;
+    }
+
+    if (typeof File !== 'undefined' && typeof navigator.share === 'function') {
+      const file = new File([blob], projectZipName, { type: 'application/zip' });
+      let canShareFile = false;
+      try {
+        canShareFile = Boolean(navigator.canShare?.({ files: [file] }));
+      } catch {
+        canShareFile = false;
+      }
+      if (canShareFile) {
+        try {
+          await navigator.share({
+            files: [file],
+            title: projectName || 'Zakamurai project',
+            text: 'Project source exported from Zakamurai.',
+          });
+          return;
+        } catch (error) {
+          if (
+            typeof DOMException !== 'undefined' &&
+            error instanceof DOMException &&
+            error.name === 'AbortError'
+          ) {
+            return;
+          }
+        }
+      }
+    }
+    downloadBlob(blob, projectZipName);
+  }, [createProjectZip, downloadBlob, projectName, projectZipName]);
 
   const handleExportCompiledZip = useCallback(async () => {
     const { Compiler } = await import('@/utils/compiler');
@@ -213,6 +272,7 @@ export default function useZipExporter() {
 
   return {
     handleExportZip,
+    handleShareProject,
     handleExportCompiledZip,
     exportError,
     clearExportError: () => setExportError(null),

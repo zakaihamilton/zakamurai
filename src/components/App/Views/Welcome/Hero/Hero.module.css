@@ -72,6 +72,15 @@
   animation: rise-in 0.48s ease 0.28s both;
 }
 
+.supportedTypes {
+  max-width: 500px;
+  margin: 8px 0 0;
+  color: var(--text-muted);
+  font-size: 11px;
+  line-height: 1.45;
+  animation: rise-in 0.48s ease 0.32s both;
+}
+
 .intro {
   margin: 18px 0 0;
   display: flex;
@@ -160,6 +169,7 @@
   .eyebrow,
   .title,
   .subtitle,
+  .supportedTypes,
   .intro,
   .logoMark::after {
     animation: none;

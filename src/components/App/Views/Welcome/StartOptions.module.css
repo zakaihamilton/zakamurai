@@ -1,0 +1,171 @@
+.startOptions {
+  width: min(100%, 760px);
+  margin-top: 30px;
+  text-align: left;
+  animation: rise-in 0.48s ease 0.48s both;
+}
+
+.sectionHeading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
+.eyebrow {
+  margin: 0 0 4px;
+  color: var(--accent-hover);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.sectionHeading h2 {
+  margin: 0;
+  color: var(--text-main);
+  font-size: 18px;
+  letter-spacing: -0.025em;
+}
+
+.libraryButton {
+  flex: 0 0 auto;
+  min-height: 34px;
+  padding: 0 11px;
+  color: var(--text-main);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 650;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.libraryButton:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.templateGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.templateCard {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-height: 174px;
+  padding: 14px;
+  background: color-mix(in srgb, var(--bg-panel) 88%, transparent);
+  border: 1px solid var(--border);
+  border-radius: 11px;
+  transition:
+    border-color 0.18s ease,
+    transform 0.18s ease,
+    background 0.18s ease;
+}
+
+.templateCard:hover {
+  background: var(--bg-panel);
+  border-color: var(--border-strong);
+  transform: translateY(-2px);
+}
+
+.templateNumber {
+  color: var(--accent-hover);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 650;
+}
+
+.templateCard h3 {
+  margin: 8px 0 5px;
+  color: var(--text-main);
+  font-size: 14px;
+}
+
+.templateCard p {
+  margin: 0 0 12px;
+  color: var(--text-muted);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.templateCard button {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: auto;
+  padding: 0;
+  color: var(--accent-hover);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+}
+
+.templateCard button:hover {
+  color: var(--text-main);
+}
+
+.templateCard button:disabled,
+.libraryButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.templateCard button:focus-visible,
+.libraryButton:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+.noAiNote {
+  margin: 10px 0 0;
+  color: var(--text-muted);
+  font-size: 11px;
+  line-height: 1.45;
+  text-align: center;
+}
+
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (width <= 620px) {
+  .sectionHeading {
+    align-items: flex-start;
+  }
+
+  .templateGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .templateCard {
+    min-height: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .startOptions {
+    animation: none;
+  }
+
+  .templateCard {
+    transition: none;
+  }
+}

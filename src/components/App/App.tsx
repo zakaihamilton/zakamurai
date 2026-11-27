@@ -1,35 +1,33 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { computeDiff } from '@/components/AI/Processor/utils/DiffEngine';
+import { buildTreeFromPaths } from '@/components/App/Panes/Sidebar/TreeUtils';
 import { markPerformance } from '@/components/Performance';
 import { useFileSystem } from '@/components/Storage';
 import {
-  DEFAULT_CONTENTS,
-  DEFAULT_FILES,
-  SCRATCH_CONTENTS,
-  SCRATCH_FILES,
+  getProjectTemplate,
+  getTemplateContents,
+  getTemplateFiles,
 } from '@/components/Storage/InitialData';
 import Settings from '@/components/Storage/Settings';
 import { normalizePendingDeletions } from '@/components/Storage/SettingsSerialization';
 import type { PendingDiff } from '@/types/domain-types';
-import { useEffect, useState } from 'react';
 import styles from './App.module.css';
-import { normalizeAgentSessions } from './Panes/Prompt/AgentSessions';
 
 import AppBackgroundServices from './Layout/AppBackgroundServices';
 import AppContent from './Layout/AppContent';
 import AppLoading from './Layout/AppLoading';
-
-import { buildTreeFromPaths } from '@/components/App/Panes/Sidebar/TreeUtils';
+import { normalizeAgentSessions } from './Panes/Prompt/AgentSessions';
 import type { InitialAppValues } from './types';
 import useAppStores from './useAppStores';
 
 function buildInitialValues(): InitialAppValues {
   const recoveryCheckpoint = Settings.getRecoveryCheckpoint?.();
-  const template = Settings.getTemplate();
-  const isScratch = template === 'scratch';
-  const defaultFiles = isScratch ? SCRATCH_FILES : DEFAULT_FILES;
-  const defaultContents = isScratch ? SCRATCH_CONTENTS : DEFAULT_CONTENTS;
+  const template = Settings.getTemplate() || 'default';
+  const fallbackProjectName = getProjectTemplate(template).name;
+  const defaultFiles = getTemplateFiles(template);
+  const defaultContents = getTemplateContents(template);
   const storedContents = Settings.getFileContents() || recoveryCheckpoint?.fileContents;
   const pendingDiffs = Object.fromEntries(
     Object.entries(Settings.getPendingDiffs()).map(([path, diff]) => {
@@ -64,7 +62,9 @@ function buildInitialValues(): InitialAppValues {
   const restoredActiveTabId = Settings.getActiveTabId() || recoveryCheckpoint?.activeTabId || null;
 
   return {
-    projectName: Settings.getProjectName(recoveryCheckpoint?.projectName || 'My App') || 'My App',
+    projectName:
+      Settings.getProjectName(recoveryCheckpoint?.projectName || fallbackProjectName) ||
+      fallbackProjectName,
     files: initialFiles as InitialAppValues['files'],
     contents: restoredContents,
     theme: Settings.getTheme() || 'dark',

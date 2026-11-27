@@ -1,11 +1,13 @@
+import { useEffect } from 'react';
+import { createState } from 'triactor';
 import { LogState } from '@/components/App/Views/LogArea';
+import { getProjectTemplates } from '@/components/Storage/InitialData';
 import ContextMenu from '@/components/ui/ContextMenu';
 import Dialog from '@/components/ui/Dialog';
 import { Icons } from '@/components/ui/Icons';
 import Tooltip from '@/components/ui/Tooltip';
 import type { TopBarMenuStateShape } from '@/types/domain-types';
 import { formatShortcut } from '@/utils/os';
-import { createState } from 'triactor';
 import { requireStore } from '../../../types';
 import type { TopBarMenuProps } from '../topbar-types';
 import styles from './Menu.module.css';
@@ -14,8 +16,12 @@ const TopBarMenuState = createState<TopBarMenuStateShape>('TopBarMenuState');
 
 export default function TopBarMenu({
   onExportZip,
+  onShareProject,
   onExportCompiledZip,
   onNewProject,
+  onOpenProjectLibrary,
+  projectActionRequest,
+  onConsumeProjectActionRequest,
   onClearFS,
   onToggleShortcuts,
 }: TopBarMenuProps) {
@@ -26,9 +32,27 @@ export default function TopBarMenu({
     TopBarMenuState.useState(null, {
       menuPosition: null,
       confirmNewProject: false,
+      selectedTemplateId: 'counter',
     }),
   );
-  const { menuPosition = null, confirmNewProject = false } = topBarMenuState || {};
+  const {
+    menuPosition = null,
+    confirmNewProject = false,
+    selectedTemplateId = 'counter',
+  } = topBarMenuState || {};
+
+  useEffect(() => {
+    if (!projectActionRequest) return;
+    if (projectActionRequest.type === 'template') {
+      topBarMenuState((draft) => {
+        draft.selectedTemplateId = projectActionRequest.templateId;
+        draft.confirmNewProject = true;
+      });
+    } else {
+      onOpenProjectLibrary?.();
+    }
+    onConsumeProjectActionRequest?.();
+  }, [onConsumeProjectActionRequest, onOpenProjectLibrary, projectActionRequest, topBarMenuState]);
 
   const handleMenuOpen = (e: React.MouseEvent<HTMLButtonElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();
@@ -77,13 +101,26 @@ export default function TopBarMenu({
           <span>New Project</span>
         </button>
 
+        <button
+          type="button"
+          className={styles.menuItem}
+          disabled={isProcessing}
+          onClick={() => {
+            onOpenProjectLibrary?.();
+            handleMenuClose();
+          }}
+        >
+          {Icons.Folder && <Icons.Folder />}
+          <span>Saved projects</span>
+        </button>
+
         <div className={styles.menuSeparator} />
 
         <button
           type="button"
           className={styles.menuItem}
           onClick={() => {
-            onExportZip();
+            (onShareProject || onExportZip)();
             handleMenuClose();
           }}
         >
@@ -134,23 +171,51 @@ export default function TopBarMenu({
       </ContextMenu>
       <Dialog
         isOpen={confirmNewProject}
-        title="New Project?"
-        message="Are you sure you want to start a new project? This will unlink the current project and reset all files to a minimal setup."
+        title="Start a new project?"
+        message="Choose a starter. Your current browser workspace will be replaced; save it to Saved projects first if you want to keep a separate copy."
         onConfirm={() => {
           topBarMenuState((draft) => {
             draft.confirmNewProject = false;
           });
-          onNewProject('scratch');
+          void onNewProject(selectedTemplateId);
         }}
         onCancel={() =>
           topBarMenuState((draft) => {
             draft.confirmNewProject = false;
           })
         }
-        confirmText="New Project"
+        confirmText="Create project"
         cancelText="Cancel"
-        type="danger"
-      />
+      >
+        <div className={styles.templateDialogContent}>
+          <p>
+            Choose a starter. Your current browser workspace will be replaced. Save it to Saved
+            projects first if you want to keep a separate copy.
+          </p>
+          <label htmlFor="new-project-template">Starter template</label>
+          <select
+            id="new-project-template"
+            value={selectedTemplateId}
+            onChange={(event) =>
+              topBarMenuState((draft) => {
+                draft.selectedTemplateId = event.target.value;
+              })
+            }
+          >
+            {getProjectTemplates().map((template) => (
+              <option value={template.id} key={template.id}>
+                {template.name}
+              </option>
+            ))}
+          </select>
+          <p className={styles.templateDescription}>
+            {
+              getProjectTemplates().find((template) => template.id === selectedTemplateId)
+                ?.description
+            }
+          </p>
+        </div>
+      </Dialog>
     </>
   );
 }

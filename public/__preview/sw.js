@@ -297,107 +297,6 @@ function contentTypeForPath(path) {
   return null;
 }
 
-function installPreviewErrorBridge() {
-  if (window.__zakamuraiPreviewBridge) return;
-  window.__zakamuraiPreviewBridge = true;
-  const targetOrigin = window.__zakamuraiPreviewParentOrigin;
-  // React-managed forms commonly update client state in onSubmit without
-  // preventDefault(). Keep those submissions in the preview document instead
-  // of letting the browser navigate away before the state update can render.
-  document.addEventListener(
-    'submit',
-    (event) => {
-      const form = event.target;
-      if (
-        !(form instanceof HTMLFormElement) ||
-        form.hasAttribute('action') ||
-        (form.target && form.target !== '_self')
-      ) {
-        return;
-      }
-      const reactPropsKey = Object.keys(form).find((key) => key.startsWith('__reactProps$'));
-      const reactHandlersKey = Object.keys(form).find((key) =>
-        key.startsWith('__reactEventHandlers$'),
-      );
-      const props = form[reactPropsKey] || form[reactHandlersKey];
-      if (typeof props?.onSubmit === 'function' || typeof props?.onSubmitCapture === 'function') {
-        event.preventDefault();
-      }
-    },
-    true,
-  );
-  if (!targetOrigin) return;
-  const post = (type, message, extra) => {
-    window.parent.postMessage(
-      { source: 'zakamurai-preview', type, message: message || '', ...(extra || {}) },
-      targetOrigin,
-    );
-  };
-  window.addEventListener(
-    'error',
-    (event) => {
-      let message = event?.message || 'Script error';
-      if (event?.filename) message += ` at ${event.filename}:${event.lineno || 0}`;
-      post('runtime-error', message);
-    },
-    true,
-  );
-  window.addEventListener('unhandledrejection', (event) => {
-    const reason = event?.reason;
-    post('unhandled-rejection', reason?.message || String(reason || 'Unhandled rejection'));
-  });
-  post('navigate', '', { path: location.pathname || '/' });
-  try {
-    setTimeout(() => {
-      const text = (document.body?.innerText || '').replace(/\s+/g, ' ').slice(0, 4000);
-      const elements = Array.prototype.slice
-        .call(document.querySelectorAll('h1,h2,h3,button,a,input,[role]'), 0, 80)
-        .map((el) => {
-          const role = el.getAttribute('role') || el.tagName.toLowerCase();
-          const label = el.getAttribute('aria-label') || el.innerText || el.value || '';
-          return `${role}: ${label}`.replace(/\s+/g, ' ').slice(0, 160);
-        })
-        .filter(Boolean);
-      post('evidence', '', {
-        path: location.pathname || '',
-        title: document.title || '',
-        text,
-        elements,
-        screenshotCaptured: false,
-      });
-      try {
-        const markup = new XMLSerializer().serializeToString(document.documentElement);
-        const encodedMarkup = markup.replace(/&/g, '&amp;').replace(/#/g, '%23');
-        const width = Math.min(window.innerWidth, 1440);
-        const height = Math.min(window.innerHeight, 1200);
-        const svg =
-          `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">` +
-          `<foreignObject width="100%" height="100%">${encodedMarkup}</foreignObject></svg>`;
-        const image = new Image();
-        image.onload = () => {
-          try {
-            const canvas = document.createElement('canvas');
-            canvas.width = width;
-            canvas.height = height;
-            canvas.getContext('2d').drawImage(image, 0, 0);
-            const screenshot = canvas.toDataURL('image/png');
-            if (screenshot.length < 500000)
-              post('evidence', '', {
-                path: location.pathname || '',
-                title: document.title || '',
-                text,
-                elements,
-                screenshotCaptured: true,
-                screenshot,
-              });
-          } catch (_captureError) {}
-        };
-        image.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
-      } catch (_captureSetupError) {}
-    }, 250);
-  } catch (_error) {}
-}
-
 function injectBridge(bytes, headers, path, ideOrigin) {
   const cleanPath = (path || '').split('?')[0].toLowerCase();
   const contentType = headers.get?.('Content-Type') || headers.get?.('content-type') || '';
@@ -405,8 +304,9 @@ function injectBridge(bytes, headers, path, ideOrigin) {
     cleanPath.endsWith('.html') || cleanPath.endsWith('.htm') || cleanPath.endsWith('/');
   if (!isHtmlPath && !String(contentType).includes('text/html')) return bytes;
   const html = new TextDecoder().decode(bytes);
-  if (html.includes('__zakamuraiPreviewBridge')) return bytes;
-  const bridge = `<script>window.__zakamuraiPreviewParentOrigin=${JSON.stringify(ideOrigin)};(${installPreviewErrorBridge.toString()})();</script>`;
+  if (html.includes('/__preview/bridge.js')) return bytes;
+  const encodedOrigin = encodeURIComponent(ideOrigin);
+  const bridge = `<script defer src="/__preview/bridge.js?v=31" data-ide-origin="${encodedOrigin}"></script>`;
   const injected = /<\/head>/i.test(html)
     ? html.replace(/<\/head>/i, `${bridge}</head>`)
     : `${html}${bridge}`;
@@ -543,6 +443,10 @@ function sessionIdFromPreviewPath(pathname) {
 
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
+
+  // This is a static same-origin asset. Let the host serve it directly instead
+  // of forwarding it to the in-memory project filesystem.
+  if (url.pathname === '/__preview/bridge.js') return;
 
   // Bootstrap handshake page must reach Next.js PreviewHost, not the virtual server.
   if (isPreviewBootstrapPath(url.pathname)) {

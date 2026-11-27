@@ -1,9 +1,9 @@
-import { DEFAULT_CONTENTS, SCRATCH_CONTENTS } from '@/components/Storage/InitialData';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { getTemplateContents as getProjectTemplateContents } from '@/components/Storage/InitialData';
 import Settings from '@/components/Storage/Settings';
 import type { EditorAreaUiStateShape } from '@/types/domain-types';
-import { deleteInDraft } from '@/utils/StateUtils';
 import { formatCode } from '@/utils/formatter';
-import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { deleteInDraft } from '@/utils/StateUtils';
 import useCodeFolding from './CodeFolding';
 import { EditorAreaUiState } from './EditorAreaState';
 import { readEffectiveFileContent, setDirtyBufferInDraft } from './EditorBuffers';
@@ -19,7 +19,7 @@ import type {
 
 const countLines = (value: string): number => (value ? value.split('\n').length : 1);
 const getTemplateContents = (): Record<string, string> =>
-  Settings.getTemplate() === 'scratch' ? SCRATCH_CONTENTS : DEFAULT_CONTENTS;
+  getProjectTemplateContents(Settings.getTemplate() || 'default');
 
 /** Owns the per-file typing buffer, editor-local UI state, and folded-content editing. */
 export default function useEditorBuffer({

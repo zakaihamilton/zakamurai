@@ -95,6 +95,47 @@
   opacity: 0.5;
 }
 
+.templateDialogContent {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.templateDialogContent p {
+  margin: 0 0 4px;
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.templateDialogContent label {
+  color: var(--text-main);
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.templateDialogContent select {
+  width: 100%;
+  min-height: 38px;
+  padding: 0 10px;
+  color: var(--text-main);
+  font: inherit;
+  background: var(--surface-inset);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+}
+
+.templateDialogContent select:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.templateDialogContent .templateDescription {
+  margin: 2px 0 0;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
 @media (width <= 768px) {
   .actionBtn {
     width: 40px;

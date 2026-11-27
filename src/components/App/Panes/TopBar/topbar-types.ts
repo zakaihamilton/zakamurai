@@ -1,8 +1,12 @@
+import type { StateStore } from 'triactor';
+import type { ExtendedEditorState } from '@/components/App/Views/EditorArea/types';
 import type {
   AgentSessionStateShape,
   AppStateShape,
+  ChangeSetStateShape,
   LogStateShape,
   NavigationHistory,
+  PendingDiff,
   PreviewStateShape,
   ProblemsStateShape,
   PromptStateShape,
@@ -11,9 +15,13 @@ import type {
   TabStateShape,
   WorkspaceHealthStateShape,
 } from '@/types/domain-types';
-import type { StateStore } from 'triactor';
 export type ResetNewProjectStateParams = {
   template?: string;
+  projectName?: string;
+  contents?: Record<string, string>;
+  pendingDiffs?: Record<string, PendingDiff>;
+  pendingDeletions?: ExtendedEditorState['pendingDeletions'];
+  changeSets?: ChangeSetStateShape;
   appState: StateStore<AppStateShape>;
   sidebarState: StateStore<SidebarStateShape>;
   tabState: StateStore<TabStateShape>;
@@ -44,8 +52,12 @@ export type ActionButtonsProps = {
 
 export type TopBarMenuProps = {
   onExportZip: () => void;
+  onShareProject?: () => void;
   onExportCompiledZip: () => void;
   onNewProject: (template?: string) => void | Promise<void>;
+  onOpenProjectLibrary?: () => void;
+  projectActionRequest?: AppStateShape['projectActionRequest'];
+  onConsumeProjectActionRequest?: () => void;
   onClearFS: () => void;
   onToggleShortcuts: () => void;
 };

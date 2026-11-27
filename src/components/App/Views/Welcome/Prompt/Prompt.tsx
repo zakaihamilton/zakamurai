@@ -168,6 +168,14 @@ export default function WelcomePrompt() {
             </button>
           </div>
         </div>
+        <p className={styles.readiness} aria-live="polite">
+          <span
+            className={cachedModelIds.includes(selectedModel) ? styles.readyDot : styles.setupDot}
+          />
+          {cachedModelIds.includes(selectedModel)
+            ? `${selectedModelInfo.name} is ready on this device.`
+            : 'Local AI is checked on first use; any model download asks before it starts.'}
+        </p>
         <p className={styles.privacy}>
           Runs locally in your browser. Your project stays on this device.
         </p>
