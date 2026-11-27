@@ -1,3 +1,4 @@
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { createIdleAgentActivity } from '@/components/AI/Agent/AgentActivity';
 import {
   createProjectStyleProfile,
@@ -5,9 +6,9 @@ import {
 } from '@/components/AI/Agent/ProjectStyleProfile';
 import { useModelDownloader } from '@/components/AI/Models';
 import {
+  getModelHardwareFitBadge,
   RECOMMENDED_WEB_LLM_MODEL,
   WEB_LLM_MODELS,
-  getModelHardwareFitBadge,
 } from '@/components/AI/WebLLMModels';
 import { WebLLMState } from '@/components/AI/WebLLMState';
 import { AppState } from '@/components/App/AppState';
@@ -19,13 +20,12 @@ import { createEffectivePreviewFileContentsSnapshot } from '@/components/App/Vie
 import { LogState } from '@/components/App/Views/LogArea';
 import { useFileSystem } from '@/components/Storage';
 import { WorkspaceProfileState } from '@/components/Workspace';
-import { useCallback, useEffect, useRef, useState } from 'react';
 import { requireStore } from '../../types';
 import { AgentSessionState, createAgentRunUsage, createSessionMessage } from './AgentSessions';
 import FileScopeDialog from './FileScopeDialog';
 import PromptContent from './PromptContent';
 import usePromptHistory from './PromptHistory';
-import { PromptState, PromptUiState, getInitialPromptUiState } from './PromptState';
+import { getInitialPromptUiState, PromptState, PromptUiState } from './PromptState';
 import useAgentRunner from './useAgentRunner';
 import usePromptComposer from './usePromptComposer';
 import usePromptLayout from './usePromptLayout';
@@ -301,7 +301,8 @@ export default function Prompt() {
       label: model.name,
       description: model.requirement,
       badges: [
-        model.recommended ? 'Recommended' : '',
+        model.recommended ? 'Recommended default' : '',
+        model.distinction || '',
         cachedModelIds.includes(model.id) ? 'Cached' : '',
         hwBadge && (!model.recommended || hwBadge !== 'Fits Device') ? hwBadge : '',
       ].filter(Boolean),

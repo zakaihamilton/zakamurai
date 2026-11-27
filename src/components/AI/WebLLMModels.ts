@@ -6,7 +6,8 @@ export const WEB_LLM_MODELS: WebLLMModel[] = [
     name: 'Qwen2.5 Coder 7B',
     ramMB: 5106.67,
     storageMB: 4300,
-    requirement: 'Best coding model in this list. Requires a strong GPU and large browser cache.',
+    requirement:
+      'Highest coding quality in this list. Requires a strong GPU and large browser cache.',
     details: [
       ['System', 'High-end WebGPU laptop/desktop with generous unified/VRAM memory'],
       ['Storage', 'Large download/cache footprint'],
@@ -14,13 +15,14 @@ export const WEB_LLM_MODELS: WebLLMModel[] = [
       ['Best for', 'Complex code edits, refactors, TypeScript/React changes'],
     ],
     recommended: false,
+    distinction: 'Best coding quality',
   },
   {
     id: 'Qwen3.5-9B-q4f16_1-MLC',
     name: 'Qwen3.5 9B',
     ramMB: 6433.01,
     storageMB: 5060,
-    requirement: 'Strongest general reasoning option. Heavier than Qwen3.5 4B.',
+    requirement: 'Strongest reasoning option in this list. Heavier than Qwen3.5 4B.',
     details: [
       ['System', 'High-end WebGPU device with ~6.4 GB VRAM'],
       ['Storage', 'Large browser cache footprint'],
@@ -31,6 +33,7 @@ export const WEB_LLM_MODELS: WebLLMModel[] = [
       ],
     ],
     recommended: false,
+    distinction: 'Strongest reasoning',
   },
   {
     id: 'Qwen3.5-4B-q4f16_1-MLC',
@@ -51,7 +54,8 @@ export const WEB_LLM_MODELS: WebLLMModel[] = [
     name: 'Qwen2.5 Coder 3B',
     ramMB: 2504.76,
     storageMB: 1750,
-    requirement: 'Recommended coding model for reliable structured edits on modern WebGPU devices.',
+    requirement:
+      'Recommended default for reliable coding edits, moderate memory use, and responsive generation.',
     details: [
       ['System', 'Most modern WebGPU-capable devices'],
       ['Storage', 'Medium-small browser cache footprint'],

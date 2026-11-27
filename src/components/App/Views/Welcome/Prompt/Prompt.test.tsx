@@ -1,3 +1,6 @@
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import type { ChangeEvent, ReactNode } from 'react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { getCachedWebLLMModelIds } from '@/components/AI/WebLLMAPI';
 import { RECOMMENDED_WEB_LLM_MODEL } from '@/components/AI/WebLLMModels';
 import { WebLLMState } from '@/components/AI/WebLLMState';
@@ -5,9 +8,6 @@ import { PromptUiState } from '@/components/App/Panes/Prompt/PromptState';
 import { LogState } from '@/components/App/Views/LogArea';
 import { requireElement } from '@/test-utils/domMocks';
 import { makeLogState, makePromptUiState, makeWebLLMState } from '@/test-utils/stateMocks';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import type { ChangeEvent, ReactNode } from 'react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
 import WelcomePrompt from './Prompt';
 
 vi.mock('@/components/AI/WebLLMAPI', () => ({
@@ -100,6 +100,7 @@ vi.mock('@/components/ui/Icons', () => ({
   Icons: {
     Send: () => <span data-testid="send-icon" />,
     Close: () => <span data-testid="close-icon" />,
+    Info: () => <span data-testid="info-icon" />,
   },
 }));
 

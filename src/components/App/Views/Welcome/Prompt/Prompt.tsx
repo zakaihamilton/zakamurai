@@ -27,7 +27,8 @@ export default function WelcomePrompt() {
     label: model.name,
     description: model.requirement,
     badges: [
-      model.recommended ? 'Recommended' : '',
+      model.recommended ? 'Recommended default' : '',
+      model.distinction || '',
       cachedModelIds.includes(model.id) ? 'Cached' : '',
     ].filter(Boolean),
   }));
@@ -130,18 +131,31 @@ export default function WelcomePrompt() {
                 disabled={isAIProcessing}
                 className={styles.modelSelect}
               />
-              {isAIProcessing ? (
-                <span className={`${styles.modelGuideLink} ${styles.modelGuideLinkDisabled}`}>
-                  Compare models &amp; memory needs
-                </span>
-              ) : (
-                <Link
-                  href={`/models?selected=${encodeURIComponent(selectedModel)}`}
-                  className={styles.modelGuideLink}
-                >
-                  Compare models &amp; memory needs
-                </Link>
-              )}
+              <Tooltip
+                content={
+                  'Model guide\nCompare model strengths, GPU memory estimates, download sizes, and device fit.'
+                }
+                className={styles.modelGuideTooltip}
+              >
+                {isAIProcessing ? (
+                  <button
+                    type="button"
+                    className={styles.modelGuideButton}
+                    aria-label="Compare models and memory needs"
+                    disabled
+                  >
+                    <Icons.Info size={16} />
+                  </button>
+                ) : (
+                  <Link
+                    href={`/models?selected=${encodeURIComponent(selectedModel)}`}
+                    className={styles.modelGuideButton}
+                    aria-label="Compare models and memory needs"
+                  >
+                    <Icons.Info size={16} />
+                  </Link>
+                )}
+              </Tooltip>
             </div>
             <button
               type="submit"

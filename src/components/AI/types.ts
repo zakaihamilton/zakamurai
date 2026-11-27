@@ -1,7 +1,7 @@
+import type { StateStore } from 'triactor';
 import type { AiChange } from '@/contracts/ai';
 import type { DeviceCapabilityReport } from '@/contracts/capabilities';
 import type { ChangeSetStateShape } from '@/types/domain-types';
-import type { StateStore } from 'triactor';
 
 /** Updater callback for proxy-based state stores. */
 export type DraftUpdater<T extends Record<string, unknown> = Record<string, unknown>> = (
@@ -497,6 +497,7 @@ export type WebLLMModel = {
   requirement: string;
   details: [string, string][];
   recommended: boolean;
+  distinction?: string;
 };
 
 export type WebLLMEngineState = {

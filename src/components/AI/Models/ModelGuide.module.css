@@ -230,10 +230,10 @@
   color: var(--accent-hover);
 }
 
-.badges .deviceBadge {
-  border-color: color-mix(in srgb, var(--success) 50%, var(--border));
-  background: var(--success-light);
-  color: var(--success-color);
+.badges .distinctionBadge {
+  border-color: var(--border-light);
+  background: var(--bg-surface);
+  color: var(--text-main);
 }
 
 .badges .selectedBadge {

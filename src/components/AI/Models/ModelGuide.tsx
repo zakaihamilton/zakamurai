@@ -103,13 +103,15 @@ export default function ModelGuide({ initialModelId }: ModelGuideProps) {
                 {capabilityReport.hasWebGPU ? 'WebGPU available' : 'WebGPU unavailable'} ·{' '}
                 {capabilityReport.hasWorker ? 'Web Workers available' : 'Web Workers unavailable'}
                 {capabilityReport.deviceMemoryGB !== null &&
-                  ` · Browser-reported system memory: ~${capabilityReport.deviceMemoryGB} GB`}
+                  ` · Browser-reported memory estimate: ~${capabilityReport.deviceMemoryGB} GB`}
                 {capabilityReport.storageQuotaMB !== null &&
                   ` · Browser storage quota: ${Math.round(capabilityReport.storageQuotaMB).toLocaleString()} MB`}
               </p>
               {recommendedModelName && (
                 <p className={styles.deviceRecommendation}>
-                  Suggested for this device: <strong>{recommendedModelName}</strong>
+                  Recommended starting point: <strong>{recommendedModelName}</strong>. The default
+                  balances coding quality, speed, and memory; Qwen2.5 Coder 7B targets the highest
+                  coding quality, while Qwen3.5 9B targets the strongest reasoning.
                 </p>
               )}
               {capabilityReport.reasons.length > 0 && (
@@ -122,9 +124,11 @@ export default function ModelGuide({ initialModelId }: ModelGuideProps) {
             </>
           )}
           <p className={styles.memoryNote}>
-            GPU memory is an estimate of the model&apos;s VRAM requirement. Apple silicon shares
-            memory between the GPU and system; actual available memory varies with browser tabs and
-            other apps. Download size uses browser storage.
+            Device fit is a rough estimate based on WebGPU availability and browser-reported
+            device-memory estimates; browsers do not report how much GPU memory is currently free.
+            GPU memory is an estimate of each model&apos;s VRAM requirement. Apple silicon shares
+            memory between the GPU and system, and browser tabs and other apps affect available
+            headroom. Download size uses browser storage.
           </p>
         </section>
 
@@ -134,7 +138,6 @@ export default function ModelGuide({ initialModelId }: ModelGuideProps) {
         <section className={styles.modelGrid} aria-labelledby="model-list-heading">
           {WEB_LLM_MODELS.map((model) => {
             const isSelected = selectedModelId === model.id;
-            const isDeviceRecommended = capabilityReport?.recommendedModelId === model.id;
             const details = model.details.filter(([label]) => label !== 'Storage');
 
             return (
@@ -148,10 +151,10 @@ export default function ModelGuide({ initialModelId }: ModelGuideProps) {
                   </div>
                   <div className={styles.badges}>
                     {model.recommended && (
-                      <span className={styles.recommendedBadge}>Recommended</span>
+                      <span className={styles.recommendedBadge}>Recommended default</span>
                     )}
-                    {isDeviceRecommended && (
-                      <span className={styles.deviceBadge}>Suggested for device</span>
+                    {model.distinction && (
+                      <span className={styles.distinctionBadge}>{model.distinction}</span>
                     )}
                     {isSelected && <span className={styles.selectedBadge}>Current selection</span>}
                   </div>
