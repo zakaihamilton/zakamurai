@@ -43,9 +43,10 @@ test.describe('Zakamurai Advanced Tests', () => {
   test('should show new project confirmation dialog', async ({ page }) => {
     await page.getByTestId('more-actions-btn').filter({ visible: true }).click();
     await page.getByText('New Project', { exact: true }).click();
-    await expect(page.getByText('Are you sure you want to start a new project?')).toBeVisible();
-    await page.getByRole('button', { name: 'Cancel' }).click();
-    await expect(page.getByText('Are you sure you want to start a new project?')).not.toBeVisible();
+    const dialog = page.getByRole('dialog', { name: 'Start a new project?' });
+    await expect(dialog).toBeVisible();
+    await dialog.getByRole('button', { name: 'Cancel' }).click();
+    await expect(dialog).not.toBeVisible();
   });
 });
 
