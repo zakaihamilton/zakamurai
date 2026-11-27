@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { AppState } from '@/components/App/AppState';
 import {
   AgentSessionState,
@@ -12,11 +12,17 @@ import { EditorState } from '@/components/App/Views/EditorArea';
 import { LogState } from '@/components/App/Views/LogArea';
 import { useFileSystem } from '@/components/Storage';
 import {
-  DEFAULT_CONTENTS,
-  DEFAULT_FILES,
+  getProjectTemplate,
+  getTemplateContents,
+  getTemplateFiles,
   SCRATCH_CONTENTS,
   SCRATCH_FILES,
 } from '@/components/Storage/InitialData';
+import {
+  deleteSavedProject,
+  type SavedProject,
+  saveProject,
+} from '@/components/Storage/ProjectLibrary';
 import Settings from '@/components/Storage/Settings';
 import { STORAGE_RECOVERY_EVENT } from '@/components/Storage/StorageHealth';
 import Dialog from '@/components/ui/Dialog';
@@ -31,11 +37,14 @@ import {
 import { formatShortcut } from '@/utils/os';
 import { setInDraft } from '@/utils/StateUtils';
 import { requireStore } from '../../types';
+import { createEffectiveFileContentsSnapshot } from '../../Views/EditorArea/EditorBuffers';
+import { buildTreeFromPaths } from '../Sidebar/TreeUtils';
 import ActionButtons from './ActionButtons';
 import Breadcrumb from './Breadcrumb';
 import TopBarMenu from './Menu';
 import NavigationControls from './NavigationControls';
 import useProjectCompiler from './ProjectCompiler';
+import ProjectLibraryDialog from './ProjectLibraryDialog';
 import ThemeToggle from './ThemeToggle';
 import styles from './TopBar.module.css';
 import type { ResetNewProjectStateParams } from './topbar-types';
@@ -56,13 +65,22 @@ export function resetNewProjectState({
   changeSetState,
   problemsState,
   workspaceHealthState,
+  projectName,
+  contents,
+  pendingDiffs,
+  pendingDeletions,
+  changeSets,
 }: ResetNewProjectStateParams) {
-  const isScratch = template === 'scratch';
-  const initialFiles = isScratch ? SCRATCH_FILES : DEFAULT_FILES;
-  const initialContents = isScratch ? SCRATCH_CONTENTS : DEFAULT_CONTENTS;
+  const initialContents =
+    contents || (template === 'scratch' ? SCRATCH_CONTENTS : getTemplateContents(template));
+  const initialFiles = contents
+    ? buildTreeFromPaths(Object.keys(initialContents))
+    : template === 'scratch'
+      ? SCRATCH_FILES
+      : getTemplateFiles(template);
 
   appState((draft) => {
-    draft.projectName = Settings.getProjectName() || '';
+    draft.projectName = projectName || Settings.getProjectName() || '';
     draft.workspaceEpoch = (draft.workspaceEpoch || 0) + 1;
   });
   sidebarState((draft) => {
@@ -78,8 +96,8 @@ export function resetNewProjectState({
   editorState((draft) => {
     draft.fileContents = initialContents;
     draft.dirtyBufferContents = {};
-    draft.pendingDiffs = {};
-    draft.pendingDeletions = {};
+    draft.pendingDiffs = pendingDiffs || {};
+    draft.pendingDeletions = pendingDeletions || {};
     draft.navigationHistory = { stack: [], currentIndex: -1 };
     draft.shouldScrollTo = null;
     draft.history = {};
@@ -121,8 +139,8 @@ export function resetNewProjectState({
     draft.latestAIIncident = null;
   });
   changeSetState?.((draft) => {
-    draft.activeId = null;
-    draft.items = [];
+    draft.activeId = changeSets?.activeId || null;
+    draft.items = changeSets?.items || [];
   });
   problemsState?.((draft) => {
     draft.items = [];
@@ -148,7 +166,9 @@ export function resetNewProjectState({
 }
 
 export default function TopBar() {
-  const appState = requireStore(AppState.useState(['projectName', 'isMobile', 'theme']));
+  const appState = requireStore(
+    AppState.useState(['projectName', 'isMobile', 'theme', 'projectActionRequest']),
+  );
   const { projectName, isMobile } = appState;
   const fs = useFileSystem();
   const tabState = requireStore(TabState.useState(['openTabs', 'activeTabId']));
@@ -164,11 +184,17 @@ export default function TopBar() {
   const logState = LogState.usePassiveState();
   const problemsState = ProblemsState.usePassiveState();
   const workspaceHealthState = WorkspaceHealthState.usePassiveState();
+  const [isProjectLibraryOpen, setProjectLibraryOpen] = useState(false);
 
   const { handleCompile, handleRebuild, handleOpenLog, handleOpenPreview, handleClearFS } =
     useProjectCompiler();
-  const { handleExportZip, handleExportCompiledZip, exportError, clearExportError } =
-    useZipExporter();
+  const {
+    handleExportZip,
+    handleShareProject,
+    handleExportCompiledZip,
+    exportError,
+    clearExportError,
+  } = useZipExporter();
 
   useEffect(() => {
     window.addEventListener(STORAGE_RECOVERY_EVENT, handleExportZip);
@@ -191,11 +217,13 @@ export default function TopBar() {
   };
 
   const handleStartOver = async (template = 'scratch') => {
+    if (logState?.isSystemProcessing || logState?.isAIProcessing) return;
     appState((draft) => {
       draft.workspaceEpoch = (draft.workspaceEpoch || 0) + 1;
     });
     promptUiState?.abortController?.abort();
-    const initialContents = template === 'scratch' ? SCRATCH_CONTENTS : DEFAULT_CONTENTS;
+    const projectTemplate = getProjectTemplate(template);
+    const initialContents = getTemplateContents(template);
     await fs.unlinkProject();
     Settings.pauseEditorBufferWrites();
     try {
@@ -207,9 +235,99 @@ export default function TopBar() {
       // Persist the selected starter before any background sync can observe the reset state.
       await Settings.setFileContents(initialContents);
       await Settings.setPendingDiffs({});
+      await Settings.setPendingDeletions({});
+      await Settings.setChangeSets({ activeId: null, items: [] });
       await Settings.setPreviewHtml(null);
+      Settings.setProjectName(projectTemplate.name);
       resetNewProjectState({
         template,
+        projectName: projectTemplate.name,
+        appState,
+        sidebarState,
+        tabState,
+        editorState,
+        previewState,
+        promptUiState,
+        promptState,
+        agentSessionState,
+        logState,
+        changeSetState,
+        problemsState,
+        workspaceHealthState,
+      });
+    } finally {
+      Settings.resumeEditorBufferWrites();
+    }
+  };
+
+  const handleSaveProject = async (name: string) => {
+    if (fs.mode === 'local') {
+      throw new Error('Disconnect the local folder before saving a browser project copy.');
+    }
+    const record = await saveProject({
+      id: Settings.getActiveLibraryProjectId(),
+      name,
+      templateId: Settings.getTemplate() || 'default',
+      contents: createEffectiveFileContentsSnapshot(editorState),
+      pendingDiffs: { ...(editorState.pendingDiffs || {}) },
+      pendingDeletions: { ...(editorState.pendingDeletions || {}) },
+      changeSets: {
+        activeId: changeSetState?.activeId || null,
+        items: changeSetState?.items || [],
+      },
+    });
+    Settings.setActiveLibraryProjectId(record.id);
+    Settings.setProjectName(record.name);
+    appState((draft) => {
+      draft.projectName = record.name;
+    });
+    return record;
+  };
+
+  const handleDeleteSavedProject = async (project: SavedProject) => {
+    await deleteSavedProject(project.id);
+    if (Settings.getActiveLibraryProjectId() === project.id) {
+      Settings.setActiveLibraryProjectId(null);
+    }
+  };
+
+  const handleOpenSavedProject = async (project: SavedProject) => {
+    if (logState?.isSystemProcessing || logState?.isAIProcessing) {
+      throw new Error(
+        'Wait for the current build or AI request to finish before switching projects.',
+      );
+    }
+    if (fs.mode === 'local') {
+      throw new Error('Disconnect the local folder before opening a browser library project.');
+    }
+    appState((draft) => {
+      draft.workspaceEpoch = (draft.workspaceEpoch || 0) + 1;
+    });
+    promptUiState?.abortController?.abort();
+    await fs.unlinkProject();
+    Settings.pauseEditorBufferWrites();
+    try {
+      await Settings.reset(project.templateId, {
+        preserveTheme: appState.theme,
+        preserveAIPromptModel: promptUiState?.selectedModel,
+        preserveWelcomePrompt: promptUiState?.welcomePrompt,
+      });
+      Settings.setProjectName(project.name);
+      Settings.setActiveLibraryProjectId(project.id);
+      await Promise.all([
+        Settings.setFileContents(project.contents),
+        Settings.setPendingDiffs(project.pendingDiffs),
+        Settings.setPendingDeletions(project.pendingDeletions),
+        Settings.setChangeSets(project.changeSets),
+        Settings.setPreviewHtml(null),
+      ]);
+      resetNewProjectState({
+        template: project.templateId,
+        projectName: project.name,
+        contents: project.contents,
+        pendingDiffs: project.pendingDiffs,
+        pendingDeletions: project.pendingDeletions,
+        changeSets: project.changeSets,
         appState,
         sidebarState,
         tabState,
@@ -315,8 +433,16 @@ export default function TopBar() {
         />
         <TopBarMenu
           onExportZip={handleExportZip}
+          onShareProject={handleShareProject}
           onExportCompiledZip={handleExportCompiledZip}
           onNewProject={handleStartOver}
+          onOpenProjectLibrary={() => setProjectLibraryOpen(true)}
+          projectActionRequest={appState.projectActionRequest}
+          onConsumeProjectActionRequest={() =>
+            appState((draft) => {
+              draft.projectActionRequest = null;
+            })
+          }
           onClearFS={handleClearFS}
           onToggleShortcuts={() => {
             appState((draft) => {
@@ -333,6 +459,16 @@ export default function TopBar() {
         confirmText="OK"
         onConfirm={clearExportError}
         onCancel={clearExportError}
+      />
+      <ProjectLibraryDialog
+        isOpen={isProjectLibraryOpen}
+        currentProjectName={projectName}
+        activeProjectId={Settings.getActiveLibraryProjectId()}
+        canSave={fs.mode !== 'local'}
+        onClose={() => setProjectLibraryOpen(false)}
+        onSave={handleSaveProject}
+        onOpen={handleOpenSavedProject}
+        onDelete={handleDeleteSavedProject}
       />
     </header>
   );

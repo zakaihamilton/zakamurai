@@ -1,0 +1,253 @@
+.dialog {
+  width: min(90%, 640px);
+  max-width: 640px;
+}
+
+.content {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  max-height: min(65vh, 560px);
+  overflow: auto;
+}
+
+.description {
+  margin: 0 0 5px;
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.nameLabel {
+  color: var(--text-main);
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.nameInput {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 38px;
+  padding: 8px 10px;
+  color: var(--text-main);
+  font: inherit;
+  background: var(--surface-inset);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+}
+
+.nameInput:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.localFolderNote,
+.error {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.localFolderNote {
+  color: var(--text-muted);
+}
+
+.error {
+  color: var(--danger);
+}
+
+.listHeading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 8px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.listHeading h4 {
+  margin: 0;
+  color: var(--text-main);
+  font-size: 13px;
+}
+
+.listHeading > span {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.projectList {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.projectList li {
+  display: flex;
+  align-items: stretch;
+  gap: 6px;
+}
+
+.projectRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex: 1;
+  min-width: 0;
+  gap: 10px;
+  padding: 10px 11px;
+  color: var(--text-main);
+  text-align: left;
+  background: var(--surface-inset);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.projectRow:hover,
+.projectRow.selected {
+  border-color: var(--accent);
+  background: var(--accent-light);
+}
+
+.projectRow:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.projectDetails {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 3px;
+}
+
+.projectDetails strong,
+.projectDetails span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.projectDetails strong {
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.projectDetails span {
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.currentBadge {
+  flex: 0 0 auto;
+  padding: 3px 7px;
+  color: var(--accent);
+  font-size: 10px;
+  font-weight: 700;
+  background: var(--bg-panel);
+  border-radius: 999px;
+}
+
+.deleteButton {
+  padding: 0 9px;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 11px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.deleteButton:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.deleteButton:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.deleteButton:hover:not(:disabled) {
+  color: var(--danger);
+  border-color: var(--danger);
+}
+
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 18px;
+  color: var(--text-muted);
+  text-align: center;
+  background: var(--surface-inset);
+  border: 1px dashed var(--border);
+  border-radius: 9px;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.emptyState strong {
+  color: var(--text-main);
+  font-size: 13px;
+}
+
+.footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  width: 100%;
+  padding: 14px 20px;
+  background: var(--bg-surface);
+  border-bottom-right-radius: var(--radius-lg);
+  border-bottom-left-radius: var(--radius-lg);
+}
+
+.footer button {
+  min-height: 36px;
+  padding: 0 12px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 650;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  cursor: pointer;
+}
+
+.footer button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.footer button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.secondaryButton {
+  color: var(--text-main);
+  background: transparent;
+}
+
+.primaryButton {
+  color: white;
+  background: var(--accent);
+  border-color: var(--accent) !important;
+}
+
+@media (width <= 560px) {
+  .footer {
+    padding: 12px;
+    gap: 6px;
+  }
+
+  .footer button {
+    flex: 1;
+    padding: 0 7px;
+  }
+}

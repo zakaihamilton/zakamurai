@@ -1,11 +1,13 @@
+import { useEffect, useRef } from 'react';
 import { RagState } from '@/components/AI/RagState';
-import { WebLLMState, bindWebLLMStore } from '@/components/AI/WebLLMState';
 import type { WebLLMStateDraft } from '@/components/AI/types';
+import { bindWebLLMStore, WebLLMState } from '@/components/AI/WebLLMState';
 import type { FileSystemApi } from '@/components/App/types';
-import { DiagnosticsState, bindDiagnosticsState } from '@/components/Diagnostics';
+import { bindDiagnosticsState, DiagnosticsState } from '@/components/Diagnostics';
 import { markPerformance, measurePerformance } from '@/components/Performance';
 import { useSettingsSync } from '@/components/Storage/SettingsSync';
 import { StorageHealthState } from '@/components/Storage/StorageHealth';
+import { NotificationState } from '@/components/ui/Notification/Notification';
 import {
   ChangeSetState,
   DEFAULT_WORKSPACE_HEALTH,
@@ -14,20 +16,18 @@ import {
   WorkspaceHealthState,
   WorkspaceProfileState,
 } from '@/components/Workspace';
-import { NotificationState } from '@/components/ui/Notification/Notification';
 import { MOBILE_BREAKPOINT } from '@/constants/Layout';
-import { useEffect, useRef } from 'react';
 import { AppState } from './AppState';
 import { PromptState, PromptUiState, SidebarState, TabState } from './Panes';
 import { AgentSessionState, createDefaultAgentSessions } from './Panes/Prompt/AgentSessions';
 import { getInitialPromptUiState } from './Panes/Prompt/PromptState';
 import { PreviewState } from './PreviewState';
+import type { InitialAppValues } from './types';
+import { requireStore } from './types';
 import { EditorState } from './Views/EditorArea';
 import type { ExtendedEditorState } from './Views/EditorArea/types';
 import { LogState } from './Views/LogArea';
 import { useWindowResize } from './WindowResize';
-import type { InitialAppValues } from './types';
-import { requireStore } from './types';
 
 export default function useAppStores(initialValues: InitialAppValues, fs: FileSystemApi) {
   const syncedRootHandleRef = useRef<FileSystemDirectoryHandle | null>(null);
@@ -45,6 +45,7 @@ export default function useAppStores(initialValues: InitialAppValues, fs: FileSy
       compileRequest: 0,
       silentCompileRequest: 0,
       workspaceEpoch: 0,
+      projectActionRequest: null,
     }),
   );
   const sidebarState = requireStore(

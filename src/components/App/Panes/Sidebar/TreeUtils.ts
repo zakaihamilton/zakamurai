@@ -1,5 +1,5 @@
 import type { FlatTreeRow, NormalizedTreeNode } from '@/components/App/types';
-import { DEFAULT_CONTENTS, SCRATCH_CONTENTS } from '@/components/Storage/InitialData';
+import { getTemplateContents } from '@/components/Storage/InitialData';
 import Settings from '@/components/Storage/Settings';
 import type { TreeNode } from '@/types/domain-types';
 
@@ -20,7 +20,7 @@ export const getPathStr = (path: string[]): string => path.join('/');
 export const isNodeModulesPath = (path: string[]): boolean => path.includes('node_modules');
 
 export const getInitialFileContents = (): Record<string, string> =>
-  Settings.getTemplate() === 'scratch' ? SCRATCH_CONTENTS : DEFAULT_CONTENTS;
+  getTemplateContents(Settings.getTemplate() || 'default');
 
 export const treeSorter = (a: TreeNode, b: TreeNode): number => {
   const aType = getNodeType(a);

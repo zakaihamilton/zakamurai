@@ -1,26 +1,26 @@
 'use client';
 
-import type { PreviewConnectMessage } from '@/components/App/Views/PreviewArea/preview-types';
 import { useEffect, useState } from 'react';
+import type { PreviewConnectMessage } from '@/components/App/Views/PreviewArea/preview-types';
 import {
-  type PreviewHandshakeEvent,
   expandOriginAliases,
   getPreviewConfigurationError,
   getPreviewOrigins,
   getPreviewServiceWorkerScope,
   isValidPreviewHandshake,
   originMatches,
+  type PreviewHandshakeEvent,
 } from '../Views/PreviewArea/previewOrigins';
 import {
+  isSafePreviewPath,
+  isValidPreviewCapability,
   PREVIEW_CONNECT,
   PREVIEW_CONNECT_ACK,
   PREVIEW_PROTOCOL_VERSION,
-  isSafePreviewPath,
-  isValidPreviewCapability,
 } from '../Views/PreviewArea/previewProtocol';
 import styles from './PreviewHost.module.css';
 
-const SW_VERSION = '30';
+const SW_VERSION = '31';
 const SESSION_WINDOW_NAME_PREFIXES = ['zakamurai-preview-tab-', 'zakamurai-preview-'];
 const CONNECT_TIMEOUT_MS = 15000;
 

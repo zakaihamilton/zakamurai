@@ -285,6 +285,11 @@ export interface AppStateShape {
   silentCompileRequest: number;
   /** Incremented when the current project is replaced to fence late async work. */
   workspaceEpoch?: number;
+  /** One-shot command for workspace actions requested by the welcome screen. */
+  projectActionRequest?:
+    | { id: number; type: 'template'; templateId: string }
+    | { id: number; type: 'library' }
+    | null;
 }
 
 export interface SidebarStateShape {
@@ -522,6 +527,7 @@ export interface ResizerStateShape {
 export interface TopBarMenuStateShape {
   menuPosition: { x: number; y: number } | null;
   confirmNewProject: boolean;
+  selectedTemplateId: string;
 }
 
 export interface GutterStateShape {

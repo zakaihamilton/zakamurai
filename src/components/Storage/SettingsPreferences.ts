@@ -1,5 +1,5 @@
 import type { Tab } from '@/types/domain-types';
-import { SETTINGS_KEYS, readLegacyLocal } from './SettingsKeys';
+import { readLegacyLocal, SETTINGS_KEYS } from './SettingsKeys';
 import { normalizePromptHistory, serializeOpenTabs } from './SettingsSerialization';
 
 type StorageAccessor = {
@@ -191,6 +191,14 @@ export function createSettingsPreferences(storage: StorageAccessor) {
 
     setTemplate(template: string) {
       storage.set(SETTINGS_KEYS.TEMPLATE, template);
+    },
+
+    getActiveLibraryProjectId() {
+      return storage.get(SETTINGS_KEYS.ACTIVE_LIBRARY_PROJECT_ID);
+    },
+
+    setActiveLibraryProjectId(id: string | null) {
+      storage.set(SETTINGS_KEYS.ACTIVE_LIBRARY_PROJECT_ID, id);
     },
 
     getEditorReadOnly(defaultValue = false) {

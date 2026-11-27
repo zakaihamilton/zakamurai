@@ -29,6 +29,7 @@ export const SETTINGS_KEYS = {
   ACTIVE_AGENT_SESSION: 'zakamurai_active_agent_session',
   WORKSPACE_PROFILE: 'zakamurai_workspace_profile',
   CHANGE_SETS: 'zakamurai_change_sets',
+  ACTIVE_LIBRARY_PROJECT_ID: 'zakamurai_active_library_project_id',
 } as const;
 
 /** Keys stored primarily in IndexedDB (too large for reliable localStorage). */

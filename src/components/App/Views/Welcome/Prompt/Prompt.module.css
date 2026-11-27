@@ -110,6 +110,34 @@
   font-size: 12px;
 }
 
+.readiness {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  margin: 9px 0 0;
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.readyDot,
+.setupDot {
+  flex: 0 0 auto;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
+
+.readyDot {
+  background: #45b883;
+  box-shadow: 0 0 0 3px color-mix(in srgb, #45b883 14%, transparent);
+}
+
+.setupDot {
+  background: #d8a94c;
+  box-shadow: 0 0 0 3px color-mix(in srgb, #d8a94c 14%, transparent);
+}
+
 .composerFooter {
   display: flex;
   align-items: flex-end;

@@ -3,6 +3,7 @@ import WelcomeActions from './Actions';
 import WelcomeFooter from './Footer';
 import WelcomeHero from './Hero';
 import WelcomePrompt from './Prompt';
+import WelcomeStartOptions from './StartOptions';
 import styles from './Welcome.module.css';
 
 export default function Welcome() {
@@ -61,6 +62,7 @@ export default function Welcome() {
       <div className={styles.hero}>
         <WelcomeHero />
         <WelcomePrompt />
+        <WelcomeStartOptions />
         <WelcomeActions
           onShowInfo={handleShowInfo}
           onShowInstructions={handleShowInstructions}
