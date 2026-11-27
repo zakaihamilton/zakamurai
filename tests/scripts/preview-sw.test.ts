@@ -24,11 +24,15 @@ describe('preview service worker session routing', () => {
     );
   });
 
-  it('pins reconnect postMessage to the stored IDE origin', () => {
-    expect(previewWorker).not.toMatch(
-      /postMessage\(\{source:'zakamurai-preview',type:'reconnect'[^)]*,'\*'\)/,
-    );
-    expect(previewWorker).toContain('JSON.stringify(ideOrigin)');
+  it('pins reconnect postMessage to configured IDE origin aliases', () => {
+    const reconnectStart = previewWorker.indexOf('function lostConnectionPage(');
+    const reconnectEnd = previewWorker.indexOf('function sessionIdFromPreviewPath', reconnectStart);
+    const reconnectCode = previewWorker.slice(reconnectStart, reconnectEnd);
+
+    expect(reconnectCode).toContain('const origins = expandOriginAliases(ideOrigin);');
+    expect(reconnectCode).toContain('var targets=${escapeInlineJson(origins)};');
+    expect(reconnectCode).toContain('window.parent.postMessage(message,targets[i])');
+    expect(reconnectCode).not.toMatch(/postMessage\([^)]*,\s*['"]\*['"]\)/);
   });
 
   it('rejects untrusted same-origin init clients when the worker is not root-scoped', () => {
