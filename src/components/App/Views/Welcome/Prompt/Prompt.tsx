@@ -1,3 +1,6 @@
+import Link from 'next/link';
+import type React from 'react';
+import { useCallback, useState } from 'react';
 import { getCachedWebLLMModelIds } from '@/components/AI/WebLLMAPI';
 import { RECOMMENDED_WEB_LLM_MODEL, WEB_LLM_MODELS } from '@/components/AI/WebLLMModels';
 import { WebLLMState } from '@/components/AI/WebLLMState';
@@ -6,8 +9,6 @@ import { LogState } from '@/components/App/Views/LogArea';
 import { Icons } from '@/components/ui/Icons';
 import Select from '@/components/ui/Select';
 import Tooltip from '@/components/ui/Tooltip';
-import type React from 'react';
-import { useCallback, useState } from 'react';
 import { requireStore } from '../../../types';
 import DownloadConfirmation from './DownloadConfirmation';
 import styles from './Prompt.module.css';
@@ -119,15 +120,29 @@ export default function WelcomePrompt() {
             )}
           </div>
           <div className={styles.composerFooter}>
-            <Select
-              id="welcome-model-select"
-              ariaLabel="Choose local AI model"
-              value={selectedModel}
-              options={modelOptions}
-              onChange={setSelectedModel}
-              disabled={isAIProcessing}
-              className={styles.modelSelect}
-            />
+            <div className={styles.modelPicker}>
+              <Select
+                id="welcome-model-select"
+                ariaLabel="Choose local AI model"
+                value={selectedModel}
+                options={modelOptions}
+                onChange={setSelectedModel}
+                disabled={isAIProcessing}
+                className={styles.modelSelect}
+              />
+              {isAIProcessing ? (
+                <span className={`${styles.modelGuideLink} ${styles.modelGuideLinkDisabled}`}>
+                  Compare models &amp; memory needs
+                </span>
+              ) : (
+                <Link
+                  href={`/models?selected=${encodeURIComponent(selectedModel)}`}
+                  className={styles.modelGuideLink}
+                >
+                  Compare models &amp; memory needs
+                </Link>
+              )}
+            </div>
             <button
               type="submit"
               className={styles.sendButton}

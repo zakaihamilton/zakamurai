@@ -117,8 +117,44 @@
   gap: 12px;
 }
 
+.modelPicker {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  min-width: 0;
+}
+
 .modelSelect {
   width: min(100%, 280px);
+}
+
+.modelGuideLink {
+  color: var(--accent-hover);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.4;
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--accent-hover) 48%, transparent);
+  text-underline-offset: 3px;
+}
+
+.modelGuideLink:hover {
+  color: var(--text-main);
+  text-decoration-color: currentcolor;
+}
+
+.modelGuideLinkDisabled {
+  color: var(--text-muted);
+  cursor: not-allowed;
+  opacity: 0.65;
+  text-decoration: none;
+}
+
+.modelGuideLink:focus-visible {
+  border-radius: 3px;
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
 }
 
 .sendButton:disabled {
@@ -156,6 +192,10 @@
 
   .sendButton {
     justify-content: center;
+  }
+
+  .modelPicker {
+    width: 100%;
   }
 
   .modelSelect {
