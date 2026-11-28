@@ -88,4 +88,29 @@ describe('Welcome', () => {
     expect(tabState.activeTabId).toBe('readiness');
     expect(tabState.openTabs.filter((t) => t.id === 'readiness')).toHaveLength(1);
   });
+
+  it('opens the starting point page from the welcome screen', () => {
+    const tabState = createMockTabState();
+    vi.spyOn(TabState, 'usePassiveState').mockReturnValue(tabState);
+
+    render(<Welcome />);
+    fireEvent.click(screen.getByRole('button', { name: 'Start without a prompt' }));
+
+    expect(tabState.activeTabId).toBe('start-options');
+    expect(tabState.openTabs.some((tab) => tab.id === 'start-options')).toBe(true);
+  });
+
+  it('does not duplicate the starting point page if already open', () => {
+    const tabState = createMockTabState({
+      openTabs: [{ id: 'start-options', type: 'start-options', label: 'Starting point' }],
+      activeTabId: null,
+    });
+    vi.spyOn(TabState, 'usePassiveState').mockReturnValue(tabState);
+
+    render(<Welcome />);
+    fireEvent.click(screen.getByRole('button', { name: 'Start without a prompt' }));
+
+    expect(tabState.activeTabId).toBe('start-options');
+    expect(tabState.openTabs.filter((tab) => tab.id === 'start-options')).toHaveLength(1);
+  });
 });
