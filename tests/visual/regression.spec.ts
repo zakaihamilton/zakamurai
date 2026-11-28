@@ -218,13 +218,14 @@ test.describe('Zakamurai Visual Regression', () => {
     await menu.getByRole('button', { name: 'New Project', exact: true }).click();
 
     // Wait for dialog
-    await expect(page.getByText('Are you sure you want to start a new project?')).toBeVisible();
+    const dialog = page.getByRole('dialog', { name: 'Start a new project?' });
+    await expect(dialog).toBeVisible();
     await page.waitForTimeout(1000);
 
     await expect(page).toHaveScreenshot('new-project-dialog.png');
 
     // Close dialog
-    await page.getByRole('button', { name: 'Cancel' }).click();
+    await dialog.getByRole('button', { name: 'Cancel' }).click();
   });
 
   test('Mobile workspace surfaces', async ({ page }) => {
