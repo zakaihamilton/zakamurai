@@ -1,9 +1,9 @@
 import { TabState } from '@/components/App/Panes';
+import { Icons } from '@/components/ui/Icons';
 import WelcomeActions from './Actions';
 import WelcomeFooter from './Footer';
 import WelcomeHero from './Hero';
 import WelcomePrompt from './Prompt';
-import WelcomeStartOptions from './StartOptions';
 import styles from './Welcome.module.css';
 
 export default function Welcome() {
@@ -57,12 +57,36 @@ export default function Welcome() {
     tabState.activeTabId = 'readiness';
   };
 
+  const handleShowStartOptions = () => {
+    if (!tabState) return;
+    const exists = tabState.openTabs.some((tab) => tab.id === 'start-options');
+    if (!exists) {
+      tabState.openTabs = [
+        ...tabState.openTabs,
+        {
+          id: 'start-options',
+          type: 'start-options',
+          label: 'Starting point',
+        },
+      ];
+    }
+    tabState.activeTabId = 'start-options';
+  };
+
   return (
     <div className={styles.welcome}>
       <div className={styles.hero}>
         <WelcomeHero />
         <WelcomePrompt />
-        <WelcomeStartOptions />
+        <button
+          type="button"
+          className={styles.startWithoutPrompt}
+          onClick={handleShowStartOptions}
+        >
+          <Icons.Grid size={16} />
+          <span>Start without a prompt</span>
+          <Icons.ChevronRight size={15} />
+        </button>
         <WelcomeActions
           onShowInfo={handleShowInfo}
           onShowInstructions={handleShowInstructions}

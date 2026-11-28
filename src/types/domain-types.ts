@@ -32,6 +32,7 @@ export type TabType =
   | 'logs'
   | 'token-breakdown'
   | 'project-info'
+  | 'start-options'
   | 'instructions'
   | 'readiness'
   | 'ai-section';

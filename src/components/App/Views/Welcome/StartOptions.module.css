@@ -1,8 +1,52 @@
+.page {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  width: 100%;
+  overflow-y: auto;
+  background:
+    radial-gradient(circle at 50% 18%, var(--accent-light), transparent 38%), var(--bg-base);
+  animation: page-in 0.35s ease both;
+}
+
+.content {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  width: min(100%, 960px);
+  min-height: 100%;
+  margin: 0 auto;
+  padding: 30px 32px 40px;
+}
+
+.backButton {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  gap: 7px;
+  min-height: 34px;
+  margin-bottom: 30px;
+  padding: 0 9px;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  cursor: pointer;
+}
+
+.backButton:hover {
+  color: var(--text-main);
+  background: var(--bg-surface);
+  border-color: var(--border);
+}
+
 .startOptions {
-  width: min(100%, 760px);
-  margin-top: 30px;
+  width: 100%;
   text-align: left;
-  animation: rise-in 0.48s ease 0.48s both;
+  animation: rise-in 0.42s ease 0.08s both;
 }
 
 .sectionHeading {
@@ -10,29 +54,30 @@
   align-items: flex-end;
   justify-content: space-between;
   gap: 16px;
-  margin-bottom: 12px;
+  margin-bottom: 18px;
 }
 
 .eyebrow {
-  margin: 0 0 4px;
+  margin: 0 0 5px;
   color: var(--accent-hover);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
 }
 
-.sectionHeading h2 {
+.sectionHeading h1 {
   margin: 0;
   color: var(--text-main);
-  font-size: 18px;
-  letter-spacing: -0.025em;
+  font-size: clamp(24px, 3vw, 34px);
+  letter-spacing: -0.035em;
+  line-height: 1.15;
 }
 
 .libraryButton {
   flex: 0 0 auto;
-  min-height: 34px;
-  padding: 0 11px;
+  min-height: 38px;
+  padding: 0 13px;
   color: var(--text-main);
   font: inherit;
   font-size: 12px;
@@ -50,19 +95,19 @@
 
 .templateGrid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr));
+  gap: 12px;
 }
 
 .templateCard {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  min-height: 174px;
-  padding: 14px;
+  min-height: 190px;
+  padding: 17px;
   background: color-mix(in srgb, var(--bg-panel) 88%, transparent);
   border: 1px solid var(--border);
-  border-radius: 11px;
+  border-radius: 12px;
   transition:
     border-color 0.18s ease,
     transform 0.18s ease,
@@ -78,21 +123,21 @@
 .templateNumber {
   color: var(--accent-hover);
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 650;
 }
 
-.templateCard h3 {
-  margin: 8px 0 5px;
+.templateCard h2 {
+  margin: 10px 0 6px;
   color: var(--text-main);
-  font-size: 14px;
+  font-size: 16px;
 }
 
 .templateCard p {
-  margin: 0 0 12px;
+  margin: 0 0 14px;
   color: var(--text-muted);
-  font-size: 11px;
-  line-height: 1.45;
+  font-size: 12px;
+  line-height: 1.5;
 }
 
 .templateCard button {
@@ -103,7 +148,7 @@
   padding: 0;
   color: var(--accent-hover);
   font: inherit;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   background: transparent;
   border: 0;
@@ -121,17 +166,29 @@
 }
 
 .templateCard button:focus-visible,
-.libraryButton:focus-visible {
+.libraryButton:focus-visible,
+.backButton:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 3px;
 }
 
 .noAiNote {
-  margin: 10px 0 0;
+  max-width: 760px;
+  margin: 16px auto 0;
   color: var(--text-muted);
   font-size: 11px;
-  line-height: 1.45;
+  line-height: 1.55;
   text-align: center;
+}
+
+@keyframes page-in {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
 }
 
 @keyframes rise-in {
@@ -146,9 +203,21 @@
   }
 }
 
-@media (width <= 620px) {
+@media (width <= 760px) {
+  .content {
+    justify-content: flex-start;
+    padding: 22px 18px 36px;
+  }
+
+  .backButton {
+    margin-bottom: 22px;
+  }
+}
+
+@media (width <= 520px) {
   .sectionHeading {
     align-items: flex-start;
+    flex-direction: column;
   }
 
   .templateGrid {
@@ -161,6 +230,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .page,
   .startOptions {
     animation: none;
   }

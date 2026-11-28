@@ -30,6 +30,9 @@ export default function TabContextMenu({
     if (tab.type === 'project-info') {
       return 'Project Info';
     }
+    if (tab.type === 'start-options') {
+      return 'Choose a starting point';
+    }
     if (tab.type === 'readiness') {
       return 'Readiness';
     }
@@ -46,6 +49,8 @@ export default function TabContextMenu({
             <Icons.Globe />
           ) : tab.type === 'project-info' ? (
             <Icons.Info />
+          ) : tab.type === 'start-options' ? (
+            <Icons.Grid />
           ) : tab.type === 'readiness' ? (
             <Icons.AlertCircle />
           ) : isMediaFile(tab.file?.name) ? (
