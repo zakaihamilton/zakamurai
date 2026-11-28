@@ -385,30 +385,23 @@ export default function TopBar() {
 
   return (
     <header className={styles.header}>
-      <div className={styles.menuToggle}>
-        <Tooltip
-          content={isSidebarActive ? 'Collapse Sidebar' : 'Expand Sidebar'}
-          shortcut={formatShortcut('⌃B')}
-        >
-          <button
-            type="button"
-            onClick={handleSidebarToggle}
-            aria-label={isSidebarActive ? 'Collapse Sidebar' : 'Expand Sidebar'}
-            data-testid="sidebar-toggle"
-          >
-            <Icons.ZLogo size={isMobile ? 28 : 32} />
-          </button>
-        </Tooltip>
+      <Tooltip
+        content={isSidebarActive ? 'Collapse Sidebar' : 'Expand Sidebar'}
+        shortcut={formatShortcut('⌃B')}
+      >
         <button
-          className={styles.brandTitle}
+          className={styles.menuToggle}
           type="button"
           onClick={handleSidebarToggle}
           aria-label={isSidebarActive ? 'Collapse Sidebar' : 'Expand Sidebar'}
-          data-testid="brand-sidebar-toggle"
+          data-testid="sidebar-toggle"
         >
-          ZAKAMUR<span className={styles.aiHighlight}>AI</span>
+          <Icons.ZLogo size={isMobile ? 28 : 32} />
+          <span className={styles.brandTitle}>
+            ZAKAMUR<span className={styles.aiHighlight}>AI</span>
+          </span>
         </button>
-      </div>
+      </Tooltip>
 
       <div className={styles.workingIndicator}>
         <WorkingIndicator onOpenProgress={handleOpenProgress} />
