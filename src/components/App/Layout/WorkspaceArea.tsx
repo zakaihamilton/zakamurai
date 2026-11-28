@@ -1,12 +1,12 @@
+import { lazy, Suspense } from 'react';
+import { Node } from 'triactor';
 import Resizer from '@/components/ui/Resizer';
 import { isMediaFile } from '@/utils/file';
 import { FILE_VIEW_TYPES, getDefaultFileViewType } from '@/utils/fileViews';
-import { Suspense, lazy } from 'react';
-import { Node } from 'triactor';
 import { AppState } from '../AppState';
 import { Prompt, PromptState, SidebarState, TabBar, TabState } from '../Panes';
-import Welcome from '../Views/Welcome';
 import { requireStore } from '../types';
+import Welcome from '../Views/Welcome';
 import styles from './WorkspaceArea.module.css';
 
 const AISectionView = lazy(() => import('../Views/AISection'));
@@ -17,6 +17,7 @@ const LogArea = lazy(() => import('../Views/LogArea'));
 const PreviewArea = lazy(() => import('../Views/PreviewArea'));
 const ProjectInfo = lazy(() => import('../Views/ProjectInfo'));
 const Readiness = lazy(() => import('../Views/Readiness'));
+const StartOptions = lazy(() => import('../Views/Welcome/StartOptions'));
 const TokenBreakdown = lazy(() => import('../Views/TokenBreakdown'));
 
 export default function WorkspaceArea() {
@@ -85,6 +86,7 @@ export default function WorkspaceArea() {
               ))}
             {activeTab?.type === 'logs' && <LogArea />}
             {activeTab?.type === 'project-info' && <ProjectInfo />}
+            {activeTab?.type === 'start-options' && <StartOptions />}
             {activeTab?.type === 'instructions' && <Instructions />}
             {activeTab?.type === 'readiness' && <Readiness />}
             {activeTab?.type === 'token-breakdown' && <TokenBreakdown tab={activeTab} />}

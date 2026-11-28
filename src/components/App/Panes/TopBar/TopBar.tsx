@@ -354,6 +354,8 @@ export default function TopBar() {
       breadcrumb = ['Log'];
     } else if (activeTab.type === 'preview') {
       breadcrumb = [projectName, 'dist', 'index.html'];
+    } else if (activeTab.type === 'start-options') {
+      breadcrumb = ['Choose a starting point'];
     }
   }
 

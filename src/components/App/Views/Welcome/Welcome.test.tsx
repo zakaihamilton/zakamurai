@@ -1,8 +1,8 @@
-import { TabState } from '@/components/App/Panes';
-import { createMockTabState } from '@/test-utils/editorMocks';
 import { fireEvent, render, screen } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
+import { TabState } from '@/components/App/Panes';
+import { createMockTabState } from '@/test-utils/editorMocks';
 import Welcome from './Welcome';
 
 vi.mock('@/components/App/Panes', () => ({ TabState: { usePassiveState: vi.fn() } }));
@@ -18,6 +18,8 @@ vi.mock('@/components/ui/Icons', () => ({
     Github: () => <span />,
     Linkedin: () => <span />,
     AlertCircle: () => <span />,
+    Grid: () => <span />,
+    ChevronRight: () => <span />,
   },
 }));
 
