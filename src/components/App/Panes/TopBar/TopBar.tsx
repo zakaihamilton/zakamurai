@@ -373,6 +373,16 @@ export default function TopBar() {
   };
 
   const isSidebarActive = isMobile ? isSidebarPopupOpen : isSidebarOpen;
+  const handleSidebarToggle = () =>
+    sidebarState((draft) => {
+      if (isMobile) {
+        draft.isSidebarPopupOpen = !draft.isSidebarPopupOpen;
+        draft.isAIInputPopupOpen = false;
+      } else {
+        draft.isSidebarOpen = !draft.isSidebarOpen;
+      }
+    });
+
   return (
     <header className={styles.header}>
       <div className={styles.menuToggle}>
@@ -382,25 +392,22 @@ export default function TopBar() {
         >
           <button
             type="button"
-            onClick={() =>
-              sidebarState((draft) => {
-                if (isMobile) {
-                  draft.isSidebarPopupOpen = !draft.isSidebarPopupOpen;
-                  draft.isAIInputPopupOpen = false;
-                } else {
-                  draft.isSidebarOpen = !draft.isSidebarOpen;
-                }
-              })
-            }
+            onClick={handleSidebarToggle}
             aria-label={isSidebarActive ? 'Collapse Sidebar' : 'Expand Sidebar'}
             data-testid="sidebar-toggle"
           >
             <Icons.ZLogo size={isMobile ? 28 : 32} />
           </button>
         </Tooltip>
-        <span className={styles.brandTitle} aria-hidden="true">
+        <button
+          className={styles.brandTitle}
+          type="button"
+          onClick={handleSidebarToggle}
+          aria-label={isSidebarActive ? 'Collapse Sidebar' : 'Expand Sidebar'}
+          data-testid="brand-sidebar-toggle"
+        >
           ZAKAMUR<span className={styles.aiHighlight}>AI</span>
-        </span>
+        </button>
       </div>
 
       <div className={styles.workingIndicator}>
